@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Pet Quest &amp; Adventure</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@800&amp;family=Quicksand:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-variant": "#2b3640",
+                        "primary": "#54e98a",
+                        "on-surface-variant": "#bbcbbb",
+                        "surface-container-low": "#121d26",
+                        "tertiary-fixed-dim": "#92ccff",
+                        "secondary-container": "#e89300",
+                        "background": "#09141e",
+                        "on-secondary-container": "#563400",
+                        "on-tertiary": "#003351",
+                        "outline-variant": "#3d4a3e",
+                        "surface-container-high": "#202b35",
+                        "tertiary-fixed": "#cce5ff",
+                        "secondary-fixed": "#ffddb9",
+                        "on-primary": "#003919",
+                        "on-tertiary-fixed": "#001d31",
+                        "on-secondary": "#472a00",
+                        "on-background": "#d8e4f1",
+                        "on-secondary-fixed": "#2b1700",
+                        "tertiary-container": "#5fbaff",
+                        "inverse-primary": "#006d37",
+                        "outline": "#869486",
+                        "surface-container": "#16212b",
+                        "error": "#ffb4ab",
+                        "secondary": "#ffb961",
+                        "surface-tint": "#4ae183",
+                        "surface": "#09141e",
+                        "surface-container-lowest": "#050f18",
+                        "primary-fixed": "#6bfe9c",
+                        "on-tertiary-container": "#004970",
+                        "inverse-surface": "#d8e4f1",
+                        "primary-fixed-dim": "#4ae183",
+                        "surface-container-highest": "#2b3640",
+                        "inverse-on-surface": "#27323c",
+                        "on-tertiary-fixed-variant": "#004b73",
+                        "secondary-fixed-dim": "#ffb961",
+                        "surface-dim": "#09141e",
+                        "surface-bright": "#2f3a45",
+                        "on-error-container": "#ffdad6",
+                        "on-primary-container": "#005027",
+                        "on-secondary-fixed-variant": "#663e00",
+                        "tertiary": "#a3d3ff",
+                        "on-primary-fixed-variant": "#005228",
+                        "on-error": "#690005",
+                        "primary-container": "#2ecc71",
+                        "on-surface": "#d8e4f1",
+                        "on-primary-fixed": "#00210c",
+                        "error-container": "#93000a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "xl": "64px",
+                        "base": "8px",
+                        "md": "24px",
+                        "sm": "12px",
+                        "margin-mobile": "20px",
+                        "lg": "40px",
+                        "xs": "4px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Quicksand"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "display-lg": ["Plus Jakarta Sans"],
+                        "body-lg": ["Quicksand"],
+                        "label-xl": ["Quicksand"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "fontWeight": "800" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "34px", "fontWeight": "800" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800" }],
+                        "body-lg": ["20px", { "lineHeight": "28px", "fontWeight": "700" }],
+                        "label-xl": ["18px", { "lineHeight": "20px", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .chunky-btn-primary {
+            border-bottom-width: 8px;
+            border-bottom-color: #006d37; /* inverse-primary approx */
+        }
+        .chunky-btn-primary:active {
+            transform: translateY(4px);
+            border-bottom-width: 4px;
+            margin-bottom: 4px;
+        }
+        
+        .chunky-card {
+            box-shadow: 0 8px 0 0 rgba(0,0,0,0.4);
+            border: 2px solid rgba(255,255,255,0.1);
+        }
+
+        .map-marker {
+            animation: bounce 2s infinite ease-in-out;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .glow-text {
+            text-shadow: 0 0 10px rgba(84, 233, 138, 0.5);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex flex-col overflow-x-hidden">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface font-headline-lg-mobile text-headline-lg-mobile flex justify-between items-center px-margin-mobile h-24 w-full border-b-4 border-surface-container-highest shadow-[0_4px_0_0_rgba(0,0,0,0.3)] sticky top-0 z-50">
+<div class="flex items-center gap-sm">
+<div class="w-12 h-12 rounded-full overflow-hidden border-2 border-primary">
+<img class="w-full h-full object-cover" data-alt="A 3D stylized avatar of a young, heroic adventurer child with a green cap and a bright, determined smile. Soft, colorful lighting. Tactile toy aesthetic, 80px by 80px." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAVb5ueK4VJEptmoj0u8xT4MAeh0RVoORe7ZlMI0uVhYP4Z_Ee4izjbcNmQQ43GEiKNrYiVfASTaEUCvtVqw6xBZEIkyWf_vuGUnaGbG7IoE0pS8BWj0ksGxQFyFwoCaK4h6jPfPddIu-p_-ZoEX-bVYreu3F8lab205Ros8Hbwk2Ey3Farfsbpkor7H5Fpc4nVp6nRvpqQbIszd1cxh6ZsG-V8f4kMaDZRuU5FMZqFIWPLLGeMUw-vsw"/>
+</div>
+<h1 class="font-black text-secondary glow-text">Quest Hero</h1>
+</div>
+<div class="flex items-center gap-sm">
+<!-- Energy -->
+<div class="flex items-center bg-surface-container-high rounded-full px-sm py-xs border-2 border-outline-variant shadow-inner">
+<span class="material-symbols-outlined text-secondary mr-xs" style="font-variation-settings: 'FILL' 1;">bolt</span>
+<span class="font-label-xl text-secondary">24/30</span>
+</div>
+<button class="text-on-surface-variant hover:scale-105 transition-transform active:translate-y-1 active:shadow-none bg-surface-container-high p-sm rounded-xl border-b-4 border-surface-container-highest">
+<span class="font-body-md">Parent Lock</span>
+</button>
+</div>
+</header>
+<!-- Main Content Canvas (Map) -->
+<main class="flex-grow relative w-full h-[calc(100vh-192px)] overflow-hidden">
+<!-- Interactive Map Background -->
+<div class="absolute inset-0 w-full h-full">
+<img alt="Magical 3D adventure map with floating islands and winding paths" class="w-full h-full object-cover absolute inset-0 z-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCh17nkKQ0mT-ZvhEiqylaI3gzfkkLRk52Fz6d9-JQx3j3o2nrT2PCO_02gltZwIgUOqaJ2MQJVnCvXs-4SSzXcfpBgJcmaIHqGwazbYkVcxCV5xyloFuzcCOXxUe55C46Zl5RnqtGW-mh6jaeIocC88TW-FgUXf9GS05S31LEYsE9P5JaPdtYbXMAU7ELjI5TMCP8tgy7o6MnxOtMI6So-bI33J7XWGU9lkQpfE2qfNCdbch13Q7Kg8A"/>
+<!-- Map Overlay Gradient for Readability -->
+<div class="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent z-10 pointer-events-none"></div>
+<!-- Map Markers Container -->
+<div class="absolute inset-0 z-20 pointer-events-none">
+<!-- Node 1: Forest Walk (Completed) -->
+<div class="absolute bottom-[20%] left-[20%] pointer-events-auto group">
+<button class="relative w-16 h-16 rounded-full bg-surface-container border-4 border-primary shadow-[0_6px_0_0_#2b3640] flex items-center justify-center hover:scale-110 transition-transform active:translate-y-1 active:shadow-none">
+<span class="material-symbols-outlined text-primary text-3xl" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</button>
+<!-- Tooltip -->
+<div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-sm w-max bg-surface-container-high text-on-surface px-sm py-xs rounded-lg font-body-md border-2 border-outline-variant opacity-0 group-hover:opacity-100 transition-opacity">
+                        Forest Walk <span class="text-primary">(Done)</span>
+</div>
+</div>
+<!-- Node 2: Mushroom Grotto (Active) -->
+<div class="absolute bottom-[40%] left-[45%] pointer-events-auto group map-marker">
+<button class="relative w-20 h-20 rounded-full bg-primary-container border-4 border-primary shadow-[0_8px_0_0_#005027] flex items-center justify-center hover:scale-105 transition-transform active:translate-y-2 active:shadow-none" onclick="document.getElementById('quest-modal').classList.remove('hidden')">
+<span class="material-symbols-outlined text-on-primary-container text-4xl" style="font-variation-settings: 'FILL' 1;">park</span>
+<!-- Glowing aura -->
+<div class="absolute -inset-2 bg-primary opacity-30 rounded-full animate-ping"></div>
+</button>
+<!-- Tooltip -->
+<div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-sm w-max bg-surface-container-high text-on-surface px-sm py-xs rounded-lg font-body-md border-2 border-outline-variant opacity-100">
+                        Mushroom Grotto
+                    </div>
+</div>
+<!-- Node 3: Crystal Castle (Locked) -->
+<div class="absolute top-[25%] right-[25%] pointer-events-auto group">
+<button class="relative w-16 h-16 rounded-full bg-surface-variant border-4 border-outline shadow-[0_6px_0_0_#121d26] flex items-center justify-center hover:scale-105 transition-transform opacity-70">
+<span class="material-symbols-outlined text-outline text-3xl">lock</span>
+</button>
+<!-- Tooltip -->
+<div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-sm w-max bg-surface-container-high text-on-surface px-sm py-xs rounded-lg font-body-md border-2 border-outline-variant opacity-0 group-hover:opacity-100 transition-opacity">
+                        Crystal Castle (Locked)
+                    </div>
+</div>
+</div>
+</div>
+<!-- Quest Modal Overlay (Hidden by default, simple toggle logic via class) -->
+<div class="absolute inset-0 z-40 bg-black/60 backdrop-blur-sm flex items-end md:items-center justify-center p-4 transition-opacity hidden" id="quest-modal">
+<div class="bg-surface-container chunky-card rounded-2xl w-full max-w-md p-md relative animate-[slideUp_0.3s_ease-out]">
+<!-- Close Button -->
+<button class="absolute top-sm right-sm w-10 h-10 bg-surface-container-high rounded-full flex items-center justify-center border-b-4 border-surface-container-highest active:translate-y-1 active:border-b-0 text-on-surface-variant" onclick="document.getElementById('quest-modal').classList.add('hidden')">
+<span class="material-symbols-outlined">close</span>
+</button>
+<!-- Quest Details -->
+<div class="text-center mb-md mt-sm">
+<div class="w-24 h-24 mx-auto mb-sm bg-primary-container rounded-full border-4 border-primary flex items-center justify-center shadow-inner">
+<span class="material-symbols-outlined text-on-primary-container text-5xl" style="font-variation-settings: 'FILL' 1;">park</span>
+</div>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface mb-xs">Mushroom Grotto</h2>
+<p class="font-body-md text-on-surface-variant">Explore the glowing paths. Watch out for tricky puzzles!</p>
+</div>
+<!-- Rewards & Cost -->
+<div class="flex justify-between items-center bg-surface-container-low rounded-xl p-sm border-2 border-surface-container-highest mb-md">
+<div class="flex flex-col items-center">
+<span class="font-label-xl text-on-surface-variant mb-xs">Cost</span>
+<div class="flex items-center text-secondary">
+<span class="material-symbols-outlined mr-1" style="font-variation-settings: 'FILL' 1;">bolt</span>
+<span class="font-body-lg font-bold">-5</span>
+</div>
+</div>
+<div class="w-px h-12 bg-surface-container-highest"></div>
+<div class="flex flex-col items-center">
+<span class="font-label-xl text-on-surface-variant mb-xs">Rewards</span>
+<div class="flex items-center text-secondary-container">
+<span class="material-symbols-outlined mr-1" style="font-variation-settings: 'FILL' 1;">toll</span>
+<span class="font-body-lg font-bold">+50</span>
+</div>
+</div>
+</div>
+<!-- Sibling Bonus Toggle -->
+<div class="bg-surface-container-high rounded-xl p-sm border-2 border-surface-container-highest mb-md flex items-center justify-between cursor-pointer active:scale-95 transition-transform" onclick="this.classList.toggle('ring-2'); this.classList.toggle('ring-primary')">
+<div class="flex items-center gap-sm">
+<div class="w-12 h-12 rounded-full overflow-hidden border-2 border-tertiary">
+<img class="w-full h-full object-cover" data-alt="A 3D stylized avatar of a friendly older sibling character, wearing adventure gear. Warm, engaging lighting, tactile toy aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAKCQ7qvDCRAxY4cowLtfXfFc-HgE4I0M6MHdKSE9aCVtrhgBi2peGmdk5oZaZ37wc-odQjMsT_Krzed5UtBJpvaHYApQJgiQfhf62pB4u5h3b7vXKWLUjSHj4wGTaPrCn5HUfC04sagxcAPRQzLcDJULOE-7wY9QNAFmJMMIl40bG7wPogzvLtI7ZH1ye0tWuR2UzxgodDOa_z6v58MFFjEDhCxQc_M143tkzK8_bjeW7b17Ii5M9Gjw"/>
+</div>
+<div>
+<p class="font-body-md text-on-surface">Bring Hero Sibling</p>
+<p class="text-sm text-primary">+20% Coin Bonus</p>
+</div>
+</div>
+<!-- Custom Toggle -->
+<div class="w-12 h-6 bg-surface-variant rounded-full border-2 border-outline-variant relative pointer-events-none">
+<div class="absolute top-0.5 left-0.5 w-4 h-4 bg-on-surface-variant rounded-full transition-transform"></div>
+</div>
+</div>
+<!-- Action Button -->
+<button class="w-full bg-primary text-on-primary font-headline-lg-mobile text-headline-lg-mobile py-sm rounded-xl chunky-btn-primary flex justify-center items-center gap-xs">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+                    Start Quest
+                </button>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="bg-surface-container dark:bg-surface-container text-primary font-label-xl text-label-xl docked full-width bottom-0 rounded-t-xl border-t-8 border-surface-container-highest shadow-[0_-8px_0_0_rgba(0,0,0,0.2)] fixed left-0 w-full z-50 flex justify-around items-end px-4 pb-4 h-24 md:hidden">
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-surface-bright active:translate-y-0 transition-all duration-100 ease-out">
+<span class="material-symbols-outlined mb-1">home</span>
+<span>Home</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl p-2 mb-2 translate-y-[-8px] border-b-4 border-on-primary-fixed-variant hover:bg-surface-bright active:translate-y-0 transition-all duration-100 ease-out">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">checklist</span>
+<span>Tasks</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-surface-bright active:translate-y-0 transition-all duration-100 ease-out">
+<span class="material-symbols-outlined mb-1">shopping_basket</span>
+<span>Shop</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-surface-bright active:translate-y-0 transition-all duration-100 ease-out">
+<span class="material-symbols-outlined mb-1">pets</span>
+<span>Pets</span>
+</button>
+</nav>
+</body></html>

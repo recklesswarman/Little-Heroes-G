@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Sugar Villain AR Battle</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;700;800&amp;family=Quicksand:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary": "#a3d3ff",
+                        "tertiary-fixed": "#cce5ff",
+                        "on-tertiary-container": "#004970",
+                        "tertiary-fixed-dim": "#92ccff",
+                        "surface-variant": "#2b3640",
+                        "surface-bright": "#2f3a45",
+                        "surface-container-lowest": "#050f18",
+                        "inverse-surface": "#d8e4f1",
+                        "primary-fixed": "#6bfe9c",
+                        "on-tertiary-fixed-variant": "#004b73",
+                        "on-surface-variant": "#bbcbbb",
+                        "tertiary-container": "#5fbaff",
+                        "on-primary-fixed": "#00210c",
+                        "inverse-on-surface": "#27323c",
+                        "on-secondary-fixed-variant": "#663e00",
+                        "on-secondary-container": "#563400",
+                        "on-error": "#690005",
+                        "on-primary-container": "#005027",
+                        "error-container": "#93000a",
+                        "on-background": "#d8e4f1",
+                        "outline-variant": "#3d4a3e",
+                        "outline": "#869486",
+                        "primary-container": "#2ecc71",
+                        "on-secondary-fixed": "#2b1700",
+                        "on-tertiary": "#003351",
+                        "surface-container-high": "#202b35",
+                        "secondary": "#ffb961",
+                        "on-tertiary-fixed": "#001d31",
+                        "primary": "#54e98a",
+                        "primary-fixed-dim": "#4ae183",
+                        "inverse-primary": "#006d37",
+                        "surface": "#09141e",
+                        "surface-container-highest": "#2b3640",
+                        "surface-container-low": "#121d26",
+                        "surface-tint": "#4ae183",
+                        "error": "#ffb4ab",
+                        "background": "#09141e",
+                        "on-surface": "#d8e4f1",
+                        "on-secondary": "#472a00",
+                        "secondary-container": "#e89300",
+                        "on-error-container": "#ffdad6",
+                        "surface-dim": "#09141e",
+                        "secondary-fixed": "#ffddb9",
+                        "on-primary-fixed-variant": "#005228",
+                        "surface-container": "#16212b",
+                        "on-primary": "#003919",
+                        "secondary-fixed-dim": "#ffb961"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "base": "8px",
+                        "margin-mobile": "20px",
+                        "gutter": "16px",
+                        "md": "24px",
+                        "xs": "4px",
+                        "xl": "64px",
+                        "lg": "40px",
+                        "sm": "12px"
+                    },
+                    "fontFamily": {
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "display-lg": ["Plus Jakarta Sans"],
+                        "label-xl": ["Quicksand"],
+                        "body-md": ["Quicksand"],
+                        "body-lg": ["Quicksand"],
+                        "headline-lg": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "headline-lg-mobile": ["28px", { "lineHeight": "34px", "fontWeight": "800" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800" }],
+                        "label-xl": ["18px", { "lineHeight": "20px", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "body-lg": ["20px", { "lineHeight": "28px", "fontWeight": "700" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "fontWeight": "800" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .chunky-bevel-primary {
+            border-bottom: 8px solid #006d37; /* inverse-primary approx */
+        }
+        .chunky-bevel-primary:active {
+            border-bottom: 0px;
+            transform: translateY(8px);
+        }
+        .chunky-bevel-secondary {
+            border-bottom: 4px solid #003351; /* on-tertiary approx */
+        }
+        .chunky-bevel-secondary:active {
+            border-bottom: 0px;
+            transform: translateY(4px);
+        }
+        .glass-panel {
+            background: rgba(9, 20, 30, 0.6); /* surface approx */
+            backdrop-filter: blur(8px);
+            border: 2px solid rgba(163, 211, 255, 0.2); /* tertiary approx */
+        }
+        .text-stroke-dark {
+            -webkit-text-stroke: 1.5px #09141e;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen relative overflow-hidden flex flex-col font-body-md select-none">
+<!-- AR View Background -->
+<div class="absolute inset-0 z-0">
+<img alt="AR Battle View" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAIoIsf45Qy80tpMpa1yFgLhrHKeWWnoEaTm_x_-TnPSjIlV4nuF4LUVHtJ3Ej00gfLXfdnzDMYOth5IYUL0pSiag62jVCCyKP1HkDEwpMnHLdUh4yC_S1CH80UDrs-Og_Mc-3tiNYROM6ZfW6aNrvZwfHoDGK3LF5vX5GYe4R5S59OnO1eiCrsvjaD4J03Z7iOC0AA3Ee7NSJFlsC6uwBdIp6k6vmeYFd9-HF2Wd_-F2NCsJl5sc9bWQ"/>
+<div class="absolute inset-0 bg-gradient-to-b from-surface/80 via-transparent to-surface/90"></div>
+</div>
+<!-- Top HUD Container -->
+<div class="relative z-10 w-full px-margin-mobile pt-lg flex justify-between items-start pointer-events-none">
+<!-- Back Button (Transactional Exit) -->
+<button class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center chunky-bevel-secondary pointer-events-auto active:shadow-none transition-all duration-100 ease-out shadow-[0_4px_0_0_rgba(0,0,0,0.3)]">
+<span class="material-symbols-outlined text-primary text-[28px]" style="font-variation-settings: 'FILL' 1;">close</span>
+</button>
+<!-- Timer & Coins HUD -->
+<div class="flex flex-col items-center gap-base">
+<!-- Timer -->
+<div class="glass-panel rounded-full px-md py-base flex items-center gap-sm shadow-[0_4px_0_0_rgba(0,0,0,0.4)]">
+<span class="material-symbols-outlined text-secondary text-[24px]" style="font-variation-settings: 'FILL' 1;">timer</span>
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-secondary text-stroke-dark">02:00</span>
+</div>
+<!-- Habit Coins -->
+<div class="glass-panel rounded-full px-gutter py-xs flex items-center gap-xs">
+<span class="material-symbols-outlined text-secondary text-[20px]" style="font-variation-settings: 'FILL' 1;">monetization_on</span>
+<span class="font-label-xl text-label-xl text-secondary">Coins: <span id="coin-counter">0</span></span>
+</div>
+</div>
+<!-- Placeholder for symmetry -->
+<div class="w-12 h-12"></div>
+</div>
+<!-- Center Reticle / Target Area (Visual Only) -->
+<div class="relative z-10 flex-grow flex items-center justify-center pointer-events-none">
+<div class="w-64 h-64 border-4 border-dashed border-primary/50 rounded-full animate-[spin_10s_linear_infinite] flex items-center justify-center">
+<div class="w-4 h-4 bg-primary rounded-full animate-ping"></div>
+</div>
+</div>
+<!-- Bottom Action Area -->
+<div class="relative z-10 w-full px-margin-mobile pb-xl pt-lg bg-gradient-to-t from-surface to-transparent flex flex-col items-center gap-md">
+<!-- Villain Health Bar -->
+<div class="w-full max-w-[300px] flex flex-col gap-xs mb-sm">
+<div class="flex justify-between items-end px-2">
+<span class="font-label-xl text-label-xl text-error uppercase tracking-wider text-stroke-dark">Sugar Monster</span>
+<span class="font-body-md text-body-md text-error-container">HP</span>
+</div>
+<div class="w-full h-8 bg-surface-container-highest rounded-full p-1 shadow-inner border-2 border-surface-container-lowest">
+<div class="h-full bg-error rounded-full w-full transition-all duration-300" id="monster-hp"></div>
+</div>
+</div>
+<!-- Big Scrub Button -->
+<button class="bg-primary text-on-primary w-full max-w-[320px] py-md rounded-xl font-headline-lg-mobile text-headline-lg-mobile text-center uppercase tracking-widest chunky-bevel-primary flex items-center justify-center gap-sm active:bg-primary-fixed-dim transition-colors shadow-[0_8px_0_0_rgba(0,0,0,0.5)] active:shadow-none mb-md" id="scrub-btn">
+<span class="material-symbols-outlined text-[36px]" style="font-variation-settings: 'FILL' 1;">cleaning_services</span>
+            Scrub!
+        </button>
+</div>
+<script>
+        // Simple Interaction Logic
+        const scrubBtn = document.getElementById('scrub-btn');
+        const hpBar = document.getElementById('monster-hp');
+        const coinCounter = document.getElementById('coin-counter');
+        
+        let hp = 100;
+        let coins = 0;
+
+        scrubBtn.addEventListener('click', () => {
+            if (hp > 0) {
+                hp -= 5;
+                if(hp < 0) hp = 0;
+                hpBar.style.width = `${hp}%`;
+                
+                // Add some coins randomly
+                if(Math.random() > 0.5) {
+                    coins += 1;
+                    coinCounter.textContent = coins;
+                }
+
+                // Temporary color shift on hit
+                hpBar.classList.add('bg-secondary');
+                hpBar.classList.remove('bg-error');
+                setTimeout(() => {
+                    hpBar.classList.add('bg-error');
+                    hpBar.classList.remove('bg-secondary');
+                }, 150);
+            }
+        });
+    </script>
+</body></html>

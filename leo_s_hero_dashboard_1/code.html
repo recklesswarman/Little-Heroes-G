@@ -1,0 +1,357 @@
+<!DOCTYPE html><html class="dark" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Quest Hero - Home Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@800&amp;family=Quicksand:wght@600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary": "#a3d3ff",
+                        "error": "#ffb4ab",
+                        "on-secondary": "#472a00",
+                        "on-background": "#d8e4f1",
+                        "secondary": "#ffb961",
+                        "on-error": "#690005",
+                        "primary-fixed-dim": "#4ae183",
+                        "surface": "#09141e",
+                        "secondary-container": "#e89300",
+                        "inverse-surface": "#d8e4f1",
+                        "on-primary-fixed": "#00210c",
+                        "inverse-primary": "#006d37",
+                        "on-tertiary-fixed-variant": "#004b73",
+                        "surface-container-lowest": "#050f18",
+                        "surface-container-high": "#202b35",
+                        "secondary-fixed-dim": "#ffb961",
+                        "background": "#09141e",
+                        "on-tertiary-container": "#004970",
+                        "on-primary-container": "#005027",
+                        "on-secondary-fixed": "#2b1700",
+                        "outline": "#869486",
+                        "on-secondary-container": "#563400",
+                        "secondary-fixed": "#ffddb9",
+                        "on-primary": "#003919",
+                        "primary": "#54e98a",
+                        "error-container": "#93000a",
+                        "tertiary-fixed": "#cce5ff",
+                        "tertiary-container": "#5fbaff",
+                        "inverse-on-surface": "#27323c",
+                        "on-error-container": "#ffdad6",
+                        "primary-fixed": "#6bfe9c",
+                        "surface-variant": "#2b3640",
+                        "on-tertiary": "#003351",
+                        "on-primary-fixed-variant": "#005228",
+                        "surface-container": "#16212b",
+                        "surface-container-highest": "#2b3640",
+                        "tertiary-fixed-dim": "#92ccff",
+                        "outline-variant": "#3d4a3e",
+                        "on-tertiary-fixed": "#001d31",
+                        "on-surface": "#d8e4f1",
+                        "surface-container-low": "#121d26",
+                        "surface-bright": "#2f3a45",
+                        "on-secondary-fixed-variant": "#663e00",
+                        "surface-tint": "#4ae183",
+                        "primary-container": "#2ecc71",
+                        "on-surface-variant": "#bbcbbb",
+                        "surface-dim": "#09141e"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "16px",
+                        "xl": "64px",
+                        "md": "24px",
+                        "lg": "40px",
+                        "margin-mobile": "20px",
+                        "sm": "12px",
+                        "xs": "4px",
+                        "base": "8px"
+                    },
+                    "fontFamily": {
+                        "label-xl": ["Quicksand"],
+                        "body-md": ["Quicksand"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "body-lg": ["Quicksand"],
+                        "display-lg": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "label-xl": ["18px", { "lineHeight": "20px", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "fontWeight": "800" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "34px", "fontWeight": "800" }],
+                        "body-lg": ["20px", { "lineHeight": "28px", "fontWeight": "700" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .chunky-btn {
+            border-bottom-width: 8px;
+            transition: all 0.1s ease-in-out;
+        }
+        .chunky-btn:active {
+            border-bottom-width: 0px;
+            transform: translateY(8px);
+        }
+        .chunky-btn-secondary {
+            border-bottom-width: 6px;
+            transition: all 0.1s ease-in-out;
+        }
+        .chunky-btn-secondary:active {
+            border-bottom-width: 0px;
+            transform: translateY(6px);
+        }
+        .card-shadow {
+            box-shadow: 0 8px 0 0 rgba(0,0,0,0.4);
+        }
+        .text-shadow {
+            text-shadow: 0 2px 0 rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md overflow-x-hidden relative min-h-screen pb-32">
+<!-- Magical Background Animation -->
+<div class="fixed inset-0 z-[-1] pointer-events-none opacity-60">
+<!-- STITCH_SHADER_START:ANIMATION_2 class="absolute inset-0 w-full h-full" -->
+<div class="absolute inset-0 w-full h-full" style="display:block;">
+<canvas id="shader-canvas-ANIMATION_2" style="display:block;width:100%;height:100%" width="390" height="986"></canvas>
+<script>
+(function() {
+  const canvas = document.getElementById('shader-canvas-ANIMATION_2');
+
+  // Sync the WebGL drawing-buffer size with the CSS-driven layout size.
+  // This fires on initial layout and whenever the element is resized.
+  function syncSize() {
+    const w = canvas.clientWidth  || 1280;
+    const h = canvas.clientHeight || 720;
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width  = w;
+      canvas.height = h;
+    }
+  }
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(syncSize).observe(canvas);
+  }
+  syncSize();
+
+  const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+  if (!gl) return;
+  const vs = `attribute vec2 a_position;
+varying vec2 v_texCoord;
+void main() {
+  v_texCoord = a_position * 0.5 + 0.5;
+  gl_Position = vec4(a_position, 0.0, 1.0);
+}`;
+  const fs = `precision highp float;
+varying vec2 v_texCoord;
+uniform float u_time;
+uniform vec2 u_resolution;
+
+void main() {
+    vec2 uv = v_texCoord;
+    
+    // Create a soft, flowing magical background using noise-like sine waves
+    float color1 = sin(uv.x * 3.0 + u_time * 0.5) * 0.5 + 0.5;
+    float color2 = sin(uv.y * 2.0 - u_time * 0.3) * 0.5 + 0.5;
+    
+    // Palette: Deep blue to dark teal/green (Boy-focused, adventurous)
+    vec3 col1 = vec3(0.02, 0.05, 0.15); // Deep Night Blue
+    vec3 col2 = vec3(0.05, 0.2, 0.1);   // Dark Forest Green
+    
+    vec3 finalCol = mix(col1, col2, color1 * color2);
+    
+    // Add some subtle 'hero sparkles'
+    float sparkles = pow(sin(uv.x * 20.0 + u_time) * sin(uv.y * 20.0 + u_time), 20.0);
+    finalCol += sparkles * 0.1;
+
+    gl_FragColor = vec4(finalCol, 1.0);
+}`;
+  function cs(type, src) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    return s;
+  }
+  const prog = gl.createProgram();
+  gl.attachShader(prog, cs(gl.VERTEX_SHADER, vs));
+  gl.attachShader(prog, cs(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(prog);
+  gl.useProgram(prog);
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+  const pos = gl.getAttribLocation(prog, 'a_position');
+  gl.enableVertexAttribArray(pos);
+  gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);
+  const uTime = gl.getUniformLocation(prog, 'u_time');
+  const uRes = gl.getUniformLocation(prog, 'u_resolution');
+  const uMouse = gl.getUniformLocation(prog, 'u_mouse');
+
+  // u_mouse is in pixel coordinates matching u_resolution (ShaderToy convention).
+  // Shaders that need normalized coords should use: u_mouse / u_resolution.
+  let mouse = { x: canvas.width / 2, y: canvas.height / 2 };
+  window.addEventListener('mousemove', (event) => {
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width && rect.height) {
+      const nx = (event.clientX - rect.left) / rect.width;
+      const ny = 1.0 - (event.clientY - rect.top) / rect.height;
+      mouse.x = nx * canvas.width;
+      mouse.y = ny * canvas.height;
+    }
+  });
+
+  function render(t) {
+    if (typeof ResizeObserver === 'undefined') syncSize();
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    if (uTime) gl.uniform1f(uTime, t * 0.001);
+    if (uRes) gl.uniform2f(uRes, canvas.width, canvas.height);
+    if (uMouse) gl.uniform2f(uMouse, mouse.x, mouse.y);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    requestAnimationFrame(render);
+  }
+  render(0);
+})();
+</script>
+</div>
+<!-- STITCH_SHADER_END:ANIMATION_2 -->
+</div>
+<!-- Ambient Gradient Overlay for depth -->
+<div class="fixed inset-0 z-[-1] bg-gradient-to-b from-surface-container-lowest/80 via-transparent to-background pointer-events-none"></div>
+<!-- TopAppBar (From JSON) -->
+<header class="bg-surface dark:bg-surface font-headline-lg-mobile text-headline-lg-mobile docked full-width top-0 border-b-4 border-surface-container-highest shadow-[0_4px_0_0_rgba(0,0,0,0.3)] flex justify-between items-center px-margin-mobile h-24 w-full sticky z-40">
+<div class="flex items-center gap-sm">
+
+<span class="font-headline-lg-mobile text-headline-lg-mobile font-black text-secondary tracking-tight text-shadow">Quest Hero</span>
+</div>
+<div class="flex items-center gap-sm">
+<!-- Currency Display -->
+<div class="flex items-center bg-surface-container-high rounded-full px-3 py-1.5 border-2 border-surface-container-highest gap-2">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">stars</span>
+<span class="font-label-xl text-secondary">450</span>
+</div>
+<!-- Trailing Action -->
+<button aria-label="Parent Lock" class="bg-surface-container-highest text-on-surface-variant rounded-xl p-2 chunky-btn-secondary border-surface-container-low hover:bg-surface-bright active:translate-y-1 active:shadow-none transition-all flex items-center justify-center group">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors" style="font-variation-settings: 'FILL' 1;">lock</span>
+</button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="max-w-4xl mx-auto px-margin-mobile pt-md pb-xl flex flex-col gap-lg z-10 relative">
+<!-- Hero Center: 3D Shield -->
+<section class="flex flex-col items-center justify-center mt-md">
+<div class="relative w-48 h-48 md:w-64 md:h-64 mb-4 drop-shadow-2xl animate-[bounce_4s_ease-in-out_infinite]">
+<img alt="Hero Shield" class="w-full h-full object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBJ5OVuuUvbIEaG0SM6c3iC2BqN4zYmQVsgLXfP15l2B2rguPI04y0NfKHALKqpqf8EIwe_knxahOzUFZYBmJflk3GEkmplYfWvbgDjyiB7qg9ntgTnMiqIHCSzHot4Fyy0sVtDgzcZkUGyh7_RhUjnLfzu__lR62QIp5q0iBtNgkgH-bVR-PPu99DypKxLp5qukzTG6zJlweTY37fPy5ab8tTGLSjnaQNycNmlnoGyAC7q6ehoz1X5SQ">
+<!-- Sparkle effect -->
+<div class="absolute -top-4 -right-4 text-secondary animate-pulse delay-75">
+<span class="material-symbols-outlined text-4xl" style="font-variation-settings: 'FILL' 1;">arrow_back_ios_new</span>
+</div>
+<div class="absolute -bottom-2 -left-2 text-tertiary animate-pulse">
+<span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'FILL' 1;">arrow_back_ios_new</span>
+</div>
+</div>
+<h1 class="font-display-lg text-inverse-surface text-center text-shadow">Ready for Action!</h1>
+<p class="font-body-lg text-on-surface-variant text-center mt-2">You have 3 quests waiting.</p>
+</section>
+<!-- Task Carousel / Bento Grid -->
+<section class="flex flex-col gap-md w-full">
+<h2 class="font-headline-lg-mobile text-inverse-surface text-shadow flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">swords</span>
+                Today's Quests
+            </h2>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+<!-- Task Card 1 -->
+<div class="bg-surface-container rounded-3xl p-md flex items-center justify-between border-2 border-surface-container-highest card-shadow">
+<div class="flex items-center gap-sm">
+<div class="w-16 h-16 rounded-2xl bg-tertiary-container flex items-center justify-center border-b-4 border-on-tertiary-container/20">
+<img class="w-12 h-12 object-contain drop-shadow-lg" data-alt="A chunky 3D icon of a blue toothbrush with white bristles, slightly tilted, against a light blue background. It looks like a glossy, smooth plastic toy." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD_t1oRwvE1jlA6mYuARa1kila-xbhIvpGqco4NsFrzIp3HYf-AOKXJ6h0qmz4yoUj5sGBJEGG3k47tjpVTOVVpi6PklYYznwt8FgR0WNaQsOt5pu_bL12NJJi8BhBJTz_wmenjPjkJa0Ti7OHXgZH60P9sMBw3yp1NpTX5hoSsiiyu5kNMKZFB84cQhb_qOld0uo2POD-jx_IBi8XnJx9r4ackB2pxI6pssYiWzVQgcV8_JdTOZh5KTA">
+</div>
+<div class="flex flex-col">
+<h3 class="font-body-lg text-inverse-surface">Brush Teeth</h3>
+<div class="flex items-center gap-1 text-secondary mt-1">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">monetization_on</span>
+<span class="font-label-xl text-sm">+10 Coins</span>
+</div>
+</div>
+</div>
+<button class="bg-primary text-on-primary rounded-2xl p-4 chunky-btn border-primary-container hover:brightness-110 flex items-center justify-center">
+<span class="material-symbols-outlined text-3xl font-black" style="font-variation-settings: 'FILL' 1;">check</span>
+</button>
+</div>
+<!-- Task Card 2 -->
+<div class="bg-surface-container rounded-3xl p-md flex items-center justify-between border-2 border-surface-container-highest card-shadow">
+<div class="flex items-center gap-sm">
+<div class="w-16 h-16 rounded-2xl bg-secondary-container flex items-center justify-center border-b-4 border-on-secondary-container/20">
+<img class="w-12 h-12 object-contain drop-shadow-lg" data-alt="A 3D rendering of a brown dog food bowl filled with crunchy kibble. It has a glossy, thick rim and looks like a sturdy toy prop. High affordance, soft lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB-3rOJgQurGLPwdAbopzrD38_Tt7Kx4XBDGzb8c4D6SyP_duGB00Hbl0jPDHHNgTri1r3B1Wg_bPaZcVSttkDJ_DdCvdMFpixvZL-t62idBUBkK-YIgAZkPm9aBKKV60saB8oSEyuSlPFh9OuQNa12-35vM3UJLyH9I_bnbsG-CLL_JWYco0EyWRF8eWdzRrr4Ize_vzuXlGXbaekGucbGHZI9m7USTT7cTWZ99v22UCg5FGizLHk1FQ">
+</div>
+<div class="flex flex-col">
+<h3 class="font-body-lg text-inverse-surface">Feed Pet</h3>
+<div class="flex items-center gap-1 text-secondary mt-1">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">monetization_on</span>
+<span class="font-label-xl text-sm">+15 Coins</span>
+</div>
+</div>
+</div>
+<button class="bg-primary text-on-primary rounded-2xl p-4 chunky-btn border-primary-container hover:brightness-110 flex items-center justify-center">
+<span class="material-symbols-outlined text-3xl font-black" style="font-variation-settings: 'FILL' 1;">check</span>
+</button>
+</div>
+<!-- Task Card 3 -->
+<div class="bg-surface-container rounded-3xl p-md flex items-center justify-between border-2 border-surface-container-highest card-shadow md:col-span-2">
+<div class="flex items-center gap-sm">
+<div class="w-16 h-16 rounded-2xl bg-[#ff99cc] flex items-center justify-center border-b-4 border-[#cc0066]/20">
+<img class="w-12 h-12 object-contain drop-shadow-lg" data-alt="A 3D rendered toy chest, overflowing with colorful blocks and a teddy bear. The chest is vibrant and chunky, designed to look like a physical toy component with soft edges." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDy3Rfu0bcLlMPyE2iHd9P78LdbLHJNOzTdaepeadGKy-vo9vxupk8kFi7ggsSZgSTNyekoC_nPypDwUIyXCrD2-_Z96IqQYN58d5uymrFi6JV8vd3_mbXavdbQXB825ndnaEFa-xL8t9yleVWU-a8f9Cv8ehZ1dNuYJt1w-L5x05lq4gKgpqmuecxkjqj0__taxaDmJ-tSIUV6wqkf6VcM2RD4FoyEzXq6FmcZaYoeIxFG5Aa2iQtu0g">
+</div>
+<div class="flex flex-col">
+<h3 class="font-body-lg text-inverse-surface">Clean Toys</h3>
+<div class="flex items-center gap-1 text-secondary mt-1">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">monetization_on</span>
+<span class="font-label-xl text-sm">+25 Coins</span>
+</div>
+</div>
+</div>
+<button class="bg-primary text-on-primary rounded-2xl p-4 chunky-btn border-primary-container hover:brightness-110 flex items-center justify-center px-6">
+<span class="font-label-xl mr-2">Do It!</span>
+<span class="material-symbols-outlined text-2xl font-black" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+</button>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar (From JSON) -->
+<nav class="bg-surface-container dark:bg-surface-container text-primary dark:text-primary font-label-xl text-label-xl text-primary docked full-width bottom-0 rounded-t-xl border-t-8 border-surface-container-highest shadow-[0_-8px_0_0_rgba(0,0,0,0.2)] fixed bottom-0 left-0 w-full z-50 flex justify-around items-end px-4 pb-4 h-24 md:hidden">
+<!-- Active Tab: Home -->
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl p-2 mb-2 translate-y-[-8px] border-b-4 border-on-primary-fixed-variant hover:bg-surface-bright active:translate-y-0 transition-all duration-100 ease-out flex-1 mx-1 group" href="#">
+<span class="material-symbols-outlined text-3xl mb-1 group-active:scale-95 transition-transform" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="text-sm font-label-xl">Home</span>
+</a>
+<!-- Inactive Tab: Tasks -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-surface-bright active:translate-y-0 transition-all duration-100 ease-out flex-1 mx-1 rounded-xl group" href="#">
+<span class="material-symbols-outlined text-3xl mb-1 group-hover:text-primary-fixed-dim transition-colors" data-icon="checklist">checklist</span>
+<span class="text-sm font-label-xl group-hover:text-inverse-surface transition-colors">Tasks</span>
+</a>
+<!-- Inactive Tab: Shop -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-surface-bright active:translate-y-0 transition-all duration-100 ease-out flex-1 mx-1 rounded-xl group" href="#">
+<span class="material-symbols-outlined text-3xl mb-1 group-hover:text-secondary-fixed-dim transition-colors" data-icon="shopping_basket">shopping_basket</span>
+<span class="text-sm font-label-xl group-hover:text-inverse-surface transition-colors">Shop</span>
+</a>
+<!-- Inactive Tab: Pets -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-surface-bright active:translate-y-0 transition-all duration-100 ease-out flex-1 mx-1 rounded-xl group" href="#">
+<span class="material-symbols-outlined text-3xl mb-1 group-hover:text-tertiary-fixed-dim transition-colors" data-icon="pets">pets</span>
+<span class="text-sm font-label-xl group-hover:text-inverse-surface transition-colors">Pets</span>
+</a>
+</nav>
+<!-- Desktop Side Nav Spacer (if layout expanded) -->
+<div class="hidden md:flex h-24 w-full"></div>
+</body></html>

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Pet Evolution Celebration</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@800&amp;family=Quicksand:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-variant": "#2b3640",
+                        "primary": "#54e98a",
+                        "on-surface-variant": "#bbcbbb",
+                        "surface-container-low": "#121d26",
+                        "tertiary-fixed-dim": "#92ccff",
+                        "secondary-container": "#e89300",
+                        "background": "#09141e",
+                        "on-secondary-container": "#563400",
+                        "on-tertiary": "#003351",
+                        "outline-variant": "#3d4a3e",
+                        "surface-container-high": "#202b35",
+                        "tertiary-fixed": "#cce5ff",
+                        "secondary-fixed": "#ffddb9",
+                        "on-primary": "#003919",
+                        "on-tertiary-fixed": "#001d31",
+                        "on-secondary": "#472a00",
+                        "on-background": "#d8e4f1",
+                        "on-secondary-fixed": "#2b1700",
+                        "tertiary-container": "#5fbaff",
+                        "inverse-primary": "#006d37",
+                        "outline": "#869486",
+                        "surface-container": "#16212b",
+                        "error": "#ffb4ab",
+                        "secondary": "#ffb961",
+                        "surface-tint": "#4ae183",
+                        "surface": "#09141e",
+                        "surface-container-lowest": "#050f18",
+                        "primary-fixed": "#6bfe9c",
+                        "on-tertiary-container": "#004970",
+                        "inverse-surface": "#d8e4f1",
+                        "primary-fixed-dim": "#4ae183",
+                        "surface-container-highest": "#2b3640",
+                        "inverse-on-surface": "#27323c",
+                        "on-tertiary-fixed-variant": "#004b73",
+                        "secondary-fixed-dim": "#ffb961",
+                        "surface-dim": "#09141e",
+                        "surface-bright": "#2f3a45",
+                        "on-error-container": "#ffdad6",
+                        "on-primary-container": "#005027",
+                        "on-secondary-fixed-variant": "#663e00",
+                        "tertiary": "#a3d3ff",
+                        "on-primary-fixed-variant": "#005228",
+                        "on-error": "#690005",
+                        "primary-container": "#2ecc71",
+                        "on-surface": "#d8e4f1",
+                        "on-primary-fixed": "#00210c",
+                        "error-container": "#93000a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px",
+                        "2xl": "1rem",
+                        "3xl": "1.5rem"
+                    },
+                    "spacing": {
+                        "xl": "64px",
+                        "base": "8px",
+                        "md": "24px",
+                        "sm": "12px",
+                        "margin-mobile": "20px",
+                        "lg": "40px",
+                        "xs": "4px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Quicksand"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "display-lg": ["Plus Jakarta Sans"],
+                        "body-lg": ["Quicksand"],
+                        "label-xl": ["Quicksand"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "fontWeight": "800" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "34px", "fontWeight": "800" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800" }],
+                        "body-lg": ["20px", { "lineHeight": "28px", "fontWeight": "700" }],
+                        "label-xl": ["18px", { "lineHeight": "20px", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 1, 'wght' 700, 'GRAD' 0, 'opsz' 48;
+        }
+        
+        /* Celebration Animations */
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px 5px rgba(84, 233, 138, 0.4); }
+            50% { box-shadow: 0 0 40px 15px rgba(84, 233, 138, 0.8); }
+        }
+        
+        @keyframes float-up {
+            0% { transform: translateY(100vh) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(-20vh) rotate(360deg); opacity: 0; }
+        }
+
+        .confetti-particle {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background-color: #ffb961;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .chunky-btn-primary {
+            border-bottom: 8px solid #005027; /* Darker shade of primary container for 3D effect */
+            transition: all 0.15s ease-in-out;
+        }
+        
+        .chunky-btn-primary:active {
+            transform: translateY(4px);
+            border-bottom-width: 4px;
+        }
+
+        .bg-celebration-gradient {
+            background: radial-gradient(circle at center, rgba(84, 233, 138, 0.3) 0%, rgba(9, 20, 30, 1) 70%);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col items-center justify-center overflow-hidden relative">
+<!-- Confetti Container -->
+<div class="absolute inset-0 pointer-events-none z-0" id="confetti-container"></div>
+<!-- Main Content Area (No Navigation Shells due to linear/celebration intent) -->
+<main class="w-full max-w-md mx-auto flex flex-col items-center justify-center min-h-screen p-margin-mobile relative z-10">
+<!-- Evolution Image/Animation Area -->
+<div class="relative w-full aspect-square mb-lg flex items-center justify-center">
+<!-- Glowing Aura Background Effect -->
+<div class="absolute inset-0 rounded-full bg-primary/20 blur-3xl animate-[pulse-glow_3s_ease-in-out_infinite]"></div>
+<!-- Central Character Image -->
+<div class="relative z-10 w-full h-full rounded-full border-4 border-primary-fixed flex items-center justify-center overflow-hidden bg-surface-container shadow-[0_12px_0_0_rgba(43,54,64,1)]">
+<img class="w-full h-full object-cover" data-alt="A highly detailed 3D render of a cute, rugged blue dragon wearing chunky golden armor, standing in a magical deep-forest glowing with emerald green magical energy. The style is a tactile toy aesthetic with a dark night-sky background making the vibrant character pop, featuring soft, child-safe rounded edges and heavy 3D bevels." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDAvmAOJ-g5TCJ7D4hM4PwtYHzTqQIYXOXhyWWDLDwhFMsBsPo7n1ZGFO7zgvDn8HsRTM1JluNg3gfIf-eDB6hqJ99SjsMCUHu-38PB79ADYgi0JrOC9cBOFyISVmxDFfso5KGTDn5nvPC2czsyoxTzdGH06Q-BHf5MQ97JziKb9qhzHgaYK8E0NyHUrFPTwQwa25aDebL2R2Dv_YyQ0X5GB1nmv7j9Lj51M97tF_RyxtbuZk08SRx7rg"/>
+</div>
+<!-- Floating Sparkles (SVG) -->
+<div class="absolute -top-4 -right-4 text-secondary animate-bounce delay-100">
+<span class="material-symbols-outlined text-display-lg" style="font-size: 48px;">stars</span>
+</div>
+<div class="absolute -bottom-8 -left-4 text-primary animate-bounce delay-300">
+<span class="material-symbols-outlined text-display-lg" style="font-size: 64px;">auto_awesome</span>
+</div>
+</div>
+<!-- Typography / Messaging -->
+<div class="text-center mb-xl">
+<h1 class="font-display-lg text-display-lg text-primary mb-sm uppercase drop-shadow-lg">
+                BIG EVOLUTION!
+            </h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-[280px] mx-auto bg-surface-container-high/80 p-sm rounded-xl border-2 border-outline-variant shadow-[0_4px_0_0_rgba(43,54,64,1)]">
+                Your dragon has grown up! New Golden Armor unlocked!
+            </p>
+</div>
+<!-- Voice Guidance Pill -->
+<div class="absolute top-margin-mobile right-margin-mobile flex items-center gap-2 bg-surface-bright/90 backdrop-blur-sm rounded-full py-2 px-4 border-2 border-outline-variant shadow-[0_4px_0_0_rgba(43,54,64,1)]">
+<span class="material-symbols-outlined text-secondary animate-pulse">volume_up</span>
+<span class="font-label-xl text-label-xl text-on-surface text-sm">"Wow! Look how big your hero is now!"</span>
+</div>
+<!-- Action Button (Thumb Zone) -->
+<button class="chunky-btn-primary w-full max-w-[320px] bg-primary-container text-on-primary-container font-headline-lg-mobile text-headline-lg-mobile py-md px-lg rounded-2xl flex items-center justify-center gap-sm mt-auto mb-lg z-20 shadow-[0_8px_0_0_rgba(46,204,113,0.2)]">
+<span class="material-symbols-outlined">bolt</span>
+            MASTER FUSE
+        </button>
+</main>
+<script>
+        // Simple Confetti Generator
+        function createConfetti() {
+            const container = document.getElementById('confetti-container');
+            const colors = ['#54e98a', '#e89300', '#a3d3ff', '#ffb4ab']; // primary, secondary-container, tertiary, error
+
+            for (let i = 0; i < 50; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('confetti-particle');
+                
+                // Randomize properties
+                const size = Math.random() * 10 + 5;
+                const left = Math.random() * 100;
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                const delay = Math.random() * 2;
+                const duration = Math.random() * 3 + 2;
+
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                particle.style.left = `${left}vw`;
+                particle.style.backgroundColor = color;
+                particle.style.animation = `float-up ${duration}s ease-in-out ${delay}s infinite`;
+                
+                // Random shapes (circles and squares)
+                if (Math.random() > 0.5) {
+                    particle.style.borderRadius = '0';
+                }
+
+                container.appendChild(particle);
+            }
+        }
+
+        // Initialize effects on load
+        window.onload = () => {
+            createConfetti();
+        };
+    </script>
+</body></html>

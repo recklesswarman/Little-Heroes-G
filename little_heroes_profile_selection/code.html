@@ -1,0 +1,185 @@
+<!DOCTYPE html><html class="dark" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Little Heroes - Profile Selection</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400..800&amp;family=Quicksand:wght@400..700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary": "#a3d3ff",
+                        "error": "#ffb4ab",
+                        "on-secondary": "#472a00",
+                        "on-background": "#d8e4f1",
+                        "secondary": "#ffb961",
+                        "on-error": "#690005",
+                        "primary-fixed-dim": "#4ae183",
+                        "surface": "#09141e",
+                        "secondary-container": "#e89300",
+                        "inverse-surface": "#d8e4f1",
+                        "on-primary-fixed": "#00210c",
+                        "inverse-primary": "#006d37",
+                        "on-tertiary-fixed-variant": "#004b73",
+                        "surface-container-lowest": "#050f18",
+                        "surface-container-high": "#202b35",
+                        "secondary-fixed-dim": "#ffb961",
+                        "background": "#09141e",
+                        "on-tertiary-container": "#004970",
+                        "on-primary-container": "#005027",
+                        "on-secondary-fixed": "#2b1700",
+                        "outline": "#869486",
+                        "on-secondary-container": "#563400",
+                        "secondary-fixed": "#ffddb9",
+                        "on-primary": "#003919",
+                        "primary": "#54e98a",
+                        "error-container": "#93000a",
+                        "tertiary-fixed": "#cce5ff",
+                        "tertiary-container": "#5fbaff",
+                        "inverse-on-surface": "#27323c",
+                        "on-error-container": "#ffdad6",
+                        "primary-fixed": "#6bfe9c",
+                        "surface-variant": "#2b3640",
+                        "on-tertiary": "#003351",
+                        "on-primary-fixed-variant": "#005228",
+                        "surface-container": "#16212b",
+                        "surface-container-highest": "#2b3640",
+                        "tertiary-fixed-dim": "#92ccff",
+                        "outline-variant": "#3d4a3e",
+                        "on-tertiary-fixed": "#001d31",
+                        "on-surface": "#d8e4f1",
+                        "surface-container-low": "#121d26",
+                        "surface-bright": "#2f3a45",
+                        "on-secondary-fixed-variant": "#663e00",
+                        "surface-tint": "#4ae183",
+                        "primary-container": "#2ecc71",
+                        "on-surface-variant": "#bbcbbb",
+                        "surface-dim": "#09141e"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "16px",
+                        "xl": "64px",
+                        "md": "24px",
+                        "lg": "40px",
+                        "margin-mobile": "20px",
+                        "sm": "12px",
+                        "xs": "4px",
+                        "base": "8px"
+                    },
+                    "fontFamily": {
+                        "label-xl": ["Quicksand"],
+                        "body-md": ["Quicksand"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "body-lg": ["Quicksand"],
+                        "display-lg": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "label-xl": ["18px", { "lineHeight": "20px", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "fontWeight": "800" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "34px", "fontWeight": "800" }],
+                        "body-lg": ["20px", { "lineHeight": "28px", "fontWeight": "700" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800" }]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .chunky-bevel {
+            box-shadow: 0 8px 0 0 rgba(0,0,0,0.3);
+            border-bottom: 4px solid rgba(0,0,0,0.2);
+        }
+        .chunky-bevel:active {
+            transform: translateY(8px);
+            box-shadow: 0 0 0 0 rgba(0,0,0,0.3);
+            border-bottom: 0px solid rgba(0,0,0,0.2);
+            margin-bottom: 4px;
+        }
+        .chunky-card-bevel {
+            box-shadow: 0 12px 0 0 rgba(0,0,0,0.4);
+            border: 2px solid rgba(255,255,255,0.1);
+        }
+        .hero-pattern {
+            background-color: #09141e;
+            background-image: radial-gradient(#202b35 2px, transparent 2px), radial-gradient(#202b35 2px, transparent 2px);
+            background-size: 32px 32px;
+            background-position: 0 0, 16px 16px;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen hero-pattern flex flex-col items-center justify-center p-gutter">
+<!-- Header area, hiding standard app bar since this is a landing/profile select -->
+<div class="w-full max-w-4xl flex flex-col items-center mb-xl">
+
+<h1 class="font-display-lg text-display-lg text-center text-primary drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)]">Who's playing today?</h1>
+</div>
+<!-- Main Content Area -->
+<div class="w-full max-w-4xl mx-auto px-gutter grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-lg pb-xl">
+<!-- Profile Card 1 -->
+<button class="chunky-card-bevel bg-surface-container rounded-3xl p-md flex flex-col items-center justify-center gap-sm transition-transform active:scale-95 group relative overflow-hidden">
+<div class="w-32 h-32 rounded-full bg-tertiary-container flex items-center justify-center mb-sm shadow-inner border-4 border-surface-container-highest">
+<img class="w-24 h-24 object-contain drop-shadow-lg" data-alt="A 3D rendered avatar of a young boy with short brown hair, wearing a green explorer hat and an orange vest. The style is cute, colorful, and resembles a high-quality vinyl toy with smooth, glossy textures against a transparent background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAZfP7_Cwlp4sz41asI8ymuapAKvjmqHtvI4zcMAF_XwUmibj8IheGrS5cA5QD5gmXgVxEkZM9FlWJPRZnct3x6-9SQB7zJKqkEDjJ3m95tAy3zRqS-PbmcQ4kv_9pmIfm2Py4mh3Fw083hkDookz1w4_r50SBA1jc9igDaAPFLYBFgSP2aQBz7Q4jVE-DwhMOyUEHlxDkQk6Gwc2EAFCSKs1c0QuhUOi3tkrk5MXRARKqZcYVzyJe6gA">
+</div>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">Leo</h2>
+<div class="bg-surface-container-highest px-sm py-xs rounded-full flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">stars</span>
+<span class="font-label-xl text-label-xl text-on-surface-variant">Lvl 12</span>
+</div>
+<p class="text-sm text-outline mt-xs">Last seen yesterday</p>
+<div class="absolute inset-0 bg-primary opacity-0 group-hover:opacity-10 transition-opacity pointer-events-none"></div>
+</button>
+<!-- Profile Card 2 -->
+<button class="chunky-card-bevel bg-surface-container rounded-3xl p-md flex flex-col items-center justify-center gap-sm transition-transform active:scale-95 group relative overflow-hidden">
+<div class="w-32 h-32 rounded-full bg-secondary-container flex items-center justify-center mb-sm shadow-inner border-4 border-surface-container-highest">
+<img class="w-24 h-24 object-contain drop-shadow-lg" data-alt="A 3D rendered avatar of a young girl with purple pigtails, wearing a futuristic silver jacket and goggles. The style is cute, colorful, and resembles a high-quality vinyl toy with smooth, glossy textures against a transparent background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuARR2klW8usL-qhZiz0_G-YpTDfniXDjgHoCQ_TULj1qzslQkdWxX4Wq2evyu74EP6D3_HZhuWK7Ur01vaB-ih5z8SIKSqawthIwUeiiFFVbRjUfS_ESM6_-NzIkcPl9lgdpDNEqBDaoiMnhRiHE2oY84NKDgpdDwGB-ns1Pl0rX6OlqQa93LVIUhJuD5us2LFiF8zPaPCw3LYoZuCs5m2Eie-8vAsBx3XfthE2qlYBO4kcHUFrN_gtiA">
+</div>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">Mia</h2>
+<div class="bg-surface-container-highest px-sm py-xs rounded-full flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">stars</span>
+<span class="font-label-xl text-label-xl text-on-surface-variant">Lvl 8</span>
+</div>
+<p class="text-sm text-outline mt-xs">Last seen 2 days ago</p>
+<div class="absolute inset-0 bg-primary opacity-0 group-hover:opacity-10 transition-opacity pointer-events-none"></div>
+</button>
+<!-- Profile Card 3 -->
+<button class="chunky-card-bevel bg-surface-container rounded-3xl p-md flex flex-col items-center justify-center gap-sm transition-transform active:scale-95 group relative overflow-hidden">
+<div class="w-32 h-32 rounded-full bg-error-container flex items-center justify-center mb-sm shadow-inner border-4 border-surface-container-highest">
+<img class="w-24 h-24 object-contain drop-shadow-lg" data-alt="A 3D rendered avatar of a playful dog wearing a superhero cape and mask. The style is cute, colorful, and resembles a high-quality vinyl toy with smooth, glossy textures against a transparent background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBt3DBwfpcbbvoWYvwpXt_crRM01oD2FlSmnTjRotHTDi6sCpEpo0HGRngqdUbBC_cgHu1T3JOXkMdw4-qLzPcPEslBONYLu1qXkoOJ6btgq7pAJfCm1FvcueHfEMAmidhqBIchTbwNZKOjkPMEDo6oKzVt1PgftBS6r7sVVYel_-bHhlmi-n4oZI1RzBckf3DMsFIgVmoLzSNj29eK9AS8dChk10e_WQuIwzYNt21e4MKdKn02dg4RWg">
+</div>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">Sam</h2>
+<div class="bg-surface-container-highest px-sm py-xs rounded-full flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">stars</span>
+<span class="font-label-xl text-label-xl text-on-surface-variant">Lvl 3</span>
+</div>
+<p class="text-sm text-outline mt-xs">New Hero!</p>
+<div class="absolute inset-0 bg-primary opacity-0 group-hover:opacity-10 transition-opacity pointer-events-none"></div>
+</button>
+<!-- Parent Portal -->
+<button class="chunky-card-bevel bg-surface-container-high rounded-3xl p-md flex flex-col items-center justify-center gap-sm transition-transform active:scale-95 border-dashed border-4 border-outline-variant group">
+<div class="w-32 h-32 rounded-full bg-surface flex items-center justify-center mb-sm opacity-50 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-6xl text-outline-variant" style="font-variation-settings: 'FILL' 0;">lock</span>
+</div>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface-variant">Parent Portal</h2>
+<p class="text-center text-outline mt-xs font-body-md">Manage settings &amp; rewards</p>
+</button>
+</div>
+<!-- Action Button (Add Hero) -->
+<div class="w-full flex justify-center fixed bottom-lg pointer-events-none">
+<button class="pointer-events-auto chunky-bevel bg-primary text-on-primary font-label-xl text-label-xl rounded-full px-xl py-md flex items-center gap-sm hover:bg-primary-fixed transition-colors">
+<span class="material-symbols-outlined text-3xl font-bold">add</span>
+            Add New Hero
+        </button>
+</div>
+</body></html>

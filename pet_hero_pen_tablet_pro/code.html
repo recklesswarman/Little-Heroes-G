@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Pet Virtual Pen &amp; Evolution Matrix</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@800&amp;family=Quicksand:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "tertiary": "#a3d3ff",
+                        "error": "#ffb4ab",
+                        "on-secondary": "#472a00",
+                        "on-background": "#d8e4f1",
+                        "secondary": "#ffb961",
+                        "on-error": "#690005",
+                        "primary-fixed-dim": "#4ae183",
+                        "surface": "#09141e",
+                        "secondary-container": "#e89300",
+                        "inverse-surface": "#d8e4f1",
+                        "on-primary-fixed": "#00210c",
+                        "inverse-primary": "#006d37",
+                        "on-tertiary-fixed-variant": "#004b73",
+                        "surface-container-lowest": "#050f18",
+                        "surface-container-high": "#202b35",
+                        "secondary-fixed-dim": "#ffb961",
+                        "background": "#09141e",
+                        "on-tertiary-container": "#004970",
+                        "on-primary-container": "#005027",
+                        "on-secondary-fixed": "#2b1700",
+                        "outline": "#869486",
+                        "on-secondary-container": "#563400",
+                        "secondary-fixed": "#ffddb9",
+                        "on-primary": "#003919",
+                        "primary": "#54e98a",
+                        "error-container": "#93000a",
+                        "tertiary-fixed": "#cce5ff",
+                        "tertiary-container": "#5fbaff",
+                        "inverse-on-surface": "#27323c",
+                        "on-error-container": "#ffdad6",
+                        "primary-fixed": "#6bfe9c",
+                        "surface-variant": "#2b3640",
+                        "on-tertiary": "#003351",
+                        "on-primary-fixed-variant": "#005228",
+                        "surface-container": "#16212b",
+                        "surface-container-highest": "#2b3640",
+                        "tertiary-fixed-dim": "#92ccff",
+                        "outline-variant": "#3d4a3e",
+                        "on-tertiary-fixed": "#001d31",
+                        "on-surface": "#d8e4f1",
+                        "surface-container-low": "#121d26",
+                        "surface-bright": "#2f3a45",
+                        "on-secondary-fixed-variant": "#663e00",
+                        "surface-tint": "#4ae183",
+                        "primary-container": "#2ecc71",
+                        "on-surface-variant": "#bbcbbb",
+                        "surface-dim": "#09141e"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "gutter": "16px",
+                        "xl": "64px",
+                        "md": "24px",
+                        "lg": "40px",
+                        "margin-mobile": "20px",
+                        "sm": "12px",
+                        "xs": "4px",
+                        "base": "8px"
+                    },
+                    fontFamily: {
+                        "label-xl": ["Quicksand"],
+                        "body-md": ["Quicksand"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "body-lg": ["Quicksand"],
+                        "display-lg": ["Plus Jakarta Sans"]
+                    },
+                    fontSize: {
+                        "label-xl": ["18px", { "lineHeight": "20px", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "fontWeight": "800" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "34px", "fontWeight": "800" }],
+                        "body-lg": ["20px", { "lineHeight": "28px", "fontWeight": "700" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .chunky-shadow {
+            box-shadow: 0 8px 0 0 rgba(0, 0, 0, 0.5);
+        }
+        .chunky-shadow-inset {
+            box-shadow: inset 0 4px 0 0 rgba(255, 255, 255, 0.2);
+        }
+        .btn-press:active {
+            transform: translateY(4px);
+            box-shadow: 0 4px 0 0 rgba(0, 0, 0, 0.5);
+        }
+        .text-shadow-chunky {
+            text-shadow: 0 2px 0 rgba(0, 0, 0, 0.5);
+        }
+        .glass-pill {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex flex-col pt-24 pb-32 md:pb-8">
+<!-- TopAppBar -->
+<header class="fixed bg-surface dark:bg-surface font-headline-lg-mobile text-headline-lg-mobile text-primary font-black text-secondary docked full-width top-0 border-b-4 border-surface-container-highest shadow-[0_4px_0_0_rgba(0,0,0,0.3)] flex justify-between items-center px-margin-mobile h-24 w-full z-40 transition-all">
+<div class="flex items-center gap-sm">
+<div class="w-12 h-12 rounded-full overflow-hidden border-2 border-surface-container-highest chunky-shadow">
+<img class="w-full h-full object-cover" data-alt="A stylized, 3D rendered avatar of a child adventurer wearing a tiny explorer hat and a green bandana, set against a dark night sky background. High contrast lighting, tactile toy aesthetic, deep greens and blues." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAUTWERGwaJXM82ZeJ0adcNsuOm_cR4z5CXAleJ2oKcekqKsuaZZD315RkB188DDt6fevx8guS2V20knvs93SzLKjox7deSVry-v8kiyTM-H0Kg5vmB8inoBoKz2SqYnVzUKVk9uulAHGfsUmnIs4VI7GkWcmmfE2gvPnoehqZqjhxHZuHz9Tqs_Omja5bwoX9aPmW8Xf63V9KIQsux3ucTJHZBdI2U8eRyOy7bO0XQMqe2BNGXc3SoWg"/>
+</div>
+<span>Quest Hero</span>
+</div>
+<button class="bg-surface-container-highest text-on-surface-variant font-label-xl text-label-xl px-sm py-xs rounded-lg border-b-4 border-surface-container-lowest btn-press transition-transform hover:scale-105 active:translate-y-1 active:shadow-none flex items-center gap-xs">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">lock</span>
+            Parent Lock
+        </button>
+</header>
+<!-- Main Content -->
+<main class="flex-1 px-margin-mobile flex flex-col gap-md max-w-[1400px] mx-auto w-full pt-md relative md:grid md:grid-cols-12 md:h-[calc(100vh-144px)]">
+<!-- Left Side: Pet Viewport (Bento Grid Area) -->
+<section class="relative bg-surface-container rounded-3xl p-md border-b-[12px] border-surface-container-highest shadow-[0_8px_0_0_rgba(0,0,0,0.4)] overflow-hidden flex flex-col items-center md:col-span-7 lg:col-span-8 h-full flex-1">
+<!-- Hero XP Banner -->
+<div class="absolute top-md left-md right-md flex justify-between items-center z-20">
+<div class="glass-pill rounded-full px-sm py-xs flex items-center gap-xs">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">stars</span>
+<span class="font-body-lg text-secondary font-black text-shadow-chunky">Hero XP: 450/1000</span>
+</div>
+<div class="glass-pill rounded-full px-sm py-xs">
+<span class="font-body-lg text-tertiary font-black text-shadow-chunky">Stage 2/4</span>
+</div>
+</div>
+<!-- The Pet (3D Representation Area) -->
+<div class="relative w-full h-64 md:h-full mt-xl md:mt-0 flex justify-center items-center flex-1 min-h-[300px]">
+<!-- Decorative background elements -->
+<div class="absolute inset-0 bg-gradient-to-b from-surface-container-low to-surface-container-highest rounded-2xl border-2 border-surface-container-lowest opacity-50"></div>
+<!-- Pet Gear Badge -->
+<div class="absolute top-4 left-4 z-30 bg-secondary-container rounded-xl p-xs border-2 border-secondary chunky-shadow flex items-center gap-xs transform -rotate-6">
+<span class="material-symbols-outlined text-on-secondary-container" style="font-variation-settings: 'FILL' 1;">shield</span>
+<span class="font-label-xl text-on-secondary-container text-xs">Dragon Scale Armor</span>
+</div>
+<img class="relative z-10 w-48 h-48 md:w-80 md:h-80 lg:w-[400px] lg:h-[400px] object-contain animate-bounce transition-transform cursor-pointer hover:scale-110 active:scale-95" data-alt="A 3D rendered, cute, chunky water dragon pet with tactile, plastic toy textures. The dragon is predominantly deep blue and vibrant cyan, with large expressive eyes. It is striking a heroic pose inside a glowing digital matrix enclosure. The lighting is dramatic, highlighting its rounded, safe edges." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB-tO1SdRfRGAdffGZiLQxMfvzeWK75gnu-8V_g3uY_1zZSyW7V1gBj5eL8EaKNQ0bEYLoIJX8_MrJKE_FTNyJjWhMiDyFXcs11Vql8nzDOSXfGFkzBKSaEB6DiOvappqJJhiqFEEvVhDhFMqzCkZED1YDgAFVWcQOc0dn4cWiyd34yVJc9c7aF6_UYRrB4Ml5we64YPZuC17yjouHWXCGyOnqDbruj8B6sXSWQEcYhnNXJ0t-S4k1JPw"/>
+<!-- Glow Effect -->
+<div class="absolute bottom-10 w-48 h-12 md:w-80 md:h-20 bg-tertiary blur-3xl opacity-40 rounded-[100%]"></div>
+<!-- Interaction Helpers (Hidden by default, shown on hover/active in JS) -->
+<div class="absolute inset-0 pointer-events-none flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+<div class="glass-pill rounded-xl px-sm py-xs flex gap-xs items-center mb-32 md:mb-48">
+<span class="material-symbols-outlined text-white text-[24px]">touch_app</span>
+<span class="font-label-xl text-white">Tap to interact!</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Right Side: Stats, Actions, Evolution -->
+<div class="flex flex-col gap-md md:col-span-5 lg:col-span-4 h-full md:overflow-y-auto pb-8 md:pb-0 hide-scrollbar">
+<!-- Stats Area -->
+<section class="bg-surface-container rounded-3xl p-md border-b-[8px] border-surface-container-highest shadow-[0_4px_0_0_rgba(0,0,0,0.4)]">
+<div class="w-full grid grid-cols-2 gap-sm">
+<!-- Hunger -->
+<div class="bg-surface-container-lowest p-sm rounded-xl border-b-4 border-black/50">
+<div class="flex items-center gap-xs mb-xs">
+<span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">restaurant</span>
+<span class="font-label-xl text-on-surface-variant text-sm">Hunger</span>
+</div>
+<div class="h-4 w-full bg-surface-container rounded-full overflow-hidden border-2 border-surface-container-highest shadow-inner">
+<div class="h-full bg-error w-[70%] chunky-shadow-inset rounded-full"></div>
+</div>
+</div>
+<!-- Hygiene -->
+<div class="bg-surface-container-lowest p-sm rounded-xl border-b-4 border-black/50">
+<div class="flex items-center gap-xs mb-xs">
+<span class="material-symbols-outlined text-tertiary" style="font-variation-settings: 'FILL' 1;">water_drop</span>
+<span class="font-label-xl text-on-surface-variant text-sm">Hygiene</span>
+</div>
+<div class="h-4 w-full bg-surface-container rounded-full overflow-hidden border-2 border-surface-container-highest shadow-inner">
+<div class="h-full bg-tertiary w-[90%] chunky-shadow-inset rounded-full"></div>
+</div>
+</div>
+<!-- Energy -->
+<div class="bg-surface-container-lowest p-sm rounded-xl border-b-4 border-black/50">
+<div class="flex items-center gap-xs mb-xs">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">bolt</span>
+<span class="font-label-xl text-on-surface-variant text-sm">Energy</span>
+</div>
+<div class="h-4 w-full bg-surface-container rounded-full overflow-hidden border-2 border-surface-container-highest shadow-inner">
+<div class="h-full bg-secondary w-[40%] chunky-shadow-inset rounded-full"></div>
+</div>
+</div>
+<!-- Joy -->
+<div class="bg-surface-container-lowest p-sm rounded-xl border-b-4 border-black/50">
+<div class="flex items-center gap-xs mb-xs">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">mood</span>
+<span class="font-label-xl text-on-surface-variant text-sm">Joy</span>
+</div>
+<div class="h-4 w-full bg-surface-container rounded-full overflow-hidden border-2 border-surface-container-highest shadow-inner">
+<div class="h-full bg-primary w-[85%] chunky-shadow-inset rounded-full"></div>
+</div>
+</div>
+</div>
+</section>
+<!-- Actions Grid -->
+<section class="grid grid-cols-2 lg:grid-cols-2 gap-sm">
+<button class="bg-surface-container text-on-surface rounded-3xl p-md border-b-[8px] border-surface-container-highest flex flex-col items-center justify-center gap-sm btn-press transition-all hover:bg-surface-bright relative overflow-hidden group">
+<div class="absolute top-2 right-2 bg-error rounded-lg px-2 py-1 text-xs font-bold text-on-error shadow-sm z-10 border-2 border-black/20">
+                    Free Snacks: 2/3
+                </div>
+<div class="w-20 h-20 rounded-2xl bg-error-container flex items-center justify-center chunky-shadow-inset border-4 border-error/30 mb-xs group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-[40px] text-error" style="font-variation-settings: 'FILL' 1;">set_meal</span>
+</div>
+<span class="font-label-xl text-xl">Feed</span>
+</button>
+<button class="bg-surface-container text-on-surface rounded-3xl p-md border-b-[8px] border-surface-container-highest flex flex-col items-center justify-center gap-sm btn-press transition-all hover:bg-surface-bright group">
+<div class="w-20 h-20 rounded-2xl bg-tertiary-container flex items-center justify-center chunky-shadow-inset border-4 border-tertiary/30 mb-xs group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-[40px] text-tertiary" style="font-variation-settings: 'FILL' 1;">bathtub</span>
+</div>
+<span class="font-label-xl text-xl">Bath</span>
+</button>
+<button class="bg-surface-container text-on-surface rounded-3xl p-md border-b-[8px] border-surface-container-highest flex flex-col items-center justify-center gap-sm btn-press transition-all hover:bg-surface-bright group">
+<div class="w-20 h-20 rounded-2xl bg-secondary-container flex items-center justify-center chunky-shadow-inset border-4 border-secondary/30 mb-xs group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-[40px] text-secondary" style="font-variation-settings: 'FILL' 1;">explore</span>
+</div>
+<span class="font-label-xl text-xl">Adventure</span>
+</button>
+<button class="bg-surface-container text-on-surface rounded-3xl p-md border-b-[8px] border-surface-container-highest flex flex-col items-center justify-center gap-sm btn-press transition-all hover:bg-surface-bright group">
+<div class="w-20 h-20 rounded-2xl bg-primary-container flex items-center justify-center chunky-shadow-inset border-4 border-primary/30 mb-xs group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-[40px] text-primary" style="font-variation-settings: 'FILL' 1;">sports_esports</span>
+</div>
+<span class="font-label-xl text-xl">Play</span>
+</button>
+<button class="col-span-2 bg-surface-container text-on-surface rounded-3xl p-md border-b-[8px] border-surface-container-highest flex items-center justify-center gap-md btn-press transition-all hover:bg-surface-bright group">
+<div class="w-16 h-16 rounded-2xl bg-purple-500/30 flex items-center justify-center chunky-shadow-inset border-4 border-purple-400/50 group-hover:rotate-12 transition-transform">
+<span class="material-symbols-outlined text-[32px] text-purple-300" style="font-variation-settings: 'FILL' 1;">music_note</span>
+</div>
+<span class="font-label-xl text-xl">Dance Party!</span>
+</button>
+</section>
+<!-- Evolution Panel -->
+<section class="bg-surface-container rounded-3xl p-md border-b-[8px] border-surface-container-highest shadow-[0_4px_0_0_rgba(0,0,0,0.4)] flex flex-col items-center text-center flex-1">
+<h3 class="font-headline-lg-mobile text-primary mb-sm">Evolution</h3>
+<div class="flex-1 w-full flex flex-col items-center justify-center border-4 border-dashed border-outline-variant rounded-2xl p-sm mb-sm bg-surface-container-lowest min-h-[120px]">
+<span class="material-symbols-outlined text-outline text-[48px] mb-xs opacity-50">help_center</span>
+<p class="font-label-xl text-on-surface-variant">Level 3 Unlocks Soon</p>
+</div>
+<button class="w-full bg-primary text-on-primary font-headline-lg-mobile py-sm rounded-xl border-b-8 border-inverse-primary btn-press transition-transform relative overflow-hidden group text-xl">
+<div class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
+<span class="relative z-10 text-shadow-chunky">Master Fuse</span>
+</button>
+</section>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-end px-4 pb-4 h-24 bg-surface-container dark:bg-surface-container text-primary dark:text-primary font-label-xl text-label-xl docked full-width bottom-0 rounded-t-xl border-t-8 border-surface-container-highest shadow-[0_-8px_0_0_rgba(0,0,0,0.2)]">
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-surface-bright active:translate-y-0 transition-all duration-100 ease-out" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="text-xs">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-surface-bright active:translate-y-0 transition-all duration-100 ease-out" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">checklist</span>
+<span class="text-xs">Tasks</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-surface-bright active:translate-y-0 transition-all duration-100 ease-out" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">shopping_basket</span>
+<span class="text-xs">Shop</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl p-2 mb-2 translate-y-[-8px] border-b-4 border-on-primary-fixed-variant hover:bg-surface-bright active:translate-y-0 transition-all duration-100 ease-out" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">pets</span>
+<span class="text-xs">Pets</span>
+</a>
+</nav>
+<style>
+    /* Utility to hide scrollbar for sleek look but keep functionality */
+    .hide-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+    .hide-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+</style>
+</body></html>

@@ -1,0 +1,395 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>The Hero Shop</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Quicksand:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary": "#a3d3ff",
+                        "error": "#ffb4ab",
+                        "on-secondary": "#472a00",
+                        "on-background": "#d8e4f1",
+                        "secondary": "#ffb961",
+                        "on-error": "#690005",
+                        "primary-fixed-dim": "#4ae183",
+                        "surface": "#09141e",
+                        "secondary-container": "#e89300",
+                        "inverse-surface": "#d8e4f1",
+                        "on-primary-fixed": "#00210c",
+                        "inverse-primary": "#006d37",
+                        "on-tertiary-fixed-variant": "#004b73",
+                        "surface-container-lowest": "#050f18",
+                        "surface-container-high": "#202b35",
+                        "secondary-fixed-dim": "#ffb961",
+                        "background": "#09141e",
+                        "on-tertiary-container": "#004970",
+                        "on-primary-container": "#005027",
+                        "on-secondary-fixed": "#2b1700",
+                        "outline": "#869486",
+                        "on-secondary-container": "#563400",
+                        "secondary-fixed": "#ffddb9",
+                        "on-primary": "#003919",
+                        "primary": "#54e98a",
+                        "error-container": "#93000a",
+                        "tertiary-fixed": "#cce5ff",
+                        "tertiary-container": "#5fbaff",
+                        "inverse-on-surface": "#27323c",
+                        "on-error-container": "#ffdad6",
+                        "primary-fixed": "#6bfe9c",
+                        "surface-variant": "#2b3640",
+                        "on-tertiary": "#003351",
+                        "on-primary-fixed-variant": "#005228",
+                        "surface-container": "#16212b",
+                        "surface-container-highest": "#2b3640",
+                        "tertiary-fixed-dim": "#92ccff",
+                        "outline-variant": "#3d4a3e",
+                        "on-tertiary-fixed": "#001d31",
+                        "on-surface": "#d8e4f1",
+                        "surface-container-low": "#121d26",
+                        "surface-bright": "#2f3a45",
+                        "on-secondary-fixed-variant": "#663e00",
+                        "surface-tint": "#4ae183",
+                        "primary-container": "#2ecc71",
+                        "on-surface-variant": "#bbcbbb",
+                        "surface-dim": "#09141e"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "16px",
+                        "xl": "64px",
+                        "md": "24px",
+                        "lg": "40px",
+                        "margin-mobile": "20px",
+                        "sm": "12px",
+                        "xs": "4px",
+                        "base": "8px"
+                    },
+                    "fontFamily": {
+                        "label-xl": [
+                            "Quicksand"
+                        ],
+                        "body-md": [
+                            "Quicksand"
+                        ],
+                        "headline-lg": [
+                            "Plus Jakarta Sans"
+                        ],
+                        "headline-lg-mobile": [
+                            "Plus Jakarta Sans"
+                        ],
+                        "body-lg": [
+                            "Quicksand"
+                        ],
+                        "display-lg": [
+                            "Plus Jakarta Sans"
+                        ]
+                    },
+                    "fontSize": {
+                        "label-xl": [
+                            "18px",
+                            {
+                                "lineHeight": "20px",
+                                "fontWeight": "700"
+                            }
+                        ],
+                        "body-md": [
+                            "16px",
+                            {
+                                "lineHeight": "24px",
+                                "fontWeight": "600"
+                            }
+                        ],
+                        "headline-lg": [
+                            "32px",
+                            {
+                                "lineHeight": "40px",
+                                "fontWeight": "800"
+                            }
+                        ],
+                        "headline-lg-mobile": [
+                            "28px",
+                            {
+                                "lineHeight": "34px",
+                                "fontWeight": "800"
+                            }
+                        ],
+                        "body-lg": [
+                            "20px",
+                            {
+                                "lineHeight": "28px",
+                                "fontWeight": "700"
+                            }
+                        ],
+                        "display-lg": [
+                            "48px",
+                            {
+                                "lineHeight": "56px",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "800"
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .chunky-btn-primary {
+            border-bottom-width: 8px;
+            border-color: #006d37; /* inverse-primary as dark edge */
+        }
+        .chunky-btn-primary:active {
+            transform: translateY(4px);
+            border-bottom-width: 4px;
+            margin-bottom: 4px;
+        }
+        .chunky-btn-secondary {
+            border-bottom-width: 4px;
+            border-color: #004b73; /* on-tertiary-fixed-variant */
+        }
+        .chunky-btn-secondary:active {
+            transform: translateY(2px);
+            border-bottom-width: 2px;
+            margin-bottom: 2px;
+        }
+        .chunky-card {
+            box-shadow: 0 8px 0 0 #050f18; /* surface-container-lowest */
+        }
+        
+        /* Hide scrollbar for carousel */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface font-body-md pb-32">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface border-b-4 border-surface-container-highest shadow-[0_4px_0_0_rgba(0,0,0,0.3)] flex justify-between items-center px-margin-mobile h-24 w-full sticky top-0 z-40">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full overflow-hidden border-2 border-primary bg-surface-variant flex items-center justify-center">
+<img class="w-full h-full object-cover" data-alt="A 3D rendered avatar of a child adventurer wearing a small green cap and goggles, smiling brightly. The style is chunky, colorful, and resembles a high-quality vinyl toy, set against a dark blue background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBehPCz4oUD3xxVarm1k6YuGP9pL0NzlkEZnWPJON-NLbbmk3dZS_5EpEOgpuA312_qpwd7yTbTQFqsSnD2ZKnVs1TDmQXDpM4_zqMBpgKY6ruv3oH-0rPS1UKvzgo68Arbd_zMEZ9UGaCVbKz2t9zgijMLtsA5RfRl-InmfSezysJRc5lhPRc503mV_Pf9uCz-1wjBQn_KEmBZGxJ9RQk3v4Fy6ZRNdGurd_5YKkbL6W6QF7QlJ7FAHA">
+</div>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-black text-secondary">Quest Hero</h1>
+</div>
+<button class="bg-surface-variant text-on-surface px-4 py-2 rounded-xl font-label-xl text-label-xl border-b-4 border-surface-container-lowest active:translate-y-1 active:border-b-0 transition-all flex items-center gap-2">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">lock</span>
+            Parent Lock
+        </button>
+</header>
+<main class="px-margin-mobile pt-lg max-w-5xl mx-auto">
+<!-- Currency Display -->
+<div class="flex gap-4 mb-lg">
+<div class="flex-1 bg-surface-container/80 backdrop-blur-sm rounded-full p-2 border-2 border-outline-variant flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center border-b-4 border-on-secondary-container shadow-inner">
+<span class="material-symbols-outlined text-on-secondary text-2xl" style="font-variation-settings: 'FILL' 1;">monetization_on</span>
+</div>
+<div class="flex flex-col">
+<span class="text-xs text-on-surface-variant uppercase tracking-wider font-bold">Habit Coins</span>
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-secondary leading-none">1,240</span>
+</div>
+</div>
+<div class="flex-1 bg-surface-container/80 backdrop-blur-sm rounded-full p-2 border-2 border-outline-variant flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-tertiary-container flex items-center justify-center border-b-4 border-on-tertiary-container shadow-inner">
+<span class="material-symbols-outlined text-on-tertiary text-2xl" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+<div class="flex flex-col">
+<span class="text-xs text-on-surface-variant uppercase tracking-wider font-bold">Points</span>
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-tertiary leading-none">85</span>
+</div>
+</div>
+</div>
+<!-- Recently Unlocked Carousel -->
+<section class="mb-xl">
+<h2 class="font-body-lg text-body-lg text-on-surface-variant mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary">workspace_premium</span>
+                Recently Unlocked
+            </h2>
+<div class="flex overflow-x-auto gap-4 pb-4 hide-scrollbar -mx-margin-mobile px-margin-mobile md:mx-0 md:px-0">
+<!-- Item 1 -->
+<div class="flex-shrink-0 w-32 h-32 bg-surface-container rounded-2xl p-4 flex flex-col items-center justify-center gap-2 border-2 border-surface-container-highest chunky-card relative overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-br from-secondary/20 to-transparent"></div>
+<img class="w-16 h-16 object-contain z-10 relative" data-alt="A 3D render of a shiny, chunky digital sticker depicting a smiling rocket ship with vibrant orange flames. It has a thick white outline and casts a soft shadow on a dark blue surface, looking like a physical, puffy sticker." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAyH49NXeiOh-BmWLvQkk4zJRjAXmtQ7hPXJ7Dk0YZRO5CkUFz9wJZbjEKmlVlh8U79KHrKqiP4gS0bQgQ2X_vEpRpK_FsuS8WN4RWDw3xj4YlvTofyTWXlgV4nmek6g1R4NxZAaqkv8M1xvOiqIKYrKpTiEJRmk0ulv958iE5iE7ORnAiln2Uw3oaopAOg7Bs6MDXSVDpMo9YKipIHHykc6vVQgFwKQvDtNbqgY1h8N4_Ealg8wrybfA">
+<span class="text-xs font-bold text-on-surface z-10 relative text-center">Rocket Badge</span>
+</div>
+<!-- Item 2 -->
+<div class="flex-shrink-0 w-32 h-32 bg-surface-container rounded-2xl p-4 flex flex-col items-center justify-center gap-2 border-2 border-surface-container-highest chunky-card relative overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-br from-tertiary/20 to-transparent"></div>
+<img class="w-16 h-16 object-contain z-10 relative" data-alt="A chunky 3D icon of a blue wizard hat with yellow stars on it. It looks like a physical plastic toy accessory, brightly lit against a dark background, showcasing a smooth, playful texture." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA6ACznHbNqQYrmS2NNT3AogIWVwSpwMd_e-p5JOEqTsWkMcbR3XIie3llrmdu0UVjQ4an-bSZQypLr0rQgc-ZbZMijOEnJW2hkFFTW3YvxnvMF1p_R1DeRzyPAEVOVQn7dVbGBZjMJoNDEEPm43G_Dtol7_U9W9m9iLpImUl0NJfcdAqccaoVs6sGpX3KgGErOnZi9ufcz3KQ-E1PpdUM5P2DeTeu8ePw2Jfrbh1fbQ5aY24ZDCZ3hVw">
+<span class="text-xs font-bold text-on-surface z-10 relative text-center">Wizard Hat</span>
+</div>
+<!-- Item 3 -->
+<div class="flex-shrink-0 w-32 h-32 bg-surface-container rounded-2xl p-4 flex flex-col items-center justify-center gap-2 border-2 border-surface-container-highest chunky-card relative overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-br from-primary/20 to-transparent"></div>
+<img class="w-16 h-16 object-contain z-10 relative" data-alt="A 3D plastic toy rendering of an open treasure chest filled with glowing green gems. The chest is brown with gold trim, chunky and stylized, sitting on a dark blue surface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDvEPK2k2p8UTY6a_a13uuU4xIdkdywFfYuD-6hXL6loqAk-urCnUbUGdFn-Y19eBDoygO061F0aNul90Ba2JUyfsA-w-3zw4_7pYzFDr1VberTqHQfuSPj2fUJPxNonUg9kWXhB0tivkcacloQX7aSYVFI0gMGh4LxUnHMNOb8AvPWMIBgSUdWC0sxJmD4dJJcdQnnenoMiOhVddEOJO-X7gqho3jVSHQX-aholmgf88Rvee7hDkrcng">
+<span class="text-xs font-bold text-on-surface z-10 relative text-center">Gem Trove</span>
+</div>
+<div class="flex-shrink-0 w-32 h-32 bg-surface-container-low rounded-2xl p-4 flex flex-col items-center justify-center gap-2 border-2 border-dashed border-outline-variant">
+<span class="material-symbols-outlined text-outline text-3xl">more_horiz</span>
+<span class="text-xs font-bold text-outline text-center">View All</span>
+</div>
+</div>
+</section>
+<!-- Digital Goodies Section -->
+<section class="mb-xl">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface mb-6 flex items-center gap-3">
+<span class="w-8 h-8 rounded-full bg-secondary flex items-center justify-center">
+<span class="material-symbols-outlined text-on-secondary" style="font-variation-settings: 'FILL' 1;">toys</span>
+</span>
+                Digital Goodies
+            </h2>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- Product Card 1 -->
+<div class="bg-surface-container rounded-3xl p-4 border-2 border-surface-bright chunky-card flex flex-col">
+<div class="bg-surface-container-highest rounded-2xl h-48 mb-4 relative overflow-hidden flex items-center justify-center">
+<img class="w-3/4 h-3/4 object-contain" data-alt="A 3D rendering of a chunky, neon green dinosaur pet character. It looks like a high-quality, durable plastic toy with a cute, exaggerated head and small body, standing against a dark, moody blue background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDnxgEa6LgbgAkDctHBACUsubrRh0U8vMmbJxq4ACCWYwyxf7800JbNv-noivBha5t7iGBEgs-YsbsGmoo1xKaGtP49xpYLBxuV_-5Xeem4_4CfYg8RwvbaFbrHewRdEcY_Kqgh2Ep9mGvfKL3wxqEK9KBXuBiBTkrgdgQeIzjdJY4AMhn6WLNE-9UrpirWUPIn35lB_Z8hsegZ5dYgugCCqy5JsNgkzB8tu-dvmgFCDFLsddPsW8GwUA">
+<div class="absolute top-2 right-2 bg-secondary text-on-secondary text-xs font-bold px-2 py-1 rounded-lg">NEW</div>
+</div>
+<div class="flex-1">
+<h3 class="font-body-lg text-body-lg mb-1">Rex the Dino</h3>
+<p class="text-sm text-on-surface-variant mb-4">A loyal companion for your quests.</p>
+</div>
+<div class="flex items-center justify-between mt-auto">
+<div class="flex items-center gap-1 bg-surface-container-lowest px-3 py-1.5 rounded-xl border border-outline-variant">
+<span class="material-symbols-outlined text-secondary text-sm" style="font-variation-settings: 'FILL' 1;">monetization_on</span>
+<span class="font-bold text-secondary text-lg">500</span>
+</div>
+<button class="bg-primary text-on-primary-fixed font-label-xl text-label-xl px-6 py-3 rounded-2xl chunky-btn-primary hover:brightness-110 transition-all">
+                            Buy
+                        </button>
+</div>
+</div>
+<!-- Product Card 2 -->
+<div class="bg-surface-container rounded-3xl p-4 border-2 border-surface-bright chunky-card flex flex-col">
+<div class="bg-surface-container-highest rounded-2xl h-48 mb-4 relative overflow-hidden flex items-center justify-center">
+<img class="w-3/4 h-3/4 object-contain" data-alt="A 3D render of a chunky, bright blue superhero cape. It looks like a shiny plastic accessory piece meant to be attached to a toy character, floating in mid-air against a deep navy background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuByKpaoALsAQKloJoaflKFN3uBQW2_wFzPx91VHRs4HwEN8nq_FFMDP4x9H1iraLFT6ts1An7aMl3x0Gr_2BEpiyfAeWPb1S-OqL_MxKDDkCzvrQcAiVG14D7Wmv4XB_VViBp4TdSvN3MTRO8KLCIWL3S3WaQUqq6-a3hWGomWph08_yJ3FzxocLQjdXxKNUrzhF_Dv-d2DEfkaWLXL4No80J3RlmfBcCreSBpPWJyHEX08C3mTUvmJNw">
+</div>
+<div class="flex-1">
+<h3 class="font-body-lg text-body-lg mb-1">Hero Cape</h3>
+<p class="text-sm text-on-surface-variant mb-4">Equip your avatar with style.</p>
+</div>
+<div class="flex items-center justify-between mt-auto">
+<div class="flex items-center gap-1 bg-surface-container-lowest px-3 py-1.5 rounded-xl border border-outline-variant">
+<span class="material-symbols-outlined text-secondary text-sm" style="font-variation-settings: 'FILL' 1;">monetization_on</span>
+<span class="font-bold text-secondary text-lg">250</span>
+</div>
+<button class="bg-primary text-on-primary-fixed font-label-xl text-label-xl px-6 py-3 rounded-2xl chunky-btn-primary hover:brightness-110 transition-all">
+                            Buy
+                        </button>
+</div>
+</div>
+<!-- Product Card 3 -->
+<div class="bg-surface-container rounded-3xl p-4 border-2 border-surface-bright chunky-card flex flex-col opacity-75">
+<div class="bg-surface-container-highest rounded-2xl h-48 mb-4 relative overflow-hidden flex items-center justify-center">
+<img class="w-3/4 h-3/4 object-contain grayscale-[50%]" data-alt="A 3D render of a chunky, stylized magic wand emitting sparkly blue particles. The wand is orange and yellow plastic, looking like a toy, set against a dark surface background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAXizgI1CeB2yKrFadDQwi_izrUzn5VC61h_Pt83vwDS7sOgRgZ3uicgT9wALkvX1ci0sh5YMVO38ne8-hC2TKHNwDELgpccHrkJ0pdzoxGd6NEOSvV0Fgn44DNrZqYpjJvtTkUY8PDAAGNwSTLlqV7gPcepURR9EiQzW4JSIsm6DC1xO8iXYAz5sSPHnXKpDJeXdMdJ3dLsOkdc3AEaYvcxiGwnPk_T_zTP2rB1AKr5xKxRl0kR873Sg">
+<div class="absolute inset-0 bg-surface/50 flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-4xl bg-surface-variant/80 rounded-full p-2">lock</span>
+</div>
+</div>
+<div class="flex-1">
+<h3 class="font-body-lg text-body-lg mb-1">Magic Wand</h3>
+<p class="text-sm text-on-surface-variant mb-4">Unlocks at Level 10.</p>
+</div>
+<div class="flex items-center justify-between mt-auto">
+<div class="flex items-center gap-1 bg-surface-container-lowest px-3 py-1.5 rounded-xl border border-outline-variant opacity-50">
+<span class="material-symbols-outlined text-secondary text-sm" style="font-variation-settings: 'FILL' 1;">monetization_on</span>
+<span class="font-bold text-secondary text-lg">???</span>
+</div>
+<button class="bg-surface-variant text-on-surface-variant font-label-xl text-label-xl px-6 py-3 rounded-2xl cursor-not-allowed border-b-4 border-surface-container-lowest">
+                            Locked
+                        </button>
+</div>
+</div>
+</div>
+</section>
+<!-- Real Life Rewards Section -->
+<section>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface mb-6 flex items-center gap-3">
+<span class="w-8 h-8 rounded-full bg-tertiary flex items-center justify-center">
+<span class="material-symbols-outlined text-on-tertiary" style="font-variation-settings: 'FILL' 1;">movie</span>
+</span>
+                Real Life Rewards
+            </h2>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Reward Card 1 -->
+<div class="bg-tertiary-container/10 rounded-3xl p-4 border-2 border-tertiary-container chunky-card flex flex-col sm:flex-row gap-4 items-center">
+<div class="w-32 h-32 rounded-2xl bg-surface-container-highest flex-shrink-0 flex items-center justify-center relative overflow-hidden">
+<img class="w-3/4 h-3/4 object-contain z-10" data-alt="A 3D stylized rendering of an orange game controller, chunky and rounded like a toy, floating against a dark blue background with small glowing particles around it." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDwiXWKTRUssFcvO0VMZY2in_ykLU01sI-ExsT7r1iZ5IYPdXgoGenpe_WcpSW7knWFGxwUuaGEP6QNYiVfkaxHhafEBCn2l4MbgvVGne9r6jXt72AXHiv7oLLDUs1yabcVjJxK2snZXlLwl8LlucgAhUnpE8UmVXc12s9i83BpaxYnZ7WPOy9ZbWOrR0xhzixCUzxXzcGa37zI_kzLf3vZXf4Nq7aQBpBN4IKSWKeI8idkBZb0sfccCA">
+</div>
+<div class="flex-1 flex flex-col h-full py-2 text-center sm:text-left">
+<h3 class="font-body-lg text-body-lg text-tertiary mb-1">30 Min Screen Time</h3>
+<p class="text-sm text-on-surface-variant mb-4 flex-1">Trade points for extra tablet time.</p>
+<div class="flex items-center justify-between sm:justify-start gap-4 mt-auto">
+<div class="flex items-center gap-1 bg-surface-container px-3 py-1.5 rounded-xl border border-outline-variant">
+<span class="material-symbols-outlined text-tertiary text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-bold text-tertiary text-lg">50</span>
+</div>
+<button class="bg-tertiary text-on-tertiary font-label-xl text-label-xl px-6 py-2 rounded-2xl chunky-btn-secondary hover:brightness-110 transition-all flex-1 sm:flex-none">
+                                Claim
+                            </button>
+</div>
+</div>
+</div>
+<!-- Reward Card 2 -->
+<div class="bg-tertiary-container/10 rounded-3xl p-4 border-2 border-tertiary-container chunky-card flex flex-col sm:flex-row gap-4 items-center">
+<div class="w-32 h-32 rounded-2xl bg-surface-container-highest flex-shrink-0 flex items-center justify-center relative overflow-hidden">
+<img class="w-3/4 h-3/4 object-contain z-10" data-alt="A chunky 3D render of a red and white striped popcorn bucket overflowing with buttery popcorn. It has a stylized, playful look, set against a dark moody background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBUe50x9hrDqEWJxXpxkk28HCtzzxp6iu_ptP2y58CFG0TUggFK7d1Od69VrYxsjxKtR1o6lrgPgx15Okec05jU_vNxJ7s_ipwXZJM3ladFoPyuhGcPzItrUorX1NF1ilxi2r1K2g00ulLRfOqSTdr0ZuPk5gyY8B0mB2UBw0XjqX8qfM8-Z_Oa_VasXsvbo_FHt7MMlgZ_O9HNsr4L1wxT131GZyCKiOLQOBHTGSONdgB_qqkkRex0Kw">
+</div>
+<div class="flex-1 flex flex-col h-full py-2 text-center sm:text-left">
+<h3 class="font-body-lg text-body-lg text-tertiary mb-1">Movie Night Choice</h3>
+<p class="text-sm text-on-surface-variant mb-4 flex-1">You get to pick the family movie this Friday!</p>
+<div class="flex items-center justify-between sm:justify-start gap-4 mt-auto">
+<div class="flex items-center gap-1 bg-surface-container px-3 py-1.5 rounded-xl border border-outline-variant">
+<span class="material-symbols-outlined text-tertiary text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-bold text-tertiary text-lg">100</span>
+</div>
+<button class="bg-surface-variant text-on-surface-variant font-label-xl text-label-xl px-6 py-2 rounded-2xl chunky-btn-secondary border-b-4 border-surface-container-lowest opacity-75 cursor-not-allowed flex-1 sm:flex-none">
+                                Need 15 more
+                            </button>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="bg-surface-container dark:bg-surface-container shadow-[0_-8px_0_0_rgba(0,0,0,0.2)] docked full-width bottom-0 rounded-t-xl fixed bottom-0 left-0 w-full z-50 flex justify-around items-end px-4 pb-4 h-24 border-t-8 border-surface-container-highest">
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-surface-bright rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined mb-1 text-3xl">home</span>
+<span class="font-label-xl text-label-xl text-sm">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-surface-bright rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined mb-1 text-3xl">checklist</span>
+<span class="font-label-xl text-label-xl text-sm">Tasks</span>
+</a>
+<!-- Active Tab -->
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl p-2 mb-2 translate-y-[-8px] border-b-4 border-on-primary-fixed-variant transition-all duration-100 ease-out" href="#">
+<span class="material-symbols-outlined mb-1 text-3xl" style="font-variation-settings: 'FILL' 1;">shopping_basket</span>
+<span class="font-label-xl text-label-xl text-sm">Shop</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-surface-bright rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined mb-1 text-3xl">pets</span>
+<span class="font-label-xl text-label-xl text-sm">Pets</span>
+</a>
+</nav>
+</body></html>

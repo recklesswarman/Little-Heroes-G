@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Pet Bath Time</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@800&amp;family=Quicksand:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-variant": "#2b3640",
+                    "primary": "#54e98a",
+                    "on-surface-variant": "#bbcbbb",
+                    "surface-container-low": "#121d26",
+                    "tertiary-fixed-dim": "#92ccff",
+                    "secondary-container": "#e89300",
+                    "background": "#09141e",
+                    "on-secondary-container": "#563400",
+                    "on-tertiary": "#003351",
+                    "outline-variant": "#3d4a3e",
+                    "surface-container-high": "#202b35",
+                    "tertiary-fixed": "#cce5ff",
+                    "secondary-fixed": "#ffddb9",
+                    "on-primary": "#003919",
+                    "on-tertiary-fixed": "#001d31",
+                    "on-secondary": "#472a00",
+                    "on-background": "#d8e4f1",
+                    "on-secondary-fixed": "#2b1700",
+                    "tertiary-container": "#5fbaff",
+                    "inverse-primary": "#006d37",
+                    "outline": "#869486",
+                    "surface-container": "#16212b",
+                    "error": "#ffb4ab",
+                    "secondary": "#ffb961",
+                    "surface-tint": "#4ae183",
+                    "surface": "#09141e",
+                    "surface-container-lowest": "#050f18",
+                    "primary-fixed": "#6bfe9c",
+                    "on-tertiary-container": "#004970",
+                    "inverse-surface": "#d8e4f1",
+                    "primary-fixed-dim": "#4ae183",
+                    "surface-container-highest": "#2b3640",
+                    "inverse-on-surface": "#27323c",
+                    "on-tertiary-fixed-variant": "#004b73",
+                    "secondary-fixed-dim": "#ffb961",
+                    "surface-dim": "#09141e",
+                    "surface-bright": "#2f3a45",
+                    "on-error-container": "#ffdad6",
+                    "on-primary-container": "#005027",
+                    "on-secondary-fixed-variant": "#663e00",
+                    "tertiary": "#a3d3ff",
+                    "on-primary-fixed-variant": "#005228",
+                    "on-error": "#690005",
+                    "primary-container": "#2ecc71",
+                    "on-surface": "#d8e4f1",
+                    "on-primary-fixed": "#00210c",
+                    "error-container": "#93000a"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "xl": "64px",
+                    "base": "8px",
+                    "md": "24px",
+                    "sm": "12px",
+                    "margin-mobile": "20px",
+                    "lg": "40px",
+                    "xs": "4px",
+                    "gutter": "16px"
+            },
+            "fontFamily": {
+                    "body-md": [
+                            "Quicksand"
+                    ],
+                    "headline-lg": [
+                            "Plus Jakarta Sans"
+                    ],
+                    "headline-lg-mobile": [
+                            "Plus Jakarta Sans"
+                    ],
+                    "display-lg": [
+                            "Plus Jakarta Sans"
+                    ],
+                    "body-lg": [
+                            "Quicksand"
+                    ],
+                    "label-xl": [
+                            "Quicksand"
+                    ]
+            },
+            "fontSize": {
+                    "body-md": [
+                            "16px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "headline-lg": [
+                            "32px",
+                            {
+                                    "lineHeight": "40px",
+                                    "fontWeight": "800"
+                            }
+                    ],
+                    "headline-lg-mobile": [
+                            "28px",
+                            {
+                                    "lineHeight": "34px",
+                                    "fontWeight": "800"
+                            }
+                    ],
+                    "display-lg": [
+                            "48px",
+                            {
+                                    "lineHeight": "56px",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "800"
+                            }
+                    ],
+                    "body-lg": [
+                            "20px",
+                            {
+                                    "lineHeight": "28px",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "label-xl": [
+                            "18px",
+                            {
+                                    "lineHeight": "20px",
+                                    "fontWeight": "700"
+                            }
+                    ]
+            }
+          },
+        }
+      }
+    </script>
+<style>
+        .chunky-button-primary {
+            border-bottom: 8px solid #005228; /* on-primary-fixed-variant */
+            transition: transform 0.1s, border-bottom 0.1s;
+        }
+        .chunky-button-primary:active {
+            transform: translateY(4px);
+            border-bottom: 4px solid #005228;
+        }
+        
+        .chunky-button-secondary {
+            border-bottom: 4px solid #003351; /* on-tertiary */
+            transition: transform 0.1s, border-bottom 0.1s;
+        }
+        .chunky-button-secondary:active {
+            transform: translateY(2px);
+            border-bottom: 2px solid #003351;
+        }
+
+        .floating-card {
+            box-shadow: 0 8px 0 0 #050f18; /* surface-container-lowest */
+        }
+        
+        /* Progress Bar Animation */
+        #hygiene-fill {
+            transition: width 0.3s ease-in-out;
+        }
+
+        /* Bubble Animation */
+        .bubble {
+            animation: float 4s ease-in-out infinite;
+        }
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen pb-24 md:pb-0 flex flex-col">
+<!-- Top Navigation (Mobile Shell Concept) -->
+<header class="bg-surface dark:bg-surface font-headline-lg-mobile text-headline-lg-mobile docked full-width top-0 border-b-4 border-surface-container-highest shadow-[0_4px_0_0_rgba(0,0,0,0.3)] flex justify-between items-center px-margin-mobile h-24 w-full z-10 sticky">
+<div class="flex items-center gap-sm">
+<button class="w-12 h-12 bg-surface-container-high rounded-full flex items-center justify-center chunky-button-secondary border-b-4 border-surface-container-lowest" onclick="history.back()">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">arrow_back</span>
+</button>
+<div class="flex items-center gap-xs">
+<img class="w-10 h-10 rounded-full object-cover border-2 border-primary" data-alt="A stylized 3D avatar of a young child adventurer wearing a safari hat and goggles, rendered in a colorful, tactile toy-like aesthetic suitable for a children's app." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDMAcmnC8ZO3IDKFsfsTF_ga6AUiKmVc2cMSkJI11M4C-dKbrRagz6n_ZZXtLxyfLUMDBrND-CH8Cjsak1KAfpyRl8yV1fxgiCbnLAihgXUuwbvwIQIcXJhvFOMaAyyNDUybZR8OF7p29Ol_rnexfv5b7cv_cuGMvHoc6x6vlx_TCXcAGHnkkLusJfNyBYLkYgV2B97bHDSel1nFXtH88vJ2yWmS5kiihE7kcemz3XMTx8fLED_mhJALQ"/>
+<span class="font-headline-lg-mobile text-headline-lg-mobile font-black text-secondary">Quest Hero</span>
+</div>
+</div>
+<div class="flex items-center">
+<button class="bg-surface-container rounded-lg px-4 py-2 flex items-center gap-2 chunky-button-secondary border-b-4 border-surface-container-lowest text-on-surface-variant font-label-xl hover:bg-surface-bright active:translate-y-1 transition-all">
+<span class="material-symbols-outlined">lock</span>
+                Parent Lock
+            </button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow flex flex-col items-center justify-start p-margin-mobile gap-lg overflow-hidden relative">
+<!-- Hygiene Progress Bar (Top) -->
+<div class="w-full max-w-md floating-card bg-surface-container rounded-xl p-4 border-2 border-surface-container-high flex flex-col gap-2 z-10 mt-sm">
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary" style="font-variation-settings: 'FILL' 1;">water_drop</span>
+<span class="font-label-xl text-on-surface">Hygiene Level</span>
+</div>
+<span class="font-label-xl text-primary font-bold" id="hygiene-text">0%</span>
+</div>
+<div class="w-full h-8 bg-surface-container-lowest rounded-full border-2 border-surface-container-highest overflow-hidden relative shadow-inner">
+<div class="h-full bg-tertiary-container w-0 rounded-full relative" id="hygiene-fill">
+<!-- Liquid effect highlight -->
+<div class="absolute top-0 left-0 w-full h-2 bg-white opacity-20 rounded-t-full"></div>
+</div>
+</div>
+</div>
+<!-- Centerpiece: Bathtub Scene -->
+<div class="relative w-full max-w-2xl aspect-[4/3] rounded-3xl overflow-hidden border-4 border-surface-container-high floating-card mt-md">
+<!-- Background Image Placeholder for 3D Bathtub -->
+<img alt="3D Bathtub" class="absolute inset-0 w-full h-full object-cover z-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuChCspQJaFH62vAmvxMah1FV4FgomNnC8x3Tnh67gupQHMYn0IYswagfoUX4wVhG4PzCe6LiuaedtoZCzRE56GXk2W-pMRmjPBVBtyuv6EAmkHp8WsmHe9jR2dktxmxVOqHg4slRh8MPUpU6q8OMVQT4ON4aguf7H0uB0ekBz8nY7ZeOrxg2JjAWTWsSAR6PfsCaJr69gNykFdz99qlR4J50p3KlYhK1MiPDgaZWWFe4yq4b18oRRPlWA"/>
+<!-- Interactive Overlay Elements (Bubbles/Sparkles) -->
+<div class="absolute inset-0 z-10 pointer-events-none" id="interactive-layer">
+<!-- Javascript will spawn bubbles here based on interaction -->
+</div>
+</div>
+<!-- Voice Guidance Caption -->
+<div class="bg-surface-container-high border-2 border-surface-variant rounded-xl p-4 max-w-md text-center floating-card z-10 mx-auto w-full">
+<p class="font-body-lg text-secondary-fixed" id="voice-caption">
+<span class="material-symbols-outlined align-middle mr-2 text-secondary">record_voice_over</span>
+                "Let's get all those bubbles! Tap to scrub!"
+            </p>
+</div>
+<!-- Interactive Controls (Thumb Zone) -->
+<div class="w-full max-w-md flex flex-col gap-sm z-10 mt-auto pb-lg">
+<!-- Scrub Stage Actions -->
+<div class="flex gap-4 w-full" id="scrub-actions">
+<button class="flex-1 bg-primary text-on-primary font-headline-lg-mobile rounded-xl py-4 flex flex-col items-center justify-center chunky-button-primary hover:bg-primary-fixed transition-colors" onclick="performScrub()">
+<span class="material-symbols-outlined text-4xl mb-1" style="font-variation-settings: 'FILL' 1;">wash</span>
+<span>Scrub!</span>
+</button>
+</div>
+<!-- Dry Stage Actions (Hidden Initially) -->
+<div class="hidden flex gap-4 w-full" id="dry-actions">
+<button class="flex-1 bg-tertiary-container text-on-tertiary-container font-headline-lg-mobile rounded-xl py-4 flex flex-col items-center justify-center chunky-button-primary border-b-[8px] border-on-tertiary-fixed-variant hover:bg-tertiary transition-colors" onclick="performDry()" style="border-bottom-color: #004b73;">
+<span class="material-symbols-outlined text-4xl mb-1" style="font-variation-settings: 'FILL' 1;">air</span>
+<span>Blow Dry</span>
+</button>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation (Shared Component Shell) -->
+<!-- Note: While usually suppressed on deep interaction screens, included here to fulfill the "Pets" active state requirement for the overall context, though in a real strict app flow, a mini-game might hide it. We keep it as requested to demonstrate the semantic matching. -->
+<nav class="bg-surface-container dark:bg-surface-container font-label-xl text-label-xl docked full-width bottom-0 rounded-t-xl border-t-8 border-surface-container-highest shadow-[0_-8px_0_0_rgba(0,0,0,0.2)] fixed bottom-0 left-0 w-full z-50 flex justify-around items-end px-4 pb-4 h-24 md:hidden">
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-surface-bright transition-all duration-100 ease-out w-16">
+<span class="material-symbols-outlined text-3xl mb-1">home</span>
+<span class="text-xs">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-surface-bright transition-all duration-100 ease-out w-16">
+<span class="material-symbols-outlined text-3xl mb-1">checklist</span>
+<span class="text-xs">Tasks</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:bg-surface-bright transition-all duration-100 ease-out w-16">
+<span class="material-symbols-outlined text-3xl mb-1">shopping_basket</span>
+<span class="text-xs">Shop</span>
+</button>
+<!-- Active Tab: Pets (Matches context of Pet Bath Time) -->
+<button class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl p-2 mb-2 translate-y-[-8px] border-b-4 border-on-primary-fixed-variant transition-all duration-100 ease-out w-20 shadow-md">
+<span class="material-symbols-outlined text-3xl mb-1 text-on-primary-container" style="font-variation-settings: 'FILL' 1;">pets</span>
+<span class="text-sm font-bold">Pets</span>
+</button>
+</nav>
+<script>
+        let hygiene = 0;
+        let isDryStage = false;
+        const maxHygiene = 100;
+        const hygieneFill = document.getElementById('hygiene-fill');
+        const hygieneText = document.getElementById('hygiene-text');
+        const scrubActions = document.getElementById('scrub-actions');
+        const dryActions = document.getElementById('dry-actions');
+        const voiceCaption = document.getElementById('voice-caption');
+        const interactiveLayer = document.getElementById('interactive-layer');
+
+        function createBubbleEffect() {
+            const bubble = document.createElement('div');
+            bubble.classList.add('absolute', 'w-8', 'h-8', 'bg-tertiary-fixed', 'rounded-full', 'opacity-60', 'bubble', 'border-2', 'border-white');
+            // Random position within bottom half
+            const left = Math.random() * 80 + 10; 
+            const bottom = Math.random() * 40 + 10;
+            
+            bubble.style.left = `${left}%`;
+            bubble.style.bottom = `${bottom}%`;
+            
+            // Highlight
+            const highlight = document.createElement('div');
+            highlight.classList.add('absolute', 'w-2', 'h-2', 'bg-white', 'rounded-full', 'top-1', 'left-1');
+            bubble.appendChild(highlight);
+
+            interactiveLayer.appendChild(bubble);
+
+            // Remove after animation
+            setTimeout(() => {
+                bubble.remove();
+            }, 4000);
+        }
+
+        function performScrub() {
+            if (isDryStage) return;
+            
+            hygiene += 15;
+            if (hygiene > maxHygiene) hygiene = maxHygiene;
+            
+            updateHygieneBar();
+            createBubbleEffect();
+            createBubbleEffect();
+            
+            // Add slight jiggle to tub (visual feedback)
+            const tubImg = document.querySelector('img[alt="3D Bathtub"]');
+            if(tubImg) {
+                tubImg.style.transform = 'scale(1.02)';
+                setTimeout(() => tubImg.style.transform = 'scale(1)', 100);
+            }
+
+            if (hygiene >= maxHygiene) {
+                transitionToDryStage();
+            }
+        }
+
+        function performDry() {
+            // Visual effect for drying
+            interactiveLayer.innerHTML = ''; // Clear bubbles
+            const wind = document.createElement('div');
+            wind.classList.add('absolute', 'inset-0', 'bg-white', 'opacity-30', 'transition-opacity', 'duration-500');
+            interactiveLayer.appendChild(wind);
+            
+            setTimeout(() => {
+                wind.style.opacity = '0';
+                setTimeout(() => wind.remove(), 500);
+            }, 200);
+
+            voiceCaption.innerHTML = `<span class="material-symbols-outlined align-middle mr-2 text-primary">task_alt</span> All clean and dry! Great job!`;
+            voiceCaption.classList.replace('text-secondary-fixed', 'text-primary');
+            
+            // Completing the task could redirect or show reward
+        }
+
+        function updateHygieneBar() {
+            hygieneFill.style.width = `${hygiene}%`;
+            hygieneText.innerText = `${Math.floor(hygiene)}%`;
+        }
+
+        function transitionToDryStage() {
+            isDryStage = true;
+            scrubActions.classList.add('hidden');
+            dryActions.classList.remove('hidden');
+            
+            voiceCaption.innerHTML = `<span class="material-symbols-outlined align-middle mr-2 text-tertiary">air</span> "Squeaky clean! Now let's dry off!"`;
+            
+            // Change progress bar color to indicate a new phase
+            hygieneFill.classList.replace('bg-tertiary-container', 'bg-primary');
+        }
+    </script>
+</body></html>
