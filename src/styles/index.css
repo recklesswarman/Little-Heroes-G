@@ -1,0 +1,149 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .text-shadow {
+    text-shadow: 0 2px 0 rgba(0, 0, 0, 0.6);
+  }
+  .text-shadow-lg {
+    text-shadow: 0 3px 0 rgba(0, 0, 0, 0.8), 0 0 12px rgba(84, 233, 138, 0.4);
+  }
+  .card-shadow {
+    box-shadow: 0 8px 0 0 rgba(0, 0, 0, 0.45);
+  }
+  .card-shadow-lg {
+    box-shadow: 0 12px 0 0 rgba(0, 0, 0, 0.55);
+  }
+  .card-shadow-sm {
+    box-shadow: 0 4px 0 0 rgba(0, 0, 0, 0.35);
+  }
+  .glow-primary {
+    filter: drop-shadow(0 0 16px rgba(84, 233, 138, 0.5));
+  }
+  .glow-secondary {
+    filter: drop-shadow(0 0 16px rgba(255, 185, 97, 0.5));
+  }
+  .glow-tertiary {
+    filter: drop-shadow(0 0 16px rgba(163, 211, 255, 0.5));
+  }
+}
+
+/* Chunky Tactile 3D Buttons */
+.chunky-btn {
+  position: relative;
+  border-bottom-width: 6px;
+  transition: transform 0.08s cubic-bezier(0.4, 0, 0.2, 1), border-bottom-width 0.08s ease-in-out, filter 0.15s ease;
+  user-select: none;
+}
+.chunky-btn:hover {
+  filter: brightness(1.08);
+}
+.chunky-btn:active {
+  border-bottom-width: 0px;
+  transform: translateY(6px);
+  filter: brightness(0.95);
+}
+
+.chunky-btn-lg {
+  position: relative;
+  border-bottom-width: 8px;
+  transition: transform 0.08s cubic-bezier(0.4, 0, 0.2, 1), border-bottom-width 0.08s ease-in-out, filter 0.15s ease;
+  user-select: none;
+}
+.chunky-btn-lg:hover {
+  filter: brightness(1.08);
+}
+.chunky-btn-lg:active {
+  border-bottom-width: 0px;
+  transform: translateY(8px);
+  filter: brightness(0.95);
+}
+
+.chunky-btn-sm {
+  position: relative;
+  border-bottom-width: 4px;
+  transition: transform 0.08s cubic-bezier(0.4, 0, 0.2, 1), border-bottom-width 0.08s ease-in-out, filter 0.15s ease;
+  user-select: none;
+}
+.chunky-btn-sm:hover {
+  filter: brightness(1.08);
+}
+.chunky-btn-sm:active {
+  border-bottom-width: 0px;
+  transform: translateY(4px);
+}
+
+/* Animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-8px) rotate(1deg); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.04); }
+}
+
+@keyframes bounceSlow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes coinSpin {
+  0% { transform: rotateY(0deg); }
+  50% { transform: rotateY(180deg); }
+  100% { transform: rotateY(360deg); }
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes discoGrid {
+  0% { background-position: 0% 0%; }
+  50% { background-position: 100% 100%; }
+  100% { background-position: 0% 0%; }
+}
+
+.animate-float {
+  animation: float 3.5s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 2.5s ease-in-out infinite;
+}
+
+.animate-bounce-slow {
+  animation: bounceSlow 2s ease-in-out infinite;
+}
+
+.animate-coin {
+  animation: coinSpin 3s linear infinite;
+}
+
+.disco-bg {
+  background: linear-gradient(135deg, #09141e 0%, #16212b 50%, #050f18 100%);
+}
+
+/* Material Symbols configuration */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Custom scrollbar for game panels */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #09141e;
+}
+::-webkit-scrollbar-thumb {
+  background: #2b3640;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3d4a3e;
+}
