@@ -278,6 +278,6 @@ export function attachDashboardListeners() {
 
   const toAdvBtn = document.getElementById('dash-to-adventures-btn');
   if (toAdvBtn) {
-    toAdvBtn.addEventListener('click', () => store.navigate('adventures_map'));
+    toAdvBtn.addEventListener('click', () => store.navigate('quest_map'));
   }
 }

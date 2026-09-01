@@ -211,6 +211,6 @@ export function attachPetPenListeners() {
 
   const advBtn = document.getElementById('pen-adventures-btn');
   if (advBtn) {
-    advBtn.addEventListener('click', () => store.navigate('adventures_map'));
+    advBtn.addEventListener('click', () => store.navigate('quest_map'));
   }
 }
