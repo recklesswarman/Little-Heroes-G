@@ -531,9 +531,19 @@ class Store {
 
   setActivePet(petId) {
     this.state.selectedHero.activePetId = petId;
+    const pet = this.state.pets.find(p => p.id === petId) || PETS_DATABASE.find(p => p.id === petId);
+    const petImg = pet?.avatar || pet?.evolvedAvatar;
+    
     Sound.fanfare();
     confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
-    this.showReward('Companion Equipped!', `You are now adventuring with ${PETS_DATABASE.find(p => p.id === petId)?.name}!`, 0, 0);
+    this.showReward(
+      'Companion Equipped!',
+      `You are now adventuring with ${pet?.name || 'your pet'}!`,
+      0,
+      0,
+      petImg,
+      'pets'
+    );
     this.saveState();
   }
 
@@ -570,7 +580,14 @@ class Store {
     this.logAction(`Parent created new chore: '${newItem.title}'`, `+${newItem.coins} Tokens 🪙, +${newItem.points} Points ⭐`);
     Sound.fanfare();
     confetti({ particleCount: 60, spread: 70 });
-    this.showReward('Task Added Successfully!', `"${newItem.title}" is now active in ${newItem.zone} for your kids!`, 0, 0);
+    this.showReward(
+      'Task Added Successfully!',
+      `"${newItem.title}" is now active in ${newItem.zone} for your kids!`,
+      0,
+      0,
+      newItem.image,
+      newItem.icon
+    );
     this.saveState();
   }
 
@@ -607,7 +624,14 @@ class Store {
     this.logAction(`Parent created real-life reward: '${newReward.title}'`, `Cost: ${newReward.costPoints} Points ⭐`);
     Sound.fanfare();
     confetti({ particleCount: 70, spread: 80 });
-    this.showReward('Reward Added to Shop!', `"${newReward.title}" is now available in the Hero Shop for ${newReward.costPoints} Points ⭐!`, 0, 0);
+    this.showReward(
+      'Reward Added to Shop!',
+      `"${newReward.title}" is now available in the Hero Shop for ${newReward.costPoints} Points ⭐!`,
+      0,
+      0,
+      newReward.image,
+      newReward.icon
+    );
     this.saveState();
   }
 
@@ -636,7 +660,7 @@ class Store {
 
     this.logAction('Parent updated shop pricing matrix', 'Shop prices updated');
     Sound.fanfare();
-    this.showReward('Pricing Updated!', 'All reward prices have been updated in the Hero Shop!', 0, 0);
+    this.showReward('Pricing Updated!', 'All reward prices have been updated in the Hero Shop!', 0, 0, null, 'payments');
     this.saveState();
   }
 
@@ -653,7 +677,14 @@ class Store {
       this.logAction(`Parent AI Studio generated new reward '${newItem.title}'`, `Price: ${newItem.costCoins} Tokens 🪙`);
       Sound.fanfare();
       confetti({ particleCount: 80, spread: 90 });
-      this.showReward('✨ AI Item Published Live!', `"${newItem.title}" is now live in the Hero Shop for ${newItem.costCoins} Habit Tokens!`, 0, 0);
+      this.showReward(
+        '✨ AI Item Published Live!',
+        `"${newItem.title}" is now live in the Hero Shop for ${newItem.costCoins} Habit Tokens!`,
+        0,
+        0,
+        newItem.image,
+        'auto_awesome'
+      );
       this.saveState();
     } catch (e) {
       console.warn("AI generation fallback:", e);
@@ -672,6 +703,14 @@ class Store {
       };
 
       this.state.digitalGear.unshift(newItem);
+      this.showReward(
+        '✨ AI Item Published Live!',
+        `"${newItem.title}" is now live in the Hero Shop for ${newItem.costCoins} Habit Tokens!`,
+        0,
+        0,
+        newItem.image,
+        'auto_awesome'
+      );
       this.saveState();
     }
   }
@@ -719,7 +758,9 @@ class Store {
         `Habit Logged!`,
         `🪙 +${habit.coins} Habit Tokens auto-added to wallet!\n⭐ +${habit.points} Gold Points sent to Parent for approval.`,
         habit.coins,
-        habit.xp
+        habit.xp,
+        habit.image,
+        habit.icon
       );
     } else {
       habit.completed = false;
@@ -773,7 +814,9 @@ class Store {
         `Chore Done: ${task.title}!`,
         `🪙 +${task.coins} Habit Tokens auto-added to wallet!\n⭐ +${task.points} Gold Points sent to Parent for approval.`,
         task.coins,
-        task.xp
+        task.xp,
+        task.image,
+        task.icon
       );
     } else {
       task.completed = false;
@@ -815,7 +858,9 @@ class Store {
       'SUGAR VILLAIN DEFEATED!',
       '🪙 +30 Habit Tokens auto-added to your wallet!\n⭐ +15 Gold Points submitted to Parent for review & credit.',
       30,
-      50
+      50,
+      task?.image || generate3DIcon('dentistry', 'blue', 'Brush'),
+      'dentistry'
     );
     this.saveState();
   }
@@ -837,7 +882,14 @@ class Store {
         colors: ['#f1c40f', '#2ecc71', '#54e98a', '#ffffff']
       });
 
-      this.showReward(`LEVEL UP! Hero Level ${hero.level}!`, 'You unlocked new equipment and earned +50 Bonus Tokens!', 50, 0);
+      this.showReward(
+        `LEVEL UP! Hero Level ${hero.level}!`,
+        'You unlocked new equipment and earned +50 Bonus Tokens!',
+        50,
+        0,
+        hero.avatar,
+        'military_tech'
+      );
     }
   }
 
@@ -845,9 +897,17 @@ class Store {
     const id = petId || this.state.selectedHero.activePetId || 1;
     if (!this.state.petStatsMap[id]) this.state.petStatsMap[id] = { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
     const stats = this.state.petStatsMap[id];
+    const activePet = this.getActivePet();
 
     if (stats.hunger >= 100) {
-      this.showReward('Your Pet is Full!', 'Your companion has plenty of energy right now!', 0, 0);
+      this.showReward(
+        'Your Pet is Full!',
+        'Your companion has plenty of energy right now!',
+        0,
+        0,
+        activePet.avatar,
+        'nutrition'
+      );
       return;
     }
 
@@ -876,6 +936,7 @@ class Store {
     const id = petId || this.state.selectedHero.activePetId || 1;
     if (!this.state.petStatsMap[id]) this.state.petStatsMap[id] = { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
     const stats = this.state.petStatsMap[id];
+    const activePet = this.getActivePet();
 
     stats.hygiene = Math.min(100, stats.hygiene + amount);
     if (stats.hygiene === 100) {
@@ -884,7 +945,14 @@ class Store {
       this.addXP(25);
       Sound.fanfare();
       confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
-      this.showReward('Sparkling Squeaky Clean!', 'Your pet smells like fresh blueberry bubbles! +20 Habit Tokens auto-issued & +25 XP!', 20, 25);
+      this.showReward(
+        'Sparkling Squeaky Clean!',
+        'Your pet smells like fresh blueberry bubbles! +20 Habit Tokens auto-issued & +25 XP!',
+        20,
+        25,
+        activePet.avatar,
+        'soap'
+      );
     }
     this.saveState();
   }
@@ -892,6 +960,8 @@ class Store {
   evolvePet(petId) {
     const id = petId || this.state.selectedHero.activePetId || 1;
     const currentStage = this.state.petStageMap[id] || 1;
+    const activePet = this.getActivePet();
+
     if (currentStage < 4) {
       this.state.petStageMap[id] = currentStage + 1;
       this.addXP(100);
@@ -904,7 +974,14 @@ class Store {
         origin: { y: 0.4 },
         colors: ['#2ecc71', '#ffb961', '#f1c40f', '#00d67d']
       });
-      this.showReward('BIG EVOLUTION!', `Your companion advanced to Stage ${this.state.petStageMap[id]}! New Golden Armor and Powers Unlocked!`, 100, 100);
+      this.showReward(
+        'BIG EVOLUTION!',
+        `Your companion advanced to Stage ${this.state.petStageMap[id]}! New Golden Armor and Powers Unlocked!`,
+        100,
+        100,
+        activePet.evolvedAvatar || activePet.avatar,
+        'military_tech'
+      );
       this.saveState();
     }
   }
@@ -947,7 +1024,14 @@ class Store {
       colors: ['#f1c40f', '#54e98a', '#3498db', '#ffffff']
     });
 
-    this.showReward('MASTER FUSE SUCCESS!', `Created ${hybridPet.name}! Equipped as your new active companion!`, 150, 200);
+    this.showReward(
+      'MASTER FUSE SUCCESS!',
+      `Created ${hybridPet.name}! Equipped as your new active companion!`,
+      150,
+      200,
+      hybridPet.avatar,
+      'auto_awesome'
+    );
     this.saveState();
   }
 
@@ -961,7 +1045,9 @@ class Store {
         'Need More Gold Points!',
         `You have ${this.state.selectedHero.points} Points. Complete more Task Forest chores and have a parent verify them to earn ${reward.costPoints} Points!`,
         0,
-        0
+        0,
+        reward.image,
+        reward.icon
       );
       return;
     }
@@ -981,7 +1067,14 @@ class Store {
     this.state.pendingApprovals.push(newApproval);
     Sound.coin();
     this.logAction(`${this.state.selectedHero.name} requested reward '${reward.title}'`, `Cost: ${reward.costPoints} Points ⭐ (Awaiting Parent Sign-off)`);
-    this.showReward('Request Sent to Parent!', `Your request for "${reward.title}" was submitted to the Parent Admin Inbox for sign-off!`, 0, 0);
+    this.showReward(
+      'Request Sent to Parent!',
+      `Your request for "${reward.title}" was submitted to the Parent Admin Inbox for sign-off!`,
+      0,
+      0,
+      reward.image,
+      reward.icon
+    );
     this.saveState();
   }
 
@@ -993,14 +1086,26 @@ class Store {
       this.state.equippedPetGear = item.title;
       Sound.fanfare();
       confetti({ particleCount: 40, spread: 50 });
-      this.showReward('Gear Equipped!', `Your avatar and pet companion are now equipped with ${item.title}!`, 0, 0);
+      this.showReward(
+        'Gear Equipped!',
+        `Your avatar and pet companion are now equipped with ${item.title}!`,
+        0,
+        0,
+        item.image
+      );
       this.saveState();
       return;
     }
 
     if (this.state.selectedHero.coins < item.costCoins) {
       Sound.hit();
-      this.showReward('Not Enough Habit Tokens!', `You need ${item.costCoins - this.state.selectedHero.coins} more Habit Tokens. Complete chores and play mini-games to earn more tokens!`, 0, 0);
+      this.showReward(
+        'Not Enough Habit Tokens!',
+        `You need ${item.costCoins - this.state.selectedHero.coins} more Habit Tokens. Complete chores and play mini-games to earn more tokens!`,
+        0,
+        0,
+        item.image
+      );
       return;
     }
 
@@ -1019,7 +1124,13 @@ class Store {
     });
 
     this.logAction(`${this.state.selectedHero.name} bought ${item.title}`, `Cost: ${item.costCoins} Tokens 🪙`);
-    this.showReward(`Unlocked & Equipped: ${item.title}!`, 'Added to inventory and active companion! Great job saving your tokens!', 0, 25);
+    this.showReward(
+      `Unlocked & Equipped: ${item.title}!`,
+      'Added to inventory and active companion! Great job saving your tokens!',
+      0,
+      25,
+      item.image
+    );
     this.saveState();
   }
 
@@ -1037,22 +1148,38 @@ class Store {
         this.state.selectedHero.points = hero.points;
       }
 
+      let taskItem = null;
       if (req.taskId) {
         const habit = this.state.habitIslands.find(h => h.id === req.taskId);
-        if (habit) habit.pointsApproved = true;
+        if (habit) { habit.pointsApproved = true; taskItem = habit; }
         const task = this.state.taskForest.find(t => t.id === req.taskId);
-        if (task) task.pointsApproved = true;
+        if (task) { task.pointsApproved = true; taskItem = task; }
       }
 
       this.logAction(`Parent verified '${req.title}' for ${req.kidName}`, `+${pointsToAward} Points ⭐ Credited to Balance`);
-      this.showReward('Points Approved!', `+${pointsToAward} Gold Points ⭐ officially credited to ${req.kidName}'s wallet!`, 0, 0);
+      this.showReward(
+        'Points Approved!',
+        `+${pointsToAward} Gold Points ⭐ officially credited to ${req.kidName}'s wallet!`,
+        0,
+        0,
+        taskItem?.image || null,
+        'stars'
+      );
     } else if (req.type === 'reward') {
       hero.points = Math.max(0, hero.points - req.costPoints);
       if (this.state.selectedHero.id === hero.id) {
         this.state.selectedHero.points = hero.points;
       }
+      const rewardItem = this.state.realLifeRewards.find(r => r.id === req.rewardId);
       this.logAction(`Parent fulfilled reward '${req.title}' for ${req.kidName}`, `-${req.costPoints} Points ⭐ Deducted`);
-      this.showReward('Reward Approved!', `"${req.title}" has been signed off! Have fun enjoying your reward!`, 0, 0);
+      this.showReward(
+        'Reward Approved!',
+        `"${req.title}" has been signed off! Have fun enjoying your reward!`,
+        0,
+        0,
+        rewardItem?.image || null,
+        'card_giftcard'
+      );
     }
 
     this.state.pendingApprovals.splice(reqIndex, 1);
@@ -1067,10 +1194,24 @@ class Store {
 
     if (req.type === 'task_point_approval' || req.type === 'task') {
       this.logAction(`Parent rejected Point Approval for '${req.title}' (${req.kidName})`, `0 Points ⭐ Issued`);
-      this.showReward('Request Rejected', `Point approval for "${req.title}" was declined. 0 Points issued.`, 0, 0);
+      this.showReward(
+        'Request Rejected',
+        `Point approval for "${req.title}" was declined. 0 Points issued.`,
+        0,
+        0,
+        null,
+        'cancel'
+      );
     } else if (req.type === 'reward') {
       this.logAction(`Parent declined reward '${req.title}' for ${req.kidName}`, `0 Points Deducted`);
-      this.showReward('Reward Declined', `The request for "${req.title}" was declined by parent.`, 0, 0);
+      this.showReward(
+        'Reward Declined',
+        `The request for "${req.title}" was declined by parent.`,
+        0,
+        0,
+        null,
+        'cancel'
+      );
     }
 
     this.state.pendingApprovals.splice(reqIndex, 1);
@@ -1084,7 +1225,14 @@ class Store {
 
     const activePet = this.getActivePet();
     if (activePet.energy < game.energyCost) {
-      this.showReward('Pet Needs Energy!', 'Feed snacks or let your pet rest to restore energy before playing!', 0, 0);
+      this.showReward(
+        'Pet Needs Energy!',
+        'Feed snacks or let your pet rest to restore energy before playing!',
+        0,
+        0,
+        activePet.avatar,
+        'battery_low'
+      );
       return;
     }
 
@@ -1097,7 +1245,14 @@ class Store {
       this.state.petStatsMap[id].joy = Math.min(100, this.state.petStatsMap[id].joy + 15);
       Sound.fanfare();
       confetti({ particleCount: 80, spread: 90, origin: { y: 0.6 } });
-      this.showReward('Adventure Cleared!', `You mastered ${game.title}! +${game.rewardCoins} Habit Tokens auto-added & +${game.rewardXP} XP!`, game.rewardCoins, game.rewardXP);
+      this.showReward(
+        'Adventure Cleared!',
+        `You mastered ${game.title}! +${game.rewardCoins} Habit Tokens auto-added & +${game.rewardXP} XP!`,
+        game.rewardCoins,
+        game.rewardXP,
+        null,
+        game.icon
+      );
     }
     this.saveState();
   }
@@ -1131,8 +1286,8 @@ class Store {
     if (this.state.taskLedgerLogs.length > 50) this.state.taskLedgerLogs.pop();
   }
 
-  showReward(title, message, coins = 0, xp = 0) {
-    this.state.rewardModal = { title, message, coins, xp };
+  showReward(title, message, coins = 0, xp = 0, image = null, icon = null) {
+    this.state.rewardModal = { title, message, coins, xp, image, icon };
     this.notify();
   }
 

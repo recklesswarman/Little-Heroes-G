@@ -6,6 +6,23 @@ export function renderRewardModal() {
   const reward = state.rewardModal;
   if (!reward) return '';
 
+  let centerGraphicHtml = '';
+  if (reward.image) {
+    centerGraphicHtml = `
+      <img alt="${reward.title}" class="w-28 h-28 sm:w-32 sm:h-32 object-contain relative z-10 drop-shadow-2xl animate-pulse" src="${reward.image}" />
+    `;
+  } else if (reward.icon) {
+    centerGraphicHtml = `
+      <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-surface-container-high border-2 border-primary/40 flex items-center justify-center text-primary relative z-10 shadow-lg">
+        <span class="material-symbols-outlined text-5xl sm:text-6xl">${reward.icon}</span>
+      </div>
+    `;
+  } else {
+    centerGraphicHtml = `
+      <img alt="Reward Sticker" class="w-28 h-28 sm:w-32 sm:h-32 object-contain relative z-10 drop-shadow-2xl" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCRc98XgkYDVOMyeI8_DdTn3brkamdypKZHAOHiWsvdNuYooda2iad8wDRiiTg9NR7rD8mcxuoBFBUSLVrLtnLcoaHCbw6GFUY2IfxfuNNEN9DPOp4_YImncAcHdrg87C8_VAKhcU1QWSn2sjlLyzlzjCEfIZxtp8wUJW0A31Lq1dR2UtL-5WrB4Kv37wm8UqStqA4r7vMt9-HC2m0J2DnH2ho2MRAB876n6T2djlx3G7-pBq9V44VbVg" />
+    `;
+  }
+
   return `
     <div id="reward-modal-backdrop" class="fixed inset-0 bg-[#09141e]/90 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in select-none">
       
@@ -20,13 +37,13 @@ export function renderRewardModal() {
           ${reward.title}
         </h1>
 
-        <!-- 3D Sticker Image Area -->
-        <div class="relative w-40 h-40 mb-4 animate-float rounded-full bg-surface-container flex items-center justify-center border-4 border-primary/30 shadow-[0_0_30px_rgba(84,233,138,0.35)]">
-          <img alt="Reward Sticker" class="w-32 h-32 object-contain relative z-10 drop-shadow-2xl" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCRc98XgkYDVOMyeI8_DdTn3brkamdypKZHAOHiWsvdNuYooda2iad8wDRiiTg9NR7rD8mcxuoBFBUSLVrLtnLcoaHCbw6GFUY2IfxfuNNEN9DPOp4_YImncAcHdrg87C8_VAKhcU1QWSn2sjlLyzlzjCEfIZxtp8wUJW0A31Lq1dR2UtL-5WrB4Kv37wm8UqStqA4r7vMt9-HC2m0J2DnH2ho2MRAB876n6T2djlx3G7-pBq9V44VbVg" />
+        <!-- 3D Item Graphic Area (Dynamic) -->
+        <div class="relative w-36 h-36 sm:w-40 sm:h-40 mb-4 animate-float rounded-full bg-surface-container flex items-center justify-center border-4 border-primary/30 shadow-[0_0_30px_rgba(84,233,138,0.35)] overflow-hidden p-2">
+          ${centerGraphicHtml}
         </div>
 
         <!-- Message Body -->
-        <p class="font-body text-xs sm:text-sm font-bold text-on-surface-variant mb-4 px-2 leading-relaxed">
+        <p class="font-body text-xs sm:text-sm font-bold text-on-surface-variant mb-4 px-2 leading-relaxed whitespace-pre-line">
           ${reward.message}
         </p>
 
@@ -40,7 +57,7 @@ export function renderRewardModal() {
                 ? `
               <div class="flex items-center gap-1.5 text-secondary font-headline text-base font-black">
                 <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">monetization_on</span>
-                +${reward.coins} Coins
+                +${reward.coins} Tokens
               </div>
             `
                 : ''
