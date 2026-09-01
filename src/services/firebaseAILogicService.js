@@ -16,7 +16,6 @@ class FirebaseAILogicService {
     }
 
     try {
-      // Dynamic import to support environments where firebase/ai is enabled
       const { getAI, getGenerativeModel, GoogleAIBackend } = await import('firebase/ai');
       this.ai = getAI(app, { backend: new GoogleAIBackend() });
       this.model = getGenerativeModel(this.ai, {
@@ -37,8 +36,8 @@ class FirebaseAILogicService {
     let title = promptText;
     let description = `A powerful custom ${typeCategory} crafted to help little heroes on their daily quests.`;
     let costCoins = parseInt(defaultPrice) || 150;
-    let iconName = typeCategory === 'weapon' ? 'colorize' : typeCategory === 'badge' ? 'military_tech' : typeCategory === 'snack' ? 'nutrition' : 'shield';
-    let colorTheme = typeCategory === 'weapon' ? 'blue' : typeCategory === 'badge' ? 'yellow' : typeCategory === 'snack' ? 'orange' : 'green';
+    let iconName = typeCategory === 'weapon' ? 'colorize' : typeCategory === 'badge' ? 'military_tech' : typeCategory === 'snack' ? 'nutrition' : typeCategory === 'theme' ? 'palette' : 'shield';
+    let colorTheme = typeCategory === 'weapon' ? 'blue' : typeCategory === 'badge' ? 'yellow' : typeCategory === 'snack' ? 'orange' : typeCategory === 'theme' ? 'teal' : 'green';
 
     // If Firebase AI Logic Gemini is active, use generative AI for dynamic lore & enhancement
     if (this.isAiReady && this.model) {
@@ -50,9 +49,9 @@ Return ONLY a valid JSON object with these exact keys (no markdown code blocks, 
 {
   "title": "A short, catchy, epic name (max 4 words)",
   "description": "Fun, encouraging description for a young child (max 1 sentence)",
-  "suggestedPrice": 150,
-  "themeColor": "green" or "blue" or "yellow" or "orange" (NO pink or purple),
-  "iconSymbol": "shield" or "swords" or "rocket_launch" or "stars" or "military_tech" or "nutrition" or "electric_bolt"
+  "suggestedPrice": 250,
+  "themeColor": "green" or "blue" or "yellow" or "orange" or "teal" (NO pink or purple),
+  "iconSymbol": "shield" or "swords" or "rocket_launch" or "stars" or "military_tech" or "nutrition" or "electric_bolt" or "palette" or "sports_martial_arts"
 }`;
 
         const result = await this.model.generateContent(aiPrompt);
@@ -71,14 +70,27 @@ Return ONLY a valid JSON object with these exact keys (no markdown code blocks, 
     // Generate high-resolution 3D tactile vector graphic
     const graphicDataUrl = generate3DIcon(iconName, colorTheme, title.slice(0, 12));
 
+    const categoryName = typeCategory === 'gear' 
+      ? 'Avatar Gear' 
+      : typeCategory === 'weapon' 
+      ? 'Weapons' 
+      : typeCategory === 'badge' 
+      ? 'Badges' 
+      : typeCategory === 'snack' 
+      ? 'Snacks' 
+      : 'Profile Themes';
+
     return {
       id: 'ai_' + Date.now(),
       title,
+      name: title,
       desc: description,
-      category: typeCategory === 'gear' ? 'Avatar Gear' : typeCategory === 'weapon' ? 'Weapons' : typeCategory === 'badge' ? 'Badges' : 'Snacks',
+      category: categoryName,
       costCoins,
       image: graphicDataUrl,
-      isNew: true
+      isNew: true,
+      colorTheme,
+      iconSymbol: iconName
     };
   }
 }

@@ -2,6 +2,7 @@ import { Sound } from '../audio/sfx.js';
 import confetti from 'canvas-confetti';
 import { PETS_DATABASE } from '../data/petsData.js';
 import { ADVENTURE_GAMES } from '../data/learningGamesData.js';
+import { PROFILE_THEMES } from '../data/profileThemesData.js';
 import { generate3DIcon } from '../utils/graphicsGenerator.js';
 
 const STORAGE_KEY = 'little_heroes_adventure_master_v6';
@@ -34,7 +35,10 @@ const defaultState = {
     coins: 1240,  // 🪙 Tokens (Auto-issued, spent on digital items)
     streak: 5,
     stars: 24,
-    activePetId: 1
+    activePetId: 1,
+    gameDifficulty: 'hard', // 'easy' (Toddler 3-4), 'medium' (Kids 5-6), 'hard' (Kids 7-9)
+    equippedProfileTheme: 'theme_dragon_emerald',
+    unlockedThemes: ['theme_dragon_emerald']
   },
 
   heroes: [
@@ -48,7 +52,10 @@ const defaultState = {
       coins: 1240,
       activePetId: 1,
       streak: 5,
-      completionRate: 92
+      completionRate: 92,
+      gameDifficulty: 'hard',
+      equippedProfileTheme: 'theme_dragon_emerald',
+      unlockedThemes: ['theme_dragon_emerald', 'theme_cyber_knight']
     },
     {
       id: 'mia',
@@ -60,7 +67,10 @@ const defaultState = {
       coins: 820,
       activePetId: 2,
       streak: 4,
-      completionRate: 88
+      completionRate: 88,
+      gameDifficulty: 'medium',
+      equippedProfileTheme: 'theme_cyber_knight',
+      unlockedThemes: ['theme_cyber_knight']
     },
     {
       id: 'sam',
@@ -72,7 +82,10 @@ const defaultState = {
       coins: 350,
       activePetId: 3,
       streak: 3,
-      completionRate: 75
+      completionRate: 75,
+      gameDifficulty: 'easy', // Toddler 3-4 (triggers voice prompts)
+      equippedProfileTheme: 'theme_solar_titan',
+      unlockedThemes: ['theme_solar_titan']
     },
     {
       id: 'alex',
@@ -84,9 +97,15 @@ const defaultState = {
       coins: 610,
       activePetId: 5,
       streak: 4,
-      completionRate: 80
+      completionRate: 80,
+      gameDifficulty: 'medium',
+      equippedProfileTheme: 'theme_cosmic_blaster',
+      unlockedThemes: ['theme_cosmic_blaster']
     }
   ],
+
+  // Kids Profile Themes Catalog
+  profileThemes: PROFILE_THEMES,
 
   // Habit Islands (Preset Daily Positive Behaviors)
   habitIslands: [
@@ -643,7 +662,7 @@ class Store {
   }
 
   // 3. EDIT PRICING & INVENTORY FOR ALL ITEMS (Parent Portal)
-  updateAllPricing(realLifeMap, digitalMap) {
+  updateAllPricing(realLifeMap, digitalMap, themesMap = {}) {
     // Update real life reward points costs
     this.state.realLifeRewards.forEach(r => {
       if (realLifeMap[r.id] !== undefined) {
@@ -658,13 +677,83 @@ class Store {
       }
     });
 
+    // Update profile themes token costs
+    if (this.state.profileThemes) {
+      this.state.profileThemes.forEach(t => {
+        if (themesMap[t.id] !== undefined) {
+          t.costCoins = Math.max(1, parseInt(themesMap[t.id]) || t.costCoins);
+        }
+      });
+    }
+
     this.logAction('Parent updated shop pricing matrix', 'Shop prices updated');
     Sound.fanfare();
-    this.showReward('Pricing Updated!', 'All reward prices have been updated in the Hero Shop!', 0, 0, null, 'payments');
+    this.showReward('Pricing Updated!', 'All reward and theme prices have been updated in the Hero Shop!', 0, 0, null, 'payments');
     this.saveState();
   }
 
-  // 4. AI REWARD GENERATOR STUDIO WITH 3D GRAPHIC ENGINE
+  // 4. PER-KID DIFFICULTY CONTROLS (Parent Portal)
+  setKidDifficulty(kidId, difficultyLevel) {
+    const hero = this.state.heroes.find(h => h.id === kidId);
+    if (hero) {
+      hero.gameDifficulty = difficultyLevel;
+      if (this.state.selectedHero.id === kidId) {
+        this.state.selectedHero.gameDifficulty = difficultyLevel;
+      }
+      this.logAction(`Parent set ${hero.name}'s learning level to ${difficultyLevel.toUpperCase()}`, `Learning Level: ${difficultyLevel}`);
+      Sound.click();
+      this.saveState();
+    }
+  }
+
+  // 5. PROFILE THEMES (Buy & Equip)
+  buyProfileTheme(themeId) {
+    const theme = this.state.profileThemes.find(t => t.id === themeId);
+    if (!theme) return;
+
+    if (this.state.selectedHero.unlockedThemes?.includes(themeId)) {
+      this.equipProfileTheme(themeId);
+      return;
+    }
+
+    if (this.state.selectedHero.coins < theme.costCoins) {
+      Sound.hit();
+      this.showReward('Need More Tokens!', `You need ${theme.costCoins - this.state.selectedHero.coins} more Habit Tokens to unlock this profile theme!`, 0, 0, null, 'palette');
+      return;
+    }
+
+    this.state.selectedHero.coins -= theme.costCoins;
+    if (!this.state.selectedHero.unlockedThemes) this.state.selectedHero.unlockedThemes = [];
+    this.state.selectedHero.unlockedThemes.push(themeId);
+    this.state.selectedHero.equippedProfileTheme = themeId;
+    
+    // Update active hero in heroes array
+    const h = this.state.heroes.find(hero => hero.id === this.state.selectedHero.id);
+    if (h) {
+      if (!h.unlockedThemes) h.unlockedThemes = [];
+      h.unlockedThemes.push(themeId);
+      h.equippedProfileTheme = themeId;
+    }
+
+    Sound.fanfare();
+    confetti({ particleCount: 80, spread: 90 });
+    this.showReward('Profile Theme Unlocked!', `"${theme.name}" is now equipped on your hero profile!`, 0, 25, null, 'palette');
+    this.saveState();
+  }
+
+  equipProfileTheme(themeId) {
+    const theme = this.state.profileThemes.find(t => t.id === themeId);
+    if (theme) {
+      this.state.selectedHero.equippedProfileTheme = themeId;
+      const h = this.state.heroes.find(hero => hero.id === this.state.selectedHero.id);
+      if (h) h.equippedProfileTheme = themeId;
+      Sound.click();
+      this.showReward('Theme Equipped!', `"${theme.name}" is now styling your hero profile!`, 0, 0, null, 'palette');
+      this.saveState();
+    }
+  }
+
+  // 6. AI REWARD GENERATOR STUDIO WITH 3D GRAPHIC ENGINE
   async generateAIReward(name, type, description, costCoins) {
     try {
       const { firebaseAI } = await import('../services/firebaseAILogicService.js');
@@ -673,8 +762,31 @@ class Store {
         newItem.desc = description.trim();
       }
 
+      if (type === 'theme') {
+        const themeId = 'theme_' + Date.now();
+        const customTheme = {
+          id: themeId,
+          name: newItem.title,
+          desc: newItem.desc,
+          costCoins: newItem.costCoins,
+          primaryColor: newItem.colorTheme === 'blue' ? '#3498db' : newItem.colorTheme === 'yellow' ? '#f1c40f' : newItem.colorTheme === 'orange' ? '#e89300' : '#2ecc71',
+          accentColor: newItem.colorTheme === 'blue' ? '#a3d3ff' : newItem.colorTheme === 'yellow' ? '#ffec85' : newItem.colorTheme === 'orange' ? '#ffb961' : '#54e98a',
+          bgGradient: newItem.colorTheme === 'blue' 
+            ? 'from-[#061826] via-[#0c2b42] to-[#030d14]'
+            : newItem.colorTheme === 'yellow'
+            ? 'from-[#2b2000] via-[#473600] to-[#140f00]'
+            : newItem.colorTheme === 'orange'
+            ? 'from-[#291700] via-[#4a2b00] to-[#120a00]'
+            : 'from-[#081c15] via-[#0d281e] to-[#040e0b]',
+          cardBorder: 'border-primary/50',
+          badgeIcon: newItem.iconSymbol || 'palette',
+          bannerPattern: '✨'
+        };
+        this.state.profileThemes.push(customTheme);
+      }
+
       this.state.digitalGear.unshift(newItem);
-      this.logAction(`Parent AI Studio generated new reward '${newItem.title}'`, `Price: ${newItem.costCoins} Tokens 🪙`);
+      this.logAction(`Parent AI Studio generated new ${type}: '${newItem.title}'`, `Price: ${newItem.costCoins} Tokens 🪙`);
       Sound.fanfare();
       confetti({ particleCount: 80, spread: 90 });
       this.showReward(
@@ -688,7 +800,7 @@ class Store {
       this.saveState();
     } catch (e) {
       console.warn("AI generation fallback:", e);
-      const iconName = type === 'badge' ? 'military_tech' : type === 'weapon' ? 'colorize' : type === 'snack' ? 'nutrition' : 'shield';
+      const iconName = type === 'badge' ? 'military_tech' : type === 'weapon' ? 'colorize' : type === 'snack' ? 'nutrition' : type === 'theme' ? 'palette' : 'shield';
       const colorTheme = type === 'weapon' ? 'blue' : type === 'badge' ? 'yellow' : type === 'snack' ? 'orange' : 'green';
       const generatedGraphic = generate3DIcon(iconName, colorTheme, name.slice(0, 12));
 
@@ -696,11 +808,26 @@ class Store {
         id: 'ai_' + Date.now(),
         title: name,
         desc: description || 'AI Generated custom digital reward created by Parent Admin.',
-        category: type === 'gear' ? 'Avatar Gear' : type === 'badge' ? 'Badges' : type === 'weapon' ? 'Weapons' : 'Snacks',
+        category: type === 'gear' ? 'Avatar Gear' : type === 'badge' ? 'Badges' : type === 'weapon' ? 'Weapons' : type === 'theme' ? 'Profile Themes' : 'Snacks',
         costCoins: parseInt(costCoins) || 100,
         image: generatedGraphic,
         isNew: true
       };
+
+      if (type === 'theme') {
+        this.state.profileThemes.push({
+          id: 'theme_' + Date.now(),
+          name: name,
+          desc: description,
+          costCoins: parseInt(costCoins) || 250,
+          primaryColor: '#2ecc71',
+          accentColor: '#54e98a',
+          bgGradient: 'from-[#081c15] via-[#0d281e] to-[#040e0b]',
+          cardBorder: 'border-[#2ecc71]/50',
+          badgeIcon: 'palette',
+          bannerPattern: '🎨'
+        });
+      }
 
       this.state.digitalGear.unshift(newItem);
       this.showReward(
@@ -1269,6 +1396,9 @@ class Store {
       this.state.selectedHero.coins = hero.coins;
       this.state.selectedHero.activePetId = hero.activePetId || 1;
       this.state.selectedHero.streak = hero.streak;
+      this.state.selectedHero.gameDifficulty = hero.gameDifficulty || 'medium';
+      this.state.selectedHero.equippedProfileTheme = hero.equippedProfileTheme || 'theme_dragon_emerald';
+      this.state.selectedHero.unlockedThemes = hero.unlockedThemes || ['theme_dragon_emerald'];
       Sound.fanfare();
       this.saveState();
     }

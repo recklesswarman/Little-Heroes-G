@@ -1,6 +1,7 @@
 import { store } from '../state/store.js';
-import { ADVENTURE_GAMES } from '../data/learningGamesData.js';
+import { ADVENTURE_GAMES, getGameChallenges } from '../data/learningGamesData.js';
 import { Sound } from '../audio/sfx.js';
+import { voicePrompts } from '../utils/voicePrompts.js';
 import confetti from 'canvas-confetti';
 
 let activeGame = null;
@@ -10,10 +11,14 @@ export function renderQuestMapView() {
   const state = store.getState();
   const activePet = store.getActivePet();
   const hero = state.selectedHero;
+  const kidDifficulty = hero.gameDifficulty || 'medium';
 
   // If a mini-game stop is actively being played
   if (activeGame) {
-    const challenge = activeGame.challenges[currentChallengeIdx];
+    const challenges = getGameChallenges(activeGame, kidDifficulty);
+    const challenge = challenges[currentChallengeIdx] || challenges[0];
+    const isEasyMode = kidDifficulty === 'easy';
+
     return `
       <div class="max-w-2xl mx-auto px-4 pt-4 pb-32 flex flex-col gap-5 animate-fade-in select-none">
         
@@ -25,10 +30,27 @@ export function renderQuestMapView() {
           <div class="flex items-center gap-2">
             <span class="text-xs font-black uppercase text-secondary">${activeGame.subject}</span>
             <span class="bg-surface-container-high px-3 py-1 rounded-full text-xs font-bold text-primary border border-primary/30">
-              Challenge ${currentChallengeIdx + 1} / ${activeGame.challenges.length}
+              Challenge ${currentChallengeIdx + 1} / ${challenges.length}
             </span>
           </div>
         </div>
+
+        <!-- Easy Mode Voice Guide Banner -->
+        ${
+          isEasyMode
+            ? `
+          <div class="bg-secondary/15 border-2 border-secondary/40 rounded-2xl p-3 flex items-center justify-between gap-3 text-xs animate-fade-in">
+            <div class="flex items-center gap-2 text-secondary font-black">
+              <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">record_voice_over</span>
+              <span>Toddler Easy Voice Guide: Listen and follow along!</span>
+            </div>
+            <button id="map-voice-replay-btn" class="bg-secondary text-on-secondary font-headline text-[11px] font-black px-3.5 py-1.5 rounded-xl chunky-btn-sm flex items-center gap-1 hover:brightness-110 active:scale-95 shadow">
+              <span class="material-symbols-outlined text-sm">volume_up</span> Hear Aloud
+            </button>
+          </div>
+        `
+            : ''
+        }
 
         <!-- Mini Game Play Arena Card -->
         <div class="bg-surface-container rounded-4xl p-6 sm:p-8 border-4 border-surface-container-highest card-shadow flex flex-col gap-6 text-center relative overflow-hidden">
@@ -43,17 +65,32 @@ export function renderQuestMapView() {
               <span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'FILL' 1;">${activeGame.icon}</span>
             </div>
             <div class="flex flex-col text-left">
-              <h2 class="font-headline text-xl sm:text-2xl font-black text-inverse-surface">${activeGame.title}</h2>
+              <div class="flex items-center gap-2">
+                <h2 class="font-headline text-xl sm:text-2xl font-black text-inverse-surface">${activeGame.title}</h2>
+                <span class="text-[10px] font-black px-2 py-0.5 rounded-md ${isEasyMode ? 'bg-primary/20 text-primary' : kidDifficulty === 'hard' ? 'bg-error/20 text-error' : 'bg-secondary/20 text-secondary'}">
+                  ${isEasyMode ? 'Toddler 3-4' : kidDifficulty === 'hard' ? 'Big Kid 7-9' : 'Kids 5-6'}
+                </span>
+              </div>
               <p class="text-xs text-on-surface-variant font-bold">${activeGame.desc}</p>
             </div>
           </div>
 
           <!-- Question Box -->
-          <div class="bg-surface-container-lowest rounded-3xl p-6 sm:p-8 border-3 border-surface-container-highest shadow-inner flex flex-col items-center justify-center min-h-[140px]">
+          <div class="bg-surface-container-lowest rounded-3xl p-6 sm:p-8 border-3 border-surface-container-highest shadow-inner flex flex-col items-center justify-center min-h-[140px] relative">
             <span class="text-[11px] font-black uppercase text-secondary mb-2 tracking-wider">Question ${currentChallengeIdx + 1}</span>
             <p class="font-headline text-xl sm:text-2xl font-black text-primary leading-snug">
               ${challenge.question}
             </p>
+            
+            ${
+              isEasyMode
+                ? `
+              <button id="map-speak-question-btn" class="mt-3 bg-secondary/20 hover:bg-secondary/30 text-secondary font-headline text-xs font-black px-3.5 py-1.5 rounded-xl border border-secondary/40 flex items-center gap-1.5 active:scale-95">
+                <span class="material-symbols-outlined text-sm">volume_up</span> Read to Me
+              </button>
+            `
+                : ''
+            }
           </div>
 
           <!-- Multiple Choice Options -->
@@ -75,7 +112,7 @@ export function renderQuestMapView() {
           <!-- Companion Mascot Cheer Box -->
           <div class="flex items-center justify-center gap-3 pt-2 border-t border-surface-container-highest text-xs font-bold text-on-surface-variant">
             <img src="${activePet.avatar}" class="w-8 h-8 rounded-full border-2 border-primary object-cover" />
-            <span>${activePet.name} is cheering for you! Tap the best answer!</span>
+            <span>${activePet.name} is cheering for ${hero.name}! Tap your choice!</span>
           </div>
 
         </div>
@@ -94,7 +131,7 @@ export function renderQuestMapView() {
       subject: 'Phonics & Reading',
       icon: 'volume_up',
       color: '#2ecc71',
-      align: 'start', // left
+      align: 'start',
       stars: 3,
       yPos: '85%'
     },
@@ -106,7 +143,7 @@ export function renderQuestMapView() {
       subject: 'Math & Numbers',
       icon: 'calculate',
       color: '#f1c40f',
-      align: 'end', // right
+      align: 'end',
       stars: 3,
       yPos: '70%'
     },
@@ -166,10 +203,15 @@ export function renderQuestMapView() {
       <!-- Top Title Bar -->
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 class="font-headline text-2xl sm:text-3xl font-black text-inverse-surface flex items-center gap-2.5">
-            <span class="material-symbols-outlined text-primary text-3xl" style="font-variation-settings: 'FILL' 1;">explore</span>
-            Hero Quest Map
-          </h1>
+          <div class="flex items-center gap-2.5">
+            <h1 class="font-headline text-2xl sm:text-3xl font-black text-inverse-surface flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary text-3xl" style="font-variation-settings: 'FILL' 1;">explore</span>
+              Hero Quest Map
+            </h1>
+            <span class="text-xs font-black uppercase px-2.5 py-1 rounded-full border ${kidDifficulty === 'easy' ? 'bg-primary/20 text-primary border-primary/40' : kidDifficulty === 'hard' ? 'bg-error/20 text-error border-error/40' : 'bg-secondary/20 text-secondary border-secondary/40'}">
+              Level: ${kidDifficulty === 'easy' ? 'Easy (Toddler 3-4)' : kidDifficulty === 'hard' ? 'Hard (Kids 7-9)' : 'Medium (Kids 5-6)'}
+            </span>
+          </div>
           <p class="text-xs font-bold text-on-surface-variant">Conquer all 6 Pet Adventure stops along the realm road to defeat the Sugar Boss!</p>
         </div>
 
@@ -257,19 +299,15 @@ export function renderQuestMapView() {
             <rect width="800" height="1200" fill="url(#spireGlow)" />
 
             <!-- Winding Cobblestone Road Trail Through All 6 Stops -->
-            <!-- Outer Road Dirt Trench -->
             <path d="M 180 1020 C 350 980, 520 920, 600 840 C 690 750, 480 680, 220 650 C 90 630, 160 520, 320 480 C 500 440, 680 410, 620 330 C 560 250, 380 260, 220 220 C 140 200, 280 110, 400 60"
                   fill="none" stroke="#0b1e2c" stroke-width="48" stroke-linecap="round" stroke-linejoin="round" />
             
-            <!-- Main Cobblestone Road Base -->
             <path d="M 180 1020 C 350 980, 520 920, 600 840 C 690 750, 480 680, 220 650 C 90 630, 160 520, 320 480 C 500 440, 680 410, 620 330 C 560 250, 380 260, 220 220 C 140 200, 280 110, 400 60"
                   fill="none" stroke="#1c3b52" stroke-width="32" stroke-linecap="round" stroke-linejoin="round" filter="url(#roadShadow)" />
 
-            <!-- Golden Glowing Stepping Stones / Dashed Trail Line -->
             <path d="M 180 1020 C 350 980, 520 920, 600 840 C 690 750, 480 680, 220 650 C 90 630, 160 520, 320 480 C 500 440, 680 410, 620 330 C 560 250, 380 260, 220 220 C 140 200, 280 110, 400 60"
                   fill="none" stroke="#54e98a" stroke-width="6" stroke-linecap="round" stroke-dasharray="14 16" opacity="0.85" />
 
-            <!-- Vector Decorative Biome Elements (Trees, Castle towers, Mountains, Crystals) -->
             <!-- Stop 1 Biome: Pine Trees & Ancient Grove -->
             <g fill="#1b4332" opacity="0.8">
               <polygon points="100,1050 120,1010 140,1050" />
@@ -331,7 +369,7 @@ export function renderQuestMapView() {
             </button>
           </div>
 
-          <!-- THE 6 PET ADVENTURE MINI GAME STOPS (Ordered from Top to Bottom along the winding road) -->
+          <!-- THE 6 PET ADVENTURE MINI GAME STOPS -->
           ${mapStops
             .slice()
             .reverse()
@@ -358,7 +396,6 @@ export function renderQuestMapView() {
                   <div class="flex flex-col flex-1 min-w-0">
                     <div class="flex items-center justify-between gap-1">
                       <span class="text-[10px] font-black uppercase text-secondary truncate">${stop.subject}</span>
-                      <!-- Stars Earned -->
                       <div class="flex text-secondary text-xs">
                         ${'★'.repeat(stop.stars)}${'☆'.repeat(3 - stop.stars)}
                       </div>
@@ -383,7 +420,6 @@ export function renderQuestMapView() {
                     </div>
                   </div>
 
-                  <!-- Play Arrow Indicator -->
                   <div class="w-10 h-10 rounded-xl bg-primary/20 text-primary flex items-center justify-center flex-shrink-0 group-hover:bg-primary group-hover:text-on-primary transition-colors border border-primary/40">
                     <span class="material-symbols-outlined text-xl">play_arrow</span>
                   </div>
@@ -405,7 +441,7 @@ export function renderQuestMapView() {
             </div>
             <div class="flex flex-col">
               <span class="font-headline font-black text-inverse-surface">Adventure Trailhead (Stop 1 - 6)</span>
-              <span class="text-on-surface-variant font-bold">Every stop challenges your hero with interactive learning puzzles!</span>
+              <span class="text-on-surface-variant font-bold">Adjusted for ${hero.name}'s level: ${kidDifficulty === 'easy' ? 'Easy Toddler (Audio Guided)' : kidDifficulty === 'hard' ? 'Hard Level (Ages 7-9)' : 'Medium Level (Ages 5-6)'}</span>
             </div>
           </div>
           <button id="map-to-pet-pen-btn" class="bg-surface-container-high hover:bg-surface-bright text-inverse-surface font-headline text-xs font-black px-4 py-2.5 rounded-xl border border-surface-container-highest flex items-center gap-1.5 chunky-btn-sm active:scale-95 self-end sm:self-auto">
@@ -423,6 +459,7 @@ export function attachQuestMapListeners() {
   const exitBtn = document.getElementById('map-game-exit-btn');
   if (exitBtn) {
     exitBtn.addEventListener('click', () => {
+      voicePrompts.stop();
       activeGame = null;
       currentChallengeIdx = 0;
       store.notify();
@@ -441,6 +478,17 @@ export function attachQuestMapListeners() {
     sugarBossBtn.addEventListener('click', () => {
       Sound.click();
       store.navigate('ar_battle');
+    });
+  }
+
+  // Voice replay button in easy mode
+  const replayVoiceBtn = document.getElementById('map-voice-replay-btn') || document.getElementById('map-speak-question-btn');
+  if (replayVoiceBtn && activeGame) {
+    replayVoiceBtn.addEventListener('click', () => {
+      const kidDiff = store.getState().selectedHero.gameDifficulty || 'medium';
+      const challenges = getGameChallenges(activeGame, kidDiff);
+      const challenge = challenges[currentChallengeIdx] || challenges[0];
+      voicePrompts.speakGuidance(activeGame.title, challenge.question);
     });
   }
 
@@ -468,6 +516,16 @@ export function attachQuestMapListeners() {
         currentChallengeIdx = 0;
         Sound.click();
         store.notify();
+
+        // If toddler easy mode is active, trigger realistic spoken voice guidance
+        const kidDiff = store.getState().selectedHero.gameDifficulty || 'medium';
+        if (kidDiff === 'easy') {
+          const challenges = getGameChallenges(game, 'easy');
+          const challenge = challenges[0];
+          setTimeout(() => {
+            voicePrompts.speakGuidance(game.title, challenge.question);
+          }, 300);
+        }
       }
     });
   });
@@ -476,15 +534,29 @@ export function attachQuestMapListeners() {
   document.querySelectorAll('.map-game-opt-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       const chosenIdx = parseInt(btn.getAttribute('data-map-opt-idx'));
-      const challenge = activeGame.challenges[currentChallengeIdx];
+      const kidDiff = store.getState().selectedHero.gameDifficulty || 'medium';
+      const challenges = getGameChallenges(activeGame, kidDiff);
+      const challenge = challenges[currentChallengeIdx] || challenges[0];
 
       if (chosenIdx === challenge.answer) {
         Sound.fanfare();
         confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
 
-        if (currentChallengeIdx + 1 < activeGame.challenges.length) {
+        if (kidDiff === 'easy') {
+          voicePrompts.speakSuccess();
+        }
+
+        if (currentChallengeIdx + 1 < challenges.length) {
           currentChallengeIdx++;
           store.notify();
+
+          // Read the next question in easy mode
+          if (kidDiff === 'easy') {
+            const nextChallenge = challenges[currentChallengeIdx];
+            setTimeout(() => {
+              voicePrompts.speakGuidance(activeGame.title, nextChallenge.question);
+            }, 500);
+          }
         } else {
           // Finished all questions for this realm stop!
           const g = activeGame;
@@ -494,6 +566,9 @@ export function attachQuestMapListeners() {
         }
       } else {
         Sound.hit();
+        if (kidDiff === 'easy') {
+          voicePrompts.speakTryAgain();
+        }
         btn.classList.add('border-error', 'text-error');
         setTimeout(() => btn.classList.remove('border-error', 'text-error'), 450);
       }

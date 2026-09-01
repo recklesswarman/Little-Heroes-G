@@ -35,6 +35,7 @@ class FirestoreSyncService {
           if (cloudData.inventory) state.inventory = cloudData.inventory;
           if (cloudData.equippedPetGear) state.equippedPetGear = cloudData.equippedPetGear;
           if (cloudData.parentSettings) state.parentSettings = cloudData.parentSettings;
+          if (cloudData.profileThemes) state.profileThemes = cloudData.profileThemes;
 
           state.household.lastSync = "Synced Just Now";
           store.notify();
@@ -68,6 +69,7 @@ class FirestoreSyncService {
         inventory: state.inventory,
         equippedPetGear: state.equippedPetGear,
         parentSettings: state.parentSettings,
+        profileThemes: state.profileThemes || [],
         updatedAt: new Date().toISOString()
       }, { merge: true });
       this.isSyncing = false;

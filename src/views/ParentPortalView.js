@@ -446,6 +446,33 @@ export function renderParentPortalView() {
                 .join('')}
             </div>
           </div>
+
+          <!-- Section 3: Profile Themes Pricing (Tokens 🪙) -->
+          <div class="bg-surface-container rounded-3xl p-5 border-2 border-primary/40 card-shadow flex flex-col gap-4">
+            <h3 class="font-headline text-sm font-black text-primary flex items-center gap-2">
+              <span class="material-symbols-outlined">palette</span>
+              Kids Profile Themes Pricing (Cost in Habit Tokens 🪙)
+            </h3>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              ${(state.profileThemes || [])
+                .map(
+                  (t) => `
+                <div class="bg-surface-container-high rounded-xl p-3 border border-surface-container-highest flex items-center justify-between gap-3">
+                  <div class="flex items-center gap-2 truncate">
+                    <span class="material-symbols-outlined text-sm" style="color: ${t.primaryColor}">${t.badgeIcon}</span>
+                    <span class="text-xs font-bold text-inverse-surface truncate">${t.name}</span>
+                  </div>
+                  <div class="flex items-center gap-1 flex-shrink-0">
+                    <input type="number" data-pricing-theme-id="${t.id}" value="${t.costCoins}" class="w-20 bg-surface-container-lowest border border-primary/40 rounded-lg p-1.5 text-xs font-black text-secondary text-center" />
+                    <span class="text-xs text-secondary font-bold">🪙</span>
+                  </div>
+                </div>
+              `
+                )
+                .join('')}
+            </div>
+          </div>
         </section>
       `
           : ''
@@ -480,6 +507,7 @@ export function renderParentPortalView() {
                   <option value="weapon">⚔️ Weapons</option>
                   <option value="badge">🏆 Badges & Trophies</option>
                   <option value="snack">🫐 Pet Snacks</option>
+                  <option value="theme">🎨 Kids Profile Theme</option>
                 </select>
               </div>
 
@@ -579,7 +607,76 @@ export function renderParentPortalView() {
       ${
         activeAdminTab === 'settings'
           ? `
-        <section class="flex flex-col gap-4 animate-fade-in">
+        <section class="flex flex-col gap-6 animate-fade-in">
+          
+          <!-- Mini Games Difficulty Configuration Individually for Each Kid -->
+          <div class="bg-surface-container rounded-3xl p-6 border-2 border-secondary-container card-shadow flex flex-col gap-5">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-2xl bg-secondary text-on-secondary flex items-center justify-center text-2xl shadow">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">psychology</span>
+              </div>
+              <div>
+                <h3 class="font-headline text-base sm:text-lg font-black text-inverse-surface">Mini Games Difficulty Levels (Configured Per Kid)</h3>
+                <p class="text-xs text-on-surface-variant font-bold">Select individual learning levels for each child across all 6 Quest Map mini-games.</p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              ${heroes.map((h) => {
+                const currentDiff = h.gameDifficulty || 'medium';
+                return `
+                  <div class="bg-surface-container-high rounded-2xl p-4 border-2 border-surface-container-highest flex flex-col gap-3">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-2.5">
+                        <img src="${h.avatar}" class="w-10 h-10 rounded-full border-2 border-primary object-cover" />
+                        <div class="flex flex-col">
+                          <span class="font-headline text-sm font-black text-inverse-surface">${h.name}</span>
+                          <span class="text-[10px] text-on-surface-variant font-bold">${h.role}</span>
+                        </div>
+                      </div>
+                      <span class="text-[10px] font-black uppercase px-2.5 py-1 rounded-full ${
+                        currentDiff === 'easy' ? 'bg-primary/20 text-primary border border-primary/40' :
+                        currentDiff === 'hard' ? 'bg-error/20 text-error border border-error/40' :
+                        'bg-secondary/20 text-secondary border border-secondary/40'
+                      }">
+                        ${currentDiff === 'easy' ? '🟢 Easy (Toddler 3-4)' : currentDiff === 'hard' ? '🔵 Hard (Kids 7-9)' : '🟡 Medium (Kids 5-6)'}
+                      </span>
+                    </div>
+
+                    <!-- 3 Difficulty Toggle Buttons for this Child -->
+                    <div class="grid grid-cols-3 gap-2 text-center">
+                      <button data-kid-id="${h.id}" data-diff-level="easy" class="kid-diff-btn rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 border-2 transition-all ${
+                        currentDiff === 'easy' ? 'bg-primary text-on-primary border-primary-container shadow-sm font-black' : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border-surface-container-highest'
+                      }">
+                        <span class="text-xs font-headline font-black">Easy</span>
+                        <span class="text-[9px] leading-tight ${currentDiff === 'easy' ? 'text-on-primary/90' : 'text-on-surface-variant'}">Age 3–4 (Voice Prompts)</span>
+                      </button>
+
+                      <button data-kid-id="${h.id}" data-diff-level="medium" class="kid-diff-btn rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 border-2 transition-all ${
+                        currentDiff === 'medium' ? 'bg-secondary text-on-secondary border-secondary-container shadow-sm font-black' : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border-surface-container-highest'
+                      }">
+                        <span class="text-xs font-headline font-black">Medium</span>
+                        <span class="text-[9px] leading-tight ${currentDiff === 'medium' ? 'text-on-secondary/90' : 'text-on-surface-variant'}">Age 5–6 (Reading)</span>
+                      </button>
+
+                      <button data-kid-id="${h.id}" data-diff-level="hard" class="kid-diff-btn rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 border-2 transition-all ${
+                        currentDiff === 'hard' ? 'bg-error text-on-error border-error-container shadow-sm font-black' : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border-surface-container-highest'
+                      }">
+                        <span class="text-xs font-headline font-black">Hard</span>
+                        <span class="text-[9px] leading-tight ${currentDiff === 'hard' ? 'text-on-error/90' : 'text-on-surface-variant'}">Age 7–9 (Advanced)</span>
+                      </button>
+                    </div>
+
+                    <p class="text-[10px] text-on-surface-variant italic">
+                      ${currentDiff === 'easy' ? '✨ Provides realistic toddler voice narration guiding through questions and next steps.' : currentDiff === 'hard' ? '🧠 Complex math, vocabulary and reasoning challenges.' : '📚 Early phonics, counting and kindergarten shapes.'}
+                    </p>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+
+          <!-- Toothbrush AR Battle Duration Slider -->
           <div class="bg-surface-container rounded-3xl p-6 border-2 border-surface-container-highest card-shadow flex flex-col gap-5">
             <h3 class="font-headline text-base font-black text-inverse-surface">Toothbrush AR Battle Duration Slider</h3>
             
@@ -595,6 +692,7 @@ export function renderParentPortalView() {
               }">3 Minutes</button>
             </div>
           </div>
+
         </section>
       `
           : ''
@@ -712,9 +810,24 @@ export function attachParentPortalListeners() {
         digitalMap[id] = input.value;
       });
 
-      store.updateAllPricing(realLifeMap, digitalMap);
+      const themesMap = {};
+      document.querySelectorAll('[data-pricing-theme-id]').forEach((input) => {
+        const id = input.getAttribute('data-pricing-theme-id');
+        themesMap[id] = input.value;
+      });
+
+      store.updateAllPricing(realLifeMap, digitalMap, themesMap);
     });
   }
+
+  // KID DIFFICULTY SELECTION (Settings Tab)
+  document.querySelectorAll('.kid-diff-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const kidId = btn.getAttribute('data-kid-id');
+      const diff = btn.getAttribute('data-diff-level');
+      store.setKidDifficulty(kidId, diff);
+    });
+  });
 
   // SLIDERS TAB
   document.querySelectorAll('.ar-duration-btn').forEach((btn) => {
