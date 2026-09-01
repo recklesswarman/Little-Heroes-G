@@ -1,6 +1,7 @@
 import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import confetti from 'canvas-confetti';
+import sugarVillainEscapedImg from '../assets/sugar_villain_escaped.jpg';
 
 let battleTimer = null;
 let secondsRemaining = 120; // 2 minutes (120s)
@@ -230,7 +231,14 @@ function quitBattle() {
   if (isBattleRunning && secondsRemaining > 0) {
     isBattleRunning = false;
     Sound.hit();
-    store.showReward('Boss Escaped!', 'You quit early before 2 minutes were up. Keep brushing all 2 minutes next time to earn your Points & Coins!', 0, 0);
+    store.showReward(
+      'Boss Escaped!',
+      'The Sugar Villain and his germ minions ran away! Brush for the full 2 minutes next time to defeat them and earn your Rewards!',
+      0,
+      0,
+      sugarVillainEscapedImg,
+      'sentiment_dissatisfied'
+    );
   }
   isBattleRunning = false;
   store.navigate('dashboard');
