@@ -92,8 +92,8 @@ export function renderDashboardView() {
       <!-- ZONE 1: Habit Islands (Preset Positive Behaviors) -->
       <section class="flex flex-col gap-3.5">
         <div class="flex justify-between items-center px-1">
-          <div class="flex items-center gap-2">
-            <span class="material-symbols-outlined text-secondary text-2xl" style="font-variation-settings: 'FILL' 1;">island</span>
+          <div class="flex items-center gap-2.5">
+            <span class="text-2xl leading-none flex items-center justify-center select-none drop-shadow-sm" role="img" aria-label="Habit Islands">🏝️</span>
             <h2 class="font-headline text-xl font-black text-inverse-surface">Habit Islands</h2>
           </div>
           <span class="text-xs font-bold text-on-surface-variant">Daily Positive Habits</span>
