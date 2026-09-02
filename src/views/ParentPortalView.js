@@ -101,21 +101,48 @@ export function renderParentPortalView() {
         activeAdminTab === 'approvals'
           ? `
         <section class="flex flex-col gap-4 animate-fade-in">
-          <div class="flex justify-between items-center">
-            <h2 class="font-headline text-lg font-black text-inverse-surface flex items-center gap-2">
-              <span class="material-symbols-outlined text-secondary">inbox</span>
-              Pending Sign-off Requests (${pending.length})
-            </h2>
-            <span class="text-xs font-bold text-on-surface-variant">Review task submissions & rewards</span>
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div>
+              <h2 class="font-headline text-lg font-black text-inverse-surface flex items-center gap-2">
+                <span class="material-symbols-outlined text-secondary">inbox</span>
+                Pending Sign-off Requests (${pending.length})
+              </h2>
+              <span class="text-xs font-bold text-on-surface-variant">Review task submissions & rewards</span>
+            </div>
+
+            <!-- Quick Action Toolbar -->
+            <div class="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+              ${
+                pending.length > 0
+                  ? `
+                <button id="admin-approve-all-btn" class="flex-1 sm:flex-none bg-primary text-on-primary font-headline text-xs font-black px-4 py-2.5 rounded-xl border border-primary-container chunky-btn-sm active:scale-95 shadow-sm flex items-center gap-1.5 hover:brightness-110">
+                  <span class="material-symbols-outlined text-base">done_all</span>
+                  <span>Approve All (${pending.length})</span>
+                </button>
+              `
+                  : ''
+              }
+
+              <button id="admin-clear-all-pending-btn" class="flex-1 sm:flex-none bg-surface-container-high hover:bg-error/20 text-error font-headline text-xs font-black px-4 py-2.5 rounded-xl border border-error/30 chunky-btn-sm active:scale-95 shadow-sm flex items-center gap-1.5" title="Clear all pending parent approval notifications off buttons">
+                <span class="material-symbols-outlined text-base">cleaning_services</span>
+                <span>Clear All Pending Button Notifications</span>
+              </button>
+            </div>
           </div>
 
           ${
             pending.length === 0
               ? `
-            <div class="bg-surface-container rounded-3xl p-8 text-center border-2 border-surface-container-highest card-shadow flex flex-col items-center gap-2">
+            <div class="bg-surface-container rounded-3xl p-8 text-center border-2 border-surface-container-highest card-shadow flex flex-col items-center gap-3">
               <span class="material-symbols-outlined text-5xl text-primary">check_circle</span>
               <h3 class="font-headline text-lg font-black text-inverse-surface">Inbox is Clear!</h3>
               <p class="text-xs text-on-surface-variant">All completed chores have been verified and rewards signed off.</p>
+              <div class="pt-2">
+                <button id="admin-clear-all-pending-empty-btn" class="bg-surface-container-high hover:bg-error/20 text-error font-headline text-xs font-black px-4 py-2.5 rounded-xl border border-error/30 chunky-btn-sm active:scale-95 flex items-center gap-1.5 shadow-sm">
+                  <span class="material-symbols-outlined text-base">cleaning_services</span>
+                  <span>Clear All Pending Button Notifications</span>
+                </button>
+              </div>
             </div>
           `
               : `
@@ -905,6 +932,30 @@ export function renderParentPortalView() {
             </div>
           </div>
 
+          <!-- Task & Button Diagnostics & Clearing Stuck Approvals -->
+          <div class="bg-surface-container rounded-3xl p-6 border-2 border-secondary-container card-shadow flex flex-col gap-4">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-2xl bg-secondary text-on-secondary flex items-center justify-center text-2xl shadow">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">cleaning_services</span>
+              </div>
+              <div>
+                <h3 class="font-headline text-base sm:text-lg font-black text-inverse-surface">Task & Habit Button Reset Controls</h3>
+                <p class="text-xs text-on-surface-variant font-bold">Clear all pending parent approval notifications off buttons if they ever get stuck showing.</p>
+              </div>
+            </div>
+
+            <div class="bg-surface-container-high rounded-2xl p-4 border border-surface-container-highest flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <h4 class="font-headline text-sm font-black text-inverse-surface">Clear Stuck Pending Approvals</h4>
+                <p class="text-xs text-on-surface-variant font-medium">Instantly clears all pending approval badges off buttons and returns all habits and chores to ready status across all child accounts.</p>
+              </div>
+              <button id="admin-settings-clear-pending-btn" class="bg-error text-on-error font-headline text-xs font-black px-4 py-3 rounded-xl chunky-btn-sm active:scale-95 whitespace-nowrap shadow-sm flex items-center gap-1.5 hover:brightness-110">
+                <span class="material-symbols-outlined text-base">mop</span>
+                <span>Clear All Pending Approvals</span>
+              </button>
+            </div>
+          </div>
+
         </section>
       `
           : ''
@@ -1272,6 +1323,34 @@ export function attachParentPortalListeners() {
   });
 
   // APPROVALS TAB
+  const clearAllPendingBtn = document.getElementById('admin-clear-all-pending-btn');
+  if (clearAllPendingBtn) {
+    clearAllPendingBtn.addEventListener('click', () => {
+      store.clearAllPendingApprovals();
+    });
+  }
+
+  const clearAllPendingEmptyBtn = document.getElementById('admin-clear-all-pending-empty-btn');
+  if (clearAllPendingEmptyBtn) {
+    clearAllPendingEmptyBtn.addEventListener('click', () => {
+      store.clearAllPendingApprovals();
+    });
+  }
+
+  const settingsClearPendingBtn = document.getElementById('admin-settings-clear-pending-btn');
+  if (settingsClearPendingBtn) {
+    settingsClearPendingBtn.addEventListener('click', () => {
+      store.clearAllPendingApprovals();
+    });
+  }
+
+  const approveAllBtn = document.getElementById('admin-approve-all-btn');
+  if (approveAllBtn) {
+    approveAllBtn.addEventListener('click', () => {
+      store.approveAllPendingRequests();
+    });
+  }
+
   document.querySelectorAll('.admin-approve-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       const id = btn.getAttribute('data-approve-id');

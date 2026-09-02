@@ -887,11 +887,23 @@ class Store {
     const habit = this.state.habitIslands.find((h) => h.id === habitId);
     if (!habit) return;
 
+    // Check if habit is currently pending approval
+    const isPending = (habit.completed && !habit.pointsApproved) || 
+      (this.state.pendingApprovals && this.state.pendingApprovals.some(r => r.taskId === habit.id && r.status === 'pending'));
+
+    if (isPending) {
+      // Per requirements: All habits are always able to be selected, but when pending approval:
+      // - NO message modal or banner
+      // - NO duplicate tokens auto-issued until parent approves original request first
+      Sound.click();
+      return;
+    }
+
     if (!habit.completed) {
       habit.completed = true;
       habit.pointsApproved = false;
 
-      // 🪙 Tokens are auto-issued immediately
+      // 🪙 Tokens are auto-issued immediately (only upon first completion)
       this.state.selectedHero.coins += habit.coins;
       this.addXP(habit.xp);
       Sound.coin();
@@ -929,28 +941,9 @@ class Store {
         habit.image,
         habit.icon
       );
-    } else if (!habit.pointsApproved) {
-      // Already submitted & pending parent approval
-      Sound.pop();
-      this.showReward(
-        `Pending Parent Approval!`,
-        `You completed '${habit.title}'!\n⭐ +${habit.points} Points request is waiting for Parent Approval in the Parent Portal.`,
-        0,
-        0,
-        habit.image,
-        habit.icon
-      );
     } else {
       // Already approved by parent
-      Sound.fanfare();
-      this.showReward(
-        `Quest Approved! ⭐`,
-        `Parent approved this habit! You earned all +${habit.points} Points and +${habit.coins} Tokens!`,
-        0,
-        0,
-        habit.image,
-        habit.icon
-      );
+      Sound.click();
     }
     this.saveState();
   }
@@ -960,11 +953,23 @@ class Store {
     const task = this.state.taskForest.find((t) => t.id === taskId);
     if (!task) return;
 
+    // Check if task is currently pending approval
+    const isPending = (task.completed && !task.pointsApproved) || 
+      (this.state.pendingApprovals && this.state.pendingApprovals.some(r => r.taskId === task.id && r.status === 'pending'));
+
+    if (isPending) {
+      // Per requirements: All tasks are always able to be selected, but when pending approval:
+      // - NO message modal or banner
+      // - NO duplicate tokens auto-issued until parent approves original request first
+      Sound.click();
+      return;
+    }
+
     if (!task.completed) {
       task.completed = true;
       task.pointsApproved = false;
 
-      // 🪙 Tokens are auto-issued immediately
+      // 🪙 Tokens are auto-issued immediately (only upon first completion)
       this.state.selectedHero.coins += task.coins;
       this.addXP(task.xp);
       Sound.coin();
@@ -1002,28 +1007,9 @@ class Store {
         task.image,
         task.icon
       );
-    } else if (!task.pointsApproved) {
-      // Already submitted & pending parent approval
-      Sound.pop();
-      this.showReward(
-        `Pending Parent Approval!`,
-        `You completed '${task.title}'!\n⭐ +${task.points} Points request is waiting for Parent Approval in the Parent Portal.`,
-        0,
-        0,
-        task.image,
-        task.icon
-      );
     } else {
       // Already approved by parent
-      Sound.fanfare();
-      this.showReward(
-        `Chore Approved! ⭐`,
-        `Parent approved this chore! You earned all +${task.points} Points and +${task.coins} Tokens!`,
-        0,
-        0,
-        task.image,
-        task.icon
-      );
+      Sound.click();
     }
     this.saveState();
   }
@@ -1034,6 +1020,24 @@ class Store {
     if (task) {
       task.completed = true;
       task.pointsApproved = false;
+    }
+
+    // Check if already has a pending approval
+    const isPending = this.state.pendingApprovals && this.state.pendingApprovals.some(r => r.taskId === 'morning_brush' && r.status === 'pending');
+
+    if (isPending) {
+      // Already pending approval: celebration sound, but no duplicate tokens until parent approves
+      Sound.fanfare();
+      this.showReward(
+        'SUGAR VILLAIN DEFEATED!',
+        'Great toothbrush battle hero! Your reward request is pending parent approval in the Parent Portal.',
+        0,
+        0,
+        task?.image || generate3DIcon('dentistry', 'blue', 'Brush'),
+        'dentistry'
+      );
+      this.saveState();
+      return;
     }
 
     this.state.selectedHero.coins += 30;
@@ -1548,10 +1552,22 @@ class Store {
     const req = this.state.pendingApprovals[reqIndex];
 
     if (req.type === 'task_point_approval' || req.type === 'task') {
+      if (req.taskId) {
+        const habit = this.state.habitIslands.find(h => h.id === req.taskId);
+        if (habit) {
+          habit.completed = false;
+          habit.pointsApproved = false;
+        }
+        const task = this.state.taskForest.find(t => t.id === req.taskId);
+        if (task) {
+          task.completed = false;
+          task.pointsApproved = false;
+        }
+      }
       this.logAction(`Parent rejected Point Approval for '${req.title}' (${req.kidName})`, `0 Points ⭐ Issued`);
       this.showReward(
         'Request Rejected',
-        `Point approval for "${req.title}" was declined. 0 Points issued.`,
+        `Point approval for "${req.title}" was declined. Button reset to ready.`,
         0,
         0,
         null,
@@ -1572,6 +1588,84 @@ class Store {
     this.state.pendingApprovals.splice(reqIndex, 1);
     Sound.click();
     this.saveState();
+  }
+
+  // Clear all pending parent approval notifications and reset buttons across all tasks & habits
+  clearAllPendingApprovals() {
+    // 1. Clear state.pendingApprovals
+    this.state.pendingApprovals = [];
+
+    // 2. Reset all habit islands to uncompleted / not pending
+    if (this.state.habitIslands) {
+      this.state.habitIslands.forEach((h) => {
+        h.completed = false;
+        h.pointsApproved = false;
+      });
+    }
+
+    // 3. Reset all task forest chores to uncompleted / not pending
+    if (this.state.taskForest) {
+      this.state.taskForest.forEach((t) => {
+        t.completed = false;
+        t.pointsApproved = false;
+      });
+    }
+
+    // 4. Also reset on all heroes in this.state.heroes and selectedHero
+    if (this.state.heroes) {
+      this.state.heroes.forEach((hero) => {
+        if (hero.habitIslands) {
+          hero.habitIslands.forEach((h) => {
+            h.completed = false;
+            h.pointsApproved = false;
+          });
+        }
+        if (hero.taskForest) {
+          hero.taskForest.forEach((t) => {
+            t.completed = false;
+            t.pointsApproved = false;
+          });
+        }
+      });
+    }
+    if (this.state.selectedHero) {
+      if (this.state.selectedHero.habitIslands) {
+        this.state.selectedHero.habitIslands.forEach((h) => {
+          h.completed = false;
+          h.pointsApproved = false;
+        });
+      }
+      if (this.state.selectedHero.taskForest) {
+        this.state.selectedHero.taskForest.forEach((t) => {
+          t.completed = false;
+          t.pointsApproved = false;
+        });
+      }
+    }
+
+    this.logAction('Parent Cleared All Pending Approvals', 'All pending approval notifications and button states were reset to ready.');
+    this.saveState();
+    Sound.fanfare();
+    this.showReward(
+      'Pending Notifications Cleared!',
+      'All pending parent approval notifications on buttons have been cleared and reset to ready across all tasks & habits.',
+      0,
+      0,
+      null,
+      'cleaning_services'
+    );
+    this.notify();
+  }
+
+  // Approve all pending requests in queue
+  approveAllPendingRequests() {
+    if (!this.state.pendingApprovals || this.state.pendingApprovals.length === 0) return;
+    const reqs = [...this.state.pendingApprovals];
+    reqs.forEach((req) => {
+      this.approveParentRequest(req.id);
+    });
+    this.saveState();
+    this.notify();
   }
 
   playAdventureGame(gameId, isWin) {

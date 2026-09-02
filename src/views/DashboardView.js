@@ -127,24 +127,19 @@ export function renderDashboardView() {
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
           ${habitIslands
             .map((h) => {
-              const isPending = h.completed && !h.pointsApproved;
               const isApproved = h.completed && h.pointsApproved;
               const btnClass = isApproved
                 ? 'tactile-check-approved'
-                : isPending
-                ? 'tactile-check-pending'
                 : 'tactile-check-ready';
               const checkIcon = isApproved ? 'verified' : 'check';
-              const iconColor = isPending ? 'text-[#1c1200]' : 'text-white';
+              const iconColor = 'text-white';
 
               return `
-              <div class="tactile-card bg-surface-container rounded-3xl p-4 flex items-center justify-between border-2 ${
-                isPending
-                  ? 'border-amber-500/40 bg-surface-container'
-                  : isApproved
+              <div data-habit-card-id="${h.id}" class="habit-card-item tactile-card bg-surface-container rounded-3xl p-4 flex items-center justify-between border-2 ${
+                isApproved
                   ? 'border-primary/50 bg-surface-container'
-                  : 'border-surface-container-highest'
-              } transition-all">
+                  : 'border-surface-container-highest bg-surface-container'
+              } transition-all cursor-pointer">
                 <div class="flex items-center gap-3.5 flex-1 pr-3">
                   <!-- Circular Graphical Habit Icon for Toddlers -->
                   <div class="w-16 h-16 sm:w-18 sm:h-18 rounded-full border-3 border-secondary/50 bg-gradient-to-b from-[#182838] to-[#0d1620] flex items-center justify-center p-1.5 shadow-md flex-shrink-0 overflow-hidden group-hover:scale-105 transition-transform">
@@ -166,11 +161,7 @@ export function renderDashboardView() {
                         <span class="material-symbols-outlined text-sm">star</span> +${h.points} Points
                       </span>
                       ${
-                        isPending
-                          ? `<span class="text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1 shadow-sm">
-                               <span class="material-symbols-outlined text-[11px] animate-pulse">hourglass_top</span> Pending Parent Approval
-                             </span>`
-                          : isApproved
+                        isApproved
                           ? `<span class="text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/40 flex items-center gap-1 shadow-sm">
                                <span class="material-symbols-outlined text-[11px]">verified</span> Approved ⭐
                              </span>`
@@ -180,7 +171,7 @@ export function renderDashboardView() {
                   </div>
                 </div>
 
-                <button data-habit-id="${h.id}" class="habit-check-btn tactile-check-btn ${btnClass} rounded-2xl w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center flex-shrink-0 active:scale-95 shadow-chunky-sm" title="${isPending ? 'Pending Parent Approval' : isApproved ? 'Quest Approved' : 'Complete Habit'}">
+                <button data-habit-id="${h.id}" class="habit-check-btn tactile-check-btn ${btnClass} rounded-2xl w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center flex-shrink-0 active:scale-95 shadow-chunky-sm" title="${isApproved ? 'Quest Approved' : 'Complete Habit'}">
                   <span class="material-symbols-outlined text-3xl font-black ${iconColor}" style="font-variation-settings: 'FILL' 1;">
                     ${checkIcon}
                   </span>
@@ -205,24 +196,19 @@ export function renderDashboardView() {
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
           ${taskForest
             .map((t) => {
-              const isPending = t.completed && !t.pointsApproved;
               const isApproved = t.completed && t.pointsApproved;
               const btnClass = isApproved
                 ? 'tactile-check-approved'
-                : isPending
-                ? 'tactile-check-pending'
                 : 'tactile-check-ready';
               const checkIcon = isApproved ? 'verified' : 'check';
-              const iconColor = isPending ? 'text-[#1c1200]' : 'text-white';
+              const iconColor = 'text-white';
 
               return `
-              <div class="tactile-card bg-surface-container rounded-3xl p-4 flex items-center justify-between border-2 ${
-                isPending
-                  ? 'border-amber-500/40 bg-surface-container'
-                  : isApproved
+              <div data-task-card-id="${t.id}" class="task-card-item tactile-card bg-surface-container rounded-3xl p-4 flex items-center justify-between border-2 ${
+                isApproved && !t.isAR
                   ? 'border-primary/50 bg-surface-container'
-                  : 'border-surface-container-highest'
-              } transition-all">
+                  : 'border-surface-container-highest bg-surface-container'
+              } transition-all cursor-pointer">
                 <div class="flex items-center gap-3.5 flex-1 pr-3">
                   <!-- Circular Graphical Chore/Routine Icon for Toddlers -->
                   <div class="w-16 h-16 sm:w-18 sm:h-18 rounded-full border-3 border-primary/50 bg-gradient-to-b from-[#132c20] to-[#07160e] flex items-center justify-center p-1.5 shadow-md flex-shrink-0 overflow-hidden group-hover:scale-105 transition-transform">
@@ -247,11 +233,7 @@ export function renderDashboardView() {
                         <span class="material-symbols-outlined text-sm">star</span> +${t.points} Points
                       </span>
                       ${
-                        isPending
-                          ? `<span class="text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1 shadow-sm">
-                               <span class="material-symbols-outlined text-[11px] animate-pulse">hourglass_top</span> Pending Parent Approval
-                             </span>`
-                          : isApproved
+                        isApproved && !t.isAR
                           ? `<span class="text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/40 flex items-center gap-1 shadow-sm">
                                <span class="material-symbols-outlined text-[11px]">verified</span> Approved ⭐
                              </span>`
@@ -262,14 +244,14 @@ export function renderDashboardView() {
                 </div>
 
                 ${
-                  t.isAR && !t.completed
+                  t.isAR
                     ? `
-                  <button data-task-ar-id="${t.id}" class="task-ar-launch-btn bg-error text-on-error font-headline text-xs font-black px-4 py-3 rounded-2xl chunky-btn border-error-container shadow-chunky-sm flex items-center gap-1 hover:brightness-110 active:scale-95">
+                  <button data-task-ar-id="${t.id}" class="task-ar-launch-btn bg-error text-on-error font-headline text-xs font-black px-4 py-3 rounded-2xl chunky-btn border-error-container shadow-chunky-sm flex items-center gap-1.5 hover:brightness-110 active:scale-95" title="Launch Toothbrush AR Battle">
                     <span class="material-symbols-outlined text-base">play_arrow</span> Battle
                   </button>
                 `
                     : `
-                  <button data-task-id="${t.id}" class="task-check-btn tactile-check-btn ${btnClass} rounded-2xl w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center flex-shrink-0 active:scale-95 shadow-chunky-sm" title="${isPending ? 'Pending Parent Approval' : isApproved ? 'Quest Approved' : 'Complete Chore'}">
+                  <button data-task-id="${t.id}" class="task-check-btn tactile-check-btn ${btnClass} rounded-2xl w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center flex-shrink-0 active:scale-95 shadow-chunky-sm" title="${isApproved ? 'Quest Approved' : 'Complete Chore'}">
                     <span class="material-symbols-outlined text-3xl font-black ${iconColor}" style="font-variation-settings: 'FILL' 1;">
                       ${checkIcon}
                     </span>
@@ -289,14 +271,15 @@ export function renderDashboardView() {
           <div class="w-14 h-14 rounded-2xl bg-secondary text-on-secondary flex items-center justify-center text-3xl shadow-md">
             <span class="material-symbols-outlined">map</span>
           </div>
-          <div class="flex flex-col">
-            <h3 class="font-headline text-lg font-black text-inverse-surface">Pet Learning Adventures</h3>
-            <p class="text-xs text-on-surface-variant">Play Phonics, Math, and Memory games with your companion for extra Tokens!</p>
+          <div>
+            <span class="text-[10px] font-black uppercase text-secondary tracking-wider">Educational Quests</span>
+            <h3 class="font-headline text-base font-bold text-inverse-surface">Adventure Learning Map</h3>
+            <p class="text-xs text-on-surface-variant">Phonics, counting, colors & geometry quests for bonus tokens!</p>
           </div>
         </div>
 
-        <button id="dash-to-adventures-btn" class="bg-secondary text-on-secondary font-headline text-xs font-black px-5 py-3 rounded-2xl chunky-btn border-secondary-container hover:brightness-110 active:scale-95">
-          Play Map
+        <button id="dash-to-adventures-btn" class="bg-secondary text-on-secondary font-headline text-xs font-black px-5 py-3 rounded-xl chunky-btn border-secondary-container shadow-chunky-sm hover:brightness-110 active:scale-95">
+          Open Map
         </button>
       </section>
 
@@ -306,21 +289,45 @@ export function renderDashboardView() {
 
 export function attachDashboardListeners() {
   document.querySelectorAll('.habit-check-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
       const habitId = btn.getAttribute('data-habit-id');
       store.toggleHabitIsland(habitId);
     });
   });
 
+  document.querySelectorAll('.habit-card-item').forEach((card) => {
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('button')) return;
+      const habitId = card.getAttribute('data-habit-card-id');
+      if (habitId) store.toggleHabitIsland(habitId);
+    });
+  });
+
   document.querySelectorAll('.task-check-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
       const taskId = btn.getAttribute('data-task-id');
       store.toggleTaskForest(taskId);
     });
   });
 
+  document.querySelectorAll('.task-card-item').forEach((card) => {
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('button')) return;
+      const taskId = card.getAttribute('data-task-card-id');
+      const isAR = card.querySelector('.task-ar-launch-btn');
+      if (isAR) {
+        store.navigate('ar_battle');
+      } else if (taskId) {
+        store.toggleTaskForest(taskId);
+      }
+    });
+  });
+
   document.querySelectorAll('.task-ar-launch-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
       store.navigate('ar_battle');
     });
   });
