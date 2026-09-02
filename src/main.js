@@ -87,8 +87,16 @@ function renderApp() {
       attachViewListeners = attachProfileListeners;
       break;
     case 'parent_portal':
-      mainContent = renderParentPortalView();
-      attachViewListeners = attachParentPortalListeners;
+      if (!store.isParentUnlocked()) {
+        mainContent = renderDashboardView();
+        attachViewListeners = attachDashboardListeners;
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('open-parent-modal'));
+        }, 50);
+      } else {
+        mainContent = renderParentPortalView();
+        attachViewListeners = attachParentPortalListeners;
+      }
       break;
     default:
       mainContent = renderDashboardView();

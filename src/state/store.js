@@ -406,7 +406,9 @@ const defaultState = {
     motionSensitivity: 'medium',
     voicePromptsEnabled: true,
     autoApproveHabits: false,
-    dailyScreenTimeLimitMins: 45
+    dailyScreenTimeLimitMins: 45,
+    biometricsEnabled: true,
+    biometricCredentialId: null
   },
 
   // Reward celebration modal
@@ -416,6 +418,7 @@ const defaultState = {
 class Store {
   constructor() {
     this.subscribers = new Set();
+    this.isParentSessionUnlocked = false;
     this.state = this.loadState();
   }
 
@@ -1491,6 +1494,30 @@ class Store {
 
   closeReward() {
     this.state.rewardModal = null;
+    this.notify();
+  }
+
+  isParentUnlocked() {
+    return this.isParentSessionUnlocked === true;
+  }
+
+  unlockParentSession() {
+    this.isParentSessionUnlocked = true;
+    this.navigate('parent_portal');
+  }
+
+  lockParentSession() {
+    this.isParentSessionUnlocked = false;
+    if (this.state.activeView === 'parent_portal') {
+      this.navigate('dashboard');
+    } else {
+      this.notify();
+    }
+  }
+
+  updateParentSettings(newSettings) {
+    this.state.parentSettings = { ...this.state.parentSettings, ...newSettings };
+    this.saveState();
     this.notify();
   }
 

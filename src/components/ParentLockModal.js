@@ -1,72 +1,182 @@
 import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
+import { isBiometricsAvailable, authenticateWithBiometrics } from '../utils/biometrics.js';
 
 let isOpen = false;
-let isUnlocked = false;
+let activeAuthTab = 'biometric'; // 'biometric', 'pin', 'math'
+let hasBiometrics = false;
+let biometricStatusMsg = '';
+let mathChallenge = { q: '8 × 7 = ?', a: 56 };
+let pinError = false;
+let mathError = false;
+
+function generateMathChallenge() {
+  const problems = [
+    { q: '8 × 7 = ?', a: 56 },
+    { q: '9 × 6 = ?', a: 54 },
+    { q: '7 × 9 = ?', a: 63 },
+    { q: '8 × 9 = ?', a: 72 },
+    { q: '6 × 8 = ?', a: 48 },
+    { q: '7 × 7 = ?', a: 49 },
+    { q: '12 × 5 = ?', a: 60 }
+  ];
+  return problems[Math.floor(Math.random() * problems.length)];
+}
 
 export function renderParentLockModal() {
   if (!isOpen) return '';
 
+  const parentPin = store.getState().parentSettings?.pin || '1234';
+
   return `
-    <div id="parent-modal-backdrop" class="fixed inset-0 bg-background/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
-      <div class="bg-surface-container border-4 border-surface-container-highest rounded-3xl p-6 max-w-md w-full card-shadow-lg flex flex-col gap-4 relative">
+    <div id="parent-modal-backdrop" class="fixed inset-0 bg-background/85 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in select-none">
+      <div class="bg-surface-container border-4 border-secondary/50 rounded-3xl p-6 sm:p-7 max-w-md w-full card-shadow-lg flex flex-col gap-5 relative">
         
         <!-- Header -->
         <div class="flex justify-between items-center border-b-2 border-surface-container-highest pb-3">
-          <div class="flex items-center gap-2">
-            <span class="material-symbols-outlined text-secondary text-2xl" style="font-variation-settings: 'FILL' 1;">shield_person</span>
-            <h2 class="font-headline text-xl font-black text-inverse-surface">Parent Quick Gate</h2>
+          <div class="flex items-center gap-2.5">
+            <div class="w-10 h-10 rounded-2xl bg-secondary/20 text-secondary border border-secondary/40 flex items-center justify-center text-xl shadow-sm">
+              <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">shield_person</span>
+            </div>
+            <div>
+              <h2 class="font-headline text-lg sm:text-xl font-black text-inverse-surface">Parent Security Gate</h2>
+              <p class="text-[11px] text-on-surface-variant font-bold">Adult verification required for dashboard</p>
+            </div>
           </div>
-          <button id="parent-modal-close" class="text-on-surface-variant hover:text-error text-2xl p-1">
+          <button id="parent-modal-close" class="text-on-surface-variant hover:text-error text-2xl p-1 active:scale-95 transition-transform" title="Close Gate">
             <span class="material-symbols-outlined">close</span>
           </button>
         </div>
 
-        ${
-          !isUnlocked
-            ? `
-          <!-- Security Challenge -->
-          <div class="flex flex-col items-center gap-4 py-4 text-center">
-            <p class="text-sm font-semibold text-on-surface-variant">Adults Only: Solve the equation to access parental dashboard.</p>
-            <div class="bg-surface-container-high px-6 py-3 rounded-2xl border-2 border-surface-container-highest text-2xl font-headline font-black text-primary">
-              7 x 8 = ?
-            </div>
-            <div class="flex gap-2 w-full max-w-xs">
-              <input id="parent-pin-input" type="number" placeholder="Answer" class="bg-surface-container-low border-2 border-surface-container-highest rounded-xl px-4 py-3 text-center text-lg font-bold text-inverse-surface w-full focus:outline-none focus:border-primary" />
-              <button id="parent-pin-submit" class="bg-primary text-on-primary font-headline font-bold px-6 py-3 rounded-xl chunky-btn border-primary-container">
-                Verify
-              </button>
-            </div>
-            <p id="parent-pin-error" class="text-xs text-error font-bold hidden">Incorrect answer, please try again.</p>
-          </div>
-        `
-            : `
-          <!-- Parent Settings Dashboard -->
-          <div class="flex flex-col gap-3 py-2">
-            <div class="bg-surface-container-high p-4 rounded-2xl flex flex-col gap-2">
-              <span class="font-headline text-sm font-bold text-inverse-surface">Full Admin Dashboard</span>
-              <button id="parent-open-full-portal" class="bg-secondary text-on-secondary font-headline text-xs font-black py-3 rounded-xl chunky-btn border-secondary-container">
-                Launch Full Parent Admin Portal →
-              </button>
-            </div>
-
-            <div class="bg-surface-container-high p-4 rounded-2xl flex flex-col gap-2">
-              <span class="font-headline text-sm font-bold text-inverse-surface">Reward Booster</span>
-              <div class="flex gap-2">
-                <button id="parent-add-coins" class="flex-1 bg-secondary-container/20 hover:bg-secondary-container/30 text-secondary text-xs font-bold py-2.5 px-3 rounded-xl border border-secondary-container/40 flex items-center justify-center gap-1">
-                  <span class="material-symbols-outlined text-sm">add_circle</span> +100 Coins
-                </button>
-                <button id="parent-add-points" class="flex-1 bg-tertiary-container/20 hover:bg-tertiary-container/30 text-tertiary text-xs font-bold py-2.5 px-3 rounded-xl border border-tertiary-container/40 flex items-center justify-center gap-1">
-                  <span class="material-symbols-outlined text-sm">star</span> +50 Points
-                </button>
-              </div>
-            </div>
-
-            <button id="parent-reset-data" class="bg-error/10 hover:bg-error/20 text-error border border-error/30 text-xs font-bold py-2.5 rounded-xl transition-colors">
-              Reset Entire Game Save Data
+        <!-- Auth Method Selector Tabs -->
+        <div class="grid ${hasBiometrics ? 'grid-cols-3' : 'grid-cols-2'} gap-2 bg-surface-container-high p-1.5 rounded-2xl border border-surface-container-highest">
+          ${
+            hasBiometrics
+              ? `
+            <button data-auth-tab="biometric" class="parent-auth-tab-btn flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl font-headline text-xs font-black transition-all ${
+              activeAuthTab === 'biometric'
+                ? 'bg-secondary text-on-secondary shadow-sm'
+                : 'text-on-surface-variant hover:text-secondary'
+            }">
+              <span class="material-symbols-outlined text-base">fingerprint</span>
+              <span>Biometric</span>
             </button>
+          `
+              : ''
+          }
+
+          <button data-auth-tab="pin" class="parent-auth-tab-btn flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl font-headline text-xs font-black transition-all ${
+            activeAuthTab === 'pin'
+              ? 'bg-secondary text-on-secondary shadow-sm'
+              : 'text-on-surface-variant hover:text-secondary'
+          }">
+            <span class="material-symbols-outlined text-base">pin</span>
+            <span>4-Digit PIN</span>
+          </button>
+
+          <button data-auth-tab="math" class="parent-auth-tab-btn flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl font-headline text-xs font-black transition-all ${
+            activeAuthTab === 'math'
+              ? 'bg-secondary text-on-secondary shadow-sm'
+              : 'text-on-surface-variant hover:text-secondary'
+          }">
+            <span class="material-symbols-outlined text-base">calculate</span>
+            <span>Math Challenge</span>
+          </button>
+        </div>
+
+        <!-- TAB 1: BIOMETRIC AUTHENTICATION -->
+        ${
+          activeAuthTab === 'biometric' && hasBiometrics
+            ? `
+          <div class="flex flex-col items-center gap-4 py-2 text-center animate-fade-in">
+            <div class="w-20 h-20 rounded-full bg-secondary/15 text-secondary border-3 border-secondary/40 flex items-center justify-center text-4xl shadow-inner animate-pulse-glow">
+              <span class="material-symbols-outlined text-5xl">fingerprint</span>
+            </div>
+
+            <div>
+              <h3 class="font-headline text-base font-black text-inverse-surface">Biometric Quick Unlock</h3>
+              <p class="text-xs text-on-surface-variant mt-1">Scan your fingerprint, Touch ID, Face ID, or Windows Hello.</p>
+            </div>
+
+            <button id="parent-biometric-trigger-btn" class="w-full bg-gradient-to-r from-secondary to-primary text-on-secondary font-headline text-sm font-black py-4 px-6 rounded-2xl chunky-btn border-secondary-container shadow-md hover:brightness-110 active:scale-95 flex items-center justify-center gap-2.5">
+              <span class="material-symbols-outlined text-2xl">fingerprint</span>
+              <span>Scan Fingerprint / Face ID</span>
+            </button>
+
+            ${
+              biometricStatusMsg
+                ? `<p class="text-xs font-bold text-error bg-error/10 border border-error/30 rounded-xl py-2 px-3 w-full">${biometricStatusMsg}</p>`
+                : `<p class="text-[11px] text-on-surface-variant font-medium">Platform Authenticator (Windows Hello, Touch ID, Face ID)</p>`
+            }
           </div>
         `
+            : ''
+        }
+
+        <!-- TAB 2: PIN CODE GATE -->
+        ${
+          activeAuthTab === 'pin'
+            ? `
+          <div class="flex flex-col items-center gap-4 py-2 text-center animate-fade-in">
+            <div>
+              <h3 class="font-headline text-base font-black text-inverse-surface">Enter Parent PIN</h3>
+              <p class="text-xs text-on-surface-variant mt-1">Enter your 4-digit security code (Default: 1234).</p>
+            </div>
+
+            <div class="flex flex-col gap-2 w-full max-w-xs">
+              <input id="parent-pin-input" type="password" maxlength="8" placeholder="••••" class="bg-surface-container-high border-2 ${
+                pinError ? 'border-error ring-2 ring-error/50' : 'border-surface-container-highest focus:border-secondary'
+              } rounded-2xl px-4 py-3.5 text-center text-2xl font-headline tracking-widest text-inverse-surface w-full focus:outline-none transition-all shadow-inner" autofocus />
+
+              <button id="parent-pin-submit" class="w-full bg-secondary text-on-secondary font-headline text-sm font-black py-3.5 rounded-2xl chunky-btn border-secondary-container shadow-md hover:brightness-110 active:scale-95 flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined text-lg">lock_open</span>
+                <span>Verify & Unlock</span>
+              </button>
+            </div>
+
+            ${
+              pinError
+                ? `<p class="text-xs text-error font-bold bg-error/10 border border-error/30 rounded-xl py-1.5 px-3">Incorrect PIN. Try 1234 or use Math Challenge.</p>`
+                : `<p class="text-[11px] text-on-surface-variant font-medium">Tip: PIN can be customized inside the Parent Portal settings.</p>`
+            }
+          </div>
+        `
+            : ''
+        }
+
+        <!-- TAB 3: ADULT MATH CHALLENGE -->
+        ${
+          activeAuthTab === 'math'
+            ? `
+          <div class="flex flex-col items-center gap-4 py-2 text-center animate-fade-in">
+            <div>
+              <h3 class="font-headline text-base font-black text-inverse-surface">Adult Math Equation</h3>
+              <p class="text-xs text-on-surface-variant mt-1">Solve the multiplication challenge to prove adult access.</p>
+            </div>
+
+            <div class="bg-surface-container-high px-8 py-4 rounded-2xl border-2 border-secondary/40 text-3xl font-headline font-black text-secondary tracking-wider shadow-inner">
+              ${mathChallenge.q}
+            </div>
+
+            <div class="flex flex-col gap-2 w-full max-w-xs">
+              <input id="parent-math-input" type="number" placeholder="Enter answer" class="bg-surface-container-high border-2 ${
+                mathError ? 'border-error ring-2 ring-error/50' : 'border-surface-container-highest focus:border-secondary'
+              } rounded-2xl px-4 py-3 text-center text-xl font-headline font-bold text-inverse-surface w-full focus:outline-none transition-all shadow-inner" />
+
+              <button id="parent-math-submit" class="w-full bg-secondary text-on-secondary font-headline text-sm font-black py-3.5 rounded-2xl chunky-btn border-secondary-container shadow-md hover:brightness-110 active:scale-95 flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined text-lg">verified_user</span>
+                <span>Verify Answer</span>
+              </button>
+            </div>
+
+            ${
+              mathError
+                ? `<p class="text-xs text-error font-bold bg-error/10 border border-error/30 rounded-xl py-1.5 px-3">Incorrect answer. Please solve the equation above.</p>`
+                : `<p class="text-[11px] text-on-surface-variant font-medium">Quick math gate blocks younger children from altering settings.</p>`
+            }
+          </div>
+        `
+            : ''
         }
 
       </div>
@@ -75,9 +185,20 @@ export function renderParentLockModal() {
 }
 
 export function initParentLockModal() {
-  window.addEventListener('open-parent-modal', () => {
+  window.addEventListener('open-parent-modal', async () => {
+    hasBiometrics = await isBiometricsAvailable();
+    const settings = store.getState().parentSettings;
+    if (hasBiometrics && settings?.biometricsEnabled !== false) {
+      activeAuthTab = 'biometric';
+    } else {
+      activeAuthTab = 'pin';
+    }
+
+    mathChallenge = generateMathChallenge();
     isOpen = true;
-    isUnlocked = false;
+    pinError = false;
+    mathError = false;
+    biometricStatusMsg = '';
     store.notify();
   });
 }
@@ -88,71 +209,103 @@ export function attachParentLockListeners() {
     closeBtn.addEventListener('click', () => {
       Sound.click();
       isOpen = false;
-      isUnlocked = false;
       store.notify();
     });
   }
 
-  const submitBtn = document.getElementById('parent-pin-submit');
-  const input = document.getElementById('parent-pin-input');
-  const errorMsg = document.getElementById('parent-pin-error');
-
-  if (submitBtn && input) {
-    const handleCheck = () => {
-      if (input.value.trim() === '56' || input.value.trim() === '1234') {
-        Sound.fanfare();
-        isUnlocked = true;
+  // Backdrop click to dismiss
+  const backdrop = document.getElementById('parent-modal-backdrop');
+  if (backdrop) {
+    backdrop.addEventListener('click', (e) => {
+      if (e.target === backdrop) {
+        Sound.click();
+        isOpen = false;
         store.notify();
+      }
+    });
+  }
+
+  // Auth Tab Switchers
+  document.querySelectorAll('.parent-auth-tab-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const tab = btn.getAttribute('data-auth-tab');
+      if (tab) {
+        activeAuthTab = tab;
+        pinError = false;
+        mathError = false;
+        biometricStatusMsg = '';
+        Sound.click();
+        store.notify();
+      }
+    });
+  });
+
+  // BIOMETRIC SCAN TRIGGER
+  const bioTriggerBtn = document.getElementById('parent-biometric-trigger-btn');
+  if (bioTriggerBtn) {
+    bioTriggerBtn.addEventListener('click', async () => {
+      Sound.click();
+      try {
+        const result = await authenticateWithBiometrics();
+        if (result && result.success) {
+          Sound.fanfare();
+          isOpen = false;
+          store.unlockParentSession();
+        }
+      } catch (err) {
+        console.warn('Biometric auth error:', err);
+        Sound.hit();
+        biometricStatusMsg = err.message || 'Biometric scan failed or was cancelled.';
+        store.notify();
+      }
+    });
+  }
+
+  // PIN SUBMISSION
+  const pinInput = document.getElementById('parent-pin-input');
+  const pinSubmit = document.getElementById('parent-pin-submit');
+  if (pinSubmit && pinInput) {
+    const handlePinCheck = () => {
+      const val = pinInput.value.trim();
+      const currentPin = store.getState().parentSettings?.pin || '1234';
+      if (val === currentPin || val === '1234' || val === '56') {
+        Sound.fanfare();
+        isOpen = false;
+        store.unlockParentSession();
       } else {
         Sound.hit();
-        if (errorMsg) errorMsg.classList.remove('hidden');
+        pinError = true;
+        store.notify();
       }
     };
 
-    submitBtn.addEventListener('click', handleCheck);
-    input.addEventListener('keyup', (e) => {
-      if (e.key === 'Enter') handleCheck();
+    pinSubmit.addEventListener('click', handlePinCheck);
+    pinInput.addEventListener('keyup', (e) => {
+      if (e.key === 'Enter') handlePinCheck();
     });
   }
 
-  const openPortalBtn = document.getElementById('parent-open-full-portal');
-  if (openPortalBtn) {
-    openPortalBtn.addEventListener('click', () => {
-      isOpen = false;
-      store.navigate('parent_portal');
-    });
-  }
-
-  const addCoinsBtn = document.getElementById('parent-add-coins');
-  if (addCoinsBtn) {
-    addCoinsBtn.addEventListener('click', () => {
-      Sound.coin();
-      store.getState().selectedHero.coins += 100;
-      store.saveState();
-      isOpen = false;
-      store.showReward('Coins Added', '+100 Bonus Coins credited!', 100, 0);
-    });
-  }
-
-  const addPointsBtn = document.getElementById('parent-add-points');
-  if (addPointsBtn) {
-    addPointsBtn.addEventListener('click', () => {
-      Sound.fanfare();
-      store.getState().selectedHero.points += 50;
-      store.saveState();
-      isOpen = false;
-      store.showReward('Points Added', '+50 Gold Points credited!', 0, 50);
-    });
-  }
-
-  const resetDataBtn = document.getElementById('parent-reset-data');
-  if (resetDataBtn) {
-    resetDataBtn.addEventListener('click', () => {
-      if (confirm('Are you sure you want to reset all game progress?')) {
-        Sound.click();
-        store.resetAllProgress();
+  // MATH CHALLENGE SUBMISSION
+  const mathInput = document.getElementById('parent-math-input');
+  const mathSubmit = document.getElementById('parent-math-submit');
+  if (mathSubmit && mathInput) {
+    const handleMathCheck = () => {
+      const val = parseInt(mathInput.value.trim(), 10);
+      if (val === mathChallenge.a) {
+        Sound.fanfare();
         isOpen = false;
+        store.unlockParentSession();
+      } else {
+        Sound.hit();
+        mathError = true;
+        store.notify();
       }
+    };
+
+    mathSubmit.addEventListener('click', handleMathCheck);
+    mathInput.addEventListener('keyup', (e) => {
+      if (e.key === 'Enter') handleMathCheck();
     });
   }
 }
+

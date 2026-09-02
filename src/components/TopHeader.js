@@ -86,7 +86,11 @@ export function attachTopHeaderListeners() {
   if (lockBtn) {
     lockBtn.addEventListener('click', () => {
       Sound.click();
-      store.navigate('parent_portal');
+      if (store.isParentUnlocked()) {
+        store.navigate('parent_portal');
+      } else {
+        window.dispatchEvent(new CustomEvent('open-parent-modal'));
+      }
     });
   }
 }

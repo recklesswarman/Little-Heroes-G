@@ -1,6 +1,7 @@
 import { store, KID_AVATARS } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import { processProfilePhoto } from '../utils/photoUploader.js';
+import { authenticateWithBiometrics } from '../utils/biometrics.js';
 
 let activeAdminTab = 'approvals'; // approvals, kids, tasks, rewards, pricing, studio, analytics, settings
 let isAddKidModalOpen = false;
@@ -46,11 +47,13 @@ export function renderParentPortalView() {
           </div>
         </div>
 
-        <!-- Exit to Kid Mode Button -->
-        <button id="admin-back-dash-btn" class="bg-surface-container hover:bg-surface-bright text-inverse-surface font-headline text-xs font-black px-4 py-2.5 rounded-xl border border-surface-container-highest flex items-center gap-1.5 chunky-btn-sm active:scale-95">
-          <span class="material-symbols-outlined text-sm">arrow_back</span>
-          Return to Kid Mode
-        </button>
+        <!-- Lock & Return to Kids Button -->
+        <div class="flex items-center gap-2">
+          <button id="admin-lock-exit-btn" class="bg-error/20 hover:bg-error/30 text-error border-2 border-error/40 font-headline text-xs font-black px-4 py-2.5 rounded-xl flex items-center gap-1.5 chunky-btn-sm active:scale-95 shadow-sm" title="Lock Parent Dashboard and return to Kid Mode">
+            <span class="material-symbols-outlined text-base">lock</span>
+            <span>Lock & Exit to Kids</span>
+          </button>
+        </div>
       </div>
 
       <!-- Currency Policy Notice Banner -->
@@ -847,6 +850,60 @@ export function renderParentPortalView() {
             </div>
           </div>
 
+          <!-- Parental Security & Biometric Locking Settings -->
+          <div class="bg-surface-container rounded-3xl p-6 border-2 border-secondary-container card-shadow flex flex-col gap-5">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-2xl bg-secondary/20 text-secondary border border-secondary/40 flex items-center justify-center text-2xl shadow-sm">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">security</span>
+              </div>
+              <div>
+                <h3 class="font-headline text-base sm:text-lg font-black text-inverse-surface">Parent Dashboard Security & Biometric Lock</h3>
+                <p class="text-xs text-on-surface-variant font-bold">Configure PIN code and device fingerprint / Face ID biometric gate.</p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <!-- PIN Configuration -->
+              <div class="bg-surface-container-high rounded-2xl p-4 border border-surface-container-highest flex flex-col gap-3">
+                <span class="font-headline text-sm font-black text-inverse-surface flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-base text-secondary">pin</span>
+                  Parent Security PIN
+                </span>
+                <p class="text-xs text-on-surface-variant">Set a custom 4-digit PIN required to unlock this dashboard.</p>
+                
+                <div class="flex items-center gap-2">
+                  <input type="text" id="parent-setting-pin-input" maxlength="8" value="${settings.pin || '1234'}" class="bg-surface-container border-2 border-surface-container-highest rounded-xl px-4 py-2.5 text-base font-headline font-black text-secondary tracking-widest w-32 text-center focus:border-secondary focus:outline-none" />
+                  <button id="save-parent-pin-btn" class="bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2.5 rounded-xl chunky-btn-sm border-secondary-container active:scale-95">
+                    Save PIN
+                  </button>
+                </div>
+                <span id="pin-save-feedback" class="text-[10px] font-bold text-primary hidden">✓ PIN updated successfully!</span>
+              </div>
+
+              <!-- Biometric Gate Configuration -->
+              <div class="bg-surface-container-high rounded-2xl p-4 border border-surface-container-highest flex flex-col gap-3">
+                <div class="flex items-center justify-between">
+                  <span class="font-headline text-sm font-black text-inverse-surface flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-base text-primary">fingerprint</span>
+                    Biometric Authentication
+                  </span>
+                  <span class="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-primary/20 text-primary border border-primary/40">
+                    Touch ID / Face ID
+                  </span>
+                </div>
+                <p class="text-xs text-on-surface-variant">Require fingerprint, Face ID, or Windows Hello scan to access the dashboard.</p>
+                
+                <div class="flex items-center gap-3">
+                  <button id="test-biometric-btn" class="flex-1 bg-primary text-on-primary font-headline text-xs font-black py-2.5 px-4 rounded-xl chunky-btn-sm border-primary-container flex items-center justify-center gap-1.5 active:scale-95">
+                    <span class="material-symbols-outlined text-base">fingerprint</span>
+                    Register / Test Biometrics
+                  </button>
+                </div>
+                <span id="biometric-test-feedback" class="text-[10px] font-bold text-on-surface-variant">Compatible with Windows Hello, Touch ID, Face ID & Android biometrics.</span>
+              </div>
+            </div>
+          </div>
+
         </section>
       `
           : ''
@@ -1145,9 +1202,64 @@ function renderNewHouseholdModal() {
 }
 
 export function attachParentPortalListeners() {
+  const lockExitBtn = document.getElementById('admin-lock-exit-btn');
+  if (lockExitBtn) {
+    lockExitBtn.addEventListener('click', () => {
+      Sound.click();
+      store.lockParentSession();
+    });
+  }
+
   const backDashBtn = document.getElementById('admin-back-dash-btn');
   if (backDashBtn) {
-    backDashBtn.addEventListener('click', () => store.navigate('dashboard'));
+    backDashBtn.addEventListener('click', () => {
+      Sound.click();
+      store.lockParentSession();
+    });
+  }
+
+  // Security & Biometric settings
+  const savePinBtn = document.getElementById('save-parent-pin-btn');
+  const settingPinInput = document.getElementById('parent-setting-pin-input');
+  const pinFeedback = document.getElementById('pin-save-feedback');
+  if (savePinBtn && settingPinInput) {
+    savePinBtn.addEventListener('click', () => {
+      const newPin = settingPinInput.value.trim();
+      if (newPin && newPin.length >= 4) {
+        store.updateParentSettings({ pin: newPin });
+        Sound.fanfare();
+        if (pinFeedback) {
+          pinFeedback.classList.remove('hidden');
+          setTimeout(() => pinFeedback.classList.add('hidden'), 3000);
+        }
+      } else {
+        alert('Please enter a PIN with at least 4 digits.');
+      }
+    });
+  }
+
+  const testBioBtn = document.getElementById('test-biometric-btn');
+  const bioFeedback = document.getElementById('biometric-test-feedback');
+  if (testBioBtn) {
+    testBioBtn.addEventListener('click', async () => {
+      Sound.click();
+      try {
+        const res = await authenticateWithBiometrics();
+        if (res && res.success) {
+          Sound.fanfare();
+          if (bioFeedback) {
+            bioFeedback.textContent = '✓ Biometric authentication successful on this device!';
+            bioFeedback.className = 'text-[10px] font-black text-primary';
+          }
+        }
+      } catch (err) {
+        Sound.hit();
+        if (bioFeedback) {
+          bioFeedback.textContent = '✕ ' + (err.message || 'Biometric scan failed.');
+          bioFeedback.className = 'text-[10px] font-bold text-error';
+        }
+      }
+    });
   }
 
   document.querySelectorAll('.admin-tab-btn').forEach((btn) => {

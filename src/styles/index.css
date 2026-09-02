@@ -123,6 +123,90 @@
   animation: coinSpin 3s linear infinite;
 }
 
+/* AR Toothbrush Battle Animations */
+@keyframes villainHover {
+  0%, 100% { transform: translateY(0px) rotate(0deg) scale(1); }
+  25% { transform: translateY(-8px) rotate(-2deg) scale(1.03); }
+  50% { transform: translateY(4px) rotate(1deg) scale(0.98); }
+  75% { transform: translateY(-6px) rotate(2deg) scale(1.02); }
+}
+
+@keyframes villainChomp {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(0.7); }
+}
+
+@keyframes villainLunge {
+  0%, 100% { transform: translateY(0) scale(1); }
+  35% { transform: translateY(-10px) scale(0.96); }
+  45% { transform: translateY(22px) scale(1.12); filter: drop-shadow(0 0 16px rgba(255, 60, 60, 0.85)); }
+  55% { transform: translateY(16px) scale(1.08); }
+  70% { transform: translateY(0) scale(1); }
+}
+
+@keyframes minionWiggle {
+  0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+  25% { transform: translateY(-4px) rotate(-6deg) scale(1.08); }
+  50% { transform: translateY(3px) rotate(4deg) scale(0.95); }
+  75% { transform: translateY(-3px) rotate(6deg) scale(1.05); }
+}
+
+@keyframes minionDrill {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  20% { transform: translate(-3px, 2px) rotate(-15deg); }
+  40% { transform: translate(3px, -2px) rotate(15deg); }
+  60% { transform: translate(-2px, 3px) rotate(-10deg); }
+  80% { transform: translate(2px, -1px) rotate(10deg); }
+}
+
+@keyframes minionChomp {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2, 0.7); }
+}
+
+@keyframes sugarDrip {
+  0% { transform: translateY(0) scaleY(1); opacity: 0.9; }
+  50% { transform: translateY(15px) scaleY(1.3); opacity: 1; }
+  100% { transform: translateY(30px) scaleY(0.8); opacity: 0; }
+}
+
+@keyframes mouthGlow {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(46, 204, 113, 0.4)); }
+  50% { filter: drop-shadow(0 0 18px rgba(46, 204, 113, 0.9)); }
+}
+
+.animate-villain-hover {
+  animation: villainHover 3.2s ease-in-out infinite;
+}
+
+.animate-villain-chomp {
+  animation: villainChomp 0.8s ease-in-out infinite;
+}
+
+.animate-villain-lunge {
+  animation: villainLunge 3s ease-in-out infinite;
+}
+
+.animate-minion-wiggle {
+  animation: minionWiggle 1.8s ease-in-out infinite;
+}
+
+.animate-minion-drill {
+  animation: minionDrill 0.6s ease-in-out infinite;
+}
+
+.animate-minion-chomp {
+  animation: minionChomp 1s ease-in-out infinite;
+}
+
+.animate-sugar-drip {
+  animation: sugarDrip 1.5s ease-in infinite;
+}
+
+.animate-mouth-glow {
+  animation: mouthGlow 2s ease-in-out infinite;
+}
+
 .disco-bg {
   background: linear-gradient(135deg, #09141e 0%, #16212b 50%, #050f18 100%);
 }
