@@ -3,8 +3,67 @@ import { Sound } from '../audio/sfx.js';
 
 export function renderPetPenView() {
   const state = store.getState();
+  const hero = state.selectedHero;
+  const hasPet = hero.hasChosenStarterPet && hero.unlockedPetIds && hero.unlockedPetIds.length > 0;
   const activePet = store.getActivePet();
   const currentAvatar = activePet.stage >= 3 && activePet.evolvedAvatar ? activePet.evolvedAvatar : activePet.avatar;
+
+  if (!hasPet) {
+    return `
+    <div class="max-w-4xl mx-auto px-4 pt-4 pb-28 flex flex-col gap-6 animate-fade-in">
+      
+      <!-- Top Navigation & Roster Hub Link -->
+      <div class="flex items-center justify-between">
+        <div class="flex flex-col">
+          <span class="text-[10px] font-black uppercase tracking-widest text-primary">Companion Sanctuary</span>
+          <h1 class="font-headline text-2xl font-black text-inverse-surface text-shadow">Choose Your First Pet!</h1>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <!-- 24 Pet Roster Button -->
+          <button id="pen-view-roster-btn" class="bg-surface-container hover:bg-surface-bright text-primary font-headline text-xs font-black px-4 py-2.5 rounded-2xl border-2 border-primary/40 flex items-center gap-1.5 chunky-btn-sm">
+            <span class="material-symbols-outlined text-base">grid_view</span> 24 Pet Roster
+          </button>
+        </div>
+      </div>
+
+      <!-- Main 3D Pet Stage Pedestal (Empty / Summoning State) -->
+      <div class="relative bg-gradient-to-b from-[#16212b] via-[#121d26] to-[#09141e] rounded-3xl p-8 border-4 border-surface-container-highest min-h-[380px] card-shadow flex flex-col items-center justify-center gap-5 overflow-hidden text-center">
+        
+        <!-- Glowing Ambient Lighting -->
+        <div class="absolute inset-0 bg-radial from-primary/20 via-transparent to-transparent pointer-events-none"></div>
+
+        <div class="z-10 flex flex-col items-center gap-2 max-w-md">
+          <span class="bg-primary/20 text-primary text-xs font-black uppercase px-3.5 py-1 rounded-full border border-primary/40">
+            Welcome to the Sanctuary! 🐾
+          </span>
+          <h2 class="font-headline text-2xl sm:text-3xl font-black text-inverse-surface">
+            Your First Companion Awaits!
+          </h2>
+          <p class="text-sm text-on-surface-variant font-bold">
+            Select your companion to hatch at Stage 1. They will adventure with you in daily quests and toothbrush battles!
+          </p>
+        </div>
+
+        <!-- Central Summon Portal / Egg -->
+        <div id="pen-choose-starter-trigger" class="relative z-10 w-44 h-44 flex flex-col items-center justify-center cursor-pointer group my-2">
+          <div class="w-36 h-36 rounded-full bg-gradient-to-tr from-primary/25 to-secondary/25 border-3 border-dashed border-primary flex items-center justify-center text-6xl text-primary animate-pulse shadow-xl group-hover:scale-105 transition-transform">
+            <span class="material-symbols-outlined text-7xl" style="font-variation-settings: 'FILL' 1;">egg</span>
+          </div>
+          <span class="mt-2 text-[11px] font-black uppercase tracking-wider text-secondary">Tap to Choose Companion</span>
+        </div>
+
+        <!-- Call to Action Button -->
+        <div class="z-10">
+          <button id="pen-choose-starter-btn" class="bg-gradient-to-r from-primary to-secondary text-on-primary font-headline text-sm sm:text-base font-black px-8 py-4 rounded-2xl chunky-btn shadow-chunky-sm flex items-center gap-2.5 hover:brightness-110 active:scale-95">
+            <span class="material-symbols-outlined text-2xl">pets</span> CHOOSE YOUR FIRST COMPANION
+          </button>
+        </div>
+      </div>
+
+    </div>
+    `;
+  }
 
   return `
     <div class="max-w-4xl mx-auto px-4 pt-4 pb-28 flex flex-col gap-6 animate-fade-in">
@@ -172,6 +231,34 @@ export function renderPetPenView() {
 }
 
 export function attachPetPenListeners() {
+  const hero = store.getState().selectedHero;
+  const hasNoPet = !hero?.hasChosenStarterPet || !hero?.unlockedPetIds || hero.unlockedPetIds.length === 0;
+
+  if (hasNoPet) {
+    // When kid selects the pet pen for the first time, show choose your first companion popup screen!
+    setTimeout(() => {
+      if (!store.getState().petSelectionModal?.isOpen) {
+        store.openPetSelectionModal('starter');
+      }
+    }, 250);
+  }
+
+  const chooseStarterBtn = document.getElementById('pen-choose-starter-btn');
+  if (chooseStarterBtn) {
+    chooseStarterBtn.addEventListener('click', () => {
+      Sound.click();
+      store.openPetSelectionModal('starter');
+    });
+  }
+
+  const chooseStarterTrigger = document.getElementById('pen-choose-starter-trigger');
+  if (chooseStarterTrigger) {
+    chooseStarterTrigger.addEventListener('click', () => {
+      Sound.click();
+      store.openPetSelectionModal('starter');
+    });
+  }
+
   const rosterBtn = document.getElementById('pen-view-roster-btn');
   if (rosterBtn) {
     rosterBtn.addEventListener('click', () => store.navigate('pet_roster'));

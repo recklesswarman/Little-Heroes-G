@@ -157,13 +157,5 @@ initParentLockModal();
 initHouseholdModal();
 store.subscribe(handleStateUpdate);
 
-// Check if starter pet needs to be chosen on initial load
-const activeHero = store.getState().selectedHero;
-if (!activeHero?.hasChosenStarterPet || !activeHero?.unlockedPetIds || activeHero.unlockedPetIds.length === 0) {
-  setTimeout(() => {
-    store.openPetSelectionModal('starter');
-  }, 200);
-}
-
 // Initial Render
 renderApp();

@@ -41,7 +41,10 @@ export function renderDashboardView() {
           </div>
         </div>
 
-        <!-- Right: Active Companion Pet Quick Vitals -->
+        <!-- Right: Active Companion Pet Quick Vitals / Adopt Prompt -->
+        ${
+          hero.hasChosenStarterPet && hero.unlockedPetIds && hero.unlockedPetIds.length > 0
+            ? `
         <div class="w-full sm:w-auto bg-surface-container-high p-3.5 rounded-2xl border-2 border-secondary-container/40 flex items-center justify-between sm:justify-start gap-4">
           <div class="w-14 h-14 rounded-2xl bg-surface-container overflow-hidden border-2 border-secondary flex items-center justify-center flex-shrink-0 relative cursor-pointer active:scale-95 transition-transform" id="dash-active-pet-trigger">
             <img class="w-full h-full object-contain p-1" src="${activePet.avatar}" alt="${activePet.name}" />
@@ -72,6 +75,27 @@ export function renderDashboardView() {
             Pet Pen
           </button>
         </div>
+        `
+            : `
+        <div class="w-full sm:w-auto bg-surface-container-high p-3.5 rounded-2xl border-2 border-secondary-container/40 flex items-center justify-between sm:justify-start gap-4">
+          <div class="w-14 h-14 rounded-2xl bg-secondary-container/20 border-2 border-secondary flex items-center justify-center flex-shrink-0 text-2xl animate-pulse cursor-pointer active:scale-95 transition-transform" id="dash-active-pet-trigger">
+            <span class="material-symbols-outlined text-secondary text-3xl" style="font-variation-settings: 'FILL' 1;">pets</span>
+          </div>
+
+          <div class="flex flex-col">
+            <span class="font-headline text-xs font-black text-secondary flex items-center gap-1">
+              Pet Pen
+              <span class="bg-primary/20 text-primary text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full border border-primary/40">New!</span>
+            </span>
+            <span class="text-[10px] text-on-surface-variant font-bold">Select Pet Pen to adopt 1st pet</span>
+          </div>
+
+          <button id="dash-to-pen-btn" class="bg-gradient-to-r from-primary to-secondary text-on-primary font-headline text-xs font-black px-3.5 py-2.5 rounded-xl chunky-btn-sm border-primary-container ml-auto hover:brightness-110 active:scale-95 flex items-center gap-1">
+            <span class="material-symbols-outlined text-base">pets</span> Pet Pen
+          </button>
+        </div>
+        `
+        }
       </section>
 
       <!-- Currency Explanation Helper -->

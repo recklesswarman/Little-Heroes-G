@@ -531,6 +531,21 @@ class Store {
       Sound.click();
       this.saveState();
       window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      // When kid selects the pet pen for the first time after profile creation:
+      if (viewName === 'pet_pen') {
+        const hero = this.state.selectedHero;
+        if (!hero?.hasChosenStarterPet || !hero?.unlockedPetIds || hero.unlockedPetIds.length === 0) {
+          setTimeout(() => {
+            this.openPetSelectionModal('starter');
+          }, 350);
+        }
+      }
+    } else if (viewName === 'pet_pen') {
+      const hero = this.state.selectedHero;
+      if (!hero?.hasChosenStarterPet || !hero?.unlockedPetIds || hero.unlockedPetIds.length === 0) {
+        this.openPetSelectionModal('starter');
+      }
     }
   }
 
@@ -1573,13 +1588,6 @@ class Store {
 
       Sound.fanfare();
       this.saveState();
-
-      // If this hero hasn't chosen their starter pet yet, trigger starter pet selection dialogue!
-      if (!hero.hasChosenStarterPet || hero.unlockedPetIds.length === 0) {
-        setTimeout(() => {
-          this.openPetSelectionModal('starter');
-        }, 300);
-      }
     }
   }
 
