@@ -483,6 +483,12 @@ class Store {
           }
         }
 
+        // Never restore to parent_portal while locked on reload
+        if (parsed.activeView === 'parent_portal') {
+          parsed.activeView = 'dashboard';
+        }
+        parsed.parentUnlocked = false;
+
         return { ...defaultState, ...parsed };
       }
     } catch (e) {
@@ -523,6 +529,11 @@ class Store {
   }
 
   navigate(viewName, params = {}) {
+    if (viewName === 'parent_portal' && !this.isParentUnlocked()) {
+      window.dispatchEvent(new CustomEvent('open-parent-modal'));
+      return;
+    }
+
     if (this.state.activeView !== viewName) {
       this.state.previousView = this.state.activeView;
       this.state.activeView = viewName;

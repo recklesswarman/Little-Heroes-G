@@ -89,11 +89,9 @@ function renderApp() {
       break;
     case 'parent_portal':
       if (!store.isParentUnlocked()) {
+        store.state.activeView = 'dashboard';
         mainContent = renderDashboardView();
         attachViewListeners = attachDashboardListeners;
-        setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('open-parent-modal'));
-        }, 100);
       } else {
         mainContent = renderParentPortalView();
         attachViewListeners = attachParentPortalListeners;
@@ -145,10 +143,8 @@ function handleStateUpdate() {
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     store.closeReward();
-    const lockBackdrop = document.getElementById('parent-lock-modal-backdrop');
-    if (lockBackdrop) {
-      window.dispatchEvent(new CustomEvent('close-parent-lock'));
-    }
+    window.dispatchEvent(new CustomEvent('close-parent-lock'));
+    window.dispatchEvent(new CustomEvent('close-household-modal'));
   }
 });
 

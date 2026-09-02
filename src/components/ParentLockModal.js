@@ -184,6 +184,18 @@ export function renderParentLockModal() {
   `;
 }
 
+export function closeParentModal() {
+  isOpen = false;
+  pinError = false;
+  mathError = false;
+  biometricStatusMsg = '';
+  if (store.getState().activeView === 'parent_portal' && !store.isParentUnlocked()) {
+    store.state.activeView = 'dashboard';
+    store.saveState();
+  }
+  store.notify();
+}
+
 export function initParentLockModal() {
   window.addEventListener('open-parent-modal', async () => {
     hasBiometrics = await isBiometricsAvailable();
@@ -201,15 +213,21 @@ export function initParentLockModal() {
     biometricStatusMsg = '';
     store.notify();
   });
+
+  window.addEventListener('close-parent-lock', () => {
+    closeParentModal();
+  });
 }
 
 export function attachParentLockListeners() {
+  if (!isOpen) return;
+
   const closeBtn = document.getElementById('parent-modal-close');
   if (closeBtn) {
-    closeBtn.addEventListener('click', () => {
+    closeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
       Sound.click();
-      isOpen = false;
-      store.notify();
+      closeParentModal();
     });
   }
 
@@ -219,8 +237,7 @@ export function attachParentLockListeners() {
     backdrop.addEventListener('click', (e) => {
       if (e.target === backdrop) {
         Sound.click();
-        isOpen = false;
-        store.notify();
+        closeParentModal();
       }
     });
   }
