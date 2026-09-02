@@ -489,6 +489,24 @@ class Store {
         }
         parsed.parentUnlocked = false;
 
+        // Upgrade habit & chore images so toddlers get rich graphical visual icons without text
+        if (parsed.habitIslands) {
+          parsed.habitIslands.forEach((h) => {
+            if (!h.image || h.image.includes('text%20x') || h.image.includes('%3Ctext')) {
+              const def = defaultState.habitIslands.find((d) => d.id === h.id);
+              if (def) h.image = def.image;
+            }
+          });
+        }
+        if (parsed.taskForest) {
+          parsed.taskForest.forEach((t) => {
+            if (!t.image || t.image.includes('text%20x') || t.image.includes('%3Ctext')) {
+              const def = defaultState.taskForest.find((d) => d.id === t.id);
+              if (def) t.image = def.image;
+            }
+          });
+        }
+
         return { ...defaultState, ...parsed };
       }
     } catch (e) {

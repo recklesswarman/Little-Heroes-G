@@ -2,6 +2,7 @@ import { store, KID_AVATARS } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import { processProfilePhoto } from '../utils/photoUploader.js';
 import { authenticateWithBiometrics } from '../utils/biometrics.js';
+import { getTaskVisualSvg } from '../utils/taskVisuals.js';
 
 let activeAdminTab = 'approvals'; // approvals, kids, tasks, rewards, pricing, studio, analytics, settings
 let isAddKidModalOpen = false;
@@ -395,8 +396,8 @@ export function renderParentPortalView() {
                   return `
                   <div class="bg-surface-container rounded-2xl p-4 border border-surface-container-highest flex items-center justify-between card-shadow">
                     <div class="flex items-center gap-3.5">
-                      <div class="w-12 h-12 rounded-xl bg-surface-container-high text-primary flex items-center justify-center text-2xl overflow-hidden p-1 border border-surface-container-highest">
-                        ${t.image ? `<img src="${t.image}" class="w-full h-full object-contain" />` : `<span class="material-symbols-outlined">${t.icon}</span>`}
+                      <div class="w-12 h-12 rounded-full bg-surface-container-high text-primary flex items-center justify-center text-2xl overflow-hidden p-1 border-2 border-primary/40 shadow-sm flex-shrink-0">
+                        ${t.image ? `<img src="${t.image}" class="w-full h-full object-contain rounded-full" />` : getTaskVisualSvg(t.icon || t.id, 'blue')}
                       </div>
                       <div class="flex flex-col">
                         <span class="text-xs font-black text-inverse-surface">${t.title}</span>

@@ -1,4 +1,5 @@
 import { store } from '../state/store.js';
+import { getTaskVisualSvg } from '../utils/taskVisuals.js';
 
 export function renderDashboardView() {
   const state = store.getState();
@@ -131,11 +132,12 @@ export function renderDashboardView() {
                 h.completed ? 'opacity-75 bg-surface-container/70 border-primary/40' : ''
               }">
                 <div class="flex items-center gap-3.5 flex-1 pr-3">
-                  <div class="w-14 h-14 rounded-2xl bg-secondary-container/20 text-secondary border-b-4 border-secondary-container/40 flex items-center justify-center p-1.5 shadow-sm flex-shrink-0 overflow-hidden">
+                  <!-- Circular Graphical Habit Icon for Toddlers -->
+                  <div class="w-16 h-16 sm:w-18 sm:h-18 rounded-full border-3 border-secondary/50 bg-gradient-to-b from-[#182838] to-[#0d1620] flex items-center justify-center p-1.5 shadow-md flex-shrink-0 overflow-hidden group-hover:scale-105 transition-transform">
                     ${
                       h.image
-                        ? `<img src="${h.image}" class="w-full h-full object-contain drop-shadow" alt="${h.title}" />`
-                        : `<span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'FILL' 1;">${h.icon}</span>`
+                        ? `<img src="${h.image}" class="w-full h-full object-contain rounded-full drop-shadow-md" alt="${h.title}" />`
+                        : getTaskVisualSvg(h.icon || h.id, 'yellow')
                     }
                   </div>
                   <div class="flex flex-col">
@@ -196,11 +198,12 @@ export function renderDashboardView() {
                 t.completed ? 'opacity-75 bg-surface-container/70 border-primary/40' : ''
               }">
                 <div class="flex items-center gap-3.5 flex-1 pr-3">
-                  <div class="w-14 h-14 rounded-2xl bg-primary-container/20 text-primary border-b-4 border-primary-container/40 flex items-center justify-center p-1.5 shadow-sm flex-shrink-0 overflow-hidden">
+                  <!-- Circular Graphical Chore/Routine Icon for Toddlers -->
+                  <div class="w-16 h-16 sm:w-18 sm:h-18 rounded-full border-3 border-primary/50 bg-gradient-to-b from-[#132c20] to-[#07160e] flex items-center justify-center p-1.5 shadow-md flex-shrink-0 overflow-hidden group-hover:scale-105 transition-transform">
                     ${
                       t.image
-                        ? `<img src="${t.image}" class="w-full h-full object-contain drop-shadow" alt="${t.title}" />`
-                        : `<span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'FILL' 1;">${t.icon}</span>`
+                        ? `<img src="${t.image}" class="w-full h-full object-contain rounded-full drop-shadow-md" alt="${t.title}" />`
+                        : getTaskVisualSvg(t.icon || t.id, 'blue')
                     }
                   </div>
                   <div class="flex flex-col">
