@@ -107,8 +107,12 @@ export function renderDashboardView() {
                 h.completed ? 'opacity-75 bg-surface-container/70 border-primary/40' : ''
               }">
                 <div class="flex items-center gap-3.5 flex-1 pr-3">
-                  <div class="w-14 h-14 rounded-2xl bg-secondary-container/20 text-secondary border-b-4 border-secondary-container/40 flex items-center justify-center text-3xl shadow-sm flex-shrink-0">
-                    <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">${h.icon}</span>
+                  <div class="w-14 h-14 rounded-2xl bg-secondary-container/20 text-secondary border-b-4 border-secondary-container/40 flex items-center justify-center p-1.5 shadow-sm flex-shrink-0 overflow-hidden">
+                    ${
+                      h.image
+                        ? `<img src="${h.image}" class="w-full h-full object-contain drop-shadow" alt="${h.title}" />`
+                        : `<span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'FILL' 1;">${h.icon}</span>`
+                    }
                   </div>
                   <div class="flex flex-col">
                     <h3 class="font-headline text-base font-bold text-inverse-surface leading-snug ${
@@ -168,8 +172,12 @@ export function renderDashboardView() {
                 t.completed ? 'opacity-75 bg-surface-container/70 border-primary/40' : ''
               }">
                 <div class="flex items-center gap-3.5 flex-1 pr-3">
-                  <div class="w-14 h-14 rounded-2xl bg-primary-container/20 text-primary border-b-4 border-primary-container/40 flex items-center justify-center text-3xl shadow-sm flex-shrink-0">
-                    <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">${t.icon}</span>
+                  <div class="w-14 h-14 rounded-2xl bg-primary-container/20 text-primary border-b-4 border-primary-container/40 flex items-center justify-center p-1.5 shadow-sm flex-shrink-0 overflow-hidden">
+                    ${
+                      t.image
+                        ? `<img src="${t.image}" class="w-full h-full object-contain drop-shadow" alt="${t.title}" />`
+                        : `<span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'FILL' 1;">${t.icon}</span>`
+                    }
                   </div>
                   <div class="flex flex-col">
                     <div class="flex items-center gap-1.5">

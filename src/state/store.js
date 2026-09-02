@@ -12,7 +12,7 @@ export const KID_AVATARS = [
   { id: 'avatar_space', label: 'Knight Adventurer', url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAUTWERGwaJXM82ZeJ0adcNsuOm_cR4z5CXAleJ2oKcekqKsuaZZD315RkB188DDt6fevx8guS2V20knvs93SzLKjox7deSVry-v8kiyTM-H0Kg5vmB8inoBoKz2SqYnVzUKVk9uulAHGfsUmnIs4VI7GkWcmmfE2gvPnoehqZqjhxHZuHz9Tqs_Omja5bwoX9aPmW8Xf63V9KIQsux3ucTJHZBdI2U8eRyOy7bO0XQMqe2BNGXc3SoWg' }
 ];
 
-const STORAGE_KEY = 'little_heroes_adventure_master_v7';
+const STORAGE_KEY = 'little_heroes_adventure_master_v8';
 
 const defaultState = {
   activeView: 'dashboard', // dashboard, quest_map, pet_pen, pet_roster, pet_detail, pet_bath, shop, ar_battle, evolution, master_fuse, dance_party, profile, parent_portal, adventures_map, adventure_game
@@ -28,7 +28,7 @@ const defaultState = {
     lastSync: 'Just now'
   },
 
-  // Active Hero Profile
+  // Active Hero Profile (Starts with 0 pets, prompts starter choice at Stage 1)
   selectedHero: {
     id: 'hero_1',
     name: 'Little Hero',
@@ -42,7 +42,11 @@ const defaultState = {
     coins: 0,  // 🪙 Tokens (Auto-issued, spent on digital items)
     streak: 1,
     stars: 0,
-    activePetId: 1,
+    activePetId: null,
+    unlockedPetIds: [],
+    hasChosenStarterPet: false,
+    habitatSlots: 1,
+    petStageMap: {},
     gameDifficulty: 'medium', // 'easy' (Toddler 3-4), 'medium' (Kids 5-6), 'hard' (Kids 7-9)
     equippedProfileTheme: 'theme_dragon_emerald',
     unlockedThemes: ['theme_dragon_emerald']
@@ -57,7 +61,11 @@ const defaultState = {
       level: 1,
       points: 0,
       coins: 0,
-      activePetId: 1,
+      activePetId: null,
+      unlockedPetIds: [],
+      hasChosenStarterPet: false,
+      habitatSlots: 1,
+      petStageMap: {},
       streak: 1,
       completionRate: 100,
       gameDifficulty: 'medium',
@@ -76,7 +84,7 @@ const defaultState = {
       title: 'Drink 4 Cups of Water',
       zone: 'Habit Islands',
       icon: 'water_drop',
-      image: generate3DIcon('water_drop', 'blue', 'Water'),
+      image: 'https://lh3.googleusercontent.com/aida/AEtjO1UzuPyYfcmxTdgFkS7zVXE_cJPQZ_8THyZMImMQJSuKOlmj5XN-fzGpRfNfQbgp1fWNbj0SzKTYNtL-1pB0PYaLboMlYJtzU6aIK9Uf_rS9vtVcOC8Ie2RfY1345DwpVOzbVQHKJrAhqax3pO3Av7HgBkh_L67bjW2St8Ki5V8M3DNT6Je6PDlS3i6-gTGU_ERuJrWlDrNnJ0xllQuAd4ll4-djz6va-q_LEpDzRulgJ53Za2xPHw3dxa88',
       coins: 15,  // 🪙 Tokens auto-issued
       points: 5,  // ⭐ Points pending parent approval
       xp: 20,
@@ -102,7 +110,7 @@ const defaultState = {
       title: 'Eat Fruit or Veggie Snack',
       zone: 'Habit Islands',
       icon: 'nutrition',
-      image: generate3DIcon('nutrition', 'orange', 'Healthy'),
+      image: 'https://lh3.googleusercontent.com/aida/AEtjO1UuCPRIp3bcNODtjcuPUYCb1k8R-X-wt8M4SkdedZ2UK8gVYhXWdqlH4ec0QrR5LVQimn-_uMnv97sofFVP_bwtOabQeHT0SHtxVe59gKb1Qch1Id9HwPaHU7YYyQbnId78QZLhbJun88sn97HnxETpeh6fgMNmuextDnU3-fqKj7z6PsFQnV57jxpzaVtbulYuS9DNbp78rG73z_clyox8dQva9TbjJr4dzkiz-ytPCGJyopeRhjPTAts',
       coins: 20,
       points: 5,
       xp: 20,
@@ -132,7 +140,7 @@ const defaultState = {
       title: 'Morning Toothbrush AR Battle',
       zone: 'Task Forest',
       icon: 'dentistry',
-      image: generate3DIcon('dentistry', 'blue', 'Brush'),
+      image: 'https://lh3.googleusercontent.com/aida/AEtjO1Xt9GeFqjAL58hS_PuyIhL5_ZJ68ze3DFHgw6czaVkv6UJsQjulgSW1SVNMN5R-83AzzqbFfTVTa4A3XBDHsR7ggE9m-inrmcjBUsbdqo4InwRTA2VU1ndafKJJx--9Vzt17F9tgoYWYwsDyOtf2V78XpSPNIMUWsSQI1pjREuzdqsCbyFXDBadq8CPlJrx2MeHIOsKCpfe0VbcWqtPhzKdzzmlIhcK4Xgujh-Msp9KagAkWDWYiClbQ-bk',
       timeWindow: '6:00 AM - 9:00 AM',
       coins: 30,  // 🪙 Tokens auto-issued
       points: 15, // ⭐ Points pending parent approval
@@ -161,7 +169,7 @@ const defaultState = {
       title: 'Clean Up Toys & Blocks',
       zone: 'Task Forest',
       icon: 'toys',
-      image: generate3DIcon('toys', 'yellow', 'Toys'),
+      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDy3Rfu0bcLlMPyE2iHd9P78LdbLHJNOzTdaepeadGKy-vo9vxupk8kFi7ggsSZgSTNyekoC_nPypDwUIyXCrD2-_Z96IqQYN58d5uymrFi6JV8vd3_mbXavdbQXB825ndnaEFa-xL8t9yleVWU-a8f9Cv8ehZ1dNuYJt1w-L5x05lq4gKgpqmuecxkjqj0__taxaDmJ-tSIUV6wqkf6VcM2RD4FoyEzXq6FmcZaYoeIxFG5Aa2iQtu0g',
       timeWindow: 'Afternoon',
       coins: 35,
       points: 15,
@@ -175,7 +183,7 @@ const defaultState = {
       title: 'Homework / 15m Reading',
       zone: 'Task Forest',
       icon: 'menu_book',
-      image: generate3DIcon('menu_book', 'green', 'Reading'),
+      image: 'https://lh3.googleusercontent.com/aida/AEtjO1Upn8eSGHYCBegCuVLlrK1tRsouPnIA7kav9jbPpHhAoX1EjtcrZeJnUHVFFwl3TFnSvW9rdiO4wx3Ro8M-yIyeLHNgZCvYVs8VhIwrBWqp8iG9M-F5Iz_qjN6edcr4atCBHVtrvW1EC0ZjuQi8SkrCwSMCrmSx7FCMR2tVWjXu7RxLOO_qn7eO27ahLpkcv5Ark-EaT3t0C-BmvG7vMZgOK5_DDLyOHFGD3VGC0WcSc8lDGcSpqbwCjfNY',
       timeWindow: '3:00 PM - 6:00 PM',
       coins: 30,
       points: 20,
@@ -189,7 +197,7 @@ const defaultState = {
       title: 'Bedtime Routine on Time',
       zone: 'Task Forest',
       icon: 'bedtime',
-      image: generate3DIcon('bedtime', 'blue', 'Sleep'),
+      image: 'https://lh3.googleusercontent.com/aida/AEtjO1V97aePfWQmnVShMtBQbima_UDU0i6-8HfQ2n8qhGdoWZLbB0i92sJK2agutlVgGgj3HAVeKGYApMLb1pekmHEwMkum3IwJUH4kInnyo5LBApPp19gD5ihwha1vyRfG_5DcQtw5IfYwtwF_GMpbfQe_LUwyYPZBWnYua0Y7r8WKi-bax1d06QI0zeSdnmNrDwzQi6nSmBkbPGLaL5iHGxpziVKKaZ155rUBdz8_jIVpxWQS0D3-Vpacbi8',
       timeWindow: '7:30 PM - 8:30 PM',
       coins: 40,
       points: 25,
@@ -202,7 +210,8 @@ const defaultState = {
 
   // 24 Pets Universe & Active Pet State
   pets: PETS_DATABASE,
-  petStageMap: { 1: 2, 2: 4, 3: 4, 4: 1 },
+  petStageMap: {},
+  petSelectionModal: { isOpen: false, type: 'starter' },
   petStatsMap: {
     1: { hunger: 75, hygiene: 90, energy: 65, joy: 85 }
   },
@@ -424,7 +433,7 @@ class Store {
 
   loadState() {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('little_heroes_adventure_master_v7');
       if (saved) {
         const parsed = JSON.parse(saved);
         const testIds = ['leo', 'mia', 'sam', 'alex'];
@@ -434,6 +443,46 @@ class Store {
           parsed.selectedHero = defaultState.selectedHero;
           parsed.pendingApprovals = [];
         }
+
+        // Migration for Pet Progression Architecture
+        if (parsed.heroes && parsed.heroes.length > 0) {
+          parsed.heroes.forEach((h) => {
+            if (!h.unlockedPetIds) {
+              h.unlockedPetIds = h.activePetId ? [h.activePetId] : [];
+            }
+            if (h.hasChosenStarterPet === undefined) {
+              h.hasChosenStarterPet = h.unlockedPetIds.length > 0;
+            }
+            if (!h.habitatSlots) {
+              h.habitatSlots = Math.max(1, h.unlockedPetIds.length);
+            }
+            if (!h.petStageMap) {
+              h.petStageMap = {};
+              h.unlockedPetIds.forEach((pId) => {
+                h.petStageMap[pId] = 1; // Stage 1!
+              });
+            }
+          });
+        }
+
+        if (parsed.selectedHero) {
+          if (!parsed.selectedHero.unlockedPetIds) {
+            parsed.selectedHero.unlockedPetIds = parsed.selectedHero.activePetId ? [parsed.selectedHero.activePetId] : [];
+          }
+          if (parsed.selectedHero.hasChosenStarterPet === undefined) {
+            parsed.selectedHero.hasChosenStarterPet = parsed.selectedHero.unlockedPetIds.length > 0;
+          }
+          if (!parsed.selectedHero.habitatSlots) {
+            parsed.selectedHero.habitatSlots = Math.max(1, parsed.selectedHero.unlockedPetIds.length);
+          }
+          if (!parsed.selectedHero.petStageMap) {
+            parsed.selectedHero.petStageMap = {};
+            parsed.selectedHero.unlockedPetIds.forEach((pId) => {
+              parsed.selectedHero.petStageMap[pId] = 1;
+            });
+          }
+        }
+
         return { ...defaultState, ...parsed };
       }
     } catch (e) {
@@ -486,9 +535,10 @@ class Store {
   }
 
   getActivePet() {
-    const petId = this.state.selectedHero.activePetId || 1;
+    const hero = this.state.selectedHero;
+    const petId = hero?.activePetId || (hero?.unlockedPetIds?.[0] || 1);
     const petData = this.state.pets.find((p) => p.id === petId) || this.state.pets[0];
-    const stage = this.state.petStageMap[petId] || 2;
+    const stage = this.state.petStageMap[petId] || hero?.petStageMap?.[petId] || 1;
     const stats = this.state.petStatsMap[petId] || { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
     return { ...petData, stage, ...stats };
   }
@@ -1029,13 +1079,143 @@ class Store {
     this.saveState();
   }
 
+  openPetSelectionModal(type = 'starter') {
+    this.state.petSelectionModal = { isOpen: true, type };
+    this.notify();
+  }
+
+  closePetSelectionModal() {
+    this.state.petSelectionModal = { isOpen: false, type: null };
+    this.notify();
+  }
+
+  choosePet(petId, type = 'starter') {
+    const hero = this.state.heroes.find(h => h.id === this.state.selectedHero.id) || this.state.selectedHero;
+    if (!hero.unlockedPetIds) hero.unlockedPetIds = [];
+    if (!hero.petStageMap) hero.petStageMap = {};
+
+    if (!hero.unlockedPetIds.includes(petId)) {
+      hero.unlockedPetIds.push(petId);
+    }
+    hero.petStageMap[petId] = 1; // Always Stage 1!
+    hero.activePetId = petId;
+    this.state.petStageMap[petId] = 1;
+
+    if (type === 'starter') {
+      hero.hasChosenStarterPet = true;
+      hero.habitatSlots = Math.max(1, hero.habitatSlots || 1);
+    } else if (type === 'second_pet') {
+      hero.habitatSlots = Math.max(2, hero.habitatSlots || 2);
+    } else if (type === 'third_pet') {
+      hero.habitatSlots = Math.max(3, hero.habitatSlots || 3);
+    }
+
+    this.state.selectedHero.activePetId = petId;
+    this.state.selectedHero.unlockedPetIds = [...hero.unlockedPetIds];
+    this.state.selectedHero.hasChosenStarterPet = true;
+    this.state.selectedHero.habitatSlots = hero.habitatSlots;
+
+    this.closePetSelectionModal();
+
+    const pet = this.state.pets.find(p => p.id === petId);
+    Sound.fanfare();
+    confetti({ particleCount: 140, spread: 100, origin: { y: 0.5 } });
+
+    let title = 'First Companion Adopted!';
+    let msg = `Welcome ${pet?.name || 'your pet'}! They start at Stage 1 (Mystic Egg/Hatchling). Brush, complete habits, and feed them to evolve!`;
+    if (type === 'second_pet') {
+      title = '2nd Free Pet Unlocked!';
+      msg = `${pet?.name} joined your team at Stage 1 for evolving your first pet to Stage 2!`;
+    } else if (type === 'third_pet') {
+      title = '3rd Free Pet Unlocked!';
+      msg = `${pet?.name} joined your team at Stage 1 for evolving your first two pets through all 4 stages into Golden Titans!`;
+    }
+
+    this.showReward(title, msg, 50, 0, pet?.avatar, 'pets');
+    this.saveState();
+  }
+
+  buyHabitatSlot() {
+    const hero = this.state.heroes.find(h => h.id === this.state.selectedHero.id) || this.state.selectedHero;
+    const currentSlots = hero.habitatSlots || Math.max(1, hero.unlockedPetIds?.length || 1);
+    const cost = 250;
+
+    if (this.state.selectedHero.coins < cost) {
+      alert(`You need ${cost} Habit Coins (🪙) to unlock a new Habitat Slot! Complete your daily habits and routines to earn more coins.`);
+      return false;
+    }
+
+    this.state.selectedHero.coins -= cost;
+    hero.coins = this.state.selectedHero.coins;
+    hero.habitatSlots = currentSlots + 1;
+    this.state.selectedHero.habitatSlots = hero.habitatSlots;
+
+    Sound.fanfare();
+    confetti({ particleCount: 90, spread: 80, origin: { y: 0.5 } });
+    this.showReward(
+      'Habitat Slot Unlocked! 🏠',
+      `You unlocked Habitat Slot #${hero.habitatSlots}! You can now adopt an additional companion into your sanctuary!`,
+      0,
+      0,
+      null,
+      'holiday_village'
+    );
+    this.saveState();
+    return true;
+  }
+
+  adoptPetIntoSlot(petId) {
+    const hero = this.state.heroes.find(h => h.id === this.state.selectedHero.id) || this.state.selectedHero;
+    if (!hero.unlockedPetIds) hero.unlockedPetIds = [];
+    if (!hero.petStageMap) hero.petStageMap = {};
+
+    const currentSlots = hero.habitatSlots || 1;
+    if (hero.unlockedPetIds.includes(petId)) {
+      this.setActivePet(petId);
+      return;
+    }
+
+    if (hero.unlockedPetIds.length >= currentSlots) {
+      if (confirm(`Your Habitat Slots are full (${hero.unlockedPetIds.length}/${currentSlots})! Would you like to unlock a new Habitat Slot for 250 Habit Coins (🪙)?`)) {
+        if (this.buyHabitatSlot()) {
+          this.adoptPetIntoSlot(petId);
+        }
+      }
+      return;
+    }
+
+    hero.unlockedPetIds.push(petId);
+    hero.petStageMap[petId] = 1; // Starts at Stage 1!
+    this.state.petStageMap[petId] = 1;
+    this.state.selectedHero.unlockedPetIds = [...hero.unlockedPetIds];
+
+    const pet = this.state.pets.find(p => p.id === petId);
+    Sound.fanfare();
+    confetti({ particleCount: 100, spread: 80, origin: { y: 0.5 } });
+    this.showReward(
+      'New Companion Adopted! 🐾',
+      `${pet?.name || 'Your new companion'} has moved into your Habitat at Stage 1!`,
+      0,
+      0,
+      pet?.avatar,
+      'pets'
+    );
+    this.setActivePet(petId);
+    this.saveState();
+  }
+
   evolvePet(petId) {
     const id = petId || this.state.selectedHero.activePetId || 1;
     const currentStage = this.state.petStageMap[id] || 1;
     const activePet = this.getActivePet();
+    const hero = this.state.heroes.find(h => h.id === this.state.selectedHero.id) || this.state.selectedHero;
 
     if (currentStage < 4) {
-      this.state.petStageMap[id] = currentStage + 1;
+      const nextStage = currentStage + 1;
+      this.state.petStageMap[id] = nextStage;
+      if (!hero.petStageMap) hero.petStageMap = {};
+      hero.petStageMap[id] = nextStage;
+
       this.addXP(100);
       this.state.selectedHero.coins += 100;
       Sound.levelUp();
@@ -1048,13 +1228,37 @@ class Store {
       });
       this.showReward(
         'BIG EVOLUTION!',
-        `Your companion advanced to Stage ${this.state.petStageMap[id]}! New Golden Armor and Powers Unlocked!`,
+        `Your companion advanced to Stage ${nextStage}! New Golden Armor and Powers Unlocked!`,
         100,
         100,
         activePet.evolvedAvatar || activePet.avatar,
         'military_tech'
       );
       this.saveState();
+
+      // Check milestones for 2nd and 3rd free pet choices:
+      const unlocked = hero.unlockedPetIds || [];
+      const firstPetId = unlocked[0];
+
+      // Milestone 1: First pet evolves to Stage 2 -> unlocks 2nd free pet!
+      if (id === firstPetId && nextStage >= 2 && unlocked.length === 1) {
+        setTimeout(() => {
+          this.openPetSelectionModal('second_pet');
+        }, 1200);
+      }
+
+      // Milestone 2: First 2 pets both reach Stage 4 -> unlocks 3rd free pet!
+      if (unlocked.length === 2) {
+        const p1 = unlocked[0];
+        const p2 = unlocked[1];
+        const s1 = hero.petStageMap[p1] || this.state.petStageMap[p1] || 1;
+        const s2 = hero.petStageMap[p2] || this.state.petStageMap[p2] || 1;
+        if (s1 >= 4 && s2 >= 4) {
+          setTimeout(() => {
+            this.openPetSelectionModal('third_pet');
+          }, 1200);
+        }
+      }
     }
   }
 
@@ -1332,6 +1536,22 @@ class Store {
   switchHero(heroId) {
     const hero = this.state.heroes.find((h) => h.id === heroId);
     if (hero) {
+      if (!hero.unlockedPetIds) {
+        hero.unlockedPetIds = hero.activePetId ? [hero.activePetId] : [];
+      }
+      if (hero.hasChosenStarterPet === undefined) {
+        hero.hasChosenStarterPet = hero.unlockedPetIds.length > 0;
+      }
+      if (!hero.habitatSlots) {
+        hero.habitatSlots = Math.max(1, hero.unlockedPetIds.length);
+      }
+      if (!hero.petStageMap) {
+        hero.petStageMap = {};
+        hero.unlockedPetIds.forEach((pId) => {
+          hero.petStageMap[pId] = 1; // Stage 1!
+        });
+      }
+
       this.state.selectedHero.id = hero.id;
       this.state.selectedHero.name = hero.name;
       this.state.selectedHero.title = hero.role;
@@ -1339,13 +1559,27 @@ class Store {
       this.state.selectedHero.level = hero.level;
       this.state.selectedHero.points = hero.points;
       this.state.selectedHero.coins = hero.coins;
-      this.state.selectedHero.activePetId = hero.activePetId || 1;
+      this.state.selectedHero.activePetId = hero.activePetId || (hero.unlockedPetIds[0] || null);
+      this.state.selectedHero.unlockedPetIds = [...hero.unlockedPetIds];
+      this.state.selectedHero.hasChosenStarterPet = hero.hasChosenStarterPet;
+      this.state.selectedHero.habitatSlots = hero.habitatSlots;
       this.state.selectedHero.streak = hero.streak;
       this.state.selectedHero.gameDifficulty = hero.gameDifficulty || 'medium';
       this.state.selectedHero.equippedProfileTheme = hero.equippedProfileTheme || 'theme_dragon_emerald';
       this.state.selectedHero.unlockedThemes = hero.unlockedThemes || ['theme_dragon_emerald'];
+
+      // Synchronize global petStageMap with this hero's petStageMap
+      this.state.petStageMap = { ...hero.petStageMap };
+
       Sound.fanfare();
       this.saveState();
+
+      // If this hero hasn't chosen their starter pet yet, trigger starter pet selection dialogue!
+      if (!hero.hasChosenStarterPet || hero.unlockedPetIds.length === 0) {
+        setTimeout(() => {
+          this.openPetSelectionModal('starter');
+        }, 300);
+      }
     }
   }
 
@@ -1360,7 +1594,11 @@ class Store {
       level: Number(level) || 1,
       points: Number(points) || 0,
       coins: Number(coins) || 0,
-      activePetId: 1,
+      activePetId: null,
+      unlockedPetIds: [],
+      hasChosenStarterPet: false,
+      habitatSlots: 1,
+      petStageMap: {},
       streak: 1,
       completionRate: 100,
       gameDifficulty: gameDifficulty || 'medium',
@@ -1412,7 +1650,11 @@ class Store {
         level: 1,
         points: 0,
         coins: 0,
-        activePetId: 1,
+        activePetId: null,
+        unlockedPetIds: [],
+        hasChosenStarterPet: false,
+        habitatSlots: 1,
+        petStageMap: {},
         streak: 1,
         completionRate: 100,
         gameDifficulty: 'medium',
@@ -1461,7 +1703,11 @@ class Store {
       level: 1,
       points: 0,
       coins: 0,
-      activePetId: 1,
+      activePetId: null,
+      unlockedPetIds: [],
+      hasChosenStarterPet: false,
+      habitatSlots: 1,
+      petStageMap: {},
       streak: 1,
       completionRate: 100,
       gameDifficulty: 'medium',

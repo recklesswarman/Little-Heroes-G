@@ -7,6 +7,7 @@ import { renderBottomNav, attachBottomNavListeners } from './components/BottomNa
 import { renderRewardModal, attachRewardModalListeners } from './components/RewardModal.js';
 import { renderParentLockModal, initParentLockModal, attachParentLockListeners } from './components/ParentLockModal.js';
 import { renderHouseholdLinkModal, initHouseholdModal, attachHouseholdLinkModalListeners } from './components/HouseholdLinkModal.js';
+import { renderPetSelectionModal, attachPetSelectionModalListeners } from './components/PetSelectionModal.js';
 
 // Views
 import { renderDashboardView, attachDashboardListeners } from './views/DashboardView.js';
@@ -92,7 +93,7 @@ function renderApp() {
         attachViewListeners = attachDashboardListeners;
         setTimeout(() => {
           window.dispatchEvent(new CustomEvent('open-parent-modal'));
-        }, 50);
+        }, 100);
       } else {
         mainContent = renderParentPortalView();
         attachViewListeners = attachParentPortalListeners;
@@ -115,6 +116,7 @@ function renderApp() {
       ${renderRewardModal()}
       ${renderParentLockModal()}
       ${renderHouseholdLinkModal()}
+      ${renderPetSelectionModal()}
     </div>
   `;
 
@@ -124,6 +126,7 @@ function renderApp() {
   attachRewardModalListeners();
   attachParentLockListeners();
   attachHouseholdLinkModalListeners();
+  attachPetSelectionModalListeners();
   attachViewListeners();
 }
 
@@ -153,6 +156,14 @@ window.addEventListener('keydown', (e) => {
 initParentLockModal();
 initHouseholdModal();
 store.subscribe(handleStateUpdate);
+
+// Check if starter pet needs to be chosen on initial load
+const activeHero = store.getState().selectedHero;
+if (!activeHero?.hasChosenStarterPet || !activeHero?.unlockedPetIds || activeHero.unlockedPetIds.length === 0) {
+  setTimeout(() => {
+    store.openPetSelectionModal('starter');
+  }, 200);
+}
 
 // Initial Render
 renderApp();

@@ -6,10 +6,15 @@ let activeGearTooltip = null;
 
 export function renderPetDetailView() {
   const state = store.getState();
+  const hero = state.selectedHero;
   const petId = state.selectedPetDetailId || 1;
   const pet = PETS_DATABASE.find((p) => p.id === petId) || PETS_DATABASE[0];
-  const stage = state.petStageMap[pet.id] || 1;
-  const isEquipped = state.selectedHero.activePetId === pet.id;
+  const stage = state.petStageMap[pet.id] || hero.petStageMap?.[pet.id] || 1;
+  const unlockedIds = hero.unlockedPetIds || [];
+  const habitatSlots = hero.habitatSlots || Math.max(1, unlockedIds.length);
+  const isUnlocked = unlockedIds.includes(pet.id);
+  const isEquipped = hero.activePetId === pet.id;
+  const hasOpenSlot = unlockedIds.length < habitatSlots;
 
   const currentAvatar = stage >= 3 && pet.evolvedAvatar ? pet.evolvedAvatar : pet.avatar;
 
@@ -21,20 +26,29 @@ export function renderPetDetailView() {
         <button id="pet-detail-back-btn" class="bg-surface-container hover:bg-surface-bright text-on-surface-variant font-headline text-xs font-bold px-3.5 py-2.5 rounded-2xl border-2 border-surface-container-highest flex items-center gap-1.5 chunky-btn-sm">
           <span class="material-symbols-outlined text-base">arrow_back</span> Back to Roster
         </button>
-        <span class="text-xs font-black uppercase text-secondary tracking-wider">Pet Dossier #${pet.id}</span>
+        <div class="flex items-center gap-2">
+          ${
+            isUnlocked
+              ? `<span class="bg-primary/20 text-primary text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border border-primary/40">✓ In Habitat</span>`
+              : `<span class="bg-surface-container-highest text-on-surface-variant text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full">🔒 Locked</span>`
+          }
+          <span class="text-xs font-black uppercase text-secondary tracking-wider">Companion #${pet.id}</span>
+        </div>
       </div>
 
       <!-- Introduction Screen Header -->
       <div class="bg-surface-container rounded-3xl p-5 border-2 border-surface-container-highest card-shadow flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
         <div class="flex flex-col">
           <span class="text-[10px] font-black uppercase tracking-widest text-primary flex items-center justify-center sm:justify-start gap-1">
-            <span class="material-symbols-outlined text-sm">auto_awesome</span> ${pet.element} Element • Stage ${stage}/4
+            <span class="material-symbols-outlined text-sm">auto_awesome</span> ${pet.element} Element • ${
+              isUnlocked ? `Stage ${stage}/4` : 'Starts at Stage 1'
+            }
           </span>
           <h1 class="font-headline text-2xl sm:text-3xl font-black text-inverse-surface text-shadow">${pet.name}</h1>
           <p class="text-sm font-bold text-secondary">${pet.title}</p>
         </div>
 
-        <!-- Equip Action Button -->
+        <!-- Action Button -->
         <div>
           ${
             isEquipped
@@ -43,9 +57,21 @@ export function renderPetDetailView() {
               <span class="material-symbols-outlined text-lg">check_circle</span> CURRENT COMPANION
             </div>
           `
-              : `
+              : isUnlocked
+              ? `
             <button id="pet-detail-equip-btn" class="bg-primary text-on-primary font-headline text-xs font-black px-6 py-3.5 rounded-2xl chunky-btn border-primary-container shadow-chunky-sm flex items-center gap-2 hover:brightness-110 active:scale-95">
               <span class="material-symbols-outlined text-lg">pets</span> EQUIP AS COMPANION
+            </button>
+          `
+              : hasOpenSlot
+              ? `
+            <button id="pet-detail-adopt-btn" class="bg-gradient-to-r from-primary to-secondary text-on-primary font-headline text-xs font-black px-6 py-3.5 rounded-2xl chunky-btn border-primary-container shadow-chunky-sm flex items-center gap-2 hover:brightness-110 active:scale-95">
+              <span class="material-symbols-outlined text-lg">pets</span> ADOPT PET (SLOT OPEN!)
+            </button>
+          `
+              : `
+            <button id="pet-detail-buy-adopt-btn" class="bg-gradient-to-r from-secondary to-primary text-on-secondary font-headline text-xs font-black px-6 py-3.5 rounded-2xl chunky-btn border-secondary-container shadow-chunky-sm flex items-center gap-2 hover:brightness-110 active:scale-95">
+              <span class="material-symbols-outlined text-lg">add_home</span> UNLOCK SLOT (🪙 250 COINS)
             </button>
           `
           }
@@ -191,6 +217,22 @@ export function attachPetDetailListeners() {
     equipBtn.addEventListener('click', () => {
       const state = store.getState();
       store.setActivePet(state.selectedPetDetailId || 1);
+    });
+  }
+
+  const adoptBtn = document.getElementById('pet-detail-adopt-btn');
+  if (adoptBtn) {
+    adoptBtn.addEventListener('click', () => {
+      const state = store.getState();
+      store.adoptPetIntoSlot(state.selectedPetDetailId || 1);
+    });
+  }
+
+  const buyAdoptBtn = document.getElementById('pet-detail-buy-adopt-btn');
+  if (buyAdoptBtn) {
+    buyAdoptBtn.addEventListener('click', () => {
+      const state = store.getState();
+      store.adoptPetIntoSlot(state.selectedPetDetailId || 1);
     });
   }
 
