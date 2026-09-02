@@ -1,5 +1,6 @@
-import { store } from '../state/store.js';
+import { store, KID_AVATARS } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
+import { processProfilePhoto } from '../utils/photoUploader.js';
 
 export function renderProfileView() {
   const state = store.getState();
@@ -43,11 +44,24 @@ export function renderProfileView() {
         <div class="absolute -bottom-10 -left-10 w-48 h-48 bg-secondary/20 rounded-full blur-3xl pointer-events-none"></div>
 
         <div class="flex items-center gap-5 z-10">
-          <div class="relative">
-            <img class="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-primary object-cover shadow-2xl" src="${currentHero.avatar}" alt="${currentHero.name}" />
-            <div class="absolute -bottom-2 -right-2 w-9 h-9 rounded-full bg-surface-container-highest border-2 border-primary flex items-center justify-center text-primary shadow">
-              <span class="material-symbols-outlined text-lg">${activeTheme.badgeIcon}</span>
+          <div class="relative group flex-shrink-0">
+            <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-primary overflow-hidden shadow-2xl relative bg-surface-container-high">
+              <img id="profile-avatar-display" class="w-full h-full object-cover" src="${currentHero.avatar}" alt="${currentHero.name}" />
+              
+              <!-- Hover/Tap Overlay -->
+              <label for="profile-avatar-file-input" class="absolute inset-0 bg-black/60 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white cursor-pointer" title="Upload custom photo">
+                <span class="material-symbols-outlined text-2xl">photo_camera</span>
+                <span class="text-[9px] font-black uppercase tracking-wider mt-0.5">Upload</span>
+              </label>
             </div>
+
+            <!-- Quick Action Floating Camera Button -->
+            <label for="profile-avatar-file-input" class="absolute -bottom-1 -right-1 w-9 h-9 rounded-full bg-primary text-on-primary border-2 border-surface-container-lowest flex items-center justify-center shadow-lg cursor-pointer hover:scale-110 active:scale-95 transition-transform" title="Upload child photo">
+              <span class="material-symbols-outlined text-lg">add_a_photo</span>
+            </label>
+
+            <!-- Hidden File Input -->
+            <input type="file" id="profile-avatar-file-input" accept="image/*" class="hidden" />
           </div>
 
           <div class="flex flex-col text-left">
@@ -72,6 +86,20 @@ export function renderProfileView() {
                 <span class="material-symbols-outlined text-sm">school</span>
                 Level: ${currentHero.gameDifficulty === 'easy' ? 'Easy (Toddler 3-4)' : currentHero.gameDifficulty === 'hard' ? 'Hard (7-9)' : 'Medium (5-6)'}
               </span>
+            </div>
+
+            <!-- Profile Photo Upload & Options Buttons -->
+            <div class="flex flex-wrap items-center gap-2 mt-3">
+              <label for="profile-avatar-file-input" class="bg-white/20 hover:bg-white/30 text-white text-xs font-black px-3.5 py-1.5 rounded-xl border border-white/30 flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all shadow-sm">
+                <span class="material-symbols-outlined text-sm">photo_camera</span>
+                <span>Upload Photo</span>
+              </label>
+
+              <!-- Reset to Default 3D Avatar -->
+              <button id="profile-reset-avatar-btn" class="bg-surface-container/60 hover:bg-surface-container text-white/80 hover:text-white text-xs font-bold px-2.5 py-1.5 rounded-xl border border-white/20 flex items-center gap-1 active:scale-95 transition-all" title="Reset to default 3D adventurer avatar">
+                <span class="material-symbols-outlined text-sm">replay</span>
+                <span>Preset Avatars</span>
+              </button>
             </div>
           </div>
         </div>
@@ -281,4 +309,33 @@ export function attachProfileListeners() {
       }
     });
   });
+
+  // Profile Photo Upload (Camera / File picker)
+  const avatarFileInput = document.getElementById('profile-avatar-file-input');
+  if (avatarFileInput) {
+    avatarFileInput.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const compressedDataUrl = await processProfilePhoto(file);
+        const hero = store.getState().selectedHero;
+        store.editHero(hero.id, { avatar: compressedDataUrl });
+        Sound.fanfare();
+        store.notify();
+      } catch (err) {
+        alert(err.message || 'Unable to upload photo.');
+      }
+    });
+  }
+
+  // Reset Photo to Default 3D Avatar
+  const resetAvatarBtn = document.getElementById('profile-reset-avatar-btn');
+  if (resetAvatarBtn) {
+    resetAvatarBtn.addEventListener('click', () => {
+      const hero = store.getState().selectedHero;
+      store.editHero(hero.id, { avatar: KID_AVATARS[0].url });
+      Sound.fanfare();
+      store.notify();
+    });
+  }
 }

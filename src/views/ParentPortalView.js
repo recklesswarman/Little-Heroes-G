@@ -1,7 +1,13 @@
-import { store } from '../state/store.js';
+import { store, KID_AVATARS } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
+import { processProfilePhoto } from '../utils/photoUploader.js';
 
-let activeAdminTab = 'approvals'; // approvals, tasks, rewards, pricing, studio, analytics, settings
+let activeAdminTab = 'approvals'; // approvals, kids, tasks, rewards, pricing, studio, analytics, settings
+let isAddKidModalOpen = false;
+let editingKid = null;
+let deletingKid = null;
+let isNewHouseholdModalOpen = false;
+let selectedAvatarUrl = KID_AVATARS[0].url;
 
 export function renderParentPortalView() {
   const state = store.getState();
@@ -16,6 +22,7 @@ export function renderParentPortalView() {
 
   const tabs = [
     { id: 'approvals', label: 'Action Inbox', icon: 'inbox', count: pending.length },
+    { id: 'kids', label: 'Kids & Household', icon: 'diversity_1', count: heroes.length },
     { id: 'tasks', label: 'Tasks & Routines', icon: 'checklist', count: 0 },
     { id: 'rewards', label: 'Real-Life Rewards', icon: 'card_giftcard', count: 0 },
     { id: 'pricing', label: 'Pricing Editor', icon: 'payments', count: 0 },
@@ -163,7 +170,144 @@ export function renderParentPortalView() {
           : ''
       }
 
-      <!-- TAB 2: Task & Routines Manager (With Add Task Form) -->
+      <!-- TAB: Kids Roster & Household Management -->
+      ${
+        activeAdminTab === 'kids'
+          ? `
+        <section class="flex flex-col gap-6 animate-fade-in">
+          
+          <!-- Household Management Card -->
+          <div class="bg-surface-container rounded-3xl p-5 sm:p-6 border-2 border-secondary-container card-shadow flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div class="flex items-center gap-3.5">
+              <div class="w-12 h-12 rounded-2xl bg-secondary text-on-secondary flex items-center justify-center text-2xl shadow flex-shrink-0">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <h2 class="font-headline text-lg font-black text-inverse-surface">${state.household.name}</h2>
+                  <span class="bg-primary/20 text-primary text-[10px] font-black uppercase px-2 py-0.5 rounded-md border border-primary/30">Active</span>
+                </div>
+                <p class="text-xs text-on-surface-variant font-bold mt-0.5">
+                  Sync Code: <span class="text-secondary font-black tracking-wider">${state.household.syncCode}</span> • ${state.household.linkedDevices || 1} Device(s) Linked
+                </p>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+              <button id="admin-create-household-btn" class="bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2.5 rounded-xl chunky-btn-sm border-secondary-container flex items-center gap-1.5 active:scale-95 hover:brightness-110 shadow-sm">
+                <span class="material-symbols-outlined text-sm">add_home</span>
+                Create New Household
+              </button>
+              <button id="admin-link-household-btn" class="bg-surface-container-high hover:bg-surface-bright text-inverse-surface font-headline text-xs font-black px-3.5 py-2.5 rounded-xl border border-surface-container-highest flex items-center gap-1.5 active:scale-95">
+                <span class="material-symbols-outlined text-sm">sync</span>
+                Device Sync
+              </button>
+              <button id="admin-remove-test-data-btn" class="bg-surface-container-high hover:bg-error/20 hover:text-error text-on-surface-variant font-headline text-xs font-black px-3 py-2.5 rounded-xl border border-surface-container-highest flex items-center gap-1.5 active:scale-95 transition-colors" title="Remove all default test kids and start with fresh family">
+                <span class="material-symbols-outlined text-sm">mop</span>
+                Remove Test Kids
+              </button>
+            </div>
+          </div>
+
+          <!-- Kids Adventurers Roster Header -->
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div>
+              <h2 class="font-headline text-lg font-black text-inverse-surface flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">diversity_1</span>
+                Children & Adventurer Profiles (${heroes.length})
+              </h2>
+              <p class="text-xs text-on-surface-variant font-bold">Manage each child's name, role, avatar, learning difficulty, and reward balances.</p>
+            </div>
+
+            <button id="admin-open-add-kid-btn" class="bg-primary text-on-primary font-headline text-xs font-black px-4 py-2.5 rounded-xl chunky-btn border-primary-container flex items-center gap-1.5 active:scale-95 hover:brightness-110 shadow">
+              <span class="material-symbols-outlined text-base">person_add</span>
+              Add New Kid
+            </button>
+          </div>
+
+          <!-- Kids Grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            ${heroes.map(h => {
+              const isActiveHero = state.selectedHero.id === h.id;
+              const kidDiff = h.gameDifficulty || 'medium';
+              return `
+                <div class="bg-surface-container rounded-3xl p-5 border-2 ${isActiveHero ? 'border-primary shadow-[0_0_20px_rgba(84,233,138,0.25)] ring-2 ring-primary/40' : 'border-surface-container-highest'} card-shadow flex flex-col justify-between gap-4 transition-all">
+                  
+                  <!-- Top: Avatar & Info -->
+                  <div class="flex items-start gap-3.5">
+                    <div class="relative flex-shrink-0">
+                      <div class="w-14 h-14 rounded-full overflow-hidden border-3 border-primary bg-surface-variant flex items-center justify-center shadow-inner">
+                        <img class="w-full h-full object-cover" src="${h.avatar}" alt="${h.name}" />
+                      </div>
+                      ${isActiveHero ? `
+                        <div class="absolute -bottom-1 -right-1 bg-primary text-on-primary text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full shadow">
+                          Active
+                        </div>
+                      ` : ''}
+                    </div>
+
+                    <div class="flex flex-col flex-1 min-w-0">
+                      <div class="flex items-center justify-between gap-1">
+                        <h3 class="font-headline text-base font-black text-inverse-surface truncate">${h.name}</h3>
+                        <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${
+                          kidDiff === 'easy' ? 'bg-primary/20 text-primary border border-primary/40' :
+                          kidDiff === 'hard' ? 'bg-error/20 text-error border border-error/40' :
+                          'bg-secondary/20 text-secondary border border-secondary/40'
+                        }">
+                          ${kidDiff === 'easy' ? '🟢 Toddler' : kidDiff === 'hard' ? '🔵 Hard' : '🟡 Medium'}
+                        </span>
+                      </div>
+                      <span class="text-xs text-on-surface-variant font-bold truncate">${h.role}</span>
+                      <span class="text-[10px] text-primary font-black mt-0.5">Level ${h.level} • ${h.streak || 1} Day Streak</span>
+                    </div>
+                  </div>
+
+                  <!-- Middle: Coins & Points Stats -->
+                  <div class="bg-surface-container-high rounded-2xl p-3 flex items-center justify-between border border-surface-container-highest text-xs font-black">
+                    <div class="flex items-center gap-1.5 text-secondary">
+                      <span class="material-symbols-outlined text-base" style="font-variation-settings: 'FILL' 1;">monetization_on</span>
+                      <span>${(h.coins || 0).toLocaleString()} Tokens</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 text-tertiary">
+                      <span class="material-symbols-outlined text-base">star</span>
+                      <span>${h.points || 0} Points</span>
+                    </div>
+                  </div>
+
+                  <!-- Bottom: Actions -->
+                  <div class="pt-2 border-t border-surface-container-highest flex items-center justify-between gap-2">
+                    ${isActiveHero ? `
+                      <span class="text-primary text-xs font-black flex items-center gap-1">
+                        <span class="material-symbols-outlined text-sm">check_circle</span> Currently Playing
+                      </span>
+                    ` : `
+                      <button data-switch-hero-id="${h.id}" class="admin-switch-hero-btn bg-surface-container-highest hover:bg-surface-bright text-inverse-surface font-headline text-[11px] font-black px-3 py-1.5 rounded-xl chunky-btn-sm active:scale-95">
+                        Set Active
+                      </button>
+                    `}
+
+                    <div class="flex items-center gap-1">
+                      <button data-kid-id="${h.id}" class="admin-edit-kid-btn bg-surface-container-high hover:bg-surface-bright text-secondary font-headline text-xs font-black px-3 py-1.5 rounded-xl border border-surface-container-highest flex items-center gap-1 active:scale-95" title="Edit Kid Profile">
+                        <span class="material-symbols-outlined text-sm">edit</span>
+                        Edit
+                      </button>
+                      <button data-kid-id="${h.id}" class="admin-delete-kid-btn bg-surface-container-high hover:bg-error/20 text-error font-headline text-xs font-black px-2.5 py-1.5 rounded-xl border border-surface-container-highest flex items-center gap-1 active:scale-95" title="Delete Kid Profile">
+                        <span class="material-symbols-outlined text-sm">delete</span>
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+              `;
+            }).join('')}
+          </div>
+
+        </section>
+      `
+          : ''
+      }
+
+      <!-- TAB 3: Task & Routines Manager (With Add Task Form) -->
       ${
         activeAdminTab === 'tasks'
           ? `
@@ -667,9 +811,19 @@ export function renderParentPortalView() {
                       </button>
                     </div>
 
-                    <p class="text-[10px] text-on-surface-variant italic">
-                      ${currentDiff === 'easy' ? '✨ Provides realistic toddler voice narration guiding through questions and next steps.' : currentDiff === 'hard' ? '🧠 Complex math, vocabulary and reasoning challenges.' : '📚 Early phonics, counting and kindergarten shapes.'}
-                    </p>
+                    <div class="flex items-center justify-between pt-2 border-t border-surface-container-highest">
+                      <p class="text-[10px] text-on-surface-variant italic">
+                        ${currentDiff === 'easy' ? '✨ Realistic toddler voice narration.' : currentDiff === 'hard' ? '🧠 Advanced math & logic.' : '📚 Phonics & counting.'}
+                      </p>
+                      <div class="flex items-center gap-1">
+                        <button data-kid-id="${h.id}" class="admin-edit-kid-btn bg-surface-container hover:bg-surface-bright text-secondary font-headline text-[10px] font-black px-2.5 py-1 rounded-lg border border-surface-container-highest flex items-center gap-1 active:scale-95" title="Edit Kid Profile">
+                          <span class="material-symbols-outlined text-xs">edit</span> Edit
+                        </button>
+                        <button data-kid-id="${h.id}" class="admin-delete-kid-btn bg-surface-container hover:bg-error/20 text-error font-headline text-[10px] font-black px-2 py-1 rounded-lg border border-surface-container-highest flex items-center gap-1 active:scale-95" title="Delete Kid Profile">
+                          <span class="material-symbols-outlined text-xs">delete</span>
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 `;
               }).join('')}
@@ -698,6 +852,294 @@ export function renderParentPortalView() {
           : ''
       }
 
+      <!-- Modals for Kids & Household Management -->
+      ${renderAddKidModal()}
+      ${renderEditKidModal()}
+      ${renderDeleteKidModal()}
+      ${renderNewHouseholdModal()}
+
+    </div>
+  `;
+}
+
+function renderAddKidModal() {
+  if (!isAddKidModalOpen) return '';
+  return `
+    <div id="add-kid-modal-backdrop" class="fixed inset-0 bg-[#09141e]/85 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in select-none">
+      <div class="bg-surface-container border-4 border-primary rounded-4xl p-6 max-w-lg w-full card-shadow-lg flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+        
+        <div class="flex justify-between items-center border-b-2 border-surface-container-highest pb-3">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary text-2xl">person_add</span>
+            <h2 class="font-headline text-xl font-black text-inverse-surface">Add New Adventurer</h2>
+          </div>
+          <button id="add-kid-modal-close-btn" class="text-on-surface-variant hover:text-error text-2xl p-1">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        <div class="flex flex-col gap-4">
+          <div>
+            <label class="block text-xs font-black text-on-surface-variant uppercase mb-1">Child's Name</label>
+            <input type="text" id="new-kid-name" placeholder="e.g. Liam, Leo, Noah" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-4 py-3 text-sm font-bold text-inverse-surface focus:border-primary focus:outline-none" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-black text-on-surface-variant uppercase mb-1">Adventurer Title / Role</label>
+            <input type="text" id="new-kid-role" placeholder="e.g. Dragon Explorer, Cyber Knight" value="Dragon Explorer" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-4 py-3 text-sm font-bold text-inverse-surface focus:border-primary focus:outline-none" />
+          </div>
+
+          <!-- Photo Upload Option -->
+          <div class="flex items-center gap-3 p-3 bg-surface-container-high rounded-2xl border-2 border-surface-container-highest">
+            <div class="w-14 h-14 rounded-full border-2 border-primary overflow-hidden flex-shrink-0 bg-surface-variant relative shadow-inner">
+              <img id="new-kid-avatar-preview" src="${selectedAvatarUrl}" class="w-full h-full object-cover" />
+            </div>
+            <div class="flex flex-col flex-1 min-w-0">
+              <span class="text-xs font-headline font-black text-inverse-surface">Upload Child's Photo</span>
+              <span class="text-[10px] text-on-surface-variant font-bold">Upload a photo or pick an avatar below</span>
+            </div>
+            <label for="new-kid-photo-input" class="bg-primary text-on-primary font-headline text-xs font-black px-3.5 py-2.5 rounded-xl chunky-btn-sm border-primary-container cursor-pointer hover:brightness-110 active:scale-95 flex items-center gap-1.5 shadow-sm">
+              <span class="material-symbols-outlined text-sm">photo_camera</span>
+              Upload
+            </label>
+            <input type="file" id="new-kid-photo-input" accept="image/*" class="hidden" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-black text-on-surface-variant uppercase mb-1">Or Select 3D Preset Avatar</label>
+            <div class="grid grid-cols-4 gap-2.5">
+              ${KID_AVATARS.map((av) => `
+                <button type="button" data-avatar-url="${av.url}" class="new-kid-avatar-choice rounded-2xl p-1.5 border-3 transition-all flex flex-col items-center gap-1 ${selectedAvatarUrl === av.url ? 'border-primary bg-primary/20 scale-102 ring-2 ring-primary' : 'border-surface-container-highest bg-surface-container-high hover:border-primary/50'}">
+                  <img src="${av.url}" class="w-12 h-12 rounded-full object-cover" />
+                  <span class="text-[9px] font-bold text-white truncate w-full text-center">${av.label}</span>
+                </button>
+              `).join('')}
+            </div>
+            <input type="hidden" id="new-kid-avatar-val" value="${selectedAvatarUrl}" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-black text-on-surface-variant uppercase mb-1">Learning Difficulty Level (Quest Map Games)</label>
+            <div class="grid grid-cols-3 gap-2">
+              <label class="flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-surface-container-highest bg-surface-container-high cursor-pointer text-center new-diff-choice-label hover:border-primary/60">
+                <input type="radio" name="new-kid-diff" value="easy" class="hidden" />
+                <span class="text-xs font-black text-primary">🟢 Easy</span>
+                <span class="text-[9px] text-on-surface-variant font-bold">Age 3–4 (Voice)</span>
+              </label>
+              <label class="flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-secondary bg-secondary/15 cursor-pointer text-center new-diff-choice-label">
+                <input type="radio" name="new-kid-diff" value="medium" class="hidden" checked />
+                <span class="text-xs font-black text-secondary">🟡 Medium</span>
+                <span class="text-[9px] text-on-surface-variant font-bold">Age 5–6 (Reading)</span>
+              </label>
+              <label class="flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-surface-container-highest bg-surface-container-high cursor-pointer text-center new-diff-choice-label hover:border-error/60">
+                <input type="radio" name="new-kid-diff" value="hard" class="hidden" />
+                <span class="text-xs font-black text-error">🔵 Hard</span>
+                <span class="text-[9px] text-on-surface-variant font-bold">Age 7–9 (Math)</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-black text-on-surface-variant uppercase mb-1">Starting Tokens 🪙</label>
+              <input type="number" id="new-kid-coins" value="50" min="0" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-4 py-2.5 text-sm font-bold text-secondary focus:border-secondary focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-xs font-black text-on-surface-variant uppercase mb-1">Starting Points ⭐</label>
+              <input type="number" id="new-kid-points" value="0" min="0" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-4 py-2.5 text-sm font-bold text-tertiary focus:border-tertiary focus:outline-none" />
+            </div>
+          </div>
+        </div>
+
+        <div class="flex gap-2.5 pt-3 border-t border-surface-container-highest">
+          <button id="add-kid-cancel-btn" class="flex-1 bg-surface-container-high hover:bg-surface-bright text-inverse-surface font-headline text-xs font-black py-3 rounded-xl border border-surface-container-highest chunky-btn-sm active:scale-95">
+            Cancel
+          </button>
+          <button id="add-kid-submit-btn" class="flex-1 bg-primary text-on-primary font-headline text-xs font-black py-3 rounded-xl chunky-btn border-primary-container shadow hover:brightness-110 active:scale-95">
+            Create Adventurer
+          </button>
+        </div>
+
+      </div>
+    </div>
+  `;
+}
+
+function renderEditKidModal() {
+  if (!editingKid) return '';
+  return `
+    <div id="edit-kid-modal-backdrop" class="fixed inset-0 bg-[#09141e]/85 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in select-none">
+      <div class="bg-surface-container border-4 border-secondary rounded-4xl p-6 max-w-lg w-full card-shadow-lg flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+        
+        <div class="flex justify-between items-center border-b-2 border-surface-container-highest pb-3">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-secondary text-2xl">edit</span>
+            <h2 class="font-headline text-xl font-black text-inverse-surface">Edit ${editingKid.name}</h2>
+          </div>
+          <button id="edit-kid-modal-close-btn" class="text-on-surface-variant hover:text-error text-2xl p-1">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        <div class="flex flex-col gap-4">
+          <div>
+            <label class="block text-xs font-black text-on-surface-variant uppercase mb-1">Child's Name</label>
+            <input type="text" id="edit-kid-name" value="${editingKid.name}" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-4 py-3 text-sm font-bold text-inverse-surface focus:border-secondary focus:outline-none" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-black text-on-surface-variant uppercase mb-1">Adventurer Title / Role</label>
+            <input type="text" id="edit-kid-role" value="${editingKid.role}" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-4 py-3 text-sm font-bold text-inverse-surface focus:border-secondary focus:outline-none" />
+          </div>
+
+          <!-- Photo Upload Option -->
+          <div class="flex items-center gap-3 p-3 bg-surface-container-high rounded-2xl border-2 border-surface-container-highest">
+            <div class="w-14 h-14 rounded-full border-2 border-secondary overflow-hidden flex-shrink-0 bg-surface-variant relative shadow-inner">
+              <img id="edit-kid-avatar-preview" src="${editingKid.avatar}" class="w-full h-full object-cover" />
+            </div>
+            <div class="flex flex-col flex-1 min-w-0">
+              <span class="text-xs font-headline font-black text-inverse-surface">Custom Profile Photo</span>
+              <span class="text-[10px] text-on-surface-variant font-bold">Upload a photo of your child from this device</span>
+            </div>
+            <label for="edit-kid-photo-input" class="bg-secondary text-on-secondary font-headline text-xs font-black px-3.5 py-2.5 rounded-xl chunky-btn-sm border-secondary-container cursor-pointer hover:brightness-110 active:scale-95 flex items-center gap-1.5 shadow-sm">
+              <span class="material-symbols-outlined text-sm">photo_camera</span>
+              Upload
+            </label>
+            <input type="file" id="edit-kid-photo-input" accept="image/*" class="hidden" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-black text-on-surface-variant uppercase mb-1">Or Select 3D Preset Avatar</label>
+            <div class="grid grid-cols-4 gap-2.5">
+              ${KID_AVATARS.map((av) => `
+                <button type="button" data-avatar-url="${av.url}" class="edit-kid-avatar-choice rounded-2xl p-1.5 border-3 transition-all flex flex-col items-center gap-1 ${editingKid.avatar === av.url ? 'border-secondary bg-secondary/20 scale-102 ring-2 ring-secondary' : 'border-surface-container-highest bg-surface-container-high hover:border-secondary/50'}">
+                  <img src="${av.url}" class="w-12 h-12 rounded-full object-cover" />
+                  <span class="text-[9px] font-bold text-white truncate w-full text-center">${av.label}</span>
+                </button>
+              `).join('')}
+            </div>
+            <input type="hidden" id="edit-kid-avatar-val" value="${editingKid.avatar}" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-black text-on-surface-variant uppercase mb-1">Learning Difficulty Level</label>
+            <div class="grid grid-cols-3 gap-2">
+              <label class="flex flex-col items-center justify-center p-2.5 rounded-xl border-2 cursor-pointer text-center edit-diff-choice-label ${editingKid.gameDifficulty === 'easy' ? 'border-primary bg-primary/20 text-primary' : 'border-surface-container-highest bg-surface-container-high text-on-surface-variant'}">
+                <input type="radio" name="edit-kid-diff" value="easy" class="hidden" ${editingKid.gameDifficulty === 'easy' ? 'checked' : ''} />
+                <span class="text-xs font-black">🟢 Easy</span>
+                <span class="text-[9px] font-bold">Age 3–4 (Voice)</span>
+              </label>
+              <label class="flex flex-col items-center justify-center p-2.5 rounded-xl border-2 cursor-pointer text-center edit-diff-choice-label ${editingKid.gameDifficulty === 'medium' ? 'border-secondary bg-secondary/20 text-secondary' : 'border-surface-container-highest bg-surface-container-high text-on-surface-variant'}">
+                <input type="radio" name="edit-kid-diff" value="medium" class="hidden" ${editingKid.gameDifficulty === 'medium' ? 'checked' : ''} />
+                <span class="text-xs font-black">🟡 Medium</span>
+                <span class="text-[9px] font-bold">Age 5–6 (Reading)</span>
+              </label>
+              <label class="flex flex-col items-center justify-center p-2.5 rounded-xl border-2 cursor-pointer text-center edit-diff-choice-label ${editingKid.gameDifficulty === 'hard' ? 'border-error bg-error/20 text-error' : 'border-surface-container-highest bg-surface-container-high text-on-surface-variant'}">
+                <input type="radio" name="edit-kid-diff" value="hard" class="hidden" ${editingKid.gameDifficulty === 'hard' ? 'checked' : ''} />
+                <span class="text-xs font-black">🔵 Hard</span>
+                <span class="text-[9px] font-bold">Age 7–9 (Math)</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-3">
+            <div>
+              <label class="block text-xs font-black text-on-surface-variant uppercase mb-1">Level ★</label>
+              <input type="number" id="edit-kid-level" value="${editingKid.level}" min="1" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-3 py-2 text-sm font-bold text-inverse-surface focus:border-secondary focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-xs font-black text-on-surface-variant uppercase mb-1">Tokens 🪙</label>
+              <input type="number" id="edit-kid-coins" value="${editingKid.coins || 0}" min="0" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-3 py-2 text-sm font-bold text-secondary focus:border-secondary focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-xs font-black text-on-surface-variant uppercase mb-1">Points ⭐</label>
+              <input type="number" id="edit-kid-points" value="${editingKid.points || 0}" min="0" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-3 py-2 text-sm font-bold text-tertiary focus:border-tertiary focus:outline-none" />
+            </div>
+          </div>
+        </div>
+
+        <div class="flex gap-2.5 pt-3 border-t border-surface-container-highest">
+          <button id="edit-kid-cancel-btn" class="flex-1 bg-surface-container-high hover:bg-surface-bright text-inverse-surface font-headline text-xs font-black py-3 rounded-xl border border-surface-container-highest chunky-btn-sm active:scale-95">
+            Cancel
+          </button>
+          <button id="edit-kid-submit-btn" class="flex-1 bg-secondary text-on-secondary font-headline text-xs font-black py-3 rounded-xl chunky-btn border-secondary-container shadow hover:brightness-110 active:scale-95">
+            Save Changes
+          </button>
+        </div>
+
+      </div>
+    </div>
+  `;
+}
+
+function renderDeleteKidModal() {
+  if (!deletingKid) return '';
+  return `
+    <div id="delete-kid-modal-backdrop" class="fixed inset-0 bg-[#09141e]/90 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in select-none">
+      <div class="bg-surface-container border-4 border-error rounded-4xl p-6 max-w-md w-full card-shadow-lg flex flex-col items-center text-center gap-4 animate-scale-up">
+        
+        <div class="w-16 h-16 rounded-3xl bg-error/20 text-error flex items-center justify-center text-3xl border-2 border-error/40 shadow">
+          <span class="material-symbols-outlined text-4xl">delete_forever</span>
+        </div>
+
+        <div>
+          <h2 class="font-headline text-xl font-black text-inverse-surface">Delete ${deletingKid.name}?</h2>
+          <p class="text-xs text-on-surface-variant font-bold mt-1.5 leading-relaxed">
+            Are you sure you want to remove <strong>${deletingKid.name}</strong> from the family roster? Their quest records, level, and coin balances will be removed.
+          </p>
+        </div>
+
+        <div class="flex gap-2.5 w-full pt-2">
+          <button id="delete-kid-cancel-btn" class="flex-1 bg-surface-container-high hover:bg-surface-bright text-inverse-surface font-headline text-xs font-black py-3 rounded-xl border border-surface-container-highest chunky-btn-sm active:scale-95">
+            Keep Kid
+          </button>
+          <button id="delete-kid-confirm-btn" class="flex-1 bg-error text-on-error font-headline text-xs font-black py-3 rounded-xl chunky-btn border-error-container shadow hover:brightness-110 active:scale-95">
+            Yes, Delete
+          </button>
+        </div>
+
+      </div>
+    </div>
+  `;
+}
+
+function renderNewHouseholdModal() {
+  if (!isNewHouseholdModalOpen) return '';
+  return `
+    <div id="new-household-modal-backdrop" class="fixed inset-0 bg-[#09141e]/90 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in select-none">
+      <div class="bg-surface-container border-4 border-secondary rounded-4xl p-6 max-w-md w-full card-shadow-lg flex flex-col gap-4 animate-scale-up">
+        
+        <div class="flex justify-between items-center border-b-2 border-surface-container-highest pb-3">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-secondary text-2xl">add_home</span>
+            <h2 class="font-headline text-xl font-black text-inverse-surface">Create New Household</h2>
+          </div>
+          <button id="new-household-close-btn" class="text-on-surface-variant hover:text-error text-2xl p-1">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        <div class="flex flex-col gap-3">
+          <p class="text-xs text-on-surface-variant font-bold leading-relaxed">
+            Creating a new household will generate a brand new unique family cloud sync code so you can link all your family's devices cleanly.
+          </p>
+
+          <div>
+            <label class="block text-xs font-black text-on-surface-variant uppercase mb-1">Family Household Name</label>
+            <input type="text" id="new-household-name-input" placeholder="e.g. The Miller Family" value="The Hero Family" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-4 py-3 text-sm font-bold text-inverse-surface focus:border-secondary focus:outline-none" />
+          </div>
+        </div>
+
+        <div class="flex gap-2.5 pt-2 border-t border-surface-container-highest">
+          <button id="new-household-cancel-btn" class="flex-1 bg-surface-container-high hover:bg-surface-bright text-inverse-surface font-headline text-xs font-black py-3 rounded-xl border border-surface-container-highest chunky-btn-sm active:scale-95">
+            Cancel
+          </button>
+          <button id="new-household-submit-btn" class="flex-1 bg-secondary text-on-secondary font-headline text-xs font-black py-3 rounded-xl chunky-btn border-secondary-container shadow hover:brightness-110 active:scale-95">
+            Create Household
+          </button>
+        </div>
+
+      </div>
     </div>
   `;
 }
@@ -817,6 +1259,379 @@ export function attachParentPortalListeners() {
       });
 
       store.updateAllPricing(realLifeMap, digitalMap, themesMap);
+    });
+  }
+
+  // KID MANAGEMENT LISTENERS
+  const openAddKidBtn = document.getElementById('admin-open-add-kid-btn');
+  if (openAddKidBtn) {
+    openAddKidBtn.addEventListener('click', () => {
+      isAddKidModalOpen = true;
+      selectedAvatarUrl = KID_AVATARS[0].url;
+      Sound.click();
+      store.notify();
+    });
+  }
+
+  const closeAddKidBtn = document.getElementById('add-kid-modal-close-btn');
+  if (closeAddKidBtn) {
+    closeAddKidBtn.addEventListener('click', () => {
+      isAddKidModalOpen = false;
+      Sound.click();
+      store.notify();
+    });
+  }
+
+  const cancelAddKidBtn = document.getElementById('add-kid-cancel-btn');
+  if (cancelAddKidBtn) {
+    cancelAddKidBtn.addEventListener('click', () => {
+      isAddKidModalOpen = false;
+      Sound.click();
+      store.notify();
+    });
+  }
+
+  const addKidBackdrop = document.getElementById('add-kid-modal-backdrop');
+  if (addKidBackdrop) {
+    addKidBackdrop.addEventListener('click', (e) => {
+      if (e.target === addKidBackdrop) {
+        isAddKidModalOpen = false;
+        store.notify();
+      }
+    });
+  }
+
+  document.querySelectorAll('.new-kid-avatar-choice').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      selectedAvatarUrl = btn.getAttribute('data-avatar-url');
+      const avatarInput = document.getElementById('new-kid-avatar-val');
+      if (avatarInput) avatarInput.value = selectedAvatarUrl;
+      const preview = document.getElementById('new-kid-avatar-preview');
+      if (preview) preview.src = selectedAvatarUrl;
+      document.querySelectorAll('.new-kid-avatar-choice').forEach((b) => {
+        b.classList.remove('border-primary', 'bg-primary/20', 'scale-102', 'ring-2', 'ring-primary');
+        b.classList.add('border-surface-container-highest', 'bg-surface-container-high');
+      });
+      btn.classList.remove('border-surface-container-highest', 'bg-surface-container-high');
+      btn.classList.add('border-primary', 'bg-primary/20', 'scale-102', 'ring-2', 'ring-primary');
+      Sound.click();
+    });
+  });
+
+  const newKidPhotoInput = document.getElementById('new-kid-photo-input');
+  if (newKidPhotoInput) {
+    newKidPhotoInput.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const dataUrl = await processProfilePhoto(file);
+        selectedAvatarUrl = dataUrl;
+        const avatarInput = document.getElementById('new-kid-avatar-val');
+        if (avatarInput) avatarInput.value = dataUrl;
+        const preview = document.getElementById('new-kid-avatar-preview');
+        if (preview) preview.src = dataUrl;
+        document.querySelectorAll('.new-kid-avatar-choice').forEach((b) => {
+          b.classList.remove('border-primary', 'bg-primary/20', 'scale-102', 'ring-2', 'ring-primary');
+          b.classList.add('border-surface-container-highest', 'bg-surface-container-high');
+        });
+        Sound.fanfare();
+      } catch (err) {
+        alert(err.message || 'Unable to upload photo.');
+      }
+    });
+  }
+
+  document.querySelectorAll('.new-diff-choice-label').forEach((label) => {
+    label.addEventListener('click', () => {
+      document.querySelectorAll('.new-diff-choice-label').forEach((l) => {
+        l.classList.remove('border-primary', 'bg-primary/15', 'border-secondary', 'bg-secondary/15', 'border-error', 'bg-error/15');
+        l.classList.add('border-surface-container-highest', 'bg-surface-container-high');
+      });
+      const input = label.querySelector('input');
+      if (input) {
+        input.checked = true;
+        if (input.value === 'easy') label.classList.add('border-primary', 'bg-primary/15');
+        else if (input.value === 'hard') label.classList.add('border-error', 'bg-error/15');
+        else label.classList.add('border-secondary', 'bg-secondary/15');
+      }
+      Sound.click();
+    });
+  });
+
+  const submitAddKidBtn = document.getElementById('add-kid-submit-btn');
+  if (submitAddKidBtn) {
+    submitAddKidBtn.addEventListener('click', () => {
+      const name = document.getElementById('new-kid-name')?.value;
+      const role = document.getElementById('new-kid-role')?.value;
+      const avatar = document.getElementById('new-kid-avatar-val')?.value || selectedAvatarUrl;
+      const diffInput = document.querySelector('input[name="new-kid-diff"]:checked');
+      const diff = diffInput ? diffInput.value : 'medium';
+      const coins = parseInt(document.getElementById('new-kid-coins')?.value || '50', 10);
+      const points = parseInt(document.getElementById('new-kid-points')?.value || '0', 10);
+
+      if (!name || !name.trim()) {
+        const input = document.getElementById('new-kid-name');
+        if (input) {
+          input.classList.add('border-error');
+          input.focus();
+        }
+        return;
+      }
+
+      store.addHero({
+        name: name.trim(),
+        role: role ? role.trim() : 'Dragon Explorer',
+        avatar,
+        gameDifficulty: diff,
+        coins,
+        points
+      });
+
+      isAddKidModalOpen = false;
+      store.notify();
+    });
+  }
+
+  // EDIT KID
+  document.querySelectorAll('.admin-edit-kid-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const kidId = btn.getAttribute('data-kid-id');
+      const kid = store.getState().heroes.find((h) => h.id === kidId);
+      if (kid) {
+        editingKid = { ...kid };
+        Sound.click();
+        store.notify();
+      }
+    });
+  });
+
+  const closeEditKidBtn = document.getElementById('edit-kid-modal-close-btn');
+  if (closeEditKidBtn) {
+    closeEditKidBtn.addEventListener('click', () => {
+      editingKid = null;
+      Sound.click();
+      store.notify();
+    });
+  }
+
+  const cancelEditKidBtn = document.getElementById('edit-kid-cancel-btn');
+  if (cancelEditKidBtn) {
+    cancelEditKidBtn.addEventListener('click', () => {
+      editingKid = null;
+      Sound.click();
+      store.notify();
+    });
+  }
+
+  const editKidBackdrop = document.getElementById('edit-kid-modal-backdrop');
+  if (editKidBackdrop) {
+    editKidBackdrop.addEventListener('click', (e) => {
+      if (e.target === editKidBackdrop) {
+        editingKid = null;
+        store.notify();
+      }
+    });
+  }
+
+  document.querySelectorAll('.edit-kid-avatar-choice').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const url = btn.getAttribute('data-avatar-url');
+      const avatarInput = document.getElementById('edit-kid-avatar-val');
+      if (avatarInput) avatarInput.value = url;
+      const preview = document.getElementById('edit-kid-avatar-preview');
+      if (preview) preview.src = url;
+      document.querySelectorAll('.edit-kid-avatar-choice').forEach((b) => {
+        b.classList.remove('border-secondary', 'bg-secondary/20', 'scale-102', 'ring-2', 'ring-secondary');
+        b.classList.add('border-surface-container-highest', 'bg-surface-container-high');
+      });
+      btn.classList.remove('border-surface-container-highest', 'bg-surface-container-high');
+      btn.classList.add('border-secondary', 'bg-secondary/20', 'scale-102', 'ring-2', 'ring-secondary');
+      Sound.click();
+    });
+  });
+
+  const editKidPhotoInput = document.getElementById('edit-kid-photo-input');
+  if (editKidPhotoInput && editingKid) {
+    editKidPhotoInput.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const dataUrl = await processProfilePhoto(file);
+        editingKid.avatar = dataUrl;
+        const avatarInput = document.getElementById('edit-kid-avatar-val');
+        if (avatarInput) avatarInput.value = dataUrl;
+        const preview = document.getElementById('edit-kid-avatar-preview');
+        if (preview) preview.src = dataUrl;
+        document.querySelectorAll('.edit-kid-avatar-choice').forEach((b) => {
+          b.classList.remove('border-secondary', 'bg-secondary/20', 'scale-102', 'ring-2', 'ring-secondary');
+          b.classList.add('border-surface-container-highest', 'bg-surface-container-high');
+        });
+        Sound.fanfare();
+      } catch (err) {
+        alert(err.message || 'Unable to upload photo.');
+      }
+    });
+  }
+
+  document.querySelectorAll('.edit-diff-choice-label').forEach((label) => {
+    label.addEventListener('click', () => {
+      document.querySelectorAll('.edit-diff-choice-label').forEach((l) => {
+        l.classList.remove('border-primary', 'bg-primary/20', 'text-primary', 'border-secondary', 'bg-secondary/20', 'text-secondary', 'border-error', 'bg-error/20', 'text-error');
+        l.classList.add('border-surface-container-highest', 'bg-surface-container-high', 'text-on-surface-variant');
+      });
+      const input = label.querySelector('input');
+      if (input) {
+        input.checked = true;
+        if (input.value === 'easy') label.classList.add('border-primary', 'bg-primary/20', 'text-primary');
+        else if (input.value === 'hard') label.classList.add('border-error', 'bg-error/20', 'text-error');
+        else label.classList.add('border-secondary', 'bg-secondary/20', 'text-secondary');
+        label.classList.remove('border-surface-container-highest', 'bg-surface-container-high', 'text-on-surface-variant');
+      }
+      Sound.click();
+    });
+  });
+
+  const submitEditKidBtn = document.getElementById('edit-kid-submit-btn');
+  if (submitEditKidBtn && editingKid) {
+    submitEditKidBtn.addEventListener('click', () => {
+      const name = document.getElementById('edit-kid-name')?.value;
+      const role = document.getElementById('edit-kid-role')?.value;
+      const avatar = document.getElementById('edit-kid-avatar-val')?.value;
+      const diffInput = document.querySelector('input[name="edit-kid-diff"]:checked');
+      const diff = diffInput ? diffInput.value : editingKid.gameDifficulty;
+      const level = parseInt(document.getElementById('edit-kid-level')?.value || '1', 10);
+      const coins = parseInt(document.getElementById('edit-kid-coins')?.value || '0', 10);
+      const points = parseInt(document.getElementById('edit-kid-points')?.value || '0', 10);
+
+      store.editHero(editingKid.id, {
+        name: name || editingKid.name,
+        role: role || editingKid.role,
+        avatar: avatar || editingKid.avatar,
+        gameDifficulty: diff,
+        level,
+        coins,
+        points
+      });
+
+      editingKid = null;
+      store.notify();
+    });
+  }
+
+  // DELETE KID
+  document.querySelectorAll('.admin-delete-kid-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const kidId = btn.getAttribute('data-kid-id');
+      const kid = store.getState().heroes.find((h) => h.id === kidId);
+      if (kid) {
+        deletingKid = kid;
+        Sound.click();
+        store.notify();
+      }
+    });
+  });
+
+  const closeDeleteKidBtn = document.getElementById('delete-kid-cancel-btn');
+  if (closeDeleteKidBtn) {
+    closeDeleteKidBtn.addEventListener('click', () => {
+      deletingKid = null;
+      Sound.click();
+      store.notify();
+    });
+  }
+
+  const deleteKidBackdrop = document.getElementById('delete-kid-modal-backdrop');
+  if (deleteKidBackdrop) {
+    deleteKidBackdrop.addEventListener('click', (e) => {
+      if (e.target === deleteKidBackdrop) {
+        deletingKid = null;
+        store.notify();
+      }
+    });
+  }
+
+  const confirmDeleteKidBtn = document.getElementById('delete-kid-confirm-btn');
+  if (confirmDeleteKidBtn && deletingKid) {
+    confirmDeleteKidBtn.addEventListener('click', () => {
+      store.deleteHero(deletingKid.id);
+      deletingKid = null;
+      store.notify();
+    });
+  }
+
+  // SWITCH HERO
+  document.querySelectorAll('.admin-switch-hero-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const heroId = btn.getAttribute('data-switch-hero-id');
+      store.switchHero(heroId);
+      store.notify();
+    });
+  });
+
+  // CREATE NEW HOUSEHOLD
+  const openNewHouseholdBtn = document.getElementById('admin-create-household-btn');
+  if (openNewHouseholdBtn) {
+    openNewHouseholdBtn.addEventListener('click', () => {
+      isNewHouseholdModalOpen = true;
+      Sound.click();
+      store.notify();
+    });
+  }
+
+  const closeNewHouseholdBtn = document.getElementById('new-household-close-btn');
+  if (closeNewHouseholdBtn) {
+    closeNewHouseholdBtn.addEventListener('click', () => {
+      isNewHouseholdModalOpen = false;
+      Sound.click();
+      store.notify();
+    });
+  }
+
+  const cancelNewHouseholdBtn = document.getElementById('new-household-cancel-btn');
+  if (cancelNewHouseholdBtn) {
+    cancelNewHouseholdBtn.addEventListener('click', () => {
+      isNewHouseholdModalOpen = false;
+      Sound.click();
+      store.notify();
+    });
+  }
+
+  const newHouseholdBackdrop = document.getElementById('new-household-modal-backdrop');
+  if (newHouseholdBackdrop) {
+    newHouseholdBackdrop.addEventListener('click', (e) => {
+      if (e.target === newHouseholdBackdrop) {
+        isNewHouseholdModalOpen = false;
+        store.notify();
+      }
+    });
+  }
+
+  const submitNewHouseholdBtn = document.getElementById('new-household-submit-btn');
+  if (submitNewHouseholdBtn) {
+    submitNewHouseholdBtn.addEventListener('click', () => {
+      const name = document.getElementById('new-household-name-input')?.value;
+      store.createNewHousehold(name || 'The Hero Family');
+      isNewHouseholdModalOpen = false;
+      store.notify();
+    });
+  }
+
+  // LINK / DEVICE SYNC
+  const linkHouseholdBtn = document.getElementById('admin-link-household-btn');
+  if (linkHouseholdBtn) {
+    linkHouseholdBtn.addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('open-household-modal'));
+    });
+  }
+
+  // REMOVE TEST KIDS
+  const removeTestDataBtn = document.getElementById('admin-remove-test-data-btn');
+  if (removeTestDataBtn) {
+    removeTestDataBtn.addEventListener('click', () => {
+      store.removeTestKids();
+      store.notify();
     });
   }
 

@@ -5,7 +5,14 @@ import { ADVENTURE_GAMES } from '../data/learningGamesData.js';
 import { PROFILE_THEMES } from '../data/profileThemesData.js';
 import { generate3DIcon } from '../utils/graphicsGenerator.js';
 
-const STORAGE_KEY = 'little_heroes_adventure_master_v6';
+export const KID_AVATARS = [
+  { id: 'avatar_dragon', label: 'Dragon Explorer', url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZfP7_Cwlp4sz41asI8ymuapAKvjmqHtvI4zcMAF_XwUmibj8IheGrS5cA5QD5gmXgVxEkZM9FlWJPRZnct3x6-9SQB7zJKqkEDjJ3m95tAy3zRqS-PbmcQ4kv_9pmIfm2Py4mh3Fw083hkDookz1w4_r50SBA1jc9igDaAPFLYBFgSP2aQBz7Q4jVE-DwhMOyUEHlxDkQk6Gwc2EAFCSKs1c0QuhUOi3tkrk5MXRARKqZcYVzyJe6gA' },
+  { id: 'avatar_cyber', label: 'Cyber Scout', url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuARR2klW8usL-qhZiz0_G-YpTDfniXDjgHoCQ_TULj1qzslQkdWxX4Wq2evyu74EP6D3_HZhuWK7Ur01vaB-ih5z8SIKSqawthIwUeiiFFVbRjUfS_ESM6_-NzIkcPl9lgdpDNEqBDaoiMnhRiHE2oY84NKDgpdDwGB-ns1Pl0rX6OlqQa93LVIUhJuD5us2LFiF8zPaPCw3LYoZuCs5m2Eie-8vAsBx3XfthE2qlYBO4kcHUFrN_gtiA' },
+  { id: 'avatar_superpup', label: 'Super Pup', url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBt3DBwfpcbbvoWYvwpXt_crRM01oD2FlSmnTjRotHTDi6sCpEpo0HGRngqdUbBC_cgHu1T3JOXkMdw4-qLzPcPEslBONYLu1qXkoOJ6btgq7pAJfCm1FvcueHfEMAmidhqBIchTbwNZKOjkPMEDo6oKzVt1PgftBS6r7sVVYel_-bHhlmi-n4oZI1RzBckf3DMsFIgVmoLzSNj29eK9AS8dChk10e_WQuIwzYNt21e4MKdKn02dg4RWg' },
+  { id: 'avatar_space', label: 'Knight Adventurer', url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAUTWERGwaJXM82ZeJ0adcNsuOm_cR4z5CXAleJ2oKcekqKsuaZZD315RkB188DDt6fevx8guS2V20knvs93SzLKjox7deSVry-v8kiyTM-H0Kg5vmB8inoBoKz2SqYnVzUKVk9uulAHGfsUmnIs4VI7GkWcmmfE2gvPnoehqZqjhxHZuHz9Tqs_Omja5bwoX9aPmW8Xf63V9KIQsux3ucTJHZBdI2U8eRyOy7bO0XQMqe2BNGXc3SoWg' }
+];
+
+const STORAGE_KEY = 'little_heroes_adventure_master_v7';
 
 const defaultState = {
   activeView: 'dashboard', // dashboard, quest_map, pet_pen, pet_roster, pet_detail, pet_bath, shop, ar_battle, evolution, master_fuse, dance_party, profile, parent_portal, adventures_map, adventure_game
@@ -15,92 +22,47 @@ const defaultState = {
 
   // Household Link Architecture
   household: {
-    syncCode: 'HERO-8842',
+    syncCode: 'HERO-' + Math.floor(1000 + Math.random() * 9000),
     name: "The Hero Family",
-    linkedDevices: 3,
+    linkedDevices: 1,
     lastSync: 'Just now'
   },
 
   // Active Hero Profile
   selectedHero: {
-    id: 'leo',
-    name: 'Leo',
-    title: 'Dragon Explorer',
+    id: 'hero_1',
+    name: 'Little Hero',
+    title: 'Brave Adventurer',
     avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZfP7_Cwlp4sz41asI8ymuapAKvjmqHtvI4zcMAF_XwUmibj8IheGrS5cA5QD5gmXgVxEkZM9FlWJPRZnct3x6-9SQB7zJKqkEDjJ3m95tAy3zRqS-PbmcQ4kv_9pmIfm2Py4mh3Fw083hkDookz1w4_r50SBA1jc9igDaAPFLYBFgSP2aQBz7Q4jVE-DwhMOyUEHlxDkQk6Gwc2EAFCSKs1c0QuhUOi3tkrk5MXRARKqZcYVzyJe6gA',
     color: '#2ecc71',
-    level: 12,
-    xp: 450,
-    xpNext: 1000,
-    points: 120, // ⭐ Points (Parent-approved, spent on Real-Life Rewards)
-    coins: 1240,  // 🪙 Tokens (Auto-issued, spent on digital items)
-    streak: 5,
-    stars: 24,
+    level: 1,
+    xp: 0,
+    xpNext: 100,
+    points: 0, // ⭐ Points (Parent-approved, spent on Real-Life Rewards)
+    coins: 0,  // 🪙 Tokens (Auto-issued, spent on digital items)
+    streak: 1,
+    stars: 0,
     activePetId: 1,
-    gameDifficulty: 'hard', // 'easy' (Toddler 3-4), 'medium' (Kids 5-6), 'hard' (Kids 7-9)
+    gameDifficulty: 'medium', // 'easy' (Toddler 3-4), 'medium' (Kids 5-6), 'hard' (Kids 7-9)
     equippedProfileTheme: 'theme_dragon_emerald',
     unlockedThemes: ['theme_dragon_emerald']
   },
 
   heroes: [
     {
-      id: 'leo',
-      name: 'Leo',
-      role: 'Explorer Leader',
+      id: 'hero_1',
+      name: 'Little Hero',
+      role: 'Brave Adventurer',
       avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZfP7_Cwlp4sz41asI8ymuapAKvjmqHtvI4zcMAF_XwUmibj8IheGrS5cA5QD5gmXgVxEkZM9FlWJPRZnct3x6-9SQB7zJKqkEDjJ3m95tAy3zRqS-PbmcQ4kv_9pmIfm2Py4mh3Fw083hkDookz1w4_r50SBA1jc9igDaAPFLYBFgSP2aQBz7Q4jVE-DwhMOyUEHlxDkQk6Gwc2EAFCSKs1c0QuhUOi3tkrk5MXRARKqZcYVzyJe6gA',
-      level: 12,
-      points: 120,
-      coins: 1240,
+      level: 1,
+      points: 0,
+      coins: 0,
       activePetId: 1,
-      streak: 5,
-      completionRate: 92,
-      gameDifficulty: 'hard',
+      streak: 1,
+      completionRate: 100,
+      gameDifficulty: 'medium',
       equippedProfileTheme: 'theme_dragon_emerald',
-      unlockedThemes: ['theme_dragon_emerald', 'theme_cyber_knight']
-    },
-    {
-      id: 'mia',
-      name: 'Mia',
-      role: 'Cyber Scout',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuARR2klW8usL-qhZiz0_G-YpTDfniXDjgHoCQ_TULj1qzslQkdWxX4Wq2evyu74EP6D3_HZhuWK7Ur01vaB-ih5z8SIKSqawthIwUeiiFFVbRjUfS_ESM6_-NzIkcPl9lgdpDNEqBDaoiMnhRiHE2oY84NKDgpdDwGB-ns1Pl0rX6OlqQa93LVIUhJuD5us2LFiF8zPaPCw3LYoZuCs5m2Eie-8vAsBx3XfthE2qlYBO4kcHUFrN_gtiA',
-      level: 8,
-      points: 85,
-      coins: 820,
-      activePetId: 2,
-      streak: 4,
-      completionRate: 88,
-      gameDifficulty: 'medium',
-      equippedProfileTheme: 'theme_cyber_knight',
-      unlockedThemes: ['theme_cyber_knight']
-    },
-    {
-      id: 'sam',
-      name: 'Sam',
-      role: 'Super Pup',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBt3DBwfpcbbvoWYvwpXt_crRM01oD2FlSmnTjRotHTDi6sCpEpo0HGRngqdUbBC_cgHu1T3JOXkMdw4-qLzPcPEslBONYLu1qXkoOJ6btgq7pAJfCm1FvcueHfEMAmidhqBIchTbwNZKOjkPMEDo6oKzVt1PgftBS6r7sVVYel_-bHhlmi-n4oZI1RzBckf3DMsFIgVmoLzSNj29eK9AS8dChk10e_WQuIwzYNt21e4MKdKn02dg4RWg',
-      level: 3,
-      points: 40,
-      coins: 350,
-      activePetId: 3,
-      streak: 3,
-      completionRate: 75,
-      gameDifficulty: 'easy', // Toddler 3-4 (triggers voice prompts)
-      equippedProfileTheme: 'theme_solar_titan',
-      unlockedThemes: ['theme_solar_titan']
-    },
-    {
-      id: 'alex',
-      name: 'Alex',
-      role: 'Knight Adventurer',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAUTWERGwaJXM82ZeJ0adcNsuOm_cR4z5CXAleJ2oKcekqKsuaZZD315RkB188DDt6fevx8guS2V20knvs93SzLKjox7deSVry-v8kiyTM-H0Kg5vmB8inoBoKz2SqYnVzUKVk9uulAHGfsUmnIs4VI7GkWcmmfE2gvPnoehqZqjhxHZuHz9Tqs_Omja5bwoX9aPmW8Xf63V9KIQsux3ucTJHZBdI2U8eRyOy7bO0XQMqe2BNGXc3SoWg',
-      level: 5,
-      points: 60,
-      coins: 610,
-      activePetId: 5,
-      streak: 4,
-      completionRate: 80,
-      gameDifficulty: 'medium',
-      equippedProfileTheme: 'theme_cosmic_blaster',
-      unlockedThemes: ['theme_cosmic_blaster']
+      unlockedThemes: ['theme_dragon_emerald']
     }
   ],
 
@@ -432,38 +394,10 @@ const defaultState = {
   equippedPetGear: 'Enchanted Wizard Hat',
 
   // Parent Admin Portal: Action Approvals Queue
-  pendingApprovals: [
-    {
-      id: 'req_1',
-      kidId: 'leo',
-      kidName: 'Leo',
-      type: 'reward',
-      title: '30 Mins Screen Time',
-      costPoints: 50,
-      date: 'Today, 4:15 PM',
-      status: 'pending'
-    },
-    {
-      id: 'req_2',
-      kidId: 'mia',
-      kidName: 'Mia',
-      type: 'task_point_approval',
-      title: 'Clean Up Toys & Blocks',
-      zone: 'Task Forest',
-      pendingPoints: 15,
-      tokensAwarded: 35,
-      date: 'Today, 3:30 PM',
-      status: 'pending'
-    }
-  ],
+  pendingApprovals: [],
 
   // Parent Admin Portal: Ledger Logs History
-  taskLedgerLogs: [
-    { id: 101, kid: 'Leo', action: 'Auto-Issued +30 Tokens for Morning Toothbrush Battle', payout: '+30 Tokens 🪙 (Auto-Issued)', time: '8:05 AM', status: 'Success' },
-    { id: 102, kid: 'Leo', action: 'Submitted +15 Points for Parent Verification (Toothbrush Battle)', payout: '⭐ +15 Points (Pending Parent Sign-off)', time: '8:05 AM', status: 'Pending' },
-    { id: 103, kid: 'Mia', action: 'Auto-Issued +15 Tokens for Drink 4 Cups of Water', payout: '+15 Tokens 🪙 (Auto-Issued)', time: '11:20 AM', status: 'Success' },
-    { id: 104, kid: 'Leo', action: 'Redeemed Real-Life Reward (30 Mins Screen Time)', payout: '-50 Points ⭐ (Pending Parent Sign-off)', time: '4:15 PM', status: 'Awaiting Sign-off' }
-  ],
+  taskLedgerLogs: [],
 
   // Parent Settings & Difficulty Sliders
   parentSettings: {
@@ -489,7 +423,15 @@ class Store {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
-        return { ...defaultState, ...JSON.parse(saved) };
+        const parsed = JSON.parse(saved);
+        const testIds = ['leo', 'mia', 'sam', 'alex'];
+        const isPureMock = parsed.heroes && parsed.heroes.length === 4 && parsed.heroes.every((h) => testIds.includes(h.id));
+        if (isPureMock) {
+          parsed.heroes = defaultState.heroes;
+          parsed.selectedHero = defaultState.selectedHero;
+          parsed.pendingApprovals = [];
+        }
+        return { ...defaultState, ...parsed };
       }
     } catch (e) {
       console.warn('Failed to load store state', e);
@@ -1402,6 +1344,132 @@ class Store {
       Sound.fanfare();
       this.saveState();
     }
+  }
+
+  // Add a new Kid Profile
+  addHero({ name, role = 'Adventurer', avatar, gameDifficulty = 'medium', level = 1, coins = 0, points = 0 }) {
+    if (!name || !name.trim()) return;
+    const newHero = {
+      id: 'hero_' + Date.now(),
+      name: name.trim(),
+      role: role.trim() || 'Adventurer',
+      avatar: avatar || KID_AVATARS[0].url,
+      level: Number(level) || 1,
+      points: Number(points) || 0,
+      coins: Number(coins) || 0,
+      activePetId: 1,
+      streak: 1,
+      completionRate: 100,
+      gameDifficulty: gameDifficulty || 'medium',
+      equippedProfileTheme: 'theme_dragon_emerald',
+      unlockedThemes: ['theme_dragon_emerald']
+    };
+    this.state.heroes.push(newHero);
+    this.switchHero(newHero.id);
+    return newHero;
+  }
+
+  // Edit an existing Kid Profile
+  editHero(heroId, updatedData) {
+    const hero = this.state.heroes.find((h) => h.id === heroId);
+    if (!hero) return;
+    if (updatedData.name !== undefined) hero.name = updatedData.name.trim() || hero.name;
+    if (updatedData.role !== undefined) hero.role = updatedData.role.trim() || hero.role;
+    if (updatedData.avatar !== undefined) hero.avatar = updatedData.avatar;
+    if (updatedData.gameDifficulty !== undefined) hero.gameDifficulty = updatedData.gameDifficulty;
+    if (updatedData.level !== undefined) hero.level = Math.max(1, Number(updatedData.level));
+    if (updatedData.coins !== undefined) hero.coins = Math.max(0, Number(updatedData.coins));
+    if (updatedData.points !== undefined) hero.points = Math.max(0, Number(updatedData.points));
+
+    // If currently active hero was edited, synchronize selectedHero
+    if (this.state.selectedHero.id === heroId) {
+      this.state.selectedHero.name = hero.name;
+      this.state.selectedHero.title = hero.role;
+      this.state.selectedHero.avatar = hero.avatar;
+      this.state.selectedHero.gameDifficulty = hero.gameDifficulty;
+      this.state.selectedHero.level = hero.level;
+      this.state.selectedHero.coins = hero.coins;
+      this.state.selectedHero.points = hero.points;
+    }
+
+    this.saveState();
+    Sound.fanfare();
+  }
+
+  // Delete a Kid Profile
+  deleteHero(heroId) {
+    this.state.heroes = this.state.heroes.filter((h) => h.id !== heroId);
+    if (this.state.heroes.length === 0) {
+      // Ensure there's always at least 1 hero
+      const freshHero = {
+        id: 'hero_' + Date.now(),
+        name: 'Little Hero',
+        role: 'Brave Adventurer',
+        avatar: KID_AVATARS[0].url,
+        level: 1,
+        points: 0,
+        coins: 0,
+        activePetId: 1,
+        streak: 1,
+        completionRate: 100,
+        gameDifficulty: 'medium',
+        equippedProfileTheme: 'theme_dragon_emerald',
+        unlockedThemes: ['theme_dragon_emerald']
+      };
+      this.state.heroes.push(freshHero);
+      this.switchHero(freshHero.id);
+    } else if (this.state.selectedHero.id === heroId) {
+      // Switch active hero to the first remaining kid
+      this.switchHero(this.state.heroes[0].id);
+    } else {
+      this.saveState();
+    }
+    Sound.hit();
+  }
+
+  // Create a brand new household
+  createNewHousehold(familyName = 'The Hero Family') {
+    const newSyncCode = 'HERO-' + Math.floor(1000 + Math.random() * 9000);
+    this.state.household = {
+      syncCode: newSyncCode,
+      name: familyName.trim() || 'The Hero Family',
+      linkedDevices: 1,
+      lastSync: 'Created Just Now'
+    };
+    this.state.pendingApprovals = [];
+    this.saveState();
+    Sound.fanfare();
+
+    // Connect to new Firestore household document
+    import('../services/firestoreSyncService.js').then(({ firestoreSync }) => {
+      firestoreSync.startSync(newSyncCode);
+    }).catch(() => {});
+
+    return newSyncCode;
+  }
+
+  // Remove test kids and reset to clean state
+  removeTestKids() {
+    const cleanHero = {
+      id: 'hero_' + Date.now(),
+      name: 'Little Hero',
+      role: 'Brave Adventurer',
+      avatar: KID_AVATARS[0].url,
+      level: 1,
+      points: 0,
+      coins: 0,
+      activePetId: 1,
+      streak: 1,
+      completionRate: 100,
+      gameDifficulty: 'medium',
+      equippedProfileTheme: 'theme_dragon_emerald',
+      unlockedThemes: ['theme_dragon_emerald']
+    };
+    this.state.heroes = [cleanHero];
+    this.state.pendingApprovals = [];
+    this.state.taskLedgerLogs = [];
+    this.switchHero(cleanHero.id);
+    Sound.fanfare();
   }
 
   logAction(action, payout) {

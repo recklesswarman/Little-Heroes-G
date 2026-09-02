@@ -78,9 +78,9 @@ export function renderHouseholdLinkModal() {
         <!-- Household Sync Code Box -->
         <div class="flex flex-col items-center text-center gap-3 py-1">
           <div class="w-full bg-surface-container-lowest p-3.5 rounded-2xl border-2 border-primary/40 flex flex-col items-center gap-1 shadow-inner">
-            <span class="text-[10px] font-black uppercase text-secondary tracking-widest">Household Sync Code</span>
+            <span class="text-[10px] font-black uppercase text-secondary tracking-widest">${household.name} Sync Code</span>
             <span class="font-headline text-2xl font-black text-primary tracking-widest">${household.syncCode}</span>
-            <span class="text-[10px] text-on-surface-variant font-bold">Use on other family tablets to join this household</span>
+            <span class="text-[10px] text-on-surface-variant font-bold">Use on other family tablets or phones to sync this household</span>
           </div>
 
           <!-- Connected Devices Status -->
@@ -94,10 +94,25 @@ export function renderHouseholdLinkModal() {
               ${household.lastSync || 'Cloud Synced'}
             </span>
           </div>
+
+          <!-- Join Existing Household Option -->
+          <div class="w-full bg-surface-container-lowest p-3 rounded-2xl border border-surface-container-highest flex flex-col gap-2">
+            <span class="text-[10px] font-black uppercase text-on-surface-variant tracking-wider text-left">Join Another Household</span>
+            <div class="flex gap-2">
+              <input type="text" id="household-join-input" placeholder="e.g. HERO-1234" class="flex-1 bg-surface-container-high border border-surface-container-highest rounded-xl px-3 py-2 text-xs font-black uppercase tracking-wider text-inverse-surface focus:border-secondary focus:outline-none" />
+              <button id="household-join-btn" class="bg-secondary hover:brightness-110 text-on-secondary font-headline text-xs font-black px-3 py-2 rounded-xl chunky-btn-sm active:scale-95">
+                Join
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- Action Buttons -->
         <div class="flex gap-2">
+          <button id="household-create-fresh-btn" class="bg-surface-container-highest hover:bg-surface-bright text-secondary font-headline text-xs font-black py-3 px-3 rounded-xl border border-surface-container-highest chunky-btn-sm flex items-center gap-1" title="Generate a brand new household and code">
+            <span class="material-symbols-outlined text-sm">add_home</span>
+            New
+          </button>
           <button id="household-copy-btn" class="flex-1 bg-surface-container-highest hover:bg-surface-bright text-inverse-surface font-headline text-xs font-black py-3 rounded-xl border border-surface-container-low chunky-btn-sm">
             Copy Code
           </button>
@@ -160,6 +175,34 @@ export function attachHouseholdLinkModalListeners() {
       setTimeout(() => {
         copyBtn.textContent = 'Copy Code';
       }, 1500);
+    });
+  }
+
+  const createFreshBtn = document.getElementById('household-create-fresh-btn');
+  if (createFreshBtn) {
+    createFreshBtn.addEventListener('click', () => {
+      const familyName = prompt('Enter Family Household Name:', store.getState().household.name || 'The Hero Family');
+      if (familyName) {
+        store.createNewHousehold(familyName);
+        store.notify();
+      }
+    });
+  }
+
+  const joinBtn = document.getElementById('household-join-btn');
+  if (joinBtn) {
+    joinBtn.addEventListener('click', () => {
+      const input = document.getElementById('household-join-input');
+      const code = input?.value?.trim().toUpperCase();
+      if (code) {
+        store.getState().household.syncCode = code;
+        store.saveState();
+        firestoreSync.startSync(code);
+        Sound.fanfare();
+        alert(`Linked to Household ${code}!`);
+        isHouseholdModalOpen = false;
+        store.notify();
+      }
     });
   }
 }
