@@ -127,10 +127,24 @@ export function renderDashboardView() {
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
           ${habitIslands
             .map((h) => {
+              const isPending = h.completed && !h.pointsApproved;
+              const isApproved = h.completed && h.pointsApproved;
+              const btnClass = isApproved
+                ? 'tactile-check-approved'
+                : isPending
+                ? 'tactile-check-pending'
+                : 'tactile-check-ready';
+              const checkIcon = isApproved ? 'verified' : 'check';
+              const iconColor = isPending ? 'text-[#1c1200]' : 'text-white';
+
               return `
-              <div class="bg-surface-container rounded-3xl p-4 flex items-center justify-between border-2 border-surface-container-highest card-shadow transition-all ${
-                h.completed ? 'opacity-75 bg-surface-container/70 border-primary/40' : ''
-              }">
+              <div class="tactile-card bg-surface-container rounded-3xl p-4 flex items-center justify-between border-2 ${
+                isPending
+                  ? 'border-amber-500/40 bg-surface-container'
+                  : isApproved
+                  ? 'border-primary/50 bg-surface-container'
+                  : 'border-surface-container-highest'
+              } transition-all">
                 <div class="flex items-center gap-3.5 flex-1 pr-3">
                   <!-- Circular Graphical Habit Icon for Toddlers -->
                   <div class="w-16 h-16 sm:w-18 sm:h-18 rounded-full border-3 border-secondary/50 bg-gradient-to-b from-[#182838] to-[#0d1620] flex items-center justify-center p-1.5 shadow-md flex-shrink-0 overflow-hidden group-hover:scale-105 transition-transform">
@@ -141,9 +155,7 @@ export function renderDashboardView() {
                     }
                   </div>
                   <div class="flex flex-col">
-                    <h3 class="font-headline text-base font-bold text-inverse-surface leading-snug ${
-                      h.completed ? 'line-through text-on-surface-variant' : ''
-                    }">${h.title}</h3>
+                    <h3 class="font-headline text-base font-bold text-inverse-surface leading-snug">${h.title}</h3>
                     <p class="text-xs text-on-surface-variant line-clamp-1 mt-0.5">${h.desc}</p>
                     
                     <div class="flex items-center gap-2.5 text-xs font-black mt-1">
@@ -154,9 +166,13 @@ export function renderDashboardView() {
                         <span class="material-symbols-outlined text-sm">star</span> +${h.points} Points
                       </span>
                       ${
-                        h.completed
-                          ? `<span class="text-[9px] font-black uppercase px-2 py-0.2 rounded ${h.pointsApproved ? 'bg-primary/20 text-primary' : 'bg-tertiary/20 text-tertiary'}">
-                               ${h.pointsApproved ? '⭐ Approved' : '⭐ Pending Sign-off'}
+                        isPending
+                          ? `<span class="text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1 shadow-sm">
+                               <span class="material-symbols-outlined text-[11px] animate-pulse">hourglass_top</span> Pending Parent Approval
+                             </span>`
+                          : isApproved
+                          ? `<span class="text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/40 flex items-center gap-1 shadow-sm">
+                               <span class="material-symbols-outlined text-[11px]">verified</span> Approved ⭐
                              </span>`
                           : ''
                       }
@@ -164,13 +180,9 @@ export function renderDashboardView() {
                   </div>
                 </div>
 
-                <button data-habit-id="${h.id}" class="habit-check-btn ${
-                h.completed
-                  ? 'bg-surface-container-highest text-primary border-surface-container-low'
-                  : 'bg-primary text-on-primary border-primary-container hover:brightness-110'
-              } rounded-2xl w-14 h-14 chunky-btn flex items-center justify-center flex-shrink-0 shadow-chunky-sm active:scale-95">
-                  <span class="material-symbols-outlined text-3xl font-black" style="font-variation-settings: 'FILL' 1;">
-                    ${h.completed ? 'check_circle' : 'check'}
+                <button data-habit-id="${h.id}" class="habit-check-btn tactile-check-btn ${btnClass} rounded-2xl w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center flex-shrink-0 active:scale-95 shadow-chunky-sm" title="${isPending ? 'Pending Parent Approval' : isApproved ? 'Quest Approved' : 'Complete Habit'}">
+                  <span class="material-symbols-outlined text-3xl font-black ${iconColor}" style="font-variation-settings: 'FILL' 1;">
+                    ${checkIcon}
                   </span>
                 </button>
               </div>
@@ -193,10 +205,24 @@ export function renderDashboardView() {
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
           ${taskForest
             .map((t) => {
+              const isPending = t.completed && !t.pointsApproved;
+              const isApproved = t.completed && t.pointsApproved;
+              const btnClass = isApproved
+                ? 'tactile-check-approved'
+                : isPending
+                ? 'tactile-check-pending'
+                : 'tactile-check-ready';
+              const checkIcon = isApproved ? 'verified' : 'check';
+              const iconColor = isPending ? 'text-[#1c1200]' : 'text-white';
+
               return `
-              <div class="bg-surface-container rounded-3xl p-4 flex items-center justify-between border-2 border-surface-container-highest card-shadow transition-all ${
-                t.completed ? 'opacity-75 bg-surface-container/70 border-primary/40' : ''
-              }">
+              <div class="tactile-card bg-surface-container rounded-3xl p-4 flex items-center justify-between border-2 ${
+                isPending
+                  ? 'border-amber-500/40 bg-surface-container'
+                  : isApproved
+                  ? 'border-primary/50 bg-surface-container'
+                  : 'border-surface-container-highest'
+              } transition-all">
                 <div class="flex items-center gap-3.5 flex-1 pr-3">
                   <!-- Circular Graphical Chore/Routine Icon for Toddlers -->
                   <div class="w-16 h-16 sm:w-18 sm:h-18 rounded-full border-3 border-primary/50 bg-gradient-to-b from-[#132c20] to-[#07160e] flex items-center justify-center p-1.5 shadow-md flex-shrink-0 overflow-hidden group-hover:scale-105 transition-transform">
@@ -211,9 +237,7 @@ export function renderDashboardView() {
                       <span class="text-[9px] font-black uppercase text-secondary bg-surface-container-high px-2 py-0.5 rounded-md">${t.timeWindow}</span>
                       ${t.isAR ? `<span class="text-[9px] font-black uppercase text-error bg-error/15 px-2 py-0.5 rounded-md">AR Mode</span>` : ''}
                     </div>
-                    <h3 class="font-headline text-base font-bold text-inverse-surface leading-snug mt-0.5 ${
-                      t.completed ? 'line-through text-on-surface-variant' : ''
-                    }">${t.title}</h3>
+                    <h3 class="font-headline text-base font-bold text-inverse-surface leading-snug mt-0.5">${t.title}</h3>
                     
                     <div class="flex items-center gap-2.5 text-xs font-black mt-1">
                       <span class="text-secondary flex items-center gap-0.5">
@@ -223,9 +247,13 @@ export function renderDashboardView() {
                         <span class="material-symbols-outlined text-sm">star</span> +${t.points} Points
                       </span>
                       ${
-                        t.completed
-                          ? `<span class="text-[9px] font-black uppercase px-2 py-0.2 rounded ${t.pointsApproved ? 'bg-primary/20 text-primary' : 'bg-tertiary/20 text-tertiary'}">
-                               ${t.pointsApproved ? '⭐ Approved' : '⭐ Pending Sign-off'}
+                        isPending
+                          ? `<span class="text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1 shadow-sm">
+                               <span class="material-symbols-outlined text-[11px] animate-pulse">hourglass_top</span> Pending Parent Approval
+                             </span>`
+                          : isApproved
+                          ? `<span class="text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/40 flex items-center gap-1 shadow-sm">
+                               <span class="material-symbols-outlined text-[11px]">verified</span> Approved ⭐
                              </span>`
                           : ''
                       }
@@ -241,13 +269,9 @@ export function renderDashboardView() {
                   </button>
                 `
                     : `
-                  <button data-task-id="${t.id}" class="task-check-btn ${
-                        t.completed
-                          ? 'bg-surface-container-highest text-primary border-surface-container-low'
-                          : 'bg-primary text-on-primary border-primary-container hover:brightness-110'
-                      } rounded-2xl w-14 h-14 chunky-btn flex items-center justify-center flex-shrink-0 shadow-chunky-sm active:scale-95">
-                    <span class="material-symbols-outlined text-3xl font-black" style="font-variation-settings: 'FILL' 1;">
-                      ${t.completed ? 'check_circle' : 'check'}
+                  <button data-task-id="${t.id}" class="task-check-btn tactile-check-btn ${btnClass} rounded-2xl w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center flex-shrink-0 active:scale-95 shadow-chunky-sm" title="${isPending ? 'Pending Parent Approval' : isApproved ? 'Quest Approved' : 'Complete Chore'}">
+                    <span class="material-symbols-outlined text-3xl font-black ${iconColor}" style="font-variation-settings: 'FILL' 1;">
+                      ${checkIcon}
                     </span>
                   </button>
                 `

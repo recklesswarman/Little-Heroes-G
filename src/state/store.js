@@ -928,11 +928,28 @@ class Store {
         habit.image,
         habit.icon
       );
+    } else if (!habit.pointsApproved) {
+      // Already submitted & pending parent approval
+      Sound.pop();
+      this.showReward(
+        `Pending Parent Approval!`,
+        `You completed '${habit.title}'!\n⭐ +${habit.points} Points request is waiting for Parent Approval in the Parent Portal.`,
+        0,
+        0,
+        habit.image,
+        habit.icon
+      );
     } else {
-      habit.completed = false;
-      habit.pointsApproved = false;
-      this.state.pendingApprovals = this.state.pendingApprovals.filter(r => r.taskId !== habit.id);
-      Sound.click();
+      // Already approved by parent
+      Sound.fanfare();
+      this.showReward(
+        `Quest Approved! ⭐`,
+        `Parent approved this habit! You earned all +${habit.points} Points and +${habit.coins} Tokens!`,
+        0,
+        0,
+        habit.image,
+        habit.icon
+      );
     }
     this.saveState();
   }
@@ -984,11 +1001,28 @@ class Store {
         task.image,
         task.icon
       );
+    } else if (!task.pointsApproved) {
+      // Already submitted & pending parent approval
+      Sound.pop();
+      this.showReward(
+        `Pending Parent Approval!`,
+        `You completed '${task.title}'!\n⭐ +${task.points} Points request is waiting for Parent Approval in the Parent Portal.`,
+        0,
+        0,
+        task.image,
+        task.icon
+      );
     } else {
-      task.completed = false;
-      task.pointsApproved = false;
-      this.state.pendingApprovals = this.state.pendingApprovals.filter(r => r.taskId !== task.id);
-      Sound.click();
+      // Already approved by parent
+      Sound.fanfare();
+      this.showReward(
+        `Chore Approved! ⭐`,
+        `Parent approved this chore! You earned all +${task.points} Points and +${task.coins} Tokens!`,
+        0,
+        0,
+        task.image,
+        task.icon
+      );
     }
     this.saveState();
   }
