@@ -581,10 +581,11 @@ class Store {
   getActivePet() {
     const hero = this.state.selectedHero;
     const petId = hero?.activePetId || (hero?.unlockedPetIds?.[0] || 1);
-    const petData = this.state.pets.find((p) => p.id === petId) || this.state.pets[0];
-    const stage = this.state.petStageMap[petId] || hero?.petStageMap?.[petId] || 1;
-    const stats = this.state.petStatsMap[petId] || { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
-    return { ...petData, stage, ...stats };
+    const petData = this.state.pets.find((p) => p.id === petId) || PETS_DATABASE.find((p) => p.id === petId) || this.state.pets[0] || PETS_DATABASE[0];
+    const stage = this.state.petStageMap?.[petId] || hero?.petStageMap?.[petId] || 1;
+    const stats = this.state.petStatsMap?.[petId] || { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
+    const currentAvatar = (stage >= 3 && petData?.evolvedAvatar) ? petData.evolvedAvatar : (petData?.avatar || PETS_DATABASE[0].avatar);
+    return { ...petData, stage, ...stats, image: currentAvatar, avatar: currentAvatar };
   }
 
   setActivePet(petId) {

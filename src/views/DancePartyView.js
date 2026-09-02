@@ -1,7 +1,15 @@
 import { store } from '../state/store.js';
+import { PETS_DATABASE } from '../data/petsData.js';
 import { ADVENTURE_GAMES, getGameChallenges } from '../data/learningGamesData.js';
 import { Sound } from '../audio/sfx.js';
 import confetti from 'canvas-confetti';
+
+// Helper to reliably get the pet's graphic
+export function getPetDisplayAvatar(pet) {
+  if (!pet) return PETS_DATABASE[0].avatar;
+  if (pet.stage >= 3 && pet.evolvedAvatar) return pet.evolvedAvatar;
+  return pet.avatar || pet.image || PETS_DATABASE[0].avatar;
+}
 
 // Arcade State Machine
 let arcadeMode = 'hub'; // 'hub', 'treat_catch', 'memory_match', 'learning_game', 'disco_party'
@@ -39,22 +47,24 @@ export function renderDancePartyView() {
   const hero = state.selectedHero;
   const activePet = store.getActivePet();
   const hasPet = hero.unlockedPetIds && hero.unlockedPetIds.length > 0;
+  const petAvatarUrl = getPetDisplayAvatar(activePet);
+  const petName = hasPet ? activePet.name : 'Sparky (Arcade Guide)';
 
   // ROUTE SUB-GAMES
   if (arcadeMode === 'treat_catch') {
-    return renderTreatCatchGame(hero, activePet);
+    return renderTreatCatchGame(hero, activePet, petAvatarUrl, petName);
   }
   if (arcadeMode === 'memory_match') {
-    return renderMemoryMatchGame(hero, activePet);
+    return renderMemoryMatchGame(hero, activePet, petAvatarUrl, petName);
   }
   if (arcadeMode === 'learning_game') {
-    return renderLearningGame(hero, activePet);
+    return renderLearningGame(hero, activePet, petAvatarUrl, petName);
   }
   if (arcadeMode === 'disco_party') {
-    return renderDiscoParty(hero, activePet, state);
+    return renderDiscoParty(hero, activePet, petAvatarUrl, petName, state);
   }
 
-  // ARCADE HUB
+  // MAIN ARCADE HUB
   return `
     <div class="max-w-4xl mx-auto px-4 pt-4 pb-28 flex flex-col gap-6 animate-fade-in select-none">
       
@@ -88,8 +98,8 @@ export function renderDancePartyView() {
         <div class="w-full flex justify-between items-center z-10">
           <div class="flex items-center gap-2 bg-surface-container-highest/80 backdrop-blur-md px-3 py-1 rounded-full text-xs font-black text-primary border border-primary/30">
             <span class="material-symbols-outlined text-sm">pets</span>
-            <span>${hasPet ? activePet.name : 'No Companion Yet'}</span>
-            ${hasPet ? `<span class="text-secondary text-[10px] uppercase font-bold">• Stage ${activePet.stage || 1}</span>` : ''}
+            <span>${petName}</span>
+            <span class="text-secondary text-[10px] uppercase font-bold">• Stage ${activePet.stage || 1}</span>
           </div>
 
           <div class="flex items-center gap-1.5 bg-surface-container-highest/80 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-tertiary border border-tertiary/30">
@@ -110,11 +120,7 @@ export function renderDancePartyView() {
           <!-- Pet Avatar / Visual -->
           <div id="arcade-pet-actor" class="relative cursor-pointer group select-none">
             <div class="w-32 h-32 sm:w-36 sm:h-36 rounded-full bg-gradient-to-b from-primary/20 to-surface-container-highest/80 border-4 border-primary p-2 flex items-center justify-center shadow-[0_0_30px_rgba(46,204,113,0.35)] transition-transform group-hover:scale-105 active:scale-95 ${petAnimation}">
-              ${
-                hasPet
-                  ? `<img src="${activePet.image}" alt="${activePet.name}" class="w-full h-full object-contain drop-shadow-xl" />`
-                  : `<span class="material-symbols-outlined text-6xl text-secondary">egg</span>`
-              }
+              <img src="${petAvatarUrl}" alt="${petName}" class="w-full h-full object-contain drop-shadow-xl" />
             </div>
 
             <!-- Floating Hearts Effect -->
@@ -129,6 +135,13 @@ export function renderDancePartyView() {
               Tap to Pet!
             </div>
           </div>
+
+          <!-- If child has not chosen starter pet, offer direct summon button -->
+          ${!hasPet ? `
+            <button id="arcade-choose-starter-btn" class="bg-primary text-on-primary font-headline text-xs font-black px-4 py-2 rounded-xl chunky-btn-sm border-primary-container shadow flex items-center gap-1.5 active:scale-95">
+              <span>🥚</span> Choose Your First Pet Companion!
+            </button>
+          ` : ''}
 
           <!-- Pet Actions Bar -->
           <div class="flex flex-wrap items-center justify-center gap-2 pt-2 z-10">
@@ -174,7 +187,7 @@ export function renderDancePartyView() {
               <div class="flex flex-col">
                 <span class="text-[10px] font-black uppercase text-secondary tracking-wider">Fast Action & Reflexes</span>
                 <h3 class="font-headline text-lg font-black text-inverse-surface leading-tight">Pet Berry Popper</h3>
-                <p class="text-xs text-on-surface-variant mt-1">Pop floating fruit bubbles and feed treats to your pet before time runs out!</p>
+                <p class="text-xs text-on-surface-variant mt-1">Pop floating fruit bubbles and feed treats to ${petName} before time runs out!</p>
               </div>
             </div>
 
@@ -220,7 +233,7 @@ export function renderDancePartyView() {
               <div class="flex flex-col">
                 <span class="text-[10px] font-black uppercase text-tertiary tracking-wider">Phonics, Numbers & Shapes</span>
                 <h3 class="font-headline text-lg font-black text-inverse-surface leading-tight">Learning Academy</h3>
-                <p class="text-xs text-on-surface-variant mt-1">Solve fun educational puzzles with your pet. 6 subjects with toddler & kid difficulty!</p>
+                <p class="text-xs text-on-surface-variant mt-1">Solve fun educational puzzles with ${petName}. 6 subjects with toddler & kid difficulty!</p>
               </div>
             </div>
 
@@ -267,7 +280,7 @@ export function renderDancePartyView() {
 // -------------------------------------------------------------
 // SUB-VIEW 1: PET BERRY POPPER (Action Treat Catch Game)
 // -------------------------------------------------------------
-function renderTreatCatchGame(hero, activePet) {
+function renderTreatCatchGame(hero, activePet, petAvatarUrl, petName) {
   return `
     <div class="max-w-2xl mx-auto px-4 pt-4 pb-28 flex flex-col gap-5 animate-fade-in select-none">
       
@@ -298,7 +311,7 @@ function renderTreatCatchGame(hero, activePet) {
 
         <!-- Instructions Banner -->
         <div class="z-10 bg-surface-container-highest/90 backdrop-blur-md px-4 py-2 rounded-2xl border border-secondary/40 text-xs font-black text-secondary text-center shadow">
-          Tap the floating bubbles to feed treats to ${activePet.name}! 🍓 ⭐ 🪙
+          Tap the floating bubbles to feed treats to ${petName}! 🍓 ⭐ 🪙
         </div>
 
         <!-- Floating Bubbles Playfield -->
@@ -313,9 +326,9 @@ function renderTreatCatchGame(hero, activePet) {
         <!-- Pet at Bottom Waiting for Food -->
         <div class="z-10 flex flex-col items-center gap-2">
           <div id="treat-catcher-pet" class="w-24 h-24 rounded-full bg-surface-container-high border-3 border-primary p-2 flex items-center justify-center shadow-lg transition-transform ${petAnimation}">
-            <img src="${activePet.image}" alt="${activePet.name}" class="w-full h-full object-contain drop-shadow" />
+            <img src="${petAvatarUrl}" alt="${petName}" class="w-full h-full object-contain drop-shadow" />
           </div>
-          <span class="text-xs font-black text-primary uppercase">${activePet.name} is hungry!</span>
+          <span class="text-xs font-black text-primary uppercase">${petName} is hungry!</span>
         </div>
 
       </div>
@@ -340,7 +353,7 @@ function renderTreatCatchGame(hero, activePet) {
 // -------------------------------------------------------------
 // SUB-VIEW 2: HERO MEMORY MATCH
 // -------------------------------------------------------------
-function renderMemoryMatchGame(hero, activePet) {
+function renderMemoryMatchGame(hero, activePet, petAvatarUrl, petName) {
   return `
     <div class="max-w-2xl mx-auto px-4 pt-4 pb-28 flex flex-col gap-5 animate-fade-in select-none">
       
@@ -364,11 +377,11 @@ function renderMemoryMatchGame(hero, activePet) {
       <div class="bg-surface-container rounded-3xl p-6 border-3 border-primary-container/60 card-shadow flex flex-col items-center gap-6">
         
         <div class="flex items-center gap-3">
-          <div class="w-12 h-12 rounded-full border-2 border-primary overflow-hidden p-1 bg-surface-container-high">
-            <img src="${activePet.image}" alt="${activePet.name}" class="w-full h-full object-contain" />
+          <div class="w-12 h-12 rounded-full border-2 border-primary overflow-hidden p-1 bg-surface-container-high flex-shrink-0">
+            <img src="${petAvatarUrl}" alt="${petName}" class="w-full h-full object-contain" />
           </div>
           <div>
-            <h3 class="font-headline text-base font-black text-inverse-surface">${activePet.name}'s Memory Quest</h3>
+            <h3 class="font-headline text-base font-black text-inverse-surface">${petName}'s Memory Quest</h3>
             <p class="text-xs text-on-surface-variant font-bold">Find all 4 matching pairs of adventure tokens!</p>
           </div>
         </div>
@@ -380,14 +393,14 @@ function renderMemoryMatchGame(hero, activePet) {
             const isMatched = matchedCardIds.includes(card.id);
 
             return `
-              <button data-memory-card-idx="${idx}" class="memory-card-btn h-24 sm:h-28 rounded-2xl border-3 flex items-center justify-center text-4xl sm:text-5xl font-black transition-all chunky-btn active:scale-95 ${
+              <button data-memory-card-idx="${idx}" class="memory-card-btn h-24 sm:h-28 rounded-2xl border-3 flex items-center justify-center p-2 font-black transition-all chunky-btn active:scale-95 ${
                 isMatched
                   ? 'bg-primary/20 border-primary text-primary shadow-[0_0_15px_rgba(46,204,113,0.4)]'
                   : isFlipped
                   ? 'bg-surface-container-highest border-secondary text-secondary shadow-md'
                   : 'bg-gradient-to-b from-[#2e4053] to-[#1c2833] border-[#151f28] text-white shadow-chunky-sm hover:brightness-110'
               }">
-                ${isFlipped ? card.symbol : '⭐'}
+                ${isFlipped ? card.content : '<span class="text-3xl sm:text-4xl">⭐</span>'}
               </button>
             `;
           }).join('')}
@@ -410,7 +423,7 @@ function renderMemoryMatchGame(hero, activePet) {
 // -------------------------------------------------------------
 // SUB-VIEW 3: LEARNING ACADEMY (Phonics, Math, Colors)
 // -------------------------------------------------------------
-function renderLearningGame(hero, activePet) {
+function renderLearningGame(hero, activePet, petAvatarUrl, petName) {
   if (selectedLearningGame) {
     const diff = hero.gameDifficulty || 'medium';
     const challenges = getGameChallenges(selectedLearningGame, diff);
@@ -438,12 +451,12 @@ function renderLearningGame(hero, activePet) {
           
           <!-- Pet Buddy Cheerleader -->
           <div class="flex items-center justify-center gap-3">
-            <div class="w-14 h-14 rounded-full border-3 border-tertiary overflow-hidden p-1 bg-surface-container-high shadow">
-              <img src="${activePet.image}" alt="${activePet.name}" class="w-full h-full object-contain" />
+            <div class="w-14 h-14 rounded-full border-3 border-tertiary overflow-hidden p-1 bg-surface-container-high shadow flex-shrink-0">
+              <img src="${petAvatarUrl}" alt="${petName}" class="w-full h-full object-contain" />
             </div>
             <div class="text-left">
               <span class="text-[10px] font-black uppercase text-tertiary">${selectedLearningGame.title}</span>
-              <p class="text-xs text-on-surface-variant font-bold">${activePet.name} is listening for your answer!</p>
+              <p class="text-xs text-on-surface-variant font-bold">${petName} is listening for your answer!</p>
             </div>
           </div>
 
@@ -517,7 +530,7 @@ function renderLearningGame(hero, activePet) {
 // -------------------------------------------------------------
 // SUB-VIEW 4: DISCO DANCE PARTY
 // -------------------------------------------------------------
-function renderDiscoParty(hero, activePet, state) {
+function renderDiscoParty(hero, activePet, petAvatarUrl, petName, state) {
   return `
     <div class="max-w-3xl mx-auto px-4 pt-4 pb-28 flex flex-col gap-5 animate-fade-in select-none">
       
@@ -560,7 +573,7 @@ function renderDiscoParty(hero, activePet, state) {
           <div id="disco-pet-actor" class="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-tertiary-container/30 border-4 border-tertiary p-2 flex items-center justify-center shadow-2xl ${
             isDancing ? 'animate-bounce' : 'animate-float'
           }">
-            <img src="${activePet.image}" alt="${activePet.name}" class="w-full h-full object-contain drop-shadow" />
+            <img src="${petAvatarUrl}" alt="${petName}" class="w-full h-full object-contain drop-shadow" />
           </div>
 
         </div>
@@ -623,6 +636,14 @@ export function attachDancePartyListeners() {
       arcadeMode = 'hub';
       selectedLearningGame = null;
       store.notify();
+    });
+  }
+
+  // Direct Starter Pet Unlock trigger from Arcade
+  const chooseStarterBtn = document.getElementById('arcade-choose-starter-btn');
+  if (chooseStarterBtn) {
+    chooseStarterBtn.addEventListener('click', () => {
+      store.openPetSelectionModal('starter');
     });
   }
 
@@ -930,11 +951,20 @@ function startTreatTimer() {
 }
 
 function initMemoryGame() {
-  const symbols = ['🐉', '🍎', '⭐', '🪥'];
+  const activePet = store.getActivePet();
+  const petAvatarUrl = getPetDisplayAvatar(activePet);
+
+  const symbols = [
+    { id: 'pet', content: `<img src="${petAvatarUrl}" class="w-14 h-14 object-contain drop-shadow" />` },
+    { id: 'star', content: `<img src="https://lh3.googleusercontent.com/aida/AEtjO1V97aePfWQmnVShMtBQbima_UDU0i6-8HfQ2n8qhGdoWZLbB0i92sJK2agutlVgGgj3HAVeKGYApMLb1pekmHEwMkum3IwJUH4kInnyo5LBApPp19gD5ihwha1vyRfG_5DcQtw5IfYwtwF_GMpbfQe_LUwyYPZBWnYua0Y7r8WKi-bax1d06QI0zeSdnmNrDwzQi6nSmBkbPGLaL5iHGxpziVKKaZ155rUBdz8_jIVpxWQS0D3-Vpacbi8" class="w-14 h-14 object-contain drop-shadow" />` },
+    { id: 'apple', content: `<img src="https://lh3.googleusercontent.com/aida/AEtjO1UuCPRIp3bcNODtjcuPUYCb1k8R-X-wt8M4SkdedZ2UK8gVYhXWdqlH4ec0QrR5LVQimn-_uMnv97sofFVP_bwtOabQeHT0SHtxVe59gKb1Qch1Id9HwPaHU7YYyQbnId78QZLhbJun88sn97HnxETpeh6fgMNmuextDnU3-fqKj7z6PsFQnV57jxpzaVtbulYuS9DNbp78rG73z_clyox8dQva9TbjJr4dzkiz-ytPCGJyopeRhjPTAts" class="w-14 h-14 object-contain drop-shadow" />` },
+    { id: 'brush', content: `<img src="https://lh3.googleusercontent.com/aida/AEtjO1Xt9GeFqjAL58hS_PuyIhL5_ZJ68ze3DFHgw6czaVkv6UJsQjulgSW1SVNMN5R-83AzzqbFfTVTa4A3XBDHsR7ggE9m-inrmcjBUsbdqo4InwRTA2VU1ndafKJJx--9Vzt17F9tgoYWYwsDyOtf2V78XpSPNIMUWsSQI1pjREuzdqsCbyFXDBadq8CPlJrx2MeHIOsKCpfe0VbcWqtPhzKdzzmlIhcK4Xgujh-Msp9KagAkWDWYiClbQ-bk" class="w-14 h-14 object-contain drop-shadow" />` }
+  ];
+
   const deck = [];
-  symbols.forEach((sym, symIdx) => {
-    deck.push({ id: `pair_${symIdx}`, symbol: sym });
-    deck.push({ id: `pair_${symIdx}`, symbol: sym });
+  symbols.forEach((sym) => {
+    deck.push({ id: sym.id, content: sym.content });
+    deck.push({ id: sym.id, content: sym.content });
   });
 
   // Shuffle
