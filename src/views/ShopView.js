@@ -196,10 +196,13 @@ export function renderShopView() {
                       <img class="w-full h-full object-contain drop-shadow" src="${item.image}" alt="${item.title}" />
                     </div>
 
-                    <div class="flex flex-col">
-                      <span class="text-[10px] font-black uppercase text-secondary">${item.category}</span>
-                      <h3 class="font-headline text-base font-black text-inverse-surface leading-tight">${item.title}</h3>
-                      <p class="text-xs text-on-surface-variant mt-1 line-clamp-2">${item.desc}</p>
+                    <div class="flex flex-col flex-1 truncate">
+                      <div class="flex items-center gap-1.5">
+                        <span class="text-[10px] font-black uppercase text-secondary">${item.category}</span>
+                        ${item.statBonusPercent ? `<span class="text-[9px] font-black uppercase text-amber-400 bg-amber-500/15 px-1.5 py-0.5 rounded border border-amber-500/30">+${item.statBonusPercent}% Boost</span>` : ''}
+                      </div>
+                      <h3 class="font-headline text-base font-black text-inverse-surface leading-tight truncate mt-0.5">${item.title}</h3>
+                      <p class="text-xs text-on-surface-variant mt-0.5 line-clamp-2">${item.desc}</p>
                     </div>
                   </div>
 

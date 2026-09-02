@@ -19,7 +19,7 @@ export function renderBottomNav() {
           .map((item) => {
             const isTabActive =
               activeView === item.id ||
-              (item.id === 'pet_pen' && ['pet_roster', 'pet_detail', 'pet_bath', 'evolution', 'master_fuse', 'adventures_map'].includes(activeView)) ||
+              (item.id === 'pet_pen' && ['pet_roster', 'pet_detail', 'pet_bath', 'pet_locker', 'evolution', 'master_fuse', 'adventures_map'].includes(activeView)) ||
               (item.id === 'dashboard' && ['profile', 'ar_battle'].includes(activeView));
 
             return `

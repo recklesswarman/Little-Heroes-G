@@ -596,27 +596,74 @@ export function renderParentPortalView() {
             </div>
           </div>
 
-          <!-- Section 2: Digital Goods Pricing (Tokens 🪙) -->
+          <!-- Section 2: Digital Goods Pricing & Stat Bonus Multipliers (Tokens 🪙) -->
           <div class="bg-surface-container rounded-3xl p-5 border-2 border-secondary-container/60 card-shadow flex flex-col gap-4">
-            <h3 class="font-headline text-sm font-black text-secondary flex items-center gap-2">
-              <span class="material-symbols-outlined">monetization_on</span>
-              Digital Goodies & Gear Pricing (Cost in Habit Tokens 🪙)
-            </h3>
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+              <div>
+                <h3 class="font-headline text-sm font-black text-secondary flex items-center gap-2">
+                  <span class="material-symbols-outlined">monetization_on</span>
+                  Digital Goodies & Gear (Pricing & Stat Bonus Multipliers)
+                </h3>
+                <p class="text-[11px] text-on-surface-variant font-bold">Configure token prices and stat bonus percentages for each digital gear item.</p>
+              </div>
+            </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
               ${digitalGear
                 .map(
-                  (g) => `
-                <div class="bg-surface-container-high rounded-xl p-3 border border-surface-container-highest flex items-center justify-between gap-3">
-                  <div class="flex items-center gap-2 truncate">
-                    <span class="text-xs font-bold text-inverse-surface truncate">${g.title}</span>
+                  (g) => {
+                    const bonusPercent = g.statBonusPercent !== undefined ? g.statBonusPercent : 15;
+                    const bonusType = g.statBonusType || 'coin_boost';
+
+                    return `
+                <div class="bg-surface-container-high rounded-2xl p-4 border border-surface-container-highest flex flex-col justify-between gap-3 shadow-sm">
+                  <div class="flex items-start justify-between gap-2">
+                    <div class="flex flex-col truncate">
+                      <span class="font-headline text-xs font-black text-inverse-surface truncate">${g.title}</span>
+                      <span class="text-[10px] text-on-surface-variant line-clamp-1">${g.desc}</span>
+                    </div>
+                    <span class="text-[9px] font-black uppercase text-secondary bg-secondary/15 px-2 py-0.5 rounded-md flex-shrink-0">${g.category || 'Gear'}</span>
                   </div>
-                  <div class="flex items-center gap-1 flex-shrink-0">
-                    <input type="number" data-pricing-digital-id="${g.id}" value="${g.costCoins}" class="w-20 bg-surface-container-lowest border border-secondary/40 rounded-lg p-1.5 text-xs font-black text-secondary text-center" />
-                    <span class="text-xs text-secondary font-bold">🪙</span>
+
+                  <!-- Price & Stat Bonus Settings -->
+                  <div class="grid grid-cols-2 gap-2 pt-2 border-t border-surface-container-highest/60">
+                    <!-- Price Input -->
+                    <div class="flex flex-col gap-1">
+                      <label class="text-[9px] font-black uppercase text-on-surface-variant">Price (🪙 Tokens)</label>
+                      <div class="flex items-center gap-1">
+                        <input type="number" data-pricing-digital-id="${g.id}" value="${g.costCoins}" min="1" max="5000" class="w-full bg-surface-container-lowest border border-secondary/40 rounded-lg p-1.5 text-xs font-black text-secondary text-center focus:border-secondary focus:outline-none" />
+                        <span class="text-xs text-secondary font-bold">🪙</span>
+                      </div>
+                    </div>
+
+                    <!-- Stat Bonus Percentage Input -->
+                    <div class="flex flex-col gap-1">
+                      <label class="text-[9px] font-black uppercase text-on-surface-variant">Stat Bonus (%)</label>
+                      <div class="flex items-center gap-1">
+                        <input type="number" data-statbonus-digital-id="${g.id}" value="${bonusPercent}" min="0" max="200" step="5" class="w-full bg-surface-container-lowest border border-tertiary/40 rounded-lg p-1.5 text-xs font-black text-tertiary text-center focus:border-tertiary focus:outline-none" />
+                        <span class="text-xs text-tertiary font-bold">%</span>
+                      </div>
+                    </div>
                   </div>
+
+                  <!-- Stat Boost Type Selector -->
+                  <div class="flex flex-col gap-1">
+                    <label class="text-[9px] font-black uppercase text-on-surface-variant">Bonus Benefit</label>
+                    <select data-statbonus-type-id="${g.id}" class="w-full bg-surface-container-lowest border border-surface-container-highest rounded-lg p-1.5 text-[10px] font-bold text-inverse-surface focus:outline-none">
+                      <option value="coin_boost" ${bonusType === 'coin_boost' ? 'selected' : ''}>🪙 Extra Token Drops</option>
+                      <option value="xp_boost" ${bonusType === 'xp_boost' ? 'selected' : ''}>⭐ Adventure XP Multiplier</option>
+                      <option value="defense_boost" ${bonusType === 'defense_boost' ? 'selected' : ''}>🛡️ Defense & Armor</option>
+                      <option value="damage_boost" ${bonusType === 'damage_boost' ? 'selected' : ''}>⚔️ AR Toothbrush Damage</option>
+                      <option value="speed_boost" ${bonusType === 'speed_boost' ? 'selected' : ''}>⚡ Quest Speed Haste</option>
+                      <option value="joy_boost" ${bonusType === 'joy_boost' ? 'selected' : ''}>❤️ Happiness & Joy</option>
+                      <option value="energy_boost" ${bonusType === 'energy_boost' ? 'selected' : ''}>🔋 Energy Regeneration</option>
+                      <option value="hygiene_boost" ${bonusType === 'hygiene_boost' ? 'selected' : ''}>🫧 Cleanliness Recovery</option>
+                    </select>
+                  </div>
+
                 </div>
-              `
+              `;
+                  }
                 )
                 .join('')}
             </div>
@@ -1450,7 +1497,17 @@ export function attachParentPortalListeners() {
         themesMap[id] = input.value;
       });
 
-      store.updateAllPricing(realLifeMap, digitalMap, themesMap);
+      const statBonusMap = {};
+      document.querySelectorAll('[data-statbonus-digital-id]').forEach((input) => {
+        const id = input.getAttribute('data-statbonus-digital-id');
+        const typeSelect = document.querySelector(`[data-statbonus-type-id="${id}"]`);
+        statBonusMap[id] = {
+          percent: parseInt(input.value) || 0,
+          type: typeSelect?.value || 'coin_boost'
+        };
+      });
+
+      store.updateAllPricing(realLifeMap, digitalMap, themesMap, statBonusMap);
     });
   }
 

@@ -24,6 +24,7 @@ import { renderEvolutionView, attachEvolutionListeners } from './views/Evolution
 import { renderDancePartyView, attachDancePartyListeners } from './views/DancePartyView.js';
 import { renderProfileView, attachProfileListeners } from './views/ProfileView.js';
 import { renderParentPortalView, attachParentPortalListeners } from './views/ParentPortalView.js';
+import { renderPetLockerView, attachPetLockerListeners } from './views/PetLockerView.js';
 
 const app = document.getElementById('app');
 
@@ -58,6 +59,10 @@ function renderApp() {
     case 'pet_bath':
       mainContent = renderPetBathView();
       attachViewListeners = attachPetBathListeners;
+      break;
+    case 'pet_locker':
+      mainContent = renderPetLockerView();
+      attachViewListeners = attachPetLockerListeners;
       break;
     case 'master_fuse':
       mainContent = renderMasterFuseView();

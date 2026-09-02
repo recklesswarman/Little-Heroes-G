@@ -131,7 +131,8 @@ export function initHouseholdModal() {
     isHouseholdModalOpen = true;
     store.notify();
   });
-  firestoreSync.startSync();
+  const code = store.getState().household.syncCode || 'HERO-8842';
+  firestoreSync.startSync(code);
 }
 
 export function attachHouseholdLinkModalListeners() {
@@ -170,6 +171,8 @@ export function attachHouseholdLinkModalListeners() {
   const copyBtn = document.getElementById('household-copy-btn');
   if (copyBtn) {
     copyBtn.addEventListener('click', () => {
+      const code = store.getState().household.syncCode || 'HERO-8842';
+      navigator.clipboard?.writeText(code).catch(() => {});
       Sound.fanfare();
       copyBtn.textContent = 'Copied!';
       setTimeout(() => {
@@ -191,17 +194,28 @@ export function attachHouseholdLinkModalListeners() {
 
   const joinBtn = document.getElementById('household-join-btn');
   if (joinBtn) {
-    joinBtn.addEventListener('click', () => {
+    joinBtn.addEventListener('click', async () => {
       const input = document.getElementById('household-join-input');
       const code = input?.value?.trim().toUpperCase();
       if (code) {
-        store.getState().household.syncCode = code;
-        store.saveState();
-        firestoreSync.startSync(code);
-        Sound.fanfare();
-        alert(`Linked to Household ${code}!`);
-        isHouseholdModalOpen = false;
-        store.notify();
+        joinBtn.disabled = true;
+        joinBtn.textContent = 'Linking...';
+        const res = await firestoreSync.joinHousehold(code);
+        joinBtn.disabled = false;
+        joinBtn.textContent = 'Join';
+
+        if (res.success) {
+          Sound.fanfare();
+          alert(
+            res.isNew
+              ? `Created new Household Cloud Sync for code ${code}! Other devices can now join with this code.`
+              : `Successfully linked to Household ${code}! Synced all kids and family data in real time.`
+          );
+          isHouseholdModalOpen = false;
+          store.notify();
+        } else {
+          alert(`Could not link to household: ${res.error || 'Please check the code and try again.'}`);
+        }
       }
     });
   }

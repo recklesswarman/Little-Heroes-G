@@ -482,3 +482,25 @@ input[type="range"]::-webkit-slider-thumb:active {
   animation: sparkleSpinGleam 1.8s ease-in-out infinite;
 }
 
+@keyframes floatHeartUp {
+  0% {
+    transform: translateY(0) scale(0.6);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(-20px) scale(1.1);
+  }
+  80% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(-130px) scale(1.3) translateX(var(--drift-x, 10px));
+    opacity: 0;
+  }
+}
+
+.animate-heart-float {
+  animation: floatHeartUp 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+

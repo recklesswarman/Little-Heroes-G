@@ -298,6 +298,8 @@ const defaultState = {
       desc: 'A powerful glowing weapon emitting sparkly blue particles.',
       category: 'Weapons',
       costCoins: 750,
+      statBonusPercent: 25,
+      statBonusType: 'xp_boost',
       isNew: true,
       image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAXizgI1CeB2yKrFadDQwi_izrUzn5VC61h_Pt83vwDS7sOgRgZ3uicgT9wALkvX1ci0sh5YMVO38ne8-hC2TKHNwDELgpccHrkJ0pdzoxGd6NEOSvV0Fgn44DNrZqYpjJvtTkUY8PDAAGNwSTLlqV7gPcepURR9EiQzW4JSIsm6DC1xO8iXYAz5sSPHnXKpDJeXdMdJ3dLsOkdc3AEaYvcxiGwnPk_T_zTP2rB1AKr5xKxRl0kR873Sg'
     },
@@ -307,6 +309,8 @@ const defaultState = {
       desc: 'Equip your avatar and pet companion with heroic flight style.',
       category: 'Avatar Gear',
       costCoins: 250,
+      statBonusPercent: 20,
+      statBonusType: 'speed_boost',
       image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuByKpaoALsAQKloJoaflKFN3uBQW2_wFzPx91VHRs4HwEN8nq_FFMDP4x9H1iraLFT6ts1An7aMl3x0Gr_2BEpiyfAeWPb1S-OqL_MxKDDkCzvrQcAiVG14D7Wmv4XB_VViBp4TdSvN3MTRO8KLCIWL3S3WaQUqq6-a3hWGomWph08_yJ3FzxocLQjdXxKNUrzhF_Dv-d2DEfkaWLXL4No80J3RlmfBcCreSBpPWJyHEX08C3mTUvmJNw'
     },
     {
@@ -315,6 +319,8 @@ const defaultState = {
       desc: 'Extra damage against Sugar Bugs in AR Toothbrush Battle Mode!',
       category: 'Weapons',
       costCoins: 150,
+      statBonusPercent: 30,
+      statBonusType: 'damage_boost',
       image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD_t1oRwvE1jlA6mYuARa1kila-xbhIvpGqco4NsFrzIp3HYf-AOKXJ6h0qmz4yoUj5sGBJEGG3k47tjpVTOVVpi6PklYYznwt8FgR0WNaQsOt5pu_bL12NJJi8BhBJTz_wmenjPjkJa0Ti7OHXgZH60P9sMBw3yp1NpTX5hoSsiiyu5kNMKZFB84cQhb_qOld0uo2POD-jx_IBi8XnJx9r4ackB2pxI6pssYiWzVQgcV8_JdTOZh5KTA'
     },
     {
@@ -323,6 +329,8 @@ const defaultState = {
       desc: 'Adds +20 Wisdom XP to all pet learning mini-games.',
       category: 'Avatar Gear',
       costCoins: 120,
+      statBonusPercent: 20,
+      statBonusType: 'xp_boost',
       image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA6ACznHbNqQYrmS2NNT3AogIWVwSpwMd_e-p5JOEqTsWkMcbR3XIie3llrmdu0UVjQ4an-bSZQypLr0rQgc-ZbZMijOEnJW2hkFFTW3YvxnvMF1p_R1DeRzyPAEVOVQn7dVbGBZjMJoNDEEPm43G_Dtol7_U9W9m9iLpImUl0NJfcdAqccaoVs6sGpX3KgGErOnZi9ufcz3KQ-E1PpdUM5P2DeTeu8ePw2Jfrbh1fbQ5aY24ZDCZ3hVw'
     },
     {
@@ -331,6 +339,8 @@ const defaultState = {
       desc: 'A glowing badge that speeds up daily quest completions.',
       category: 'Badges',
       costCoins: 80,
+      statBonusPercent: 15,
+      statBonusType: 'speed_boost',
       image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAyH49NXeiOh-BmWLvQkk4zJRjAXmtQ7hPXJ7Dk0YZRO5CkUFz9wJZbjEKmlVlh8U79KHrKqiP4gS0bQgQ2X_vEpRpK_FsuS8WN4RWDw3xj4YlvTofyTWXlgV4nmek6g1R4NxZAaqkv8M1xvOiqIKYrKpTiEJRmk0ulv958iE5iE7ORnAiln2Uw3oaopAOg7Bs6MDXSVDpMo9YKipIHHykc6vVQgFwKQvDtNbqgY1h8N4_Ealg8wrybfA'
     },
     {
@@ -339,6 +349,8 @@ const defaultState = {
       desc: 'Stores bonus coins and shines with crystal power in your pen.',
       category: 'Badges',
       costCoins: 150,
+      statBonusPercent: 15,
+      statBonusType: 'coin_boost',
       image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDvEPK2k2p8UTY6a_a13uuU4xIdkdywFfYuD-6hXL6loqAk-urCnUbUGdFn-Y19eBDoygO061F0aNul90Ba2JUyfsA-w-3zw4_7pYzFDr1VberTqHQfuSPj2fUJPxNonUg9kWXhB0tivkcacloQX7aSYVFI0gMGh4LxUnHMNOb8AvPWMIBgSUdWC0sxJmD4dJJcdQnnenoMiOhVddEOJO-X7gqho3jVSHQX-aholmgf88Rvee7hDkrcng'
     },
     {
@@ -347,6 +359,8 @@ const defaultState = {
       desc: 'Super tasty crunchy pet food that instantly restores +30 Hunger.',
       category: 'Snacks',
       costCoins: 30,
+      statBonusPercent: 30,
+      statBonusType: 'joy_boost',
       image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB-3rOJgQurGLPwdAbopzrD38_Tt7Kx4XBDGzb8c4D6SyP_duGB00Hbl0jPDHHNgTri1r3B1Wg_bPaZcVSttkDJ_DdCvdMFpixvZL-t62idBUBkK-YIgAZkPm9aBKKV60saB8oSEyuSlPFh9OuQNa12-35vM3UJLyH9I_bnbsG-CLL_JWYco0EyWRF8eWdzRrr4Ize_vzuXlGXbaekGucbGHZI9m7USTT7cTWZ99v22UCg5FGizLHk1FQ'
     },
     {
@@ -355,6 +369,8 @@ const defaultState = {
       desc: 'Stows all your hero equipment and adds +10% to toy chore payouts.',
       category: 'Badges',
       costCoins: 180,
+      statBonusPercent: 10,
+      statBonusType: 'coin_boost',
       image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDy3Rfu0bcLlMPyE2iHd9P78LdbLHJNOzTdaepeadGKy-vo9vxupk8kFi7ggsSZgSTNyekoC_nPypDwUIyXCrD2-_Z96IqQYN58d5uymrFi6JV8vd3_mbXavdbQXB825ndnaEFa-xL8t9yleVWU-a8f9Cv8ehZ1dNuYJt1w-L5x05lq4gKgpqmuecxkjqj0__taxaDmJ-tSIUV6wqkf6VcM2RD4FoyEzXq6FmcZaYoeIxFG5Aa2iQtu0g'
     },
     {
@@ -363,6 +379,8 @@ const defaultState = {
       desc: '+50 Defense and sparkling gold scales for your pet companion.',
       category: 'Avatar Gear',
       costCoins: 180,
+      statBonusPercent: 50,
+      statBonusType: 'defense_boost',
       image: generate3DIcon('shield', 'green', 'Dragon Armor')
     },
     {
@@ -371,6 +389,8 @@ const defaultState = {
       desc: 'Extra sudsy blueberry scented bath bubbles for pet bath time.',
       category: 'Snacks',
       costCoins: 35,
+      statBonusPercent: 25,
+      statBonusType: 'hygiene_boost',
       image: generate3DIcon('soap', 'blue', 'Blueberry Soap')
     },
     {
@@ -379,6 +399,8 @@ const defaultState = {
       desc: 'Super tasty flame berries that instantly max Hunger to 100%!',
       category: 'Snacks',
       costCoins: 25,
+      statBonusPercent: 25,
+      statBonusType: 'energy_boost',
       image: generate3DIcon('nutrition', 'orange', 'Fire Berries')
     },
     {
@@ -387,6 +409,8 @@ const defaultState = {
       desc: 'A rugged hero cape that billows with emerald particles.',
       category: 'Avatar Gear',
       costCoins: 220,
+      statBonusPercent: 30,
+      statBonusType: 'defense_boost',
       image: generate3DIcon('flag', 'green', 'Emerald Cape')
     },
     {
@@ -395,6 +419,8 @@ const defaultState = {
       desc: 'Unlocks golden spotlight mode in Dance Party.',
       category: 'Badges',
       costCoins: 100,
+      statBonusPercent: 20,
+      statBonusType: 'coin_boost',
       image: generate3DIcon('stars', 'yellow', 'Disco Star')
     }
   ],
@@ -702,7 +728,7 @@ class Store {
   }
 
   // 3. EDIT PRICING & INVENTORY FOR ALL ITEMS (Parent Portal)
-  updateAllPricing(realLifeMap, digitalMap, themesMap = {}) {
+  updateAllPricing(realLifeMap, digitalMap, themesMap = {}, statBonusMap = {}) {
     // Update real life reward points costs
     this.state.realLifeRewards.forEach(r => {
       if (realLifeMap[r.id] !== undefined) {
@@ -710,10 +736,20 @@ class Store {
       }
     });
 
-    // Update digital gear token costs
+    // Update digital gear token costs and stat bonus percentages
     this.state.digitalGear.forEach(g => {
       if (digitalMap[g.id] !== undefined) {
         g.costCoins = Math.max(1, parseInt(digitalMap[g.id]) || g.costCoins);
+      }
+      if (statBonusMap[g.id] !== undefined) {
+        if (typeof statBonusMap[g.id] === 'object') {
+          g.statBonusPercent = Math.max(0, parseInt(statBonusMap[g.id].percent) || 0);
+          if (statBonusMap[g.id].type) {
+            g.statBonusType = statBonusMap[g.id].type;
+          }
+        } else {
+          g.statBonusPercent = Math.max(0, parseInt(statBonusMap[g.id]) || 0);
+        }
       }
     });
 
@@ -726,9 +762,9 @@ class Store {
       });
     }
 
-    this.logAction('Parent updated shop pricing matrix', 'Shop prices updated');
+    this.logAction('Parent updated shop pricing & stat bonuses', 'Shop prices and stat bonus percentages updated');
     Sound.fanfare();
-    this.showReward('Pricing Updated!', 'All reward and theme prices have been updated in the Hero Shop!', 0, 0, null, 'payments');
+    this.showReward('Pricing & Stats Updated!', 'All reward prices and stat bonus percentages have been updated in the Hero Shop!', 0, 0, null, 'payments');
     this.saveState();
   }
 
@@ -1130,11 +1166,56 @@ class Store {
     if (!this.state.petStatsMap[id]) this.state.petStatsMap[id] = { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
     const stats = this.state.petStatsMap[id];
 
+    // Increases BOTH Joy and Energy (not decreasing)
     stats.joy = Math.min(100, stats.joy + 20);
-    stats.energy = Math.max(10, stats.energy - 10);
+    stats.energy = Math.min(100, stats.energy + 15);
     this.addXP(15);
     Sound.chirp();
     this.saveState();
+  }
+
+  equipPetGear(gearTitle, petId) {
+    const id = petId || this.state.selectedHero?.activePetId || 1;
+    if (!this.state.equippedGearMap) {
+      this.state.equippedGearMap = {};
+    }
+    this.state.equippedGearMap[id] = gearTitle;
+    this.state.equippedPetGear = gearTitle;
+    if (this.state.selectedHero) {
+      this.state.selectedHero.equippedPetGear = gearTitle;
+    }
+    Sound.fanfare();
+    confetti({
+      particleCount: 45,
+      spread: 60,
+      origin: { y: 0.6 },
+      colors: ['#f1c40f', '#2ecc71', '#3498db']
+    });
+    this.saveState();
+    this.notify();
+  }
+
+  unequipPetGear(petId) {
+    const id = petId || this.state.selectedHero?.activePetId || 1;
+    if (!this.state.equippedGearMap) {
+      this.state.equippedGearMap = {};
+    }
+    this.state.equippedGearMap[id] = null;
+    this.state.equippedPetGear = null;
+    if (this.state.selectedHero) {
+      this.state.selectedHero.equippedPetGear = null;
+    }
+    Sound.click();
+    this.saveState();
+    this.notify();
+  }
+
+  getEquippedPetGear(petId) {
+    const id = petId || this.state.selectedHero?.activePetId || 1;
+    if (this.state.equippedGearMap && this.state.equippedGearMap[id] !== undefined) {
+      return this.state.equippedGearMap[id];
+    }
+    return this.state.selectedHero?.equippedPetGear || this.state.equippedPetGear || null;
   }
 
   bathPetProgress(amount = 20, petId) {

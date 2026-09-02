@@ -111,8 +111,24 @@ export function renderPetPenView() {
 
         <!-- Pedestal Base & Lore Badge -->
         <div class="z-10 flex flex-col items-center gap-2">
+          <!-- Floating Hearts Layer for Pet & Hug -->
+          <div id="pen-hearts-layer" class="absolute inset-0 pointer-events-none z-30 overflow-visible"></div>
+
           <div class="w-48 h-5 bg-gradient-to-r from-surface-container-highest via-surface-bright to-surface-container-highest rounded-full border-2 border-primary/30 shadow-[0_0_20px_rgba(84,233,138,0.25)]"></div>
-          <span class="text-xs font-bold text-on-surface-variant text-center">${activePet.habitBonus}</span>
+          
+          <!-- Equipped Gear Badge -->
+          ${
+            store.getEquippedPetGear(activePet.id)
+              ? `
+            <div class="bg-amber-500/20 text-amber-300 text-xs font-black px-3.5 py-1 rounded-full border border-amber-500/40 flex items-center gap-1.5 shadow-sm">
+              <span class="material-symbols-outlined text-sm">checkroom</span>
+              <span>Gear: ${store.getEquippedPetGear(activePet.id)}</span>
+            </div>
+          `
+              : ''
+          }
+          
+          <span id="pen-status-caption" class="text-xs font-bold text-on-surface-variant text-center transition-all">${activePet.habitBonus}</span>
         </div>
       </div>
 
@@ -202,25 +218,25 @@ export function renderPetPenView() {
           </div>
         </button>
 
-        <!-- Pet & Play Joy -->
+        <!-- Pet & Play Joy (Increases Joy & Energy with Excitement Animation) -->
         <button id="pen-play-btn" class="bg-surface-container hover:bg-surface-bright rounded-3xl p-4 border-2 border-surface-container-highest card-shadow flex flex-col items-center justify-center gap-2 chunky-btn text-center active:scale-95 group">
           <div class="w-14 h-14 rounded-2xl bg-primary-container/20 text-primary flex items-center justify-center text-3xl border border-primary-container/40 group-hover:scale-110 transition-transform">
             <span class="material-symbols-outlined text-3xl">favorite</span>
           </div>
           <div class="flex flex-col">
             <span class="font-headline text-sm font-black text-inverse-surface">Pet & Hug</span>
-            <span class="text-[10px] font-bold text-on-surface-variant">+20 Happiness</span>
+            <span class="text-[10px] font-bold text-primary font-black">+20 Joy • +15 Energy</span>
           </div>
         </button>
 
-        <!-- Pet Learning Adventures Map -->
-        <button id="pen-adventures-btn" class="bg-surface-container hover:bg-surface-bright rounded-3xl p-4 border-2 border-surface-container-highest card-shadow flex flex-col items-center justify-center gap-2 chunky-btn text-center active:scale-95 group">
-          <div class="w-14 h-14 rounded-2xl bg-secondary-container/20 text-secondary flex items-center justify-center text-3xl border border-secondary-container/40 group-hover:scale-110 transition-transform">
-            <span class="material-symbols-outlined text-3xl">explore</span>
+        <!-- Pet Locker (Replaces Adventures button) -->
+        <button id="pen-locker-btn" class="bg-surface-container hover:bg-surface-bright rounded-3xl p-4 border-2 border-amber-500/40 card-shadow flex flex-col items-center justify-center gap-2 chunky-btn text-center active:scale-95 group">
+          <div class="w-14 h-14 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-3xl border border-amber-500/50 group-hover:scale-110 transition-transform">
+            <span class="material-symbols-outlined text-3xl">checkroom</span>
           </div>
           <div class="flex flex-col">
-            <span class="font-headline text-sm font-black text-inverse-surface">Adventures</span>
-            <span class="text-[10px] font-bold text-on-surface-variant">6 Learning Games</span>
+            <span class="font-headline text-sm font-black text-inverse-surface">Pet Locker</span>
+            <span class="text-[10px] font-bold text-amber-400">Equip Digital Gear</span>
           </div>
         </button>
 
@@ -230,12 +246,63 @@ export function renderPetPenView() {
   `;
 }
 
+function triggerPetHugExcitement() {
+  const container = document.getElementById('pen-hearts-layer');
+  const petChar = document.getElementById('pen-pet-character');
+  const caption = document.getElementById('pen-status-caption');
+
+  // 1. Playful excited animation on pet
+  if (petChar) {
+    petChar.classList.add('scale-115');
+    setTimeout(() => petChar.classList.remove('scale-115'), 350);
+  }
+
+  // 2. Spawn a fountain of rising hearts, stars, and energy bolts
+  if (container) {
+    const emojis = ['❤️', '💖', '🥰', '✨', '⚡', '🌟', '❤️'];
+    for (let i = 0; i < 8; i++) {
+      const heart = document.createElement('div');
+      const startX = Math.floor(Math.random() * 60) + 20; // 20% to 80%
+      const driftX = (Math.random() * 50 - 25).toFixed(0);
+      const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+
+      heart.className = 'absolute text-2xl sm:text-3xl select-none animate-heart-float z-30';
+      heart.style.left = `${startX}%`;
+      heart.style.bottom = '80px';
+      heart.style.setProperty('--drift-x', `${driftX}px`);
+      heart.style.animationDelay = `${(i * 0.1).toFixed(2)}s`;
+      heart.textContent = emoji;
+
+      container.appendChild(heart);
+      setTimeout(() => heart.remove(), 2000);
+    }
+  }
+
+  // 3. Update status caption
+  if (caption) {
+    caption.textContent = '🥰 Companion feels loved, energized & so happy! (+20 Joy, +15 Energy)';
+    caption.className = 'text-xs font-black text-primary text-center transition-all animate-pulse';
+  }
+
+  // 4. Confetti & Audio
+  Sound.chirp();
+  Sound.fanfare();
+  confetti({
+    particleCount: 25,
+    spread: 60,
+    origin: { y: 0.6 },
+    colors: ['#2ecc71', '#f1c40f', '#e74c3c', '#3498db']
+  });
+
+  // 5. Store update (increases joy and energy)
+  store.playWithPet();
+}
+
 export function attachPetPenListeners() {
   const hero = store.getState().selectedHero;
   const hasNoPet = !hero?.hasChosenStarterPet || !hero?.unlockedPetIds || hero.unlockedPetIds.length === 0;
 
   if (hasNoPet) {
-    // When kid selects the pet pen for the first time, show choose your first companion popup screen!
     setTimeout(() => {
       if (!store.getState().petSelectionModal?.isOpen) {
         store.openPetSelectionModal('starter');
@@ -277,7 +344,7 @@ export function attachPetPenListeners() {
   const petChar = document.getElementById('pen-pet-character');
   if (petChar) {
     petChar.addEventListener('click', () => {
-      store.playWithPet();
+      triggerPetHugExcitement();
     });
   }
 
@@ -293,11 +360,16 @@ export function attachPetPenListeners() {
 
   const playBtn = document.getElementById('pen-play-btn');
   if (playBtn) {
-    playBtn.addEventListener('click', () => store.playWithPet());
+    playBtn.addEventListener('click', () => {
+      triggerPetHugExcitement();
+    });
   }
 
-  const advBtn = document.getElementById('pen-adventures-btn');
-  if (advBtn) {
-    advBtn.addEventListener('click', () => store.navigate('quest_map'));
+  const lockerBtn = document.getElementById('pen-locker-btn');
+  if (lockerBtn) {
+    lockerBtn.addEventListener('click', () => {
+      Sound.click();
+      store.navigate('pet_locker');
+    });
   }
 }
