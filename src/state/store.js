@@ -1139,27 +1139,45 @@ class Store {
 
   bathPetProgress(amount = 20, petId) {
     const id = petId || this.state.selectedHero.activePetId || 1;
-    if (!this.state.petStatsMap[id]) this.state.petStatsMap[id] = { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
+    if (!this.state.petStatsMap[id]) this.state.petStatsMap[id] = { hunger: 75, hygiene: 60, energy: 65, joy: 85 };
+    const stats = this.state.petStatsMap[id];
+    stats.hygiene = Math.min(100, (stats.hygiene || 60) + amount);
+    this.saveState();
+  }
+
+  completePetBathReward(petId) {
+    const id = petId || this.state.selectedHero.activePetId || 1;
+    if (!this.state.petStatsMap[id]) this.state.petStatsMap[id] = { hunger: 75, hygiene: 60, energy: 65, joy: 85 };
     const stats = this.state.petStatsMap[id];
     const activePet = this.getActivePet();
 
-    stats.hygiene = Math.min(100, stats.hygiene + amount);
-    if (stats.hygiene === 100) {
-      stats.joy = Math.min(100, stats.joy + 20);
-      this.state.selectedHero.coins += 20;
-      this.addXP(25);
-      Sound.fanfare();
-      confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
-      this.showReward(
-        'Sparkling Squeaky Clean!',
-        'Your pet smells like fresh blueberry bubbles! +20 Habit Tokens auto-issued & +25 XP!',
-        20,
-        25,
-        activePet.avatar,
-        'soap'
-      );
-    }
+    stats.hygiene = 100;
+    stats.joy = 100;
+    this.state.selectedHero.coins += 25;
+    this.addXP(35);
+    Sound.fanfare();
+    confetti({
+      particleCount: 80,
+      spread: 90,
+      origin: { y: 0.6 },
+      colors: ['#2ecc71', '#3498db', '#f1c40f', '#00d2d3']
+    });
+
+    this.logAction(
+      `${this.state.selectedHero.name} washed and blow-dried ${activePet.name}`,
+      `+25 Tokens 🪙 & +35 XP awarded! Pet is 100% clean and fluffy warm.`
+    );
+
+    this.showReward(
+      'Sparkling Squeaky Clean & Fluffy!',
+      `You fully washed and blow-dried ${activePet.name}!\n🪙 +25 Habit Tokens auto-added to your wallet!\n⭐ +35 Adventure XP!`,
+      25,
+      35,
+      activePet.avatar || activePet.image,
+      'bathtub'
+    );
     this.saveState();
+    this.notify();
   }
 
   openPetSelectionModal(type = 'starter') {
