@@ -8,55 +8,162 @@ let battleTimer = null;
 let secondsRemaining = 120; // 2 minutes (120s)
 let totalDuration = 120;
 let isBattleRunning = false;
-let currentBrushZone = 0; // 0: Top Front, 1: Bottom Front, 2: Left Molars, 3: Right Molars
 let videoStream = null;
 let isCameraActive = false;
 let cameraError = null;
 
-const ZONES = [
-  {
-    id: 0,
-    name: 'Top Front Teeth',
-    quadrant: 'top-front',
-    icon: 'dentistry',
-    hint: 'Brush your front top teeth in gentle circles! 🦷',
-    voice: 'Brush your top front teeth in gentle circles! Blast those sugar bugs!'
-  },
-  {
-    id: 1,
-    name: 'Bottom Front Teeth',
-    quadrant: 'bottom-front',
-    icon: 'dentistry',
-    hint: 'Now gently scrub your bottom front teeth! ✨',
-    voice: 'Now brush your bottom front teeth! Keep that toothbrush moving!'
-  },
-  {
-    id: 2,
-    name: 'Left Chewing Molars',
-    quadrant: 'left-molars',
-    icon: 'cleaning_services',
-    hint: 'Deep scrub your left back chewing teeth! 🪥',
-    voice: 'Great job! Deep scrub into your left chewing teeth!'
-  },
-  {
-    id: 3,
-    name: 'Right Chewing Molars',
-    quadrant: 'right-molars',
-    icon: 'cleaning_services',
-    hint: 'Finish strong! Scrub your right chewing teeth! 🌟',
-    voice: 'Almost there! Finish scrubbing your right chewing teeth!'
+// TOOTHBRUSH MOTION DETECTION ENGINE
+let motionCanvas = null;
+let motionCtx = null;
+let prevFrameData = null;
+let motionCheckInterval = null;
+let isToothbrushMoving = false;
+let totalMotionHits = 0;
+let lastMotionTimestamp = 0;
+let isFallbackActive = false;
+let bonusMotionDamage = 0; // Extra damage earned by active brushing
+
+function initMotionDetector() {
+  if (!motionCanvas) {
+    motionCanvas = document.createElement('canvas');
+    motionCanvas.width = 64;
+    motionCanvas.height = 48;
+    motionCtx = motionCanvas.getContext('2d', { willReadFrequently: true });
   }
-];
+}
+
+function checkToothbrushMotion() {
+  const video = document.getElementById('ar-camera-feed');
+  if (!video || !videoStream || video.readyState < 2 || !motionCtx) return;
+
+  try {
+    motionCtx.drawImage(video, 0, 0, 64, 48);
+    const frame = motionCtx.getImageData(0, 0, 64, 48);
+    const data = frame.data;
+
+    // First frame initialization
+    if (!prevFrameData) {
+      prevFrameData = new Uint8Array(data.length / 4);
+      for (let i = 0, j = 0; i < data.length; i += 4, j++) {
+        prevFrameData[j] = (data[i] * 299 + data[i + 1] * 587 + data[i + 2] * 114) / 1000;
+      }
+      return;
+    }
+
+    // Sample central lower Region of Interest (ROI) where mouth and toothbrush are held
+    // x: 12 to 52 (central 62% width), y: 16 to 44 (lower 58% height)
+    let changedPixels = 0;
+    let totalSampled = 0;
+
+    for (let y = 16; y < 44; y++) {
+      for (let x = 12; x < 52; x++) {
+        const pixelIdx = y * 64 + x;
+        const byteIdx = pixelIdx * 4;
+        const lum = (data[byteIdx] * 299 + data[byteIdx + 1] * 587 + data[byteIdx + 2] * 114) / 1000;
+        const diff = Math.abs(lum - prevFrameData[pixelIdx]);
+
+        if (diff > 16) {
+          changedPixels++;
+        }
+        prevFrameData[pixelIdx] = lum;
+        totalSampled++;
+      }
+    }
+
+    const motionRatio = changedPixels / (totalSampled || 1);
+
+    // Threshold: 3.2% of sampled brushing pixels actively moving
+    if (motionRatio > 0.032) {
+      isToothbrushMoving = true;
+      totalMotionHits++;
+      lastMotionTimestamp = Date.now();
+      onBrushMovementDetected();
+    } else {
+      if (Date.now() - lastMotionTimestamp > 1400) {
+        isToothbrushMoving = false;
+        updateMotionUI(false);
+      }
+    }
+  } catch (e) {
+    // Video feed not ready yet or restricted
+  }
+}
+
+// TRIGGERED ON ACTIVE TOOTHBRUSH MOVEMENT
+function onBrushMovementDetected() {
+  updateMotionUI(true);
+
+  // Periodic visual & sound effects on brushing motion
+  if (Math.random() < 0.4) {
+    spawnToothpasteFoam();
+  }
+
+  if (Math.random() < 0.25) {
+    Sound.laser();
+    showComicHit('SCRUB POWER! 🪥⚡');
+
+    // Flinch the Sugar Boss
+    const boss = document.getElementById('boss-character');
+    if (boss) {
+      boss.classList.add('scale-110', 'brightness-150');
+      setTimeout(() => boss.classList.remove('scale-110', 'brightness-150'), 200);
+    }
+
+    // Flinch a random Germ Minion
+    const randomMinionId = `minion-${Math.floor(Math.random() * 4) + 1}`;
+    const minion = document.getElementById(randomMinionId);
+    if (minion) {
+      minion.classList.add('scale-75', 'rotate-12', 'brightness-150');
+      setTimeout(() => minion.classList.remove('scale-75', 'rotate-12', 'brightness-150'), 250);
+    }
+  }
+}
+
+// UPDATE TOOTHBRUSH MOTION SENSOR HUD
+function updateMotionUI(isMoving) {
+  const motionPill = document.getElementById('motion-status-pill');
+  const motionText = document.getElementById('motion-status-text');
+  const motionMeter = document.getElementById('motion-power-meter');
+  const scrubHint = document.getElementById('scrub-action-hint');
+
+  if (isMoving) {
+    if (motionPill) motionPill.className = 'flex items-center gap-1.5 bg-primary/20 border border-primary/60 px-3 py-1.5 rounded-full text-[11px] font-black text-primary shadow-sm animate-pulse';
+    if (motionText) motionText.textContent = '🪥 Toothbrush Scrubbing: ACTIVE';
+    if (motionMeter) motionMeter.style.width = '100%';
+    if (scrubHint) scrubHint.textContent = '🔥 AWESOME SCRUBBING! BOSS TAKING HEAVY DAMAGE!';
+  } else {
+    if (isFallbackActive) {
+      if (motionPill) motionPill.className = 'flex items-center gap-1.5 bg-secondary/20 border border-secondary/60 px-3 py-1.5 rounded-full text-[11px] font-black text-secondary shadow-sm';
+      if (motionText) motionText.textContent = '🛡️ Auto-Assist Attack: ACTIVE';
+      if (motionMeter) motionMeter.style.width = '45%';
+      if (scrubHint) scrubHint.textContent = '🛡️ AUTO-ASSIST ACTIVE: KEEP SCRUBBING YOUR TEETH!';
+    } else {
+      if (motionPill) motionPill.className = 'flex items-center gap-1.5 bg-surface-container-high border border-surface-container-highest px-3 py-1.5 rounded-full text-[11px] font-black text-on-surface-variant shadow-sm';
+      if (motionText) motionText.textContent = '🪥 Move Toothbrush to Attack';
+      if (motionMeter) motionMeter.style.width = '15%';
+      if (scrubHint) scrubHint.textContent = '🪥 MOVE YOUR TOOTHBRUSH IN FRONT OF THE MIRROR!';
+    }
+  }
+}
 
 export function renderBattleView() {
-  const hpPercent = Math.max(0, Math.round((secondsRemaining / totalDuration) * 100));
+  const elapsed = totalDuration - secondsRemaining;
+  let hpPercent = 100;
+
+  if (elapsed < 20 && totalMotionHits === 0) {
+    hpPercent = 100; // Waiting for motion in initial 20s
+  } else {
+    // Damage curves smoothly down to 0%
+    const progressRatio = Math.min(1, elapsed / totalDuration);
+    hpPercent = Math.max(0, Math.round((1 - progressRatio) * 100));
+  }
+
   const mins = Math.floor(secondsRemaining / 60);
   const secs = secondsRemaining % 60;
   const timeStr = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  const activeZone = ZONES[currentBrushZone] || ZONES[0];
 
   return `
-    <div class="max-w-4xl mx-auto px-3 sm:px-4 pt-3 pb-28 flex flex-col gap-3.5 animate-fade-in select-none">
+    <div class="max-w-4xl mx-auto px-3 sm:px-4 pt-3 pb-28 flex flex-col gap-3 animate-fade-in select-none">
       
       <!-- Top Bar HUD -->
       <div class="flex items-center justify-between z-20">
@@ -64,10 +171,10 @@ export function renderBattleView() {
           <span class="material-symbols-outlined text-base">close</span> ${isBattleRunning ? 'Quit Battle' : 'Exit'}
         </button>
 
-        <!-- Camera Mirror Status Pill -->
-        <div id="camera-status-pill" class="flex items-center gap-1.5 bg-surface-container-high px-3 py-1.5 rounded-full border border-surface-container-highest text-[11px] font-black text-primary shadow-sm">
+        <!-- Live Toothbrush Motion Sensor Status Pill -->
+        <div id="motion-status-pill" class="flex items-center gap-1.5 bg-surface-container-high px-3 py-1.5 rounded-full border border-surface-container-highest text-[11px] font-black text-primary shadow-sm">
           <span class="w-2.5 h-2.5 rounded-full bg-primary animate-pulse"></span>
-          <span id="camera-status-text">AR Camera Active</span>
+          <span id="motion-status-text">🪥 Toothbrush Motion Sensor Ready</span>
         </div>
 
         <!-- Timer & Coins HUD -->
@@ -90,7 +197,7 @@ export function renderBattleView() {
         <!-- Live Webcam AR Video Stream Layer (Full Mirror Feed) -->
         <video id="ar-camera-feed" class="absolute inset-0 w-full h-full object-cover transform -scale-x-100 z-0 bg-[#050f18]" autoplay playsinline muted></video>
         
-        <!-- Ambient Vignette & Target Grid -->
+        <!-- Ambient Vignette -->
         <div class="absolute inset-0 bg-radial from-transparent via-black/20 to-black/75 pointer-events-none z-0"></div>
 
         <!-- Camera Permission / Retry Button (Shown if camera blocked or needs gesture) -->
@@ -99,18 +206,18 @@ export function renderBattleView() {
             <span class="material-symbols-outlined text-4xl">videocam</span>
           </div>
           <div class="max-w-xs">
-            <h3 class="font-headline text-base font-black text-white">Turn On AR Camera Mirror</h3>
-            <p class="text-xs text-white/80 mt-1">See your face and teeth in the magic AR mirror to fight the sugar bugs!</p>
+            <h3 class="font-headline text-base font-black text-white">Turn On Magic Mirror</h3>
+            <p class="text-xs text-white/80 mt-1">See your face and move your toothbrush in the mirror to blast the sugar bugs!</p>
           </div>
           <button id="enable-camera-btn" class="bg-primary text-on-primary font-headline text-xs font-black px-5 py-3 rounded-2xl chunky-btn border-primary-container flex items-center gap-2 active:scale-95 shadow-lg">
             <span class="material-symbols-outlined text-lg">photo_camera</span>
-            Enable Camera Feed
+            Enable Magic Mirror
           </button>
         </div>
 
-        <!-- TOP: Boss Health Bar HUD -->
+        <!-- TOP: Boss Health Bar HUD & Motion Sensor Power Gauge -->
         <div class="w-full max-w-md z-10 pt-3 px-4 flex flex-col gap-1.5">
-          <div class="flex justify-between items-center text-xs font-black text-error bg-black/50 backdrop-blur-md px-3 py-1 rounded-full border border-error/30">
+          <div class="flex justify-between items-center text-xs font-black text-error bg-black/60 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-error/30 shadow">
             <span class="flex items-center gap-1.5">
               <span class="material-symbols-outlined text-base animate-pulse">coronavirus</span>
               <span class="uppercase tracking-wider">Sugar Bug Overlord</span>
@@ -122,9 +229,19 @@ export function renderBattleView() {
               <div class="absolute inset-0 bg-white/30 animate-pulse"></div>
             </div>
           </div>
+
+          <!-- Scrub Motion Power Bar -->
+          <div class="flex items-center justify-between gap-2 px-1 text-[10px] font-black text-white/80">
+            <span class="flex items-center gap-1 text-primary">
+              <span class="material-symbols-outlined text-xs">bolt</span> Toothbrush Scrub Power:
+            </span>
+            <div class="flex-1 h-2 bg-black/60 rounded-full border border-white/20 overflow-hidden">
+              <div id="motion-power-meter" class="h-full bg-primary rounded-full transition-all duration-200" style="width: 20%;"></div>
+            </div>
+          </div>
         </div>
 
-        <!-- CENTER BATTLE STAGE: Boss, Minions, and Mouth Alignment Zone -->
+        <!-- CENTER BATTLE STAGE: Boss, Minions, and Toothbrush Target Zone -->
         <div class="relative w-full flex-1 flex flex-col items-center justify-center z-10 px-4 my-2">
           
           <!-- Animated Sugar Villain Boss (Overlord Sugartusk) -->
@@ -181,173 +298,117 @@ export function renderBattleView() {
               </svg>
             </div>
 
-            <!-- Sugar Boss Attack Laser / Slime Trail to Mouth -->
-            <div id="sugar-attack-beam" class="w-1.5 h-10 bg-gradient-to-b from-error via-secondary to-primary/80 animate-pulse-glow rounded-full shadow-[0_0_12px_#ff5722]"></div>
+            <!-- Sugar Boss Slime Attack Trail -->
+            <div id="sugar-attack-beam" class="w-1.5 h-8 bg-gradient-to-b from-error via-secondary to-primary/80 animate-pulse-glow rounded-full shadow-[0_0_12px_#ff5722]"></div>
           </div>
 
-          <!-- AR MOUTH ALIGNMENT ZONE & DENTAL QUADRANTS (Kid's Teeth Target) -->
-          <div id="ar-mouth-stage" class="relative w-72 sm:w-80 h-36 sm:h-40 rounded-3xl border-3 border-dashed border-primary/60 bg-black/45 backdrop-blur-[2px] flex flex-col items-center justify-between p-2.5 shadow-[0_0_30px_rgba(46,204,113,0.3)] animate-mouth-glow">
+          <!-- MAGIC MIRROR TOOTHBRUSH BATTLE ZONE (Focuses on Toothbrush Movement) -->
+          <div id="ar-brushing-target" class="relative w-80 sm:w-96 h-40 sm:h-44 rounded-3xl border-3 border-dashed border-primary/70 bg-black/45 backdrop-blur-[2px] flex flex-col items-center justify-between p-3 shadow-[0_0_30px_rgba(46,204,113,0.3)] animate-mouth-glow">
             
-            <!-- Alignment Label Header -->
-            <div class="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-primary bg-black/60 px-2.5 py-0.5 rounded-full border border-primary/30">
-              <span class="material-symbols-outlined text-xs">face</span>
-              <span>Align Teeth in Magic Mirror</span>
+            <!-- Target Alignment Header -->
+            <div class="flex items-center gap-1.5 text-[10px] sm:text-xs font-black uppercase tracking-wider text-primary bg-black/70 px-3 py-1 rounded-full border border-primary/40 shadow-sm">
+              <span class="material-symbols-outlined text-sm">cleaning_services</span>
+              <span>Magic Mirror Brushing Zone</span>
             </div>
 
-            <!-- Upper Dental Arch (Top Teeth) -->
-            <div class="w-full flex items-center justify-between px-3">
-              <!-- Upper Left Molars (Zone 2) -->
-              <div id="quadrant-2-top" class="quadrant-zone flex items-center gap-1 p-1 rounded-xl transition-all ${currentBrushZone === 2 ? 'ring-2 ring-primary bg-primary/20 scale-105' : 'opacity-75'}">
-                <span class="text-sm">🦷</span>
-                <span class="text-sm">🦷</span>
+            <!-- Central Motion Target Crosshairs & Teeth Shield -->
+            <div class="flex flex-col items-center gap-1 z-10 text-center">
+              <div class="flex items-center gap-1.5 text-2xl drop-shadow">
+                <span>🦷</span>
+                <span class="text-3xl animate-bounce">🪥</span>
+                <span>🦷</span>
               </div>
-
-              <!-- Upper Front Teeth (Zone 0 - Active Target) -->
-              <div id="quadrant-0" class="quadrant-zone flex items-center gap-1 p-1.5 rounded-xl transition-all ${currentBrushZone === 0 ? 'ring-3 ring-primary bg-primary/30 scale-110 shadow-[0_0_16px_#2ecc71]' : 'opacity-75'}">
-                <span class="text-base">🦷</span>
-                <span class="text-base">🦷</span>
-                <span class="text-base">🦷</span>
-                <span class="text-base">🦷</span>
-              </div>
-
-              <!-- Upper Right Molars (Zone 3) -->
-              <div id="quadrant-3-top" class="quadrant-zone flex items-center gap-1 p-1 rounded-xl transition-all ${currentBrushZone === 3 ? 'ring-2 ring-primary bg-primary/20 scale-105' : 'opacity-75'}">
-                <span class="text-sm">🦷</span>
-                <span class="text-sm">🦷</span>
-              </div>
+              <span id="motion-target-instruction" class="text-xs font-black text-white bg-primary/80 px-3.5 py-1 rounded-full shadow-md">
+                MOVE TOOTHBRUSH TO BLAST BOSS!
+              </span>
             </div>
 
-            <!-- Lower Dental Arch (Bottom Teeth) -->
-            <div class="w-full flex items-center justify-between px-3">
-              <!-- Lower Left Molars (Zone 2) -->
-              <div id="quadrant-2-bot" class="quadrant-zone flex items-center gap-1 p-1 rounded-xl transition-all ${currentBrushZone === 2 ? 'ring-2 ring-primary bg-primary/20 scale-105' : 'opacity-75'}">
-                <span class="text-sm">🦷</span>
-                <span class="text-sm">🦷</span>
-              </div>
-
-              <!-- Lower Front Teeth (Zone 1 - Target) -->
-              <div id="quadrant-1" class="quadrant-zone flex items-center gap-1 p-1.5 rounded-xl transition-all ${currentBrushZone === 1 ? 'ring-3 ring-primary bg-primary/30 scale-110 shadow-[0_0_16px_#2ecc71]' : 'opacity-75'}">
-                <span class="text-base">🦷</span>
-                <span class="text-base">🦷</span>
-                <span class="text-base">🦷</span>
-                <span class="text-base">🦷</span>
-              </div>
-
-              <!-- Lower Right Molars (Zone 3) -->
-              <div id="quadrant-3-bot" class="quadrant-zone flex items-center gap-1 p-1 rounded-xl transition-all ${currentBrushZone === 3 ? 'ring-2 ring-primary bg-primary/20 scale-105' : 'opacity-75'}">
-                <span class="text-sm">🦷</span>
-                <span class="text-sm">🦷</span>
-              </div>
-            </div>
-
-            <!-- Active Quadrant Glowing Arrow & Tooltip -->
-            <div class="flex items-center gap-1 text-[10px] font-black text-white bg-primary/90 px-3 py-1 rounded-full shadow-md animate-bounce">
-              <span class="material-symbols-outlined text-xs">cleaning_services</span>
-              <span id="active-quadrant-label">BRUSH HERE: ${activeZone.name.toUpperCase()}</span>
-            </div>
-
-            <!-- Dynamic Toothpaste Foam Burst VFX Layer -->
+            <!-- Dynamic Toothbrush Foam Burst VFX Layer -->
             <div id="foam-vfx-container" class="absolute inset-0 pointer-events-none overflow-hidden rounded-3xl"></div>
+
+            <!-- Fallback Status Banner (Shown after 20s if motion detection is struggling) -->
+            <div id="fallback-assist-badge" class="hidden flex items-center gap-1 text-[10px] font-black text-secondary bg-black/80 px-3 py-0.5 rounded-full border border-secondary/50">
+              <span class="material-symbols-outlined text-xs">shield</span>
+              <span>Auto-Assist: Timer-Based Attack Active</span>
+            </div>
           </div>
 
-          <!-- 4 ANIMATED GERM MINIONS FIGHTING THE TEETH -->
+          <!-- 4 ANIMATED GERM MINIONS FIGHTING THE BRUSHING ZONE -->
           
-          <!-- Minion 1: Plaque Goblin (Top-Left Teeth) -->
+          <!-- Minion 1: Plaque Bug (Top-Left) -->
           <div id="minion-1" class="absolute left-2 sm:left-6 top-28 sm:top-32 flex flex-col items-center animate-minion-wiggle z-20">
             <div class="bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded-md text-[9px] font-black text-[#2ecc71] border border-[#2ecc71]/40 mb-1 shadow">
               Plaque Bug 👾
             </div>
             <div class="w-12 h-12 sm:w-14 sm:h-14 relative drop-shadow-[0_4px_10px_rgba(46,204,113,0.5)]">
               <svg viewBox="0 0 50 50" class="w-full h-full">
-                <!-- Spiky Green Blob Body -->
                 <circle cx="25" cy="25" r="18" fill="#27ae60" stroke="#2ecc71" stroke-width="2" />
                 <circle cx="14" cy="18" r="4" fill="#2ecc71" />
                 <circle cx="36" cy="18" r="4" fill="#2ecc71" />
-                <!-- Googly Eyes -->
                 <circle cx="20" cy="22" r="5" fill="#fff" />
                 <circle cx="21" cy="22" r="2.5" fill="#000" />
                 <circle cx="30" cy="22" r="5" fill="#fff" />
                 <circle cx="29" cy="22" r="2.5" fill="#000" />
-                <!-- Chomping Pincer Teeth -->
                 <path d="M 18 32 Q 25 38 32 32" stroke="#f1c40f" stroke-width="3" fill="none" stroke-linecap="round" />
                 <polygon points="21,30 23,34 25,30" fill="#fff" />
                 <polygon points="26,30 28,34 30,30" fill="#fff" />
               </svg>
             </div>
-            <!-- Attack Acid Splatter -->
-            <span class="text-xs animate-pulse">🧪</span>
           </div>
 
-          <!-- Minion 2: Sour Acid Bug (Top-Right Teeth) -->
+          <!-- Minion 2: Sour Acid Imp (Top-Right) -->
           <div id="minion-2" class="absolute right-2 sm:right-6 top-28 sm:top-32 flex flex-col items-center animate-minion-chomp z-20">
             <div class="bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded-md text-[9px] font-black text-[#3498db] border border-[#3498db]/40 mb-1 shadow">
               Acid Imp 💧
             </div>
             <div class="w-12 h-12 sm:w-14 sm:h-14 relative drop-shadow-[0_4px_10px_rgba(52,152,219,0.5)]">
               <svg viewBox="0 0 50 50" class="w-full h-full">
-                <!-- Cyan-Blue Droplet Monster -->
                 <path d="M 25 6 C 14 18 10 28 10 35 C 10 44 16 48 25 48 C 34 48 40 44 40 35 C 40 28 36 18 25 6 Z" fill="#2980b9" stroke="#3498db" stroke-width="2" />
-                <!-- Sharp Horns -->
                 <polygon points="14,14 18,22 10,22" fill="#f1c40f" />
                 <polygon points="36,14 32,22 40,22" fill="#f1c40f" />
-                <!-- Angry Eyes -->
                 <circle cx="20" cy="30" r="4.5" fill="#fff" />
                 <circle cx="21" cy="31" r="2" fill="#c0392b" />
                 <circle cx="30" cy="30" r="4.5" fill="#fff" />
                 <circle cx="29" cy="31" r="2" fill="#c0392b" />
-                <!-- Sharp Fangs -->
                 <path d="M 18 38 L 22 42 L 25 38 L 28 42 L 32 38" stroke="#f1c40f" stroke-width="2" fill="none" />
               </svg>
             </div>
-            <!-- Acid Lightning -->
-            <span class="text-xs animate-bounce">⚡</span>
           </div>
 
-          <!-- Minion 3: Cavity Imp (Bottom-Left Chewing Teeth) -->
-          <div id="minion-3" class="absolute left-3 sm:left-8 bottom-12 sm:bottom-16 flex flex-col items-center animate-minion-drill z-20">
+          <!-- Minion 3: Cavity Drill (Bottom-Left) -->
+          <div id="minion-3" class="absolute left-3 sm:left-8 bottom-10 sm:bottom-14 flex flex-col items-center animate-minion-drill z-20">
             <div class="bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded-md text-[9px] font-black text-[#e74c3c] border border-[#e74c3c]/40 mb-1 shadow">
               Cavity Drill 🪚
             </div>
             <div class="w-12 h-12 sm:w-14 sm:h-14 relative drop-shadow-[0_4px_10px_rgba(231,76,60,0.5)]">
               <svg viewBox="0 0 50 50" class="w-full h-full">
-                <!-- Dark Red Imp Body -->
                 <ellipse cx="25" cy="27" rx="16" ry="14" fill="#c0392b" stroke="#e74c3c" stroke-width="2" />
-                <!-- Bat Wings -->
-                <path d="M 10 22 Q 4 14 10 32" stroke="#962d22" stroke-width="2.5" fill="none" />
-                <path d="M 40 22 Q 46 14 40 32" stroke="#962d22" stroke-width="2.5" fill="none" />
-                <!-- Imp Horns -->
                 <polygon points="18,16 20,8 24,16" fill="#f1c40f" />
                 <polygon points="32,16 30,8 26,16" fill="#f1c40f" />
-                <!-- Angry Eyes -->
                 <circle cx="20" cy="25" r="3.5" fill="#f1c40f" />
                 <circle cx="30" cy="25" r="3.5" fill="#f1c40f" />
-                <!-- Toothpick Drill -->
                 <line x1="32" y1="32" x2="44" y2="44" stroke="#ecf0f1" stroke-width="3" stroke-linecap="round" />
                 <polygon points="42,42 46,46 41,47" fill="#f1c40f" />
               </svg>
             </div>
           </div>
 
-          <!-- Minion 4: Sugar Mite (Bottom-Right Chewing Teeth) -->
-          <div id="minion-4" class="absolute right-3 sm:right-8 bottom-12 sm:bottom-16 flex flex-col items-center animate-minion-wiggle z-20">
+          <!-- Minion 4: Sugar Mite (Bottom-Right) -->
+          <div id="minion-4" class="absolute right-3 sm:right-8 bottom-10 sm:bottom-14 flex flex-col items-center animate-minion-wiggle z-20">
             <div class="bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded-md text-[9px] font-black text-[#f39c12] border border-[#f39c12]/40 mb-1 shadow">
               Sugar Mite 🍭
             </div>
             <div class="w-12 h-12 sm:w-14 sm:h-14 relative drop-shadow-[0_4px_10px_rgba(243,156,18,0.5)]">
               <svg viewBox="0 0 50 50" class="w-full h-full">
-                <!-- Amber Candy Bug -->
                 <circle cx="25" cy="26" r="15" fill="#d35400" stroke="#f39c12" stroke-width="2" />
-                <!-- Antennae -->
                 <path d="M 20 12 Q 16 4 12 8" stroke="#f39c12" stroke-width="2" fill="none" />
                 <circle cx="12" cy="8" r="2" fill="#e74c3c" />
                 <path d="M 30 12 Q 34 4 38 8" stroke="#f39c12" stroke-width="2" fill="none" />
                 <circle cx="38" cy="8" r="2" fill="#e74c3c" />
-                <!-- Eyes -->
                 <circle cx="20" cy="24" r="4" fill="#fff" />
                 <circle cx="21" cy="24" r="2" fill="#000" />
                 <circle cx="30" cy="24" r="4" fill="#fff" />
                 <circle cx="29" cy="24" r="2" fill="#000" />
-                <!-- Chewing Teeth -->
                 <rect x="21" y="32" width="3" height="4" fill="#fff" />
                 <rect x="26" y="32" width="3" height="4" fill="#f1c40f" />
               </svg>
@@ -363,18 +424,18 @@ export function renderBattleView() {
 
         </div>
 
-        <!-- BOTTOM HUD: Zone Instructions & Hands-Free Action Button -->
+        <!-- BOTTOM HUD: Guidance Status & Start Button -->
         <div class="w-full z-10 pb-3 px-4 flex flex-col items-center gap-2.5">
           
-          <!-- Active Guided Brushing Zone Banner -->
+          <!-- Live Brushing Guidance Banner -->
           <div class="w-full max-w-md bg-surface-container-lowest/90 backdrop-blur-md px-4 py-2.5 rounded-2xl border-2 border-primary/50 flex items-center justify-between shadow-lg text-center">
             <div class="flex items-center gap-2.5 text-left">
               <div class="w-8 h-8 rounded-xl bg-primary text-on-primary flex items-center justify-center text-lg flex-shrink-0">
-                <span class="material-symbols-outlined text-base">record_voice_over</span>
+                <span class="material-symbols-outlined text-base">cleaning_services</span>
               </div>
               <div class="flex flex-col">
-                <span id="zone-name-text" class="text-[10px] font-black uppercase text-primary tracking-wider">Target: ${activeZone.name}</span>
-                <span id="zone-hint-text" class="text-xs font-bold text-inverse-surface">${activeZone.hint}</span>
+                <span class="text-[10px] font-black uppercase text-primary tracking-wider">Magic Mirror Action</span>
+                <span id="scrub-action-hint" class="text-xs font-bold text-inverse-surface">Move your toothbrush in circles to attack!</span>
               </div>
             </div>
             <span class="text-xl">🪥</span>
@@ -402,11 +463,11 @@ export function renderBattleView() {
 
       </div>
 
-      <!-- Info Banner -->
+      <!-- Info Banner explaining Motion Detection & 20s Fallback -->
       <div class="bg-surface-container rounded-3xl p-3.5 sm:p-4 border-2 border-surface-container-highest card-shadow flex items-center justify-between text-xs text-on-surface-variant">
         <div class="flex items-center gap-2">
           <span class="material-symbols-outlined text-secondary text-xl">verified</span>
-          <span>AR mirror displays live video feed while tooth movement damages the sugar villains!</span>
+          <span>Camera detects toothbrush motion to deal damage. Auto-assist engages after 20s if motion detection is low.</span>
         </div>
         <span class="text-error font-bold hidden sm:block">⚠️ Early exit forfeits points</span>
       </div>
@@ -419,7 +480,6 @@ export function renderBattleView() {
 async function initCamera() {
   const video = document.getElementById('ar-camera-feed');
   const fallback = document.getElementById('camera-permission-fallback');
-  const statusPill = document.getElementById('camera-status-text');
 
   if (videoStream && videoStream.active) {
     if (video) {
@@ -428,7 +488,6 @@ async function initCamera() {
       }
       video.play().catch(() => {});
       if (fallback) fallback.classList.add('hidden');
-      if (statusPill) statusPill.textContent = 'AR Camera Active';
     }
     isCameraActive = true;
     return;
@@ -453,17 +512,14 @@ async function initCamera() {
         video.play().catch(() => {});
       }
       if (fallback) fallback.classList.add('hidden');
-      if (statusPill) statusPill.textContent = 'AR Camera Active';
     } catch (err) {
       console.warn('Camera access denied or unavailable; fallback enabled.', err);
       isCameraActive = false;
       cameraError = err;
       if (fallback) fallback.classList.remove('hidden');
-      if (statusPill) statusPill.textContent = 'Camera Off (Tap to Enable)';
     }
   } else {
     if (fallback) fallback.classList.remove('hidden');
-    if (statusPill) statusPill.textContent = 'Camera Unsupported';
   }
 }
 
@@ -473,22 +529,25 @@ function stopCamera() {
     videoStream = null;
     isCameraActive = false;
   }
+  if (motionCheckInterval) {
+    clearInterval(motionCheckInterval);
+    motionCheckInterval = null;
+  }
 }
 
-// BURST FOAM BUBBLE PARTICLES OVER ACTIVE TEETH ZONE
+// BURST FOAM BUBBLE PARTICLES
 function spawnToothpasteFoam() {
   const container = document.getElementById('foam-vfx-container');
   if (!container) return;
 
   const bubbleIcons = ['🫧', '✨', '🪥', '🫧', '⭐'];
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 3; i++) {
     const el = document.createElement('div');
     el.className = 'absolute text-lg sm:text-xl pointer-events-none transition-all duration-700 select-none';
     el.textContent = bubbleIcons[Math.floor(Math.random() * bubbleIcons.length)];
     
-    // Position within active mouth quadrant area
-    const leftPercent = 25 + Math.random() * 50;
-    const topPercent = 35 + Math.random() * 40;
+    const leftPercent = 20 + Math.random() * 60;
+    const topPercent = 25 + Math.random() * 50;
     el.style.left = `${leftPercent}%`;
     el.style.top = `${topPercent}%`;
     el.style.transform = `translate(-50%, -50%) scale(0.5)`;
@@ -523,47 +582,7 @@ function showComicHit(text) {
   setTimeout(() => {
     badge.style.opacity = '0';
     badge.style.transform = 'translate(-50%, -50%) scale(0.8)';
-  }, 700);
-}
-
-// UPDATE ACTIVE QUADRANT HIGHLIGHT IN MOUTH STAGE
-function updateActiveQuadrantUI(zoneIdx) {
-  const zone = ZONES[zoneIdx] || ZONES[0];
-
-  const zoneName = document.getElementById('zone-name-text');
-  const zoneHint = document.getElementById('zone-hint-text');
-  const quadLabel = document.getElementById('active-quadrant-label');
-
-  if (zoneName) zoneName.textContent = `Target: ${zone.name}`;
-  if (zoneHint) zoneHint.textContent = zone.hint;
-  if (quadLabel) quadLabel.textContent = `BRUSH HERE: ${zone.name.toUpperCase()}`;
-
-  // Update quadrant styling in mouth overlay
-  document.querySelectorAll('.quadrant-zone').forEach((el) => {
-    el.classList.remove('ring-3', 'ring-primary', 'bg-primary/30', 'scale-110', 'shadow-[0_0_16px_#2ecc71]');
-    el.classList.add('opacity-75');
-  });
-
-  const q0 = document.getElementById('quadrant-0');
-  const q1 = document.getElementById('quadrant-1');
-  const q2Top = document.getElementById('quadrant-2-top');
-  const q2Bot = document.getElementById('quadrant-2-bot');
-  const q3Top = document.getElementById('quadrant-3-top');
-  const q3Bot = document.getElementById('quadrant-3-bot');
-
-  if (zoneIdx === 0 && q0) {
-    q0.classList.remove('opacity-75');
-    q0.classList.add('ring-3', 'ring-primary', 'bg-primary/30', 'scale-110', 'shadow-[0_0_16px_#2ecc71]');
-  } else if (zoneIdx === 1 && q1) {
-    q1.classList.remove('opacity-75');
-    q1.classList.add('ring-3', 'ring-primary', 'bg-primary/30', 'scale-110', 'shadow-[0_0_16px_#2ecc71]');
-  } else if (zoneIdx === 2) {
-    if (q2Top) { q2Top.classList.remove('opacity-75'); q2Top.classList.add('ring-3', 'ring-primary', 'bg-primary/30', 'scale-110'); }
-    if (q2Bot) { q2Bot.classList.remove('opacity-75'); q2Bot.classList.add('ring-3', 'ring-primary', 'bg-primary/30', 'scale-110'); }
-  } else if (zoneIdx === 3) {
-    if (q3Top) { q3Top.classList.remove('opacity-75'); q3Top.classList.add('ring-3', 'ring-primary', 'bg-primary/30', 'scale-110'); }
-    if (q3Bot) { q3Bot.classList.remove('opacity-75'); q3Bot.classList.add('ring-3', 'ring-primary', 'bg-primary/30', 'scale-110'); }
-  }
+  }, 650);
 }
 
 // BATTLE LIFECYCLE
@@ -571,21 +590,28 @@ function startBattle() {
   isBattleRunning = true;
   secondsRemaining = store.getState().parentSettings.arBattleDuration || 120;
   totalDuration = secondsRemaining;
-  currentBrushZone = 0;
+  totalMotionHits = 0;
+  bonusMotionDamage = 0;
+  isFallbackActive = false;
+  prevFrameData = null;
 
   Sound.fanfare();
   initCamera();
+  initMotionDetector();
 
-  // Voice guidance for initial zone
-  const activeZone = ZONES[0];
-  voicePrompts.speak(activeZone.voice);
+  voicePrompts.speak("Look into the magic mirror and move your toothbrush to blast the sugar boss!");
 
   // Immediately re-render to switch button to hands-free state
   store.notify();
 
-  // Smooth DOM update interval without wiping the camera video feed
+  // Run toothbrush motion detection at 10 FPS (every 100ms)
+  if (motionCheckInterval) clearInterval(motionCheckInterval);
+  motionCheckInterval = setInterval(checkToothbrushMotion, 100);
+
+  // Smooth DOM update interval every 1000ms
   battleTimer = setInterval(() => {
     secondsRemaining--;
+    const elapsedSeconds = totalDuration - secondsRemaining;
 
     // Update timer text in DOM
     const mins = Math.floor(secondsRemaining / 60);
@@ -594,45 +620,51 @@ function startBattle() {
     const timerDisplay = document.getElementById('battle-timer-display');
     if (timerDisplay) timerDisplay.textContent = timeStr;
 
-    // Update Boss HP bar & percentage in DOM
-    const hpPercent = Math.max(0, Math.round((secondsRemaining / totalDuration) * 100));
+    // 20-SECOND FALLBACK CHECK
+    // If toothbrush detection has failed or registered low motion for 20 seconds,
+    // automatically activate fallback timer-based completion!
+    if (elapsedSeconds >= 20 && !isFallbackActive && totalMotionHits < 12) {
+      isFallbackActive = true;
+      const fallbackBadge = document.getElementById('fallback-assist-badge');
+      if (fallbackBadge) fallbackBadge.classList.remove('hidden');
+
+      voicePrompts.speak("Hero Auto-Assist active! Keep on brushing to defeat the sugar overlord!");
+      showComicHit('AUTO-ASSIST ENGAGED! 🛡️');
+      Sound.laser();
+    }
+
+    // CALCULATE BOSS HP
+    // If active motion: damage happens immediately.
+    // If motion failed: damage begins happening after 20s and smoothly finishes on timer.
+    let hpPercent = 100;
+    if (elapsedSeconds < 20 && totalMotionHits < 6) {
+      hpPercent = 100; // Waiting for motion in initial 20s
+    } else {
+      // Curve damage down from 100% to 0% across the battle duration
+      const effectiveProgress = (elapsedSeconds / totalDuration);
+      hpPercent = Math.max(0, Math.round((1 - effectiveProgress) * 100));
+    }
+
+    // Update HP bar & text in DOM
     const hpBar = document.getElementById('boss-hp-bar');
     const hpText = document.getElementById('boss-hp-text');
     if (hpBar) hpBar.style.width = `${hpPercent}%`;
     if (hpText) hpText.textContent = `${hpPercent}% HP`;
 
-    // Check Quadrant Rotation (every 30 seconds for 4 quadrants)
-    const zoneIndex = Math.min(3, Math.floor((totalDuration - secondsRemaining) / (totalDuration / 4)));
-    if (zoneIndex !== currentBrushZone) {
-      currentBrushZone = zoneIndex;
-      Sound.laser();
-      updateActiveQuadrantUI(currentBrushZone);
-      voicePrompts.speak(ZONES[currentBrushZone].voice);
-      showComicHit(`NEW ZONE: ${ZONES[currentBrushZone].name.toUpperCase()}! 🪥`);
+    // Periodic milestones & encouragement
+    if (elapsedSeconds === 60) {
+      voicePrompts.speak("Great job! You are halfway there! Keep that toothbrush scrubbing!");
+    } else if (secondsRemaining === 15) {
+      voicePrompts.speak("Almost there! Final scrub blast to defeat the boss!");
     }
 
-    // Toothbrush Action Pulse & Hit Reactions every 2-3 seconds
-    if (secondsRemaining % 2 === 0) {
+    // Fallback auto-damage action pulse if in fallback mode
+    if (isFallbackActive && secondsRemaining % 3 === 0) {
       spawnToothpasteFoam();
-    }
-
-    if (secondsRemaining % 3 === 0) {
-      Sound.laser();
-      showComicHit();
-
-      // Boss flinch reaction
       const boss = document.getElementById('boss-character');
       if (boss) {
-        boss.classList.add('scale-110', 'brightness-150');
-        setTimeout(() => boss.classList.remove('scale-110', 'brightness-150'), 250);
-      }
-
-      // Minion hit flinch
-      const minionId = `minion-${(secondsRemaining % 4) + 1}`;
-      const minion = document.getElementById(minionId);
-      if (minion) {
-        minion.classList.add('scale-75', 'rotate-12', 'brightness-150');
-        setTimeout(() => minion.classList.remove('scale-75', 'rotate-12', 'brightness-150'), 300);
+        boss.classList.add('scale-105', 'brightness-125');
+        setTimeout(() => boss.classList.remove('scale-105', 'brightness-125'), 200);
       }
     }
 
@@ -640,6 +672,10 @@ function startBattle() {
     if (secondsRemaining <= 0) {
       clearInterval(battleTimer);
       battleTimer = null;
+      if (motionCheckInterval) {
+        clearInterval(motionCheckInterval);
+        motionCheckInterval = null;
+      }
       isBattleRunning = false;
       stopCamera();
 
@@ -660,6 +696,10 @@ function quitBattle() {
   if (battleTimer) {
     clearInterval(battleTimer);
     battleTimer = null;
+  }
+  if (motionCheckInterval) {
+    clearInterval(motionCheckInterval);
+    motionCheckInterval = null;
   }
   stopCamera();
 
@@ -697,6 +737,7 @@ export function attachBattleListeners() {
     });
   }
 
-  // Automatically start camera on view load for seamless mirror experience
+  // Automatically start camera and init motion detector on view load
   initCamera();
+  initMotionDetector();
 }
