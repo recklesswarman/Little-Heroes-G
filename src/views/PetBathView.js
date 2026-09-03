@@ -1,6 +1,9 @@
 import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import confetti from 'canvas-confetti';
+import { speakRex } from '../services/voiceService.js';
+
+let hasSpokenBathIntro = false;
 
 let washProgress = 0; // 0 to 100
 let dryProgress = 0; // 0 to 100
@@ -358,10 +361,16 @@ function spawnWindGustStreams() {
 }
 
 export function attachPetBathListeners() {
+  if (!hasSpokenBathIntro && washProgress < 100) {
+    hasSpokenBathIntro = true;
+    speakRex("Splish splash! I'm all dirty! Pop the bubbles to clean me!");
+  }
+
   // 1. Back to Pen Button
   const exitBtn = document.getElementById('bath-exit-btn');
   if (exitBtn) {
     exitBtn.addEventListener('click', () => {
+      hasSpokenBathIntro = false;
       Sound.click();
       store.navigate('pet_pen');
     });
@@ -447,6 +456,7 @@ export function attachPetBathListeners() {
   const againBtn = document.getElementById('bath-again-btn');
   if (againBtn) {
     againBtn.addEventListener('click', () => {
+      hasSpokenBathIntro = false;
       washProgress = 0;
       dryProgress = 0;
       isRewardClaimed = false;
@@ -532,6 +542,7 @@ function handleBlowDryAction() {
   if (washProgress >= 100 && dryProgress >= 100 && !isRewardClaimed) {
     isRewardClaimed = true;
     isBlowingDry = false;
+    speakRex("All clean! Thank you, friend!");
     const activePet = store.getActivePet();
     // Issue reward ONLY now!
     store.completePetBathReward(activePet.id);

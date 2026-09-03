@@ -1,5 +1,6 @@
 import { store } from '../state/store.js';
 import { getTaskVisualSvg } from '../utils/taskVisuals.js';
+import { speakRex } from '../services/voiceService.js';
 
 export function renderDashboardView() {
   const state = store.getState();
@@ -277,7 +278,6 @@ export function renderDashboardView() {
             <p class="text-xs text-on-surface-variant">Phonics, counting, colors & geometry quests for bonus tokens!</p>
           </div>
         </div>
-
         <button id="dash-to-adventures-btn" class="bg-secondary text-on-secondary font-headline text-xs font-black px-5 py-3 rounded-xl chunky-btn border-secondary-container shadow-chunky-sm hover:brightness-110 active:scale-95">
           Open Map
         </button>
@@ -287,11 +287,32 @@ export function renderDashboardView() {
   `;
 }
 
+function triggerQuestVoice(title = '', id = '') {
+  const t = (title + ' ' + id).toLowerCase();
+  if (t.includes('brush') || t.includes('teeth') || t.includes('dentist')) {
+    speakRex("Time to brush our teeth and defeat the sugar villains!");
+  } else if (t.includes('feed') || t.includes('snack') || t.includes('fruit') || t.includes('pet')) {
+    speakRex("Yummy snack time! Let's feed our pet companion!");
+  } else if (t.includes('toy') || t.includes('clean') || t.includes('tidy') || t.includes('bed')) {
+    speakRex("Toy cleanup time! Super hero tidy power!");
+  } else if (t.includes('water') || t.includes('drink')) {
+    speakRex("Gulp gulp! Super hero hydration power!");
+  } else if (t.includes('hand') || t.includes('soap') || t.includes('wash')) {
+    speakRex("Scrub scrub suds! Clean hands make us strong!");
+  } else if (t.includes('kind') || t.includes('share') || t.includes('hug')) {
+    speakRex("Super hero kindness makes the whole world brighter!");
+  } else {
+    speakRex(`Awesome! Let's do this quest: ${title}!`);
+  }
+}
+
 export function attachDashboardListeners() {
   document.querySelectorAll('.habit-check-btn').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const habitId = btn.getAttribute('data-habit-id');
+      const habit = (store.getState().habitIslands || []).find((h) => h.id === habitId);
+      triggerQuestVoice(habit?.title || '', habitId || '');
       store.toggleHabitIsland(habitId);
     });
   });
@@ -300,6 +321,8 @@ export function attachDashboardListeners() {
     card.addEventListener('click', (e) => {
       if (e.target.closest('button')) return;
       const habitId = card.getAttribute('data-habit-card-id');
+      const habit = (store.getState().habitIslands || []).find((h) => h.id === habitId);
+      triggerQuestVoice(habit?.title || '', habitId || '');
       if (habitId) store.toggleHabitIsland(habitId);
     });
   });
@@ -308,6 +331,8 @@ export function attachDashboardListeners() {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const taskId = btn.getAttribute('data-task-id');
+      const task = (store.getState().taskForest || []).find((t) => t.id === taskId);
+      triggerQuestVoice(task?.title || '', taskId || '');
       store.toggleTaskForest(taskId);
     });
   });
@@ -316,6 +341,8 @@ export function attachDashboardListeners() {
     card.addEventListener('click', (e) => {
       if (e.target.closest('button')) return;
       const taskId = card.getAttribute('data-task-card-id');
+      const task = (store.getState().taskForest || []).find((t) => t.id === taskId);
+      triggerQuestVoice(task?.title || '', taskId || '');
       const isAR = card.querySelector('.task-ar-launch-btn');
       if (isAR) {
         store.navigate('ar_battle');
@@ -328,6 +355,7 @@ export function attachDashboardListeners() {
   document.querySelectorAll('.task-ar-launch-btn').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
+      speakRex("Time to brush our teeth and defeat the sugar villains!");
       store.navigate('ar_battle');
     });
   });

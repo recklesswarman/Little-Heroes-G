@@ -1,6 +1,7 @@
 import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import { isBiometricsAvailable, authenticateWithBiometrics } from '../utils/biometrics.js';
+import { speakRex } from '../services/voiceService.js';
 
 let isOpen = false;
 let activeAuthTab = 'biometric'; // 'biometric', 'pin', 'math'
@@ -231,6 +232,7 @@ export function initParentLockModal() {
     pinError = false;
     mathError = false;
     biometricStatusMsg = '';
+    speakRex("Oops! That button is just for grown-ups!");
     store.notify();
   });
 

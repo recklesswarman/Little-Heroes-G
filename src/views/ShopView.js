@@ -1,4 +1,5 @@
 import { store } from '../state/store.js';
+import { speakRex } from '../services/voiceService.js';
 
 let selectedCategory = 'all'; // 'all', 'weapons', 'gear', 'badges', 'snacks', 'themes', 'real_life'
 let selectedSort = 'cheapest'; // 'cheapest', 'expensive'
@@ -189,7 +190,7 @@ export function renderShopView() {
                 const canAfford = hero.coins >= item.costCoins;
 
                 return `
-                <div class="bg-surface-container rounded-3xl p-5 border-2 border-surface-container-highest card-shadow flex flex-col justify-between gap-4 group hover:border-secondary transition-all">
+                <div data-gear-card-id="${item.id}" class="gear-card-item bg-surface-container rounded-3xl p-5 border-2 border-surface-container-highest card-shadow flex flex-col justify-between gap-4 group hover:border-secondary transition-all cursor-pointer">
                   
                   <div class="flex items-start gap-3.5">
                     <div class="w-16 h-16 rounded-2xl bg-surface-container-high flex items-center justify-center p-2 flex-shrink-0 border border-surface-container-highest group-hover:scale-105 transition-transform">
@@ -441,9 +442,34 @@ export function attachShopListeners() {
     });
   });
 
+  document.querySelectorAll('.gear-card-item').forEach((card) => {
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('button')) return;
+      const id = card.getAttribute('data-gear-card-id');
+      const item = (store.getState().digitalGear || []).find((g) => g.id === id);
+      if (item) {
+        const text = (item.title + ' ' + (item.desc || '')).toLowerCase();
+        if (text.includes('rex') || text.includes('dino')) {
+          speakRex("Rawr! I am Rex the Dino! Let's go on an adventure!");
+        } else {
+          speakRex(`Look at this ${item.title}! Super hero power!`);
+        }
+      }
+    });
+  });
+
   document.querySelectorAll('.buy-gear-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       const id = btn.getAttribute('data-buy-gear-id');
+      const item = (store.getState().digitalGear || []).find((g) => g.id === id);
+      if (item) {
+        const text = (item.title + ' ' + (item.desc || '')).toLowerCase();
+        if (text.includes('rex') || text.includes('dino')) {
+          speakRex("Rawr! I am Rex the Dino! Let's go on an adventure!");
+        } else {
+          speakRex(`Awesome! You got the ${item.title}! Super hero power!`);
+        }
+      }
       store.buyDigitalGear(id);
     });
   });

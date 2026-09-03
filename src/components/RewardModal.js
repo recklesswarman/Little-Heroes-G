@@ -1,5 +1,6 @@
 import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
+import { speakRex } from '../services/voiceService.js';
 
 let shaderAnimationId = null;
 
@@ -310,6 +311,16 @@ export function attachRewardModalListeners() {
   const canvas = document.getElementById('reward-celebration-canvas');
   if (canvas) {
     initCelebrationShader(canvas);
+  }
+
+  // Trigger Rex's celebratory voice line
+  const reward = store.getState().rewardModal;
+  if (reward && reward.isOpen && !reward.hasSpokenCelebration) {
+    reward.hasSpokenCelebration = true;
+    const title = (reward.title || '').toLowerCase();
+    if (!title.includes('escaped') && !title.includes('declined')) {
+      speakRex("Yay! You did it! Super hero power!");
+    }
   }
 
   const coolBtn = document.getElementById('reward-modal-cool-btn');

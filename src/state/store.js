@@ -422,6 +422,26 @@ const defaultState = {
       statBonusPercent: 20,
       statBonusType: 'coin_boost',
       image: generate3DIcon('stars', 'yellow', 'Disco Star')
+    },
+    {
+      id: 'rex_the_dino_companion',
+      title: 'Rex the Dino',
+      desc: 'Adopt Rex the Dino! Strong, loyal guardian who loves big adventures and cleaning toys!',
+      category: 'Avatar Gear',
+      costCoins: 200,
+      statBonusPercent: 35,
+      statBonusType: 'defense_boost',
+      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDnxgEa6LgbgAkDctHBACUsubrRh0U8vMmbJxq4ACCWYwyxf7800JbNv-noivBha5t7iGBEgs-YsbsGmoo1xKaGtP49xpYLBxuV_-5Xeem4_4CfYg8RwvbaFbrHewRdEcY_Kqgh2Ep9mGvfKL3wxqEK9KBXuBiBTkrgdgQeIzjdJY4AMhn6WLNE-9UrpirWUPIn35lB_Z8hsegZ5dYgugCCqy5JsNgkzB8tu-dvmgFCDFLsddPsW8GwUA'
+    },
+    {
+      id: 'rex_spiked_collar',
+      title: 'Rex Heavy Spiked Collar',
+      desc: 'Rex the Dino\'s favorite gear! Adds +20 Strength to Toy Cleaning chores.',
+      category: 'Avatar Gear',
+      costCoins: 120,
+      statBonusPercent: 20,
+      statBonusType: 'strength_boost',
+      image: generate3DIcon('fitness_center', 'green', 'Rex Collar')
     }
   ],
 

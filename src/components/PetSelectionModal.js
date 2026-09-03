@@ -1,6 +1,7 @@
 import { store } from '../state/store.js';
 import { PETS_DATABASE } from '../data/petsData.js';
 import { Sound } from '../audio/sfx.js';
+import { speakRex } from '../services/voiceService.js';
 
 let activeElementFilter = 'All';
 
@@ -191,6 +192,9 @@ export function attachPetSelectionModalListeners() {
     btn.addEventListener('click', () => {
       const petId = Number(btn.getAttribute('data-choose-pet-id'));
       const modal = store.getState().petSelectionModal;
+      if (petId === 2) {
+        speakRex("Rawr! I am Rex the Dino! Let's go on an adventure!");
+      }
       if (petId) {
         store.choosePet(petId, modal?.type || 'starter');
       }
