@@ -64,15 +64,11 @@ class FirebaseAuthService {
       // 1. CROSS-DEVICE DISCOVERY:
       // Check if this Google account already owns an existing household in Firestore
       try {
-        const existingLink = await persistentLink.lookupHouseholdForUser(user.uid);
+        const existingLink = await persistentLink.lookupHouseholdForUser(user.uid) || (user.email ? await persistentLink.lookupHouseholdForUser(user.email) : null);
         if (existingLink && existingLink.householdCode) {
           const targetCode = existingLink.householdCode.trim().toUpperCase();
-          const currentCode = (state.household.syncCode || '').trim().toUpperCase();
-
-          if (currentCode !== targetCode) {
-            console.log(`🏠 Multi-Device Sync: User ${user.email} belongs to Household ${targetCode}. Automatically joining...`);
-            await firestoreSync.joinHousehold(targetCode);
-          }
+          console.log(`🏠 Multi-Device Sync: User ${user.email} belongs to Household ${targetCode}. Joining & hydrating all data...`);
+          await firestoreSync.joinHousehold(targetCode);
         } else {
           // First time this Google account signs in - bind current household to user
           const currentCode = state.household.syncCode || 'HERO-8842';

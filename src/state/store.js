@@ -12,7 +12,7 @@ export const KID_AVATARS = [
   { id: 'avatar_space', label: 'Knight Adventurer', url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAUTWERGwaJXM82ZeJ0adcNsuOm_cR4z5CXAleJ2oKcekqKsuaZZD315RkB188DDt6fevx8guS2V20knvs93SzLKjox7deSVry-v8kiyTM-H0Kg5vmB8inoBoKz2SqYnVzUKVk9uulAHGfsUmnIs4VI7GkWcmmfE2gvPnoehqZqjhxHZuHz9Tqs_Omja5bwoX9aPmW8Xf63V9KIQsux3ucTJHZBdI2U8eRyOy7bO0XQMqe2BNGXc3SoWg' }
 ];
 
-const STORAGE_KEY = 'little_heroes_adventure_master_v8';
+export const STORAGE_KEY = 'little_heroes_adventure_master_v8';
 
 const defaultState = {
   activeView: 'dashboard', // dashboard, quest_map, pet_pen, pet_roster, pet_detail, pet_bath, shop, ar_battle, evolution, master_fuse, dance_party, profile, parent_portal, adventures_map, adventure_game
@@ -2031,6 +2031,92 @@ class Store {
   updateParentSettings(newSettings) {
     this.state.parentSettings = { ...this.state.parentSettings, ...newSettings };
     this.saveState();
+    this.notify();
+  }
+
+  /**
+   * Hydrate store with real-time cloud data from Firestore
+   * Automatically updates heroes, tasks, habits, inventory, and persists to localStorage
+   */
+  hydrateFromCloud(cloudData) {
+    if (!cloudData) return;
+
+    // 1. Household Details
+    if (cloudData.householdName) {
+      this.state.household.name = cloudData.householdName;
+    }
+    if (cloudData.syncCode || cloudData.householdCode) {
+      this.state.household.syncCode = (cloudData.syncCode || cloudData.householdCode).trim().toUpperCase();
+    }
+    this.state.household.lastSync = 'Synced Just Now';
+
+    // 2. Heroes
+    if (cloudData.heroes && Array.isArray(cloudData.heroes) && cloudData.heroes.length > 0) {
+      this.state.heroes = cloudData.heroes;
+
+      // Sync active selectedHero
+      const currentId = this.state.selectedHero?.id;
+      const matchedHero = this.state.heroes.find((h) => h.id === currentId);
+      const baseHero = matchedHero || this.state.heroes[0];
+
+      this.state.selectedHero = {
+        ...defaultState.selectedHero,
+        ...baseHero,
+        name: baseHero.name,
+        title: baseHero.role || baseHero.title,
+        avatar: baseHero.avatar,
+        coins: baseHero.coins ?? 0,
+        points: baseHero.points ?? 0,
+        level: baseHero.level ?? 1,
+        activePetId: baseHero.activePetId || (baseHero.unlockedPetIds?.[0] || null),
+        unlockedPetIds: baseHero.unlockedPetIds || [],
+        hasChosenStarterPet: baseHero.hasChosenStarterPet ?? (baseHero.unlockedPetIds?.length > 0),
+        habitatSlots: baseHero.habitatSlots || 1,
+        petStageMap: baseHero.petStageMap || {},
+        streak: baseHero.streak || 1,
+        completionRate: baseHero.completionRate ?? 100,
+        gameDifficulty: baseHero.gameDifficulty || 'medium',
+        equippedProfileTheme: baseHero.equippedProfileTheme || 'theme_dragon_emerald',
+        unlockedThemes: baseHero.unlockedThemes || ['theme_dragon_emerald']
+      };
+    }
+
+    // 3. Approvals, Chores, Habits, Settings
+    if (cloudData.pendingApprovals !== undefined) {
+      this.state.pendingApprovals = Array.isArray(cloudData.pendingApprovals) ? cloudData.pendingApprovals : [];
+    }
+    if (cloudData.petStatsMap) this.state.petStatsMap = { ...this.state.petStatsMap, ...cloudData.petStatsMap };
+    if (cloudData.petStageMap) this.state.petStageMap = { ...this.state.petStageMap, ...cloudData.petStageMap };
+    if (cloudData.equippedGearMap) this.state.equippedGearMap = { ...this.state.equippedGearMap, ...cloudData.equippedGearMap };
+    if (cloudData.equippedPetGear !== undefined) this.state.equippedPetGear = cloudData.equippedPetGear;
+    if (cloudData.taskForest && Array.isArray(cloudData.taskForest)) this.state.taskForest = cloudData.taskForest;
+    if (cloudData.habitIslands && Array.isArray(cloudData.habitIslands)) this.state.habitIslands = cloudData.habitIslands;
+    if (cloudData.realLifeRewards && Array.isArray(cloudData.realLifeRewards)) this.state.realLifeRewards = cloudData.realLifeRewards;
+    if (cloudData.digitalGear && Array.isArray(cloudData.digitalGear)) this.state.digitalGear = cloudData.digitalGear;
+    if (cloudData.inventory && Array.isArray(cloudData.inventory)) this.state.inventory = cloudData.inventory;
+    if (cloudData.parentSettings) this.state.parentSettings = { ...this.state.parentSettings, ...cloudData.parentSettings };
+    if (cloudData.profileThemes && Array.isArray(cloudData.profileThemes)) this.state.profileThemes = cloudData.profileThemes;
+
+    // 4. Linked Devices Count
+    if (cloudData.devices && typeof cloudData.devices === 'object') {
+      const now = Date.now();
+      const activeDevs = Object.entries(cloudData.devices).filter(([, dev]) => {
+        if (!dev || !dev.lastSeen) return true;
+        return now - new Date(dev.lastSeen).getTime() < 86400000 * 3;
+      });
+      this.state.household.linkedDevices = Math.max(1, activeDevs.length);
+    }
+
+    // 5. Persist to actual localStorage key
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+      }
+    } catch (e) {
+      console.warn('Could not save hydrated state to localStorage:', e);
+    }
+
+    // 6. Notify subscribers and trigger immediate UI re-render
     this.notify();
   }
 

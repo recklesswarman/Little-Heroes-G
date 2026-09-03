@@ -1,10 +1,9 @@
 import { doc, setDoc, onSnapshot, getDoc, updateDoc } from "firebase/firestore";
 import { db, isFirebaseAvailable } from "../config/firebase.js";
-import { store } from "../state/store.js";
+import { store, STORAGE_KEY } from "../state/store.js";
 import { persistentLink } from "./persistentLinkService.js";
 
 const DEVICE_ID_KEY = 'stitch_device_id';
-const STORAGE_KEY = 'stitch_little_hero_state_v1';
 
 function getOrCreateDeviceId() {
   try {
@@ -42,7 +41,7 @@ class FirestoreSyncService {
     const code = (householdCode || state.household?.syncCode || 'HERO-8842').trim().toUpperCase();
 
     if (this.currentCode === code && this.unsubscribe) {
-      return; // Already listening to this household
+      return; // Already actively listening to this household
     }
 
     this.stopSync();
@@ -71,70 +70,12 @@ class FirestoreSyncService {
         this.lastCloudTimestamp = cloudData.updatedAt;
 
         console.log(`⚡ Real-time cloud sync received for household: ${code} across family devices`);
-        const currentState = store.getState();
-
-        // 1. Sync Heroes and Active Hero
-        if (cloudData.heroes && Array.isArray(cloudData.heroes) && cloudData.heroes.length > 0) {
-          currentState.heroes = cloudData.heroes;
-          
-          // Re-sync selectedHero with the updated hero from the heroes list
-          if (currentState.selectedHero) {
-            const freshHero = currentState.heroes.find(h => h.id === currentState.selectedHero.id);
-            if (freshHero) {
-              currentState.selectedHero = freshHero;
-            } else {
-              currentState.selectedHero = currentState.heroes[0];
-            }
-          } else {
-            currentState.selectedHero = currentState.heroes[0];
-          }
-        }
-
-        // 2. Sync Approvals & Parent Requests
-        if (cloudData.pendingApprovals !== undefined) {
-          currentState.pendingApprovals = cloudData.pendingApprovals;
-        }
-
-        // 3. Sync Pet States & Stages & Equipped Gear
-        if (cloudData.petStatsMap) currentState.petStatsMap = cloudData.petStatsMap;
-        if (cloudData.petStageMap) currentState.petStageMap = cloudData.petStageMap;
-        if (cloudData.equippedGearMap) currentState.equippedGearMap = cloudData.equippedGearMap;
-        if (cloudData.equippedPetGear !== undefined) currentState.equippedPetGear = cloudData.equippedPetGear;
-
-        // 4. Sync Quests, Habits, and Rewards
-        if (cloudData.taskForest) currentState.taskForest = cloudData.taskForest;
-        if (cloudData.habitIslands) currentState.habitIslands = cloudData.habitIslands;
-        if (cloudData.realLifeRewards) currentState.realLifeRewards = cloudData.realLifeRewards;
-        if (cloudData.digitalGear) currentState.digitalGear = cloudData.digitalGear;
-        if (cloudData.inventory) currentState.inventory = cloudData.inventory;
-        if (cloudData.parentSettings) currentState.parentSettings = cloudData.parentSettings;
-        if (cloudData.profileThemes) currentState.profileThemes = cloudData.profileThemes;
-
-        // 5. Track Linked Family Devices
-        if (cloudData.devices && typeof cloudData.devices === 'object') {
-          const now = Date.now();
-          const activeDevices = Object.entries(cloudData.devices).filter(([, dev]) => {
-            if (!dev || !dev.lastSeen) return true;
-            return now - new Date(dev.lastSeen).getTime() < 86400000 * 3; // within 3 days
-          });
-          currentState.household.linkedDevices = Math.max(1, activeDevices.length);
-        }
-
-        currentState.household.syncCode = code;
-        currentState.household.lastSync = "Synced Just Now";
-
-        // Persist hydrated state to local storage
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(currentState));
-        } catch (e) {
-          console.warn("Could not save cloud state to local storage", e);
-        }
+        
+        // Hydrate store state and trigger UI re-render
+        store.hydrateFromCloud(cloudData);
 
         // Slide the persistent link window forward (RFC 6749 Section 6)
         persistentLink.slideWindow();
-
-        // Re-render views in real time
-        store.notify();
       }, (error) => {
         console.warn("Firestore snapshot listener error:", error.message);
       });
@@ -148,7 +89,7 @@ class FirestoreSyncService {
   }
 
   /**
-   * Safely join an existing household without overwriting remote data
+   * Safely join an existing household and immediately pull all its data
    */
   async joinHousehold(code) {
     if (!isFirebaseAvailable || !db) {
@@ -166,43 +107,32 @@ class FirestoreSyncService {
 
       if (snapshot.exists()) {
         const cloudData = snapshot.data();
-        const state = store.getState();
+        this.lastCloudTimestamp = cloudData.updatedAt;
 
-        // Hydrate from existing cloud household
-        if (cloudData.heroes && Array.isArray(cloudData.heroes) && cloudData.heroes.length > 0) {
-          state.heroes = cloudData.heroes;
-          state.selectedHero = cloudData.heroes[0];
-        }
-        if (cloudData.pendingApprovals) state.pendingApprovals = cloudData.pendingApprovals;
-        if (cloudData.petStatsMap) state.petStatsMap = cloudData.petStatsMap;
-        if (cloudData.petStageMap) state.petStageMap = cloudData.petStageMap;
-        if (cloudData.equippedGearMap) state.equippedGearMap = cloudData.equippedGearMap;
-        if (cloudData.equippedPetGear) state.equippedPetGear = cloudData.equippedPetGear;
-        if (cloudData.taskForest) state.taskForest = cloudData.taskForest;
-        if (cloudData.habitIslands) state.habitIslands = cloudData.habitIslands;
-        if (cloudData.realLifeRewards) state.realLifeRewards = cloudData.realLifeRewards;
-        if (cloudData.digitalGear) state.digitalGear = cloudData.digitalGear;
-        if (cloudData.inventory) state.inventory = cloudData.inventory;
-        if (cloudData.parentSettings) state.parentSettings = cloudData.parentSettings;
-        if (cloudData.profileThemes) state.profileThemes = cloudData.profileThemes;
+        console.log(`🏠 Successfully fetched household ${cleanCode} from cloud! Hydrating device state...`);
 
-        state.household.syncCode = cleanCode;
-        if (cloudData.householdName) {
-          state.household.name = cloudData.householdName;
-        }
-        state.household.lastSync = "Synced Just Now";
+        // Hydrate store with all kids, tasks, habits, and inventory from the cloud
+        store.hydrateFromCloud(cloudData);
 
-        // Save hydrated state to local storage
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-
-        // Start listening to live updates
+        // Restart listener to guarantee live updates
+        this.stopSync();
         this.startSync(cleanCode);
-        return { success: true, isNew: false, kidCount: state.heroes.length };
+
+        // Slide persistent link window forward
+        persistentLink.slideWindow();
+
+        return { 
+          success: true, 
+          isNew: false, 
+          kidCount: store.getState().heroes.length,
+          householdName: cloudData.householdName || 'The Hero Family'
+        };
       } else {
         // Household doesn't exist yet on cloud - initialize it with current state
         const state = store.getState();
         state.household.syncCode = cleanCode;
         await this.pushStateToCloud(true);
+        this.stopSync();
         this.startSync(cleanCode);
         return { success: true, isNew: true, kidCount: state.heroes.length };
       }
@@ -246,14 +176,15 @@ class FirestoreSyncService {
 
       await setDoc(docRef, {
         householdName: state.household?.name || 'The Hero Family',
+        syncCode: householdCode,
         heroes: state.heroes || [],
         pendingApprovals: state.pendingApprovals || [],
         petStatsMap: state.petStatsMap || {},
         petStageMap: state.petStageMap || {},
         equippedGearMap: state.equippedGearMap || {},
         equippedPetGear: state.equippedPetGear || null,
-        taskForest: state.taskForest || {},
-        habitIslands: state.habitIslands || {},
+        taskForest: state.taskForest || [],
+        habitIslands: state.habitIslands || [],
         realLifeRewards: state.realLifeRewards || [],
         digitalGear: state.digitalGear || [],
         inventory: state.inventory || [],
@@ -278,7 +209,7 @@ class FirestoreSyncService {
   }
 
   /**
-   * Manually force an immediate cloud push and sync across devices
+   * Manually force an immediate cloud sync: pulls latest cloud data first, then pushes
    */
   async syncNow() {
     if (!isFirebaseAvailable || !db) {
@@ -288,9 +219,25 @@ class FirestoreSyncService {
     }
     const state = store.getState();
     const code = (state.household?.syncCode || this.currentCode || 'HERO-8842').trim().toUpperCase();
+    const docRef = doc(db, "households", code);
+
+    try {
+      // 1. First pull latest data from cloud to avoid overwriting remote changes
+      const snapshot = await getDoc(docRef);
+      if (snapshot.exists()) {
+        const cloudData = snapshot.data();
+        this.lastCloudTimestamp = cloudData.updatedAt;
+        store.hydrateFromCloud(cloudData);
+      }
+    } catch (e) {
+      console.warn("Could not pull latest cloud data in syncNow:", e.message);
+    }
+
+    // 2. Then push our current device presence and state
     await this.pushStateToCloud(true);
+    await this.pingDevicePresence(code);
     await persistentLink.slideWindow();
-    state.household.lastSync = "Synced Just Now";
+    store.getState().household.lastSync = "Synced Just Now";
     store.notify();
     return true;
   }

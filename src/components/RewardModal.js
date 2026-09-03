@@ -3,6 +3,72 @@ import { Sound } from '../audio/sfx.js';
 
 let shaderAnimationId = null;
 
+function generateCelebrationIcon(reward) {
+  if (!reward) {
+    return `<span class="material-symbols-outlined text-6xl sm:text-7xl text-primary drop-shadow-[0_4px_12px_rgba(84,233,138,0.5)] z-10" style="font-variation-settings: 'FILL' 1;">military_tech</span>`;
+  }
+
+  // 1. If an explicit image URL is provided (e.g. task image, reward image, pet avatar)
+  if (reward.image) {
+    return `
+      <img 
+        src="${reward.image}" 
+        alt="${reward.title || 'Celebration'}" 
+        class="w-28 h-28 sm:w-32 sm:h-32 object-contain filter drop-shadow-[0_8px_16px_rgba(0,0,0,0.6)] z-10 animate-pulse-subtle"
+        onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';"
+      />
+      <div class="hidden w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-surface-container-highest/80 border-2 border-primary/40 items-center justify-center shadow-lg z-10 text-primary">
+        <span class="material-symbols-outlined text-6xl sm:text-7xl" style="font-variation-settings: 'FILL' 1;">
+          ${reward.icon || 'military_tech'}
+        </span>
+      </div>
+    `;
+  }
+
+  // 2. If an icon name is provided or deduce from title / message
+  let iconName = reward.icon;
+  if (!iconName) {
+    const text = ((reward.title || '') + ' ' + (reward.message || '')).toLowerCase();
+    if (text.includes('brush') || text.includes('tooth') || text.includes('dentist')) {
+      iconName = 'dentistry';
+    } else if (text.includes('pet') || text.includes('bath') || text.includes('wash') || text.includes('dry') || text.includes('dragon')) {
+      iconName = 'pets';
+    } else if (text.includes('habit')) {
+      iconName = 'military_tech';
+    } else if (text.includes('chore') || text.includes('task') || text.includes('clean') || text.includes('room')) {
+      iconName = 'task_alt';
+    } else if (text.includes('reward') || text.includes('screen time') || text.includes('treat') || text.includes('prize')) {
+      iconName = 'featured_seasonal_and_gifts';
+    } else if (text.includes('gear') || text.includes('armor') || text.includes('sword') || text.includes('shield') || text.includes('locker')) {
+      iconName = 'shield';
+    } else if (text.includes('theme') || text.includes('color')) {
+      iconName = 'palette';
+    } else if (text.includes('coin') || text.includes('token') || text.includes('price')) {
+      iconName = 'generating_tokens';
+    } else if (text.includes('battle') || text.includes('boss')) {
+      iconName = 'swords';
+    } else if (text.includes('dance') || text.includes('party')) {
+      iconName = 'music_note';
+    } else if (text.includes('escape')) {
+      iconName = 'warning';
+    } else {
+      iconName = 'emoji_events';
+    }
+  }
+
+  const isWarning = iconName === 'warning' || reward.title?.includes('Escaped') || reward.title?.includes('Declined');
+  const iconColor = isWarning ? 'text-secondary' : 'text-primary';
+  const glowColor = isWarning ? 'rgba(255,185,97,0.6)' : 'rgba(84,233,138,0.6)';
+
+  return `
+    <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-surface-container-highest/75 border-2 ${isWarning ? 'border-secondary/50' : 'border-primary/50'} flex items-center justify-center shadow-inner z-10 ${iconColor}">
+      <span class="material-symbols-outlined text-5xl sm:text-6xl drop-shadow-[0_4px_16px_${glowColor}]" style="font-variation-settings: 'FILL' 1;">
+        ${iconName}
+      </span>
+    </div>
+  `;
+}
+
 export function renderRewardModal() {
   const state = store.getState();
   const reward = state.rewardModal;
@@ -29,12 +95,14 @@ export function renderRewardModal() {
     ? 'OK, GOT IT' 
     : 'COOL!';
 
+  const centerContentHtml = generateCelebrationIcon(reward);
+
   return `
     <div id="reward-modal-backdrop" class="fixed inset-0 bg-background/90 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in select-none overflow-hidden">
       
-      <!-- Celebration Shader Background (Stitch Canvas Animation) -->
-      <div class="absolute inset-0 z-0 pointer-events-none opacity-60">
-        <canvas id="reward-celebration-canvas" class="w-full h-full block"></canvas>
+      <!-- Celebration Shader Background (Transparent WebGL Canvas Animation) -->
+      <div class="absolute inset-0 z-0 pointer-events-none">
+        <canvas id="reward-celebration-canvas" class="w-full h-full block bg-transparent"></canvas>
       </div>
 
       <!-- Modal Overlay Container -->
@@ -62,10 +130,13 @@ export function renderRewardModal() {
             ${reward.title || 'AWESOME JOB!'}
           </h1>
 
-          <!-- 3D Sticker Image Area - Graphic in Center Removed per Design Guidelines -->
-          <div class="relative w-44 h-44 sm:w-48 sm:h-48 mb-6 animate-float glow-effect rounded-full bg-surface-container flex items-center justify-center">
+          <!-- 3D Celebration Portal Circle with Generated Task / Reward Icon -->
+          <div class="relative w-44 h-44 sm:w-48 sm:h-48 mb-6 animate-float glow-effect rounded-full bg-surface-container flex items-center justify-center overflow-hidden">
             <!-- Inner highlight/bevel for sticker container -->
-            <div class="absolute inset-0 rounded-full border-4 border-surface-bright shadow-inner z-0"></div>
+            <div class="absolute inset-0 rounded-full border-4 border-surface-bright shadow-inner z-0 pointer-events-none"></div>
+            
+            <!-- Rendered Generated Icon/Image for Whatever is Being Celebrated -->
+            ${centerContentHtml}
           </div>
 
           <!-- Message Body -->
@@ -115,7 +186,8 @@ export function renderRewardModal() {
 function initCelebrationShader(canvas) {
   if (!canvas) return;
   try {
-    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    const gl = canvas.getContext('webgl', { alpha: true, premultipliedAlpha: true, antialias: true }) || 
+               canvas.getContext('experimental-webgl', { alpha: true });
     if (!gl) return;
 
     function resize() {
@@ -147,21 +219,26 @@ function initCelebrationShader(canvas) {
         vec2 uv = v_texCoord;
         vec2 center = vec2(0.5, 0.5);
         
-        // Confetti-like particles
+        // Confetti-like floating sparkles
         float particles = 0.0;
         for(float i = 0.0; i < 18.0; i++) {
           float angle = i * 0.349 + u_time * 0.45;
           vec2 p = center + vec2(cos(angle), sin(angle)) * (0.3 + 0.12 * sin(u_time + i));
-          particles += 0.009 / (distance(uv, p) + 0.001);
+          particles += 0.007 / (distance(uv, p) + 0.002);
         }
         
-        // Golden rays
-        float rays = pow(0.5 + 0.5 * sin(atan(uv.y - 0.5, uv.x - 0.5) * 10.0 + u_time * 2.0), 10.0);
+        // Radiant golden celebration rays
+        float rays = pow(0.5 + 0.5 * sin(atan(uv.y - 0.5, uv.x - 0.5) * 10.0 + u_time * 1.8), 8.0);
         
-        vec3 col = mix(vec3(0.06, 0.25, 0.12), vec3(1.0, 0.75, 0.25), rays * 0.5 + particles * 0.4);
-        col += particles * vec3(0.35, 0.95, 0.55); // Green sparkles
+        // Transparent background: alpha is calculated directly from rays and sparkles
+        float intensity = clamp(rays * 0.45 + particles * 0.65, 0.0, 1.0);
+        float alpha = smoothstep(0.06, 0.65, intensity) * 0.8;
         
-        gl_FragColor = vec4(col, 0.75);
+        vec3 rayCol = vec3(1.0, 0.82, 0.28);
+        vec3 sparkleCol = vec3(0.33, 0.95, 0.55);
+        vec3 col = mix(rayCol, sparkleCol, clamp(particles * 0.8, 0.0, 1.0));
+        
+        gl_FragColor = vec4(col * alpha, alpha);
       }
     `;
 
@@ -189,6 +266,10 @@ function initCelebrationShader(canvas) {
     const uTime = gl.getUniformLocation(prog, 'u_time');
     const uRes = gl.getUniformLocation(prog, 'u_resolution');
 
+    gl.clearColor(0.0, 0.0, 0.0, 0.0);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+
     let startTime = performance.now();
 
     function renderFrame() {
@@ -197,6 +278,7 @@ function initCelebrationShader(canvas) {
       }
       resize();
       gl.viewport(0, 0, canvas.width, canvas.height);
+      gl.clear(gl.COLOR_BUFFER_BIT);
       const elapsed = (performance.now() - startTime) * 0.001;
       if (uTime) gl.uniform1f(uTime, elapsed);
       if (uRes) gl.uniform2f(uRes, canvas.width, canvas.height);
@@ -224,7 +306,7 @@ export function attachRewardModalListeners() {
     return;
   }
 
-  // Initialize WebGL celebration shader
+  // Initialize WebGL celebration shader with transparent background
   const canvas = document.getElementById('reward-celebration-canvas');
   if (canvas) {
     initCelebrationShader(canvas);

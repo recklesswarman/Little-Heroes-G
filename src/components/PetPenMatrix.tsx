@@ -529,9 +529,14 @@ export const PetPenMatrix: React.FC<PetPenMatrixProps> = ({
                   BIG EVOLUTION!
                 </h3>
 
-                {/* 3D Celebration Portal - Graphic in Center Removed per Design Guidelines */}
-                <div className="relative w-44 h-44 sm:w-48 sm:h-48 mb-6 animate-float glow-effect rounded-full bg-[#16212b] flex items-center justify-center">
-                  <div className="absolute inset-0 rounded-full border-4 border-[#2f3a45] shadow-inner z-0"></div>
+                {/* 3D Celebration Portal - Rendering Evolved Dragon Lord */}
+                <div className="relative w-44 h-44 sm:w-48 sm:h-48 mb-6 animate-float glow-effect rounded-full bg-[#16212b] flex items-center justify-center overflow-hidden">
+                  <div className="absolute inset-0 rounded-full border-4 border-[#2f3a45] shadow-inner z-0 pointer-events-none"></div>
+                  <img
+                    src={ASSET_IMAGES.petEvolutionLord}
+                    alt="Golden Armor Dragon Lord"
+                    className="w-28 h-28 sm:w-32 sm:h-32 object-contain filter drop-shadow-[0_8px_16px_rgba(0,0,0,0.6)] z-10 animate-pulse-subtle"
+                  />
                 </div>
 
                 <p className="font-body text-xs sm:text-sm text-[#bbcbbb] font-bold mb-6 px-3 leading-relaxed">
