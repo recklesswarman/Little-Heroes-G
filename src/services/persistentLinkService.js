@@ -174,8 +174,7 @@ class PersistentLinkService {
     if (!isFirebaseAvailable || !db || !session.userId) return;
 
     try {
-      const userHouseholdRef = doc(db, "user_households", session.userId);
-      await setDoc(userHouseholdRef, {
+      const payload = {
         userId: session.userId,
         email: session.email,
         displayName: session.displayName,
@@ -188,9 +187,20 @@ class PersistentLinkService {
           expiresAt: new Date(session.expiresAt).toISOString(),
           strategy: 'rfc6749_sliding_window'
         }
-      }, { merge: true });
+      };
 
-      // Also record linked account in the household document
+      // 1. Save under primary user key
+      const userHouseholdRef = doc(db, "user_households", session.userId);
+      await setDoc(userHouseholdRef, payload, { merge: true });
+
+      // 2. Also index by email if available so multiple devices can link by email
+      if (session.email) {
+        const emailKey = 'email_' + session.email.trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
+        const emailRef = doc(db, "user_households", emailKey);
+        await setDoc(emailRef, payload, { merge: true });
+      }
+
+      // 3. Record linked account in the household document
       const householdRef = doc(db, "households", session.householdCode);
       await updateDoc(householdRef, {
         [`linkedAccounts.${session.userId}`]: {
@@ -217,19 +227,28 @@ class PersistentLinkService {
   }
 
   /**
-   * Look up if a Google user already has a linked household in Firestore.
-   * This is what enables Device 2 to automatically sync with Device 1!
+   * Look up if a user or email already has a linked household in Firestore.
+   * Enables Device 2 to automatically sync with Device 1!
    */
-  async lookupHouseholdForUser(userId) {
-    if (!isFirebaseAvailable || !db || !userId) return null;
+  async lookupHouseholdForUser(userIdOrEmail) {
+    if (!isFirebaseAvailable || !db || !userIdOrEmail) return null;
 
     try {
-      const userHouseholdRef = doc(db, "user_households", userId);
-      const snap = await getDoc(userHouseholdRef);
+      // 1. Direct lookup by ID
+      const userHouseholdRef = doc(db, "user_households", userIdOrEmail);
+      let snap = await getDoc(userHouseholdRef);
+
+      // 2. If not found and it might be an email, check email key
+      if (!snap.exists() && userIdOrEmail.includes('@')) {
+        const emailKey = 'email_' + userIdOrEmail.trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
+        const emailRef = doc(db, "user_households", emailKey);
+        snap = await getDoc(emailRef);
+      }
+
       if (snap.exists()) {
         const data = snap.data();
         if (data.householdCode) {
-          console.log(`🔍 Found existing linked household ${data.householdCode} for user ${userId}`);
+          console.log(`🔍 Found existing linked household ${data.householdCode} for ${userIdOrEmail}`);
           return {
             householdCode: data.householdCode,
             data: data

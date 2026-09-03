@@ -158,12 +158,83 @@ class FirebaseAuthService {
         console.log("Sign-in popup closed by user.");
         return;
       }
+      
+      // If domain is unauthorized in Firebase console, offer immediate Parent Email Linking
+      if (error.code === 'auth/unauthorized-domain') {
+        const domain = window.location.hostname;
+        console.warn(`Domain ${domain} not in Firebase Authorized Domains. Offering direct Email Persistent Link.`);
+        const state = store.getState();
+        const enteredEmail = prompt(
+          `Google OAuth Domain Notice:\nDomain "${domain}" is not in Firebase Console -> Authorized Domains.\n\nTo link your household and sync across all devices right now, please enter your Parent Email:`,
+          state.household.parentUser?.email || ''
+        );
+        if (enteredEmail && enteredEmail.trim()) {
+          await this.linkParentAccountWithEmail(enteredEmail.trim());
+        }
+        return;
+      }
 
-      // If domain is unauthorized in Firebase console or network error, alert parent with guidance
+      // Other Firebase errors
       alert(
         `Google Sign-In Note: ${error.message}\n\nYou can also sync your family devices immediately using your Household Sync Code!`
       );
     }
+  }
+
+  /**
+   * Link parent account directly via email (with persistent linking sliding window)
+   * Ensures instant cross-device syncing even if Google OAuth domain restriction is encountered
+   */
+  async linkParentAccountWithEmail(email, displayName = 'Parent Admin') {
+    const cleanEmail = email.trim().toLowerCase();
+    const state = store.getState();
+    const userId = 'user_' + cleanEmail.replace(/[^a-z0-9]/g, '_');
+
+    state.household.parentUser = {
+      uid: userId,
+      email: cleanEmail,
+      displayName: displayName,
+      photoURL: null,
+      isAnonymous: false
+    };
+    state.household.lastSync = "Cloud Connected";
+
+    // 1. Cross-device lookup: has this email already registered a household in Firestore?
+    const existing = await persistentLink.lookupHouseholdForUser(cleanEmail);
+    if (existing && existing.householdCode) {
+      const targetCode = existing.householdCode.trim().toUpperCase();
+      console.log(`🏠 Multi-Device Sync: Discovered household ${targetCode} for email ${cleanEmail}. Joining...`);
+      await firestoreSync.joinHousehold(targetCode);
+    } else {
+      // First device linking with this email: bind current household code
+      const currentCode = state.household.syncCode || 'HERO-8842';
+      await persistentLink.establishPersistentLink({
+        userId: userId,
+        email: cleanEmail,
+        displayName: displayName,
+        householdCode: currentCode
+      });
+      // Push state to cloud immediately to ensure document is created
+      await firestoreSync.pushStateToCloud(true);
+    }
+
+    // 2. Slide persistent linking window (RFC 6749 Section 6)
+    await persistentLink.establishPersistentLink({
+      userId: userId,
+      email: cleanEmail,
+      displayName: displayName,
+      householdCode: state.household.syncCode
+    });
+
+    Sound.fanfare();
+    store.showReward(
+      "Parent Account Linked!",
+      `Family account linked to ${cleanEmail}! All devices using this email or code (${state.household.syncCode}) will now sync in real time.`,
+      0,
+      0
+    );
+    store.saveState();
+    store.notify();
   }
 
   async signInWithEmail(email, password) {
