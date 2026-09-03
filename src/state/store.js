@@ -2045,6 +2045,16 @@ class Store {
     return this.isParentSessionUnlocked === true;
   }
 
+  isEasyMode() {
+    const hero = this.state.selectedHero;
+    if (!hero) return false;
+    return (
+      hero.gameDifficulty === 'easy' ||
+      hero.difficulty === 'easy' ||
+      (hero.age && hero.age <= 4)
+    );
+  }
+
   unlockParentSession() {
     this.isParentSessionUnlocked = true;
     this.navigate('parent_portal');

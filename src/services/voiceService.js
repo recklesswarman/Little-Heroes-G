@@ -2,10 +2,7 @@ const PROXY_URL = 'https://rex-voice-proxy.recklesswarman.workers.dev';
 
 let currentAudio = null;
 
-export const speakRex = async (text) => {
-  if (!text) return;
-
-  // Cut off active playback immediately to prevent overlapping dialogue
+export const stopRex = () => {
   if (currentAudio) {
     try {
       currentAudio.pause();
@@ -13,7 +10,15 @@ export const speakRex = async (text) => {
     } catch {
       // Ignore pause error on unstarted audio
     }
+    currentAudio = null;
   }
+};
+
+export const speakRex = async (text, onEnded = null) => {
+  if (!text) return;
+
+  // Cut off active playback immediately to prevent overlapping dialogue
+  stopRex();
 
   try {
     const response = await fetch(PROXY_URL, {
@@ -33,8 +38,12 @@ export const speakRex = async (text) => {
     const audioUrl = URL.createObjectURL(audioBlob);
 
     currentAudio = new Audio(audioUrl);
+    if (onEnded) {
+      currentAudio.onended = onEnded;
+    }
     await currentAudio.play();
   } catch (error) {
     console.error('Rex voice playback failed:', error);
+    throw error;
   }
 };

@@ -3,6 +3,7 @@ import { PETS_DATABASE } from '../data/petsData.js';
 import { ADVENTURE_GAMES, getGameChallenges } from '../data/learningGamesData.js';
 import { Sound } from '../audio/sfx.js';
 import confetti from 'canvas-confetti';
+import { voicePrompts } from '../utils/voicePrompts.js';
 
 // Helper to reliably get the pet's graphic
 export function getPetDisplayAvatar(pet) {
@@ -822,12 +823,23 @@ export function attachDancePartyListeners() {
       learningScore = 0;
       Sound.click();
       store.notify();
+
+      if (store.isEasyMode() && selectedLearningGame) {
+        const challenges = getGameChallenges(selectedLearningGame, 'easy');
+        const challenge = challenges[0];
+        if (challenge) {
+          setTimeout(() => {
+            voicePrompts.speakGuidance(selectedLearningGame.title, challenge.question);
+          }, 350);
+        }
+      }
     });
   });
 
   const exitLearningBtn = document.getElementById('exit-learning-to-hub-btn');
   if (exitLearningBtn) {
     exitLearningBtn.addEventListener('click', () => {
+      voicePrompts.stop();
       selectedLearningGame = null;
       store.notify();
     });
@@ -1029,9 +1041,22 @@ function handleLearningAnswer(optIdx) {
     confetti({ particleCount: 40, spread: 50 });
     learningScore++;
 
+    if (store.isEasyMode()) {
+      voicePrompts.speakSuccess();
+    }
+
     if (currentChallengeIdx + 1 < challenges.length) {
       currentChallengeIdx++;
       store.notify();
+
+      if (store.isEasyMode()) {
+        const nextChallenge = challenges[currentChallengeIdx];
+        if (nextChallenge) {
+          setTimeout(() => {
+            voicePrompts.speakGuidance(selectedLearningGame.title, nextChallenge.question);
+          }, 650);
+        }
+      }
     } else {
       // Completed all challenges!
       const rewardCoins = selectedLearningGame.rewardCoins || 30;
@@ -1053,6 +1078,9 @@ function handleLearningAnswer(optIdx) {
     }
   } else {
     Sound.hit();
+    if (store.isEasyMode()) {
+      voicePrompts.speakTryAgain();
+    }
     store.notify();
   }
 }

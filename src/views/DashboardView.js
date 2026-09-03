@@ -9,6 +9,7 @@ export function renderDashboardView() {
   const taskForest = state.taskForest;
   const activePet = store.getActivePet();
   const pendingCount = state.pendingApprovals.filter(r => r.kidId === hero.id).length;
+  const isEasyMode = store.isEasyMode();
 
   return `
     <div class="max-w-4xl mx-auto px-4 pt-4 pb-28 flex flex-col gap-6 animate-fade-in">
@@ -99,6 +100,31 @@ export function renderDashboardView() {
         `
         }
       </section>
+
+      <!-- Toddler Easy Mode (Age 3-4) Rex Voice Guide Banner -->
+      ${
+        isEasyMode
+          ? `
+      <div class="bg-gradient-to-r from-primary/15 via-secondary/15 to-transparent border-2 border-primary/40 rounded-2xl p-3.5 flex items-center justify-between gap-3 text-xs animate-fade-in card-shadow">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-primary text-on-primary flex items-center justify-center text-lg flex-shrink-0 shadow-sm">
+            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">volume_up</span>
+          </div>
+          <div>
+            <span class="font-headline font-black text-primary flex items-center gap-1">
+              Rex Spoken Voice Guide Active (Age 3-4)
+              <span class="bg-primary/20 text-primary text-[8px] font-black uppercase px-2 py-0.5 rounded-full">Easy Mode</span>
+            </span>
+            <span class="text-[11px] text-on-surface-variant font-bold">Tap any quest card to hear Rex explain and guide you through it!</span>
+          </div>
+        </div>
+        <button id="dash-voice-welcome-btn" class="bg-primary text-on-primary font-headline text-xs font-black px-3.5 py-2 rounded-xl chunky-btn-sm flex items-center gap-1 hover:brightness-110 active:scale-95 shadow flex-shrink-0" title="Listen to Rex's daily guidance">
+          <span class="material-symbols-outlined text-sm">record_voice_over</span> Hear Rex
+        </button>
+      </div>
+      `
+          : ''
+      }
 
       <!-- Currency Explanation Helper -->
       <div class="bg-surface-container/60 border border-surface-container-highest px-4 py-2.5 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs font-bold">
@@ -287,32 +313,59 @@ export function renderDashboardView() {
   `;
 }
 
-function triggerQuestVoice(title = '', id = '') {
+let hasSpokenDashboardGreeting = false;
+
+function triggerQuestVoice(title = '', id = '', desc = '') {
+  const isEasy = store.isEasyMode();
   const t = (title + ' ' + id).toLowerCase();
+
   if (t.includes('brush') || t.includes('teeth') || t.includes('dentist')) {
-    speakRex("Time to brush our teeth and defeat the sugar villains!");
+    speakRex(isEasy
+      ? "Time to brush our teeth and defeat the sugar villains! Scrub circles all over your teeth!"
+      : "Time to brush our teeth and defeat the sugar villains!");
   } else if (t.includes('feed') || t.includes('snack') || t.includes('fruit') || t.includes('pet')) {
-    speakRex("Yummy snack time! Let's feed our pet companion!");
+    speakRex(isEasy
+      ? "Yummy snack time! Let's feed our pet companion delicious healthy food!"
+      : "Yummy snack time! Let's feed our pet companion!");
   } else if (t.includes('toy') || t.includes('clean') || t.includes('tidy') || t.includes('bed')) {
-    speakRex("Toy cleanup time! Super hero tidy power!");
+    speakRex(isEasy
+      ? "Toy cleanup time! Let's put our toys away together with super hero tidy power!"
+      : "Toy cleanup time! Super hero tidy power!");
   } else if (t.includes('water') || t.includes('drink')) {
     speakRex("Gulp gulp! Super hero hydration power!");
   } else if (t.includes('hand') || t.includes('soap') || t.includes('wash')) {
-    speakRex("Scrub scrub suds! Clean hands make us strong!");
+    speakRex("Scrub scrub suds! Clean hands make us strong and healthy!");
   } else if (t.includes('kind') || t.includes('share') || t.includes('hug')) {
     speakRex("Super hero kindness makes the whole world brighter!");
   } else {
-    speakRex(`Awesome! Let's do this quest: ${title}!`);
+    speakRex(isEasy && desc
+      ? `Quest time: ${title}! ${desc}. You can do it!`
+      : `Awesome! Let's do this quest: ${title}!`);
   }
 }
 
 export function attachDashboardListeners() {
+  const isEasy = store.isEasyMode();
+  if (isEasy && !hasSpokenDashboardGreeting) {
+    hasSpokenDashboardGreeting = true;
+    setTimeout(() => {
+      speakRex("Hi Little Hero! Let's do our quests today! Tap any chore to hear what to do!");
+    }, 500);
+  }
+
+  const voiceWelcomeBtn = document.getElementById('dash-voice-welcome-btn');
+  if (voiceWelcomeBtn) {
+    voiceWelcomeBtn.addEventListener('click', () => {
+      speakRex("Hi Little Hero! I am Rex the Dino! Tap any quest card to hear how to earn tokens and level up!");
+    });
+  }
+
   document.querySelectorAll('.habit-check-btn').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const habitId = btn.getAttribute('data-habit-id');
       const habit = (store.getState().habitIslands || []).find((h) => h.id === habitId);
-      triggerQuestVoice(habit?.title || '', habitId || '');
+      triggerQuestVoice(habit?.title || '', habitId || '', habit?.desc || '');
       store.toggleHabitIsland(habitId);
     });
   });
@@ -322,7 +375,7 @@ export function attachDashboardListeners() {
       if (e.target.closest('button')) return;
       const habitId = card.getAttribute('data-habit-card-id');
       const habit = (store.getState().habitIslands || []).find((h) => h.id === habitId);
-      triggerQuestVoice(habit?.title || '', habitId || '');
+      triggerQuestVoice(habit?.title || '', habitId || '', habit?.desc || '');
       if (habitId) store.toggleHabitIsland(habitId);
     });
   });
@@ -332,7 +385,7 @@ export function attachDashboardListeners() {
       e.stopPropagation();
       const taskId = btn.getAttribute('data-task-id');
       const task = (store.getState().taskForest || []).find((t) => t.id === taskId);
-      triggerQuestVoice(task?.title || '', taskId || '');
+      triggerQuestVoice(task?.title || '', taskId || '', task?.desc || '');
       store.toggleTaskForest(taskId);
     });
   });
@@ -342,7 +395,7 @@ export function attachDashboardListeners() {
       if (e.target.closest('button')) return;
       const taskId = card.getAttribute('data-task-card-id');
       const task = (store.getState().taskForest || []).find((t) => t.id === taskId);
-      triggerQuestVoice(task?.title || '', taskId || '');
+      triggerQuestVoice(task?.title || '', taskId || '', task?.desc || '');
       const isAR = card.querySelector('.task-ar-launch-btn');
       if (isAR) {
         store.navigate('ar_battle');

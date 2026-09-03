@@ -1,49 +1,40 @@
-// Realistic Voice Prompts & Audio Guidance for Toddlers (Easy Mode)
-// Uses Web Speech API (SpeechSynthesis) with cheerful, child-friendly pitch and pacing.
+// Rex the Dino Spoken Voice Guidance for Toddlers (Easy Mode Age 3-4) & App-wide Voice Output
+// Calls speakRex via Cloudflare Worker proxy, with browser SpeechSynthesis fallback.
+
+import { speakRex, stopRex } from '../services/voiceService.js';
 
 class VoicePromptsService {
   constructor() {
     this.synth = typeof window !== 'undefined' ? window.speechSynthesis : null;
     this.isEnabled = true;
-    this.currentUtterance = null;
   }
 
-  speak(text, onEndCallback = null) {
-    if (!this.synth || !this.isEnabled || !text) return;
+  async speak(text, onEndCallback = null) {
+    if (!this.isEnabled || !text) return;
+
+    this.stop();
 
     try {
-      this.stop(); // Stop any ongoing speech
-
-      const utterance = new SpeechSynthesisUtterance(text);
-      
-      // Cheerful, encouraging toddler guide voice settings
-      utterance.pitch = 1.25; // Slightly higher, friendly pitch
-      utterance.rate = 0.88;  // Clear, gentle, unhurried pacing for ages 3-4
-      utterance.volume = 1.0;
-
-      // Prefer warm natural English voices if available
-      const voices = this.synth.getVoices();
-      const preferredVoice = voices.find(v => 
-        (v.lang.startsWith('en') && (v.name.includes('Natural') || v.name.includes('Samantha') || v.name.includes('Karen') || v.name.includes('Victoria') || v.name.includes('Google')))
-      ) || voices.find(v => v.lang.startsWith('en'));
-
-      if (preferredVoice) {
-        utterance.voice = preferredVoice;
-      }
-
-      if (onEndCallback) {
-        utterance.onend = onEndCallback;
-      }
-
-      this.currentUtterance = utterance;
-      this.synth.speak(utterance);
+      await speakRex(text, onEndCallback);
     } catch (e) {
-      console.warn("SpeechSynthesis error:", e);
+      console.warn("Rex voice fallback to browser synth:", e);
+      if (this.synth) {
+        try {
+          const utterance = new SpeechSynthesisUtterance(text);
+          utterance.pitch = 1.25;
+          utterance.rate = 0.88;
+          utterance.volume = 1.0;
+          if (onEndCallback) utterance.onend = onEndCallback;
+          this.synth.speak(utterance);
+        } catch (err) {
+          console.warn("Browser SpeechSynthesis error:", err);
+        }
+      }
     }
   }
 
   speakGuidance(stepName, questionText, options = []) {
-    const welcome = `Welcome to ${stepName}! Let's play together!`;
+    const welcome = `Welcome to ${stepName}!`;
     const prompt = `${questionText}. Can you tap the right answer?`;
     this.speak(`${welcome} ... ${prompt}`);
   }
@@ -53,7 +44,7 @@ class VoicePromptsService {
       "Great job! You found the right answer!",
       "Hooray! That is correct! You are a super hero!",
       "Awesome work! Your companion is so happy!",
-      "You did it! Keep on exploring!"
+      "You did it! Super hero power!"
     ];
     const pick = praises[Math.floor(Math.random() * praises.length)];
     this.speak(pick);
@@ -64,8 +55,13 @@ class VoicePromptsService {
   }
 
   stop() {
+    stopRex();
     if (this.synth && this.synth.speaking) {
-      this.synth.cancel();
+      try {
+        this.synth.cancel();
+      } catch {
+        // Ignore
+      }
     }
   }
 }

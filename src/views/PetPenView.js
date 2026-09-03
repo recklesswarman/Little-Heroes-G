@@ -1,5 +1,8 @@
 import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
+import { speakRex } from '../services/voiceService.js';
+
+let hasSpokenPenGreeting = false;
 
 export function renderPetPenView() {
   const state = store.getState();
@@ -294,17 +297,29 @@ function triggerPetHugExcitement() {
     colors: ['#2ecc71', '#f1c40f', '#e74c3c', '#3498db']
   });
 
+  // Rex voice line on pet hug & play
+  speakRex("Yay! Big hug! Your companion is super happy and full of energy!");
+
   // 5. Store update (increases joy and energy)
   store.playWithPet();
 }
 
 export function attachPetPenListeners() {
+  const isEasy = store.isEasyMode();
   const hero = store.getState().selectedHero;
   const hasNoPet = !hero?.hasChosenStarterPet || !hero?.unlockedPetIds || hero.unlockedPetIds.length === 0;
+
+  if (isEasy && !hasSpokenPenGreeting && !hasNoPet) {
+    hasSpokenPenGreeting = true;
+    setTimeout(() => {
+      speakRex("Welcome to the Pet Pen! Feed, hug, and wash your companion!");
+    }, 400);
+  }
 
   if (hasNoPet) {
     setTimeout(() => {
       if (!store.getState().petSelectionModal?.isOpen) {
+        speakRex("Pick your first companion! They can't wait to meet you!");
         store.openPetSelectionModal('starter');
       }
     }, 250);
@@ -328,7 +343,10 @@ export function attachPetPenListeners() {
 
   const rosterBtn = document.getElementById('pen-view-roster-btn');
   if (rosterBtn) {
-    rosterBtn.addEventListener('click', () => store.navigate('pet_roster'));
+    rosterBtn.addEventListener('click', () => {
+      if (isEasy) speakRex("Look at all the 24 magical companions you can unlock on your adventure!");
+      store.navigate('pet_roster');
+    });
   }
 
   const fuseBtn = document.getElementById('pen-master-fuse-btn');
@@ -350,7 +368,10 @@ export function attachPetPenListeners() {
 
   const feedBtn = document.getElementById('pen-feed-btn');
   if (feedBtn) {
-    feedBtn.addEventListener('click', () => store.feedPet());
+    feedBtn.addEventListener('click', () => {
+      if (isEasy) speakRex("Nom nom nom! Yummy snacks keep your companion full of energy!");
+      store.feedPet();
+    });
   }
 
   const bathBtn = document.getElementById('pen-bath-btn');
@@ -369,6 +390,7 @@ export function attachPetPenListeners() {
   if (lockerBtn) {
     lockerBtn.addEventListener('click', () => {
       Sound.click();
+      if (isEasy) speakRex("Welcome to your Pet Locker! Check out all your hero gear!");
       store.navigate('pet_locker');
     });
   }

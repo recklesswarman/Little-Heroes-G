@@ -1,6 +1,7 @@
 import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import confetti from 'canvas-confetti';
+import { speakRex } from '../services/voiceService.js';
 
 let activeCategoryFilter = 'all';
 
@@ -348,6 +349,7 @@ export function attachPetLockerListeners() {
     btn.addEventListener('click', () => {
       const title = btn.getAttribute('data-equip-title');
       if (title) {
+        speakRex(`Awesome! Equipped ${title}! Super hero power!`);
         store.equipPetGear(title);
       }
     });
@@ -356,6 +358,7 @@ export function attachPetLockerListeners() {
   // Unequip Buttons
   document.querySelectorAll('.locker-unequip-btn').forEach(btn => {
     btn.addEventListener('click', () => {
+      speakRex("Gear stored safely in your locker!");
       store.unequipPetGear();
     });
   });
@@ -363,6 +366,7 @@ export function attachPetLockerListeners() {
   const unequipActiveBtn = document.getElementById('locker-unequip-active-btn');
   if (unequipActiveBtn) {
     unequipActiveBtn.addEventListener('click', () => {
+      speakRex("Gear stored safely in your locker!");
       store.unequipPetGear();
     });
   }
