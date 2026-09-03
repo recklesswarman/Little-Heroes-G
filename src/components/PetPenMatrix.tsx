@@ -509,32 +509,44 @@ export const PetPenMatrix: React.FC<PetPenMatrixProps> = ({
             <span>Master Fuse! ⚡</span>
           </button>
 
-          {/* Evolution Celebration Modal */}
+          {/* Evolution Celebration Modal (Stitch Guidelines) */}
           {evolutionCelebration && (
-            <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-              <div className="hero-card border-4 border-[#334155] border-b-[12px] border-b-[#2ECC71] rounded-[36px] p-6 sm:p-8 max-w-md w-full text-center shadow-2xl flex flex-col items-center animate-float">
-                <div className="w-44 h-44 rounded-full overflow-hidden border-4 border-[#2ECC71] shadow-[0_0_30px_#2ECC71] mb-4">
-                  <img
-                    src={ASSET_IMAGES.petEvolutionLord}
-                    alt="Golden Armor Dragon Lord"
-                    className="w-full h-full object-cover"
-                  />
+            <div className="fixed inset-0 z-50 bg-[#09141e]/90 backdrop-blur-md flex items-center justify-center p-4 select-none animate-fade-in">
+              <div className="bg-[#202b35] rounded-4xl p-6 sm:p-8 max-w-md w-full text-center shadow-[0_12px_0_0_#121d26] border-2 border-[#3d4a3e] flex flex-col items-center relative overflow-hidden animate-scale-up">
+                
+                {/* Decorative Stars */}
+                <div className="absolute top-4 left-4 text-[#ffb961] rotate-12 pointer-events-none">
+                  <span className="material-symbols-outlined" style={{ fontVariationSettings: '"FILL" 1', fontSize: '32px' }}>star</span>
                 </div>
-                <h3 className="text-3xl font-black text-[#2ECC71] mb-2 uppercase tracking-tight">
+                <div className="absolute top-10 right-6 text-[#54e98a] rotate-[25deg] pointer-events-none">
+                  <span className="material-symbols-outlined" style={{ fontVariationSettings: '"FILL" 1', fontSize: '24px' }}>arrow_back_ios_new</span>
+                </div>
+                <div className="absolute bottom-20 left-6 text-[#a3d3ff] -rotate-12 pointer-events-none">
+                  <span className="material-symbols-outlined" style={{ fontVariationSettings: '"FILL" 1', fontSize: '28px' }}>auto_awesome</span>
+                </div>
+
+                <h3 className="font-headline text-2xl sm:text-3xl font-black text-[#54e98a] mb-6 uppercase tracking-wide drop-shadow-lg">
                   BIG EVOLUTION!
                 </h3>
-                <p className="text-sm text-[#94A3B8] font-bold mb-6">
-                  Your dragon has grown up into the <span className="text-[#F1C40F] font-black">Golden Armor Dragon Lord</span>! New abilities unlocked!
+
+                {/* 3D Celebration Portal - Graphic in Center Removed per Design Guidelines */}
+                <div className="relative w-44 h-44 sm:w-48 sm:h-48 mb-6 animate-float glow-effect rounded-full bg-[#16212b] flex items-center justify-center">
+                  <div className="absolute inset-0 rounded-full border-4 border-[#2f3a45] shadow-inner z-0"></div>
+                </div>
+
+                <p className="font-body text-xs sm:text-sm text-[#bbcbbb] font-bold mb-6 px-3 leading-relaxed">
+                  Your dragon has grown up into the <span className="text-[#ffb961] font-black">Golden Armor Dragon Lord</span>! New abilities unlocked!
                 </p>
+
                 <button
                   onClick={() => {
                     sounds.playTap();
                     setEvolutionCelebration(false);
                   }}
-                  className="chunky-btn bg-[#2ECC71] w-full py-4 text-xl font-black uppercase tracking-wider cursor-pointer"
-                  style={{ '--shadow-color': '#27AE60' } as React.CSSProperties}
+                  className="w-full bg-[#54e98a] text-[#003919] font-headline text-lg font-black rounded-xl py-3.5 chunky-button-primary uppercase tracking-widest relative overflow-hidden group hover:brightness-110 active:scale-98 transition-all"
                 >
-                  Awesome! 🚀
+                  <span className="relative z-10">AWESOME! 🚀</span>
+                  <div className="absolute top-0 left-[-100%] w-1/2 h-full bg-white/20 skew-x-[-20deg] group-hover:left-[200%] transition-all duration-700 ease-in-out"></div>
                 </button>
               </div>
             </div>

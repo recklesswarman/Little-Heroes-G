@@ -504,3 +504,37 @@ input[type="range"]::-webkit-slider-thumb:active {
   animation: floatHeartUp 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* Stitch Celebration Screen Guidelines (projects/18234324608305690559/screens/c7dfaea902db4070ac615789d1252f67) */
+.chunky-button-primary {
+  border-bottom: 8px solid #005027;
+  transition: all 0.1s ease;
+}
+.chunky-button-primary:hover {
+  filter: brightness(1.08);
+}
+.chunky-button-primary:active {
+  transform: translateY(4px);
+  border-bottom-width: 4px;
+  filter: brightness(0.95);
+}
+
+.glass-pill {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.18);
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px 5px rgba(84, 233, 138, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 42px 16px rgba(84, 233, 138, 0.65);
+  }
+}
+
+.glow-effect {
+  animation: pulse-glow 2.2s ease-in-out infinite;
+}
+
+
