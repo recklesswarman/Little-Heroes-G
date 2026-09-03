@@ -1,5 +1,6 @@
 import './styles/index.css';
 import { store } from './state/store.js';
+import { initTactileSoundEngine } from './audio/sfx.js';
 
 // Layout Components
 import { renderTopHeader, attachTopHeaderListeners } from './components/TopHeader.js';
@@ -154,6 +155,7 @@ window.addEventListener('keydown', (e) => {
 });
 
 // Initial Listeners & Store Subscription
+initTactileSoundEngine();
 initParentLockModal();
 initHouseholdModal();
 store.subscribe(handleStateUpdate);

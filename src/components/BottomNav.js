@@ -1,4 +1,5 @@
 import { store } from '../state/store.js';
+import { Sound } from '../audio/sfx.js';
 
 export function renderBottomNav() {
   const state = store.getState();
@@ -48,6 +49,7 @@ export function renderBottomNav() {
 export function attachBottomNavListeners() {
   document.querySelectorAll('.nav-tab-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
+      Sound.whoosh();
       const viewId = btn.getAttribute('data-nav-id');
       store.navigate(viewId);
     });

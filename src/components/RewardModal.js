@@ -313,10 +313,11 @@ export function attachRewardModalListeners() {
     initCelebrationShader(canvas);
   }
 
-  // Trigger Rex's celebratory voice line
+  // Trigger Rex's celebratory voice line & sparkles
   const reward = store.getState().rewardModal;
   if (reward && reward.isOpen && !reward.hasSpokenCelebration) {
     reward.hasSpokenCelebration = true;
+    Sound.sparkle();
     const title = (reward.title || '').toLowerCase();
     if (!title.includes('escaped') && !title.includes('declined')) {
       speakRex("Yay! You did it! Super hero power!");
@@ -326,7 +327,7 @@ export function attachRewardModalListeners() {
   const coolBtn = document.getElementById('reward-modal-cool-btn');
   if (coolBtn) {
     coolBtn.addEventListener('click', () => {
-      Sound.click();
+      Sound.pop();
       if (shaderAnimationId) {
         cancelAnimationFrame(shaderAnimationId);
         shaderAnimationId = null;

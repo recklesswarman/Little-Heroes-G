@@ -1148,6 +1148,8 @@ class Store {
       hero.xpNext = Math.round(hero.xpNext * 1.35);
       hero.coins += 50;
       Sound.levelUp();
+      Sound.sparkle();
+      Sound.coin();
 
       confetti({
         particleCount: 120,
@@ -1189,8 +1191,8 @@ class Store {
     stats.joy = Math.min(100, stats.joy + 15);
     stats.energy = Math.min(100, stats.energy + 20);
     this.addXP(10);
+    Sound.crunch();
     Sound.chirp();
-    Sound.coin();
     this.saveState();
   }
 
@@ -1203,6 +1205,7 @@ class Store {
     stats.joy = Math.min(100, stats.joy + 20);
     stats.energy = Math.min(100, stats.energy + 15);
     this.addXP(15);
+    Sound.boing();
     Sound.chirp();
     this.saveState();
   }
@@ -1217,6 +1220,7 @@ class Store {
     if (this.state.selectedHero) {
       this.state.selectedHero.equippedPetGear = gearTitle;
     }
+    Sound.sparkle();
     Sound.fanfare();
     confetti({
       particleCount: 45,
@@ -1269,6 +1273,8 @@ class Store {
     stats.joy = 100;
     this.state.selectedHero.coins += 25;
     this.addXP(35);
+    Sound.sparkle();
+    Sound.coin();
     Sound.fanfare();
     confetti({
       particleCount: 80,
@@ -1575,6 +1581,7 @@ class Store {
 
     if (this.state.inventory.includes(item.title)) {
       this.state.equippedPetGear = item.title;
+      Sound.sparkle();
       Sound.fanfare();
       confetti({ particleCount: 40, spread: 50 });
       this.showReward(
@@ -1589,7 +1596,7 @@ class Store {
     }
 
     if (this.state.selectedHero.coins < item.costCoins) {
-      Sound.hit();
+      Sound.deny();
       this.showReward(
         'Not Enough Habit Tokens!',
         `You need ${item.costCoins - this.state.selectedHero.coins} more Habit Tokens. Complete chores and play mini-games to earn more tokens!`,
@@ -1605,6 +1612,7 @@ class Store {
     this.state.equippedPetGear = item.title;
     this.addXP(25);
     Sound.coin();
+    Sound.sparkle();
     Sound.fanfare();
 
     confetti({
