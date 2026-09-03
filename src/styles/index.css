@@ -537,4 +537,147 @@ input[type="range"]::-webkit-slider-thumb:active {
   animation: pulse-glow 2.2s ease-in-out infinite;
 }
 
+/* =========================================================================
+   1. BOUNCY UI BUTTONS (Tactile Physical Toy Squish & Spring Physics)
+   ========================================================================= */
+.chunky-btn, .chunky-btn-sm, .chunky-btn-lg, .chunky-button-primary,
+button:not(.no-squish), .tactile-check-btn, .nav-tab-btn, .squishy-toy-btn {
+  transition: transform 0.36s cubic-bezier(0.34, 1.56, 0.64, 1), 
+              box-shadow 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), 
+              border-bottom-width 0.08s ease, 
+              filter 0.15s ease !important;
+  will-change: transform;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.chunky-btn:active, .chunky-btn-sm:active, .chunky-btn-lg:active, .chunky-button-primary:active,
+button:not(.no-squish):active, .tactile-check-btn:active, .squishy-toy-btn:active {
+  transform: scale(0.91, 0.85) translateY(5px) !important;
+  transition: transform 0.05s ease-in-out !important;
+  filter: brightness(0.96);
+}
+
+.nav-tab-btn:active {
+  transform: scale(0.88, 0.84) translateY(3px) !important;
+  transition: transform 0.05s ease-in-out !important;
+}
+
+/* =========================================================================
+   2. IDLE ANIMATIONS & CHARACTER REACTIONS
+   ========================================================================= */
+
+/* Continuous gentle idle bob & breathing */
+@keyframes characterIdleBob {
+  0%, 100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  50% {
+    transform: translateY(-5px) scale(1.02, 0.98);
+  }
+}
+
+.animate-idle-bob {
+  animation: characterIdleBob 3.5s ease-in-out infinite;
+}
+
+/* Fluttering butterfly hovering around characters */
+@keyframes butterflyFlutter {
+  0% {
+    transform: translate(0, 0) rotate(0deg) scale(1);
+  }
+  20% {
+    transform: translate(35px, -24px) rotate(15deg) scale(1.1);
+  }
+  40% {
+    transform: translate(60px, -10px) rotate(-10deg) scale(0.95);
+  }
+  60% {
+    transform: translate(25px, -45px) rotate(20deg) scale(1.05);
+  }
+  80% {
+    transform: translate(-20px, -20px) rotate(-18deg) scale(1);
+  }
+  100% {
+    transform: translate(0, 0) rotate(0deg) scale(1);
+  }
+}
+
+.animate-butterfly {
+  animation: butterflyFlutter 6s ease-in-out infinite;
+}
+
+/* Playful character backflip reaction */
+@keyframes characterBackflip {
+  0% {
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+  35% {
+    transform: translateY(-45px) rotate(-180deg) scale(1.22);
+  }
+  70% {
+    transform: translateY(-10px) rotate(-360deg) scale(1.08);
+  }
+  85% {
+    transform: translateY(3px) rotate(-360deg) scale(1.12, 0.88);
+  }
+  100% {
+    transform: translateY(0) rotate(-360deg) scale(1);
+  }
+}
+
+.animate-backflip {
+  animation: characterBackflip 0.75s cubic-bezier(0.34, 1.45, 0.64, 1) forwards;
+}
+
+/* Playful giggle wobble reaction */
+@keyframes characterGiggle {
+  0%, 100% {
+    transform: rotate(0deg) scale(1);
+  }
+  15% {
+    transform: rotate(-14deg) scale(1.18);
+  }
+  30% {
+    transform: rotate(14deg) scale(1.18);
+  }
+  45% {
+    transform: rotate(-10deg) scale(1.12);
+  }
+  60% {
+    transform: rotate(10deg) scale(1.12);
+  }
+  75% {
+    transform: rotate(-4deg) scale(1.05);
+  }
+  90% {
+    transform: rotate(4deg) scale(1.02);
+  }
+}
+
+.animate-giggle {
+  animation: characterGiggle 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Idle foot tapping or ear wiggle */
+@keyframes characterFootTap {
+  0%, 80%, 100% {
+    transform: rotate(0deg);
+  }
+  85% {
+    transform: rotate(-8deg) translateY(-3px);
+  }
+  90% {
+    transform: rotate(0deg);
+  }
+  95% {
+    transform: rotate(-8deg) translateY(-3px);
+  }
+}
+
+.animate-foot-tap {
+  animation: characterFootTap 4.5s ease-in-out infinite;
+}
+
+
 

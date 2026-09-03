@@ -97,6 +97,9 @@ export function renderPetPenView() {
         <!-- Glowing Ambient Lighting -->
         <div class="absolute inset-0 bg-radial from-primary/15 via-transparent to-transparent pointer-events-none"></div>
 
+        <!-- Playful Fluttering Companion Butterfly -->
+        <div class="absolute top-12 right-12 text-2xl sm:text-3xl animate-butterfly pointer-events-none select-none drop-shadow z-20" title="Playful Butterfly">🦋</div>
+
         <!-- Top Stage Banner -->
         <div class="w-full flex justify-between items-center text-xs font-black uppercase text-on-surface-variant z-10">
           <span class="bg-surface-container-lowest/80 px-3 py-1 rounded-full border border-surface-container-highest text-secondary">
@@ -254,10 +257,13 @@ function triggerPetHugExcitement() {
   const petChar = document.getElementById('pen-pet-character');
   const caption = document.getElementById('pen-status-caption');
 
-  // 1. Playful excited animation on pet
+  // 1. Playful excited reaction on pet (Backflip or Giggle)
+  const isFlip = Math.random() > 0.5;
   if (petChar) {
-    petChar.classList.add('scale-115');
-    setTimeout(() => petChar.classList.remove('scale-115'), 350);
+    petChar.classList.remove('animate-backflip', 'animate-giggle', 'scale-115');
+    void petChar.offsetWidth;
+    petChar.classList.add(isFlip ? 'animate-backflip' : 'animate-giggle');
+    setTimeout(() => petChar.classList.remove('animate-backflip', 'animate-giggle'), 800);
   }
 
   // 2. Spawn a fountain of rising hearts, stars, and energy bolts
@@ -283,22 +289,28 @@ function triggerPetHugExcitement() {
 
   // 3. Update status caption
   if (caption) {
-    caption.textContent = '🥰 Companion feels loved, energized & so happy! (+20 Joy, +15 Energy)';
+    caption.textContent = isFlip
+      ? '🤸 Companion did an awesome backflip! (+20 Joy, +15 Energy)'
+      : '🥰 Companion feels loved, energized & so giggly! (+20 Joy, +15 Energy)';
     caption.className = 'text-xs font-black text-primary text-center transition-all animate-pulse';
   }
 
   // 4. Confetti & Audio
+  Sound.boing();
   Sound.chirp();
-  Sound.fanfare();
   confetti({
-    particleCount: 25,
+    particleCount: 30,
     spread: 60,
     origin: { y: 0.6 },
     colors: ['#2ecc71', '#f1c40f', '#e74c3c', '#3498db']
   });
 
   // Rex voice line on pet hug & play
-  speakRex("Yay! Big hug! Your companion is super happy and full of energy!");
+  if (isFlip) {
+    speakRex("Woohoo! Look at that companion backflip! Super hero power!");
+  } else {
+    speakRex("Hehehe! That tickles! Your companion is so happy!");
+  }
 
   // 5. Store update (increases joy and energy)
   store.playWithPet();

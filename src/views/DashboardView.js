@@ -1,6 +1,8 @@
 import { store } from '../state/store.js';
 import { getTaskVisualSvg } from '../utils/taskVisuals.js';
 import { speakRex } from '../services/voiceService.js';
+import { Sound } from '../audio/sfx.js';
+import confetti from 'canvas-confetti';
 
 export function renderDashboardView() {
   const state = store.getState();
@@ -19,9 +21,12 @@ export function renderDashboardView() {
         <div class="absolute -right-8 -bottom-8 w-44 h-44 rounded-full bg-primary/10 blur-2xl pointer-events-none"></div>
 
         <!-- Left: Kid Profile Info -->
-        <div class="flex items-center gap-4 w-full sm:w-auto">
-          <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-surface-container-high border-4 border-primary overflow-hidden flex items-center justify-center shadow-inner flex-shrink-0 relative">
-            <img class="w-full h-full object-cover" src="${hero.avatar}" alt="${hero.name}" />
+        <div class="flex items-center gap-4 w-full sm:w-auto relative">
+          <!-- Playful Fluttering Butterfly -->
+          <div class="absolute -top-3 -left-2 text-base animate-butterfly pointer-events-none select-none drop-shadow z-20" title="Fluttering Butterfly">🦋</div>
+
+          <div id="dash-hero-avatar-trigger" class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-surface-container-high border-4 border-primary overflow-hidden flex items-center justify-center shadow-inner flex-shrink-0 relative cursor-pointer hover:scale-105 active:scale-95 transition-transform animate-idle-bob" title="Tap your hero to giggle or do a backflip!">
+            <img id="dash-hero-avatar-img" class="w-full h-full object-cover select-none" src="${hero.avatar}" alt="${hero.name}" />
             <div class="absolute -bottom-1 -right-1 bg-secondary text-on-secondary font-headline text-[10px] font-black px-1.5 py-0.2 rounded-md shadow">
               LV ${hero.level}
             </div>
@@ -49,8 +54,8 @@ export function renderDashboardView() {
           hero.hasChosenStarterPet && hero.unlockedPetIds && hero.unlockedPetIds.length > 0
             ? `
         <div class="w-full sm:w-auto bg-surface-container-high p-3.5 rounded-2xl border-2 border-secondary-container/40 flex items-center justify-between sm:justify-start gap-4">
-          <div class="w-14 h-14 rounded-2xl bg-surface-container overflow-hidden border-2 border-secondary flex items-center justify-center flex-shrink-0 relative cursor-pointer active:scale-95 transition-transform" id="dash-active-pet-trigger">
-            <img class="w-full h-full object-contain p-1" src="${activePet.avatar}" alt="${activePet.name}" />
+          <div class="w-14 h-14 rounded-2xl bg-surface-container overflow-hidden border-2 border-secondary flex items-center justify-center flex-shrink-0 relative cursor-pointer active:scale-95 transition-transform animate-idle-bob" id="dash-active-pet-trigger" title="Tap your pet to giggle or do a backflip!">
+            <img id="dash-active-pet-img" class="w-full h-full object-contain p-1 select-none" src="${activePet.avatar}" alt="${activePet.name}" />
             <div class="absolute -top-1 -right-1 bg-primary text-on-primary text-[8px] font-black px-1 rounded">S${activePet.stage}</div>
           </div>
 
@@ -412,6 +417,59 @@ export function attachDashboardListeners() {
       store.navigate('ar_battle');
     });
   });
+
+  // Hero Character Tap Reaction (Backflip or Giggle)
+  const heroAvatarTrigger = document.getElementById('dash-hero-avatar-trigger');
+  const heroImg = document.getElementById('dash-hero-avatar-img');
+  if (heroAvatarTrigger && heroImg) {
+    heroAvatarTrigger.addEventListener('click', () => {
+      const isFlip = Math.random() > 0.5;
+      heroImg.classList.remove('animate-backflip', 'animate-giggle');
+      void heroImg.offsetWidth;
+      heroImg.classList.add(isFlip ? 'animate-backflip' : 'animate-giggle');
+
+      Sound.boing();
+      if (isFlip) {
+        speakRex("Woohoo! Backflip power! Ready for adventure!");
+      } else {
+        speakRex("Hehehe! That tickles! Let's go Little Hero!");
+      }
+
+      confetti({
+        particleCount: 20,
+        spread: 45,
+        origin: { y: 0.3 }
+      });
+    });
+  }
+
+  // Active Pet Character Tap Reaction (Backflip or Giggle)
+  const activePetImg = document.getElementById('dash-active-pet-img');
+  if (activePetImg) {
+    activePetImg.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isFlip = Math.random() > 0.5;
+      activePetImg.classList.remove('animate-backflip', 'animate-giggle');
+      void activePetImg.offsetWidth;
+      activePetImg.classList.add(isFlip ? 'animate-backflip' : 'animate-giggle');
+
+      Sound.chirp();
+      Sound.boing();
+
+      if (isFlip) {
+        speakRex("Woohoo! Look at that companion backflip! So talented!");
+      } else {
+        speakRex("Hehehe! That tickles! Your companion is so happy!");
+      }
+
+      confetti({
+        particleCount: 25,
+        spread: 60,
+        origin: { y: 0.35 },
+        colors: ['#ffb961', '#54e98a', '#ff7675']
+      });
+    });
+  }
 
   const toPenBtn = document.getElementById('dash-to-pen-btn');
   if (toPenBtn) {

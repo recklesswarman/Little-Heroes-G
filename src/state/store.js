@@ -4,6 +4,7 @@ import { PETS_DATABASE } from '../data/petsData.js';
 import { ADVENTURE_GAMES } from '../data/learningGamesData.js';
 import { PROFILE_THEMES } from '../data/profileThemesData.js';
 import { generate3DIcon } from '../utils/graphicsGenerator.js';
+import { triggerInteractiveCelebration } from '../components/InteractiveCelebrationOverlay.js';
 
 export const KID_AVATARS = [
   { id: 'avatar_dragon', label: 'Dragon Explorer', url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZfP7_Cwlp4sz41asI8ymuapAKvjmqHtvI4zcMAF_XwUmibj8IheGrS5cA5QD5gmXgVxEkZM9FlWJPRZnct3x6-9SQB7zJKqkEDjJ3m95tAy3zRqS-PbmcQ4kv_9pmIfm2Py4mh3Fw083hkDookz1w4_r50SBA1jc9igDaAPFLYBFgSP2aQBz7Q4jVE-DwhMOyUEHlxDkQk6Gwc2EAFCSKs1c0QuhUOi3tkrk5MXRARKqZcYVzyJe6gA' },
@@ -996,6 +997,9 @@ class Store {
         colors: ['#2ecc71', '#ffb961', '#3498db', '#f1c40f']
       });
 
+      // Interactive Particle Celebration: flood screen with stars kids can pop & swipe!
+      triggerInteractiveCelebration(45);
+
       // ⭐ Points are queued for Parent Approval
       const approvalReqId = 'task_habit_' + habit.id + '_' + Date.now();
       this.state.pendingApprovals.push({
@@ -1061,6 +1065,9 @@ class Store {
         origin: { y: 0.6 },
         colors: ['#2ecc71', '#54e98a', '#f1c40f']
       });
+
+      // Interactive Particle Celebration: flood screen with stars kids can pop & swipe!
+      triggerInteractiveCelebration(45);
 
       // ⭐ Points are queued for Parent Approval
       const approvalReqId = 'task_chore_' + task.id + '_' + Date.now();

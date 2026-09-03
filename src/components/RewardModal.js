@@ -1,6 +1,7 @@
 import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import { speakRex } from '../services/voiceService.js';
+import { triggerInteractiveCelebration } from './InteractiveCelebrationOverlay.js';
 
 let shaderAnimationId = null;
 
@@ -171,6 +172,11 @@ export function renderRewardModal() {
               : ''
           }
 
+          <!-- Interactive Celebration Star Popping Mini-Game -->
+          <button id="reward-modal-stars-btn" class="w-full bg-gradient-to-r from-amber-400 to-amber-500 text-amber-950 font-headline text-xs sm:text-sm font-black rounded-xl py-2.5 uppercase tracking-wider flex items-center justify-center gap-1.5 chunky-btn-sm hover:brightness-110 active:scale-95 shadow-md">
+            <span>✨</span> Pop Floating Stars & Confetti! <span>✨</span>
+          </button>
+
           <!-- Action Button (Chunky Button with Shine Sweep Effect) -->
           <button id="reward-modal-cool-btn" class="w-full ${btnClass} font-headline-lg-mobile text-base sm:text-lg font-black rounded-xl py-3.5 uppercase tracking-widest relative overflow-hidden group hover:brightness-110 active:scale-98 transition-all">
             <span class="relative z-10">${btnText}</span>
@@ -322,6 +328,14 @@ export function attachRewardModalListeners() {
     if (!title.includes('escaped') && !title.includes('declined')) {
       speakRex("Yay! You did it! Super hero power!");
     }
+  }
+
+  const starsBtn = document.getElementById('reward-modal-stars-btn');
+  if (starsBtn) {
+    starsBtn.addEventListener('click', () => {
+      Sound.sparkle();
+      triggerInteractiveCelebration(55);
+    });
   }
 
   const coolBtn = document.getElementById('reward-modal-cool-btn');
