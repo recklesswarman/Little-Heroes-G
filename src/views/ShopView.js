@@ -461,13 +461,18 @@ export function attachShopListeners() {
   document.querySelectorAll('.buy-gear-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       const id = btn.getAttribute('data-buy-gear-id');
-      const item = (store.getState().digitalGear || []).find((g) => g.id === id);
-      if (item) {
-        const text = (item.title + ' ' + (item.desc || '')).toLowerCase();
-        if (text.includes('rex') || text.includes('dino')) {
-          speakRex("Rawr! I am Rex the Dino! Let's go on an adventure!");
+      const state = store.getState();
+      const item = (state.digitalGear || []).find((g) => g.id === id);
+      const isOwned = (state.inventory || []).includes(item?.title);
+
+      if (item && isOwned) {
+        speakRex(`Awesome! You equipped the ${item.title}! Super hero power!`);
+      } else if (item && state.selectedHero.coins >= item.costCoins) {
+        const isPet = item.id.includes('rex') || item.id.includes('pet') || (item.category && item.category.toLowerCase().includes('companion'));
+        if (isPet) {
+          speakRex("A glowing companion egg has arrived! Tap it fast to hatch it!");
         } else {
-          speakRex(`Awesome! You got the ${item.title}! Super hero power!`);
+          speakRex("A mystery treasure chest has arrived! Tap it fast to crack it open!");
         }
       }
       store.buyDigitalGear(id);

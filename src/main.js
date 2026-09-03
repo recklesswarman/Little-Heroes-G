@@ -9,6 +9,7 @@ import { renderRewardModal, attachRewardModalListeners } from './components/Rewa
 import { renderParentLockModal, initParentLockModal, attachParentLockListeners } from './components/ParentLockModal.js';
 import { renderHouseholdLinkModal, initHouseholdModal, attachHouseholdLinkModalListeners } from './components/HouseholdLinkModal.js';
 import { renderPetSelectionModal, attachPetSelectionModalListeners } from './components/PetSelectionModal.js';
+import { renderMysterySurpriseModal, attachMysterySurpriseModalListeners } from './components/MysterySurpriseModal.js';
 
 // Views
 import { renderDashboardView, attachDashboardListeners } from './views/DashboardView.js';
@@ -121,6 +122,7 @@ function renderApp() {
       ${renderParentLockModal()}
       ${renderHouseholdLinkModal()}
       ${renderPetSelectionModal()}
+      ${renderMysterySurpriseModal()}
     </div>
   `;
 
@@ -131,6 +133,7 @@ function renderApp() {
   attachParentLockListeners();
   attachHouseholdLinkModalListeners();
   attachPetSelectionModalListeners();
+  attachMysterySurpriseModalListeners();
   attachViewListeners();
 }
 

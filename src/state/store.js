@@ -469,7 +469,10 @@ const defaultState = {
   },
 
   // Reward celebration modal
-  rewardModal: null
+  rewardModal: null,
+
+  // Mystery Surprise Unboxing (Glowing Egg / Treasure Chest)
+  mysterySurprise: null
 };
 
 class Store {
@@ -844,10 +847,18 @@ class Store {
       h.equippedProfileTheme = themeId;
     }
 
-    Sound.fanfare();
-    confetti({ particleCount: 80, spread: 90 });
-    this.showReward('Profile Theme Unlocked!', `"${theme.name}" is now equipped on your hero profile!`, 0, 25, null, 'palette');
     this.saveState();
+
+    // Mystery Surprise Unboxing: Theme arrives in a Glowing Treasure Chest!
+    this.openMysterySurprise({
+      type: 'chest',
+      title: `${theme.name} Theme`,
+      image: null,
+      icon: 'palette',
+      desc: `"${theme.name}" is now unlocked and equipped on your hero profile!`,
+      category: 'Profile Theme',
+      xpEarned: 25
+    });
   }
 
   equipProfileTheme(themeId) {
@@ -1339,21 +1350,19 @@ class Store {
     this.closePetSelectionModal();
 
     const pet = this.state.pets.find(p => p.id === petId);
-    Sound.fanfare();
-    confetti({ particleCount: 140, spread: 100, origin: { y: 0.5 } });
-
-    let title = 'First Companion Adopted!';
-    let msg = `Welcome ${pet?.name || 'your pet'}! They start at Stage 1 (Mystic Egg/Hatchling). Brush, complete habits, and feed them to evolve!`;
-    if (type === 'second_pet') {
-      title = '2nd Free Pet Unlocked!';
-      msg = `${pet?.name} joined your team at Stage 1 for evolving your first pet to Stage 2!`;
-    } else if (type === 'third_pet') {
-      title = '3rd Free Pet Unlocked!';
-      msg = `${pet?.name} joined your team at Stage 1 for evolving your first two pets through all 4 stages into Golden Titans!`;
-    }
-
-    this.showReward(title, msg, 50, 0, pet?.avatar, 'pets');
     this.saveState();
+
+    // Mystery Surprise Unboxing: Pet arrives in a Glowing Mystic Egg!
+    this.openMysterySurprise({
+      type: 'egg',
+      title: `${pet?.name || 'Companion'} Hatched!`,
+      image: pet?.avatar,
+      icon: 'egg',
+      desc: `Welcome ${pet?.name || 'your pet'}! They start at Stage 1 (Mystic Hatchling). Complete habits and brush to evolve together!`,
+      category: 'Pet Companion',
+      coinsEarned: 50,
+      xpEarned: 35
+    });
   }
 
   buyHabitatSlot() {
@@ -1612,25 +1621,23 @@ class Store {
     this.state.equippedPetGear = item.title;
     this.addXP(25);
     Sound.coin();
-    Sound.sparkle();
-    Sound.fanfare();
-
-    confetti({
-      particleCount: 80,
-      spread: 90,
-      origin: { y: 0.6 },
-      colors: ['#f1c40f', '#2ecc71', '#ffb961']
-    });
-
     this.logAction(`${this.state.selectedHero.name} bought ${item.title}`, `Cost: ${item.costCoins} Tokens 🪙`);
-    this.showReward(
-      `Unlocked & Equipped: ${item.title}!`,
-      'Added to inventory and active companion! Great job saving your tokens!',
-      0,
-      25,
-      item.image
-    );
     this.saveState();
+
+    // Mystery Surprise Unboxing Mechanics:
+    // Pets arrive in a Glowing Egg; all other digital content arrives in a Glowing Treasure Chest!
+    const isPet = item.id.includes('rex') || item.id.includes('pet') || (item.category && item.category.toLowerCase().includes('companion'));
+    this.openMysterySurprise({
+      type: isPet ? 'egg' : 'chest',
+      title: item.title,
+      image: item.image,
+      icon: item.icon,
+      desc: item.desc,
+      category: item.category,
+      statBonusPercent: item.statBonusPercent,
+      statBonusType: item.statBonusType,
+      xpEarned: 25
+    });
   }
 
   approveParentRequest(reqId) {
@@ -2046,6 +2053,36 @@ class Store {
 
   closeReward() {
     this.state.rewardModal = null;
+    this.notify();
+  }
+
+  openMysterySurprise(data) {
+    this.state.mysterySurprise = {
+      isOpen: true,
+      type: data.type || 'chest', // 'egg' for pets, 'chest' for all other digital content
+      title: data.title || 'Mystery Reward',
+      image: data.image || null,
+      icon: data.icon || (data.type === 'egg' ? 'egg' : 'inventory_2'),
+      desc: data.desc || '',
+      category: data.category || 'Digital Content',
+      statBonusPercent: data.statBonusPercent || 0,
+      statBonusType: data.statBonusType || '',
+      coinsEarned: data.coinsEarned || 0,
+      xpEarned: data.xpEarned || 0,
+      onComplete: data.onComplete || null
+    };
+    this.notify();
+  }
+
+  closeMysterySurprise() {
+    if (this.state.mysterySurprise?.onComplete) {
+      try {
+        this.state.mysterySurprise.onComplete();
+      } catch (e) {
+        console.error('Error in onComplete callback:', e);
+      }
+    }
+    this.state.mysterySurprise = null;
     this.notify();
   }
 
