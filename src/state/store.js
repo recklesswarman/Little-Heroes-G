@@ -543,12 +543,23 @@ class Store {
     return JSON.parse(JSON.stringify(defaultState));
   }
 
+  setSyncService(service) {
+    this.syncService = service;
+  }
+
   saveState() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
-      import('../services/firestoreSyncService.js').then(({ firestoreSync }) => {
-        firestoreSync.pushStateToCloud();
-      }).catch(() => {});
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+      }
+      if (this.syncService) {
+        this.syncService.pushStateToCloud();
+      } else {
+        import('../services/firestoreSyncService.js').then(({ firestoreSync }) => {
+          this.syncService = firestoreSync;
+          firestoreSync.pushStateToCloud();
+        }).catch(() => {});
+      }
     } catch (e) {
       console.warn('Failed to save store state', e);
     }

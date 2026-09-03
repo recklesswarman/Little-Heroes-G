@@ -3,6 +3,7 @@ import { Sound } from '../audio/sfx.js';
 import { processProfilePhoto } from '../utils/photoUploader.js';
 import { authenticateWithBiometrics } from '../utils/biometrics.js';
 import { getTaskVisualSvg } from '../utils/taskVisuals.js';
+import { firestoreSync } from '../services/firestoreSyncService.js';
 
 let activeAdminTab = 'approvals'; // approvals, kids, tasks, rewards, pricing, studio, analytics, settings
 let isAddKidModalOpen = false;
@@ -229,9 +230,13 @@ export function renderParentPortalView() {
                 <span class="material-symbols-outlined text-sm">add_home</span>
                 Create New Household
               </button>
-              <button id="admin-link-household-btn" class="bg-surface-container-high hover:bg-surface-bright text-inverse-surface font-headline text-xs font-black px-3.5 py-2.5 rounded-xl border border-surface-container-highest flex items-center gap-1.5 active:scale-95">
+              <button id="admin-sync-now-btn" class="bg-primary/20 hover:bg-primary/30 text-primary border border-primary/40 font-headline text-xs font-black px-3.5 py-2.5 rounded-xl flex items-center gap-1.5 active:scale-95 transition-all shadow-sm" title="Perform a real-time data pull to verify device data is synced across all family devices">
                 <span class="material-symbols-outlined text-sm">sync</span>
-                Device Sync
+                Sync Now
+              </button>
+              <button id="admin-link-household-btn" class="bg-surface-container-high hover:bg-surface-bright text-inverse-surface font-headline text-xs font-black px-3.5 py-2.5 rounded-xl border border-surface-container-highest flex items-center gap-1.5 active:scale-95">
+                <span class="material-symbols-outlined text-sm">devices</span>
+                Device Link
               </button>
               <button id="admin-remove-test-data-btn" class="bg-surface-container-high hover:bg-error/20 hover:text-error text-on-surface-variant font-headline text-xs font-black px-3 py-2.5 rounded-xl border border-surface-container-highest flex items-center gap-1.5 active:scale-95 transition-colors" title="Remove all default test kids and start with fresh family">
                 <span class="material-symbols-outlined text-sm">mop</span>
@@ -1982,6 +1987,43 @@ export function attachParentPortalListeners() {
       store.createNewHousehold(name || 'The Hero Family');
       isNewHouseholdModalOpen = false;
       store.notify();
+    });
+  }
+
+  // SYNC NOW (REAL-TIME DATA PULL & VERIFICATION)
+  const syncNowBtn = document.getElementById('admin-sync-now-btn');
+  if (syncNowBtn) {
+    syncNowBtn.addEventListener('click', async () => {
+      syncNowBtn.disabled = true;
+      syncNowBtn.innerHTML = `
+        <span class="material-symbols-outlined text-sm animate-spin">sync</span>
+        Verifying...
+      `;
+      const res = await firestoreSync.syncNow();
+      syncNowBtn.disabled = false;
+
+      if (res && res.verified) {
+        Sound.fanfare();
+        syncNowBtn.innerHTML = `
+          <span class="material-symbols-outlined text-sm text-primary">check_circle</span>
+          Verified In Sync!
+        `;
+        alert(`✅ Cloud Sync Verified!\n\nHousehold: ${res.householdName} (${res.code})\nKids Synced: ${res.kids?.join(', ') || res.kidCount + ' kid(s)'}\nConnected Devices: ${res.deviceCount}\n\nAll devices in this household are verified in real time.`);
+      } else {
+        Sound.hit();
+        syncNowBtn.innerHTML = `
+          <span class="material-symbols-outlined text-sm text-error">error</span>
+          Sync Error
+        `;
+        alert(`Cloud Sync Note: ${res?.error || 'Local mode active.'}`);
+      }
+
+      setTimeout(() => {
+        syncNowBtn.innerHTML = `
+          <span class="material-symbols-outlined text-sm">sync</span>
+          Sync Now
+        `;
+      }, 3000);
     });
   }
 

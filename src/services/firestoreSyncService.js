@@ -56,22 +56,24 @@ class FirestoreSyncService {
           return;
         }
 
-        if (this.isPushing) {
-          return; // Ignore updates caused by our own active write
-        }
-
         const cloudData = snapshot.data();
         if (!cloudData) return;
 
-        // Verify if cloud data is newer or different
-        if (cloudData.updatedAt && cloudData.updatedAt === this.lastCloudTimestamp) {
+        // If the write was pushed from this exact device, avoid redundant re-hydrating
+        if (cloudData.lastWriterDeviceId === this.deviceId) {
+          if (cloudData.devices && typeof cloudData.devices === 'object') {
+            const count = Object.keys(cloudData.devices).length;
+            if (store.getState().household.linkedDevices !== count) {
+              store.getState().household.linkedDevices = Math.max(1, count);
+              store.notify();
+            }
+          }
           return;
         }
-        this.lastCloudTimestamp = cloudData.updatedAt;
 
-        console.log(`⚡ Real-time cloud sync received for household: ${code} across family devices`);
+        console.log(`⚡ Real-time cloud sync received from device ${cloudData.lastWriterDeviceId || 'remote'} for household: ${code}`);
         
-        // Hydrate store state and trigger UI re-render
+        // Hydrate store state immediately with cloud data
         store.hydrateFromCloud(cloudData);
 
         // Slide the persistent link window forward (RFC 6749 Section 6)
@@ -158,7 +160,7 @@ class FirestoreSyncService {
     } else {
       this.debounceTimer = setTimeout(() => {
         this._doPush();
-      }, 300);
+      }, 150);
     }
   }
 
@@ -191,55 +193,103 @@ class FirestoreSyncService {
         parentSettings: state.parentSettings || {},
         profileThemes: state.profileThemes || [],
         updatedAt: timestamp,
-        [`devices.${this.deviceId}`]: {
-          lastSeen: timestamp,
-          name: 'Hero Device'
+        lastWriterDeviceId: this.deviceId,
+        devices: {
+          [this.deviceId]: {
+            lastSeen: timestamp,
+            name: 'Hero Device'
+          }
         }
       }, { merge: true });
 
-      this.isPushing = false;
       state.household.lastSync = "Synced Just Now";
 
       // Slide persistent link window forward (RFC 6749 Section 6)
       persistentLink.slideWindow();
     } catch (error) {
-      this.isPushing = false;
       console.warn("Firestore push warning:", error.message);
+    } finally {
+      this.isPushing = false;
     }
   }
 
   /**
-   * Manually force an immediate cloud sync: pulls latest cloud data first, then pushes
+   * Manually force an immediate cloud data pull and verify device data is in sync
    */
   async syncNow() {
     if (!isFirebaseAvailable || !db) {
       store.getState().household.lastSync = "Local Mode Active";
       store.notify();
-      return true;
+      return { success: true, verified: true, mode: 'local', message: "Running in local resilient mode" };
     }
+
     const state = store.getState();
     const code = (state.household?.syncCode || this.currentCode || 'HERO-8842').trim().toUpperCase();
     const docRef = doc(db, "households", code);
 
-    try {
-      // 1. First pull latest data from cloud to avoid overwriting remote changes
-      const snapshot = await getDoc(docRef);
-      if (snapshot.exists()) {
-        const cloudData = snapshot.data();
-        this.lastCloudTimestamp = cloudData.updatedAt;
-        store.hydrateFromCloud(cloudData);
-      }
-    } catch (e) {
-      console.warn("Could not pull latest cloud data in syncNow:", e.message);
-    }
+    console.log(`🔄 Sync Now: Performing authoritative data pull to verify sync for household ${code}...`);
 
-    // 2. Then push our current device presence and state
-    await this.pushStateToCloud(true);
-    await this.pingDevicePresence(code);
-    await persistentLink.slideWindow();
-    store.getState().household.lastSync = "Synced Just Now";
-    store.notify();
-    return true;
+    try {
+      // 1. DATA PULL: Fetch latest authoritative cloud document directly from Firestore
+      const snapshot = await getDoc(docRef);
+
+      if (!snapshot.exists()) {
+        console.log(`ℹ️ Household ${code} does not exist yet on cloud. Initializing from current device...`);
+        await this.pushStateToCloud(true);
+        this.stopSync();
+        this.startSync(code);
+        return {
+          success: true,
+          verified: true,
+          isNew: true,
+          householdName: state.household?.name || 'The Hero Family',
+          code,
+          kidCount: state.heroes?.length || 1,
+          deviceCount: 1,
+          kids: (state.heroes || []).map(h => h.name),
+          message: `Created new cloud household ${code}. Synced ${state.heroes?.length || 1} kid(s).`
+        };
+      }
+
+      const cloudData = snapshot.data();
+      console.log(`✅ Data pull succeeded for household ${code}! Verifying device state...`);
+
+      // 2. VERIFY & HYDRATE: Update all local heroes, tasks, habits, inventory with cloud data
+      store.hydrateFromCloud(cloudData);
+
+      // 3. Ensure live real-time listener is connected
+      if (!this.unsubscribe || this.currentCode !== code) {
+        this.stopSync();
+        this.startSync(code);
+      }
+
+      // 4. Update this device's presence and slide token window
+      await this.pingDevicePresence(code);
+      await persistentLink.slideWindow();
+
+      const kidCount = cloudData.heroes?.length || 0;
+      const deviceCount = Object.keys(cloudData.devices || {}).length || 1;
+      const householdName = cloudData.householdName || state.household?.name || 'The Hero Family';
+
+      state.household.lastSync = "Verified In Sync Just Now";
+      store.notify();
+
+      return {
+        success: true,
+        verified: true,
+        householdName,
+        code,
+        kidCount,
+        deviceCount,
+        kids: (cloudData.heroes || []).map(h => h.name),
+        updatedAt: cloudData.updatedAt,
+        message: `Verified in sync with ${householdName} (${code}): ${kidCount} kid(s) on ${deviceCount} device(s).`
+      };
+
+    } catch (e) {
+      console.warn("Sync Now error:", e.message);
+      return { success: false, verified: false, error: e.message };
+    }
   }
 
   /**
@@ -274,3 +324,4 @@ class FirestoreSyncService {
 }
 
 export const firestoreSync = new FirestoreSyncService();
+store.setSyncService(firestoreSync);

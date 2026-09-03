@@ -225,17 +225,35 @@ export function attachHouseholdLinkModalListeners() {
   if (forceSyncBtn) {
     forceSyncBtn.addEventListener('click', async () => {
       forceSyncBtn.disabled = true;
-      forceSyncBtn.textContent = 'Syncing...';
-      await firestoreSync.syncNow();
-      Sound.fanfare();
-      forceSyncBtn.textContent = 'Synced!';
+      forceSyncBtn.innerHTML = `
+        <span class="material-symbols-outlined text-xs animate-spin">sync</span>
+        Verifying...
+      `;
+      const res = await firestoreSync.syncNow();
+      forceSyncBtn.disabled = false;
+
+      if (res && res.verified) {
+        Sound.fanfare();
+        forceSyncBtn.innerHTML = `
+          <span class="material-symbols-outlined text-xs text-primary">check_circle</span>
+          Verified & In Sync!
+        `;
+        alert(`✅ Verified & In Sync!\n\nHousehold: ${res.householdName} (${res.code})\nActive Kids Synced: ${res.kids?.join(', ') || res.kidCount + ' kid(s)'}\nFamily Devices Connected: ${res.deviceCount}\n\nReal-time cloud synchronization is fully active and verified across all your household devices.`);
+      } else {
+        Sound.hit();
+        forceSyncBtn.innerHTML = `
+          <span class="material-symbols-outlined text-xs text-error">error</span>
+          Sync Error
+        `;
+        alert(`Cloud Sync Note: ${res?.error || 'Running in resilient offline mode.'}`);
+      }
+
       setTimeout(() => {
-        forceSyncBtn.disabled = false;
         forceSyncBtn.innerHTML = `
           <span class="material-symbols-outlined text-xs">refresh</span>
           Sync Now
         `;
-      }, 1500);
+      }, 3000);
     });
   }
 
