@@ -26,7 +26,22 @@ function generateMathChallenge() {
 export function renderParentLockModal() {
   if (!isOpen) return '';
 
-  const parentPin = store.getState().parentSettings?.pin || '1234';
+  const settings = store.getState().parentSettings || {};
+  const parentPin = settings.pin || '1234';
+
+  const allowBio = hasBiometrics && settings.biometricsEnabled !== false;
+  const allowPin = settings.pinLockEnabled !== false;
+  const allowMath = settings.mathChallengeEnabled !== false;
+
+  const enabledTabs = [];
+  if (allowBio) enabledTabs.push({ id: 'biometric', label: 'Biometric', icon: 'fingerprint' });
+  if (allowPin) enabledTabs.push({ id: 'pin', label: '4-Digit PIN', icon: 'pin' });
+  if (allowMath) enabledTabs.push({ id: 'math', label: 'Math Challenge', icon: 'calculate' });
+
+  // Ensure active auth tab is an enabled one
+  if (enabledTabs.length > 0 && !enabledTabs.some(t => t.id === activeAuthTab)) {
+    activeAuthTab = enabledTabs[0].id;
+  }
 
   return `
     <div id="parent-modal-backdrop" class="fixed inset-0 bg-background/85 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in select-none">
@@ -48,45 +63,42 @@ export function renderParentLockModal() {
           </button>
         </div>
 
-        <!-- Auth Method Selector Tabs -->
-        <div class="grid ${hasBiometrics ? 'grid-cols-3' : 'grid-cols-2'} gap-2 bg-surface-container-high p-1.5 rounded-2xl border border-surface-container-highest">
-          ${
-            hasBiometrics
-              ? `
-            <button data-auth-tab="biometric" class="parent-auth-tab-btn flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl font-headline text-xs font-black transition-all ${
-              activeAuthTab === 'biometric'
-                ? 'bg-secondary text-on-secondary shadow-sm'
-                : 'text-on-surface-variant hover:text-secondary'
-            }">
-              <span class="material-symbols-outlined text-base">fingerprint</span>
-              <span>Biometric</span>
-            </button>
-          `
-              : ''
-          }
-
-          <button data-auth-tab="pin" class="parent-auth-tab-btn flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl font-headline text-xs font-black transition-all ${
-            activeAuthTab === 'pin'
-              ? 'bg-secondary text-on-secondary shadow-sm'
-              : 'text-on-surface-variant hover:text-secondary'
-          }">
-            <span class="material-symbols-outlined text-base">pin</span>
-            <span>4-Digit PIN</span>
-          </button>
-
-          <button data-auth-tab="math" class="parent-auth-tab-btn flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl font-headline text-xs font-black transition-all ${
-            activeAuthTab === 'math'
-              ? 'bg-secondary text-on-secondary shadow-sm'
-              : 'text-on-surface-variant hover:text-secondary'
-          }">
-            <span class="material-symbols-outlined text-base">calculate</span>
-            <span>Math Challenge</span>
-          </button>
-        </div>
+        <!-- Auth Method Selector Tabs (Filtered to Active Parent Settings) -->
+        ${
+          enabledTabs.length > 1
+            ? `
+          <div class="grid grid-cols-${enabledTabs.length} gap-2 bg-surface-container-high p-1.5 rounded-2xl border border-surface-container-highest">
+            ${enabledTabs
+              .map(
+                (tab) => `
+              <button data-auth-tab="${tab.id}" class="parent-auth-tab-btn flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl font-headline text-xs font-black transition-all ${
+                activeAuthTab === tab.id
+                  ? 'bg-secondary text-on-secondary shadow-sm'
+                  : 'text-on-surface-variant hover:text-secondary'
+              }">
+                <span class="material-symbols-outlined text-base">${tab.icon}</span>
+                <span>${tab.label}</span>
+              </button>
+            `
+              )
+              .join('')}
+          </div>
+        `
+            : enabledTabs.length === 1
+            ? `
+          <div class="bg-surface-container-high py-1.5 px-3 rounded-xl border border-surface-container-highest text-center">
+            <span class="text-[11px] font-black uppercase tracking-wider text-secondary flex items-center justify-center gap-1">
+              <span class="material-symbols-outlined text-sm">${enabledTabs[0].icon}</span>
+              Active Verification: ${enabledTabs[0].label}
+            </span>
+          </div>
+        `
+            : ''
+        }
 
         <!-- TAB 1: BIOMETRIC AUTHENTICATION -->
         ${
-          activeAuthTab === 'biometric' && hasBiometrics
+          activeAuthTab === 'biometric' && allowBio
             ? `
           <div class="flex flex-col items-center gap-4 py-2 text-center animate-fade-in">
             <div class="w-20 h-20 rounded-full bg-secondary/15 text-secondary border-3 border-secondary/40 flex items-center justify-center text-4xl shadow-inner animate-pulse-glow">
@@ -115,7 +127,7 @@ export function renderParentLockModal() {
 
         <!-- TAB 2: PIN CODE GATE -->
         ${
-          activeAuthTab === 'pin'
+          activeAuthTab === 'pin' && allowPin
             ? `
           <div class="flex flex-col items-center gap-4 py-2 text-center animate-fade-in">
             <div>
@@ -136,7 +148,7 @@ export function renderParentLockModal() {
 
             ${
               pinError
-                ? `<p class="text-xs text-error font-bold bg-error/10 border border-error/30 rounded-xl py-1.5 px-3">Incorrect PIN. Try 1234 or use Math Challenge.</p>`
+                ? `<p class="text-xs text-error font-bold bg-error/10 border border-error/30 rounded-xl py-1.5 px-3">Incorrect PIN. Try 1234 or use another verification method.</p>`
                 : `<p class="text-[11px] text-on-surface-variant font-medium">Tip: PIN can be customized inside the Parent Portal settings.</p>`
             }
           </div>
@@ -146,7 +158,7 @@ export function renderParentLockModal() {
 
         <!-- TAB 3: ADULT MATH CHALLENGE -->
         ${
-          activeAuthTab === 'math'
+          activeAuthTab === 'math' && allowMath
             ? `
           <div class="flex flex-col items-center gap-4 py-2 text-center animate-fade-in">
             <div>
@@ -199,9 +211,17 @@ export function closeParentModal() {
 export function initParentLockModal() {
   window.addEventListener('open-parent-modal', async () => {
     hasBiometrics = await isBiometricsAvailable();
-    const settings = store.getState().parentSettings;
-    if (hasBiometrics && settings?.biometricsEnabled !== false) {
+    const settings = store.getState().parentSettings || {};
+    const allowBio = hasBiometrics && settings.biometricsEnabled !== false;
+    const allowPin = settings.pinLockEnabled !== false;
+    const allowMath = settings.mathChallengeEnabled !== false;
+
+    if (allowBio) {
       activeAuthTab = 'biometric';
+    } else if (allowPin) {
+      activeAuthTab = 'pin';
+    } else if (allowMath) {
+      activeAuthTab = 'math';
     } else {
       activeAuthTab = 'pin';
     }

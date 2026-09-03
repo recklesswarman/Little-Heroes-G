@@ -927,55 +927,139 @@ export function renderParentPortalView() {
 
           <!-- Parental Security & Biometric Locking Settings -->
           <div class="bg-surface-container rounded-3xl p-6 border-2 border-secondary-container card-shadow flex flex-col gap-5">
-            <div class="flex items-center gap-3">
-              <div class="w-12 h-12 rounded-2xl bg-secondary/20 text-secondary border border-secondary/40 flex items-center justify-center text-2xl shadow-sm">
-                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">security</span>
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-2xl bg-secondary/20 text-secondary border border-secondary/40 flex items-center justify-center text-2xl shadow-sm">
+                  <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">security</span>
+                </div>
+                <div>
+                  <h3 class="font-headline text-base sm:text-lg font-black text-inverse-surface">Parent Dashboard Security & Lock Settings</h3>
+                  <p class="text-xs text-on-surface-variant font-bold">Turn on or off each of the 3 security gates to choose how you want to unlock adult access.</p>
+                </div>
               </div>
-              <div>
-                <h3 class="font-headline text-base sm:text-lg font-black text-inverse-surface">Parent Dashboard Security & Biometric Lock</h3>
-                <p class="text-xs text-on-surface-variant font-bold">Configure PIN code and device fingerprint / Face ID biometric gate.</p>
-              </div>
+
+              <!-- Quick Status Badge -->
+              <span class="text-[10px] font-black uppercase px-3 py-1.5 rounded-full bg-secondary/15 text-secondary border border-secondary/30 flex items-center gap-1.5 shadow-sm">
+                <span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+                ${[settings.biometricsEnabled !== false ? 'Biometrics' : '', settings.pinLockEnabled !== false ? 'PIN' : '', settings.mathChallengeEnabled !== false ? 'Math' : ''].filter(Boolean).length} of 3 Gates Active
+              </span>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <!-- PIN Configuration -->
-              <div class="bg-surface-container-high rounded-2xl p-4 border border-surface-container-highest flex flex-col gap-3">
-                <span class="font-headline text-sm font-black text-inverse-surface flex items-center gap-1.5">
-                  <span class="material-symbols-outlined text-base text-secondary">pin</span>
-                  Parent Security PIN
-                </span>
-                <p class="text-xs text-on-surface-variant">Set a custom 4-digit PIN required to unlock this dashboard.</p>
-                
-                <div class="flex items-center gap-2">
-                  <input type="text" id="parent-setting-pin-input" maxlength="8" value="${settings.pin || '1234'}" class="bg-surface-container border-2 border-surface-container-highest rounded-xl px-4 py-2.5 text-base font-headline font-black text-secondary tracking-widest w-32 text-center focus:border-secondary focus:outline-none" />
-                  <button id="save-parent-pin-btn" class="bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2.5 rounded-xl chunky-btn-sm border-secondary-container active:scale-95">
-                    Save PIN
-                  </button>
+            <!-- 3 Lock Options Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              
+              <!-- OPTION 1: Biometric Authentication (Touch ID / Face ID / Windows Hello) -->
+              <div class="bg-surface-container-high rounded-2xl p-4.5 border-2 ${
+                settings.biometricsEnabled !== false
+                  ? 'border-primary/60 bg-primary/5 shadow-sm'
+                  : 'border-surface-container-highest opacity-70'
+              } flex flex-col justify-between gap-4 transition-all">
+                <div class="flex flex-col gap-2">
+                  <div class="flex items-center justify-between">
+                    <span class="font-headline text-sm font-black text-inverse-surface flex items-center gap-1.5">
+                      <span class="material-symbols-outlined text-base text-primary">fingerprint</span>
+                      Biometric Gate
+                    </span>
+                    
+                    <!-- Toggle Button -->
+                    <button data-lock-toggle="biometrics" class="lock-option-toggle-btn px-3 py-1 rounded-full text-[10px] font-black uppercase transition-all chunky-btn-sm ${
+                      settings.biometricsEnabled !== false
+                        ? 'bg-primary text-on-primary border-primary-container shadow-sm'
+                        : 'bg-surface-container-lowest text-on-surface-variant border-surface-container'
+                    }">
+                      ${settings.biometricsEnabled !== false ? '✓ Active' : 'Off'}
+                    </button>
+                  </div>
+                  <p class="text-xs text-on-surface-variant">Instant unlock via Touch ID, Face ID, fingerprint, or Windows Hello.</p>
                 </div>
-                <span id="pin-save-feedback" class="text-[10px] font-bold text-primary hidden">✓ PIN updated successfully!</span>
+
+                <div class="flex flex-col gap-2 pt-2 border-t border-surface-container-highest/60">
+                  <button id="test-biometric-btn" ${settings.biometricsEnabled === false ? 'disabled' : ''} class="w-full ${
+                    settings.biometricsEnabled !== false
+                      ? 'bg-primary/20 hover:bg-primary/30 text-primary border-primary/40 active:scale-95'
+                      : 'bg-surface-container-lowest text-on-surface-variant/40 border-transparent cursor-not-allowed'
+                  } font-headline text-xs font-black py-2.5 px-3 rounded-xl border flex items-center justify-center gap-1.5 transition-all">
+                    <span class="material-symbols-outlined text-sm">fingerprint</span>
+                    Register / Test Sensor
+                  </button>
+                  <span id="biometric-test-feedback" class="text-[9px] font-bold text-on-surface-variant text-center">Compatible with platform biometrics</span>
+                </div>
               </div>
 
-              <!-- Biometric Gate Configuration -->
-              <div class="bg-surface-container-high rounded-2xl p-4 border border-surface-container-highest flex flex-col gap-3">
-                <div class="flex items-center justify-between">
-                  <span class="font-headline text-sm font-black text-inverse-surface flex items-center gap-1.5">
-                    <span class="material-symbols-outlined text-base text-primary">fingerprint</span>
-                    Biometric Authentication
-                  </span>
-                  <span class="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-primary/20 text-primary border border-primary/40">
-                    Touch ID / Face ID
-                  </span>
+              <!-- OPTION 2: 4-Digit Security PIN -->
+              <div class="bg-surface-container-high rounded-2xl p-4.5 border-2 ${
+                settings.pinLockEnabled !== false
+                  ? 'border-secondary/60 bg-secondary/5 shadow-sm'
+                  : 'border-surface-container-highest opacity-70'
+              } flex flex-col justify-between gap-4 transition-all">
+                <div class="flex flex-col gap-2">
+                  <div class="flex items-center justify-between">
+                    <span class="font-headline text-sm font-black text-inverse-surface flex items-center gap-1.5">
+                      <span class="material-symbols-outlined text-base text-secondary">pin</span>
+                      4-Digit PIN Gate
+                    </span>
+                    
+                    <!-- Toggle Button -->
+                    <button data-lock-toggle="pin" class="lock-option-toggle-btn px-3 py-1 rounded-full text-[10px] font-black uppercase transition-all chunky-btn-sm ${
+                      settings.pinLockEnabled !== false
+                        ? 'bg-secondary text-on-secondary border-secondary-container shadow-sm'
+                        : 'bg-surface-container-lowest text-on-surface-variant border-surface-container'
+                    }">
+                      ${settings.pinLockEnabled !== false ? '✓ Active' : 'Off'}
+                    </button>
+                  </div>
+                  <p class="text-xs text-on-surface-variant">Require entering your custom secret PIN code to unlock adult dashboard.</p>
                 </div>
-                <p class="text-xs text-on-surface-variant">Require fingerprint, Face ID, or Windows Hello scan to access the dashboard.</p>
-                
-                <div class="flex items-center gap-3">
-                  <button id="test-biometric-btn" class="flex-1 bg-primary text-on-primary font-headline text-xs font-black py-2.5 px-4 rounded-xl chunky-btn-sm border-primary-container flex items-center justify-center gap-1.5 active:scale-95">
-                    <span class="material-symbols-outlined text-base">fingerprint</span>
-                    Register / Test Biometrics
-                  </button>
+
+                <div class="flex flex-col gap-2 pt-2 border-t border-surface-container-highest/60">
+                  <div class="flex items-center gap-2">
+                    <input type="text" id="parent-setting-pin-input" maxlength="8" value="${settings.pin || '1234'}" ${settings.pinLockEnabled === false ? 'disabled' : ''} class="w-full bg-surface-container border-2 border-surface-container-highest rounded-xl px-3 py-2 text-sm font-headline font-black text-secondary tracking-widest text-center focus:border-secondary focus:outline-none ${settings.pinLockEnabled === false ? 'opacity-50 cursor-not-allowed' : ''}" />
+                    <button id="save-parent-pin-btn" ${settings.pinLockEnabled === false ? 'disabled' : ''} class="${
+                      settings.pinLockEnabled !== false
+                        ? 'bg-secondary text-on-secondary border-secondary-container active:scale-95'
+                        : 'bg-surface-container-lowest text-on-surface-variant/40 border-transparent cursor-not-allowed'
+                    } font-headline text-xs font-black px-3.5 py-2 rounded-xl chunky-btn-sm whitespace-nowrap">
+                      Save PIN
+                    </button>
+                  </div>
+                  <span id="pin-save-feedback" class="text-[9px] font-bold text-primary text-center hidden">✓ PIN updated!</span>
                 </div>
-                <span id="biometric-test-feedback" class="text-[10px] font-bold text-on-surface-variant">Compatible with Windows Hello, Touch ID, Face ID & Android biometrics.</span>
               </div>
+
+              <!-- OPTION 3: Adult Math Challenge -->
+              <div class="bg-surface-container-high rounded-2xl p-4.5 border-2 ${
+                settings.mathChallengeEnabled !== false
+                  ? 'border-tertiary/60 bg-tertiary/5 shadow-sm'
+                  : 'border-surface-container-highest opacity-70'
+              } flex flex-col justify-between gap-4 transition-all">
+                <div class="flex flex-col gap-2">
+                  <div class="flex items-center justify-between">
+                    <span class="font-headline text-sm font-black text-inverse-surface flex items-center gap-1.5">
+                      <span class="material-symbols-outlined text-base text-tertiary">calculate</span>
+                      Math Challenge
+                    </span>
+                    
+                    <!-- Toggle Button -->
+                    <button data-lock-toggle="math" class="lock-option-toggle-btn px-3 py-1 rounded-full text-[10px] font-black uppercase transition-all chunky-btn-sm ${
+                      settings.mathChallengeEnabled !== false
+                        ? 'bg-tertiary text-on-tertiary border-tertiary-container shadow-sm'
+                        : 'bg-surface-container-lowest text-on-surface-variant border-surface-container'
+                    }">
+                      ${settings.mathChallengeEnabled !== false ? '✓ Active' : 'Off'}
+                    </button>
+                  </div>
+                  <p class="text-xs text-on-surface-variant">Adult verification via randomized 2-digit multiplication or algebra equation.</p>
+                </div>
+
+                <div class="flex flex-col gap-1.5 pt-2 border-t border-surface-container-highest/60">
+                  <div class="bg-surface-container p-2.5 rounded-xl border border-surface-container-highest text-center flex items-center justify-center gap-1.5">
+                    <span class="material-symbols-outlined text-xs text-tertiary">psychology</span>
+                    <span class="text-xs font-black text-tertiary">e.g. Solve: 8 × 9 = ?</span>
+                  </div>
+                  <span class="text-[9px] font-bold text-on-surface-variant text-center">Prevents younger kids from altering settings</span>
+                </div>
+              </div>
+
             </div>
           </div>
 
@@ -1317,7 +1401,41 @@ export function attachParentPortalListeners() {
     });
   }
 
-  // Security & Biometric settings
+  // Security & Biometric gate toggle settings
+  document.querySelectorAll('.lock-option-toggle-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const type = btn.getAttribute('data-lock-toggle');
+      const settings = store.getState().parentSettings || {};
+      
+      const currentBio = settings.biometricsEnabled !== false;
+      const currentPin = settings.pinLockEnabled !== false;
+      const currentMath = settings.mathChallengeEnabled !== false;
+
+      let newBio = currentBio;
+      let newPin = currentPin;
+      let newMath = currentMath;
+
+      if (type === 'biometrics') newBio = !currentBio;
+      if (type === 'pin') newPin = !currentPin;
+      if (type === 'math') newMath = !currentMath;
+
+      // Safety check: ensure at least 1 lock option remains active!
+      if (!newBio && !newPin && !newMath) {
+        Sound.hit();
+        alert('At least one security gate (Biometrics, PIN, or Math Challenge) must remain active to protect the Parent Dashboard!');
+        return;
+      }
+
+      Sound.click();
+      store.updateParentSettings({
+        biometricsEnabled: newBio,
+        pinLockEnabled: newPin,
+        mathChallengeEnabled: newMath
+      });
+    });
+  });
+
+  // Security PIN and Biometric tests
   const savePinBtn = document.getElementById('save-parent-pin-btn');
   const settingPinInput = document.getElementById('parent-setting-pin-input');
   const pinFeedback = document.getElementById('pin-save-feedback');

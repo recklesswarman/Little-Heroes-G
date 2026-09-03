@@ -437,12 +437,14 @@ const defaultState = {
   // Parent Settings & Difficulty Sliders
   parentSettings: {
     pin: '1234',
+    pinLockEnabled: true,
+    biometricsEnabled: true,
+    mathChallengeEnabled: true,
     arBattleDuration: 120,
     motionSensitivity: 'medium',
     voicePromptsEnabled: true,
     autoApproveHabits: false,
     dailyScreenTimeLimitMins: 45,
-    biometricsEnabled: true,
     biometricCredentialId: null
   },
 
