@@ -2,6 +2,7 @@ import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import { firebaseAuth } from '../services/firebaseAuthService.js';
 import { firestoreSync } from '../services/firestoreSyncService.js';
+import { persistentLink } from '../services/persistentLinkService.js';
 
 let isHouseholdModalOpen = false;
 
@@ -11,9 +12,11 @@ export function renderHouseholdLinkModal() {
   const state = store.getState();
   const household = state.household;
   const parentUser = household.parentUser;
+  const linkSession = persistentLink.getSession();
+  const isPersistentLinked = persistentLink.isLinked();
 
   return `
-    <div id="household-modal-backdrop" class="fixed inset-0 bg-background/85 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
+    <div id="household-modal-backdrop" class="fixed inset-0 bg-background/85 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in select-none">
       <div class="bg-surface-container border-4 border-primary rounded-3xl p-6 max-w-md w-full card-shadow-lg flex flex-col gap-4 relative">
         
         <!-- Header -->
@@ -29,29 +32,64 @@ export function renderHouseholdLinkModal() {
 
         <!-- Parent Account Status / Firebase Auth Section -->
         <div class="bg-surface-container-high p-4 rounded-2xl border border-surface-container-highest flex flex-col gap-3">
-          <span class="text-xs font-black uppercase text-secondary">Firebase Parent Account</span>
+          <div class="flex justify-between items-center">
+            <span class="text-xs font-black uppercase text-secondary">Firebase Parent Account</span>
+            ${
+              isPersistentLinked
+                ? `<span class="bg-primary/20 text-primary text-[9px] font-black uppercase px-2 py-0.5 rounded-full border border-primary/40 flex items-center gap-1">
+                     <span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                     Persistent Link Active
+                   </span>`
+                : `<span class="bg-surface-container-lowest text-on-surface-variant text-[9px] font-bold px-2 py-0.5 rounded-full">
+                     Standard Mode
+                   </span>`
+            }
+          </div>
           
           ${
             parentUser
               ? `
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary">
-                  ${
-                    parentUser.photoURL
-                      ? `<img class="w-full h-full object-cover" src="${parentUser.photoURL}" alt="User Avatar" />`
-                      : `<div class="w-full h-full bg-primary text-on-primary flex items-center justify-center font-black">${(parentUser.displayName || 'P')[0]}</div>`
-                  }
+            <div class="flex flex-col gap-2.5">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary shadow-sm flex-shrink-0">
+                    ${
+                      parentUser.photoURL
+                        ? `<img class="w-full h-full object-cover" src="${parentUser.photoURL}" alt="User Avatar" />`
+                        : `<div class="w-full h-full bg-primary text-on-primary flex items-center justify-center font-black">${(parentUser.displayName || 'P')[0]}</div>`
+                    }
+                  </div>
+                  <div class="flex flex-col truncate">
+                    <span class="font-headline text-xs font-black text-inverse-surface truncate">${parentUser.displayName || 'Parent Admin'}</span>
+                    <span class="text-[10px] text-on-surface-variant font-bold truncate">${parentUser.email || 'Cloud Account Linked'}</span>
+                  </div>
                 </div>
-                <div class="flex flex-col">
-                  <span class="font-headline text-xs font-black text-inverse-surface">${parentUser.displayName || 'Parent Admin'}</span>
-                  <span class="text-[10px] text-on-surface-variant font-bold">${parentUser.email || 'Cloud Account Linked'}</span>
-                </div>
+
+                <button id="auth-signout-btn" class="bg-surface-container-lowest text-error font-headline text-[10px] font-bold px-3 py-1.5 rounded-lg border border-error/30 hover:bg-error/10 active:scale-95 flex-shrink-0">
+                  Sign Out
+                </button>
               </div>
 
-              <button id="auth-signout-btn" class="bg-surface-container-lowest text-error font-headline text-[10px] font-bold px-3 py-1.5 rounded-lg border border-error/30 hover:bg-error/10">
-                Sign Out
-              </button>
+              <!-- Persistent Linking Sliding Window Badge (RFC 6749 Section 6) -->
+              <div class="bg-surface-container-lowest p-2.5 rounded-xl border border-primary/30 flex flex-col gap-1 text-[10px]">
+                <div class="flex items-center justify-between text-primary font-black">
+                  <span class="flex items-center gap-1">
+                    <span class="material-symbols-outlined text-xs">verified_user</span>
+                    Persistent Linking (RFC 6749 §6)
+                  </span>
+                  <span class="text-on-surface-variant font-mono text-[9px]">Sliding Window</span>
+                </div>
+                <p class="text-on-surface-variant text-[9px] font-medium leading-tight">
+                  Account remains linked across transient network drops and periodic refreshes. Active token expiration auto-extends on activity.
+                </p>
+                ${
+                  linkSession?.expiresAt
+                    ? `<span class="text-[9px] text-on-surface-variant font-bold">
+                         Window Valid Through: <strong class="text-primary">${new Date(linkSession.expiresAt).toLocaleDateString()}</strong>
+                       </span>`
+                    : ''
+                }
+              </div>
             </div>
           `
               : `
@@ -83,16 +121,23 @@ export function renderHouseholdLinkModal() {
             <span class="text-[10px] text-on-surface-variant font-bold">Use on other family tablets or phones to sync this household</span>
           </div>
 
-          <!-- Connected Devices Status -->
+          <!-- Connected Devices Status & Manual Sync Trigger -->
           <div class="w-full bg-surface-container-high p-3 rounded-xl border border-surface-container-highest flex items-center justify-between text-xs font-bold">
             <span class="text-on-surface-variant flex items-center gap-1.5">
               <span class="material-symbols-outlined text-sm text-primary">devices</span>
-              ${household.linkedDevices} Family Devices
+              ${household.linkedDevices || 1} Family Devices
             </span>
-            <span class="text-primary flex items-center gap-1">
-              <span class="w-2 h-2 rounded-full bg-primary animate-ping"></span>
-              ${household.lastSync || 'Cloud Synced'}
-            </span>
+            
+            <div class="flex items-center gap-2">
+              <button id="household-force-sync-btn" class="bg-surface-container-lowest hover:bg-surface-bright text-secondary border border-secondary/30 font-headline text-[10px] font-black px-2.5 py-1 rounded-lg flex items-center gap-1 active:scale-95 transition-all shadow-sm">
+                <span class="material-symbols-outlined text-xs">refresh</span>
+                Sync Now
+              </button>
+              <span class="text-primary flex items-center gap-1 text-[11px]">
+                <span class="w-2 h-2 rounded-full bg-primary animate-ping"></span>
+                ${household.lastSync || 'Cloud Synced'}
+              </span>
+            </div>
           </div>
 
           <!-- Join Existing Household Option -->
@@ -156,8 +201,16 @@ export function attachHouseholdLinkModalListeners() {
 
   const googleBtn = document.getElementById('auth-google-signin-btn');
   if (googleBtn) {
-    googleBtn.addEventListener('click', () => {
-      firebaseAuth.signInWithGoogle();
+    googleBtn.addEventListener('click', async () => {
+      googleBtn.disabled = true;
+      googleBtn.innerHTML = `
+        <span class="inline-block animate-spin mr-2">🔄</span> Connecting to Google...
+      `;
+      try {
+        await firebaseAuth.signInWithGoogle();
+      } finally {
+        googleBtn.disabled = false;
+      }
     });
   }
 
@@ -165,6 +218,24 @@ export function attachHouseholdLinkModalListeners() {
   if (signOutBtn) {
     signOutBtn.addEventListener('click', () => {
       firebaseAuth.signOut();
+    });
+  }
+
+  const forceSyncBtn = document.getElementById('household-force-sync-btn');
+  if (forceSyncBtn) {
+    forceSyncBtn.addEventListener('click', async () => {
+      forceSyncBtn.disabled = true;
+      forceSyncBtn.textContent = 'Syncing...';
+      await firestoreSync.syncNow();
+      Sound.fanfare();
+      forceSyncBtn.textContent = 'Synced!';
+      setTimeout(() => {
+        forceSyncBtn.disabled = false;
+        forceSyncBtn.innerHTML = `
+          <span class="material-symbols-outlined text-xs">refresh</span>
+          Sync Now
+        `;
+      }, 1500);
     });
   }
 

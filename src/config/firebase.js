@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 // Official Firebase Project Configuration for Little Heroes Adventures
@@ -21,6 +21,10 @@ let isFirebaseAvailable = false;
 try {
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
+  // Ensure Firebase Auth session survives tab closing and reloads
+  setPersistence(auth, browserLocalPersistence).catch((err) => {
+    console.warn("Auth persistence notice:", err.message);
+  });
   db = getFirestore(app);
   googleProvider = new GoogleAuthProvider();
   googleProvider.setCustomParameters({ prompt: 'select_account' });

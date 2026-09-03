@@ -1,6 +1,7 @@
 import { doc, setDoc, onSnapshot, getDoc, updateDoc } from "firebase/firestore";
 import { db, isFirebaseAvailable } from "../config/firebase.js";
 import { store } from "../state/store.js";
+import { persistentLink } from "./persistentLinkService.js";
 
 const DEVICE_ID_KEY = 'stitch_device_id';
 const STORAGE_KEY = 'stitch_little_hero_state_v1';
@@ -128,6 +129,9 @@ class FirestoreSyncService {
         } catch (e) {
           console.warn("Could not save cloud state to local storage", e);
         }
+
+        // Slide the persistent link window forward (RFC 6749 Section 6)
+        persistentLink.slideWindow();
 
         // Re-render views in real time
         store.notify();
@@ -264,10 +268,31 @@ class FirestoreSyncService {
 
       this.isPushing = false;
       state.household.lastSync = "Synced Just Now";
+
+      // Slide persistent link window forward (RFC 6749 Section 6)
+      persistentLink.slideWindow();
     } catch (error) {
       this.isPushing = false;
       console.warn("Firestore push warning:", error.message);
     }
+  }
+
+  /**
+   * Manually force an immediate cloud push and sync across devices
+   */
+  async syncNow() {
+    if (!isFirebaseAvailable || !db) {
+      store.getState().household.lastSync = "Local Mode Active";
+      store.notify();
+      return true;
+    }
+    const state = store.getState();
+    const code = (state.household?.syncCode || this.currentCode || 'HERO-8842').trim().toUpperCase();
+    await this.pushStateToCloud(true);
+    await persistentLink.slideWindow();
+    state.household.lastSync = "Synced Just Now";
+    store.notify();
+    return true;
   }
 
   /**
