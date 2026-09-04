@@ -24,6 +24,7 @@ class FirestoreSyncService {
     this.isPushing = false;
     this.currentCode = null;
     this.deviceId = getOrCreateDeviceId();
+    this.sessionId = 'sess_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now().toString(36);
     this.debounceTimer = null;
     this.lastCloudTimestamp = null;
 
@@ -46,7 +47,7 @@ class FirestoreSyncService {
     }
 
     const state = store.getState();
-    const code = (householdCode || state.household?.syncCode || 'HERO-8842').trim().toUpperCase();
+    const code = (householdCode || state.household?.syncCode || 'HERO-1555').trim().toUpperCase();
 
     if (this.currentCode === code && this.unsubscribe) {
       return; // Already actively listening to this household
@@ -67,8 +68,8 @@ class FirestoreSyncService {
         const cloudData = snapshot.data();
         if (!cloudData) return;
 
-        // If the write was pushed from this exact device, avoid redundant re-hydrating
-        if (cloudData.lastWriterDeviceId === this.deviceId) {
+        // If the write was pushed from this exact session in this window, avoid redundant re-hydrating
+        if (cloudData.lastWriterSessionId === this.sessionId) {
           if (cloudData.devices && typeof cloudData.devices === 'object') {
             const count = Object.keys(cloudData.devices).length;
             if (store.getState().household.linkedDevices !== count) {
@@ -79,7 +80,7 @@ class FirestoreSyncService {
           return;
         }
 
-        console.log(`⚡ Real-time cloud sync received from device ${cloudData.lastWriterDeviceId || 'remote'} for household: ${code}`);
+        console.log(`⚡ Real-time cloud sync received from session ${cloudData.lastWriterSessionId || cloudData.lastWriterDeviceId || 'remote'} for household: ${code}`);
         
         // Hydrate store state immediately with cloud data
         store.hydrateFromCloud(cloudData);
@@ -126,9 +127,6 @@ class FirestoreSyncService {
 
         // Hydrate store with all kids, tasks, habits, and inventory from the cloud
         store.hydrateFromCloud({ ...cloudData, syncCode: cleanCode });
-
-        // Save immediately to local storage
-        store.saveState(false);
 
         // Restart listener to guarantee live real-time updates
         this.stopSync();
@@ -186,7 +184,7 @@ class FirestoreSyncService {
     }
 
     const state = store.getState();
-    const householdCode = (state.household?.syncCode || this.currentCode || 'HERO-8842').trim().toUpperCase();
+    const householdCode = (state.household?.syncCode || this.currentCode || 'HERO-1555').trim().toUpperCase();
     const docRef = doc(db, "households", householdCode);
 
     try {
@@ -236,6 +234,7 @@ class FirestoreSyncService {
         profileThemes: state.profileThemes || [],
         gameProgress: state.gameProgress || {},
         updatedAt: timestamp,
+        lastWriterSessionId: this.sessionId,
         lastWriterDeviceId: this.deviceId,
         devices: {
           [this.deviceId]: {
@@ -267,7 +266,7 @@ class FirestoreSyncService {
     }
 
     const state = store.getState();
-    const code = (state.household?.syncCode || this.currentCode || 'HERO-8842').trim().toUpperCase();
+    const code = (state.household?.syncCode || this.currentCode || 'HERO-1555').trim().toUpperCase();
     const docRef = doc(db, "households", code);
 
     console.log(`🔄 Sync Now: Performing authoritative data pull to verify sync for household ${code}...`);

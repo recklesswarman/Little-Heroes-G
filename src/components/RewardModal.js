@@ -1,7 +1,7 @@
 import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import { speakRex } from '../services/voiceService.js';
-import { triggerInteractiveCelebration } from './InteractiveCelebrationOverlay.js';
+import { triggerInteractiveCelebration, closeInteractiveCelebration } from './InteractiveCelebrationOverlay.js';
 
 let shaderAnimationId = null;
 
@@ -178,8 +178,9 @@ export function renderRewardModal() {
           </button>
 
           <!-- Action Button (Chunky Button with Shine Sweep Effect) -->
-          <button id="reward-modal-cool-btn" class="w-full ${btnClass} font-headline-lg-mobile text-base sm:text-lg font-black rounded-xl py-3.5 uppercase tracking-widest relative overflow-hidden group hover:brightness-110 active:scale-98 transition-all">
+          <button id="reward-modal-cool-btn" class="w-full ${btnClass} font-headline-lg-mobile text-base sm:text-lg font-black rounded-xl py-3.5 uppercase tracking-widest relative overflow-hidden group hover:brightness-110 active:scale-98 transition-all flex items-center justify-center gap-2">
             <span class="relative z-10">${btnText}</span>
+            <span id="reward-timer-countdown" class="relative z-10 text-xs bg-black/25 px-2 py-0.5 rounded-full font-bold">15s</span>
             <!-- Button shine effect -->
             <div class="absolute top-0 left-[-100%] w-1/2 h-full bg-white/20 skew-x-[-20deg] group-hover:left-[200%] transition-all duration-700 ease-in-out"></div>
           </button>
@@ -303,9 +304,26 @@ function initCelebrationShader(canvas) {
   }
 }
 
+const REWARD_MODAL_AUTO_CLOSE_SEC = 15;
+let rewardAutoCloseTimeout = null;
+let rewardCountdownInterval = null;
+let rewardSecondsRemaining = REWARD_MODAL_AUTO_CLOSE_SEC;
+
+function clearRewardAutoCloseTimers() {
+  if (rewardAutoCloseTimeout) {
+    clearTimeout(rewardAutoCloseTimeout);
+    rewardAutoCloseTimeout = null;
+  }
+  if (rewardCountdownInterval) {
+    clearInterval(rewardCountdownInterval);
+    rewardCountdownInterval = null;
+  }
+}
+
 export function attachRewardModalListeners() {
   const backdrop = document.getElementById('reward-modal-backdrop');
   if (!backdrop) {
+    clearRewardAutoCloseTimers();
     if (shaderAnimationId) {
       cancelAnimationFrame(shaderAnimationId);
       shaderAnimationId = null;
@@ -318,6 +336,31 @@ export function attachRewardModalListeners() {
   if (canvas) {
     initCelebrationShader(canvas);
   }
+
+  // Start 15-second timed super hero celebration auto-close
+  clearRewardAutoCloseTimers();
+  rewardSecondsRemaining = REWARD_MODAL_AUTO_CLOSE_SEC;
+
+  rewardCountdownInterval = setInterval(() => {
+    rewardSecondsRemaining--;
+    const timerElem = document.getElementById('reward-timer-countdown');
+    if (timerElem) {
+      timerElem.textContent = `${Math.max(0, rewardSecondsRemaining)}s`;
+    }
+    if (rewardSecondsRemaining <= 0) {
+      clearRewardAutoCloseTimers();
+    }
+  }, 1000);
+
+  rewardAutoCloseTimeout = setTimeout(() => {
+    clearRewardAutoCloseTimers();
+    if (shaderAnimationId) {
+      cancelAnimationFrame(shaderAnimationId);
+      shaderAnimationId = null;
+    }
+    closeInteractiveCelebration();
+    store.closeReward();
+  }, REWARD_MODAL_AUTO_CLOSE_SEC * 1000);
 
   // Trigger Rex's celebratory voice line & sparkles
   const reward = store.getState().rewardModal;
@@ -342,20 +385,24 @@ export function attachRewardModalListeners() {
   if (coolBtn) {
     coolBtn.addEventListener('click', () => {
       Sound.pop();
+      clearRewardAutoCloseTimers();
       if (shaderAnimationId) {
         cancelAnimationFrame(shaderAnimationId);
         shaderAnimationId = null;
       }
+      closeInteractiveCelebration();
       store.closeReward();
     });
   }
 
   backdrop.addEventListener('click', (e) => {
     if (e.target === backdrop) {
+      clearRewardAutoCloseTimers();
       if (shaderAnimationId) {
         cancelAnimationFrame(shaderAnimationId);
         shaderAnimationId = null;
       }
+      closeInteractiveCelebration();
       store.closeReward();
     }
   });

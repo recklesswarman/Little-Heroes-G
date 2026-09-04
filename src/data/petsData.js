@@ -468,7 +468,7 @@ export const PETS_DATABASE = [
     accentColor: "#2ecc71",
     avatar: makePetSvg("🐶", "cyber_pup", "#007bff"),
     backstory: "Cosmo travels across digital galaxies helping young adventurers learn code, math, and heroic habits!",
-    habitBonus: "Master Key: Unlocks Master Fuse mechanic & bonus multiplier on all in-app mini-games.",
+    habitBonus: "Master Key: Unlocks bonus multiplier on all in-app mini-games.",
     assignedHabit: "Master Quests",
     baseStats: { hunger: 85, hygiene: 85, energy: 100, joy: 100 },
     evolutionStages: ["Nano Pup", "Cyber Hound", "Quantum Vanguard", "Galactic Apex Hound"],

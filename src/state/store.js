@@ -4,7 +4,7 @@ import { PETS_DATABASE } from '../data/petsData.js';
 import { ADVENTURE_GAMES } from '../data/learningGamesData.js';
 import { PROFILE_THEMES } from '../data/profileThemesData.js';
 import { generate3DIcon } from '../utils/graphicsGenerator.js';
-import { triggerInteractiveCelebration } from '../components/InteractiveCelebrationOverlay.js';
+import { triggerInteractiveCelebration, closeInteractiveCelebration } from '../components/InteractiveCelebrationOverlay.js';
 
 export const KID_AVATARS = [
   { id: 'avatar_dragon', label: 'Dragon Explorer', url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZfP7_Cwlp4sz41asI8ymuapAKvjmqHtvI4zcMAF_XwUmibj8IheGrS5cA5QD5gmXgVxEkZM9FlWJPRZnct3x6-9SQB7zJKqkEDjJ3m95tAy3zRqS-PbmcQ4kv_9pmIfm2Py4mh3Fw083hkDookz1w4_r50SBA1jc9igDaAPFLYBFgSP2aQBz7Q4jVE-DwhMOyUEHlxDkQk6Gwc2EAFCSKs1c0QuhUOi3tkrk5MXRARKqZcYVzyJe6gA' },
@@ -16,14 +16,14 @@ export const KID_AVATARS = [
 export const STORAGE_KEY = 'little_heroes_adventure_master_v8';
 
 const defaultState = {
-  activeView: 'dashboard', // dashboard, quest_map, pet_pen, pet_roster, pet_detail, pet_bath, shop, ar_battle, evolution, master_fuse, dance_party, profile, parent_portal, adventures_map, adventure_game
+  activeView: 'dashboard', // dashboard, quest_map, pet_pen, pet_roster, pet_detail, pet_bath, shop, ar_battle, evolution, dance_party, profile, parent_portal, adventures_map, adventure_game
   previousView: 'dashboard',
   selectedPetDetailId: 1,
   selectedAdventureGameId: 'phonics_forest',
 
   // Household Link Architecture
   household: {
-    syncCode: 'HERO-' + Math.floor(1000 + Math.random() * 9000),
+    syncCode: 'HERO-1555',
     name: "The Hero Family",
     linkedDevices: 1,
     lastSync: 'Just now'
@@ -216,8 +216,6 @@ const defaultState = {
   petStatsMap: {
     1: { hunger: 75, hygiene: 90, energy: 65, joy: 85 }
   },
-
-  fusedPets: [],
 
   // Recently Unlocked Badges & Trophies
   recentlyUnlocked: [
@@ -1543,54 +1541,6 @@ class Store {
     }
   }
 
-  masterFusePets(petId1, petId2) {
-    const pet1 = this.state.pets.find(p => p.id === petId1);
-    const pet2 = this.state.pets.find(p => p.id === petId2);
-    if (!pet1 || !pet2) return;
-
-    const hybridId = 100 + this.state.fusedPets.length + 1;
-    const hybridPet = {
-      id: hybridId,
-      name: `${pet1.name.split(' ')[0]}-${pet2.name.split(' ')[0]} Titan`,
-      title: "The Master Fusion Ascendant",
-      element: `${pet1.element} & ${pet2.element}`,
-      color: "#f1c40f",
-      accentColor: "#2ecc71",
-      avatar: pet1.evolvedAvatar || pet1.avatar,
-      backstory: `Forged in the Master Fusion Chamber by combining the heroic essences of ${pet1.name} and ${pet2.name}! Possesses cosmic power!`,
-      habitBonus: "Master Synergy: Grants +50% Tokens on ALL completed daily chores!",
-      baseStats: { hunger: 100, hygiene: 100, energy: 100, joy: 100 },
-      evolutionStages: ["Fusion Spark", "Cyber Core", "Titan Vanguard", "Cosmic Sovereign"],
-      exclusiveGear: [
-        { name: "Infinity Fusion Core", desc: "Doubles token yields globally", unlocked: true, icon: "auto_awesome" },
-        { name: "Cosmic Sun Wings", desc: "Immunity to task failure", unlocked: true, icon: "flight" }
-      ]
-    };
-
-    this.state.pets.push(hybridPet);
-    this.state.fusedPets.push(hybridPet);
-    this.state.petStageMap[hybridId] = 4;
-    this.state.selectedHero.activePetId = hybridId;
-
-    Sound.levelUp();
-    Sound.fanfare();
-    confetti({
-      particleCount: 200,
-      spread: 140,
-      origin: { y: 0.4 },
-      colors: ['#f1c40f', '#54e98a', '#3498db', '#ffffff']
-    });
-
-    this.showReward(
-      'MASTER FUSE SUCCESS!',
-      `Created ${hybridPet.name}! Equipped as your new active companion!`,
-      150,
-      200,
-      hybridPet.avatar,
-      'auto_awesome'
-    );
-    this.saveState(true);
-  }
 
   redeemRealLifeReward(rewardId) {
     const reward = this.state.realLifeRewards.find(r => r.id === rewardId);
@@ -2109,6 +2059,7 @@ class Store {
 
   closeReward() {
     this.state.rewardModal = null;
+    closeInteractiveCelebration();
     this.notify();
   }
 
@@ -2243,6 +2194,13 @@ class Store {
           equippedProfileTheme: cloudH.equippedProfileTheme || localH?.equippedProfileTheme || 'theme_dragon_emerald',
           unlockedThemes: Array.from(new Set([...(cloudH.unlockedThemes || []), ...(localH?.unlockedThemes || ['theme_dragon_emerald'])]))
         };
+      });
+
+      // Also preserve any local heroes that aren't yet in incomingHeroes
+      (this.state.heroes || []).forEach((localH) => {
+        if (localH && localH.id && !mergedHeroes.some((h) => h.id === localH.id)) {
+          mergedHeroes.push(localH);
+        }
       });
 
       this.state.heroes = mergedHeroes;

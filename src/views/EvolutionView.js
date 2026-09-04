@@ -100,7 +100,7 @@ export function renderEvolutionView() {
             : `
           <div class="bg-surface-container-high text-secondary font-headline text-sm font-black px-8 py-4 rounded-2xl border-2 border-secondary flex items-center gap-2 shadow-sm">
             <span class="material-symbols-outlined text-2xl">military_tech</span>
-            MAXIMUM ASCENDANT EVOLUTION REACHED! Ready for Master Fuse!
+            MAXIMUM ASCENDANT EVOLUTION REACHED!
           </div>
         `
         }

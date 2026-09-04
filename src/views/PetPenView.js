@@ -83,11 +83,6 @@ export function renderPetPenView() {
           <button id="pen-view-roster-btn" class="bg-surface-container hover:bg-surface-bright text-primary font-headline text-xs font-black px-4 py-2.5 rounded-2xl border-2 border-primary/40 flex items-center gap-1.5 chunky-btn-sm">
             <span class="material-symbols-outlined text-base">grid_view</span> 24 Pet Roster
           </button>
-
-          <!-- Master Fuse Button -->
-          <button id="pen-master-fuse-btn" class="bg-gradient-to-r from-secondary-container to-secondary text-on-secondary font-headline text-xs font-black px-4 py-2.5 rounded-2xl chunky-btn border-secondary-container shadow-sm flex items-center gap-1">
-            <span class="material-symbols-outlined text-base">science</span> Master Fuse
-          </button>
         </div>
       </div>
 
@@ -361,10 +356,6 @@ export function attachPetPenListeners() {
     });
   }
 
-  const fuseBtn = document.getElementById('pen-master-fuse-btn');
-  if (fuseBtn) {
-    fuseBtn.addEventListener('click', () => store.navigate('master_fuse'));
-  }
 
   const evolveBtn = document.getElementById('pen-evolve-stage-btn');
   if (evolveBtn) {

@@ -112,8 +112,8 @@ export const PetPenMatrix: React.FC<PetPenMatrixProps> = ({
     }, 1200);
   };
 
-  // Master Fuse / Evolution Trigger
-  const handleMasterFuse = () => {
+  // Evolution Trigger
+  const handleEvolvePet = () => {
     sounds.playEvolution();
     setEvolutionCelebration(true);
     onUpdatePet((prev) => ({
@@ -377,15 +377,6 @@ export const PetPenMatrix: React.FC<PetPenMatrixProps> = ({
             </button>
           </section>
 
-          {/* Master Fuse Evolution Trigger */}
-          <div className="w-full max-w-2xl mx-auto">
-            <button
-              onClick={handleMasterFuse}
-              className="chunky-btn master-fuse-btn w-full py-5 rounded-3xl font-black text-xl sm:text-2xl uppercase tracking-widest flex items-center justify-center gap-3 cursor-pointer"
-            >
-              <span>🧬</span> MASTER FUSE <span>🧬</span>
-            </button>
-          </div>
         </div>
       )}
 
@@ -459,7 +450,7 @@ export const PetPenMatrix: React.FC<PetPenMatrixProps> = ({
         </div>
       )}
 
-      {/* VIEW 3: EVOLUTION MATRIX & MASTER FUSE */}
+      {/* VIEW 3: EVOLUTION MATRIX */}
       {activeTab === 'evolution' && (
         <div className="hero-card rounded-[36px] sm:rounded-[48px] p-6 sm:p-8 border-[#334155] border-b-[10px] sm:border-b-[12px] border-b-[#F39C12] flex flex-col gap-6">
           <div className="text-center">
@@ -499,14 +490,14 @@ export const PetPenMatrix: React.FC<PetPenMatrixProps> = ({
             </p>
           </div>
 
-          {/* Master Fuse Button */}
+          {/* Evolution Trigger Button */}
           <button
-            onClick={handleMasterFuse}
+            onClick={handleEvolvePet}
             className="chunky-btn bg-[#2ECC71] w-full py-5 text-xl sm:text-2xl font-black uppercase tracking-wider cursor-pointer"
             style={{ '--shadow-color': '#27AE60' } as React.CSSProperties}
           >
             <Zap className="w-7 h-7 fill-current" />
-            <span>Master Fuse! ⚡</span>
+            <span>Big Evolution! ⚡</span>
           </button>
 
           {/* Evolution Celebration Modal (Stitch Guidelines) */}

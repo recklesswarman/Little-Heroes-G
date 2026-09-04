@@ -133,9 +133,24 @@ class InteractiveParticle {
   }
 }
 
+const CELEBRATION_DURATION_SECONDS = 15;
+let celebrationTimerInterval = null;
+let celebrationAutoCloseTimeout = null;
+let celebrationSecondsRemaining = CELEBRATION_DURATION_SECONDS;
+
 export function triggerInteractiveCelebration(particleCount = 50) {
   isOverlayActive = true;
   poppedStarsCount = 0;
+  celebrationSecondsRemaining = CELEBRATION_DURATION_SECONDS;
+
+  if (celebrationTimerInterval) {
+    clearInterval(celebrationTimerInterval);
+    celebrationTimerInterval = null;
+  }
+  if (celebrationAutoCloseTimeout) {
+    clearTimeout(celebrationAutoCloseTimeout);
+    celebrationAutoCloseTimeout = null;
+  }
 
   let overlay = document.getElementById('interactive-celebration-container');
   if (!overlay) {
@@ -147,15 +162,23 @@ export function triggerInteractiveCelebration(particleCount = 50) {
 
   overlay.innerHTML = `
     <!-- Top Pop Counter & Encouragement -->
-    <div class="flex items-center justify-between pointer-events-none z-10 max-w-lg mx-auto w-full">
-      <div class="bg-surface-container/90 backdrop-blur-md border-2 border-primary/50 px-4 py-2 rounded-2xl shadow-xl flex items-center gap-2 animate-bounce">
-        <span class="text-xl">✨</span>
-        <span class="font-headline text-xs sm:text-sm font-black text-primary">
-          Swipe & Pop the Stars!
-        </span>
-        <span id="pop-counter-badge" class="bg-primary text-on-primary font-black text-xs px-2 py-0.5 rounded-full shadow">
-          ${poppedStarsCount} Popped
-        </span>
+    <div class="flex items-center justify-between pointer-events-none z-10 max-w-xl mx-auto w-full gap-2">
+      <div class="flex items-center gap-2">
+        <div class="bg-surface-container/90 backdrop-blur-md border-2 border-primary/50 px-3.5 py-2 rounded-2xl shadow-xl flex items-center gap-2">
+          <span class="text-xl animate-bounce">✨</span>
+          <span class="font-headline text-xs sm:text-sm font-black text-primary">
+            Swipe & Pop the Stars!
+          </span>
+          <span id="pop-counter-badge" class="bg-primary text-on-primary font-black text-xs px-2 py-0.5 rounded-full shadow">
+            ${poppedStarsCount} Popped
+          </span>
+        </div>
+
+        <!-- 15-Second Timed Super Hero Celebration Countdown -->
+        <div class="bg-amber-400 text-amber-950 border-2 border-amber-300 font-headline text-xs sm:text-sm font-black px-3 py-2 rounded-2xl shadow-xl flex items-center gap-1">
+          <span class="material-symbols-outlined text-sm">timer</span>
+          <span id="celebration-timer-display">${celebrationSecondsRemaining}s</span>
+        </div>
       </div>
 
       <button id="interactive-celebration-close-btn" class="pointer-events-auto bg-surface-container-highest hover:bg-surface-bright text-on-surface font-headline text-xs font-black px-3.5 py-2 rounded-xl border border-surface-bright chunky-btn-sm active:scale-95 shadow">
@@ -185,12 +208,38 @@ export function triggerInteractiveCelebration(particleCount = 50) {
     attachParticleInteractionListeners();
   }
 
+  // Active 15-second countdown timer
+  celebrationTimerInterval = setInterval(() => {
+    celebrationSecondsRemaining--;
+    const timerElem = document.getElementById('celebration-timer-display');
+    if (timerElem) {
+      timerElem.textContent = `${Math.max(0, celebrationSecondsRemaining)}s`;
+    }
+    if (celebrationSecondsRemaining <= 0) {
+      if (celebrationTimerInterval) {
+        clearInterval(celebrationTimerInterval);
+        celebrationTimerInterval = null;
+      }
+    }
+  }, 1000);
+
+  // Automatically close the popups after exactly 15 seconds
+  celebrationAutoCloseTimeout = setTimeout(() => {
+    closeInteractiveCelebration();
+    if (store && store.getState().rewardModal) {
+      store.closeReward();
+    }
+  }, CELEBRATION_DURATION_SECONDS * 1000);
+
   // Close button listener
   const closeBtn = document.getElementById('interactive-celebration-close-btn');
   if (closeBtn) {
     closeBtn.addEventListener('click', () => {
       Sound.pop();
       closeInteractiveCelebration();
+      if (store && store.getState().rewardModal) {
+        store.closeReward();
+      }
     });
   }
 
@@ -333,6 +382,14 @@ function popParticle(particle, clickX, clickY) {
 
 export function closeInteractiveCelebration() {
   isOverlayActive = false;
+  if (celebrationTimerInterval) {
+    clearInterval(celebrationTimerInterval);
+    celebrationTimerInterval = null;
+  }
+  if (celebrationAutoCloseTimeout) {
+    clearTimeout(celebrationAutoCloseTimeout);
+    celebrationAutoCloseTimeout = null;
+  }
   if (animFrameId) {
     cancelAnimationFrame(animFrameId);
     animFrameId = null;

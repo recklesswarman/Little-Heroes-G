@@ -19,7 +19,6 @@ import { renderPetPenView, attachPetPenListeners } from './views/PetPenView.js';
 import { renderPetRosterView, attachPetRosterListeners } from './views/PetRosterView.js';
 import { renderPetDetailView, attachPetDetailListeners } from './views/PetDetailView.js';
 import { renderPetBathView, attachPetBathListeners } from './views/PetBathView.js';
-import { renderMasterFuseView, attachMasterFuseListeners } from './views/MasterFuseView.js';
 import { renderAdventuresMapView, attachAdventuresMapListeners } from './views/AdventuresMapView.js';
 import { renderShopView, attachShopListeners } from './views/ShopView.js';
 import { renderBattleView, attachBattleListeners } from './views/BattleView.js';
@@ -66,10 +65,6 @@ function renderApp() {
     case 'pet_locker':
       mainContent = renderPetLockerView();
       attachViewListeners = attachPetLockerListeners;
-      break;
-    case 'master_fuse':
-      mainContent = renderMasterFuseView();
-      attachViewListeners = attachMasterFuseListeners;
       break;
     case 'adventures_map':
       mainContent = renderAdventuresMapView();
@@ -165,7 +160,7 @@ initHouseholdModal();
 store.subscribe(handleStateUpdate);
 
 // Start Real-Time Live Multi-Device Sync on App Launch
-const activeHouseholdCode = store.getState().household.syncCode || 'HERO-8842';
+const activeHouseholdCode = store.getState().household.syncCode || 'HERO-1555';
 firestoreSync.startSync(activeHouseholdCode);
 
 // Perform authoritative cloud verification & real-time hydration on startup
@@ -183,7 +178,7 @@ window.addEventListener('focus', () => {
 });
 
 window.addEventListener('online', () => {
-  const code = store.getState().household.syncCode || 'HERO-8842';
+  const code = store.getState().household.syncCode || 'HERO-1555';
   firestoreSync.startSync(code);
   firestoreSync.syncNow().catch(() => {});
 });
