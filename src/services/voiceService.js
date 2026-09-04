@@ -100,22 +100,29 @@ function speakWithSpeechSynthesis(text, onEnded = null) {
 
     const utterance = new SpeechSynthesisUtterance(text);
 
-    // Find best available English friendly voice
+    // Natural English voice selection for Rex the Dino - switched to "Daniel"
     const voices = window.speechSynthesis.getVoices() || [];
     const englishVoices = voices.filter((v) => v.lang && v.lang.toLowerCase().startsWith('en'));
 
-    // Prefer high-quality, friendly or natural sounding voices
-    const preferredVoice = englishVoices.find((v) => {
-      const name = v.name.toLowerCase();
-      return (
-        name.includes('natural') ||
-        name.includes('google us') ||
-        name.includes('samantha') ||
-        name.includes('karen') ||
-        name.includes('daniel') ||
-        name.includes('junior')
-      );
-    }) || englishVoices[0] || voices[0];
+    // 1. Prioritize voice "Daniel" (e.g. Daniel, Microsoft Daniel, Daniel (Natural), Apple Daniel)
+    let preferredVoice = englishVoices.find((v) => v.name.toLowerCase().includes('daniel'));
+    if (!preferredVoice) {
+      preferredVoice = voices.find((v) => v.name.toLowerCase().includes('daniel'));
+    }
+
+    // 2. Resilient fallback to other natural English voices if Daniel is not installed on device
+    if (!preferredVoice) {
+      preferredVoice = englishVoices.find((v) => {
+        const name = v.name.toLowerCase();
+        return (
+          name.includes('natural') ||
+          name.includes('google us') ||
+          name.includes('samantha') ||
+          name.includes('karen') ||
+          name.includes('junior')
+        );
+      }) || englishVoices[0] || voices[0];
+    }
 
     if (preferredVoice) {
       utterance.voice = preferredVoice;
