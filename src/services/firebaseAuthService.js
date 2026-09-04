@@ -229,7 +229,7 @@ class FirebaseAuthService {
       0,
       0
     );
-    store.saveState();
+    store.saveState(true);
     store.notify();
   }
 
@@ -296,7 +296,7 @@ class FirebaseAuthService {
 
     Sound.click();
     store.showReward("Signed Out", "You have signed out of your parent account.", 0, 0);
-    store.saveState();
+    store.saveState(true);
   }
 
   simulateLocalParentAuth(name) {
@@ -310,7 +310,7 @@ class FirebaseAuthService {
     store.getState().household.lastSync = "Cloud Connected";
     Sound.fanfare();
     store.showReward("Parent Account Linked!", `Welcome, ${name}! Your device is synced.`, 0, 0);
-    store.saveState();
+    store.saveState(true);
   }
 }
 

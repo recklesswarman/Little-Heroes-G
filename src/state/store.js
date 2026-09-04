@@ -571,17 +571,61 @@ class Store {
     this.syncService = service;
   }
 
-  saveState() {
+  /**
+   * Keep selectedHero and heroes array 100% in sync at all times.
+   * Ensures coins, points, level, xp, active pets, and game stats are never lost or stale.
+   */
+  syncSelectedHeroWithHeroes() {
+    if (!this.state || !this.state.selectedHero || !this.state.heroes) return;
+    const heroId = this.state.selectedHero.id;
+    const idx = this.state.heroes.findIndex((h) => h.id === heroId);
+
+    const sHero = this.state.selectedHero;
+    const updatedHero = {
+      ...(idx !== -1 ? this.state.heroes[idx] : {}),
+      id: heroId,
+      name: sHero.name || 'Little Hero',
+      role: sHero.title || sHero.role || 'Adventurer',
+      title: sHero.title || sHero.role || 'Adventurer',
+      avatar: sHero.avatar,
+      level: sHero.level ?? 1,
+      xp: sHero.xp ?? 0,
+      xpNext: sHero.xpNext || 100,
+      coins: Math.max(0, Number(sHero.coins) || 0),
+      points: Math.max(0, Number(sHero.points) || 0),
+      activePetId: sHero.activePetId || null,
+      unlockedPetIds: [...(sHero.unlockedPetIds || [])],
+      hasChosenStarterPet: sHero.hasChosenStarterPet ?? ((sHero.unlockedPetIds || []).length > 0),
+      habitatSlots: sHero.habitatSlots || 1,
+      petStageMap: { ...(sHero.petStageMap || {}) },
+      streak: sHero.streak || 1,
+      stars: sHero.stars || 0,
+      completionRate: sHero.completionRate ?? 100,
+      gameDifficulty: sHero.gameDifficulty || 'medium',
+      equippedProfileTheme: sHero.equippedProfileTheme || 'theme_dragon_emerald',
+      unlockedThemes: [...(sHero.unlockedThemes || ['theme_dragon_emerald'])],
+      lastUpdated: Date.now()
+    };
+
+    if (idx !== -1) {
+      this.state.heroes[idx] = updatedHero;
+    } else {
+      this.state.heroes.push(updatedHero);
+    }
+  }
+
+  saveState(immediate = false) {
     try {
+      this.syncSelectedHeroWithHeroes();
       if (typeof localStorage !== 'undefined') {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
       }
       if (this.syncService) {
-        this.syncService.pushStateToCloud();
+        this.syncService.pushStateToCloud(immediate);
       } else {
         import('../services/firestoreSyncService.js').then(({ firestoreSync }) => {
           this.syncService = firestoreSync;
-          firestoreSync.pushStateToCloud();
+          firestoreSync.pushStateToCloud(immediate);
         }).catch(() => {});
       }
     } catch (e) {
@@ -666,7 +710,7 @@ class Store {
       petImg,
       'pets'
     );
-    this.saveState();
+    this.saveState(true);
   }
 
   // 1. ADD NEW TASK / ROUTINE (Parent Portal)
@@ -710,7 +754,7 @@ class Store {
       newItem.image,
       newItem.icon
     );
-    this.saveState();
+    this.saveState(true);
   }
 
   deleteTask(taskId, zone) {
@@ -721,7 +765,7 @@ class Store {
     }
     this.state.pendingApprovals = this.state.pendingApprovals.filter(r => r.taskId !== taskId);
     Sound.click();
-    this.saveState();
+    this.saveState(true);
   }
 
   // 2. ADD NEW REAL-LIFE REWARD (Parent Portal)
@@ -754,14 +798,14 @@ class Store {
       newReward.image,
       newReward.icon
     );
-    this.saveState();
+    this.saveState(true);
   }
 
   deleteRealLifeReward(rewardId) {
     this.state.realLifeRewards = this.state.realLifeRewards.filter(r => r.id !== rewardId);
     this.state.pendingApprovals = this.state.pendingApprovals.filter(r => r.rewardId !== rewardId);
     Sound.click();
-    this.saveState();
+    this.saveState(true);
   }
 
   // 3. EDIT PRICING & INVENTORY FOR ALL ITEMS (Parent Portal)
@@ -802,7 +846,7 @@ class Store {
     this.logAction('Parent updated shop pricing & stat bonuses', 'Shop prices and stat bonus percentages updated');
     Sound.fanfare();
     this.showReward('Pricing & Stats Updated!', 'All reward prices and stat bonus percentages have been updated in the Hero Shop!', 0, 0, null, 'payments');
-    this.saveState();
+    this.saveState(true);
   }
 
   // 4. PER-KID DIFFICULTY CONTROLS (Parent Portal)
@@ -815,7 +859,7 @@ class Store {
       }
       this.logAction(`Parent set ${hero.name}'s learning level to ${difficultyLevel.toUpperCase()}`, `Learning Level: ${difficultyLevel}`);
       Sound.click();
-      this.saveState();
+      this.saveState(true);
     }
   }
 
@@ -848,7 +892,7 @@ class Store {
       h.equippedProfileTheme = themeId;
     }
 
-    this.saveState();
+    this.saveState(true);
 
     // Mystery Surprise Unboxing: Theme arrives in a Glowing Treasure Chest!
     this.openMysterySurprise({
@@ -870,7 +914,7 @@ class Store {
       if (h) h.equippedProfileTheme = themeId;
       Sound.click();
       this.showReward('Theme Equipped!', `"${theme.name}" is now styling your hero profile!`, 0, 0, null, 'palette');
-      this.saveState();
+      this.saveState(true);
     }
   }
 
@@ -918,7 +962,7 @@ class Store {
         newItem.image,
         'auto_awesome'
       );
-      this.saveState();
+      this.saveState(true);
     } catch (e) {
       console.warn("AI generation fallback:", e);
       const iconName = type === 'badge' ? 'military_tech' : type === 'weapon' ? 'colorize' : type === 'snack' ? 'nutrition' : type === 'theme' ? 'palette' : 'shield';
@@ -959,7 +1003,7 @@ class Store {
         newItem.image,
         'auto_awesome'
       );
-      this.saveState();
+      this.saveState(true);
     }
   }
 
@@ -1029,7 +1073,7 @@ class Store {
       // Already approved by parent
       Sound.click();
     }
-    this.saveState();
+    this.saveState(true);
   }
 
   // TASK FOREST CHORE COMPLETION
@@ -1098,7 +1142,7 @@ class Store {
       // Already approved by parent
       Sound.click();
     }
-    this.saveState();
+    this.saveState(true);
   }
 
   // TOOTHBRUSH AR BATTLE COMPLETION
@@ -1123,7 +1167,7 @@ class Store {
         task?.image || generate3DIcon('dentistry', 'blue', 'Brush'),
         'dentistry'
       );
-      this.saveState();
+      this.saveState(true);
       return;
     }
 
@@ -1154,7 +1198,7 @@ class Store {
       task?.image || generate3DIcon('dentistry', 'blue', 'Brush'),
       'dentistry'
     );
-    this.saveState();
+    this.saveState(true);
   }
 
   addXP(amount) {
@@ -1211,7 +1255,7 @@ class Store {
     this.addXP(10);
     Sound.crunch();
     Sound.chirp();
-    this.saveState();
+    this.saveState(true);
   }
 
   playWithPet(petId) {
@@ -1225,7 +1269,7 @@ class Store {
     this.addXP(15);
     Sound.boing();
     Sound.chirp();
-    this.saveState();
+    this.saveState(true);
   }
 
   equipPetGear(gearTitle, petId) {
@@ -1246,7 +1290,7 @@ class Store {
       origin: { y: 0.6 },
       colors: ['#f1c40f', '#2ecc71', '#3498db']
     });
-    this.saveState();
+    this.saveState(true);
     this.notify();
   }
 
@@ -1261,7 +1305,7 @@ class Store {
       this.state.selectedHero.equippedPetGear = null;
     }
     Sound.click();
-    this.saveState();
+    this.saveState(true);
     this.notify();
   }
 
@@ -1278,7 +1322,7 @@ class Store {
     if (!this.state.petStatsMap[id]) this.state.petStatsMap[id] = { hunger: 75, hygiene: 60, energy: 65, joy: 85 };
     const stats = this.state.petStatsMap[id];
     stats.hygiene = Math.min(100, (stats.hygiene || 60) + amount);
-    this.saveState();
+    this.saveState(true);
   }
 
   completePetBathReward(petId) {
@@ -1314,7 +1358,7 @@ class Store {
       activePet.avatar || activePet.image,
       'bathtub'
     );
-    this.saveState();
+    this.saveState(true);
     this.notify();
   }
 
@@ -1357,7 +1401,7 @@ class Store {
     this.closePetSelectionModal();
 
     const pet = this.state.pets.find(p => p.id === petId);
-    this.saveState();
+    this.saveState(true);
 
     // Mystery Surprise Unboxing: Pet arrives in a Glowing Mystic Egg!
     this.openMysterySurprise({
@@ -1397,7 +1441,7 @@ class Store {
       null,
       'holiday_village'
     );
-    this.saveState();
+    this.saveState(true);
     return true;
   }
 
@@ -1438,7 +1482,7 @@ class Store {
       'pets'
     );
     this.setActivePet(petId);
-    this.saveState();
+    this.saveState(true);
   }
 
   evolvePet(petId) {
@@ -1471,7 +1515,7 @@ class Store {
         activePet.evolvedAvatar || activePet.avatar,
         'military_tech'
       );
-      this.saveState();
+      this.saveState(true);
 
       // Check milestones for 2nd and 3rd free pet choices:
       const unlocked = hero.unlockedPetIds || [];
@@ -1545,7 +1589,7 @@ class Store {
       hybridPet.avatar,
       'auto_awesome'
     );
-    this.saveState();
+    this.saveState(true);
   }
 
   redeemRealLifeReward(rewardId) {
@@ -1588,7 +1632,7 @@ class Store {
       reward.image,
       reward.icon
     );
-    this.saveState();
+    this.saveState(true);
   }
 
   buyDigitalGear(gearId) {
@@ -1607,7 +1651,7 @@ class Store {
         0,
         item.image
       );
-      this.saveState();
+      this.saveState(true);
       return;
     }
 
@@ -1629,7 +1673,7 @@ class Store {
     this.addXP(25);
     Sound.coin();
     this.logAction(`${this.state.selectedHero.name} bought ${item.title}`, `Cost: ${item.costCoins} Tokens 🪙`);
-    this.saveState();
+    this.saveState(true);
 
     // Mystery Surprise Unboxing Mechanics:
     // Pets arrive in a Glowing Egg; all other digital content arrives in a Glowing Treasure Chest!
@@ -1697,7 +1741,7 @@ class Store {
 
     this.state.pendingApprovals.splice(reqIndex, 1);
     Sound.fanfare();
-    this.saveState();
+    this.saveState(true);
   }
 
   rejectParentRequest(reqId) {
@@ -1741,7 +1785,7 @@ class Store {
 
     this.state.pendingApprovals.splice(reqIndex, 1);
     Sound.click();
-    this.saveState();
+    this.saveState(true);
   }
 
   // Clear all pending parent approval notifications and reset buttons across all tasks & habits
@@ -1798,7 +1842,7 @@ class Store {
     }
 
     this.logAction('Parent Cleared All Pending Approvals', 'All pending approval notifications and button states were reset to ready.');
-    this.saveState();
+    this.saveState(true);
     Sound.fanfare();
     this.showReward(
       'Pending Notifications Cleared!',
@@ -1818,7 +1862,7 @@ class Store {
     reqs.forEach((req) => {
       this.approveParentRequest(req.id);
     });
-    this.saveState();
+    this.saveState(true);
     this.notify();
   }
 
@@ -1857,10 +1901,13 @@ class Store {
         game.icon
       );
     }
-    this.saveState();
+    this.saveState(true);
   }
 
   switchHero(heroId) {
+    // 1. Sync outgoing selectedHero state back into heroes array first
+    this.syncSelectedHeroWithHeroes();
+
     const hero = this.state.heroes.find((h) => h.id === heroId);
     if (hero) {
       if (!hero.unlockedPetIds) {
@@ -1883,14 +1930,16 @@ class Store {
       this.state.selectedHero.name = hero.name;
       this.state.selectedHero.title = hero.role;
       this.state.selectedHero.avatar = hero.avatar;
-      this.state.selectedHero.level = hero.level;
-      this.state.selectedHero.points = hero.points;
-      this.state.selectedHero.coins = hero.coins;
+      this.state.selectedHero.level = hero.level || 1;
+      this.state.selectedHero.points = hero.points || 0;
+      this.state.selectedHero.coins = hero.coins || 0;
+      this.state.selectedHero.xp = hero.xp || 0;
+      this.state.selectedHero.xpNext = hero.xpNext || 100;
       this.state.selectedHero.activePetId = hero.activePetId || (hero.unlockedPetIds[0] || null);
       this.state.selectedHero.unlockedPetIds = [...hero.unlockedPetIds];
       this.state.selectedHero.hasChosenStarterPet = hero.hasChosenStarterPet;
       this.state.selectedHero.habitatSlots = hero.habitatSlots;
-      this.state.selectedHero.streak = hero.streak;
+      this.state.selectedHero.streak = hero.streak || 1;
       this.state.selectedHero.gameDifficulty = hero.gameDifficulty || 'medium';
       this.state.selectedHero.equippedProfileTheme = hero.equippedProfileTheme || 'theme_dragon_emerald';
       this.state.selectedHero.unlockedThemes = hero.unlockedThemes || ['theme_dragon_emerald'];
@@ -1899,7 +1948,7 @@ class Store {
       this.state.petStageMap = { ...hero.petStageMap };
 
       Sound.fanfare();
-      this.saveState();
+      this.saveState(true);
     }
   }
 
@@ -1953,7 +2002,7 @@ class Store {
       this.state.selectedHero.points = hero.points;
     }
 
-    this.saveState();
+    this.saveState(true);
     Sound.fanfare();
   }
 
@@ -1987,7 +2036,7 @@ class Store {
       // Switch active hero to the first remaining kid
       this.switchHero(this.state.heroes[0].id);
     } else {
-      this.saveState();
+      this.saveState(true);
     }
     Sound.hit();
   }
@@ -2002,7 +2051,7 @@ class Store {
       lastSync: 'Created Just Now'
     };
     this.state.pendingApprovals = [];
-    this.saveState();
+    this.saveState(true);
     Sound.fanfare();
 
     // Connect to new Firestore household document
@@ -2123,7 +2172,7 @@ class Store {
 
   updateParentSettings(newSettings) {
     this.state.parentSettings = { ...this.state.parentSettings, ...newSettings };
-    this.saveState();
+    this.saveState(true);
     this.notify();
   }
 
@@ -2138,59 +2187,127 @@ class Store {
     if (cloudData.householdName) {
       this.state.household.name = cloudData.householdName;
     }
-    if (cloudData.syncCode || cloudData.householdCode) {
-      this.state.household.syncCode = (cloudData.syncCode || cloudData.householdCode).trim().toUpperCase();
+    const incomingCode = (cloudData.syncCode || cloudData.householdCode);
+    if (incomingCode) {
+      this.state.household.syncCode = incomingCode.trim().toUpperCase();
     }
     this.state.household.lastSync = 'Synced Just Now';
 
-    // 2. Heroes
-    if (cloudData.heroes && Array.isArray(cloudData.heroes) && cloudData.heroes.length > 0) {
-      this.state.heroes = cloudData.heroes;
-
-      // Sync active selectedHero
-      const currentId = this.state.selectedHero?.id;
-      const matchedHero = this.state.heroes.find((h) => h.id === currentId);
-      const baseHero = matchedHero || this.state.heroes[0];
-
-      this.state.selectedHero = {
-        ...defaultState.selectedHero,
-        ...baseHero,
-        name: baseHero.name,
-        title: baseHero.role || baseHero.title,
-        avatar: baseHero.avatar,
-        coins: baseHero.coins ?? 0,
-        points: baseHero.points ?? 0,
-        level: baseHero.level ?? 1,
-        activePetId: baseHero.activePetId || (baseHero.unlockedPetIds?.[0] || null),
-        unlockedPetIds: baseHero.unlockedPetIds || [],
-        hasChosenStarterPet: baseHero.hasChosenStarterPet ?? (baseHero.unlockedPetIds?.length > 0),
-        habitatSlots: baseHero.habitatSlots || 1,
-        petStageMap: baseHero.petStageMap || {},
-        streak: baseHero.streak || 1,
-        completionRate: baseHero.completionRate ?? 100,
-        gameDifficulty: baseHero.gameDifficulty || 'medium',
-        equippedProfileTheme: baseHero.equippedProfileTheme || 'theme_dragon_emerald',
-        unlockedThemes: baseHero.unlockedThemes || ['theme_dragon_emerald']
-      };
+    // 2. Heroes & Kid Profiles (Smart Merge from heroesMap or heroes array)
+    let incomingHeroes = [];
+    if (cloudData.heroesMap && typeof cloudData.heroesMap === 'object') {
+      incomingHeroes = Object.values(cloudData.heroesMap);
+    } else if (Array.isArray(cloudData.heroes) && cloudData.heroes.length > 0) {
+      incomingHeroes = cloudData.heroes;
     }
 
-    // 3. Approvals, Chores, Habits, Settings
+    if (incomingHeroes.length > 0) {
+      // Merge with local heroes so no kids or progress are dropped
+      const mergedHeroes = incomingHeroes.map((cloudH) => {
+        const localH = (this.state.heroes || []).find((h) => h.id === cloudH.id);
+        const unlockedPetIds = Array.from(new Set([
+          ...(cloudH.unlockedPetIds || []),
+          ...(localH?.unlockedPetIds || [])
+        ]));
+        const petStageMap = {
+          ...(localH?.petStageMap || {}),
+          ...(cloudH.petStageMap || {})
+        };
+        // Preserve highest pet stage achieved
+        Object.keys(petStageMap).forEach((pId) => {
+          petStageMap[pId] = Math.max(
+            localH?.petStageMap?.[pId] || 1,
+            cloudH?.petStageMap?.[pId] || 1
+          );
+        });
+
+        return {
+          ...defaultState.selectedHero,
+          ...localH,
+          ...cloudH,
+          coins: cloudH.coins !== undefined ? Number(cloudH.coins) : (localH?.coins ?? 0),
+          points: cloudH.points !== undefined ? Number(cloudH.points) : (localH?.points ?? 0),
+          level: Math.max(cloudH.level || 1, localH?.level || 1),
+          xp: cloudH.xp !== undefined ? Number(cloudH.xp) : (localH?.xp ?? 0),
+          xpNext: cloudH.xpNext || localH?.xpNext || 100,
+          unlockedPetIds,
+          petStageMap,
+          habitatSlots: Math.max(cloudH.habitatSlots || 1, localH?.habitatSlots || 1, unlockedPetIds.length || 1),
+          hasChosenStarterPet: cloudH.hasChosenStarterPet ?? (unlockedPetIds.length > 0),
+          activePetId: cloudH.activePetId || localH?.activePetId || (unlockedPetIds[0] || null),
+          streak: Math.max(cloudH.streak || 1, localH?.streak || 1),
+          gameDifficulty: cloudH.gameDifficulty || localH?.gameDifficulty || 'medium',
+          equippedProfileTheme: cloudH.equippedProfileTheme || localH?.equippedProfileTheme || 'theme_dragon_emerald',
+          unlockedThemes: Array.from(new Set([...(cloudH.unlockedThemes || []), ...(localH?.unlockedThemes || ['theme_dragon_emerald'])]))
+        };
+      });
+
+      this.state.heroes = mergedHeroes;
+
+      // Update active selectedHero with matching merged data
+      const currentId = this.state.selectedHero?.id;
+      const matchedHero = this.state.heroes.find((h) => h.id === currentId) || this.state.heroes[0];
+      if (matchedHero) {
+        this.state.selectedHero = {
+          ...defaultState.selectedHero,
+          ...matchedHero
+        };
+      }
+    }
+
+    // 3. Pet Stats & Evolution Maps
+    if (cloudData.petStatsMap) {
+      this.state.petStatsMap = { ...this.state.petStatsMap, ...cloudData.petStatsMap };
+    }
+    if (cloudData.petStageMap) {
+      this.state.petStageMap = { ...this.state.petStageMap, ...cloudData.petStageMap };
+      if (this.state.selectedHero) {
+        this.state.selectedHero.petStageMap = { ...this.state.selectedHero.petStageMap, ...cloudData.petStageMap };
+      }
+    }
+    if (cloudData.equippedGearMap) {
+      this.state.equippedGearMap = { ...this.state.equippedGearMap, ...cloudData.equippedGearMap };
+    }
+    if (cloudData.equippedPetGear !== undefined) {
+      this.state.equippedPetGear = cloudData.equippedPetGear;
+      if (this.state.selectedHero) {
+        this.state.selectedHero.equippedPetGear = cloudData.equippedPetGear;
+      }
+    }
+    if (cloudData.pets && Array.isArray(cloudData.pets)) {
+      this.state.pets = cloudData.pets;
+    }
+
+    // 4. Approvals, Chores, Habits, Settings, Inventory
     if (cloudData.pendingApprovals !== undefined) {
       this.state.pendingApprovals = Array.isArray(cloudData.pendingApprovals) ? cloudData.pendingApprovals : [];
     }
-    if (cloudData.petStatsMap) this.state.petStatsMap = { ...this.state.petStatsMap, ...cloudData.petStatsMap };
-    if (cloudData.petStageMap) this.state.petStageMap = { ...this.state.petStageMap, ...cloudData.petStageMap };
-    if (cloudData.equippedGearMap) this.state.equippedGearMap = { ...this.state.equippedGearMap, ...cloudData.equippedGearMap };
-    if (cloudData.equippedPetGear !== undefined) this.state.equippedPetGear = cloudData.equippedPetGear;
-    if (cloudData.taskForest && Array.isArray(cloudData.taskForest)) this.state.taskForest = cloudData.taskForest;
-    if (cloudData.habitIslands && Array.isArray(cloudData.habitIslands)) this.state.habitIslands = cloudData.habitIslands;
-    if (cloudData.realLifeRewards && Array.isArray(cloudData.realLifeRewards)) this.state.realLifeRewards = cloudData.realLifeRewards;
-    if (cloudData.digitalGear && Array.isArray(cloudData.digitalGear)) this.state.digitalGear = cloudData.digitalGear;
-    if (cloudData.inventory && Array.isArray(cloudData.inventory)) this.state.inventory = cloudData.inventory;
-    if (cloudData.parentSettings) this.state.parentSettings = { ...this.state.parentSettings, ...cloudData.parentSettings };
-    if (cloudData.profileThemes && Array.isArray(cloudData.profileThemes)) this.state.profileThemes = cloudData.profileThemes;
+    if (cloudData.taskForest && Array.isArray(cloudData.taskForest)) {
+      this.state.taskForest = cloudData.taskForest;
+    }
+    if (cloudData.habitIslands && Array.isArray(cloudData.habitIslands)) {
+      this.state.habitIslands = cloudData.habitIslands;
+    }
+    if (cloudData.realLifeRewards && Array.isArray(cloudData.realLifeRewards)) {
+      this.state.realLifeRewards = cloudData.realLifeRewards;
+    }
+    if (cloudData.digitalGear && Array.isArray(cloudData.digitalGear)) {
+      this.state.digitalGear = cloudData.digitalGear;
+    }
+    if (cloudData.inventory && Array.isArray(cloudData.inventory)) {
+      this.state.inventory = Array.from(new Set([...(this.state.inventory || []), ...cloudData.inventory]));
+    }
+    if (cloudData.parentSettings) {
+      this.state.parentSettings = { ...this.state.parentSettings, ...cloudData.parentSettings };
+    }
+    if (cloudData.profileThemes && Array.isArray(cloudData.profileThemes)) {
+      this.state.profileThemes = cloudData.profileThemes;
+    }
+    if (cloudData.gameProgress) {
+      this.state.gameProgress = { ...(this.state.gameProgress || {}), ...cloudData.gameProgress };
+    }
 
-    // 4. Linked Devices Count
+    // 5. Linked Devices Count
     if (cloudData.devices && typeof cloudData.devices === 'object') {
       const now = Date.now();
       const activeDevs = Object.entries(cloudData.devices).filter(([, dev]) => {
@@ -2200,7 +2317,7 @@ class Store {
       this.state.household.linkedDevices = Math.max(1, activeDevs.length);
     }
 
-    // 5. Persist to actual localStorage key
+    // 6. Persist to actual localStorage key
     try {
       if (typeof localStorage !== 'undefined') {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
@@ -2215,7 +2332,7 @@ class Store {
 
   resetAllProgress() {
     this.state = JSON.parse(JSON.stringify(defaultState));
-    this.saveState();
+    this.saveState(true);
   }
 }
 

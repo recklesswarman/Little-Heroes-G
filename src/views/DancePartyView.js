@@ -886,7 +886,7 @@ export function attachDancePartyListeners() {
         colors: ['#2ecc71', '#ffb961', '#3498db', '#f1c40f', '#ff5252']
       });
       store.getState().selectedHero.coins += 5;
-      store.saveState();
+      store.saveState(true);
     });
   }
 

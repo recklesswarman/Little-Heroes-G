@@ -26,6 +26,14 @@ class FirestoreSyncService {
     this.deviceId = getOrCreateDeviceId();
     this.debounceTimer = null;
     this.lastCloudTimestamp = null;
+
+    if (typeof window !== 'undefined') {
+      setInterval(() => {
+        if (this.currentCode && this.unsubscribe && isFirebaseAvailable && db) {
+          this.pingDevicePresence(this.currentCode);
+        }
+      }, 20000);
+    }
   }
 
   /**
@@ -94,14 +102,17 @@ class FirestoreSyncService {
    * Safely join an existing household and immediately pull all its data
    */
   async joinHousehold(code) {
+    const cleanCode = (code || '').trim().toUpperCase();
+    if (!cleanCode) return { success: false, error: 'Please enter a valid household code' };
+
+    const state = store.getState();
+    state.household.syncCode = cleanCode;
+
     if (!isFirebaseAvailable || !db) {
-      const state = store.getState();
-      state.household.syncCode = code;
-      store.saveState();
-      return { success: true, message: `Joined ${code} in local mode` };
+      store.saveState(false);
+      return { success: true, message: `Joined ${cleanCode} in local mode` };
     }
 
-    const cleanCode = code.trim().toUpperCase();
     const docRef = doc(db, "households", cleanCode);
 
     try {
@@ -114,9 +125,12 @@ class FirestoreSyncService {
         console.log(`🏠 Successfully fetched household ${cleanCode} from cloud! Hydrating device state...`);
 
         // Hydrate store with all kids, tasks, habits, and inventory from the cloud
-        store.hydrateFromCloud(cloudData);
+        store.hydrateFromCloud({ ...cloudData, syncCode: cleanCode });
 
-        // Restart listener to guarantee live updates
+        // Save immediately to local storage
+        store.saveState(false);
+
+        // Restart listener to guarantee live real-time updates
         this.stopSync();
         this.startSync(cleanCode);
 
@@ -131,7 +145,6 @@ class FirestoreSyncService {
         };
       } else {
         // Household doesn't exist yet on cloud - initialize it with current state
-        const state = store.getState();
         state.household.syncCode = cleanCode;
         await this.pushStateToCloud(true);
         this.stopSync();
@@ -167,6 +180,11 @@ class FirestoreSyncService {
   async _doPush() {
     if (!isFirebaseAvailable || !db) return;
 
+    // Ensure local hero state is thoroughly synchronized before pushing to cloud
+    if (typeof store.syncSelectedHeroWithHeroes === 'function') {
+      store.syncSelectedHeroWithHeroes();
+    }
+
     const state = store.getState();
     const householdCode = (state.household?.syncCode || this.currentCode || 'HERO-8842').trim().toUpperCase();
     const docRef = doc(db, "households", householdCode);
@@ -176,15 +194,39 @@ class FirestoreSyncService {
       const timestamp = new Date().toISOString();
       this.lastCloudTimestamp = timestamp;
 
+      // Build authoritative heroesMap for robust field-level merging across concurrent devices
+      const heroesMap = {};
+      (state.heroes || []).forEach((h) => {
+        if (h && h.id) {
+          heroesMap[h.id] = {
+            ...h,
+            coins: Math.max(0, Number(h.coins) || 0),
+            points: Math.max(0, Number(h.points) || 0),
+            level: h.level || 1,
+            xp: h.xp || 0,
+            xpNext: h.xpNext || 100,
+            streak: h.streak || 1,
+            activePetId: h.activePetId || null,
+            unlockedPetIds: h.unlockedPetIds || [],
+            petStageMap: h.petStageMap || {},
+            habitatSlots: h.habitatSlots || 1,
+            updatedAt: timestamp
+          };
+        }
+      });
+
       await setDoc(docRef, {
         householdName: state.household?.name || 'The Hero Family',
         syncCode: householdCode,
         heroes: state.heroes || [],
+        heroesMap: heroesMap,
+        selectedHero: state.selectedHero || null,
         pendingApprovals: state.pendingApprovals || [],
         petStatsMap: state.petStatsMap || {},
         petStageMap: state.petStageMap || {},
         equippedGearMap: state.equippedGearMap || {},
         equippedPetGear: state.equippedPetGear || null,
+        pets: state.pets || [],
         taskForest: state.taskForest || [],
         habitIslands: state.habitIslands || [],
         realLifeRewards: state.realLifeRewards || [],
@@ -192,6 +234,7 @@ class FirestoreSyncService {
         inventory: state.inventory || [],
         parentSettings: state.parentSettings || {},
         profileThemes: state.profileThemes || [],
+        gameProgress: state.gameProgress || {},
         updatedAt: timestamp,
         lastWriterDeviceId: this.deviceId,
         devices: {

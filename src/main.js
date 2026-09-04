@@ -1,6 +1,7 @@
 import './styles/index.css';
 import { store } from './state/store.js';
 import { initTactileSoundEngine } from './audio/sfx.js';
+import { firestoreSync } from './services/firestoreSyncService.js';
 
 // Layout Components
 import { renderTopHeader, attachTopHeaderListeners } from './components/TopHeader.js';
@@ -162,6 +163,30 @@ initTactileSoundEngine();
 initParentLockModal();
 initHouseholdModal();
 store.subscribe(handleStateUpdate);
+
+// Start Real-Time Live Multi-Device Sync on App Launch
+const activeHouseholdCode = store.getState().household.syncCode || 'HERO-8842';
+firestoreSync.startSync(activeHouseholdCode);
+
+// Perform authoritative cloud verification & real-time hydration on startup
+firestoreSync.syncNow().catch(() => {});
+
+// Auto-resync when returning to the tab, gaining window focus, or coming online
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    firestoreSync.syncNow().catch(() => {});
+  }
+});
+
+window.addEventListener('focus', () => {
+  firestoreSync.syncNow().catch(() => {});
+});
+
+window.addEventListener('online', () => {
+  const code = store.getState().household.syncCode || 'HERO-8842';
+  firestoreSync.startSync(code);
+  firestoreSync.syncNow().catch(() => {});
+});
 
 // Initial Render
 renderApp();
