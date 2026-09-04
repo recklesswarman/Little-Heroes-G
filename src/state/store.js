@@ -2149,10 +2149,13 @@ class Store {
   isEasyMode() {
     const hero = this.state.selectedHero;
     if (!hero) return false;
+    const diff = (hero.gameDifficulty || hero.difficulty || hero.learningLevel || '').toLowerCase();
+    const role = (hero.role || hero.title || '').toLowerCase();
     return (
-      hero.gameDifficulty === 'easy' ||
-      hero.difficulty === 'easy' ||
-      (hero.age && hero.age <= 4)
+      diff === 'easy' ||
+      diff === 'toddler' ||
+      role.includes('toddler') ||
+      (hero.age !== undefined && hero.age !== null && Number(hero.age) <= 4)
     );
   }
 

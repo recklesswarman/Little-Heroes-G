@@ -481,16 +481,22 @@ export function attachQuestMapListeners() {
     });
   }
 
-  // Voice replay button in easy mode
-  const replayVoiceBtn = document.getElementById('map-voice-replay-btn') || document.getElementById('map-speak-question-btn');
-  if (replayVoiceBtn && activeGame) {
-    replayVoiceBtn.addEventListener('click', () => {
+  // Voice replay buttons in easy mode (both the banner button and the question card button)
+  const replayVoiceBtns = [
+    document.getElementById('map-voice-replay-btn'),
+    document.getElementById('map-speak-question-btn')
+  ].filter(Boolean);
+
+  replayVoiceBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (!activeGame) return;
+      Sound.chirp();
       const kidDiff = store.getState().selectedHero.gameDifficulty || 'medium';
       const challenges = getGameChallenges(activeGame, kidDiff);
       const challenge = challenges[currentChallengeIdx] || challenges[0];
       voicePrompts.speakGuidance(activeGame.title, challenge.question);
     });
-  }
+  });
 
   // Open any of the 6 mini games directly from the Quest Map stops
   document.querySelectorAll('.map-game-stop-btn').forEach((btn) => {

@@ -11,32 +11,15 @@ class VoicePromptsService {
 
   async speak(text, onEndCallback = null) {
     if (!this.isEnabled || !text) return;
-
     this.stop();
-
-    try {
-      await speakRex(text, onEndCallback);
-    } catch (e) {
-      console.warn("Rex voice fallback to browser synth:", e);
-      if (this.synth) {
-        try {
-          const utterance = new SpeechSynthesisUtterance(text);
-          utterance.pitch = 1.25;
-          utterance.rate = 0.88;
-          utterance.volume = 1.0;
-          if (onEndCallback) utterance.onend = onEndCallback;
-          this.synth.speak(utterance);
-        } catch (err) {
-          console.warn("Browser SpeechSynthesis error:", err);
-        }
-      }
-    }
+    await speakRex(text, onEndCallback);
   }
 
   speakGuidance(stepName, questionText, options = []) {
-    const welcome = `Welcome to ${stepName}!`;
-    const prompt = `${questionText}. Can you tap the right answer?`;
-    this.speak(`${welcome} ... ${prompt}`);
+    const welcome = stepName ? `Welcome to ${stepName}!` : '';
+    const prompt = questionText ? `${questionText}. Can you tap the right answer?` : '';
+    const textToSpeak = [welcome, prompt].filter(Boolean).join(' ');
+    this.speak(textToSpeak);
   }
 
   speakSuccess() {
@@ -56,13 +39,6 @@ class VoicePromptsService {
 
   stop() {
     stopRex();
-    if (this.synth && this.synth.speaking) {
-      try {
-        this.synth.cancel();
-      } catch {
-        // Ignore
-      }
-    }
   }
 }
 

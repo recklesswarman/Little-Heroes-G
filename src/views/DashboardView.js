@@ -123,8 +123,8 @@ export function renderDashboardView() {
             <span class="text-[11px] text-on-surface-variant font-bold">Tap any quest card to hear Rex explain and guide you through it!</span>
           </div>
         </div>
-        <button id="dash-voice-welcome-btn" class="bg-primary text-on-primary font-headline text-xs font-black px-3.5 py-2 rounded-xl chunky-btn-sm flex items-center gap-1 hover:brightness-110 active:scale-95 shadow flex-shrink-0" title="Listen to Rex's daily guidance">
-          <span class="material-symbols-outlined text-sm">record_voice_over</span> Hear Rex
+        <button id="dash-voice-welcome-btn" class="bg-gradient-to-r from-primary to-emerald-500 text-on-primary font-headline text-xs font-black px-4 py-2.5 rounded-xl chunky-btn flex items-center gap-1.5 hover:brightness-110 active:scale-95 shadow-md flex-shrink-0 animate-pulse border-2 border-primary-container" title="Listen to Rex's daily guidance">
+          <span class="material-symbols-outlined text-base animate-bounce">record_voice_over</span> Hear Rex!
         </button>
       </div>
       `
@@ -318,7 +318,7 @@ export function renderDashboardView() {
   `;
 }
 
-let hasSpokenDashboardGreeting = false;
+let lastSpokenHeroId = null;
 
 function triggerQuestVoice(title = '', id = '', desc = '') {
   const isEasy = store.isEasyMode();
@@ -351,16 +351,19 @@ function triggerQuestVoice(title = '', id = '', desc = '') {
 
 export function attachDashboardListeners() {
   const isEasy = store.isEasyMode();
-  if (isEasy && !hasSpokenDashboardGreeting) {
-    hasSpokenDashboardGreeting = true;
+  const currentHeroId = store.getState().selectedHero?.id;
+
+  if (isEasy && lastSpokenHeroId !== currentHeroId) {
+    lastSpokenHeroId = currentHeroId;
     setTimeout(() => {
       speakRex("Hi Little Hero! Let's do our quests today! Tap any chore to hear what to do!");
-    }, 500);
+    }, 450);
   }
 
   const voiceWelcomeBtn = document.getElementById('dash-voice-welcome-btn');
   if (voiceWelcomeBtn) {
     voiceWelcomeBtn.addEventListener('click', () => {
+      Sound.chirp();
       speakRex("Hi Little Hero! I am Rex the Dino! Tap any quest card to hear how to earn tokens and level up!");
     });
   }
