@@ -11,6 +11,7 @@ import { renderParentLockModal, initParentLockModal, attachParentLockListeners }
 import { renderHouseholdLinkModal, initHouseholdModal, attachHouseholdLinkModalListeners } from './components/HouseholdLinkModal.js';
 import { renderPetSelectionModal, attachPetSelectionModalListeners } from './components/PetSelectionModal.js';
 import { renderMysterySurpriseModal, attachMysterySurpriseModalListeners } from './components/MysterySurpriseModal.js';
+import { renderLiveRexWidget, attachLiveRexWidgetListeners } from './components/LiveRexWidget.js';
 
 // Views
 import { renderDashboardView, attachDashboardListeners } from './views/DashboardView.js';
@@ -119,6 +120,7 @@ function renderApp() {
       ${renderHouseholdLinkModal()}
       ${renderPetSelectionModal()}
       ${renderMysterySurpriseModal()}
+      ${renderLiveRexWidget()}
     </div>
   `;
 
@@ -130,6 +132,7 @@ function renderApp() {
   attachHouseholdLinkModalListeners();
   attachPetSelectionModalListeners();
   attachMysterySurpriseModalListeners();
+  attachLiveRexWidgetListeners();
   attachViewListeners();
 }
 

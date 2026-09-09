@@ -471,7 +471,22 @@ const defaultState = {
   rewardModal: null,
 
   // Mystery Surprise Unboxing (Glowing Egg / Treasure Chest)
-  mysterySurprise: null
+  mysterySurprise: null,
+
+  // Live Interactive Rex the Dino (Gemini Live & Interactions API)
+  liveRex: {
+    isOpen: false,
+    isConnected: false,
+    isListening: false,
+    isSpeaking: false,
+    status: 'idle',
+    statusMessage: '',
+    lastUserTranscript: '',
+    lastRexTranscript: '',
+    geminiApiKey: '',
+    voiceName: 'Puck',
+    autoListenInQuests: true
+  }
 };
 
 class Store {
@@ -2090,6 +2105,43 @@ class Store {
       }
     }
     this.state.mysterySurprise = null;
+    this.notify();
+  }
+
+  toggleLiveRexModal(forceOpen) {
+    if (!this.state.liveRex) {
+      this.state.liveRex = { ...defaultState.liveRex };
+    }
+    this.state.liveRex.isOpen = typeof forceOpen === 'boolean' ? forceOpen : !this.state.liveRex.isOpen;
+    this.notify();
+  }
+
+  setLiveRexState(partial) {
+    if (!this.state.liveRex) {
+      this.state.liveRex = { ...defaultState.liveRex };
+    }
+    this.state.liveRex = { ...this.state.liveRex, ...partial };
+    this.notify();
+  }
+
+  setLiveRexApiKey(key) {
+    if (!this.state.liveRex) {
+      this.state.liveRex = { ...defaultState.liveRex };
+    }
+    this.state.liveRex.geminiApiKey = key;
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('gemini_api_key', key);
+    }
+    this.saveState();
+    this.notify();
+  }
+
+  setLiveRexVoice(voice) {
+    if (!this.state.liveRex) {
+      this.state.liveRex = { ...defaultState.liveRex };
+    }
+    this.state.liveRex.voiceName = voice;
+    this.saveState();
     this.notify();
   }
 

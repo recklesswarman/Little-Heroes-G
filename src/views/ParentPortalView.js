@@ -1092,6 +1092,112 @@ export function renderParentPortalView() {
             </div>
           </div>
 
+          <!-- Rex the Dino Live AI Voice Companion Settings (Gemini Live & Interactions API) -->
+          <div class="bg-surface-container rounded-3xl p-6 border-2 border-primary/40 card-shadow flex flex-col gap-5">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-2xl bg-primary/20 text-primary border-2 border-primary flex items-center justify-center text-2xl shadow">
+                  🦖
+                </div>
+                <div>
+                  <h3 class="font-headline text-base sm:text-lg font-black text-inverse-surface">Rex the Dino Live AI Companion</h3>
+                  <p class="text-xs text-on-surface-variant font-bold">Configure Google Gemini Live API & Interactions API for real-time toddler voice guidance.</p>
+                </div>
+              </div>
+
+              <!-- Status Pill -->
+              <span class="text-[10px] font-black uppercase px-3 py-1.5 rounded-full ${
+                state.liveRex?.geminiApiKey || localStorage.getItem('gemini_api_key')
+                  ? 'bg-primary/20 text-primary border border-primary/40'
+                  : 'bg-secondary/20 text-secondary border border-secondary/40'
+              } flex items-center gap-1.5 shadow-sm">
+                <span class="w-2 h-2 rounded-full ${
+                  state.liveRex?.geminiApiKey || localStorage.getItem('gemini_api_key') ? 'bg-primary animate-pulse' : 'bg-secondary'
+                }"></span>
+                ${state.liveRex?.geminiApiKey || localStorage.getItem('gemini_api_key') ? 'Custom Key Active' : 'Default Project Key Ready'}
+              </span>
+            </div>
+
+            <!-- API Key Configuration Section -->
+            <div class="bg-surface-container-high rounded-2xl p-4 border border-surface-container-highest flex flex-col gap-3">
+              <div class="flex flex-col gap-1">
+                <span class="font-headline text-xs font-black text-inverse-surface">Google Gemini API Key</span>
+                <span class="text-[11px] text-on-surface-variant">Powers real-time voice recognition, live toddler conversation, quest assistance, and AI animations.</span>
+              </div>
+              <div class="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="password"
+                  id="admin-gemini-key-input"
+                  placeholder="Paste Gemini API Key (e.g. AIzaSy...)"
+                  value="${state.liveRex?.geminiApiKey || localStorage.getItem('gemini_api_key') || ''}"
+                  class="flex-1 bg-surface-container-lowest border-2 border-surface-container-highest rounded-xl px-3.5 py-2.5 text-xs text-inverse-surface focus:outline-none focus:border-primary font-mono"
+                />
+                <button id="admin-save-gemini-key-btn" class="bg-primary text-on-primary font-headline text-xs font-black px-4 py-2.5 rounded-xl border border-primary-container chunky-btn-sm active:scale-95 shadow-sm hover:brightness-110 flex items-center justify-center gap-1.5">
+                  <span class="material-symbols-outlined text-sm">save</span>
+                  <span>Save Key</span>
+                </button>
+                <button id="admin-clear-gemini-key-btn" class="bg-surface-container hover:bg-surface-bright text-on-surface-variant font-headline text-xs font-black px-3.5 py-2.5 rounded-xl border border-surface-container-highest chunky-btn-sm active:scale-95 flex items-center justify-center gap-1">
+                  <span>Reset</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Prebuilt Voice Selection -->
+            <div class="bg-surface-container-high rounded-2xl p-4 border border-surface-container-highest flex flex-col gap-3">
+              <div class="flex flex-col gap-1">
+                <span class="font-headline text-xs font-black text-inverse-surface">Rex the Dino Voice Character</span>
+                <span class="text-[11px] text-on-surface-variant">Choose the live synthetic persona for Rex during voice quests.</span>
+              </div>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                ${[
+                  { id: 'Puck', label: 'Puck (Recommended)', desc: 'Playful & Toddler Cartoon' },
+                  { id: 'Charon', label: 'Charon', desc: 'Calm & Deep Roar' },
+                  { id: 'Aoede', label: 'Aoede', desc: 'Gentle & Loving' },
+                  { id: 'Fenrir', label: 'Fenrir', desc: 'Bold & Heroic' }
+                ]
+                  .map((v) => {
+                    const currentVoice = state.liveRex?.voiceName || 'Puck';
+                    const isSelected = currentVoice === v.id;
+                    return `
+                    <button data-rex-voice="${v.id}" class="rex-voice-select-btn rounded-xl p-3 flex flex-col items-center justify-center gap-1 border-2 transition-all ${
+                      isSelected
+                        ? 'bg-primary text-on-primary border-primary-container shadow-sm font-black'
+                        : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border-surface-container-highest'
+                    }">
+                      <span class="text-xs font-headline font-black">${v.label}</span>
+                      <span class="text-[9px] ${isSelected ? 'text-on-primary/90' : 'text-on-surface-variant'}">${v.desc}</span>
+                    </button>
+                  `;
+                  })
+                  .join('')}
+              </div>
+            </div>
+
+            <!-- Auto-Listen During Quests Toggle -->
+            <div class="bg-surface-container-high rounded-2xl p-4 border border-surface-container-highest flex items-center justify-between gap-3">
+              <div class="flex flex-col gap-0.5">
+                <span class="font-headline text-xs font-black text-inverse-surface">Auto-Wake Rex in Easy Mode</span>
+                <span class="text-[11px] text-on-surface-variant">Automatically activates Rex's microphone & live voice when a toddler starts any Quest Map mini-game.</span>
+              </div>
+              <button id="admin-rex-autolisten-toggle" class="px-3.5 py-1.5 rounded-full text-xs font-black uppercase transition-all chunky-btn-sm ${
+                state.liveRex?.autoListenInQuests !== false
+                  ? 'bg-primary text-on-primary border-primary-container shadow-sm'
+                  : 'bg-surface-container-lowest text-on-surface-variant border-surface-container'
+              }">
+                ${state.liveRex?.autoListenInQuests !== false ? '✓ Enabled' : 'Disabled'}
+              </button>
+            </div>
+
+            <!-- Diagnostics / Test Button -->
+            <div class="flex items-center justify-between pt-1">
+              <span class="text-[11px] text-on-surface-variant italic">Test bidirectional voice audio to ensure microphone and speakers are functioning.</span>
+              <button id="admin-test-rex-voice-btn" class="bg-secondary/20 hover:bg-secondary/30 text-secondary border border-secondary/40 font-headline text-xs font-black px-4 py-2.5 rounded-xl flex items-center gap-1.5 chunky-btn-sm active:scale-95 shadow-sm">
+                <span class="material-symbols-outlined text-base">record_voice_over</span>
+                <span>Test Live Rex Voice</span>
+              </button>
+            </div>
+          </div>
+
         </section>
       `
           : ''
@@ -1481,6 +1587,57 @@ export function attachParentPortalListeners() {
           bioFeedback.className = 'text-[10px] font-bold text-error';
         }
       }
+    });
+  }
+
+  // Rex the Dino Live AI Settings Listeners
+  const geminiKeyInput = document.getElementById('admin-gemini-key-input');
+  const saveGeminiKeyBtn = document.getElementById('admin-save-gemini-key-btn');
+  const clearGeminiKeyBtn = document.getElementById('admin-clear-gemini-key-btn');
+
+  if (saveGeminiKeyBtn && geminiKeyInput) {
+    saveGeminiKeyBtn.addEventListener('click', () => {
+      const key = geminiKeyInput.value.trim();
+      store.setLiveRexApiKey(key);
+      Sound.fanfare();
+      alert('Google Gemini API Key saved successfully! Rex the Dino is ready for live voice interactions.');
+    });
+  }
+
+  if (clearGeminiKeyBtn) {
+    clearGeminiKeyBtn.addEventListener('click', () => {
+      store.setLiveRexApiKey('');
+      if (geminiKeyInput) geminiKeyInput.value = '';
+      Sound.click();
+      alert('Custom Gemini API Key cleared. Default project key will be used.');
+    });
+  }
+
+  document.querySelectorAll('.rex-voice-select-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const voice = btn.getAttribute('data-rex-voice');
+      if (voice) {
+        Sound.click();
+        store.setLiveRexVoice(voice);
+      }
+    });
+  });
+
+  const autoListenToggle = document.getElementById('admin-rex-autolisten-toggle');
+  if (autoListenToggle) {
+    autoListenToggle.addEventListener('click', () => {
+      Sound.click();
+      const current = store.getState().liveRex?.autoListenInQuests !== false;
+      store.setLiveRexState({ autoListenInQuests: !current });
+      store.saveState();
+    });
+  }
+
+  const testRexBtn = document.getElementById('admin-test-rex-voice-btn');
+  if (testRexBtn) {
+    testRexBtn.addEventListener('click', () => {
+      Sound.chirp();
+      store.toggleLiveRexModal(true);
     });
   }
 

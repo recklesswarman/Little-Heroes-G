@@ -2,6 +2,7 @@ import { store } from '../state/store.js';
 import { ADVENTURE_GAMES, getGameChallenges } from '../data/learningGamesData.js';
 import { Sound } from '../audio/sfx.js';
 import { voicePrompts } from '../utils/voicePrompts.js';
+import { geminiLiveService } from '../services/geminiLiveService.js';
 import confetti from 'canvas-confetti';
 
 let activeGame = null;
@@ -51,6 +52,33 @@ export function renderQuestMapView() {
         `
             : ''
         }
+
+        <!-- Interactive Rex Live AI Quest Guide Bar -->
+        <div class="bg-primary/10 border-2 border-primary/40 rounded-3xl p-3.5 flex items-center justify-between gap-3 text-xs animate-fade-in shadow-sm">
+          <div class="flex items-center gap-2.5">
+            <div class="w-10 h-10 rounded-2xl bg-primary/20 border-2 border-primary flex items-center justify-center text-xl shadow-sm ${geminiLiveService.isSpeaking ? 'animate-bounce' : geminiLiveService.isListening ? 'animate-pulse' : ''}">
+              🦖
+            </div>
+            <div class="flex flex-col text-left">
+              <span class="font-headline text-xs font-black text-primary flex items-center gap-1.5">
+                <span>Rex Live Voice Guide</span>
+                <span class="w-2 h-2 rounded-full ${geminiLiveService.isConnected ? 'bg-primary animate-ping' : 'bg-surface-container-highest'}"></span>
+              </span>
+              <span class="text-[11px] text-on-surface-variant font-bold">
+                ${geminiLiveService.isConnected ? (geminiLiveService.isSpeaking ? '🗣️ Rex is speaking!' : '👂 Rex is listening! Say your answer!') : 'Say your answer aloud or ask Rex for a hint!'}
+              </span>
+            </div>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button id="map-rex-hint-btn" class="bg-secondary/20 hover:bg-secondary/30 text-secondary font-headline text-[11px] font-black px-3 py-1.5 rounded-xl border border-secondary/40 flex items-center gap-1 chunky-btn-sm active:scale-95 shadow-sm" title="Ask Rex for a helpful hint">
+              <span>💡</span> <span>Rex Hint</span>
+            </button>
+            <button id="map-rex-talk-btn" class="bg-primary text-on-primary font-headline text-[11px] font-black px-3 py-1.5 rounded-xl chunky-btn-sm flex items-center gap-1 hover:brightness-110 active:scale-95 shadow" title="Toggle Rex Live Voice">
+              <span class="material-symbols-outlined text-sm">${geminiLiveService.isConnected ? 'mic' : 'mic_none'}</span>
+              <span>${geminiLiveService.isConnected ? 'Active' : 'Wake Rex'}</span>
+            </button>
+          </div>
+        </div>
 
         <!-- Mini Game Play Arena Card -->
         <div class="bg-surface-container rounded-4xl p-6 sm:p-8 border-4 border-surface-container-highest card-shadow flex flex-col gap-6 text-center relative overflow-hidden">
@@ -460,11 +488,82 @@ export function attachQuestMapListeners() {
   if (exitBtn) {
     exitBtn.addEventListener('click', () => {
       voicePrompts.stop();
+      geminiLiveService.setQuestContext(null);
       activeGame = null;
       currentChallengeIdx = 0;
       store.notify();
     });
   }
+
+  // Synchronize active quest context with Rex if game is in progress
+  if (activeGame) {
+    const kidDiff = store.getState().selectedHero.gameDifficulty || 'medium';
+    const challenges = getGameChallenges(activeGame, kidDiff);
+    const challenge = challenges[currentChallengeIdx] || challenges[0];
+    geminiLiveService.setQuestContext({
+      gameTitle: activeGame.title,
+      question: challenge.question,
+      options: challenge.options,
+      currentStop: currentChallengeIdx + 1,
+      totalStops: challenges.length
+    });
+
+    // Auto-connect Rex in toddler easy mode if not already connected
+    if (kidDiff === 'easy' && !geminiLiveService.isConnected && !geminiLiveService.isConnecting) {
+      geminiLiveService.connect().catch(() => {});
+    }
+  }
+
+  // Rex Live Guide button listeners in active game arena
+  const rexHintBtn = document.getElementById('map-rex-hint-btn');
+  if (rexHintBtn) {
+    rexHintBtn.addEventListener('click', async () => {
+      Sound.chirp();
+      if (geminiLiveService.isConnected && geminiLiveService.ws?.readyState === WebSocket.OPEN) {
+        geminiLiveService.ws.send(
+          JSON.stringify({
+            clientContent: {
+              turns: [
+                {
+                  role: 'user',
+                  parts: [{ text: "Rex, give me a friendly hint for this challenge!" }]
+                }
+              ],
+              turnComplete: true
+            }
+          })
+        );
+      } else {
+        await geminiLiveService.askRexInteractions("Rex, please give me a friendly, simple hint for this quest!");
+      }
+    });
+  }
+
+  const rexTalkBtn = document.getElementById('map-rex-talk-btn');
+  if (rexTalkBtn) {
+    rexTalkBtn.addEventListener('click', async () => {
+      Sound.click();
+      if (geminiLiveService.isConnected) {
+        geminiLiveService.disconnect();
+      } else {
+        await geminiLiveService.connect();
+      }
+    });
+  }
+
+  // Handle Rex choosing answer via live voice tool call
+  const handleRexLiveAnswer = (e) => {
+    const { optionIndex } = e.detail;
+    const btn = document.querySelector(`.map-game-opt-btn[data-map-opt-idx="${optionIndex}"]`);
+    if (btn) {
+      btn.classList.add('ring-4', 'ring-primary', 'scale-105');
+      setTimeout(() => {
+        btn.classList.remove('ring-4', 'ring-primary', 'scale-105');
+        btn.click();
+      }, 350);
+    }
+  };
+  window.addEventListener('rex-live-answer', handleRexLiveAnswer);
 
   const toPenBtn = document.getElementById('map-to-pet-pen-btn');
   if (toPenBtn) {
@@ -568,6 +667,7 @@ export function attachQuestMapListeners() {
           const g = activeGame;
           activeGame = null;
           currentChallengeIdx = 0;
+          geminiLiveService.setQuestContext(null);
           store.playAdventureGame(g.id, true);
         }
       } else {
