@@ -19,6 +19,16 @@
   "dataconnect": {
     "source": "dataconnect"
   },
+  "apphosting": {
+    "backendId": "little-heroes-adventures",
+    "rootDir": "/",
+    "ignore": [
+      "node_modules",
+      ".git",
+      "firebase-debug.log",
+      "firebase-debug.*.log"
+    ]
+  },
   "hosting": {
     "public": "dist",
     "ignore": [
