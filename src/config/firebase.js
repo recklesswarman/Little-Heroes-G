@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getFunctions } from "firebase/functions";
 
 // Official Real Firebase Applet Project Configuration for Little Heroes Adventures
 const firebaseConfig = {
@@ -17,6 +18,7 @@ const firestoreDatabaseId = (typeof import.meta !== 'undefined' && import.meta.e
 let app = null;
 let auth = null;
 let db = null;
+let functions = null;
 let googleProvider = null;
 let isFirebaseAvailable = false;
 
@@ -36,6 +38,12 @@ try {
     db = getFirestore(app);
   }
 
+  try {
+    functions = getFunctions(app);
+  } catch (fnErr) {
+    console.warn("Firebase Functions initialization notice:", fnErr.message);
+  }
+
   googleProvider = new GoogleAuthProvider();
   googleProvider.setCustomParameters({ prompt: 'select_account' });
   isFirebaseAvailable = true;
@@ -44,4 +52,5 @@ try {
   console.warn("Firebase initialized with local fallback:", e.message);
 }
 
-export { app, auth, db, googleProvider, isFirebaseAvailable, firestoreDatabaseId, firebaseConfig };
+export { app, auth, db, functions, googleProvider, isFirebaseAvailable, firestoreDatabaseId, firebaseConfig };
+
