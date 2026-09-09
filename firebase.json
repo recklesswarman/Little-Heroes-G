@@ -16,6 +16,9 @@
   "firestore": {
     "rules": "firestore.rules"
   },
+  "dataconnect": {
+    "source": "dataconnect"
+  },
   "hosting": {
     "public": "dist",
     "ignore": [

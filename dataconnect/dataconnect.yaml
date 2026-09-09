@@ -1,0 +1,12 @@
+specVersion: "v1"
+serviceId: "little-heroes-sql"
+location: "us-central1"
+schemaValidation: "COMPATIBLE"
+schema:
+  source: "./schema"
+  datasource:
+    postgresql:
+      database: "little_heroes_db"
+      cloudSql:
+        instanceId: "little-heroes-instance"
+connectorDirs: ["./connector"]

@@ -1,0 +1,90 @@
+# Mutations for Little Heroes Adventures (Firebase SQL Connect)
+
+mutation UpsertHousehold($syncCode: String!, $name: String!, $linkedDevices: Int) @auth(level: PUBLIC) {
+  household_upsert(data: {
+    syncCode: $syncCode,
+    name: $name,
+    linkedDevices: $linkedDevices,
+    lastSync_expr: "request.time"
+  })
+}
+
+mutation UpdateHeroCurrency($id: String!, $points: Int!, $coins: Int!) @auth(level: PUBLIC) {
+  hero_update(
+    key: { id: $id },
+    data: {
+      points: $points,
+      coins: $coins,
+      updatedAt_expr: "request.time"
+    }
+  )
+}
+
+mutation UpsertPetState(
+  $heroId: String!,
+  $petId: Int!,
+  $stage: Int!,
+  $hunger: Int!,
+  $hygiene: Int!,
+  $energy: Int!,
+  $joy: Int!
+) @auth(level: PUBLIC) {
+  petState_upsert(data: {
+    heroId: $heroId,
+    petId: $petId,
+    stage: $stage,
+    hunger: $hunger,
+    hygiene: $hygiene,
+    energy: $energy,
+    joy: $joy,
+    updatedAt_expr: "request.time"
+  })
+}
+
+mutation CreatePendingApproval(
+  $syncCode: String!,
+  $heroId: String!,
+  $heroName: String!,
+  $title: String!,
+  $type: String!,
+  $points: Int!
+) @auth(level: PUBLIC) {
+  pendingApproval_insert(data: {
+    household: { syncCode: $syncCode },
+    heroId: $heroId,
+    heroName: $heroName,
+    title: $title,
+    type: $type,
+    points: $points,
+    status: "pending"
+  })
+}
+
+mutation ResolvePendingApproval($id: UUID!, $status: String!) @auth(level: PUBLIC) {
+  pendingApproval_update(
+    key: { id: $id },
+    data: {
+      status: $status
+    }
+  )
+}
+
+mutation CreateLedgerLog(
+  $syncCode: String!,
+  $heroId: String!,
+  $heroName: String!,
+  $title: String!,
+  $type: String!,
+  $pointsDelta: Int!,
+  $coinsDelta: Int!
+) @auth(level: PUBLIC) {
+  ledgerLog_insert(data: {
+    household: { syncCode: $syncCode },
+    heroId: $heroId,
+    heroName: $heroName,
+    title: $title,
+    type: $type,
+    pointsDelta: $pointsDelta,
+    coinsDelta: $coinsDelta
+  })
+}

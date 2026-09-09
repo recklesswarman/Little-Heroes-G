@@ -1,0 +1,79 @@
+# Firebase SQL Connect Schema for Little Heroes Adventures
+# High-integrity relational PostgreSQL schema with multi-device live sync
+
+type Household @table {
+  syncCode: String! @unique
+  name: String!
+  linkedDevices: Int! @default(value: 1)
+  lastSync: Timestamp! @default(expr: "request.time")
+  createdAt: Timestamp! @default(expr: "request.time")
+}
+
+type Hero @table {
+  id: String! @default(expr: "uuidV4()")
+  household: Household!
+  name: String!
+  role: String!
+  avatar: String!
+  level: Int! @default(value: 1)
+  xp: Int! @default(value: 0)
+  xpNext: Int! @default(value: 100)
+  points: Int! @default(value: 0) # ⭐ Points (Parent approved)
+  coins: Int! @default(value: 0)  # 🪙 Tokens (Instant digital rewards)
+  streak: Int! @default(value: 1)
+  stars: Int! @default(value: 0)
+  activePetId: Int
+  gameDifficulty: String! @default(value: "medium")
+  equippedProfileTheme: String! @default(value: "theme_dragon_emerald")
+  unlockedThemes: [String!]
+  unlockedPetIds: [Int!]
+  updatedAt: Timestamp! @default(expr: "request.time")
+}
+
+type PetState @table @unique(fields: ["hero", "petId"]) {
+  hero: Hero!
+  petId: Int!
+  stage: Int! @default(value: 1)
+  hunger: Int! @default(value: 80)
+  hygiene: Int! @default(value: 80)
+  energy: Int! @default(value: 80)
+  joy: Int! @default(value: 80)
+  updatedAt: Timestamp! @default(expr: "request.time")
+}
+
+type TaskProgress @table @unique(fields: ["hero", "taskId"]) {
+  hero: Hero!
+  taskId: String!
+  title: String!
+  zone: String!
+  coins: Int! @default(value: 0)
+  points: Int! @default(value: 0)
+  xp: Int! @default(value: 0)
+  completed: Boolean! @default(value: false)
+  pointsApproved: Boolean! @default(value: false)
+  updatedAt: Timestamp! @default(expr: "request.time")
+}
+
+type PendingApproval @table {
+  id: UUID! @default(expr: "uuidV4()")
+  household: Household!
+  heroId: String!
+  heroName: String!
+  title: String!
+  type: String! # "task" | "reward" | "habit"
+  points: Int!
+  status: String! @default(value: "pending")
+  createdAt: Timestamp! @default(expr: "request.time")
+}
+
+type LedgerLog @table {
+  id: UUID! @default(expr: "uuidV4()")
+  household: Household!
+  heroId: String!
+  heroName: String!
+  title: String!
+  type: String! # "reward" | "task" | "purchase"
+  pointsDelta: Int! @default(value: 0)
+  coinsDelta: Int! @default(value: 0)
+  createdAt: Timestamp! @default(expr: "request.time")
+}

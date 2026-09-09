@@ -1,0 +1,100 @@
+# Queries for Little Heroes Adventures (Firebase SQL Connect)
+
+query GetHouseholdByCode($syncCode: String!) @auth(level: PUBLIC) {
+  household(key: { syncCode: $syncCode }) {
+    id
+    syncCode
+    name
+    linkedDevices
+    lastSync
+    createdAt
+    heroes_on_household {
+      id
+      name
+      role
+      avatar
+      level
+      xp
+      xpNext
+      points
+      coins
+      streak
+      stars
+      activePetId
+      gameDifficulty
+      equippedProfileTheme
+      unlockedThemes
+      unlockedPetIds
+      updatedAt
+    }
+  }
+}
+
+query GetHeroDetails($heroId: String!) @auth(level: PUBLIC) {
+  hero(key: { id: $heroId }) {
+    id
+    name
+    role
+    avatar
+    level
+    xp
+    xpNext
+    points
+    coins
+    streak
+    stars
+    activePetId
+    gameDifficulty
+    equippedProfileTheme
+    petStates_on_hero {
+      petId
+      stage
+      hunger
+      hygiene
+      energy
+      joy
+    }
+    taskProgresses_on_hero {
+      taskId
+      title
+      zone
+      coins
+      points
+      completed
+      pointsApproved
+    }
+  }
+}
+
+query ListPendingApprovals($syncCode: String!) @auth(level: PUBLIC) {
+  pendingApprovals(
+    where: { household: { syncCode: { eq: $syncCode } }, status: { eq: "pending" } },
+    orderBy: [{ createdAt: DESC }]
+  ) {
+    id
+    heroId
+    heroName
+    title
+    type
+    points
+    status
+    createdAt
+  }
+}
+
+query ListLedgerLogs($syncCode: String!) @auth(level: PUBLIC) {
+  ledgerLogs(
+    where: { household: { syncCode: { eq: $syncCode } } },
+    orderBy: [{ createdAt: DESC }],
+    limit: 50
+  ) {
+    id
+    heroId
+    heroName
+    title
+    type
+    pointsDelta
+    coinsDelta
+    createdAt
+  }
+}
