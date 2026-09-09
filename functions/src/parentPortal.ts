@@ -1,7 +1,49 @@
-// Parent Portal Insights Cloud Function powered by Google Gemini SDK (@google/genai)
+// Parent Portal Insights & Controls Cloud Function powered by Google Gemini SDK (@google/genai)
 
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
+import * as admin from "firebase-admin";
+
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
+
+const db = admin.firestore();
+
+export interface ParentSettings {
+  companionEnabled: boolean;
+  maxDailyTurns: number;
+  bedtimeHour: number; // e.g. 20 for 8 PM
+  restrictedTopics: string[];
+  focusAreas: string[]; // e.g. ["homework", "cleaning"]
+  tone: "gentle" | "energetic" | "focused";
+}
+
+export const updateCompanionSettings = onCall({ cors: true }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Only parents can update settings.");
+  }
+
+  const { heroId, settings } = (request.data || {}) as { heroId: string; settings: Partial<ParentSettings> };
+  if (!heroId) {
+    throw new HttpsError("invalid-argument", "Missing heroId.");
+  }
+
+  // Verify caller has parental permission over this hero doc
+  const heroRef = db.collection("heroes").doc(heroId);
+  const heroSnap = await heroRef.get();
+
+  if (!heroSnap.exists) {
+    await heroRef.set({ parentUid: request.auth.uid, createdAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+  } else if (heroSnap.data()?.parentUid && heroSnap.data()?.parentUid !== request.auth.uid) {
+    throw new HttpsError("permission-denied", "Unauthorized parent account.");
+  } else if (!heroSnap.data()?.parentUid) {
+    await heroRef.set({ parentUid: request.auth.uid }, { merge: true });
+  }
+
+  await heroRef.collection("settings").doc("aiCompanion").set(settings, { merge: true });
+  return { status: "success", updated: settings };
+});
 
 export interface ParentInsightsRequest {
   householdName?: string;

@@ -1,90 +1,104 @@
-// Chore Verification Subagent Cloud Function powered by Google Gemini SDK (@google/genai)
+// Quest Evaluation Subagent Cloud Function powered by Google Gemini SDK (@google/genai)
 
 import { onCall, HttpsError } from "firebase-functions/v2/https";
-import { GoogleGenAI, ThinkingLevel } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
+import * as admin from "firebase-admin";
 
-export interface VerifyChoreRequest {
-  taskId: string;
-  taskTitle: string;
-  heroName?: string;
-  childAge?: number;
-  evidenceText?: string;
-  evidenceImageBase64?: string; // base64 encoded photo of completed chore
-  imageMimeType?: string;
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
+
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || undefined });
+const db = admin.firestore();
+
+export interface VerifyChoreData {
+  heroId: string;
+  questId?: string;
+  questTitle: string;
+  childNotes?: string;
+  photoBase64?: string;
 }
 
 export const verifyChoreSubmission = onCall({ cors: true }, async (request) => {
-  const data = request.data as VerifyChoreRequest;
-
-  if (!data || !data.taskTitle) {
-    throw new HttpsError("invalid-argument", "'taskTitle' is required.");
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "User must be authenticated.");
   }
 
-  const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
-  const ai = new GoogleGenAI({ apiKey: apiKey || undefined });
+  const { heroId, questId, questTitle, childNotes, photoBase64 } = (request.data || {}) as VerifyChoreData;
+  if (!heroId || !questTitle) {
+    throw new HttpsError("invalid-argument", "Missing required quest details.");
+  }
 
-  const heroName = data.heroName || "Little Hero";
-  const childAge = data.childAge || 5;
+  // Build evaluation payload (supports text description + optional photo proof)
+  const contents: any[] = [
+    { text: `Quest: "${questTitle}". Child's report: "${childNotes || "Done!"}". Evaluate if the child honestly completed this daily habit.` }
+  ];
 
-  const prompt = `You are a supportive, encouraging AI Chore Supervisor & Subagent for parents in Little Hero Adventures.
-Evaluate the following completed chore submission for ${heroName} (Age: ${childAge}):
-Chore Title: "${data.taskTitle}"
-Evidence provided: "${data.evidenceText || "Task marked as completed by the child."}"
-
-Respond in pure valid JSON format with the following fields:
-{
-  "verified": true,
-  "confidenceScore": 95,
-  "feedbackForKid": "Outstanding job making your hero bed, ${heroName}! The pillows look super neat!",
-  "parentRecommendation": "Approve",
-  "badgeEarned": "Tidy Room Champion"
-}`;
-
-  const contents: any[] = [];
-  if (data.evidenceImageBase64) {
+  if (photoBase64) {
     contents.push({
       inlineData: {
-        data: data.evidenceImageBase64.replace(/^data:image\/\w+;base64,/, ""),
-        mimeType: data.imageMimeType || "image/jpeg"
+        mimeType: "image/jpeg",
+        data: photoBase64.replace(/^data:image\/\w+;base64,/, "")
       }
     });
   }
-  contents.push(prompt);
 
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3.7-flash",
-      contents,
-      config: {
-        responseMimeType: "application/json",
-        thinkingConfig: {
-          thinkingLevel: ThinkingLevel.MINIMAL
-        }
+  // Step 1: Subagent verifies completion & determines fair reward
+  const evalResult = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents,
+    config: {
+      systemInstruction: "You are the Little Heroes Quest Arbiter. Be lenient and encouraging with young kids, but flag obviously blank or irrelevant submissions. Return structured data.",
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          approved: { type: Type.BOOLEAN },
+          reasoning: { type: Type.STRING },
+          xpEarned: { type: Type.INTEGER, description: "Between 10 and 50 XP" },
+          coinsEarned: { type: Type.INTEGER, description: "Between 5 and 20 coins" },
+          petReaction: { type: Type.STRING, description: "Rex the Dino celebratory cheer" }
+        },
+        required: ["approved", "xpEarned", "coinsEarned", "petReaction"]
       }
-    });
-
-    let resultJson: any = null;
-    try {
-      resultJson = JSON.parse(response.text || "{}");
-    } catch {
-      resultJson = {
-        verified: true,
-        confidenceScore: 90,
-        feedbackForKid: `Awesome effort on ${data.taskTitle}, ${heroName}!`,
-        parentRecommendation: "Approve",
-        badgeEarned: "Hero Star"
-      };
     }
+  });
 
-    return {
-      taskId: data.taskId,
-      taskTitle: data.taskTitle,
-      heroName,
-      evaluation: resultJson,
-      timestamp: new Date().toISOString()
-    };
-  } catch (error: any) {
-    console.error("Error in verifyChoreSubmission subagent:", error);
-    throw new HttpsError("internal", error.message || "Failed to verify chore submission.");
+  const verdict = JSON.parse(evalResult.text!);
+
+  // Step 2: Atomic transaction updating hero balance & quest logs
+  const heroRef = db.collection("heroes").doc(heroId);
+
+  if (verdict.approved) {
+    await db.runTransaction(async (t) => {
+      const heroDoc = await t.get(heroRef);
+      if (!heroDoc.exists) {
+        t.set(heroRef, {
+          xp: verdict.xpEarned,
+          coins: verdict.coinsEarned,
+          streak: 1,
+          createdAt: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+      } else {
+        t.update(heroRef, {
+          xp: admin.firestore.FieldValue.increment(verdict.xpEarned),
+          coins: admin.firestore.FieldValue.increment(verdict.coinsEarned),
+          streak: admin.firestore.FieldValue.increment(1)
+        });
+      }
+
+      const logRef = heroRef.collection("questHistory").doc();
+      t.set(logRef, {
+        questId: questId || "custom_quest",
+        questTitle,
+        approved: true,
+        xpEarned: verdict.xpEarned,
+        coinsEarned: verdict.coinsEarned,
+        completedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+    });
   }
+
+  return verdict;
 });
+

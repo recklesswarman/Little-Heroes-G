@@ -36,7 +36,33 @@ export const chatWithPet = onCall({ cors: true }, async (request) => {
     throw new HttpsError("invalid-argument", "Missing heroId or message.");
   }
 
-  // 1. Fetch recent chat history (last 6 interactions)
+  // Enforce Parental Controls from Firestore
+  const settingsDoc = await db.collection("heroes").doc(heroId).collection("settings").doc("aiCompanion").get();
+  const parentRules = (settingsDoc.data() as any) || {
+    companionEnabled: true,
+    maxDailyTurns: 30,
+    bedtimeHour: 20,
+    restrictedTopics: [],
+    focusAreas: ["habits"],
+    tone: "energetic"
+  };
+
+  // 1. Bedtime & Availability check
+  const currentHour = new Date().getHours();
+  if (parentRules.companionEnabled === false || currentHour >= (parentRules.bedtimeHour ?? 20)) {
+    return { reply: "*Yawn...* Rex is sleeping in his dino cave for the night! See you in the morning, Little Hero!" };
+  }
+
+  // 2. Inject Parent Directives into Rex's System Instruction
+  const injectedSystemInstruction = `
+${REX_SYSTEM_INSTRUCTION}
+PARENTAL RESTRICTIONS:
+- Current Tone Style: ${parentRules.tone || "energetic"}
+- Priority Habit Topics to Encourage: ${(parentRules.focusAreas || ["habits"]).join(", ")}
+- FORBIDDEN TOPICS (Never discuss): ${(parentRules.restrictedTopics || []).join(", ")}
+`;
+
+  // 3. Fetch recent chat history (last 6 interactions)
   const historyRef = db
     .collection("heroes")
     .doc(heroId)
@@ -57,12 +83,12 @@ export const chatWithPet = onCall({ cors: true }, async (request) => {
 
   contents.push({ role: "user", parts: [{ text: promptContext }] });
 
-  // 2. Query Gemini with Rex's persona
+  // 4. Query Gemini with Rex's persona & parent directives
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash",
     contents,
     config: {
-      systemInstruction: REX_SYSTEM_INSTRUCTION,
+      systemInstruction: injectedSystemInstruction,
       temperature: 0.8,
       maxOutputTokens: 180,
     },

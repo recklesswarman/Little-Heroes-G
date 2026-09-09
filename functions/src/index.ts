@@ -4,4 +4,5 @@ admin.initializeApp();
 
 export { chatWithPet } from "./petCompanion";
 export { verifyChoreSubmission } from "./subagents";
-export { getParentInsights } from "./parentPortal";
+export { getParentInsights, updateCompanionSettings } from "./parentPortal";
+
