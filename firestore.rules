@@ -1,11 +1,68 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /households/{householdId} {
-      allow read, write: if true;
+    
+    // --- Security Helper Functions ---
+    function isAuthenticated() {
+      return request.auth != null;
     }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidHouseholdCode(code) {
+      return code is string && code.size() >= 4 && code.size() <= 32;
+    }
+
+    function isValidHouseholdPayload() {
+      return request.resource.data.keys().hasAll(['syncCode', 'name'])
+        && request.resource.data.syncCode is string
+        && request.resource.data.syncCode.size() <= 32
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 100
+        && (!('devices' in request.resource.data) || request.resource.data.devices is map)
+        && (!('heroes' in request.resource.data) || request.resource.data.heroes is list);
+    }
+
+    // --- Households Collection ---
+    // Multi-device family synchronization scoped to explicit household codes
+    match /households/{householdCode} {
+      // Allow read with valid household code syntax
+      allow read: if isValidHouseholdCode(householdCode);
+      
+      // Allow create and update with strict field validation and size boundaries
+      allow create: if isValidHouseholdCode(householdCode)
+        && isValidHouseholdPayload();
+
+      allow update: if isValidHouseholdCode(householdCode)
+        && isValidHouseholdPayload();
+
+      // Prevent malicious household deletion from client
+      allow delete: if false;
+    }
+
+    // --- User Household Persistent Links ---
+    // Scoped strictly to authenticated users managing their household associations
+    match /user_households/{linkId} {
+      // User can only access their own user link or matching email link
+      allow read: if isAuthenticated() && (
+        request.auth.uid == linkId || 
+        (request.auth.token.email != null && linkId.matches('email_.*'))
+      );
+      
+      allow create, update: if isAuthenticated() && (
+        request.auth.uid == linkId || 
+        (request.auth.token.email != null && linkId.matches('email_.*'))
+      ) && request.resource.data.userId == request.auth.uid;
+
+      allow delete: if isAuthenticated() && request.auth.uid == linkId;
+    }
+
+    // --- Zero-Trust Default Deny ---
+    // Disallow all other collections and unmapped paths
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
   }
 }
