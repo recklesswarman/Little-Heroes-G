@@ -327,6 +327,9 @@ const defaultState = {
   // Parent Admin Portal: Action Approvals Queue
   pendingApprovals: [],
 
+  // Dedicated Timestamped Routine & Task Completion Audit Trail
+  taskCompletionLogs: [],
+
   // Parent Admin Portal: Ledger Logs History
   taskLedgerLogs: [],
 
@@ -431,7 +434,19 @@ class Store {
         }
         parsed.parentUnlocked = false;
 
+        if (!parsed.taskCompletionLogs || !Array.isArray(parsed.taskCompletionLogs)) {
+          parsed.taskCompletionLogs = [];
+        }
+
+        // Determine currently pending task IDs so we only preserve pending flags for active requests
+        const pendingTaskIds = new Set(
+          (parsed.pendingApprovals || [])
+            .filter((r) => r.status === 'pending')
+            .map((r) => r.taskId)
+        );
+
         // Upgrade habit & chore icons to ensure Material Symbols render with zero broken images
+        // and sanitize legacy permanent lockouts so routines are repeatable
         if (parsed.habitIslands) {
           parsed.habitIslands.forEach((h) => {
             const def = HABIT_ISLANDS.find((d) => d.id === h.id);
@@ -439,6 +454,10 @@ class Store {
               h.icon = def.icon;
             }
             delete h.image;
+            if (!pendingTaskIds.has(h.id)) {
+              h.completed = false;
+              h.pointsApproved = false;
+            }
           });
         } else {
           parsed.habitIslands = HABIT_ISLANDS;
@@ -451,6 +470,10 @@ class Store {
               t.icon = def.icon;
             }
             delete t.image;
+            if (!pendingTaskIds.has(t.id)) {
+              t.completed = false;
+              t.pointsApproved = false;
+            }
           });
         } else {
           parsed.taskForest = ROUTINES;
@@ -904,72 +927,134 @@ class Store {
     }
   }
 
+  // ROUTINE & TASK QUERY HELPERS
+  isTaskPendingApproval(taskId, heroId = null) {
+    const kidId = heroId || this.state.selectedHero?.id;
+    return (this.state.pendingApprovals || []).some(
+      (r) => r.taskId === taskId && (!kidId || r.kidId === kidId) && r.status === 'pending'
+    );
+  }
+
+  getTaskCompletions(taskId, heroId = null) {
+    const kidId = heroId || this.state.selectedHero?.id;
+    return (this.state.taskCompletionLogs || []).filter(
+      (l) => l.taskId === taskId && (!kidId || l.heroId === kidId)
+    );
+  }
+
+  getTaskCompletionsToday(taskId, heroId = null) {
+    const todayStr = new Date().toISOString().split('T')[0];
+    return this.getTaskCompletions(taskId, heroId).filter((l) => {
+      const logDay = (l.completedAt || '').split('T')[0];
+      return logDay === todayStr;
+    });
+  }
+
   // HABIT ISLANDS COMPLETION
   toggleHabitIsland(habitId) {
     const habit = this.state.habitIslands.find((h) => h.id === habitId);
     if (!habit) return;
 
-    // Check if habit is currently pending approval
-    const isPending = (habit.completed && !habit.pointsApproved) || 
-      (this.state.pendingApprovals && this.state.pendingApprovals.some(r => r.taskId === habit.id && r.status === 'pending'));
+    const currentHero = this.state.selectedHero;
+    const heroId = currentHero?.id || 'hero_1';
+
+    // Check if habit is currently pending approval for this hero
+    const isPending = this.isTaskPendingApproval(habit.id, heroId);
 
     if (isPending) {
-      // Per requirements: All habits are always able to be selected, but when pending approval:
-      // - NO message modal or banner
+      // Per requirements: All habits remain clickable, but when pending approval:
       // - NO duplicate tokens auto-issued until parent approves original request first
       Sound.click();
+      this.showReward(
+        'Waiting for Parent Sign-Off',
+        `"${habit.title}" is currently pending review in the Parent Portal! Once approved, your Gold Points ⭐ will be credited!`,
+        0,
+        0,
+        null,
+        'hourglass_top'
+      );
       return;
     }
 
-    if (!habit.completed) {
-      habit.completed = true;
-      habit.pointsApproved = false;
+    const logId = 'compl_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+    const approvalReqId = 'task_habit_' + habit.id + '_' + Date.now();
+    const nowIso = new Date().toISOString();
 
-      // 🪙 Tokens are auto-issued immediately (only upon first completion)
-      this.state.selectedHero.coins += habit.coins;
-      this.addXP(habit.xp);
-      Sound.coin();
-      Sound.fanfare();
+    const completionLog = {
+      id: logId,
+      taskId: habit.id,
+      taskTitle: habit.title,
+      zone: 'Habit Islands',
+      heroId: heroId,
+      heroName: currentHero.name,
+      completedAt: nowIso,
+      timestamp: Date.now(),
+      dateString: new Date().toLocaleDateString(),
+      timeString: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      coinsAwarded: habit.coins,
+      pointsAwarded: habit.points,
+      xpAwarded: habit.xp,
+      status: 'pending',
+      approvalRequestId: approvalReqId,
+      approvedAt: null,
+      rejectedAt: null
+    };
 
-      confetti({
-        particleCount: 50,
-        spread: 60,
-        origin: { y: 0.7 },
-        colors: ['#2ecc71', '#ffb961', '#3498db', '#f1c40f']
-      });
-
-      // Interactive Particle Celebration: flood screen with stars kids can pop & swipe!
-      triggerInteractiveCelebration(45);
-
-      // ⭐ Points are queued for Parent Approval
-      const approvalReqId = 'task_habit_' + habit.id + '_' + Date.now();
-      this.state.pendingApprovals.push({
-        id: approvalReqId,
-        kidId: this.state.selectedHero.id,
-        kidName: this.state.selectedHero.name,
-        type: 'task_point_approval',
-        taskId: habit.id,
-        title: habit.title,
-        zone: 'Habit Islands',
-        pendingPoints: habit.points,
-        tokensAwarded: habit.coins,
-        date: 'Just now',
-        status: 'pending'
-      });
-
-      this.logAction(`${this.state.selectedHero.name} logged '${habit.title}'`, `+${habit.coins} Tokens 🪙 auto-issued. (${habit.points} Points ⭐ pending Parent Approval)`);
-      this.showReward(
-        `Habit Logged!`,
-        `🪙 +${habit.coins} Habit Tokens auto-added to wallet!\n⭐ +${habit.points} Gold Points sent to Parent for approval.`,
-        habit.coins,
-        habit.xp,
-        habit.image,
-        habit.icon
-      );
-    } else {
-      // Already approved by parent
-      Sound.click();
+    if (!this.state.taskCompletionLogs) {
+      this.state.taskCompletionLogs = [];
     }
+    this.state.taskCompletionLogs.unshift(completionLog);
+    if (this.state.taskCompletionLogs.length > 200) {
+      this.state.taskCompletionLogs.pop();
+    }
+
+    // Set temporary pending flag for active card UI state
+    habit.completed = true;
+    habit.pointsApproved = false;
+
+    // 🪙 Tokens are auto-issued immediately
+    currentHero.coins += habit.coins;
+    this.addXP(habit.xp);
+    Sound.coin();
+    Sound.fanfare();
+
+    confetti({
+      particleCount: 50,
+      spread: 60,
+      origin: { y: 0.7 },
+      colors: ['#2ecc71', '#ffb961', '#3498db', '#f1c40f']
+    });
+
+    // Interactive Particle Celebration: flood screen with stars kids can pop & swipe!
+    triggerInteractiveCelebration(45);
+
+    // ⭐ Points are queued for Parent Approval
+    this.state.pendingApprovals.push({
+      id: approvalReqId,
+      logId: logId,
+      kidId: currentHero.id,
+      kidName: currentHero.name,
+      type: 'task_point_approval',
+      taskId: habit.id,
+      title: habit.title,
+      zone: 'Habit Islands',
+      pendingPoints: habit.points,
+      tokensAwarded: habit.coins,
+      date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: nowIso,
+      status: 'pending'
+    });
+
+    this.logAction(`${currentHero.name} logged '${habit.title}'`, `+${habit.coins} Tokens 🪙 auto-issued. (${habit.points} Points ⭐ pending Parent Approval)`);
+    this.showReward(
+      `Habit Logged!`,
+      `🪙 +${habit.coins} Habit Tokens auto-added to wallet!\n⭐ +${habit.points} Gold Points sent to Parent for approval.`,
+      habit.coins,
+      habit.xp,
+      habit.image,
+      habit.icon
+    );
+
     this.saveState(true);
   }
 
@@ -978,121 +1063,192 @@ class Store {
     const task = this.state.taskForest.find((t) => t.id === taskId);
     if (!task) return;
 
+    const currentHero = this.state.selectedHero;
+    const heroId = currentHero?.id || 'hero_1';
+
     // Check if task is currently pending approval
-    const isPending = (task.completed && !task.pointsApproved) || 
-      (this.state.pendingApprovals && this.state.pendingApprovals.some(r => r.taskId === task.id && r.status === 'pending'));
+    const isPending = this.isTaskPendingApproval(task.id, heroId);
 
     if (isPending) {
-      // Per requirements: All tasks are always able to be selected, but when pending approval:
-      // - NO message modal or banner
-      // - NO duplicate tokens auto-issued until parent approves original request first
       Sound.click();
+      this.showReward(
+        'Waiting for Parent Sign-Off',
+        `"${task.title}" is currently pending review in the Parent Portal! Once approved, your Gold Points ⭐ will be credited!`,
+        0,
+        0,
+        null,
+        'hourglass_top'
+      );
       return;
     }
 
-    if (!task.completed) {
-      task.completed = true;
-      task.pointsApproved = false;
+    const logId = 'compl_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+    const approvalReqId = 'task_chore_' + task.id + '_' + Date.now();
+    const nowIso = new Date().toISOString();
 
-      // 🪙 Tokens are auto-issued immediately (only upon first completion)
-      this.state.selectedHero.coins += task.coins;
-      this.addXP(task.xp);
-      Sound.coin();
-      Sound.fanfare();
+    const completionLog = {
+      id: logId,
+      taskId: task.id,
+      taskTitle: task.title,
+      zone: 'Task Forest',
+      heroId: heroId,
+      heroName: currentHero.name,
+      completedAt: nowIso,
+      timestamp: Date.now(),
+      dateString: new Date().toLocaleDateString(),
+      timeString: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      coinsAwarded: task.coins,
+      pointsAwarded: task.points,
+      xpAwarded: task.xp,
+      status: 'pending',
+      approvalRequestId: approvalReqId,
+      approvedAt: null,
+      rejectedAt: null
+    };
 
-      confetti({
-        particleCount: 70,
-        spread: 80,
-        origin: { y: 0.6 },
-        colors: ['#2ecc71', '#54e98a', '#f1c40f']
-      });
-
-      // Interactive Particle Celebration: flood screen with stars kids can pop & swipe!
-      triggerInteractiveCelebration(45);
-
-      // ⭐ Points are queued for Parent Approval
-      const approvalReqId = 'task_chore_' + task.id + '_' + Date.now();
-      this.state.pendingApprovals.push({
-        id: approvalReqId,
-        kidId: this.state.selectedHero.id,
-        kidName: this.state.selectedHero.name,
-        type: 'task_point_approval',
-        taskId: task.id,
-        title: task.title,
-        zone: 'Task Forest',
-        pendingPoints: task.points,
-        tokensAwarded: task.coins,
-        date: 'Just now',
-        status: 'pending'
-      });
-
-      this.logAction(`${this.state.selectedHero.name} finished '${task.title}'`, `+${task.coins} Tokens 🪙 auto-issued. (${task.points} Points ⭐ pending Parent Approval)`);
-      this.showReward(
-        `Chore Done: ${task.title}!`,
-        `🪙 +${task.coins} Habit Tokens auto-added to wallet!\n⭐ +${task.points} Gold Points sent to Parent for approval.`,
-        task.coins,
-        task.xp,
-        task.image,
-        task.icon
-      );
-    } else {
-      // Already approved by parent
-      Sound.click();
+    if (!this.state.taskCompletionLogs) {
+      this.state.taskCompletionLogs = [];
     }
+    this.state.taskCompletionLogs.unshift(completionLog);
+    if (this.state.taskCompletionLogs.length > 200) {
+      this.state.taskCompletionLogs.pop();
+    }
+
+    task.completed = true;
+    task.pointsApproved = false;
+
+    // 🪙 Tokens are auto-issued immediately
+    currentHero.coins += task.coins;
+    this.addXP(task.xp);
+    Sound.coin();
+    Sound.fanfare();
+
+    confetti({
+      particleCount: 70,
+      spread: 80,
+      origin: { y: 0.6 },
+      colors: ['#2ecc71', '#54e98a', '#f1c40f']
+    });
+
+    // Interactive Particle Celebration: flood screen with stars kids can pop & swipe!
+    triggerInteractiveCelebration(45);
+
+    // ⭐ Points are queued for Parent Approval
+    this.state.pendingApprovals.push({
+      id: approvalReqId,
+      logId: logId,
+      kidId: currentHero.id,
+      kidName: currentHero.name,
+      type: 'task_point_approval',
+      taskId: task.id,
+      title: task.title,
+      zone: 'Task Forest',
+      pendingPoints: task.points,
+      tokensAwarded: task.coins,
+      date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: nowIso,
+      status: 'pending'
+    });
+
+    this.logAction(`${currentHero.name} finished '${task.title}'`, `+${task.coins} Tokens 🪙 auto-issued. (${task.points} Points ⭐ pending Parent Approval)`);
+    this.showReward(
+      `Chore Done: ${task.title}!`,
+      `🪙 +${task.coins} Habit Tokens auto-added to wallet!\n⭐ +${task.points} Gold Points sent to Parent for approval.`,
+      task.coins,
+      task.xp,
+      task.image,
+      task.icon
+    );
+
     this.saveState(true);
   }
 
   // TOOTHBRUSH AR BATTLE COMPLETION
   completeToothbrushBattle() {
     const task = this.state.taskForest.find((t) => t.id === 'morning_brush');
-    if (task) {
-      task.completed = true;
-      task.pointsApproved = false;
-    }
+    const currentHero = this.state.selectedHero;
+    const heroId = currentHero?.id || 'hero_1';
 
-    // Check if already has a pending approval
-    const isPending = this.state.pendingApprovals && this.state.pendingApprovals.some(r => r.taskId === 'morning_brush' && r.status === 'pending');
+    // Check if already has a pending approval for this hero
+    const isPending = this.isTaskPendingApproval('morning_brush', heroId);
 
     if (isPending) {
-      // Already pending approval: celebration sound, but no duplicate tokens until parent approves
       Sound.fanfare();
       this.showReward(
         'SUGAR VILLAIN DEFEATED!',
         'Great toothbrush battle hero! Your reward request is pending parent approval in the Parent Portal.',
         0,
         0,
-        task?.image || generate3DIcon('dentistry', 'blue', 'Brush'),
+        task?.image || null,
         'dentistry'
       );
       this.saveState(true);
       return;
     }
 
-    this.state.selectedHero.coins += 30;
+    const logId = 'compl_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+    const approvalReqId = 'task_ar_brush_' + Date.now();
+    const nowIso = new Date().toISOString();
+
+    const completionLog = {
+      id: logId,
+      taskId: 'morning_brush',
+      taskTitle: 'Morning Toothbrush AR Battle (2:00 Routine)',
+      zone: 'Task Forest',
+      heroId: heroId,
+      heroName: currentHero.name,
+      completedAt: nowIso,
+      timestamp: Date.now(),
+      dateString: new Date().toLocaleDateString(),
+      timeString: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      coinsAwarded: 30,
+      pointsAwarded: 15,
+      xpAwarded: 50,
+      status: 'pending',
+      approvalRequestId: approvalReqId,
+      approvedAt: null,
+      rejectedAt: null
+    };
+
+    if (!this.state.taskCompletionLogs) {
+      this.state.taskCompletionLogs = [];
+    }
+    this.state.taskCompletionLogs.unshift(completionLog);
+    if (this.state.taskCompletionLogs.length > 200) {
+      this.state.taskCompletionLogs.pop();
+    }
+
+    if (task) {
+      task.completed = true;
+      task.pointsApproved = false;
+    }
+
+    currentHero.coins += 30;
     this.addXP(50);
 
-    const approvalReqId = 'task_ar_brush_' + Date.now();
     this.state.pendingApprovals.push({
       id: approvalReqId,
-      kidId: this.state.selectedHero.id,
-      kidName: this.state.selectedHero.name,
+      logId: logId,
+      kidId: currentHero.id,
+      kidName: currentHero.name,
       type: 'task_point_approval',
       taskId: 'morning_brush',
       title: 'Morning Toothbrush AR Battle (2:00 Routine)',
       zone: 'Task Forest',
       pendingPoints: 15,
       tokensAwarded: 30,
-      date: 'Just now',
+      date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: nowIso,
       status: 'pending'
     });
 
-    this.logAction(`${this.state.selectedHero.name} finished 2-min Toothbrush AR Battle`, `+30 Tokens 🪙 auto-issued. (+15 Points ⭐ sent to Parent for approval)`);
+    this.logAction(`${currentHero.name} finished 2-min Toothbrush AR Battle`, `+30 Tokens 🪙 auto-issued. (+15 Points ⭐ sent to Parent for approval)`);
     this.showReward(
       'SUGAR VILLAIN DEFEATED!',
       '🪙 +30 Habit Tokens auto-added to your wallet!\n⭐ +15 Gold Points submitted to Parent for review & credit.',
       30,
       50,
-      task?.image || generate3DIcon('dentistry', 'blue', 'Brush'),
+      task?.image || null,
       'dentistry'
     );
     this.saveState(true);
@@ -1554,18 +1710,65 @@ class Store {
         this.state.selectedHero.points = hero.points;
       }
 
+      // 1. Update the structured completion log record
+      const nowIso = new Date().toISOString();
+      if (this.state.taskCompletionLogs) {
+        const logEntry = this.state.taskCompletionLogs.find(l => 
+          (req.logId && l.id === req.logId) || 
+          (l.approvalRequestId === req.id) ||
+          (l.taskId === req.taskId && l.heroId === req.kidId && l.status === 'pending')
+        );
+        if (logEntry) {
+          logEntry.status = 'approved';
+          logEntry.approvedAt = nowIso;
+        }
+      }
+
+      // 2. Release routine definition so kid is NOT locked out for subsequent cycles/times/days!
       let taskItem = null;
       if (req.taskId) {
         const habit = this.state.habitIslands.find(h => h.id === req.taskId);
-        if (habit) { habit.pointsApproved = true; taskItem = habit; }
+        if (habit) {
+          habit.completed = false;
+          habit.pointsApproved = false;
+          taskItem = habit;
+        }
         const task = this.state.taskForest.find(t => t.id === req.taskId);
-        if (task) { task.pointsApproved = true; taskItem = task; }
+        if (task) {
+          task.completed = false;
+          task.pointsApproved = false;
+          taskItem = task;
+        }
+
+        // Also release on all heroes copies
+        if (this.state.heroes) {
+          this.state.heroes.forEach((h) => {
+            if (h.habitIslands) {
+              const hh = h.habitIslands.find(x => x.id === req.taskId);
+              if (hh) { hh.completed = false; hh.pointsApproved = false; }
+            }
+            if (h.taskForest) {
+              const tt = h.taskForest.find(x => x.id === req.taskId);
+              if (tt) { tt.completed = false; tt.pointsApproved = false; }
+            }
+          });
+        }
+        if (this.state.selectedHero) {
+          if (this.state.selectedHero.habitIslands) {
+            const hh = this.state.selectedHero.habitIslands.find(x => x.id === req.taskId);
+            if (hh) { hh.completed = false; hh.pointsApproved = false; }
+          }
+          if (this.state.selectedHero.taskForest) {
+            const tt = this.state.selectedHero.taskForest.find(x => x.id === req.taskId);
+            if (tt) { tt.completed = false; tt.pointsApproved = false; }
+          }
+        }
       }
 
       this.logAction(`Parent verified '${req.title}' for ${req.kidName}`, `+${pointsToAward} Points ⭐ Credited to Balance`);
       this.showReward(
         'Points Approved!',
-        `+${pointsToAward} Gold Points ⭐ officially credited to ${req.kidName}'s wallet!`,
+        `+${pointsToAward} Gold Points ⭐ officially credited to ${req.kidName}'s wallet! Routine is ready for the next cycle.`,
         0,
         0,
         taskItem?.image || null,
@@ -1599,6 +1802,19 @@ class Store {
     const req = this.state.pendingApprovals[reqIndex];
 
     if (req.type === 'task_point_approval' || req.type === 'task') {
+      const nowIso = new Date().toISOString();
+      if (this.state.taskCompletionLogs) {
+        const logEntry = this.state.taskCompletionLogs.find(l => 
+          (req.logId && l.id === req.logId) || 
+          (l.approvalRequestId === req.id) ||
+          (l.taskId === req.taskId && l.heroId === req.kidId && l.status === 'pending')
+        );
+        if (logEntry) {
+          logEntry.status = 'rejected';
+          logEntry.rejectedAt = nowIso;
+        }
+      }
+
       if (req.taskId) {
         const habit = this.state.habitIslands.find(h => h.id === req.taskId);
         if (habit) {
@@ -1609,6 +1825,28 @@ class Store {
         if (task) {
           task.completed = false;
           task.pointsApproved = false;
+        }
+        if (this.state.heroes) {
+          this.state.heroes.forEach((h) => {
+            if (h.habitIslands) {
+              const hh = h.habitIslands.find(x => x.id === req.taskId);
+              if (hh) { hh.completed = false; hh.pointsApproved = false; }
+            }
+            if (h.taskForest) {
+              const tt = h.taskForest.find(x => x.id === req.taskId);
+              if (tt) { tt.completed = false; tt.pointsApproved = false; }
+            }
+          });
+        }
+        if (this.state.selectedHero) {
+          if (this.state.selectedHero.habitIslands) {
+            const hh = this.state.selectedHero.habitIslands.find(x => x.id === req.taskId);
+            if (hh) { hh.completed = false; hh.pointsApproved = false; }
+          }
+          if (this.state.selectedHero.taskForest) {
+            const tt = this.state.selectedHero.taskForest.find(x => x.id === req.taskId);
+            if (tt) { tt.completed = false; tt.pointsApproved = false; }
+          }
         }
       }
       this.logAction(`Parent rejected Point Approval for '${req.title}' (${req.kidName})`, `0 Points ⭐ Issued`);
@@ -1641,6 +1879,17 @@ class Store {
   clearAllPendingApprovals() {
     // 1. Clear state.pendingApprovals
     this.state.pendingApprovals = [];
+
+    // Mark pending logs as cleared
+    const nowIso = new Date().toISOString();
+    if (this.state.taskCompletionLogs) {
+      this.state.taskCompletionLogs.forEach(l => {
+        if (l.status === 'pending') {
+          l.status = 'rejected';
+          l.rejectedAt = nowIso;
+        }
+      });
+    }
 
     // 2. Reset all habit islands to uncompleted / not pending
     if (this.state.habitIslands) {
@@ -2175,9 +2424,12 @@ class Store {
       this.state.pets = cloudData.pets;
     }
 
-    // 4. Approvals, Chores, Habits, Settings, Inventory
+    // 4. Approvals, Completion Logs, Chores, Habits, Settings, Inventory
     if (cloudData.pendingApprovals !== undefined) {
       this.state.pendingApprovals = Array.isArray(cloudData.pendingApprovals) ? cloudData.pendingApprovals : [];
+    }
+    if (cloudData.taskCompletionLogs && Array.isArray(cloudData.taskCompletionLogs)) {
+      this.state.taskCompletionLogs = cloudData.taskCompletionLogs;
     }
     if (cloudData.taskForest && Array.isArray(cloudData.taskForest)) {
       this.state.taskForest = cloudData.taskForest;

@@ -22,6 +22,7 @@ export function renderParentPortalView() {
   const digitalGear = state.digitalGear;
   const settings = state.parentSettings;
   const logs = state.taskLedgerLogs;
+  const completionLogs = state.taskCompletionLogs || [];
 
   const tabs = [
     { id: 'approvals', label: 'Action Inbox', icon: 'inbox', count: pending.length },
@@ -826,6 +827,82 @@ export function renderParentPortalView() {
                 </tbody>
               </table>
             </div>
+          </div>
+
+          <!-- Task & Routine Completion Audit Log (Decoupled Repeatable History) -->
+          <div class="bg-surface-container rounded-3xl p-5 border-2 border-surface-container-highest card-shadow flex flex-col gap-3">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="font-headline text-sm font-black text-inverse-surface flex items-center gap-2">
+                  <span class="material-symbols-outlined text-primary text-base">history</span>
+                  Routine & Task Completion Audit Log (${completionLogs.length})
+                </h3>
+                <p class="text-[11px] text-on-surface-variant font-bold">Every recurring cycle is recorded with an exact timestamp for parental review.</p>
+              </div>
+            </div>
+
+            ${
+              completionLogs.length === 0
+                ? `
+              <div class="p-6 text-center text-xs text-on-surface-variant">
+                No routine completions logged yet. When kids complete chores or habits, individual records with timestamps appear here.
+              </div>
+            `
+                : `
+              <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs font-bold">
+                  <thead>
+                    <tr class="border-b border-surface-container-highest text-on-surface-variant text-[10px] uppercase">
+                      <th class="py-2">Date & Time</th>
+                      <th class="py-2">Hero</th>
+                      <th class="py-2">Routine / Chore</th>
+                      <th class="py-2">Zone</th>
+                      <th class="py-2">Tokens 🪙</th>
+                      <th class="py-2">Points ⭐ Status</th>
+                      <th class="py-2 text-right">Signed Off</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-surface-container-highest/40">
+                    ${completionLogs
+                      .map((log) => {
+                        const isApproved = log.status === 'approved';
+                        const isPending = log.status === 'pending';
+                        const statusPill = isApproved
+                          ? `<span class="px-2 py-0.5 rounded-md text-[10px] font-black bg-primary/20 text-primary border border-primary/30">✓ +${log.pointsAwarded} ⭐ Approved</span>`
+                          : isPending
+                          ? `<span class="px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-500/20 text-amber-400 border border-amber-500/30">⏳ +${log.pointsAwarded} ⭐ Pending</span>`
+                          : `<span class="px-2 py-0.5 rounded-md text-[10px] font-black bg-error/20 text-error border border-error/30">✕ Declined</span>`;
+
+                        const timeDisplay = log.timeString && log.dateString
+                          ? `${log.dateString} ${log.timeString}`
+                          : log.completedAt
+                          ? new Date(log.completedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })
+                          : 'Just now';
+
+                        const approvedDisplay = log.approvedAt
+                          ? new Date(log.approvedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                          : isPending
+                          ? 'Awaiting Sign-off'
+                          : 'Declined';
+
+                        return `
+                        <tr class="hover:bg-surface-container-high/40 transition-colors">
+                          <td class="py-2 text-on-surface-variant font-medium text-[11px] whitespace-nowrap">${timeDisplay}</td>
+                          <td class="py-2 text-primary font-black whitespace-nowrap">${log.heroName || 'Hero'}</td>
+                          <td class="py-2 text-inverse-surface font-bold">${log.taskTitle}</td>
+                          <td class="py-2 text-on-surface-variant text-[11px]">${log.zone}</td>
+                          <td class="py-2 text-secondary font-black">+${log.coinsAwarded}</td>
+                          <td class="py-2">${statusPill}</td>
+                          <td class="py-2 text-right font-medium text-on-surface-variant text-[11px] whitespace-nowrap">${approvedDisplay}</td>
+                        </tr>
+                      `;
+                      })
+                      .join('')}
+                  </tbody>
+                </table>
+              </div>
+            `
+            }
           </div>
         </section>
       `

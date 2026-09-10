@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Routine & Task Forest Chores configuration
  * Maps each routine to a standard Google Material Symbols font ligature.
  */
@@ -84,8 +84,8 @@ export const HABIT_ISLANDS = [
     coins: 15,
     points: 5,
     xp: 20,
-    completed: true,
-    pointsApproved: true,
+    completed: false,
+    pointsApproved: false,
     desc: 'Keep your hydration meter full with crystal spring water.'
   },
   {
@@ -120,8 +120,8 @@ export const HABIT_ISLANDS = [
     coins: 10,
     points: 5,
     xp: 15,
-    completed: true,
-    pointsApproved: true,
+    completed: false,
+    pointsApproved: false,
     desc: 'Scrub all suds clean before meals and after playing outside.'
   }
 ];

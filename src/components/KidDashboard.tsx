@@ -248,18 +248,15 @@ export const KidDashboard: React.FC<KidDashboardProps> = ({
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (!task.completedToday) {
-                          sounds.playCoin();
-                          onCompleteTask(task.id);
-                        }
+                        sounds.playCoin();
+                        onCompleteTask(task.id);
                       }}
-                      disabled={task.completedToday}
                       className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center transition-all ${
                         task.completedToday
-                          ? 'bg-[#2ECC71] text-white border-2 border-[#27AE60] cursor-default'
+                          ? 'bg-[#2ECC71] text-white border-2 border-[#27AE60] active:scale-90 cursor-pointer shadow-sm hover:brightness-110'
                           : 'bg-black/25 hover:bg-white hover:text-[#0F172A] text-white border-2 border-white/40 active:scale-90 cursor-pointer'
                       }`}
-                      title={task.completedToday ? 'Completed' : 'Mark completed'}
+                      title={task.completedToday ? 'Completed! Tap to record another cycle' : 'Mark completed'}
                     >
                       <Check className={`w-6 h-6 stroke-[3.5] ${task.completedToday ? 'text-white' : ''}`} />
                     </button>
@@ -327,18 +324,15 @@ export const KidDashboard: React.FC<KidDashboardProps> = ({
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (!habit.completedToday) {
-                      sounds.playCoin();
-                      onCompleteTask(habit.id);
-                    }
+                    sounds.playCoin();
+                    onCompleteTask(habit.id);
                   }}
-                  disabled={habit.completedToday}
                   className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center transition-all ${
                     habit.completedToday
-                      ? 'bg-[#3498DB] text-white border-2 border-[#2980B9] cursor-default'
+                      ? 'bg-[#3498DB] text-white border-2 border-[#2980B9] active:scale-90 cursor-pointer shadow-sm hover:brightness-110'
                       : 'bg-black/25 hover:bg-white hover:text-[#0F172A] text-white border-2 border-white/40 active:scale-90 cursor-pointer'
                   }`}
-                  title={habit.completedToday ? 'Completed' : 'Mark completed'}
+                  title={habit.completedToday ? 'Completed! Tap to record another cycle' : 'Mark completed'}
                 >
                   <Check className={`w-6 h-6 stroke-[3.5] ${habit.completedToday ? 'text-white' : ''}`} />
                 </button>

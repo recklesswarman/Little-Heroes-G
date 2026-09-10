@@ -159,17 +159,41 @@ export function renderDashboardView() {
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
           ${habitIslands
             .map((h) => {
-              const isApproved = h.completed && h.pointsApproved;
-              const btnClass = isApproved
-                ? 'tactile-check-approved'
-                : 'tactile-check-ready';
-              const checkIcon = isApproved ? 'verified' : 'check';
-              const iconColor = 'text-white';
+              const isPending = store.isTaskPendingApproval(h.id, hero.id);
+              const completionsToday = store.getTaskCompletionsToday(h.id, hero.id);
+              const completedTodayCount = completionsToday.length;
+
+              let btnClass = 'tactile-check-ready';
+              let checkIcon = 'check';
+              let statusBadge = '';
+              let btnTitle = 'Complete Habit';
+
+              if (isPending) {
+                btnClass = 'tactile-check-pending animate-pulse';
+                checkIcon = 'hourglass_top';
+                btnTitle = 'Waiting for Parent Approval';
+                statusBadge = `
+                  <span class="text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1 shadow-sm">
+                    <span class="material-symbols-outlined text-[11px] animate-spin">hourglass_empty</span> Pending Parent ⭐
+                  </span>
+                `;
+              } else if (completedTodayCount > 0) {
+                btnClass = 'tactile-check-ready';
+                checkIcon = 'check';
+                btnTitle = `Completed ${completedTodayCount}x today • Tap to complete again`;
+                statusBadge = `
+                  <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/40 flex items-center gap-1 shadow-sm">
+                    <span class="material-symbols-outlined text-[11px]">verified</span> Done ${completedTodayCount}x today ⭐
+                  </span>
+                `;
+              }
 
               return `
               <div data-habit-card-id="${h.id}" class="habit-card-item tactile-card bg-surface-container rounded-3xl p-4 flex items-center justify-between border-2 ${
-                isApproved
-                  ? 'border-primary/50 bg-surface-container'
+                isPending
+                  ? 'border-amber-500/50 bg-surface-container'
+                  : completedTodayCount > 0
+                  ? 'border-primary/40 bg-surface-container'
                   : 'border-surface-container-highest bg-surface-container'
               } transition-all cursor-pointer">
                 <div class="flex items-center gap-3.5 flex-1 pr-3">
@@ -190,19 +214,13 @@ export function renderDashboardView() {
                       <span class="text-tertiary flex items-center gap-0.5">
                         <span class="material-symbols-outlined text-sm">star</span> +${h.points} Points
                       </span>
-                      ${
-                        isApproved
-                          ? `<span class="text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/40 flex items-center gap-1 shadow-sm">
-                               <span class="material-symbols-outlined text-[11px]">verified</span> Approved ⭐
-                             </span>`
-                          : ''
-                      }
+                      ${statusBadge}
                     </div>
                   </div>
                 </div>
 
-                <button data-habit-id="${h.id}" class="habit-check-btn tactile-check-btn ${btnClass} rounded-2xl w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center flex-shrink-0 active:scale-95 shadow-chunky-sm" title="${isApproved ? 'Quest Approved' : 'Complete Habit'}">
-                  <span class="material-symbols-outlined text-3xl font-black ${iconColor}" style="font-variation-settings: 'FILL' 1;">
+                <button data-habit-id="${h.id}" class="habit-check-btn tactile-check-btn ${btnClass} rounded-2xl w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center flex-shrink-0 active:scale-95 shadow-chunky-sm" title="${btnTitle}">
+                  <span class="material-symbols-outlined text-3xl font-black text-white" style="font-variation-settings: 'FILL' 1;">
                     ${checkIcon}
                   </span>
                 </button>
@@ -226,17 +244,41 @@ export function renderDashboardView() {
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
           ${taskForest
             .map((t) => {
-              const isApproved = t.completed && t.pointsApproved;
-              const btnClass = isApproved
-                ? 'tactile-check-approved'
-                : 'tactile-check-ready';
-              const checkIcon = isApproved ? 'verified' : 'check';
-              const iconColor = 'text-white';
+              const isPending = store.isTaskPendingApproval(t.id, hero.id);
+              const completionsToday = store.getTaskCompletionsToday(t.id, hero.id);
+              const completedTodayCount = completionsToday.length;
+
+              let btnClass = 'tactile-check-ready';
+              let checkIcon = 'check';
+              let statusBadge = '';
+              let btnTitle = 'Complete Chore';
+
+              if (isPending) {
+                btnClass = 'tactile-check-pending animate-pulse';
+                checkIcon = 'hourglass_top';
+                btnTitle = 'Waiting for Parent Approval';
+                statusBadge = `
+                  <span class="text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1 shadow-sm">
+                    <span class="material-symbols-outlined text-[11px] animate-spin">hourglass_empty</span> Pending Parent ⭐
+                  </span>
+                `;
+              } else if (completedTodayCount > 0) {
+                btnClass = 'tactile-check-ready';
+                checkIcon = 'check';
+                btnTitle = `Completed ${completedTodayCount}x today • Tap to complete again`;
+                statusBadge = `
+                  <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/40 flex items-center gap-1 shadow-sm">
+                    <span class="material-symbols-outlined text-[11px]">verified</span> Done ${completedTodayCount}x today ⭐
+                  </span>
+                `;
+              }
 
               return `
               <div data-task-card-id="${t.id}" class="task-card-item tactile-card bg-surface-container rounded-3xl p-4 flex items-center justify-between border-2 ${
-                isApproved && !t.isAR
-                  ? 'border-primary/50 bg-surface-container'
+                isPending
+                  ? 'border-amber-500/50 bg-surface-container'
+                  : completedTodayCount > 0 && !t.isAR
+                  ? 'border-primary/40 bg-surface-container'
                   : 'border-surface-container-highest bg-surface-container'
               } transition-all cursor-pointer">
                 <div class="flex items-center gap-3.5 flex-1 pr-3">
@@ -260,13 +302,7 @@ export function renderDashboardView() {
                       <span class="text-tertiary flex items-center gap-0.5">
                         <span class="material-symbols-outlined text-sm">star</span> +${t.points} Points
                       </span>
-                      ${
-                        isApproved && !t.isAR
-                          ? `<span class="text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/40 flex items-center gap-1 shadow-sm">
-                               <span class="material-symbols-outlined text-[11px]">verified</span> Approved ⭐
-                             </span>`
-                          : ''
-                      }
+                      ${statusBadge}
                     </div>
                   </div>
                 </div>
@@ -274,13 +310,13 @@ export function renderDashboardView() {
                 ${
                   t.isAR
                     ? `
-                  <button data-task-ar-id="${t.id}" class="task-ar-launch-btn bg-error text-on-error font-headline text-xs font-black px-4 py-3 rounded-2xl chunky-btn border-error-container shadow-chunky-sm flex items-center gap-1.5 hover:brightness-110 active:scale-95" title="Launch Toothbrush AR Battle">
-                    <span class="material-symbols-outlined text-base">play_arrow</span> Battle
+                  <button data-task-ar-id="${t.id}" class="task-ar-launch-btn ${isPending ? 'bg-amber-600 border-amber-800' : 'bg-error border-error-container'} text-white font-headline text-xs font-black px-4 py-3 rounded-2xl chunky-btn shadow-chunky-sm flex items-center gap-1.5 hover:brightness-110 active:scale-95" title="${isPending ? 'Toothbrush Battle Submitted (Pending Parent)' : 'Launch Toothbrush AR Battle'}">
+                    <span class="material-symbols-outlined text-base">${isPending ? 'hourglass_top' : 'play_arrow'}</span> ${isPending ? 'Pending' : 'Battle'}
                   </button>
                 `
                     : `
-                  <button data-task-id="${t.id}" class="task-check-btn tactile-check-btn ${btnClass} rounded-2xl w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center flex-shrink-0 active:scale-95 shadow-chunky-sm" title="${isApproved ? 'Quest Approved' : 'Complete Chore'}">
-                    <span class="material-symbols-outlined text-3xl font-black ${iconColor}" style="font-variation-settings: 'FILL' 1;">
+                  <button data-task-id="${t.id}" class="task-check-btn tactile-check-btn ${btnClass} rounded-2xl w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center flex-shrink-0 active:scale-95 shadow-chunky-sm" title="${btnTitle}">
+                    <span class="material-symbols-outlined text-3xl font-black text-white" style="font-variation-settings: 'FILL' 1;">
                       ${checkIcon}
                     </span>
                   </button>
@@ -317,6 +353,12 @@ export function renderDashboardView() {
 let lastSpokenHeroId = null;
 
 function triggerQuestVoice(title = '', id = '', desc = '') {
+  const currentHeroId = store.getState().selectedHero?.id;
+  if (id && store.isTaskPendingApproval(id, currentHeroId)) {
+    speakRex("This quest is waiting for Parent to verify and approve your Gold Points in the Parent Portal!");
+    return;
+  }
+
   const isEasy = store.isEasyMode();
   const t = (title + ' ' + id).toLowerCase();
 

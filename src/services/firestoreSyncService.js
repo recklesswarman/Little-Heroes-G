@@ -220,6 +220,7 @@ class FirestoreSyncService {
         heroesMap: heroesMap,
         selectedHero: state.selectedHero || null,
         pendingApprovals: state.pendingApprovals || [],
+        taskCompletionLogs: state.taskCompletionLogs || [],
         petStatsMap: state.petStatsMap || {},
         petStageMap: state.petStageMap || {},
         equippedGearMap: state.equippedGearMap || {},
