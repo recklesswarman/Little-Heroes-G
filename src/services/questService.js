@@ -1,7 +1,7 @@
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { app, functions as existingFunctions } from "../config/firebase.js";
 
-const functions = existingFunctions || (app ? getFunctions(app) : getFunctions());
+const functions = existingFunctions || (app ? getFunctions(app, "us-central1") : getFunctions());
 
 /**
  * Submits a daily habit or chore quest to the AI Quest Arbiter Subagent for multimodal verification.
@@ -23,7 +23,12 @@ export async function submitDailyQuest(heroId, questTitle, childNotes = "", phot
 
     return result.data; // Returns { approved, reasoning, xpEarned, coinsEarned, petReaction }
   } catch (err) {
-    console.warn("Quest evaluation subagent cloud call notice, falling back:", err.message);
+    console.error("Quest evaluation subagent cloud call error [verifyChoreSubmission]:", {
+      code: err?.code,
+      message: err?.message,
+      details: err?.details,
+      region: "us-central1"
+    });
     return {
       approved: true,
       reasoning: `Great job on ${questTitle}! Your effort has been verified.`,
@@ -51,7 +56,12 @@ export async function requestAutonomousMicroQuests(params = {}) {
     const result = await generateFn(params);
     return result.data;
   } catch (err) {
-    console.warn("Autonomous micro-quest generation notice, using fallback set:", err.message);
+    console.error("Autonomous micro-quest generation error [generateDailyMicroQuests]:", {
+      code: err?.code,
+      message: err?.message,
+      details: err?.details,
+      region: "us-central1"
+    });
     const isToddler = params.ageTier === "toddler" || (params.childAge && params.childAge <= 4);
     return {
       success: true,

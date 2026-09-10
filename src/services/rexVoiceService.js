@@ -1,4 +1,4 @@
-﻿import { getFunctions, httpsCallable } from "firebase/functions";
+import { getFunctions, httpsCallable } from "firebase/functions";
 import { app, functions as existingFunctions } from "../config/firebase.js";
 
 const functions = existingFunctions || (app ? getFunctions(app) : getFunctions());
@@ -14,7 +14,12 @@ export async function askRex(heroId, message, currentHabit = null) {
 
     return replyText;
   } catch (err) {
-    console.warn("Rex cloud function notice, falling back:", err.message);
+    console.error("Rex cloud function call error [askRex]:", {
+      code: err?.code,
+      message: err?.message,
+      details: err?.details,
+      region: "us-central1"
+    });
     const fallbackText = `*ROAR!* High five, Little Hero! Let's keep exploring!`;
     speakAsRex(fallbackText);
     return fallbackText;

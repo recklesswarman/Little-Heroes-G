@@ -1,18 +1,21 @@
-﻿import { getApp } from "firebase/app";
+import { getApp } from "firebase/app";
 import { getFunctions, httpsCallable } from "firebase/functions";
-import { auth } from "../config/firebase.js";
+import { auth, functions as existingFunctions } from "../config/firebase.js";
 import { signInAnonymously } from "firebase/auth";
 
-// Initialize functions using your existing Firebase app setup
-let functions;
-try {
-  functions = getFunctions(getApp());
-} catch {
-  functions = getFunctions();
+// Initialize functions using centralized configuration with explicit us-central1 region
+let functions = existingFunctions;
+if (!functions) {
+  try {
+    functions = getFunctions(getApp(), "us-central1");
+  } catch {
+    functions = getFunctions();
+  }
 }
 
 /**
- * Sends a message to Rex the Dino and returns his reaction
+ * Sends a message to Rex the Dino and returns his reaction.
+ * Includes detailed error logging for CORS, unauthenticated requests, and Cloud Function diagnostics.
  */
 export async function talkToRex(message, heroId = "hero_demo_1", currentHabit = null) {
   try {
@@ -21,7 +24,7 @@ export async function talkToRex(message, heroId = "hero_demo_1", currentHabit = 
       try {
         await signInAnonymously(auth);
       } catch (authErr) {
-        console.warn("Anonymous auth notice:", authErr.message);
+        console.warn("Anonymous auth notice (proceeding as guest):", authErr.message);
       }
     }
 
@@ -33,8 +36,25 @@ export async function talkToRex(message, heroId = "hero_demo_1", currentHabit = 
     });
     return result.data.reply;
   } catch (error) {
-    console.error("Rex communication error:", error);
-    return "*ROAR!* I had a little trouble hearing you, but I'm ready for adventure!";
+    // Surface full diagnostic error details
+    console.error("Rex Cloud Function call failed [chatWithPet]:", {
+      code: error?.code,
+      message: error?.message,
+      details: error?.details,
+      customData: error?.customData,
+      region: "us-central1",
+      endpoint: "chatWithPet"
+    });
+
+    // Provide descriptive feedback if unauthenticated, CORS, or quota
+    let detailMsg = "";
+    if (error?.code === "functions/unauthenticated") {
+      detailMsg = " (Session unauthenticated)";
+    } else if (error?.code === "functions/unavailable" || error?.message?.includes("CORS")) {
+      detailMsg = " (Network/CORS blocked)";
+    }
+
+    return `*ROAR!* I had a little trouble hearing you${detailMsg}, but I'm ready for adventure!`;
   }
 }
 

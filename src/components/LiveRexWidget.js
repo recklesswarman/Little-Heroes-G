@@ -7,6 +7,7 @@ import { geminiLiveService } from '../services/geminiLiveService.js';
 import { Sound } from '../audio/sfx.js';
 import { triggerInteractiveCelebration } from './InteractiveCelebrationOverlay.js';
 import { rexEngine } from '../services/rexCompanionEngine.js';
+import { rexLiveSession } from '../services/rexLiveAudioService.js';
 
 /**
  * Generates dynamic SVG for Rex the Dino with expressions for listening, thinking, and speaking
@@ -325,12 +326,32 @@ export function attachLiveRexWidgetListeners() {
     });
   }
 
+  // Helper to toggle real-time bidirectional Gemini Live session with fallback
+  const handleToggleRexLive = async () => {
+    rexEngine.unlockAudio();
+    if (rexLiveSession.isActive) {
+      Sound.chirp();
+      rexLiveSession.stopSession();
+    } else if (rexEngine.isListening) {
+      rexEngine.toggleListen();
+    } else {
+      Sound.pop();
+      const hero = store.getState().selectedHero;
+      const heroName = hero?.name || "Kayden";
+      try {
+        await rexLiveSession.startSession(heroName);
+      } catch (liveErr) {
+        console.warn("Rex Live WebSocket fallback to local speech engine:", liveErr);
+        rexEngine.toggleListen();
+      }
+    }
+  };
+
   // 2. Giant Mascot Face Tap-to-Talk (Header/Hero)
   const giantAvatarBtn = document.getElementById('modal-rex-avatar-btn');
   if (giantAvatarBtn) {
     giantAvatarBtn.addEventListener('click', () => {
-      Sound.pop();
-      rexEngine.toggleListen();
+      handleToggleRexLive();
     });
   }
 
@@ -339,6 +360,9 @@ export function attachLiveRexWidgetListeners() {
   if (closeBtn) {
     closeBtn.addEventListener('click', () => {
       Sound.click();
+      if (rexLiveSession.isActive) {
+        rexLiveSession.stopSession();
+      }
       if (rexEngine.isListening) {
         rexEngine.toggleListen();
       }
@@ -350,8 +374,7 @@ export function attachLiveRexWidgetListeners() {
   const toggleBtn = document.getElementById('live-rex-toggle-btn');
   if (toggleBtn) {
     toggleBtn.addEventListener('click', () => {
-      Sound.chirp();
-      rexEngine.toggleListen();
+      handleToggleRexLive();
     });
   }
 
@@ -366,7 +389,44 @@ export function attachLiveRexWidgetListeners() {
     });
   });
 
-  // 6. Connect Rex Engine State Change Listener for UI Updates
+  // 6. Connect Rex Live Session State & Volume Listeners for Visualizer
+  rexLiveSession.onStateChange = (state) => {
+    const bars = document.querySelectorAll('.rex-wave-bar');
+    if (bars && bars.length > 0) {
+      if (state === 'talking') {
+        bars.forEach((bar, i) => {
+          bar.style.height = `${12 + (i % 3) * 8}px`;
+          bar.style.backgroundColor = '#10B981';
+        });
+      } else if (state === 'listening') {
+        bars.forEach((bar, i) => {
+          bar.style.height = `${8 + ((i + 1) % 4) * 6}px`;
+          bar.style.backgroundColor = '#34D399';
+        });
+      } else {
+        bars.forEach((bar) => {
+          bar.style.height = '4px';
+          bar.style.backgroundColor = '#6EE7B7';
+        });
+      }
+    }
+  };
+
+  rexLiveSession.onVolume = (volume, type) => {
+    const bars = document.querySelectorAll('.rex-wave-bar');
+    if (bars && bars.length > 0) {
+      bars.forEach((bar, idx) => {
+        const factor = Math.sin((idx + 1) * 0.8) * 0.5 + 0.5;
+        const minHeight = 4;
+        const maxHeight = 30;
+        const height = Math.max(minHeight, Math.round(minHeight + volume * maxHeight * factor));
+        bar.style.height = `${height}px`;
+        bar.style.backgroundColor = type === 'output' ? '#10B981' : '#34D399';
+      });
+    }
+  };
+
+  // 7. Connect Rex Engine State Change Listener for UI Updates (Fallback Engine)
   rexEngine.onStateChange = (newState) => {
     // Dynamic waveform animation
     const bars = document.querySelectorAll('.rex-wave-bar');

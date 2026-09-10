@@ -38,8 +38,9 @@ try {
     db = getFirestore(app);
   }
 
+  const functionsRegion = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_FUNCTIONS_REGION) || "us-central1";
   try {
-    functions = getFunctions(app);
+    functions = getFunctions(app, functionsRegion);
   } catch (fnErr) {
     console.warn("Firebase Functions initialization notice:", fnErr.message);
   }

@@ -6,14 +6,16 @@ import { getFunctions, httpsCallable } from "firebase/functions";
 import { getApp } from "firebase/app";
 import { store } from "../state/store.js";
 import { Sound } from "../audio/sfx.js";
-import { auth } from "../config/firebase.js";
+import { auth, functions as existingFunctions } from "../config/firebase.js";
 import { signInAnonymously } from "firebase/auth";
 
-let functions;
-try {
-  functions = getFunctions(getApp());
-} catch {
-  functions = getFunctions();
+let functions = existingFunctions;
+if (!functions) {
+  try {
+    functions = getFunctions(getApp(), "us-central1");
+  } catch {
+    functions = getFunctions();
+  }
 }
 
 class RexVoiceEngine {
@@ -201,9 +203,28 @@ class RexVoiceEngine {
       store.setLiveRexState({ lastRexTranscript: reply });
       this.speak(reply);
     } catch (err) {
-      console.warn("Rex Cloud Function notice, using fallback reply:", err?.message || err);
+      console.error("Rex Cloud Function chatWithPet error details:", {
+        code: err?.code,
+        message: err?.message,
+        details: err?.details,
+        customData: err?.customData,
+        region: "us-central1"
+      });
+
+      let errReason = "";
+      if (err?.code === "functions/unauthenticated") {
+        errReason = " (Unauthenticated)";
+      } else if (err?.code === "functions/unavailable" || err?.message?.includes("CORS")) {
+        errReason = " (CORS / Region check failed)";
+      } else if (err?.code === "functions/internal") {
+        errReason = " (API Key / Quota error)";
+      }
+
       const fallbackReply = "*Happy Roar!* Rex loves you, Little Hero! Let's play!";
-      store.setLiveRexState({ lastRexTranscript: fallbackReply });
+      store.setLiveRexState({
+        lastRexTranscript: fallbackReply,
+        statusMessage: `Note: ${err?.message || "Connection issue"}${errReason}. Ready to play!`
+      });
       this.speak(fallbackReply);
     }
   }
