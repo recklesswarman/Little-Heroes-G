@@ -8,9 +8,6 @@ if (!admin.apps.length) {
   admin.initializeApp();
 }
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || undefined });
-const db = admin.firestore();
-
 export interface VerifyChoreData {
   heroId: string;
   questId?: string;
@@ -19,15 +16,20 @@ export interface VerifyChoreData {
   photoBase64?: string;
 }
 
-export const verifyChoreSubmission = onCall({ cors: true }, async (request) => {
-  if (!request.auth) {
-    throw new HttpsError("unauthenticated", "User must be authenticated.");
-  }
+export const verifyChoreSubmission = onCall(
+  { secrets: ["GEMINI_API_KEY"], cors: true },
+  async (request) => {
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const db = admin.firestore();
 
-  const { heroId, questId, questTitle, childNotes, photoBase64 } = (request.data || {}) as VerifyChoreData;
-  if (!heroId || !questTitle) {
-    throw new HttpsError("invalid-argument", "Missing required quest details.");
-  }
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "User must be authenticated.");
+    }
+
+    const { heroId, questId, questTitle, childNotes, photoBase64 } = (request.data || {}) as VerifyChoreData;
+    if (!heroId || !questTitle) {
+      throw new HttpsError("invalid-argument", "Missing required quest details.");
+    }
 
   // Build evaluation payload (supports text description + optional photo proof)
   const contents: any[] = [

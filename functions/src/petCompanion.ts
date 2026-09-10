@@ -8,9 +8,6 @@ if (!admin.apps.length) {
   admin.initializeApp();
 }
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || undefined });
-const db = admin.firestore();
-
 const REX_SYSTEM_INSTRUCTION = `
 You are Rex the Dino, the loyal, high-energy companion in Little Heroes.
 - Target Audience: Children (ages 4–9).
@@ -26,15 +23,21 @@ export interface ChatWithPetData {
   petId?: string;
 }
 
-export const chatWithPet = onCall({ cors: true }, async (request) => {
-  if (!request.auth) {
-    throw new HttpsError("unauthenticated", "User must be authenticated to talk with pet.");
-  }
+export const chatWithPet = onCall(
+  { secrets: ["GEMINI_API_KEY"], cors: true },
+  async (request) => {
+    // Initialize Gemini using the secret from process.env inside the request
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const db = admin.firestore();
 
-  const { heroId, message, currentHabit, petId } = (request.data || {}) as ChatWithPetData;
-  if (!heroId || !message) {
-    throw new HttpsError("invalid-argument", "Missing heroId or message.");
-  }
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "User must be authenticated to talk with pet.");
+    }
+
+    const { heroId, message, currentHabit, petId } = (request.data || {}) as ChatWithPetData;
+    if (!heroId || !message) {
+      throw new HttpsError("invalid-argument", "Missing heroId or message.");
+    }
 
   // Enforce Parental Controls from Firestore
   const settingsDoc = await db.collection("heroes").doc(heroId).collection("settings").doc("aiCompanion").get();

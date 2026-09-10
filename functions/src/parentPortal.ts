@@ -59,7 +59,7 @@ export interface ParentInsightsRequest {
   pendingApprovalsCount?: number;
 }
 
-export const getParentInsights = onCall({ cors: true }, async (request) => {
+export const getParentInsights = onCall({ secrets: ["GEMINI_API_KEY"], cors: true }, async (request) => {
   const data = request.data as ParentInsightsRequest;
 
   const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
