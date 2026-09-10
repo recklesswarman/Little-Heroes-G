@@ -1,4 +1,4 @@
-﻿import { httpsCallable } from "firebase/functions";
+import { httpsCallable } from "firebase/functions";
 import { functions } from "../config/firebase.js";
 
 /**
@@ -119,6 +119,27 @@ class CloudFunctionsService {
         },
         generatedAt: new Date().toISOString()
       };
+    }
+  }
+
+  /**
+   * Update parental settings and restrictions for the child's companion.
+   * @param {Object} params
+   * @param {string} params.heroId
+   * @param {Object} params.settings
+   * @returns {Promise<{status: string, updated: Object}>}
+   */
+  async updateCompanionSettings({ heroId, settings }) {
+    if (!this.functionsInstance) {
+      return { status: "offline", updated: settings };
+    }
+    try {
+      const callable = httpsCallable(this.functionsInstance, "updateCompanionSettings");
+      const result = await callable({ heroId, settings });
+      return result.data;
+    } catch (err) {
+      console.warn("Cloud function updateCompanionSettings notice, falling back:", err);
+      return { status: "local", updated: settings };
     }
   }
 }

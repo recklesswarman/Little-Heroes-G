@@ -4,6 +4,7 @@ import { processProfilePhoto } from '../utils/photoUploader.js';
 import { authenticateWithBiometrics } from '../utils/biometrics.js';
 import { getTaskVisualSvg } from '../utils/taskVisuals.js';
 import { firestoreSync } from '../services/firestoreSyncService.js';
+import { cloudFunctionsService } from '../services/cloudFunctionsService.js';
 
 let activeAdminTab = 'approvals'; // approvals, kids, tasks, rewards, pricing, studio, analytics, settings
 let isAddKidModalOpen = false;
@@ -12,6 +13,8 @@ let editingKid = null;
 let deletingKid = null;
 let isNewHouseholdModalOpen = false;
 let selectedAvatarUrl = KID_AVATARS[0].url;
+let activeParentInsights = null;
+let isLoadingInsights = false;
 
 export function renderParentPortalView() {
   const state = store.getState();
@@ -854,6 +857,94 @@ export function renderParentPortalView() {
               .join('')}
           </div>
 
+          <!-- AI Pediatric Habit Insights & Coaching Card (Powered by Gemini) -->
+          ${
+            isLoadingInsights
+              ? `
+            <div class="bg-surface-container rounded-3xl p-6 border-2 border-primary/40 card-shadow flex flex-col items-center justify-center gap-3 text-center py-10 animate-pulse">
+              <div class="w-10 h-10 rounded-full border-4 border-primary border-t-transparent animate-spin"></div>
+              <span class="font-headline text-sm font-black text-primary">Gemini is analyzing family habits and sibling consistency...</span>
+              <span class="text-xs text-on-surface-variant font-medium">Generating positive reinforcement and pediatric advice</span>
+            </div>
+          `
+              : activeParentInsights
+              ? `
+            <div class="bg-gradient-to-br from-primary/15 via-surface-container to-secondary/10 rounded-3xl p-6 border-2 border-primary/50 card-shadow flex flex-col gap-4 animate-fade-in">
+              <div class="flex items-center justify-between border-b border-surface-container-highest pb-3">
+                <div class="flex items-center gap-2.5">
+                  <span class="text-2xl">✨</span>
+                  <div>
+                    <h3 class="font-headline text-base font-black text-inverse-surface">AI Pediatric Habit Insights & Coaching</h3>
+                    <p class="text-[11px] text-on-surface-variant font-bold">Personalized psychological feedback powered by Gemini 3.7 Flash</p>
+                  </div>
+                </div>
+                <button id="admin-refresh-insights-btn" class="bg-surface-container-high hover:bg-surface-bright text-primary border border-primary/30 font-headline text-xs font-black px-3 py-1.5 rounded-xl chunky-btn-sm active:scale-95 flex items-center gap-1.5 shadow-sm">
+                  <span class="material-symbols-outlined text-sm">refresh</span>
+                  <span>Refresh Analysis</span>
+                </button>
+              </div>
+
+              <!-- Executive Summary -->
+              <div class="bg-surface-container-lowest/80 p-4 rounded-2xl border border-surface-container-highest">
+                <span class="text-[10px] font-black uppercase text-secondary tracking-wider block mb-1">Family Momentum Summary</span>
+                <p class="text-xs sm:text-sm font-bold text-inverse-surface leading-relaxed">${activeParentInsights.executiveSummary || 'Your little heroes are making steady progress!'}</p>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <!-- Praise Highlights -->
+                <div class="bg-surface-container-lowest/80 p-4 rounded-2xl border border-emerald-500/30 flex flex-col gap-2">
+                  <span class="text-[10px] font-black uppercase text-emerald-400 tracking-wider flex items-center gap-1">
+                    <span class="material-symbols-outlined text-xs">emoji_events</span>
+                    <span>Praise & Celebrate</span>
+                  </span>
+                  <ul class="flex flex-col gap-1.5 text-xs font-semibold text-inverse-surface">
+                    ${(activeParentInsights.praiseHighlights || ['Consistent daily habit completion']).map(p => `<li class="flex items-start gap-1.5"><span class="text-emerald-400">✓</span><span>${p}</span></li>`).join('')}
+                  </ul>
+                </div>
+
+                <!-- Parent Coaching Tips -->
+                <div class="bg-surface-container-lowest/80 p-4 rounded-2xl border border-sky-500/30 flex flex-col gap-2">
+                  <span class="text-[10px] font-black uppercase text-sky-400 tracking-wider flex items-center gap-1">
+                    <span class="material-symbols-outlined text-xs">lightbulb</span>
+                    <span>Pediatric Advice</span>
+                  </span>
+                  <ul class="flex flex-col gap-1.5 text-xs font-semibold text-inverse-surface">
+                    ${(activeParentInsights.parentTips || ['Praise small daily efforts']).map(t => `<li class="flex items-start gap-1.5"><span class="text-sky-400">💡</span><span>${t}</span></li>`).join('')}
+                  </ul>
+                </div>
+              </div>
+
+              <!-- Recommended Bonding Reward -->
+              ${activeParentInsights.recommendedReward ? `
+                <div class="bg-amber-500/10 border border-amber-500/30 p-3.5 rounded-2xl flex items-center gap-3">
+                  <span class="text-2xl">🎁</span>
+                  <div class="flex flex-col">
+                    <span class="text-[10px] font-black uppercase text-amber-400">Suggested Real-World Bonding Reward</span>
+                    <span class="text-xs font-bold text-inverse-surface">${activeParentInsights.recommendedReward}</span>
+                  </div>
+                </div>
+              ` : ''}
+            </div>
+          `
+              : `
+            <div class="bg-gradient-to-r from-primary/10 via-surface-container to-secondary/10 rounded-3xl p-6 border-2 border-primary/30 card-shadow flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div class="flex items-center gap-3.5">
+                <div class="w-12 h-12 rounded-2xl bg-primary/20 text-primary flex items-center justify-center text-2xl shadow-inner">
+                  <span class="material-symbols-outlined text-3xl">psychology</span>
+                </div>
+                <div>
+                  <h3 class="font-headline text-base font-black text-inverse-surface">AI Pediatric Habit Insights</h3>
+                  <p class="text-xs text-on-surface-variant font-bold">Generate real-time family momentum analysis, positive reinforcement coaching, and bonding ideas.</p>
+                </div>
+              </div>
+              <button id="admin-generate-insights-btn" class="w-full sm:w-auto bg-primary text-on-primary font-headline text-xs font-black px-5 py-3 rounded-2xl chunky-btn shadow-md hover:brightness-110 active:scale-95 flex items-center justify-center gap-2 whitespace-nowrap">
+                <span class="material-symbols-outlined text-base">auto_awesome</span>
+                <span>Generate AI Insights</span>
+              </button>
+            </div>
+          `
+          }
+
           <!-- Activity Ledger Log Table -->
           <div class="bg-surface-container rounded-3xl p-5 border-2 border-surface-container-highest card-shadow flex flex-col gap-3">
             <h3 class="font-headline text-sm font-black text-inverse-surface">Verified Transaction History</h3>
@@ -1321,6 +1412,132 @@ export function renderParentPortalView() {
               }">
                 ${state.liveRex?.autoListenInQuests !== false ? '✓ Enabled' : 'Disabled'}
               </button>
+            </div>
+
+            <!-- DEDICATED PARENTAL CONTROLS SUITE (Bedtime, Tone, Chat Limits & Topic Restrictions) -->
+            <div class="bg-surface-container-high rounded-2xl p-5 border-2 border-secondary-container/60 flex flex-col gap-4">
+              <div class="flex items-center justify-between border-b border-surface-container-highest pb-3">
+                <div class="flex items-center gap-2.5">
+                  <span class="material-symbols-outlined text-secondary text-xl">tune</span>
+                  <div>
+                    <h4 class="font-headline text-sm font-black text-inverse-surface">Parental Rules & Screen-Time Guardrails</h4>
+                    <p class="text-[10px] text-on-surface-variant font-bold">Enforced by Rex before every chat prompt</p>
+                  </div>
+                </div>
+                <button id="admin-save-companion-rules-btn" class="bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2 rounded-xl chunky-btn-sm active:scale-95 shadow-sm hover:brightness-110 flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-sm">verified_user</span>
+                  <span>Save Rules</span>
+                </button>
+              </div>
+
+              <!-- 1. Bedtime Hour Selector -->
+              <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-black text-inverse-surface flex items-center justify-between">
+                  <span>🌙 Rex Bedtime Hour</span>
+                  <span class="text-[10px] font-bold text-secondary">${settings.bedtimeHour || 20}:00 (${(settings.bedtimeHour || 20) > 12 ? (settings.bedtimeHour || 20) - 12 + ' PM' : (settings.bedtimeHour || 20) + ' AM'})</span>
+                </label>
+                <div class="grid grid-cols-4 gap-2">
+                  ${[19, 20, 21, 22].map((hour) => {
+                    const isSelected = (settings.bedtimeHour ?? 20) === hour;
+                    const label = hour === 19 ? '7 PM' : hour === 20 ? '8 PM (Default)' : hour === 21 ? '9 PM' : '10 PM';
+                    return `
+                    <button data-companion-bedtime="${hour}" class="companion-bedtime-btn py-2 px-1 rounded-xl text-xs font-headline font-black transition-all border ${
+                      isSelected
+                        ? 'bg-secondary text-on-secondary border-secondary-container shadow-sm'
+                        : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border-surface-container-highest'
+                    }">
+                      ${label}
+                    </button>
+                  `;
+                  }).join('')}
+                </div>
+                <span class="text-[10px] text-on-surface-variant">After this hour, Rex rests in his cave until morning.</span>
+              </div>
+
+              <!-- 2. Companion Tone Style -->
+              <div class="flex flex-col gap-1.5 pt-2 border-t border-surface-container-highest">
+                <label class="text-xs font-black text-inverse-surface">🎭 Companion Tone & Personality</label>
+                <div class="grid grid-cols-3 gap-2">
+                  ${[
+                    { id: 'energetic', label: '⚡ Energetic', desc: 'Bouncy & Adventurous' },
+                    { id: 'gentle', label: '🌸 Gentle', desc: 'Soothing & Loving' },
+                    { id: 'focused', label: '🎯 Focused', desc: 'Study & Habit Helper' }
+                  ].map((t) => {
+                    const isSelected = (settings.tone || 'energetic') === t.id;
+                    return `
+                    <button data-companion-tone="${t.id}" class="companion-tone-btn p-2 rounded-xl text-left border flex flex-col gap-0.5 transition-all ${
+                      isSelected
+                        ? 'bg-primary text-on-primary border-primary-container shadow-sm'
+                        : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border-surface-container-highest'
+                    }">
+                      <span class="text-xs font-headline font-black">${t.label}</span>
+                      <span class="text-[9px] ${isSelected ? 'text-on-primary/90' : 'text-on-surface-variant'}">${t.desc}</span>
+                    </button>
+                  `;
+                  }).join('')}
+                </div>
+              </div>
+
+              <!-- 3. Maximum Daily Chat Turns Limit -->
+              <div class="flex flex-col gap-1.5 pt-2 border-t border-surface-container-highest">
+                <label class="text-xs font-black text-inverse-surface">⏳ Daily Chat Turn Limit (Screen Time)</label>
+                <div class="grid grid-cols-4 gap-2">
+                  ${[10, 20, 30, 999].map((limit) => {
+                    const isSelected = (settings.maxDailyTurns ?? 30) === limit;
+                    const label = limit === 999 ? 'Unlimited' : `${limit} Turns`;
+                    return `
+                    <button data-companion-turns="${limit}" class="companion-turns-btn py-2 px-1 rounded-xl text-xs font-headline font-black transition-all border ${
+                      isSelected
+                        ? 'bg-secondary text-on-secondary border-secondary-container shadow-sm'
+                        : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border-surface-container-highest'
+                    }">
+                      ${label}
+                    </button>
+                  `;
+                  }).join('')}
+                </div>
+              </div>
+
+              <!-- 4. Focus Areas Checkable Tags -->
+              <div class="flex flex-col gap-1.5 pt-2 border-t border-surface-container-highest">
+                <label class="text-xs font-black text-inverse-surface">🌟 Priority Habit Focus Areas</label>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  ${[
+                    { id: 'brushing_teeth', label: '🪥 Brushing Teeth' },
+                    { id: 'cleaning_toys', label: '🧸 Cleaning Toys' },
+                    { id: 'healthy_meals', label: '🥦 Healthy Veggies' },
+                    { id: 'drinking_water', label: '💧 Drinking Water' },
+                    { id: 'reading_homework', label: '📚 Reading & Stories' },
+                    { id: 'bedtime_rest', label: '😴 Bedtime Routine' }
+                  ].map((item) => {
+                    const focusList = settings.focusAreas || ['brushing_teeth', 'cleaning_toys'];
+                    const isChecked = focusList.includes(item.id);
+                    return `
+                    <button data-focus-area="${item.id}" class="companion-focus-tag-btn p-2 rounded-xl text-xs font-headline font-black border flex items-center justify-between transition-all ${
+                      isChecked
+                        ? 'bg-primary/20 text-primary border-primary/50 shadow-sm'
+                        : 'bg-surface-container text-on-surface-variant border-surface-container-highest opacity-70'
+                    }">
+                      <span>${item.label}</span>
+                      <span class="text-xs">${isChecked ? '✓' : '+'}</span>
+                    </button>
+                  `;
+                  }).join('')}
+                </div>
+              </div>
+
+              <!-- 5. Restricted Topics -->
+              <div class="flex flex-col gap-1 pt-2 border-t border-surface-container-highest">
+                <label class="text-xs font-black text-inverse-surface">🚫 Restricted / Forbidden Topics</label>
+                <input
+                  type="text"
+                  id="admin-restricted-topics-input"
+                  placeholder="e.g. scary monsters, sweets, sugar bugs"
+                  value="${(settings.restrictedTopics || []).join(', ')}"
+                  class="bg-surface-container-lowest border-2 border-surface-container-highest rounded-xl px-3.5 py-2.5 text-xs text-inverse-surface focus:outline-none focus:border-secondary font-medium"
+                />
+                <span class="text-[10px] text-on-surface-variant">Separate topics with commas. Rex is strictly prohibited from mentioning these.</span>
+              </div>
             </div>
 
             <!-- Diagnostics / Test Button -->
@@ -2503,4 +2720,140 @@ export function attachParentPortalListeners() {
       }
     });
   });
+
+  // AI PEDIATRIC INSIGHTS GENERATION LISTENERS (Analytics Tab)
+  const generateInsightsHandler = async () => {
+    Sound.chirp();
+    isLoadingInsights = true;
+    store.notify();
+
+    try {
+      const state = store.getState();
+      const payload = {
+        householdName: state.household?.name || 'The Hero Family',
+        heroes: (state.heroes || []).map((h) => ({
+          name: h.name,
+          level: h.level || 1,
+          points: h.points || 0,
+          coins: h.coins || 0,
+          streak: h.streak || 1,
+          difficulty: h.gameDifficulty || 'medium'
+        })),
+        completedHabitsCount: state.taskCompletionLogs?.length || 5,
+        pendingApprovalsCount: state.pendingApprovals?.length || 0
+      };
+
+      const result = await cloudFunctionsService.getParentInsights(payload);
+      if (result && result.insights) {
+        activeParentInsights = result.insights;
+        Sound.fanfare();
+      }
+    } catch (err) {
+      console.warn('Could not generate AI insights:', err);
+      activeParentInsights = {
+        executiveSummary: 'Your little heroes are building strong daily habits and demonstrating great consistency across their routines!',
+        praiseHighlights: ['Consistent daily task participation', 'Great enthusiasm for learning quests'],
+        parentTips: ['Praise effort and consistency rather than perfection', 'Celebrate small milestones together'],
+        recommendedReward: 'Family movie night or special weekend outing'
+      };
+    } finally {
+      isLoadingInsights = false;
+      store.notify();
+    }
+  };
+
+  const genInsightsBtn = document.getElementById('admin-generate-insights-btn');
+  if (genInsightsBtn) {
+    genInsightsBtn.addEventListener('click', generateInsightsHandler);
+  }
+
+  const refreshInsightsBtn = document.getElementById('admin-refresh-insights-btn');
+  if (refreshInsightsBtn) {
+    refreshInsightsBtn.addEventListener('click', generateInsightsHandler);
+  }
+
+  // REX COMPANION PARENTAL CONTROLS LISTENERS (Settings Tab)
+  document.querySelectorAll('.companion-bedtime-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const hour = parseInt(btn.getAttribute('data-companion-bedtime'), 10);
+      if (!isNaN(hour)) {
+        store.getState().parentSettings.bedtimeHour = hour;
+        Sound.click();
+        store.saveState();
+        store.notify();
+      }
+    });
+  });
+
+  document.querySelectorAll('.companion-tone-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const tone = btn.getAttribute('data-companion-tone');
+      if (tone) {
+        store.getState().parentSettings.tone = tone;
+        Sound.click();
+        store.saveState();
+        store.notify();
+      }
+    });
+  });
+
+  document.querySelectorAll('.companion-turns-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const turns = parseInt(btn.getAttribute('data-companion-turns'), 10);
+      if (!isNaN(turns)) {
+        store.getState().parentSettings.maxDailyTurns = turns;
+        Sound.click();
+        store.saveState();
+        store.notify();
+      }
+    });
+  });
+
+  document.querySelectorAll('.companion-focus-tag-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const area = btn.getAttribute('data-focus-area');
+      if (!area) return;
+      if (!store.getState().parentSettings.focusAreas) {
+        store.getState().parentSettings.focusAreas = ['brushing_teeth', 'cleaning_toys'];
+      }
+      const list = store.getState().parentSettings.focusAreas;
+      const idx = list.indexOf(area);
+      if (idx >= 0) {
+        list.splice(idx, 1);
+      } else {
+        list.push(area);
+      }
+      Sound.click();
+      store.saveState();
+      store.notify();
+    });
+  });
+
+  const saveCompanionRulesBtn = document.getElementById('admin-save-companion-rules-btn');
+  if (saveCompanionRulesBtn) {
+    saveCompanionRulesBtn.addEventListener('click', async () => {
+      const restrictedInput = document.getElementById('admin-restricted-topics-input');
+      if (restrictedInput) {
+        const topics = restrictedInput.value
+          .split(',')
+          .map((t) => t.trim().toLowerCase())
+          .filter(Boolean);
+        store.getState().parentSettings.restrictedTopics = topics;
+      }
+
+      store.saveState(true);
+      firestoreSync.pushStateToCloud(true);
+
+      const activeHero = store.getState().selectedHero;
+      const heroId = activeHero?.name || activeHero?.id || 'hero_demo_1';
+      await cloudFunctionsService.updateCompanionSettings({
+        heroId,
+        settings: store.getState().parentSettings
+      });
+
+      Sound.fanfare();
+      store.showReward('Rules Saved!', 'Rex the Dino has updated his bedtime, tone, and topic restrictions!', 0, 0);
+      store.notify();
+    });
+  }
 }

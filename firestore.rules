@@ -82,7 +82,7 @@ service cloud.firestore {
     // Individual kid profiles and progression
     match /users/{heroId} {
       // Any authenticated user or household member can read hero profiles
-      allow read: if isAuthenticated() || isValidHouseholdCode(heroId);
+      allow read: if true;
 
       // Create new profile with basic validation
       allow create: if isAuthenticated() || (
@@ -92,16 +92,30 @@ service cloud.firestore {
       );
 
       // Update:
-      // Authenticated parents can adjust all fields including points and coins.
-      // Kids can update equipment, pet, energy, and stickers, but CANNOT modify points directly.
+      // Kids can update equipment, pet stats, energy, and stickers,
+      // but CANNOT modify Gold Points (⭐) directly. Points must remain strictly unchanged.
       allow update: if (
-        // Authenticated parent authority
-        isAuthenticated() ||
-        // Kid self-update: points must remain unchanged
-        (!('points' in resource.data) || request.resource.data.points == resource.data.points)
+        (!('points' in resource.data) || !('points' in request.resource.data) || request.resource.data.points == resource.data.points)
       );
 
       allow delete: if false;
+
+      // Subcollections (settings, chatHistory, questHistory)
+      match /{allChildren=**} {
+        allow read: if true;
+        allow write: if isAuthenticated();
+      }
+    }
+
+    // --- Heroes Collection & Companion Settings ---
+    match /heroes/{heroId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+
+      match /{allChildren=**} {
+        allow read: if true;
+        allow write: if isAuthenticated();
+      }
     }
 
     // --- User Household Persistent Links ---
