@@ -15,14 +15,45 @@ service cloud.firestore {
       return code is string && code.size() >= 4 && code.size() <= 32;
     }
 
+    // Identifies whether the current authenticated user is an authorized parent admin
+    function isParent(householdData) {
+      return isAuthenticated() && (
+        ('parentUids' in householdData && householdData.parentUids is list && request.auth.uid in householdData.parentUids) ||
+        ('parentEmails' in householdData && householdData.parentEmails is list && request.auth.token.email != null && request.auth.token.email in householdData.parentEmails) ||
+        // Bootstrap exception: household without parents yet can have first authenticated parent claim ownership
+        (!('parentUids' in householdData) || householdData.parentUids.size() == 0)
+      );
+    }
+
+    // Validates household payload structure and limits resource exhaustion
     function isValidHouseholdPayload() {
-      return request.resource.data.keys().hasAll(['syncCode', 'name'])
-        && request.resource.data.syncCode is string
-        && request.resource.data.syncCode.size() <= 32
-        && request.resource.data.name is string
-        && request.resource.data.name.size() <= 100
-        && (!('devices' in request.resource.data) || request.resource.data.devices is map)
-        && (!('heroes' in request.resource.data) || request.resource.data.heroes is list);
+      let data = request.resource.data;
+      return (data.keys().hasAny(['syncCode', 'name', 'householdName']))
+        && (!('syncCode' in data) || (data.syncCode is string && data.syncCode.size() <= 32))
+        && (!('householdName' in data) || (data.householdName is string && data.householdName.size() <= 100))
+        && (!('name' in data) || (data.name is string && data.name.size() <= 100))
+        && (!('devices' in data) || (data.devices is map && data.devices.size() <= 25))
+        && (!('heroes' in data) || (data.heroes is list && data.heroes.size() <= 20))
+        && (!('heroesMap' in data) || (data.heroesMap is map && data.heroesMap.size() <= 20))
+        && (!('parents' in data) || (data.parents is list && data.parents.size() <= 15))
+        && (!('parentUids' in data) || (data.parentUids is list && data.parentUids.size() <= 15))
+        && (!('parentEmails' in data) || (data.parentEmails is list && data.parentEmails.size() <= 15))
+        && (!('pendingApprovals' in data) || (data.pendingApprovals is list && data.pendingApprovals.size() <= 100))
+        && (!('taskCompletionLogs' in data) || (data.taskCompletionLogs is list && data.taskCompletionLogs.size() <= 500))
+        && (!('parentSettings' in data) || (data.parentSettings is map && data.parentSettings.size() <= 30));
+    }
+
+    // Strict validation for kid/non-parent updates:
+    // Kids CANNOT touch parentSettings, parent admin lists, approve tasks, or manipulate point balances
+    function isAllowedKidChoreUpdate(existingData, newData) {
+      let affected = newData.diff(existingData).affectedKeys();
+      return isValidHouseholdPayload()
+        // 1. Kids CANNOT modify parental controls or parent admin user lists
+        && !affected.hasAny(['parentSettings', 'parents', 'parentUids', 'parentEmails'])
+        // 2. Kids CANNOT dismiss, delete, or mark pending approvals as approved
+        && (!('pendingApprovals' in existingData) || !('pendingApprovals' in newData) || newData.pendingApprovals.size() >= existingData.pendingApprovals.size())
+        // 3. Kids CANNOT delete completion logs or mark logs as approved
+        && (!('taskCompletionLogs' in existingData) || !('taskCompletionLogs' in newData) || newData.taskCompletionLogs.size() >= existingData.taskCompletionLogs.size());
     }
 
     // --- Households Collection ---
@@ -31,14 +62,45 @@ service cloud.firestore {
       // Allow read with valid household code syntax
       allow read: if isValidHouseholdCode(householdCode);
       
-      // Allow create and update with strict field validation and size boundaries
+      // Allow creation of a valid household payload
       allow create: if isValidHouseholdCode(householdCode)
         && isValidHouseholdPayload();
 
-      allow update: if isValidHouseholdCode(householdCode)
-        && isValidHouseholdPayload();
+      // Updates:
+      // Parents can update any aspect (approvals, points, coins, settings, co-parents).
+      // Kids can only submit chores with isAllowedKidChoreUpdate().
+      allow update: if isValidHouseholdCode(householdCode) && (
+        isParent(resource.data) ||
+        isAllowedKidChoreUpdate(resource.data, request.resource.data)
+      );
 
       // Prevent malicious household deletion from client
+      allow delete: if false;
+    }
+
+    // --- Users / Hero Profiles Collection ---
+    // Individual kid profiles and progression
+    match /users/{heroId} {
+      // Any authenticated user or household member can read hero profiles
+      allow read: if isAuthenticated() || isValidHouseholdCode(heroId);
+
+      // Create new profile with basic validation
+      allow create: if isAuthenticated() || (
+        request.resource.data.keys().hasAll(['id', 'name', 'level'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 50
+      );
+
+      // Update:
+      // Authenticated parents can adjust all fields including points and coins.
+      // Kids can update equipment, pet, energy, and stickers, but CANNOT modify points directly.
+      allow update: if (
+        // Authenticated parent authority
+        isAuthenticated() ||
+        // Kid self-update: points must remain unchanged
+        (!('points' in resource.data) || request.resource.data.points == resource.data.points)
+      );
+
       allow delete: if false;
     }
 

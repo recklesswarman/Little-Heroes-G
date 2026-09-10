@@ -86,11 +86,9 @@ export function attachTopHeaderListeners() {
   if (lockBtn) {
     lockBtn.addEventListener('click', () => {
       Sound.click();
-      if (store.isParentUnlocked()) {
-        store.navigate('parent_portal');
-      } else {
-        window.dispatchEvent(new CustomEvent('open-parent-modal'));
-      }
+      // Security Enforcement: Header button ALWAYS locks and requires fresh adult authentication
+      store.lockParentSession();
+      window.dispatchEvent(new CustomEvent('open-parent-modal'));
     });
   }
 }

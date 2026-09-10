@@ -7,6 +7,7 @@ import { firestoreSync } from '../services/firestoreSyncService.js';
 
 let activeAdminTab = 'approvals'; // approvals, kids, tasks, rewards, pricing, studio, analytics, settings
 let isAddKidModalOpen = false;
+let isAddParentModalOpen = false;
 let editingKid = null;
 let deletingKid = null;
 let isNewHouseholdModalOpen = false;
@@ -243,6 +244,61 @@ export function renderParentPortalView() {
                 <span class="material-symbols-outlined text-sm">mop</span>
                 Remove Test Kids
               </button>
+            </div>
+          </div>
+
+          <!-- Parent Administrators & Access Control Card -->
+          <div class="bg-surface-container rounded-3xl p-5 sm:p-6 border-2 border-secondary-container card-shadow flex flex-col gap-4">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-surface-container-highest pb-3">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-secondary/20 text-secondary border border-secondary/40 flex items-center justify-center text-xl shadow-sm flex-shrink-0">
+                  <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">shield_person</span>
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <h3 class="font-headline text-base sm:text-lg font-black text-inverse-surface">Parent Administrators (${(state.household.parents || []).length})</h3>
+                    <span class="bg-secondary/20 text-secondary text-[10px] font-black uppercase px-2 py-0.5 rounded-md border border-secondary/30">Admins</span>
+                  </div>
+                  <p class="text-xs text-on-surface-variant font-bold">Authorized adult users who can approve quests, adjust ⭐ balances, and edit safety settings.</p>
+                </div>
+              </div>
+
+              <button id="admin-add-parent-btn" class="bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2.5 rounded-xl chunky-btn-sm border-secondary-container flex items-center gap-1.5 active:scale-95 hover:brightness-110 shadow-sm">
+                <span class="material-symbols-outlined text-sm">person_add</span>
+                Add Parent User
+              </button>
+            </div>
+
+            <!-- Parents List Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              ${(state.household.parents || []).map((p) => {
+                const isCurrent = (state.household.parentUser?.email && p.email && state.household.parentUser.email.toLowerCase() === p.email.toLowerCase()) || (state.household.parentUser?.uid && p.uid && state.household.parentUser.uid === p.uid);
+                const isOwner = p.role === 'owner';
+                const canRemove = (state.household.parents || []).length > 1;
+                return `
+                  <div class="bg-surface-container-high rounded-2xl p-3.5 border-2 border-surface-container-highest flex items-center justify-between gap-3 shadow-inner">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                      <div class="w-10 h-10 rounded-full bg-secondary text-on-secondary flex items-center justify-center font-black text-sm flex-shrink-0 shadow-sm">
+                        ${(p.displayName || p.email || 'P')[0].toUpperCase()}
+                      </div>
+                      <div class="flex flex-col min-w-0">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                          <span class="font-headline text-xs font-black text-inverse-surface truncate">${p.displayName || 'Parent Admin'}</span>
+                          ${isCurrent ? `<span class="bg-primary/20 text-primary text-[9px] font-black px-1.5 py-0.2 rounded border border-primary/40">You</span>` : ''}
+                        </div>
+                        <span class="text-[10px] text-on-surface-variant truncate">${p.email || 'Admin'}</span>
+                        <span class="text-[9px] font-bold text-secondary uppercase tracking-wider">${isOwner ? '👑 Household Owner' : '🛡️ Co-Parent Admin'}</span>
+                      </div>
+                    </div>
+
+                    ${canRemove ? `
+                      <button data-remove-parent="${p.uid || p.email}" class="remove-parent-btn text-on-surface-variant hover:text-error p-1.5 rounded-lg active:scale-95 transition-colors" title="Remove parent administrator access">
+                        <span class="material-symbols-outlined text-base">delete</span>
+                      </button>
+                    ` : ''}
+                  </div>
+                `;
+              }).join('')}
             </div>
           </div>
 
@@ -1287,7 +1343,59 @@ export function renderParentPortalView() {
       ${renderEditKidModal()}
       ${renderDeleteKidModal()}
       ${renderNewHouseholdModal()}
+      ${renderAddParentModal()}
 
+    </div>
+  `;
+}
+
+function renderAddParentModal() {
+  if (!isAddParentModalOpen) return '';
+  return `
+    <div id="add-parent-modal-backdrop" class="fixed inset-0 bg-[#09141e]/85 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in select-none">
+      <div class="bg-surface-container border-4 border-secondary rounded-4xl p-6 max-w-md w-full card-shadow-lg flex flex-col gap-4">
+        
+        <div class="flex justify-between items-center border-b-2 border-surface-container-highest pb-3">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-secondary text-2xl">person_add</span>
+            <h2 class="font-headline text-xl font-black text-inverse-surface">Add Parent Administrator</h2>
+          </div>
+          <button id="add-parent-modal-close-btn" class="text-on-surface-variant hover:text-error text-2xl p-1">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        <div class="flex flex-col gap-4">
+          <div>
+            <label class="block text-xs font-black text-on-surface-variant uppercase mb-1">Parent Email Address *</label>
+            <input type="email" id="new-parent-email" placeholder="e.g. parent@family.com" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-4 py-3 text-sm font-bold text-inverse-surface focus:border-secondary focus:outline-none" />
+            <span class="text-[10px] text-on-surface-variant font-medium mt-1 block">Used for Google Sign-In and adult authorization permissions</span>
+          </div>
+
+          <div>
+            <label class="block text-xs font-black text-on-surface-variant uppercase mb-1">Parent Name / Nickname</label>
+            <input type="text" id="new-parent-name" placeholder="e.g. Mom, Dad, Grandma" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-4 py-3 text-sm font-bold text-inverse-surface focus:border-secondary focus:outline-none" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-black text-on-surface-variant uppercase mb-1">Administrator Role</label>
+            <select id="new-parent-role" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-4 py-2.5 text-sm font-bold text-inverse-surface focus:border-secondary focus:outline-none">
+              <option value="admin">Co-Parent Admin (Approvals, Balances & Settings)</option>
+              <option value="owner">Household Co-Owner (Full Authority)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="flex gap-2.5 pt-3 border-t border-surface-container-highest">
+          <button id="add-parent-cancel-btn" class="flex-1 bg-surface-container-high hover:bg-surface-bright text-inverse-surface font-headline text-xs font-black py-3 rounded-xl border border-surface-container-highest chunky-btn-sm active:scale-95">
+            Cancel
+          </button>
+          <button id="add-parent-submit-btn" class="flex-1 bg-secondary text-on-secondary font-headline text-xs font-black py-3 rounded-xl chunky-btn border-secondary-container shadow hover:brightness-110 active:scale-95">
+            Authorize Parent
+          </button>
+        </div>
+
+      </div>
     </div>
   `;
 }
@@ -2313,4 +2421,86 @@ export function attachParentPortalListeners() {
       }
     });
   }
+
+  // PARENT ADMINISTRATOR MANAGEMENT LISTENERS
+  const addParentBtn = document.getElementById('admin-add-parent-btn');
+  if (addParentBtn) {
+    addParentBtn.addEventListener('click', () => {
+      isAddParentModalOpen = true;
+      Sound.click();
+      store.notify();
+    });
+  }
+
+  const closeAddParentBtn = document.getElementById('add-parent-modal-close-btn');
+  if (closeAddParentBtn) {
+    closeAddParentBtn.addEventListener('click', () => {
+      isAddParentModalOpen = false;
+      Sound.click();
+      store.notify();
+    });
+  }
+
+  const cancelAddParentBtn = document.getElementById('add-parent-cancel-btn');
+  if (cancelAddParentBtn) {
+    cancelAddParentBtn.addEventListener('click', () => {
+      isAddParentModalOpen = false;
+      Sound.click();
+      store.notify();
+    });
+  }
+
+  const addParentBackdrop = document.getElementById('add-parent-modal-backdrop');
+  if (addParentBackdrop) {
+    addParentBackdrop.addEventListener('click', (e) => {
+      if (e.target === addParentBackdrop) {
+        isAddParentModalOpen = false;
+        store.notify();
+      }
+    });
+  }
+
+  const submitAddParentBtn = document.getElementById('add-parent-submit-btn');
+  if (submitAddParentBtn) {
+    submitAddParentBtn.addEventListener('click', () => {
+      const email = document.getElementById('new-parent-email')?.value?.trim();
+      const name = document.getElementById('new-parent-name')?.value?.trim();
+      const role = document.getElementById('new-parent-role')?.value || 'admin';
+
+      if (!email || !email.includes('@')) {
+        alert('Please enter a valid email address for the parent user.');
+        return;
+      }
+
+      const res = store.addParentUser({ email, displayName: name, role });
+      if (res.success) {
+        Sound.fanfare();
+        isAddParentModalOpen = false;
+        firestoreSync.pushStateToCloud(true);
+        store.showReward('Parent Authorized!', `${name || email} has been authorized as a Parent Administrator for ${store.getState().household.name}!`, 0, 0);
+        store.notify();
+      } else {
+        Sound.hit();
+        alert(res.error || 'Failed to add parent user.');
+      }
+    });
+  }
+
+  document.querySelectorAll('.remove-parent-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const targetId = btn.getAttribute('data-remove-parent');
+      if (!targetId) return;
+      if (confirm('Are you sure you want to remove this parent administrator from the household?')) {
+        const res = store.removeParentUser(targetId);
+        if (res.success) {
+          Sound.click();
+          firestoreSync.pushStateToCloud(true);
+          store.notify();
+        } else {
+          alert(res.error || 'Cannot remove parent.');
+        }
+      }
+    });
+  });
 }

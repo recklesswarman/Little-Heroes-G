@@ -2,6 +2,7 @@ import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import { isBiometricsAvailable, authenticateWithBiometrics } from '../utils/biometrics.js';
 import { speakRex } from '../services/voiceService.js';
+import { firebaseAuth } from '../services/firebaseAuthService.js';
 
 let isOpen = false;
 let activeAuthTab = 'biometric'; // 'biometric', 'pin', 'math'
@@ -36,8 +37,9 @@ export function renderParentLockModal() {
 
   const enabledTabs = [];
   if (allowBio) enabledTabs.push({ id: 'biometric', label: 'Biometric', icon: 'fingerprint' });
-  if (allowPin) enabledTabs.push({ id: 'pin', label: '4-Digit PIN', icon: 'pin' });
-  if (allowMath) enabledTabs.push({ id: 'math', label: 'Math Challenge', icon: 'calculate' });
+  if (allowPin) enabledTabs.push({ id: 'pin', label: 'PIN', icon: 'pin' });
+  if (allowMath) enabledTabs.push({ id: 'math', label: 'Math Gate', icon: 'calculate' });
+  enabledTabs.push({ id: 'account', label: 'Parent Auth', icon: 'account_circle' });
 
   // Ensure active auth tab is an enabled one
   if (enabledTabs.length > 0 && !enabledTabs.some(t => t.id === activeAuthTab)) {
@@ -186,6 +188,55 @@ export function renderParentLockModal() {
               mathError
                 ? `<p class="text-xs text-error font-bold bg-error/10 border border-error/30 rounded-xl py-1.5 px-3">Incorrect answer. Please solve the equation above.</p>`
                 : `<p class="text-[11px] text-on-surface-variant font-medium">Quick math gate blocks younger children from altering settings.</p>`
+            }
+          </div>
+        `
+            : ''
+        }
+
+        <!-- TAB 4: FIREBASE PARENT ACCOUNT AUTHENTICATION -->
+        ${
+          activeAuthTab === 'account'
+            ? `
+          <div class="flex flex-col items-center gap-4 py-2 text-center animate-fade-in">
+            <div class="w-16 h-16 rounded-2xl bg-secondary/15 text-secondary border-2 border-secondary/40 flex items-center justify-center text-3xl shadow-inner">
+              <span class="material-symbols-outlined text-4xl">verified_user</span>
+            </div>
+
+            <div>
+              <h3 class="font-headline text-base font-black text-inverse-surface">Parent Account Verification</h3>
+              <p class="text-xs text-on-surface-variant mt-1">Sign in with an authorized adult Google or Parent Email account.</p>
+            </div>
+
+            ${
+              store.getState().household.parentUser
+                ? `
+              <div class="bg-surface-container-high border-2 border-secondary/40 rounded-2xl p-3.5 w-full flex items-center justify-between gap-3 text-left">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <div class="w-9 h-9 rounded-full bg-secondary text-on-secondary flex items-center justify-center font-black text-sm flex-shrink-0">
+                    ${(store.getState().household.parentUser.displayName || 'P')[0].toUpperCase()}
+                  </div>
+                  <div class="min-w-0">
+                    <p class="font-headline text-xs font-black text-secondary truncate">${store.getState().household.parentUser.displayName || 'Parent Admin'}</p>
+                    <p class="text-[10px] text-on-surface-variant truncate">${store.getState().household.parentUser.email || 'Authenticated Admin'}</p>
+                  </div>
+                </div>
+                <span class="bg-secondary/20 text-secondary text-[10px] font-black px-2 py-0.5 rounded-md border border-secondary/30 flex-shrink-0">Verified</span>
+              </div>
+
+              <button id="parent-account-enter-btn" class="w-full bg-secondary text-on-secondary font-headline text-sm font-black py-3.5 rounded-2xl chunky-btn border-secondary-container shadow-md hover:brightness-110 active:scale-95 flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined text-lg">admin_panel_settings</span>
+                <span>Enter Parent Portal</span>
+              </button>
+            `
+                : `
+              <div class="flex flex-col gap-2.5 w-full">
+                <button id="parent-google-signin-btn" class="w-full bg-white text-gray-800 font-headline text-xs sm:text-sm font-black py-3 px-4 rounded-2xl border border-gray-300 shadow-sm hover:bg-gray-50 active:scale-95 flex items-center justify-center gap-2.5 transition-all">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+                  <span>Sign In with Parent Google Account</span>
+                </button>
+              </div>
+            `
             }
           </div>
         `
@@ -344,6 +395,34 @@ export function attachParentLockListeners() {
     mathSubmit.addEventListener('click', handleMathCheck);
     mathInput.addEventListener('keyup', (e) => {
       if (e.key === 'Enter') handleMathCheck();
+    });
+  }
+
+  // PARENT ACCOUNT ENTER BUTTON
+  const enterBtn = document.getElementById('parent-account-enter-btn');
+  if (enterBtn) {
+    enterBtn.addEventListener('click', () => {
+      Sound.fanfare();
+      isOpen = false;
+      store.unlockParentSession();
+    });
+  }
+
+  // PARENT GOOGLE SIGN-IN BUTTON
+  const googleBtn = document.getElementById('parent-google-signin-btn');
+  if (googleBtn) {
+    googleBtn.addEventListener('click', async () => {
+      Sound.click();
+      try {
+        const user = await firebaseAuth.signInWithGoogle();
+        if (user) {
+          Sound.fanfare();
+          isOpen = false;
+          store.unlockParentSession();
+        }
+      } catch (err) {
+        console.warn('Google sign-in error:', err);
+      }
     });
   }
 }

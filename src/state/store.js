@@ -23,12 +23,23 @@ const defaultState = {
   selectedPetDetailId: 1,
   selectedAdventureGameId: 'phonics_forest',
 
-  // Household Link Architecture
+  // Household Link Architecture & Parent User Administration
   household: {
     syncCode: 'HERO-1555',
     name: "The Hero Family",
     linkedDevices: 1,
-    lastSync: 'Just now'
+    lastSync: 'Just now',
+    parents: [
+      {
+        uid: 'parent_default_admin',
+        email: 'parent@hero.family',
+        displayName: 'Family Admin',
+        role: 'owner',
+        addedAt: new Date().toISOString()
+      }
+    ],
+    parentUids: ['parent_default_admin'],
+    parentEmails: ['parent@hero.family']
   },
 
   // Active Hero Profile (Starts with 0 pets, prompts starter choice at Stage 1)
@@ -477,6 +488,15 @@ class Store {
           });
         } else {
           parsed.taskForest = ROUTINES;
+        }
+
+        if (!parsed.household) {
+          parsed.household = { ...defaultState.household };
+        }
+        if (!parsed.household.parents || !Array.isArray(parsed.household.parents) || parsed.household.parents.length === 0) {
+          parsed.household.parents = [...defaultState.household.parents];
+          parsed.household.parentUids = [...defaultState.household.parentUids];
+          parsed.household.parentEmails = [...defaultState.household.parentEmails];
         }
 
         return { ...defaultState, ...parsed };
@@ -2315,6 +2335,71 @@ class Store {
     this.notify();
   }
 
+  addParentUser({ email, displayName, role = 'admin', uid = null }) {
+    if (!email || !email.includes('@')) {
+      return { success: false, error: 'Please provide a valid email address.' };
+    }
+    const cleanEmail = email.trim().toLowerCase();
+    if (!this.state.household.parents) this.state.household.parents = [];
+    if (!this.state.household.parentUids) this.state.household.parentUids = [];
+    if (!this.state.household.parentEmails) this.state.household.parentEmails = [];
+
+    const existing = this.state.household.parents.find(p => (p.email || '').toLowerCase() === cleanEmail);
+    if (existing) {
+      return { success: false, error: 'This parent is already added to the household.' };
+    }
+
+    const parentId = uid || ('parent_' + cleanEmail.replace(/[^a-z0-9]/g, '_'));
+    const newParent = {
+      uid: parentId,
+      email: cleanEmail,
+      displayName: displayName || cleanEmail.split('@')[0] || 'Parent Admin',
+      role: role || 'admin',
+      addedAt: new Date().toISOString()
+    };
+
+    this.state.household.parents.push(newParent);
+    if (!this.state.household.parentUids.includes(parentId)) {
+      this.state.household.parentUids.push(parentId);
+    }
+    if (!this.state.household.parentEmails.includes(cleanEmail)) {
+      this.state.household.parentEmails.push(cleanEmail);
+    }
+
+    this.saveState(true);
+    this.notify();
+    return { success: true, parent: newParent };
+  }
+
+  removeParentUser(parentUidOrEmail) {
+    const parents = this.state.household.parents || [];
+    if (parents.length <= 1) {
+      return { success: false, error: 'Cannot remove the only parent administrator of the household.' };
+    }
+    const target = parents.find(p => p.uid === parentUidOrEmail || p.email === parentUidOrEmail);
+    if (!target) {
+      return { success: false, error: 'Parent not found in household.' };
+    }
+    this.state.household.parents = parents.filter(p => p !== target);
+    this.state.household.parentUids = (this.state.household.parentUids || []).filter(id => id !== target.uid);
+    this.state.household.parentEmails = (this.state.household.parentEmails || []).filter(em => em !== target.email);
+
+    this.saveState(true);
+    this.notify();
+    return { success: true };
+  }
+
+  isCurrentUserParent() {
+    const currentUid = this.state.household.parentUser?.uid;
+    const currentEmail = this.state.household.parentUser?.email?.toLowerCase();
+    const parentUids = this.state.household.parentUids || [];
+    const parentEmails = (this.state.household.parentEmails || []).map(e => e.toLowerCase());
+
+    if (currentUid && parentUids.includes(currentUid)) return true;
+    if (currentEmail && parentEmails.includes(currentEmail)) return true;
+    return this.isParentUnlocked();
+  }
+
   /**
    * Hydrate store with real-time cloud data from Firestore
    * Automatically updates heroes, tasks, habits, inventory, and persists to localStorage
@@ -2322,13 +2407,22 @@ class Store {
   hydrateFromCloud(cloudData) {
     if (!cloudData) return;
 
-    // 1. Household Details
+    // 1. Household Details & Parent Administrators
     if (cloudData.householdName) {
       this.state.household.name = cloudData.householdName;
     }
     const incomingCode = (cloudData.syncCode || cloudData.householdCode);
     if (incomingCode) {
       this.state.household.syncCode = incomingCode.trim().toUpperCase();
+    }
+    if (cloudData.parents && Array.isArray(cloudData.parents)) {
+      this.state.household.parents = cloudData.parents;
+    }
+    if (cloudData.parentUids && Array.isArray(cloudData.parentUids)) {
+      this.state.household.parentUids = cloudData.parentUids;
+    }
+    if (cloudData.parentEmails && Array.isArray(cloudData.parentEmails)) {
+      this.state.household.parentEmails = cloudData.parentEmails;
     }
     this.state.household.lastSync = 'Synced Just Now';
 
