@@ -3,12 +3,14 @@ import { getTaskVisualSvg } from '../utils/taskVisuals.js';
 import { speakRex } from '../services/voiceService.js';
 import { Sound } from '../audio/sfx.js';
 import confetti from 'canvas-confetti';
+import { requestAutonomousMicroQuests, submitDailyQuest } from '../services/questService.js';
 
 export function renderDashboardView() {
   const state = store.getState();
   const hero = state.selectedHero;
   const habitIslands = state.habitIslands;
   const taskForest = state.taskForest;
+  const aiQuests = store.getAiQuests();
   const activePet = store.getActivePet();
   const pendingCount = state.pendingApprovals.filter(r => r.kidId === hero.id).length;
   const isEasyMode = store.isEasyMode();
@@ -328,6 +330,106 @@ export function renderDashboardView() {
             .join('')}
         </div>
       </section>
+ 
+      <!-- ZONE 3: AI Spark Autonomous Micro-Quests (Powered by Gemini 2.5 Flash Subagents) -->
+      <section class="flex flex-col gap-3.5">
+        <div class="flex justify-between items-center px-1">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-tertiary text-2xl" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+            <h2 class="font-headline text-xl font-black text-inverse-surface">AI Spark Quests</h2>
+            <span class="bg-tertiary/20 text-tertiary text-[9px] font-black uppercase px-2 py-0.5 rounded-full border border-tertiary/40">Subagent Powered</span>
+          </div>
+          <button id="dash-generate-ai-quests-btn" class="bg-gradient-to-r from-tertiary to-amber-500 text-slate-900 font-headline text-xs font-black px-3.5 py-1.5 rounded-xl chunky-btn-sm border border-tertiary shadow-sm hover:brightness-110 active:scale-95 flex items-center gap-1.5 transition-transform" title="Use Gemini 2.5 Flash to generate custom daily micro-quests tailored to your hero">
+            <span id="ai-quest-btn-icon" class="material-symbols-outlined text-sm">sparkles</span>
+            <span id="ai-quest-btn-text">Generate Quests</span>
+          </button>
+        </div>
+
+        ${aiQuests.length === 0 ? `
+          <div class="bg-surface-container/60 border-2 border-dashed border-tertiary/30 rounded-3xl p-5 text-center flex flex-col items-center gap-2.5">
+            <div class="w-12 h-12 rounded-2xl bg-tertiary/20 text-tertiary flex items-center justify-center text-2xl">
+              <span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">psychology</span>
+            </div>
+            <h4 class="font-headline text-sm font-black text-inverse-surface">No Spark Quests Generated Yet</h4>
+            <p class="text-xs text-on-surface-variant max-w-md">Tap "Generate Quests" above to let your companion subagent create custom micro-challenges adapted to your hero's age and habits!</p>
+          </div>
+        ` : `
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            ${aiQuests.map((q) => {
+              const isPending = store.isTaskPendingApproval(q.id, hero.id);
+              const completionsToday = store.getTaskCompletionsToday(q.id, hero.id);
+              const isCompleted = q.completed || completionsToday.length > 0;
+
+              let btnClass = 'tactile-check-ready';
+              let checkIcon = 'check';
+              let statusBadge = '';
+              let btnTitle = 'Complete AI Quest';
+
+              if (isPending) {
+                btnClass = 'tactile-check-pending animate-pulse';
+                checkIcon = 'hourglass_top';
+                btnTitle = 'Waiting for Parent Approval';
+                statusBadge = `
+                  <span class="text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1 shadow-sm">
+                    <span class="material-symbols-outlined text-[11px] animate-spin">hourglass_empty</span> Pending Parent ⭐
+                  </span>
+                `;
+              } else if (isCompleted) {
+                btnClass = 'tactile-check-ready';
+                checkIcon = 'check';
+                btnTitle = 'Completed today • Tap to log again';
+                statusBadge = `
+                  <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/40 flex items-center gap-1 shadow-sm">
+                    <span class="material-symbols-outlined text-[11px]">verified</span> Verified ⭐
+                  </span>
+                `;
+              }
+
+              return `
+                <div data-ai-quest-card-id="${q.id}" class="ai-quest-card-item tactile-card bg-surface-container rounded-3xl p-4 flex items-center justify-between border-2 ${
+                  isPending
+                    ? 'border-amber-500/50 bg-surface-container'
+                    : isCompleted
+                    ? 'border-primary/40 bg-surface-container'
+                    : 'border-tertiary/40 bg-surface-container'
+                } transition-all cursor-pointer">
+                  <div class="flex items-center gap-3.5 flex-1 pr-3">
+                    <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-slate-800 text-tertiary border border-slate-700/50 shadow-inner flex-shrink-0">
+                      <span class="material-symbols-outlined text-2xl select-none" style="font-variation-settings: 'FILL' 1;">
+                        ${q.icon || 'auto_awesome'}
+                      </span>
+                    </div>
+                    <div class="flex flex-col">
+                      <div class="flex items-center gap-1.5">
+                        <span class="text-[9px] font-black uppercase text-tertiary bg-tertiary/10 px-2 py-0.5 rounded-md border border-tertiary/20">${q.timeWindow || 'Daily'}</span>
+                        <span class="text-[9px] font-bold text-on-surface-variant italic line-clamp-1">${q.petCheer || 'Let\'s do it!'}</span>
+                      </div>
+                      <h3 class="font-headline text-base font-bold text-inverse-surface leading-snug mt-0.5">${q.title}</h3>
+                      <p class="text-xs text-on-surface-variant line-clamp-2 mt-0.5">${q.description}</p>
+                      
+                      <div class="flex items-center gap-2.5 text-xs font-black mt-1">
+                        <span class="text-secondary flex items-center gap-0.5">
+                          <span class="material-symbols-outlined text-sm">monetization_on</span> +${q.coinReward || 25} Tokens
+                        </span>
+                        <span class="text-tertiary flex items-center gap-0.5">
+                          <span class="material-symbols-outlined text-sm">star</span> +${q.pointReward || 10} Points
+                        </span>
+                        ${statusBadge}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button data-ai-quest-id="${q.id}" class="ai-quest-check-btn tactile-check-btn ${btnClass} rounded-2xl w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center flex-shrink-0 active:scale-95 shadow-chunky-sm" title="${btnTitle}">
+                    <span class="material-symbols-outlined text-3xl font-black text-white" style="font-variation-settings: 'FILL' 1;">
+                      ${checkIcon}
+                    </span>
+                  </button>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `}
+      </section>
 
       <!-- MINI ADVENTURE MAP QUICK LAUNCHER -->
       <section class="bg-gradient-to-r from-surface-container to-surface-container-high rounded-3xl p-5 border-2 border-secondary-container flex items-center justify-between card-shadow">
@@ -526,4 +628,88 @@ export function attachDashboardListeners() {
   if (toAdvBtn) {
     toAdvBtn.addEventListener('click', () => store.navigate('quest_map'));
   }
+
+  // AI Spark Quests Generation Listener
+  const generateQuestsBtn = document.getElementById('dash-generate-ai-quests-btn');
+  if (generateQuestsBtn) {
+    generateQuestsBtn.addEventListener('click', async () => {
+      Sound.sparkle();
+      const hero = store.getState().selectedHero;
+      const activePet = store.getActivePet();
+      const isEasy = store.isEasyMode();
+
+      const btnIcon = document.getElementById('ai-quest-btn-icon');
+      const btnText = document.getElementById('ai-quest-btn-text');
+      if (btnIcon) btnIcon.classList.add('animate-spin');
+      if (btnText) btnText.textContent = 'Sparking...';
+      generateQuestsBtn.disabled = true;
+
+      // Extract recently completed habit titles to inform personalized quest generation
+      const logs = store.getState().taskCompletionLogs || [];
+      const completedHabits = logs.slice(0, 10).map((l) => l.taskTitle).filter(Boolean);
+
+      try {
+        const res = await requestAutonomousMicroQuests({
+          heroId: hero?.id || 'hero_1',
+          heroName: hero?.name || 'Little Hero',
+          childAge: isEasy ? 3 : 6,
+          ageTier: isEasy ? 'toddler' : 'kid',
+          petId: activePet?.id || 'rex',
+          completedHabits
+        });
+
+        if (res?.quests && res.quests.length > 0) {
+          store.setAiQuests(res.quests);
+          Sound.fanfare();
+          speakRex(`*Happy giggle!* Hooray! I created ${res.quests.length} new spark quests for you!`);
+        }
+      } catch (err) {
+        console.warn("Failed to generate AI quests:", err);
+      } finally {
+        if (btnIcon) btnIcon.classList.remove('animate-spin');
+        if (btnText) btnText.textContent = 'Generate Quests';
+        generateQuestsBtn.disabled = false;
+      }
+    });
+  }
+
+  // AI Spark Quest Completion Listener
+  document.querySelectorAll('.ai-quest-check-btn').forEach((btn) => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const questId = btn.getAttribute('data-ai-quest-id');
+      const quest = (store.getAiQuests() || []).find((q) => q.id === questId);
+      if (!quest) return;
+
+      const hero = store.getState().selectedHero;
+      Sound.click();
+
+      // Submit to Gemini subagent verification pipeline
+      try {
+        const result = await submitDailyQuest(
+          hero.id,
+          quest.title,
+          `Completed AI Spark Quest: ${quest.description}`
+        );
+        store.completeAiQuest(questId, result);
+        speakRex(result.petReaction || quest.petCheer || "Super job on your spark quest!");
+      } catch (subagentErr) {
+        console.warn("Subagent verification fallback:", subagentErr);
+        store.completeAiQuest(questId);
+        speakRex(quest.petCheer || "Awesome work completing your spark quest!");
+      }
+    });
+  });
+
+  // AI Spark Quest Card Voice Guidance on Click
+  document.querySelectorAll('.ai-quest-card-item').forEach((card) => {
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('button')) return;
+      const questId = card.getAttribute('data-ai-quest-card-id');
+      const quest = (store.getAiQuests() || []).find((q) => q.id === questId);
+      if (quest) {
+        triggerQuestVoice(quest.title, quest.id, quest.description);
+      }
+    });
+  });
 }

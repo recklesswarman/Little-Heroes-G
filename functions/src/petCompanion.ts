@@ -29,48 +29,153 @@ export const chatWithPet = onCall(
     }
 
     const childName = heroId || "Little Hero";
+    const selectedPet = (petId || "rex").toLowerCase();
 
-    // Toddler-Tuned Persona for 3-4 year olds
-    const REX_TODDLER_PROMPT = `
-You are Rex the Dino, a cheerful, loving green dinosaur buddy talking to a 3-to-4-year-old child named ${childName}.
-RULES FOR TODDLER MODE:
-1. Max length: 1 to 2 very short sentences (under 15 words total).
-2. Sound effects: Always include cute sounds like "*Happy Dino Giggle!*" or "*Gently Stomps!*".
-3. Toddler Phrasing: Kids this age say fragments (e.g. "I brush", "Dino look", "toy gone"). Understand their intent and praise them excitedly!
-4. Focus on their positive habits: Tidying toys, eating veggies, brushing teeth, drinking water.
-`;
+    // 1. Multi-Pet Character Persona Engine
+    const PET_PROFILES: Record<string, { name: string; restingPlace: string; soundEffects: string; personality: string; favoriteHabit: string }> = {
+      rex: {
+        name: "Rex the Dino",
+        restingPlace: "dino cave",
+        soundEffects: "*Happy Dino Giggle!*, *Gently Stomps!*, *ROAR!*",
+        personality: "energetic, cheerful, playful green dinosaur buddy",
+        favoriteHabit: "brushing teeth and stomping away sugar bugs"
+      },
+      aqua_drake: {
+        name: "Aqua Drake",
+        restingPlace: "water grotto",
+        soundEffects: "*Splish Splash!*, *Gentle Bubble Pop!*, *Happy Water Swirl!*",
+        personality: "gentle, soothing, oceanic water dragon companion",
+        favoriteHabit: "drinking fresh water and splashing in bath time"
+      },
+      aqua: {
+        name: "Aqua Drake",
+        restingPlace: "water grotto",
+        soundEffects: "*Splish Splash!*, *Gentle Bubble Pop!*, *Happy Water Swirl!*",
+        personality: "gentle, soothing, oceanic water dragon companion",
+        favoriteHabit: "drinking fresh water and splashing in bath time"
+      },
+      bella: {
+        name: "Bella the Bunny",
+        restingPlace: "cozy burrow",
+        soundEffects: "*Hop Hop!*, *Wiggle Nose!*, *Happy Bunny Chirp!*",
+        personality: "bouncy, sweet, tidy bunny companion",
+        favoriteHabit: "cleaning up toys and eating crunchy healthy veggies"
+      },
+      barnaby: {
+        name: "Barnaby the Bear",
+        restingPlace: "warm den",
+        soundEffects: "*Warm Bear Hug!*, *Gentle Grumble!*, *Cozy Snuggle!*",
+        personality: "strong, brave, grounding, cuddly bear companion",
+        favoriteHabit: "being brave and getting good bedtime sleep"
+      },
+      pip: {
+        name: "Pip the Phoenix",
+        restingPlace: "golden nest",
+        soundEffects: "*Flap Flap!*, *Sparkle Chime!*, *Golden Glow!*",
+        personality: "radiant, curious, enthusiastic baby firebird",
+        favoriteHabit: "reading stories, homework, and counting stars"
+      }
+    };
 
-    const REX_KID_PROMPT = `
-You are Rex the Dino, the loyal, high-energy companion in Little Heroes talking to ${childName}.
-- Voice & Tone: Enthusiastic, warm, encouraging, and adventurous. Use playful sound effects in brackets like *ROAR!*, *tail wag*, or *happy stomps*.
-- Core Mission: Help child heroes build positive daily habits. Keep sentences short and easy to follow.
-`;
+    const pet = PET_PROFILES[selectedPet] || PET_PROFILES.rex;
 
-    let injectedSystemInstruction = ageTier === "kid" ? REX_KID_PROMPT : REX_TODDLER_PROMPT;
+    // 2. Retrieve Parental Controls & Guardrails from Firestore
+    let parentRules: {
+      companionEnabled?: boolean;
+      maxDailyTurns?: number;
+      bedtimeHour?: number;
+      restrictedTopics?: string[];
+      focusAreas?: string[];
+      tone?: string;
+    } = {
+      companionEnabled: true,
+      maxDailyTurns: 30,
+      bedtimeHour: 20,
+      restrictedTopics: [],
+      focusAreas: ["brushing_teeth", "cleaning_toys"],
+      tone: "energetic"
+    };
 
-    // Optional Parental Controls from Firestore (bedtime and topic filters)
     try {
       if (heroId && heroId !== "Little Hero") {
         const settingsDoc = await db.collection("heroes").doc(heroId).collection("settings").doc("aiCompanion").get();
         if (settingsDoc.exists) {
-          const parentRules = (settingsDoc.data() as any) || {};
-          const currentHour = new Date().getHours();
-          if (parentRules.companionEnabled === false || currentHour >= (parentRules.bedtimeHour ?? 20)) {
-            return { reply: `*Yawn...* Rex is sleeping in his dino cave for the night! See you in the morning, ${childName}!` };
-          }
-          if (parentRules.focusAreas && Array.isArray(parentRules.focusAreas) && parentRules.focusAreas.length > 0) {
-            injectedSystemInstruction += `\nPriority Habits: ${parentRules.focusAreas.join(", ")}`;
-          }
-          if (parentRules.restrictedTopics && Array.isArray(parentRules.restrictedTopics) && parentRules.restrictedTopics.length > 0) {
-            injectedSystemInstruction += `\nFORBIDDEN TOPICS (Never discuss): ${parentRules.restrictedTopics.join(", ")}`;
-          }
+          parentRules = { ...parentRules, ...(settingsDoc.data() as any) };
         }
       }
     } catch (parentErr) {
       console.warn("Parent rules retrieval notice:", parentErr);
     }
 
-    // Fetch recent chat history if available
+    // GUARDRAIL A: Master Companion Switch
+    if (parentRules.companionEnabled === false) {
+      return { reply: `*Shhh...* ${pet.name} is currently resting in the ${pet.restingPlace}! Ask Mom or Dad to wake them up!` };
+    }
+
+    // GUARDRAIL B: Bedtime Cutoff Rule
+    const currentHour = new Date().getHours();
+    if (currentHour >= (parentRules.bedtimeHour ?? 20) || currentHour < 6) {
+      return { reply: `*Yawn...* ${pet.name} is fast asleep in the ${pet.restingPlace} for the night! See you in the morning, ${childName}!` };
+    }
+
+    // GUARDRAIL C: Restricted Topics / Topic Moderation Check
+    const lowerMessage = (message || "").toLowerCase();
+    const hitRestricted = (parentRules.restrictedTopics || []).find((topic) =>
+      topic && topic.trim() && lowerMessage.includes(topic.trim().toLowerCase())
+    );
+    if (hitRestricted) {
+      return {
+        reply: `*Wiggle ears!* ${pet.name} wants to focus on super fun hero habits! Tell me how you're helping out today, ${childName}!`
+      };
+    }
+
+    // GUARDRAIL D: Daily Screen-Time Chat Turns Limit
+    if (heroId && heroId !== "Little Hero" && (parentRules.maxDailyTurns ?? 30) < 999) {
+      try {
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+        const todayTurnsSnap = await db
+          .collection("heroes")
+          .doc(heroId)
+          .collection("chatHistory")
+          .where("createdAt", ">=", admin.firestore.Timestamp.fromDate(startOfDay))
+          .get();
+
+        const userTurnsToday = todayTurnsSnap.docs.filter((d) => d.data().role === "user").length;
+        if (userTurnsToday >= (parentRules.maxDailyTurns ?? 30)) {
+          return {
+            reply: `*Happy wave!* We had so much fun chatting today! Let's rest our screens now and go play in the real world, Little Hero!`
+          };
+        }
+      } catch (turnsErr) {
+        console.warn("Turns lookup notice:", turnsErr);
+      }
+    }
+
+    // 3. Dynamic Persona System Instruction
+    const isToddler = ageTier === "toddler";
+    const REX_TODDLER_PROMPT = `
+You are ${pet.name}, a ${pet.personality} talking to a 3-to-4-year-old child named ${childName}.
+RULES FOR TODDLER MODE:
+1. Max length: 1 to 2 very short sentences (under 15 words total).
+2. Sound effects: Always include cute playful sounds like ${pet.soundEffects}.
+3. Toddler Phrasing: Kids this age say fragments (e.g. "I brush", "Dino look", "toy gone"). Understand their intent and praise them excitedly!
+4. Focus on their positive habits: ${pet.favoriteHabit}, tidying up, drinking water, eating veggies.
+`;
+
+    const REX_KID_PROMPT = `
+You are ${pet.name}, a ${pet.personality} talking to ${childName} (ages 5–8).
+- Voice & Tone: Enthusiastic, warm, encouraging, and adventurous. Current style: ${parentRules.tone || "energetic"}.
+- Sound effects: Always use playful bracketed sound effects like ${pet.soundEffects}.
+- Core Mission: Help ${childName} build positive daily habits, maintain their streak, and earn Gold Points ⭐. Keep sentences under 25 words.
+`;
+
+    let injectedSystemInstruction = isToddler ? REX_TODDLER_PROMPT : REX_KID_PROMPT;
+    if (parentRules.focusAreas && parentRules.focusAreas.length > 0) {
+      injectedSystemInstruction += `\nPRIORITY FOCUS HABITS: ${parentRules.focusAreas.join(", ")}.`;
+    }
+
+    // 4. Conversational Memory: Fetch recent chat history
     const contents: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }> = [];
     try {
       if (heroId && heroId !== "Little Hero") {
@@ -99,20 +204,20 @@ You are Rex the Dino, the loyal, high-energy companion in Little Heroes talking 
 
     contents.push({ role: "user", parts: [{ text: promptContext }] });
 
-    // Query Gemini with toddler prompt & short token limit
+    // 5. Query Gemini with configured persona & token limit
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents,
       config: {
         systemInstruction: injectedSystemInstruction,
         temperature: 0.7,
-        maxOutputTokens: 60,
+        maxOutputTokens: isToddler ? 60 : 100,
       },
     });
 
-    const replyText = response.text || `*Happy Roar!* Great job, ${childName}! Let's play!`;
+    const replyText = response.text || `*Happy cheer!* Great job, ${childName}! Let's play!`;
 
-    // Save conversation turn to Firestore asynchronously in background
+    // 6. Save conversation turn to Firestore asynchronously
     try {
       if (heroId && heroId !== "Little Hero") {
         const chatColl = db.collection("heroes").doc(heroId).collection("chatHistory");
@@ -124,7 +229,8 @@ You are Rex the Dino, the loyal, high-energy companion in Little Heroes talking 
         await chatColl.add({
           role: "model",
           text: replyText,
-          petId: petId || "rex",
+          petId: selectedPet,
+          petName: pet.name,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
       }
@@ -132,7 +238,7 @@ You are Rex the Dino, the loyal, high-energy companion in Little Heroes talking 
       console.warn("Could not save chat history to Firestore:", saveErr);
     }
 
-    return { reply: replyText };
+    return { reply: replyText, petName: pet.name };
   }
 );
 

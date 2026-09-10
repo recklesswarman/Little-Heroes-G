@@ -97,6 +97,9 @@ const defaultState = {
   // Task Forest (Scheduled Chores & Routines with Time Windows)
   taskForest: ROUTINES,
 
+  // AI Spark Autonomous Micro-Quests (Dynamic Gemini 2.5 Flash Subagent Quests)
+  aiQuests: [],
+
   // 24 Pets Universe & Active Pet State
   pets: PETS_DATABASE,
   petStageMap: {},
@@ -1271,6 +1274,105 @@ class Store {
       task?.image || null,
       'dentistry'
     );
+    this.saveState(true);
+  }
+
+  // ---------------------------------------------------------
+  // AI SPARK AUTONOMOUS MICRO-QUESTS
+  // ---------------------------------------------------------
+  setAiQuests(quests) {
+    this.state.aiQuests = Array.isArray(quests) ? quests : [];
+    this.saveState(true);
+  }
+
+  getAiQuests() {
+    return this.state.aiQuests || [];
+  }
+
+  completeAiQuest(questId, verifiedResult = null) {
+    const quest = (this.state.aiQuests || []).find((q) => q.id === questId);
+    if (!quest) return;
+
+    const currentHero = this.state.selectedHero;
+    const heroId = currentHero?.id || 'hero_1';
+
+    const coins = verifiedResult?.coinsEarned ?? quest.coinReward ?? 25;
+    const points = verifiedResult?.pointsEarned ?? quest.pointReward ?? 10;
+    const xp = verifiedResult?.xpEarned ?? quest.xpReward ?? 35;
+
+    const logId = 'compl_ai_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+    const approvalReqId = 'task_ai_' + quest.id + '_' + Date.now();
+    const nowIso = new Date().toISOString();
+
+    const completionLog = {
+      id: logId,
+      taskId: quest.id,
+      taskTitle: quest.title,
+      zone: 'AI Spark Quests',
+      heroId: heroId,
+      heroName: currentHero.name,
+      completedAt: nowIso,
+      timestamp: Date.now(),
+      dateString: new Date().toLocaleDateString(),
+      timeString: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      coinsAwarded: coins,
+      pointsAwarded: points,
+      xpAwarded: xp,
+      status: 'pending',
+      approvalRequestId: approvalReqId,
+      approvedAt: null,
+      rejectedAt: null
+    };
+
+    if (!this.state.taskCompletionLogs) {
+      this.state.taskCompletionLogs = [];
+    }
+    this.state.taskCompletionLogs.unshift(completionLog);
+    if (this.state.taskCompletionLogs.length > 200) {
+      this.state.taskCompletionLogs.pop();
+    }
+
+    quest.completed = true;
+
+    currentHero.coins += coins;
+    this.addXP(xp);
+    Sound.coin();
+    Sound.fanfare();
+
+    confetti({
+      particleCount: 60,
+      spread: 75,
+      origin: { y: 0.6 },
+      colors: ['#3498db', '#f1c40f', '#2ecc71', '#9b59b6']
+    });
+    triggerInteractiveCelebration(40);
+
+    this.state.pendingApprovals.push({
+      id: approvalReqId,
+      logId: logId,
+      kidId: currentHero.id,
+      kidName: currentHero.name,
+      type: 'task_point_approval',
+      taskId: quest.id,
+      title: quest.title,
+      zone: 'AI Spark Quests',
+      pendingPoints: points,
+      tokensAwarded: coins,
+      date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: nowIso,
+      status: 'pending'
+    });
+
+    this.logAction(`${currentHero.name} completed AI Spark Quest: '${quest.title}'`, `+${coins} Tokens 🪙 auto-issued. (${points} Points ⭐ pending Parent Approval)`);
+    this.showReward(
+      `Spark Quest Done!`,
+      `🪙 +${coins} Habit Tokens auto-added to wallet!\n⭐ +${points} Gold Points sent to Parent for approval.`,
+      coins,
+      xp,
+      null,
+      quest.icon || 'auto_awesome'
+    );
+
     this.saveState(true);
   }
 

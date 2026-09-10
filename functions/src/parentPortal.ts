@@ -1,7 +1,7 @@
 // Parent Portal Insights & Controls Cloud Function powered by Google Gemini SDK (@google/genai)
 
 import { onCall, HttpsError } from "firebase-functions/v2/https";
-import { GoogleGenAI, ThinkingLevel } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import * as admin from "firebase-admin";
 
 if (!admin.apps.length) {
@@ -87,13 +87,47 @@ Generate a concise, uplifting Parent Insight report in valid JSON:
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3.7-flash",
+      model: "gemini-2.5-flash",
       contents: prompt,
       config: {
+        systemInstruction: "You are an expert pediatric psychologist and positive parenting guide. Provide encouraging, constructive, actionable family habit insights in strict structured JSON.",
         responseMimeType: "application/json",
-        thinkingConfig: {
-          thinkingLevel: ThinkingLevel.MINIMAL
-        }
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            executiveSummary: {
+              type: Type.STRING,
+              description: "Brief overview of family momentum and positive reinforcement"
+            },
+            praiseHighlights: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING },
+              description: "Specific milestones or earnest efforts to praise the children for"
+            },
+            habitFocusAreas: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING },
+              description: "Gentle suggestions for habits or routines to focus on next"
+            },
+            parentTips: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING },
+              description: "Actionable positive parenting tips tailored to the family"
+            },
+            recommendedReward: {
+              type: Type.STRING,
+              description: "Real-world non-screen bonding activity or family reward"
+            }
+          },
+          required: [
+            "executiveSummary",
+            "praiseHighlights",
+            "habitFocusAreas",
+            "parentTips",
+            "recommendedReward"
+          ]
+        },
+        maxOutputTokens: 500
       }
     });
 
@@ -104,6 +138,7 @@ Generate a concise, uplifting Parent Insight report in valid JSON:
       insights = {
         executiveSummary: "Your little heroes are building strong daily habits and demonstrating great consistency!",
         praiseHighlights: ["Consistent daily routine completion", "Great enthusiasm for learning quests"],
+        habitFocusAreas: ["Gentle bedtime wind-down", "Staying hydrated throughout active play"],
         parentTips: ["Praise effort rather than perfection", "Celebrate small milestones together"],
         recommendedReward: "Family movie night or special park outing"
       };
