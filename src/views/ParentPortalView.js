@@ -428,8 +428,10 @@ export function renderParentPortalView() {
                   return `
                   <div class="bg-surface-container rounded-2xl p-4 border border-surface-container-highest flex items-center justify-between card-shadow">
                     <div class="flex items-center gap-3.5">
-                      <div class="w-12 h-12 rounded-full bg-surface-container-high text-primary flex items-center justify-center text-2xl overflow-hidden p-1 border-2 border-primary/40 shadow-sm flex-shrink-0">
-                        ${t.image ? `<img src="${t.image}" class="w-full h-full object-contain rounded-full" />` : getTaskVisualSvg(t.icon || t.id, 'blue')}
+                      <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-slate-800 text-emerald-400 border border-slate-700/50 shadow-inner flex-shrink-0">
+                        <span class="material-symbols-outlined text-2xl select-none" style="font-variation-settings: 'FILL' 1;">
+                          ${t.icon || 'star'}
+                        </span>
                       </div>
                       <div class="flex flex-col">
                         <span class="text-xs font-black text-inverse-surface">${t.title}</span>

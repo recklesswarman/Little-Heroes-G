@@ -173,13 +173,11 @@ export function renderDashboardView() {
                   : 'border-surface-container-highest bg-surface-container'
               } transition-all cursor-pointer">
                 <div class="flex items-center gap-3.5 flex-1 pr-3">
-                  <!-- Circular Graphical Habit Icon for Toddlers -->
-                  <div class="w-16 h-16 sm:w-18 sm:h-18 rounded-full border-3 border-secondary/50 bg-gradient-to-b from-[#182838] to-[#0d1620] flex items-center justify-center p-1.5 shadow-md flex-shrink-0 overflow-hidden group-hover:scale-105 transition-transform">
-                    ${
-                      h.image
-                        ? `<img src="${h.image}" class="w-full h-full object-contain rounded-full drop-shadow-md" alt="${h.title}" />`
-                        : getTaskVisualSvg(h.icon || h.id, 'yellow')
-                    }
+                  <!-- Dedicated Material Symbol Container -->
+                  <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-slate-800 text-amber-400 border border-slate-700/50 shadow-inner flex-shrink-0">
+                    <span class="material-symbols-outlined text-2xl select-none" style="font-variation-settings: 'FILL' 1;">
+                      ${h.icon || 'star'}
+                    </span>
                   </div>
                   <div class="flex flex-col">
                     <h3 class="font-headline text-base font-bold text-inverse-surface leading-snug">${h.title}</h3>
@@ -242,13 +240,11 @@ export function renderDashboardView() {
                   : 'border-surface-container-highest bg-surface-container'
               } transition-all cursor-pointer">
                 <div class="flex items-center gap-3.5 flex-1 pr-3">
-                  <!-- Circular Graphical Chore/Routine Icon for Toddlers -->
-                  <div class="w-16 h-16 sm:w-18 sm:h-18 rounded-full border-3 border-primary/50 bg-gradient-to-b from-[#132c20] to-[#07160e] flex items-center justify-center p-1.5 shadow-md flex-shrink-0 overflow-hidden group-hover:scale-105 transition-transform">
-                    ${
-                      t.image
-                        ? `<img src="${t.image}" class="w-full h-full object-contain rounded-full drop-shadow-md" alt="${t.title}" />`
-                        : getTaskVisualSvg(t.icon || t.id, 'blue')
-                    }
+                  <!-- Dedicated Material Symbol Container -->
+                  <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-slate-800 text-emerald-400 border border-slate-700/50 shadow-inner flex-shrink-0">
+                    <span class="material-symbols-outlined text-2xl select-none" style="font-variation-settings: 'FILL' 1;">
+                      ${t.icon || 'star'}
+                    </span>
                   </div>
                   <div class="flex flex-col">
                     <div class="flex items-center gap-1.5">

@@ -5,6 +5,8 @@ import { ADVENTURE_GAMES } from '../data/learningGamesData.js';
 import { PROFILE_THEMES } from '../data/profileThemesData.js';
 import { generate3DIcon } from '../utils/graphicsGenerator.js';
 import { triggerInteractiveCelebration, closeInteractiveCelebration } from '../components/InteractiveCelebrationOverlay.js';
+import { ROUTINES, HABIT_ISLANDS } from '../constants/routines.js';
+
 
 export const KID_AVATARS = [
   { id: 'avatar_dragon', label: 'Dragon Explorer', url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZfP7_Cwlp4sz41asI8ymuapAKvjmqHtvI4zcMAF_XwUmibj8IheGrS5cA5QD5gmXgVxEkZM9FlWJPRZnct3x6-9SQB7zJKqkEDjJ3m95tAy3zRqS-PbmcQ4kv_9pmIfm2Py4mh3Fw083hkDookz1w4_r50SBA1jc9igDaAPFLYBFgSP2aQBz7Q4jVE-DwhMOyUEHlxDkQk6Gwc2EAFCSKs1c0QuhUOi3tkrk5MXRARKqZcYVzyJe6gA' },
@@ -79,135 +81,10 @@ const defaultState = {
   profileThemes: PROFILE_THEMES,
 
   // Habit Islands (Preset Daily Positive Behaviors)
-  habitIslands: [
-    {
-      id: 'drink_water',
-      title: 'Drink 4 Cups of Water',
-      zone: 'Habit Islands',
-      icon: 'water_drop',
-      image: 'https://lh3.googleusercontent.com/aida/AEtjO1UzuPyYfcmxTdgFkS7zVXE_cJPQZ_8THyZMImMQJSuKOlmj5XN-fzGpRfNfQbgp1fWNbj0SzKTYNtL-1pB0PYaLboMlYJtzU6aIK9Uf_rS9vtVcOC8Ie2RfY1345DwpVOzbVQHKJrAhqax3pO3Av7HgBkh_L67bjW2St8Ki5V8M3DNT6Je6PDlS3i6-gTGU_ERuJrWlDrNnJ0xllQuAd4ll4-djz6va-q_LEpDzRulgJ53Za2xPHw3dxa88',
-      coins: 15,  // 🪙 Tokens auto-issued
-      points: 5,  // ⭐ Points pending parent approval
-      xp: 20,
-      completed: true,
-      pointsApproved: true,
-      desc: 'Keep your hydration meter full with crystal spring water.'
-    },
-    {
-      id: 'gentle_words',
-      title: 'Use Kind & Gentle Words',
-      zone: 'Habit Islands',
-      icon: 'favorite',
-      image: generate3DIcon('favorite', 'green', 'Kindness'),
-      coins: 20,
-      points: 10,
-      xp: 25,
-      completed: false,
-      pointsApproved: false,
-      desc: 'Spread kindness to siblings, parents, and friends today.'
-    },
-    {
-      id: 'healthy_snack',
-      title: 'Eat Fruit or Veggie Snack',
-      zone: 'Habit Islands',
-      icon: 'nutrition',
-      image: 'https://lh3.googleusercontent.com/aida/AEtjO1UuCPRIp3bcNODtjcuPUYCb1k8R-X-wt8M4SkdedZ2UK8gVYhXWdqlH4ec0QrR5LVQimn-_uMnv97sofFVP_bwtOabQeHT0SHtxVe59gKb1Qch1Id9HwPaHU7YYyQbnId78QZLhbJun88sn97HnxETpeh6fgMNmuextDnU3-fqKj7z6PsFQnV57jxpzaVtbulYuS9DNbp78rG73z_clyox8dQva9TbjJr4dzkiz-ytPCGJyopeRhjPTAts',
-      coins: 20,
-      points: 5,
-      xp: 20,
-      completed: false,
-      pointsApproved: false,
-      desc: 'Crunch on apples, carrots, or berries for instant vitality.'
-    },
-    {
-      id: 'hand_washing',
-      title: 'Wash Hands (20 Secs)',
-      zone: 'Habit Islands',
-      icon: 'soap',
-      image: generate3DIcon('soap', 'blue', 'Clean Hands'),
-      coins: 10,
-      points: 5,
-      xp: 15,
-      completed: true,
-      pointsApproved: true,
-      desc: 'Scrub all suds clean before meals and after playing outside.'
-    }
-  ],
+  habitIslands: HABIT_ISLANDS,
 
   // Task Forest (Scheduled Chores & Routines with Time Windows)
-  taskForest: [
-    {
-      id: 'morning_brush',
-      title: 'Morning Toothbrush AR Battle',
-      zone: 'Task Forest',
-      icon: 'dentistry',
-      image: 'https://lh3.googleusercontent.com/aida/AEtjO1Xt9GeFqjAL58hS_PuyIhL5_ZJ68ze3DFHgw6czaVkv6UJsQjulgSW1SVNMN5R-83AzzqbFfTVTa4A3XBDHsR7ggE9m-inrmcjBUsbdqo4InwRTA2VU1ndafKJJx--9Vzt17F9tgoYWYwsDyOtf2V78XpSPNIMUWsSQI1pjREuzdqsCbyFXDBadq8CPlJrx2MeHIOsKCpfe0VbcWqtPhzKdzzmlIhcK4Xgujh-Msp9KagAkWDWYiClbQ-bk',
-      timeWindow: '6:00 AM - 9:00 AM',
-      coins: 30,  // 🪙 Tokens auto-issued
-      points: 15, // ⭐ Points pending parent approval
-      xp: 50,
-      completed: false,
-      pointsApproved: false,
-      isAR: true,
-      desc: 'Hands-free 2-minute scrubbing battle against the Sugar Boss.'
-    },
-    {
-      id: 'make_bed',
-      title: 'Make Your Hero Bed',
-      zone: 'Task Forest',
-      icon: 'bed',
-      image: generate3DIcon('bed', 'teal', 'Bed'),
-      timeWindow: 'Morning',
-      coins: 20,
-      points: 10,
-      xp: 30,
-      completed: false,
-      pointsApproved: false,
-      desc: 'Pull up sheets, tuck blankets, and align pillows neatly.'
-    },
-    {
-      id: 'clean_toys',
-      title: 'Clean Up Toys & Blocks',
-      zone: 'Task Forest',
-      icon: 'toys',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDy3Rfu0bcLlMPyE2iHd9P78LdbLHJNOzTdaepeadGKy-vo9vxupk8kFi7ggsSZgSTNyekoC_nPypDwUIyXCrD2-_Z96IqQYN58d5uymrFi6JV8vd3_mbXavdbQXB825ndnaEFa-xL8t9yleVWU-a8f9Cv8ehZ1dNuYJt1w-L5x05lq4gKgpqmuecxkjqj0__taxaDmJ-tSIUV6wqkf6VcM2RD4FoyEzXq6FmcZaYoeIxFG5Aa2iQtu0g',
-      timeWindow: 'Afternoon',
-      coins: 35,
-      points: 15,
-      xp: 45,
-      completed: false,
-      pointsApproved: false,
-      desc: 'Stow shields, cars, and blocks into the toy chest.'
-    },
-    {
-      id: 'homework_reading',
-      title: 'Homework / 15m Reading',
-      zone: 'Task Forest',
-      icon: 'menu_book',
-      image: 'https://lh3.googleusercontent.com/aida/AEtjO1Upn8eSGHYCBegCuVLlrK1tRsouPnIA7kav9jbPpHhAoX1EjtcrZeJnUHVFFwl3TFnSvW9rdiO4wx3Ro8M-yIyeLHNgZCvYVs8VhIwrBWqp8iG9M-F5Iz_qjN6edcr4atCBHVtrvW1EC0ZjuQi8SkrCwSMCrmSx7FCMR2tVWjXu7RxLOO_qn7eO27ahLpkcv5Ark-EaT3t0C-BmvG7vMZgOK5_DDLyOHFGD3VGC0WcSc8lDGcSpqbwCjfNY',
-      timeWindow: '3:00 PM - 6:00 PM',
-      coins: 30,
-      points: 20,
-      xp: 40,
-      completed: false,
-      pointsApproved: false,
-      desc: 'Level up your brain power with stories or worksheets.'
-    },
-    {
-      id: 'night_bedtime',
-      title: 'Bedtime Routine on Time',
-      zone: 'Task Forest',
-      icon: 'bedtime',
-      image: 'https://lh3.googleusercontent.com/aida/AEtjO1V97aePfWQmnVShMtBQbima_UDU0i6-8HfQ2n8qhGdoWZLbB0i92sJK2agutlVgGgj3HAVeKGYApMLb1pekmHEwMkum3IwJUH4kInnyo5LBApPp19gD5ihwha1vyRfG_5DcQtw5IfYwtwF_GMpbfQe_LUwyYPZBWnYua0Y7r8WKi-bax1d06QI0zeSdnmNrDwzQi6nSmBkbPGLaL5iHGxpziVKKaZ155rUBdz8_jIVpxWQS0D3-Vpacbi8',
-      timeWindow: '7:30 PM - 8:30 PM',
-      coins: 40,
-      points: 25,
-      xp: 60,
-      completed: false,
-      pointsApproved: false,
-      desc: 'Pajamas on, lights dimmed, and ready for sleep.'
-    }
-  ],
+  taskForest: ROUTINES,
 
   // 24 Pets Universe & Active Pet State
   pets: PETS_DATABASE,
@@ -554,22 +431,29 @@ class Store {
         }
         parsed.parentUnlocked = false;
 
-        // Upgrade habit & chore images so toddlers get rich graphical visual icons without text
+        // Upgrade habit & chore icons to ensure Material Symbols render with zero broken images
         if (parsed.habitIslands) {
           parsed.habitIslands.forEach((h) => {
-            if (!h.image || h.image.includes('text%20x') || h.image.includes('%3Ctext')) {
-              const def = defaultState.habitIslands.find((d) => d.id === h.id);
-              if (def) h.image = def.image;
+            const def = HABIT_ISLANDS.find((d) => d.id === h.id);
+            if (def) {
+              h.icon = def.icon;
             }
+            delete h.image;
           });
+        } else {
+          parsed.habitIslands = HABIT_ISLANDS;
         }
+
         if (parsed.taskForest) {
           parsed.taskForest.forEach((t) => {
-            if (!t.image || t.image.includes('text%20x') || t.image.includes('%3Ctext')) {
-              const def = defaultState.taskForest.find((d) => d.id === t.id);
-              if (def) t.image = def.image;
+            const def = ROUTINES.find((d) => d.id === t.id);
+            if (def) {
+              t.icon = def.icon;
             }
+            delete t.image;
           });
+        } else {
+          parsed.taskForest = ROUTINES;
         }
 
         return { ...defaultState, ...parsed };

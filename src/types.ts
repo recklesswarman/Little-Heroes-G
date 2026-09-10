@@ -39,6 +39,7 @@ export interface TaskItem {
   coinsReward: number;
   pointsReward: number;
   icon3dUrl: string;
+  icon?: string;
   description?: string;
   completedToday: boolean;
   streak?: number;

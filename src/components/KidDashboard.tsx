@@ -213,9 +213,10 @@ export const KidDashboard: React.FC<KidDashboardProps> = ({
                       : undefined
                   }
                 >
-                  <div className="flex items-center gap-3.5 sm:gap-4 text-left">
-                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-black/15 flex items-center justify-center p-1.5 shrink-0 overflow-hidden">
-                      <img src={task.icon3dUrl} alt={task.title} className="w-full h-full object-contain" />
+                    <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-slate-800 text-emerald-400 border border-slate-700/50 shadow-inner shrink-0">
+                      <span className="material-symbols-outlined text-2xl select-none">
+                        {task.icon || 'star'}
+                      </span>
                     </div>
                     <div className="flex flex-col">
                       <span className="text-base sm:text-xl font-black uppercase tracking-tight">
@@ -303,8 +304,10 @@ export const KidDashboard: React.FC<KidDashboardProps> = ({
                 }
               >
                 <div className="flex items-center gap-3.5 sm:gap-4 text-left">
-                  <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-black/15 flex items-center justify-center p-1.5 shrink-0 overflow-hidden">
-                    <img src={habit.icon3dUrl} alt={habit.title} className="w-full h-full object-contain" />
+                  <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-slate-800 text-amber-400 border border-slate-700/50 shadow-inner shrink-0">
+                    <span className="material-symbols-outlined text-2xl select-none">
+                      {habit.icon || 'star'}
+                    </span>
                   </div>
                   <div className="flex flex-col">
                     <span className="text-base sm:text-xl font-black uppercase tracking-tight">
