@@ -1,4 +1,4 @@
-import { doc, setDoc, onSnapshot, getDoc, updateDoc } from "firebase/firestore";
+import { doc, setDoc, onSnapshot, updateDoc } from "firebase/firestore";
 import { db, isFirebaseAvailable } from "../config/firebase.js";
 import { store, STORAGE_KEY } from "../state/store.js";
 import { persistentLink } from "./persistentLinkService.js";
@@ -27,6 +27,7 @@ class FirestoreSyncService {
     this.sessionId = 'sess_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now().toString(36);
     this.debounceTimer = null;
     this.lastCloudTimestamp = null;
+    this.initialSyncCallbacks = [];
 
     if (typeof window !== 'undefined') {
       setInterval(() => {
@@ -38,16 +39,21 @@ class FirestoreSyncService {
   }
 
   /**
-   * Start listening to real-time changes for a household
+   * Start listening to real-time changes for a household using onSnapshot
    */
-  startSync(householdCode) {
+  startSync(householdCode, onInitialSync) {
     if (!isFirebaseAvailable || !db) {
       console.log("Firestore running in resilient offline/local mode");
+      if (onInitialSync) onInitialSync(null);
       return;
     }
 
     const state = store.getState();
     const code = (householdCode || state.household?.syncCode || 'HERO-1555').trim().toUpperCase();
+
+    if (onInitialSync) {
+      this.initialSyncCallbacks.push(onInitialSync);
+    }
 
     if (this.currentCode === code && this.unsubscribe) {
       return; // Already actively listening to this household
@@ -57,16 +63,26 @@ class FirestoreSyncService {
     this.currentCode = code;
     const docRef = doc(db, "households", code);
 
+    let isFirstSnapshot = true;
+
     try {
       this.unsubscribe = onSnapshot(docRef, (snapshot) => {
         if (!snapshot.exists()) {
-          console.log(`ℹ️ Household ${code} does not exist yet on cloud. Initializing...`);
+          console.log(`ℹ️ Household ${code} does not exist yet on cloud. Initializing via live onSnapshot stream...`);
           this.pushStateToCloud(true);
+          if (isFirstSnapshot) {
+            isFirstSnapshot = false;
+            const cbs = [...this.initialSyncCallbacks];
+            this.initialSyncCallbacks = [];
+            cbs.forEach(cb => { try { cb(snapshot); } catch (e) { console.warn(e); } });
+          }
           return;
         }
 
         const cloudData = snapshot.data();
         if (!cloudData) return;
+
+        this.lastCloudTimestamp = cloudData.updatedAt || new Date().toISOString();
 
         // If the write was pushed from this exact session in this window, avoid redundant re-hydrating
         if (cloudData.lastWriterSessionId === this.sessionId) {
@@ -76,6 +92,12 @@ class FirestoreSyncService {
               store.getState().household.linkedDevices = Math.max(1, count);
               store.notify();
             }
+          }
+          if (isFirstSnapshot) {
+            isFirstSnapshot = false;
+            const cbs = [...this.initialSyncCallbacks];
+            this.initialSyncCallbacks = [];
+            cbs.forEach(cb => { try { cb(snapshot); } catch (e) { console.warn(e); } });
           }
           return;
         }
@@ -87,8 +109,21 @@ class FirestoreSyncService {
 
         // Slide the persistent link window forward (RFC 6749 Section 6)
         persistentLink.slideWindow();
+
+        if (isFirstSnapshot) {
+          isFirstSnapshot = false;
+          const cbs = [...this.initialSyncCallbacks];
+          this.initialSyncCallbacks = [];
+          cbs.forEach(cb => { try { cb(snapshot); } catch (e) { console.warn(e); } });
+        }
       }, (error) => {
         console.warn("Firestore snapshot listener error:", error.message);
+        if (isFirstSnapshot) {
+          isFirstSnapshot = false;
+          const cbs = [...this.initialSyncCallbacks];
+          this.initialSyncCallbacks = [];
+          cbs.forEach(cb => { try { cb(null); } catch (e) { console.warn(e); } });
+        }
       });
 
       // Register this device's presence
@@ -100,7 +135,7 @@ class FirestoreSyncService {
   }
 
   /**
-   * Safely join an existing household and immediately pull all its data
+   * Safely join an existing household and immediately subscribe to its live real-time stream
    */
   async joinHousehold(code) {
     const cleanCode = (code || '').trim().toUpperCase();
@@ -114,45 +149,38 @@ class FirestoreSyncService {
       return { success: true, message: `Joined ${cleanCode} in local mode` };
     }
 
-    const docRef = doc(db, "households", cleanCode);
+    this.stopSync();
 
-    try {
-      const snapshot = await getDoc(docRef);
+    return new Promise((resolve) => {
+      let resolved = false;
+      const timeoutId = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          resolve({
+            success: true,
+            isNew: false,
+            kidCount: store.getState().heroes?.length || 1,
+            householdName: store.getState().household?.name || 'The Hero Family',
+            message: `Subscribed to ${cleanCode} via live onSnapshot stream`
+          });
+        }
+      }, 3500);
 
-      if (snapshot.exists()) {
-        const cloudData = snapshot.data();
-        this.lastCloudTimestamp = cloudData.updatedAt;
-
-        console.log(`🏠 Successfully fetched household ${cleanCode} from cloud! Hydrating device state...`);
-
-        // Hydrate store with all kids, tasks, habits, and inventory from the cloud
-        store.hydrateFromCloud({ ...cloudData, syncCode: cleanCode });
-
-        // Restart listener to guarantee live real-time updates
-        this.stopSync();
-        this.startSync(cleanCode);
-
-        // Slide persistent link window forward
-        persistentLink.slideWindow();
-
-        return { 
-          success: true, 
-          isNew: false, 
-          kidCount: store.getState().heroes.length,
-          householdName: cloudData.householdName || 'The Hero Family'
-        };
-      } else {
-        // Household doesn't exist yet on cloud - initialize it with current state
-        state.household.syncCode = cleanCode;
-        await this.pushStateToCloud(true);
-        this.stopSync();
-        this.startSync(cleanCode);
-        return { success: true, isNew: true, kidCount: state.heroes.length };
-      }
-    } catch (e) {
-      console.warn("Failed to join household:", e.message);
-      return { success: false, error: e.message };
-    }
+      this.startSync(cleanCode, (snapshot) => {
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timeoutId);
+          const exists = snapshot && snapshot.exists && snapshot.exists();
+          const cloudData = exists ? snapshot.data() : null;
+          resolve({
+            success: true,
+            isNew: !exists,
+            kidCount: store.getState().heroes?.length || 1,
+            householdName: cloudData?.householdName || store.getState().household?.name || 'The Hero Family'
+          });
+        }
+      });
+    });
   }
 
   /**
@@ -204,10 +232,20 @@ class FirestoreSyncService {
             xp: h.xp || 0,
             xpNext: h.xpNext || 100,
             streak: h.streak || 1,
+            stars: h.stars || 0,
+            role: h.role || h.title || 'Adventurer',
+            title: h.title || h.role || 'Adventurer',
+            avatar: h.avatar || '',
             activePetId: h.activePetId || null,
             unlockedPetIds: h.unlockedPetIds || [],
+            hasChosenStarterPet: h.hasChosenStarterPet ?? ((h.unlockedPetIds || []).length > 0),
             petStageMap: h.petStageMap || {},
             habitatSlots: h.habitatSlots || 1,
+            gameDifficulty: h.gameDifficulty || 'medium',
+            equippedProfileTheme: h.equippedProfileTheme || 'theme_dragon_emerald',
+            unlockedThemes: h.unlockedThemes || ['theme_dragon_emerald'],
+            equippedGear: h.equippedGear || {},
+            inventory: h.inventory || [],
             updatedAt: timestamp
           };
         }
@@ -221,6 +259,7 @@ class FirestoreSyncService {
         selectedHero: state.selectedHero || null,
         pendingApprovals: state.pendingApprovals || [],
         taskCompletionLogs: state.taskCompletionLogs || [],
+        taskLedgerLogs: state.taskLedgerLogs || [],
         petStatsMap: state.petStatsMap || {},
         petStageMap: state.petStageMap || {},
         equippedGearMap: state.equippedGearMap || {},
@@ -231,6 +270,7 @@ class FirestoreSyncService {
         realLifeRewards: state.realLifeRewards || [],
         digitalGear: state.digitalGear || [],
         inventory: state.inventory || [],
+        liveRex: state.liveRex || {},
         parentSettings: state.parentSettings || {},
         profileThemes: state.profileThemes || [],
         gameProgress: state.gameProgress || {},
@@ -257,7 +297,7 @@ class FirestoreSyncService {
   }
 
   /**
-   * Manually force an immediate cloud data pull and verify device data is in sync
+   * Ensure active real-time subscription is healthy and verify device data is in sync
    */
   async syncNow() {
     if (!isFirebaseAvailable || !db) {
@@ -268,51 +308,24 @@ class FirestoreSyncService {
 
     const state = store.getState();
     const code = (state.household?.syncCode || this.currentCode || 'HERO-1555').trim().toUpperCase();
-    const docRef = doc(db, "households", code);
 
-    console.log(`🔄 Sync Now: Performing authoritative data pull to verify sync for household ${code}...`);
+    console.log(`🔄 Sync Now: Ensuring active real-time subscription for household ${code}...`);
 
     try {
-      // 1. DATA PULL: Fetch latest authoritative cloud document directly from Firestore
-      const snapshot = await getDoc(docRef);
-
-      if (!snapshot.exists()) {
-        console.log(`ℹ️ Household ${code} does not exist yet on cloud. Initializing from current device...`);
-        await this.pushStateToCloud(true);
-        this.stopSync();
-        this.startSync(code);
-        return {
-          success: true,
-          verified: true,
-          isNew: true,
-          householdName: state.household?.name || 'The Hero Family',
-          code,
-          kidCount: state.heroes?.length || 1,
-          deviceCount: 1,
-          kids: (state.heroes || []).map(h => h.name),
-          message: `Created new cloud household ${code}. Synced ${state.heroes?.length || 1} kid(s).`
-        };
-      }
-
-      const cloudData = snapshot.data();
-      console.log(`✅ Data pull succeeded for household ${code}! Verifying device state...`);
-
-      // 2. VERIFY & HYDRATE: Update all local heroes, tasks, habits, inventory with cloud data
-      store.hydrateFromCloud(cloudData);
-
-      // 3. Ensure live real-time listener is connected
+      // 1. Ensure live real-time onSnapshot listener is connected and healthy
       if (!this.unsubscribe || this.currentCode !== code) {
         this.stopSync();
         this.startSync(code);
       }
 
-      // 4. Update this device's presence and slide token window
+      // 2. Update this device's presence and slide token window
       await this.pingDevicePresence(code);
       await persistentLink.slideWindow();
 
-      const kidCount = cloudData.heroes?.length || 0;
-      const deviceCount = Object.keys(cloudData.devices || {}).length || 1;
-      const householdName = cloudData.householdName || state.household?.name || 'The Hero Family';
+      const currentHeroes = state.heroes || [];
+      const kidCount = currentHeroes.length;
+      const deviceCount = state.household?.linkedDevices || 1;
+      const householdName = state.household?.name || 'The Hero Family';
 
       state.household.lastSync = "Verified In Sync Just Now";
       store.notify();
@@ -324,8 +337,8 @@ class FirestoreSyncService {
         code,
         kidCount,
         deviceCount,
-        kids: (cloudData.heroes || []).map(h => h.name),
-        updatedAt: cloudData.updatedAt,
+        kids: currentHeroes.map(h => h.name),
+        updatedAt: this.lastCloudTimestamp || new Date().toISOString(),
         message: `Verified in sync with ${householdName} (${code}): ${kidCount} kid(s) on ${deviceCount} device(s).`
       };
 

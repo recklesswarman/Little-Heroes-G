@@ -3,7 +3,7 @@ import { HeroProfile, TaskItem, PetNeedState, ShopItem } from './types';
 import { INITIAL_HEROES, INITIAL_TASKS, INITIAL_PET, INITIAL_SHOP_ITEMS } from './data/initialData';
 import { sounds } from './utils/audio';
 import {
-  loadHeroesFromFirestore,
+  subscribeToAllHeroes,
   saveHeroProfileToFirestore,
   subscribeToHeroDocument,
 } from './services/heroFirestoreService';
@@ -65,14 +65,12 @@ export default function App() {
   const [celebrationEffect, setCelebrationEffect] = useState(false);
   const [cloudSynced, setCloudSynced] = useState<boolean>(false);
 
-  // Firestore Initialization & Data Hydration
+  // Continuous Real-Time Firestore Subscription for All Kids, Inventory & Pet States
   useEffect(() => {
     let isMounted = true;
-    const initFirestoreData = async () => {
-      try {
-        const { heroes: cloudHeroes, unlockedShopItemIds, petStates } =
-          await loadHeroesFromFirestore();
 
+    const unsubscribe = subscribeToAllHeroes(
+      ({ heroes: cloudHeroes, unlockedShopItemIds, petStates }) => {
         if (!isMounted) return;
 
         if (cloudHeroes && cloudHeroes.length > 0) {
@@ -95,17 +93,17 @@ export default function App() {
           }
         }
         setCloudSynced(true);
-      } catch (err) {
-        console.warn('Firestore initial fetch fallback:', err);
+      },
+      (err) => {
+        console.warn('Firestore real-time subscription fallback:', err);
       }
-    };
-
-    initFirestoreData();
+    );
 
     return () => {
       isMounted = false;
+      unsubscribe();
     };
-  }, []);
+  }, [activeHeroId]);
 
   // Real-time listener for current active hero profile in Firestore
   useEffect(() => {

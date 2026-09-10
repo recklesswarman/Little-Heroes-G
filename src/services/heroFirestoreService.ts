@@ -1,8 +1,6 @@
 import {
   collection,
   doc,
-  getDoc,
-  getDocs,
   setDoc,
   updateDoc,
   onSnapshot,
@@ -89,89 +87,121 @@ export const heroToFirestoreDoc = (
 };
 
 /**
- * Loads all hero profiles from Firestore 'users' collection.
- * If empty, initializes and seeds with default heroes.
+ * Subscribes to all hero profiles in Firestore 'users' collection in real time using onSnapshot.
+ * Any update on any device (XP, coins, pet, stickers, gear) reflects immediately.
  */
-export const loadHeroesFromFirestore = async (): Promise<{
+export const subscribeToAllHeroes = (
+  onUpdate: (result: {
+    heroes: HeroProfile[];
+    unlockedShopItemIds: Record<string, string[]>;
+    petStates: Record<string, PetNeedState>;
+  }) => void,
+  onError?: (error: Error) => void
+) => {
+  ensureAuth().catch((e) => console.warn('ensureAuth error:', e));
+  const usersCol = collection(db, USERS_COLLECTION);
+
+  return onSnapshot(
+    usersCol,
+    async (snapshot) => {
+      if (snapshot.empty) {
+        console.log('🌱 Seeding initial hero profiles to Firestore users collection in real time...');
+        const seededHeroes: HeroProfile[] = [];
+        const shopMap: Record<string, string[]> = {};
+        const petMap: Record<string, PetNeedState> = {};
+
+        for (const hero of INITIAL_HEROES) {
+          const initialShopUnlocked = INITIAL_SHOP_ITEMS.filter((i) => i.unlocked).map((i) => i.id);
+          const docPayload = heroToFirestoreDoc(hero, initialShopUnlocked, INITIAL_PET);
+          await setDoc(doc(db, USERS_COLLECTION, hero.id), docPayload);
+          seededHeroes.push(hero);
+          shopMap[hero.id] = initialShopUnlocked;
+          petMap[hero.id] = INITIAL_PET;
+        }
+
+        onUpdate({
+          heroes: seededHeroes,
+          unlockedShopItemIds: shopMap,
+          petStates: petMap,
+        });
+        return;
+      }
+
+      const heroes: HeroProfile[] = [];
+      const shopMap: Record<string, string[]> = {};
+      const petMap: Record<string, PetNeedState> = {};
+
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data() as UserFirestoreDoc;
+        const heroProfile: HeroProfile = {
+          id: data.id || docSnap.id,
+          name: data.name || 'Hero',
+          level: data.level ?? 1,
+          xp: data.xp ?? 0,
+          maxXp: data.maxXp ?? 200,
+          coins: data.coins ?? 50,
+          points: data.points ?? 10,
+          tokens: data.tokens ?? 5,
+          energy: data.energy ?? 30,
+          maxEnergy: data.maxEnergy ?? 30,
+          streakDays: data.streakDays ?? 1,
+          avatarUrl: data.avatarUrl || '',
+          roleTitle: data.roleTitle || 'Hero',
+          lastSeen: data.lastSeen || 'Active now',
+          inventory: data.inventory || [],
+          equippedStickers: data.equippedStickers || ['💧', '📚', '🦷'],
+          cardSkin: data.cardSkin,
+          equippedGear: data.equippedGear || {},
+        };
+
+        heroes.push(heroProfile);
+        shopMap[heroProfile.id] = data.unlockedShopItemIds || data.inventory || [];
+        if (data.pet) {
+          petMap[heroProfile.id] = data.pet;
+        }
+      });
+
+      onUpdate({
+        heroes,
+        unlockedShopItemIds: shopMap,
+        petStates: petMap,
+      });
+    },
+    (err) => {
+      console.warn('subscribeToAllHeroes error:', err);
+      if (onError) onError(err);
+    }
+  );
+};
+
+/**
+ * Loads all hero profiles from Firestore using onSnapshot subscription.
+ */
+export const loadHeroesFromFirestore = (): Promise<{
   heroes: HeroProfile[];
   unlockedShopItemIds: Record<string, string[]>;
   petStates: Record<string, PetNeedState>;
 }> => {
-  try {
-    await ensureAuth();
-    const usersCol = collection(db, USERS_COLLECTION);
-    const snapshot = await getDocs(usersCol);
-
-    if (snapshot.empty) {
-      console.log('🌱 Seeding initial hero profiles to Firestore users collection...');
-      const seededHeroes: HeroProfile[] = [];
-      const shopMap: Record<string, string[]> = {};
-      const petMap: Record<string, PetNeedState> = {};
-
-      for (const hero of INITIAL_HEROES) {
-        const initialShopUnlocked = INITIAL_SHOP_ITEMS.filter((i) => i.unlocked).map((i) => i.id);
-        const docPayload = heroToFirestoreDoc(hero, initialShopUnlocked, INITIAL_PET);
-        await setDoc(doc(db, USERS_COLLECTION, hero.id), docPayload);
-        seededHeroes.push(hero);
-        shopMap[hero.id] = initialShopUnlocked;
-        petMap[hero.id] = INITIAL_PET;
+  return new Promise((resolve) => {
+    let unsub: (() => void) | null = null;
+    unsub = subscribeToAllHeroes(
+      (res) => {
+        if (unsub) {
+          unsub();
+          unsub = null;
+        }
+        resolve(res);
+      },
+      (err) => {
+        console.warn('loadHeroesFromFirestore fallback:', err);
+        resolve({
+          heroes: INITIAL_HEROES,
+          unlockedShopItemIds: {},
+          petStates: {},
+        });
       }
-
-      return {
-        heroes: seededHeroes,
-        unlockedShopItemIds: shopMap,
-        petStates: petMap,
-      };
-    }
-
-    const heroes: HeroProfile[] = [];
-    const shopMap: Record<string, string[]> = {};
-    const petMap: Record<string, PetNeedState> = {};
-
-    snapshot.forEach((docSnap) => {
-      const data = docSnap.data() as UserFirestoreDoc;
-      const heroProfile: HeroProfile = {
-        id: data.id || docSnap.id,
-        name: data.name || 'Hero',
-        level: data.level ?? 1,
-        xp: data.xp ?? 0,
-        maxXp: data.maxXp ?? 200,
-        coins: data.coins ?? 50,
-        points: data.points ?? 10,
-        tokens: data.tokens ?? 5,
-        energy: data.energy ?? 30,
-        maxEnergy: data.maxEnergy ?? 30,
-        streakDays: data.streakDays ?? 1,
-        avatarUrl: data.avatarUrl || '',
-        roleTitle: data.roleTitle || 'Hero',
-        lastSeen: data.lastSeen || 'Active now',
-        inventory: data.inventory || [],
-        equippedStickers: data.equippedStickers || ['💧', '📚', '🦷'],
-        cardSkin: data.cardSkin,
-        equippedGear: data.equippedGear || {},
-      };
-
-      heroes.push(heroProfile);
-      shopMap[heroProfile.id] = data.unlockedShopItemIds || data.inventory || [];
-      if (data.pet) {
-        petMap[heroProfile.id] = data.pet;
-      }
-    });
-
-    return {
-      heroes,
-      unlockedShopItemIds: shopMap,
-      petStates: petMap,
-    };
-  } catch (error) {
-    console.error('Failed to load heroes from Firestore:', error);
-    // Fallback to local
-    return {
-      heroes: INITIAL_HEROES,
-      unlockedShopItemIds: {},
-      petStates: {},
-    };
-  }
+    );
+  });
 };
 
 /**

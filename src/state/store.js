@@ -2366,6 +2366,7 @@ class Store {
           ...cloudH,
           coins: cloudH.coins !== undefined ? Number(cloudH.coins) : (localH?.coins ?? 0),
           points: cloudH.points !== undefined ? Number(cloudH.points) : (localH?.points ?? 0),
+          tokens: cloudH.tokens !== undefined ? Number(cloudH.tokens) : (localH?.tokens ?? (cloudH.coins !== undefined ? Number(cloudH.coins) : 0)),
           level: Math.max(cloudH.level || 1, localH?.level || 1),
           xp: cloudH.xp !== undefined ? Number(cloudH.xp) : (localH?.xp ?? 0),
           xpNext: cloudH.xpNext || localH?.xpNext || 100,
@@ -2375,9 +2376,15 @@ class Store {
           hasChosenStarterPet: cloudH.hasChosenStarterPet ?? (unlockedPetIds.length > 0),
           activePetId: cloudH.activePetId || localH?.activePetId || (unlockedPetIds[0] || null),
           streak: Math.max(cloudH.streak || 1, localH?.streak || 1),
+          stars: Math.max(cloudH.stars || 0, localH?.stars || 0),
+          role: cloudH.role || localH?.role || cloudH.title || 'Brave Adventurer',
+          title: cloudH.title || localH?.title || cloudH.role || 'Brave Adventurer',
+          avatar: cloudH.avatar || localH?.avatar || defaultState.selectedHero.avatar,
           gameDifficulty: cloudH.gameDifficulty || localH?.gameDifficulty || 'medium',
           equippedProfileTheme: cloudH.equippedProfileTheme || localH?.equippedProfileTheme || 'theme_dragon_emerald',
-          unlockedThemes: Array.from(new Set([...(cloudH.unlockedThemes || []), ...(localH?.unlockedThemes || ['theme_dragon_emerald'])]))
+          unlockedThemes: Array.from(new Set([...(cloudH.unlockedThemes || []), ...(localH?.unlockedThemes || ['theme_dragon_emerald'])])),
+          equippedGear: { ...(localH?.equippedGear || {}), ...(cloudH.equippedGear || {}) },
+          inventory: Array.from(new Set([...(localH?.inventory || []), ...(cloudH.inventory || [])]))
         };
       });
 
@@ -2431,6 +2438,9 @@ class Store {
     if (cloudData.taskCompletionLogs && Array.isArray(cloudData.taskCompletionLogs)) {
       this.state.taskCompletionLogs = cloudData.taskCompletionLogs;
     }
+    if (cloudData.taskLedgerLogs && Array.isArray(cloudData.taskLedgerLogs)) {
+      this.state.taskLedgerLogs = cloudData.taskLedgerLogs;
+    }
     if (cloudData.taskForest && Array.isArray(cloudData.taskForest)) {
       this.state.taskForest = cloudData.taskForest;
     }
@@ -2445,6 +2455,20 @@ class Store {
     }
     if (cloudData.inventory && Array.isArray(cloudData.inventory)) {
       this.state.inventory = Array.from(new Set([...(this.state.inventory || []), ...cloudData.inventory]));
+    }
+    if (cloudData.liveRex && typeof cloudData.liveRex === 'object') {
+      this.state.liveRex = {
+        ...this.state.liveRex,
+        ...cloudData.liveRex,
+        isOpen: this.state.liveRex.isOpen || cloudData.liveRex.isOpen || false,
+        voiceName: cloudData.liveRex.voiceName || this.state.liveRex.voiceName || 'Puck',
+        autoListenInQuests: cloudData.liveRex.autoListenInQuests ?? this.state.liveRex.autoListenInQuests ?? true,
+        geminiApiKey: cloudData.liveRex.geminiApiKey || this.state.liveRex.geminiApiKey || '',
+        status: cloudData.liveRex.status || this.state.liveRex.status || 'idle',
+        statusMessage: cloudData.liveRex.statusMessage || this.state.liveRex.statusMessage || '',
+        lastRexTranscript: cloudData.liveRex.lastRexTranscript || this.state.liveRex.lastRexTranscript || '',
+        lastUserTranscript: cloudData.liveRex.lastUserTranscript || this.state.liveRex.lastUserTranscript || ''
+      };
     }
     if (cloudData.parentSettings) {
       this.state.parentSettings = { ...this.state.parentSettings, ...cloudData.parentSettings };
