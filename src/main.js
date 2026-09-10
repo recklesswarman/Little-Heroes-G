@@ -188,3 +188,11 @@ window.addEventListener('online', () => {
 
 // Initial Render
 renderApp();
+
+// Expose Live Rex Companion Service on window for convenient console testing
+import('./services/heroAgentService.js').then(({ talkToRex, playRexVoice }) => {
+  window.talkToRex = talkToRex;
+  window.playRexVoice = playRexVoice;
+  console.log('🦖 Rex the Dino Agent Service active! Test anytime in console: await talkToRex("Hello Rex!")');
+});
+

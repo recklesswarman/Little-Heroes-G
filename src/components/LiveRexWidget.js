@@ -5,6 +5,8 @@ import { store } from '../state/store.js';
 import { geminiLiveService } from '../services/geminiLiveService.js';
 import { Sound } from '../audio/sfx.js';
 import { triggerInteractiveCelebration } from './InteractiveCelebrationOverlay.js';
+import { talkToRex, playRexVoice } from '../services/heroAgentService.js';
+
 
 // SVG Icon for Rex the Dino
 const REX_AVATAR_SVG = `
@@ -275,8 +277,27 @@ export function attachLiveRexWidgetListeners() {
           })
         );
       } else {
-        // Send via Gemini Interactions API fallback
-        await geminiLiveService.askRexInteractions(prompt);
+        // Send via live deployed Gemini Cloud Function (with Interactions fallback)
+        try {
+          store.setLiveRexState({
+            lastUserTranscript: prompt,
+            status: 'connecting',
+            statusMessage: 'Rex is thinking...'
+          });
+          const heroId = store.getState().selectedHero?.id || 'hero_demo_1';
+          const reply = await talkToRex(prompt, heroId);
+          store.setLiveRexState({
+            lastRexTranscript: reply,
+            status: 'speaking',
+            statusMessage: 'Rex is talking!'
+          });
+          playRexVoice(reply);
+          setTimeout(() => {
+            store.setLiveRexState({ status: 'idle', statusMessage: 'Rex is ready!' });
+          }, 3500);
+        } catch {
+          await geminiLiveService.askRexInteractions(prompt);
+        }
       }
     });
   });
