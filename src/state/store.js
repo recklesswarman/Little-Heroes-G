@@ -50,6 +50,17 @@ const defaultState = {
   pendingBounties: [],
   activeUnboxingCrateId: null,
 
+  // 3D Scenic Pet Expedition (On-Rails Follow Cruise & Stitch Cockpit)
+  petExpeditionCruise: {
+    waypointIdx: 0,
+    starlightFuel: 75,
+    speedMode: 'cruise',
+    isCruising: true,
+    viewMode: '3d',
+    discoveredSecrets: [],
+    activeDiscoveryModal: null
+  },
+
   // Household Link Architecture & Parent User Administration
   household: {
     syncCode: 'HERO-1555',
@@ -1369,6 +1380,9 @@ class Store {
       habit.icon
     );
 
+    // Charge Starlight Fuel for 3D Pet Expedition (+25%)
+    this.chargeStarlightFuel(25);
+
     this.saveState(true);
   }
 
@@ -1482,6 +1496,9 @@ class Store {
       task.image,
       task.icon
     );
+
+    // Charge Starlight Fuel for 3D Pet Expedition (+25%)
+    this.chargeStarlightFuel(25);
 
     this.saveState(true);
   }
@@ -5194,6 +5211,125 @@ class Store {
       this.notify();
     }
     return newlyUnlocked;
+  }
+
+  // =========================================================================
+  // 3D SCENIC PET EXPEDITION (ON-RAILS CRUISE & STITCH COCKPIT)
+  // =========================================================================
+
+  getExpeditionCruiseState() {
+    if (!this.state.petExpeditionCruise) {
+      this.state.petExpeditionCruise = {
+        waypointIdx: 0,
+        starlightFuel: 75,
+        speedMode: 'cruise',
+        isCruising: true,
+        viewMode: '3d',
+        discoveredSecrets: [],
+        activeDiscoveryModal: null
+      };
+    }
+    return this.state.petExpeditionCruise;
+  }
+
+  chargeStarlightFuel(amount = 25) {
+    const cruise = this.getExpeditionCruiseState();
+    cruise.starlightFuel = Math.min(100, Math.max(0, (cruise.starlightFuel || 0) + amount));
+    this.saveState(true);
+    this.notify();
+    return cruise.starlightFuel;
+  }
+
+  consumeStarlightFuel(amount = 10) {
+    const cruise = this.getExpeditionCruiseState();
+    cruise.starlightFuel = Math.max(0, (cruise.starlightFuel || 0) - amount);
+    this.saveState(true);
+    this.notify();
+    return cruise.starlightFuel;
+  }
+
+  setExpeditionWaypoint(idx) {
+    const cruise = this.getExpeditionCruiseState();
+    cruise.waypointIdx = Math.max(0, Math.min(5, idx));
+    this.saveState(true);
+    this.notify();
+  }
+
+  setExpeditionSpeed(speedMode) {
+    const cruise = this.getExpeditionCruiseState();
+    if (['stroll', 'cruise', 'hyper'].includes(speedMode)) {
+      cruise.speedMode = speedMode;
+      this.saveState(true);
+      this.notify();
+    }
+  }
+
+  setExpeditionViewMode(viewMode) {
+    const cruise = this.getExpeditionCruiseState();
+    if (['3d', '2d'].includes(viewMode)) {
+      cruise.viewMode = viewMode;
+      this.saveState(true);
+      this.notify();
+    }
+  }
+
+  claimExpeditionSecret(secretId, customReward = null) {
+    const cruise = this.getExpeditionCruiseState();
+    if (!cruise.discoveredSecrets) cruise.discoveredSecrets = [];
+    if (cruise.discoveredSecrets.includes(secretId)) {
+      return { success: false, message: 'Already discovered!' };
+    }
+
+    cruise.discoveredSecrets.push(secretId);
+
+    const tokenReward = customReward?.tokens || 25;
+    const energyReward = customReward?.energy || 10;
+    const hero = this.state.selectedHero;
+    if (hero) {
+      hero.coins = (hero.coins || 0) + tokenReward;
+      hero.xp = (hero.xp || 0) + 15;
+    }
+
+    const activePet = this.getActivePet();
+    if (activePet) {
+      activePet.energy = Math.min(100, (activePet.energy || 50) + energyReward);
+      if (this.state.petStatsMap && this.state.petStatsMap[activePet.id]) {
+        this.state.petStatsMap[activePet.id].energy = activePet.energy;
+      }
+    }
+
+    if (typeof Sound?.fanfare === 'function') {
+      Sound.fanfare();
+    } else if (typeof Sound?.sparkle === 'function') {
+      Sound.sparkle();
+    }
+    confetti({
+      particleCount: 50,
+      spread: 70,
+      origin: { y: 0.6 },
+      colors: ['#2ecc71', '#f39c12', '#00d2d3']
+    });
+
+    this.logAction(
+      `${hero?.name || 'Hero'} discovered an Expedition Secret!`,
+      `+${tokenReward} Tokens 🪙 and +${energyReward}% Energy ⚡ to ${activePet?.name || 'Pet'}`
+    );
+
+    this.saveState(true);
+    this.notify();
+    return { success: true, tokens: tokenReward, energy: energyReward };
+  }
+
+  openExpeditionDiscoveryModal(modalData) {
+    const cruise = this.getExpeditionCruiseState();
+    cruise.activeDiscoveryModal = modalData;
+    this.notify();
+  }
+
+  closeExpeditionDiscoveryModal() {
+    const cruise = this.getExpeditionCruiseState();
+    cruise.activeDiscoveryModal = null;
+    this.notify();
   }
 
   resetAllProgress() {

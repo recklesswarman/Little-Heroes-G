@@ -293,6 +293,27 @@ export function renderQuestMapView() {
         </div>
       </div>
 
+      <!-- 3D PET EXPEDITION LAUNCH & DUAL-VIEW BANNER (STITCH TACTILE TOY) -->
+      <div class="bg-gradient-to-r from-primary/15 via-[#121d26] to-secondary/15 border-3 border-primary/50 rounded-3xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-[0_6px_0_0_#050f18]">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-2xl bg-primary/20 border-2 border-primary flex items-center justify-center text-primary shadow-sm shrink-0">
+            <span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">videogame_asset</span>
+          </div>
+          <div class="flex flex-col">
+            <div class="flex items-center gap-2">
+              <span class="font-headline font-black text-sm sm:text-base text-white">Board 3D Pet Expedition!</span>
+              <span class="bg-primary/20 text-primary text-[10px] font-black uppercase px-2 py-0.5 rounded-full border border-primary/30">360° Cam Ready</span>
+            </div>
+            <p class="text-xs font-bold text-slate-300">Take the scenic on-rails follow cruise with ${activePet.name} through all 6 floating sky biomes!</p>
+          </div>
+        </div>
+
+        <button id="launch-3d-expedition-btn" class="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-gradient-to-b from-primary to-[#1b7a43] text-[#050f18] font-headline font-black text-xs sm:text-sm tracking-wide shadow-[0_4px_0_0_#005027] active:translate-y-1 active:shadow-none flex items-center justify-center gap-2 border-t border-emerald-300 transition-all cursor-pointer">
+          <span class="material-symbols-outlined text-base">rocket_launch</span>
+          <span>LAUNCH 3D CRUISE</span>
+        </button>
+      </div>
+
       <!-- MAIN QUEST MAP CANVAS CONTAINER WITH DETAILED BACKGROUND ILLUSTRATION -->
       <div class="relative bg-[#06121d] rounded-4xl p-6 sm:p-10 border-4 border-surface-container-highest shadow-[0_16px_0_0_#030910] min-h-[920px] overflow-hidden flex flex-col justify-between">
         
@@ -510,6 +531,15 @@ export function renderQuestMapView() {
 }
 
 export function attachQuestMapListeners() {
+  const launchExpeditionBtn = document.getElementById('launch-3d-expedition-btn');
+  if (launchExpeditionBtn) {
+    launchExpeditionBtn.addEventListener('click', () => {
+      Sound.click();
+      store.setExpeditionViewMode('3d');
+      store.navigate('pet-expedition');
+    });
+  }
+
   const exitBtn = document.getElementById('map-game-exit-btn');
   if (exitBtn) {
     exitBtn.addEventListener('click', () => {

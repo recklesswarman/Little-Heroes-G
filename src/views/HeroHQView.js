@@ -108,6 +108,12 @@ export function renderHeroHQView() {
           <span class="hidden sm:inline">${isNight ? 'Night Starlight' : 'Daylight Mode'}</span>
         </button>
 
+        <!-- 3D Expedition Cruise Launch -->
+        <button id="hq-launch-3d-expedition-btn" class="bg-gradient-to-r from-secondary to-amber-500 hover:from-secondary/90 hover:to-amber-400 text-on-secondary px-3.5 py-2 rounded-2xl font-headline text-xs font-black border-2 border-amber-300 shadow-md flex items-center gap-1.5 chunky-btn-sm cursor-pointer" title="Launch 3D Pet Expedition">
+          <span class="material-symbols-outlined text-base">rocket_launch</span>
+          <span class="hidden sm:inline">3D Cruise</span>
+        </button>
+
         <!-- Redecorate Studio Button -->
         <button id="hq-open-redecorate-btn" class="bg-gradient-to-r from-primary to-emerald-500 hover:from-primary/90 hover:to-emerald-400 text-on-primary px-4 py-2 rounded-2xl font-headline text-xs font-black border-2 border-emerald-300 shadow-md flex items-center gap-1.5 chunky-btn-sm">
           <span class="material-symbols-outlined text-base">palette</span>
@@ -638,6 +644,16 @@ export function attachHeroHQListeners() {
     backBtn.addEventListener('click', () => {
       Sound.whoosh();
       store.navigate('dashboard');
+    });
+  }
+
+  // 1b. Launch 3D Pet Expedition
+  const launchExpeditionBtn = document.getElementById('hq-launch-3d-expedition-btn');
+  if (launchExpeditionBtn) {
+    launchExpeditionBtn.addEventListener('click', () => {
+      Sound.click();
+      store.setExpeditionViewMode('3d');
+      store.navigate('pet-expedition');
     });
   }
 

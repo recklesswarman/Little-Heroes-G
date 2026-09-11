@@ -36,6 +36,7 @@ import { renderProfileView, attachProfileListeners } from './views/ProfileView.j
 import { renderParentPortalView, attachParentPortalListeners } from './views/ParentPortalView.js';
 import { renderPetLockerView, attachPetLockerListeners } from './views/PetLockerView.js';
 import { renderHeroHQView, attachHeroHQListeners } from './views/HeroHQView.js';
+import { renderPetExpeditionView, attachPetExpeditionListeners } from './views/PetExpeditionView.js';
 
 const app = document.getElementById('app');
 
@@ -54,6 +55,11 @@ function renderApp() {
     case 'quest_map':
       mainContent = renderQuestMapView();
       attachViewListeners = attachQuestMapListeners;
+      break;
+    case 'pet_expedition':
+    case 'pet-expedition':
+      mainContent = renderPetExpeditionView();
+      attachViewListeners = attachPetExpeditionListeners;
       break;
     case 'pet_pen':
       mainContent = renderPetPenView();
