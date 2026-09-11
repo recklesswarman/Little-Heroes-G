@@ -70,7 +70,11 @@ function renderBossCharacterSvg(boss, isAttacking = false, isDamaged = false) {
     return `
       <div id="boss-character" class="relative w-36 h-36 sm:w-44 sm:h-44 flex flex-col items-center justify-center transition-all duration-200 ${attackEffectClass} ${damageEffectClass}">
         <div class="relative w-28 h-28 rounded-3xl bg-slate-900 border-4 ${boss.accentBorder || 'border-purple-500'} flex items-center justify-center shadow-2xl animate-villain-hover overflow-hidden" style="box-shadow: 0 0 25px ${boss.primaryColor || '#8b5cf6'}80;">
-          <span class="text-6xl drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)]">${boss.emoji || '👾'}</span>
+          ${boss.modelUrl ? `
+            <model-viewer src="${boss.modelUrl}" auto-rotate camera-controls shadow-intensity="1.5" style="width: 100%; height: 100%; background: transparent;"></model-viewer>
+          ` : `
+            <span class="text-6xl drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)]">${boss.emoji || '👾'}</span>
+          `}
           <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none"></div>
         </div>
         <span class="mt-2 text-xs font-black text-amber-300 bg-black/80 px-3 py-1 rounded-full border border-amber-400/50 shadow">

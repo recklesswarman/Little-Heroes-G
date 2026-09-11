@@ -277,9 +277,13 @@ export function renderHeroHQView() {
               ${isNapping ? `
                 <div class="absolute -top-6 text-xl animate-bounce">💤💤💤</div>
               ` : ''}
-              <div class="text-3xl sm:text-4xl transition-transform group-hover:scale-110">
-                ${bedItem.icon || bedItem.emoji}
-              </div>
+              ${bedItem.modelUrl ? `
+                <model-viewer src="${bedItem.modelUrl}" auto-rotate camera-controls shadow-intensity="1" ar style="width: 100%; height: 60px; background: transparent;"></model-viewer>
+              ` : `
+                <div class="text-3xl sm:text-4xl transition-transform group-hover:scale-110">
+                  ${bedItem.icon || bedItem.emoji}
+                </div>
+              `}
               <div class="text-[10px] font-headline font-black text-inverse-surface truncate w-full mt-1">
                 ${bedItem.name}
               </div>
@@ -295,9 +299,13 @@ export function renderHeroHQView() {
               ${isBouncing ? `
                 <div class="absolute -top-7 text-xl animate-ping">🤸💥</div>
               ` : ''}
-              <div class="text-3xl sm:text-4xl transition-transform group-hover:scale-110 ${isBouncing ? 'animate-spin' : ''}">
-                ${petLoungeItem.icon || petLoungeItem.emoji}
-              </div>
+              ${petLoungeItem.modelUrl ? `
+                <model-viewer src="${petLoungeItem.modelUrl}" auto-rotate camera-controls shadow-intensity="1" ar style="width: 100%; height: 60px; background: transparent;"></model-viewer>
+              ` : `
+                <div class="text-3xl sm:text-4xl transition-transform group-hover:scale-110 ${isBouncing ? 'animate-spin' : ''}">
+                  ${petLoungeItem.icon || petLoungeItem.emoji}
+                </div>
+              `}
               <div class="text-[10px] font-headline font-black text-inverse-surface truncate w-full mt-1">
                 ${petLoungeItem.name}
               </div>
@@ -310,9 +318,13 @@ export function renderHeroHQView() {
           <!-- Slot 3: MISSION DESK & WORKSTATION (Center-Right) -->
           <div id="hq-slot-desk" class="flex flex-col items-center cursor-pointer group transition-transform hover:-translate-y-1" title="${deskItem.name} - Tap for hologram!">
             <div class="relative w-full max-w-[140px] h-28 sm:h-32 rounded-3xl bg-surface-container/80 backdrop-blur-sm border-2 ${isHologramActive ? 'border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.4)]' : 'border-white/30'} flex flex-col items-center justify-center p-2 text-center group-hover:border-cyan-400 transition-all">
-              <div class="text-3xl sm:text-4xl transition-transform group-hover:scale-110 ${isHologramActive ? 'animate-pulse' : ''}">
-                ${deskItem.icon || deskItem.emoji}
-              </div>
+              ${deskItem.modelUrl ? `
+                <model-viewer src="${deskItem.modelUrl}" auto-rotate camera-controls shadow-intensity="1" ar style="width: 100%; height: 60px; background: transparent;"></model-viewer>
+              ` : `
+                <div class="text-3xl sm:text-4xl transition-transform group-hover:scale-110 ${isHologramActive ? 'animate-pulse' : ''}">
+                  ${deskItem.icon || deskItem.emoji}
+                </div>
+              `}
               <div class="text-[10px] font-headline font-black text-inverse-surface truncate w-full mt-1">
                 ${deskItem.name}
               </div>

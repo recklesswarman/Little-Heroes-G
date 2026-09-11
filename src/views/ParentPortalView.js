@@ -9,6 +9,7 @@ import { aiDevelopmentalReportService } from '../services/aiDevelopmentalReportS
 import { PetSkeletalBodyCanvas, RUNWAY_POSES } from '../services/petSkeletalBodyService.js';
 import { firebaseAI, SPLINE_3D_PRESETS } from '../services/firebaseAILogicService.js';
 import { COLOR_DYES, formatStatBonusName } from '../data/petGearStudioData.js';
+import { THREE_D_ASSETS, getThreeDAssetsByCategory, matchBestThreeDAsset } from '../data/threeDAssetCatalog.js';
 
 let activeAdminTab = 'approvals'; // approvals, screentime, reports, kids, tasks, rewards, pricing, studio, analytics, settings
 export function setActiveAdminTab(tab) {
@@ -58,6 +59,17 @@ let studioBossTaunt = 'You cannot defeat the Plaque Monster!';
 let studioBossRally = 'Heroes, brush thoroughly to break its shield!';
 
 let isStudioGenerating = false;
+let studioActiveModelUrl = 'https://modelviewer.dev/shared-assets/models/Astronaut.glb';
+let studioActive3DAssetId = 'gear_cyber_visor';
+let studioDeliveryMethod = 'instant_gift'; // 'instant_gift', 'hero_shop', 'habit_bounty'
+let studioTargetChildProfile = 'all';
+let studioBountyHabitId = 'brush_teeth';
+let studioBountyStreakDays = 3;
+let isRecordingVoice = false;
+let studioUploadedImageBase64 = null;
+let isChildEyePreviewOpen = false;
+let studioSpeechRecognition = null;
+
 let activeStudioCanvasInstance = null;
 let activeStudioAnimFrame = null;
 
@@ -1444,7 +1456,7 @@ export function renderParentPortalView() {
                   </span>
                 </div>
 
-                <!-- Dual Viewport Toggle Buttons -->
+                <!-- Triple Viewport Toggle Buttons -->
                 <div class="flex items-center gap-1 bg-slate-800/80 p-1 rounded-xl border border-white/10">
                   <button 
                     id="studio-mode-canvas-btn" 
@@ -1454,11 +1466,18 @@ export function renderParentPortalView() {
                     Canvas
                   </button>
                   <button 
+                    id="studio-mode-modelviewer-btn" 
+                    class="px-2.5 py-1 rounded-lg text-xs font-black transition-all ${studioViewportMode === 'modelviewer' ? 'bg-cyan-500 text-slate-950 shadow' : 'text-slate-300 hover:text-white'}"
+                    title="Switch to 3D GLB Model Viewer (with WebXR AR)"
+                  >
+                    3D GLB
+                  </button>
+                  <button 
                     id="studio-mode-spline-btn" 
                     class="px-2.5 py-1 rounded-lg text-xs font-black transition-all ${studioViewportMode === 'spline' ? 'bg-purple-500 text-white shadow' : 'text-slate-300 hover:text-white'}"
                     title="Switch to Spline 3D Scene View"
                   >
-                    Spline 3D
+                    Spline
                   </button>
                 </div>
               </div>
@@ -1490,11 +1509,33 @@ export function renderParentPortalView() {
                   id="parent-ai-preview-canvas" 
                   width="320" 
                   height="320" 
-                  class="relative z-10 w-full h-full object-contain cursor-grab active:cursor-grabbing touch-none ${studioViewportMode === 'spline' ? 'hidden' : 'block'}"
+                  class="relative z-10 w-full h-full object-contain cursor-grab active:cursor-grabbing touch-none ${studioViewportMode === 'canvas' ? 'block' : 'hidden'}"
                   aria-label="Parent Multi-Category 3D Live Stage"
                 ></canvas>
 
-                <!-- 2. Spline 3D Interactive Scene Container -->
+                <!-- 2. Google <model-viewer> 3D GLB Container -->
+                <div 
+                  id="parent-ai-model-viewer-container"
+                  class="relative z-10 w-full h-full flex items-center justify-center ${studioViewportMode === 'modelviewer' ? 'block' : 'hidden'}"
+                >
+                  <model-viewer
+                    id="parent-ai-model-viewer"
+                    src="${studioActiveModelUrl}"
+                    alt="${studioItemName || '3D Model'}"
+                    auto-rotate
+                    camera-controls
+                    shadow-intensity="1.2"
+                    ar
+                    ar-modes="webxr scene-viewer quick-look"
+                    style="width: 100%; height: 100%; background: transparent;"
+                  >
+                    <button slot="ar-button" class="absolute bottom-3 right-3 px-3 py-1.5 rounded-xl bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1 shadow-lg hover:scale-105 transition-all">
+                      📱 View in Room
+                    </button>
+                  </model-viewer>
+                </div>
+
+                <!-- 3. Spline 3D Interactive Scene Container -->
                 <div 
                   id="parent-ai-spline-container" 
                   class="relative z-10 w-full h-full flex flex-col items-center justify-center p-3 text-center ${studioViewportMode === 'spline' ? 'block' : 'hidden'}"
@@ -1522,6 +1563,39 @@ export function renderParentPortalView() {
 
                 <!-- Stage Floor Reflection line -->
                 <div class="absolute bottom-4 left-1/2 -translate-x-1/2 w-44 h-2.5 rounded-full bg-gradient-to-r from-transparent via-amber-400/40 to-transparent blur-xs pointer-events-none"></div>
+              </div>
+
+              
+              <!-- Curated 3D Asset Carousel from threeDAssetCatalog -->
+              <div class="w-full p-3 bg-slate-800/80 rounded-2xl border border-amber-400/30 flex flex-col gap-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-[11px] font-bold text-amber-300 flex items-center gap-1">
+                    <span class="material-symbols-outlined text-xs">view_in_ar</span>
+                    <span>Curated 3D Asset Library (${studioActiveCategory.toUpperCase()})</span>
+                  </span>
+                  <span class="text-[10px] text-slate-400">PBR & WebXR AR</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2 max-h-44 overflow-y-auto pr-1">
+                  ${getThreeDAssetsByCategory(studioActiveCategory).map(asset => `
+                    <button 
+                      type="button"
+                      class="studio-3d-asset-card p-2 rounded-xl text-left transition-all border ${studioActive3DAssetId === asset.id ? 'bg-amber-400/20 border-amber-400 shadow-sm' : 'bg-slate-900/80 border-slate-700 hover:border-slate-500'}"
+                      data-asset-id="${asset.id}"
+                      data-model-url="${asset.modelUrl || ''}"
+                      data-spline-url="${asset.splineUrl || ''}"
+                      data-asset-name="${asset.name}"
+                    >
+                      <div class="flex items-center gap-1.5 mb-1">
+                        <span class="text-xl">${asset.emoji}</span>
+                        <span class="text-xs font-black text-white truncate flex-1">${asset.name}</span>
+                      </div>
+                      <div class="flex items-center justify-between text-[10px] text-slate-400">
+                        <span class="text-amber-300 font-bold">${asset.badge}</span>
+                        <span>⚡ ${asset.defaultMultiplier ? `+${Math.round((asset.defaultMultiplier - 1) * 100)}%` : '3D'}</span>
+                      </div>
+                    </button>
+                  `).join('')}
+                </div>
               </div>
 
               <!-- Spline 3D Toolbar: Curated Presets & Custom URL Input -->
@@ -1698,6 +1772,43 @@ export function renderParentPortalView() {
                   </span>
                   <span class="text-[10px] text-secondary font-bold">Powered by Gemini 2.5 Flash Lite</span>
                 </label>
+                
+                <!-- Multimodal Input Bar (Voice Dictation & Drawing Upload) -->
+                <div class="flex flex-wrap items-center justify-between gap-2 bg-slate-800/80 p-2.5 rounded-2xl border border-white/10 mb-3">
+                  <div class="flex items-center gap-2">
+                    <!-- Voice Dictation -->
+                    <button 
+                      type="button"
+                      id="studio-voice-mic-btn"
+                      class="px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all ${isRecordingVoice ? 'bg-red-500 text-white animate-pulse' : 'bg-slate-700 hover:bg-slate-600 text-amber-300'}"
+                      title="Dictate with microphone"
+                    >
+                      <span>🎙️</span>
+                      <span>${isRecordingVoice ? 'Listening...' : 'Voice Dictate'}</span>
+                    </button>
+
+                    <!-- Child Drawing / Photo Upload Input -->
+                    <label class="px-3 py-1.5 rounded-xl text-xs font-black bg-slate-700 hover:bg-slate-600 text-cyan-300 flex items-center gap-1.5 cursor-pointer transition-all">
+                      <span>📷</span>
+                      <span>Child Drawing / Photo</span>
+                      <input type="file" id="studio-photo-upload" accept="image/*" class="hidden" />
+                    </label>
+                  </div>
+
+                  ${studioUploadedImageBase64 ? `
+                    <div class="flex items-center gap-2">
+                      <img src="${studioUploadedImageBase64}" class="w-8 h-8 rounded-lg object-cover border border-cyan-400" alt="Drawing Preview" />
+                      <button 
+                        type="button"
+                        id="studio-vision-generate-btn"
+                        class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-gradient-to-r from-cyan-500 to-blue-500 text-slate-950 hover:scale-105 transition-all shadow"
+                      >
+                        ✨ Turn into 3D
+                      </button>
+                    </div>
+                  ` : ''}
+                </div>
+
                 <div class="flex gap-2">
                   <input 
                     id="studio-ai-prompt" 
@@ -1992,11 +2103,83 @@ export function renderParentPortalView() {
                 />
               </div>
 
-              <!-- Action Bar: Publish Live Button -->
+              <!-- Delivery Channels & Target Child Selector -->
+              <div class="bg-slate-800/80 p-4 rounded-2xl border border-amber-400/30 flex flex-col gap-3 my-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-black uppercase text-amber-300 flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-sm">local_shipping</span>
+                    <span>Delivery Channel & Child Target</span>
+                  </span>
+                </div>
+
+                <!-- 3 Delivery Channels: Instant Gift vs Hero Shop vs Habit Bounty -->
+                <div class="grid grid-cols-3 gap-2">
+                  <label class="flex flex-col items-center gap-1 p-2.5 rounded-xl border cursor-pointer text-center transition-all ${studioDeliveryMethod === 'instant_gift' ? 'bg-amber-400/20 border-amber-400 text-amber-300 font-bold' : 'bg-slate-900/60 border-slate-700 text-slate-400'}">
+                    <input type="radio" name="studio-delivery-method" value="instant_gift" ${studioDeliveryMethod === 'instant_gift' ? 'checked' : ''} class="hidden studio-delivery-radio" />
+                    <span class="text-xl">🎁</span>
+                    <span class="text-[11px] font-black">Instant Gift</span>
+                    <span class="text-[9px] text-slate-400">Surprise crate</span>
+                  </label>
+
+                  <label class="flex flex-col items-center gap-1 p-2.5 rounded-xl border cursor-pointer text-center transition-all ${studioDeliveryMethod === 'hero_shop' ? 'bg-amber-400/20 border-amber-400 text-amber-300 font-bold' : 'bg-slate-900/60 border-slate-700 text-slate-400'}">
+                    <input type="radio" name="studio-delivery-method" value="hero_shop" ${studioDeliveryMethod === 'hero_shop' ? 'checked' : ''} class="hidden studio-delivery-radio" />
+                    <span class="text-xl">🪙</span>
+                    <span class="text-[11px] font-black">Hero Shop</span>
+                    <span class="text-[9px] text-slate-400">Token unlock</span>
+                  </label>
+
+                  <label class="flex flex-col items-center gap-1 p-2.5 rounded-xl border cursor-pointer text-center transition-all ${studioDeliveryMethod === 'habit_bounty' ? 'bg-amber-400/20 border-amber-400 text-amber-300 font-bold' : 'bg-slate-900/60 border-slate-700 text-slate-400'}">
+                    <input type="radio" name="studio-delivery-method" value="habit_bounty" ${studioDeliveryMethod === 'habit_bounty' ? 'checked' : ''} class="hidden studio-delivery-radio" />
+                    <span class="text-xl">🎯</span>
+                    <span class="text-[11px] font-black">Habit Bounty</span>
+                    <span class="text-[9px] text-slate-400">Streak goal</span>
+                  </label>
+                </div>
+
+                <!-- Target Child Profile -->
+                <div class="flex items-center gap-2">
+                  <span class="text-xs text-slate-300 font-bold">Target Hero:</span>
+                  <select id="studio-target-child-select" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl p-1.5 text-xs font-bold text-amber-300">
+                    <option value="all">🌟 All Children in Household</option>
+                    ${(store.getState().heroes || []).map(h => `
+                      <option value="${h.id}" ${studioTargetChildProfile === h.id ? 'selected' : ''}>🦸 ${h.name}</option>
+                    `).join('')}
+                  </select>
+                </div>
+
+                <!-- If Habit Bounty selected, choose habit & streak days -->
+                ${studioDeliveryMethod === 'habit_bounty' ? `
+                  <div class="flex flex-col gap-2 pt-2 border-t border-slate-700">
+                    <div class="flex items-center justify-between text-xs text-slate-300 font-bold">
+                      <span>Required Habit:</span>
+                      <select id="studio-bounty-habit-select" class="bg-slate-900 border border-slate-700 rounded-xl p-1.5 text-xs text-amber-300 font-bold">
+                        <option value="brush_teeth" ${studioBountyHabitId === 'brush_teeth' ? 'selected' : ''}>🪥 Brush Teeth (Morning or Night)</option>
+                        <option value="drink_water" ${studioBountyHabitId === 'drink_water' ? 'selected' : ''}>💧 Drink Fresh Water</option>
+                        <option value="tidy_toys" ${studioBountyHabitId === 'tidy_toys' ? 'selected' : ''}>🧸 Tidy Up Hero Toys</option>
+                        <option value="eat_healthy_snack" ${studioBountyHabitId === 'eat_healthy_snack' ? 'selected' : ''}>🍎 Eat Healthy Snack</option>
+                        <option value="make_bed" ${studioBountyHabitId === 'make_bed' ? 'selected' : ''}>🛏️ Make Hero Bed</option>
+                        <option value="any" ${studioBountyHabitId === 'any' ? 'selected' : ''}>⭐ Any Daily Habit</option>
+                      </select>
+                    </div>
+                    <div class="flex items-center justify-between text-xs text-slate-300 font-bold">
+                      <span>Streak Target:</span>
+                      <span id="studio-bounty-streak-val" class="text-amber-300 font-black">${studioBountyStreakDays} Days</span>
+                    </div>
+                    <input type="range" id="studio-bounty-streak-slider" min="1" max="7" value="${studioBountyStreakDays}" class="w-full accent-amber-400" />
+                  </div>
+                ` : ''}
+              </div>
+
+              <!-- Action Bar: Test as Child & Publish Live Buttons -->
               <div class="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-surface-container-highest">
-                <span class="text-xs text-on-surface-variant">
-                  Published items become immediately usable in <strong>${studioActiveCategory === 'gear' ? 'Hero Shop' : studioActiveCategory === 'furniture' ? 'Hero HQ' : studioActiveCategory === 'toy' ? 'Pet Pen' : 'AR Quests'}</strong>!
-                </span>
+                <button 
+                  type="button" 
+                  id="studio-test-as-child-btn"
+                  class="w-full sm:w-auto py-3 px-4 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-headline text-xs font-black shadow-lg hover:scale-102 active:scale-95 transition-all flex items-center justify-center gap-2"
+                >
+                  <span>👀</span>
+                  <span>Test as Child (Preview Simulator)</span>
+                </button>
 
                 <button 
                   id="studio-gear-publish-btn" 

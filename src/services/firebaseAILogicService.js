@@ -1,5 +1,6 @@
 import { app, isFirebaseAvailable } from '../config/firebase.js';
 import { generate3DIcon } from '../utils/graphicsGenerator.js';
+import { THREE_D_ASSETS, getThreeDAssetsByCategory, matchBestThreeDAsset } from '../data/threeDAssetCatalog.js';
 
 class FirebaseAILogicService {
   constructor() {
@@ -231,6 +232,11 @@ Generate a creative, epic, and encouraging gear item. Return ONLY a valid JSON o
       meshArchetype,
       defaultColor: primaryColor,
       primaryColor,
+      modelUrl: options.modelUrl || 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/DragonAttenuation/glTF-Binary/DragonAttenuation.glb',
+      threeDAssetId: options.threeDAssetId || '',
+      deliveryMethod: options.deliveryMethod || 'instant_gift',
+      targetChildProfile: options.targetChildProfile || 'all',
+      bountyRequirement: options.bountyRequirement || null,
       secondaryColor,
       accentColor: secondaryColor,
       aura,
@@ -245,6 +251,11 @@ Generate a creative, epic, and encouraging gear item. Return ONLY a valid JSON o
       petVoiceLine,
       companionReaction: petVoiceLine,
       hasClothPhysics: (meshArchetype === 'cape' || meshArchetype === 'cloak'),
+      modelUrl: options.modelUrl || 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+      threeDAssetId: options.threeDAssetId || '',
+      deliveryMethod: options.deliveryMethod || 'instant_gift',
+      targetChildProfile: options.targetChildProfile || 'all',
+      bountyRequirement: options.bountyRequirement || null,
       isParentCrafted: true,
       isCustomAI: true,
       createdAt: new Date().toISOString()
@@ -330,6 +341,11 @@ Generate a whimsical, comforting 3D furniture piece. Return ONLY valid JSON:
       comfort: comfortBuffPercent,
       comfortBuffPercent,
       comfortBuffLabel: `+${comfortBuffPercent}% HQ Room Comfort & Focus`,
+      modelUrl: options.modelUrl || 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+      threeDAssetId: options.threeDAssetId || '',
+      deliveryMethod: options.deliveryMethod || 'instant_gift',
+      targetChildProfile: options.targetChildProfile || 'all',
+      bountyRequirement: options.bountyRequirement || null,
       costCoins,
       coinPrice: costCoins,
       icon,
@@ -420,6 +436,11 @@ Generate an exciting 3D pet playground toy. Return ONLY valid JSON:
       statRefillType: refillTarget,
       statRefillAmount,
       statRefillLabel: `+${statRefillAmount}% Pet ${capitalize(refillTarget)} Refill`,
+      modelUrl: options.modelUrl || 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Duck/glTF-Binary/Duck.glb',
+      threeDAssetId: options.threeDAssetId || '',
+      deliveryMethod: options.deliveryMethod || 'instant_gift',
+      targetChildProfile: options.targetChildProfile || 'all',
+      bountyRequirement: options.bountyRequirement || null,
       primaryColor,
       accentColor,
       splineUrl,
@@ -529,8 +550,75 @@ Generate a fun, cartoonish villain boss for kids to defeat. Return ONLY valid JS
   /**
    * Unified 4-Category Generator Dispatcher
    */
+  
+  /**
+   * Multimodal Gemini 2.5 Vision: Generates 3D content from child drawing / photo upload
+   */
+  async generate3DContentFromImage(options = {}) {
+    const { fileOrBase64, mimeType = 'image/jpeg', category = 'gear', promptText = '' } = options;
+    let conceptPrompt = promptText || 'Heroic creation inspired by child drawing';
+    let detectedTheme = 'space';
+
+    if (this.isAiReady && this.model && fileOrBase64) {
+      try {
+        let base64Data = fileOrBase64;
+        if (typeof fileOrBase64 === 'string' && fileOrBase64.includes(',')) {
+          base64Data = fileOrBase64.split(',')[1];
+        }
+
+        const visionPrompt = `You are an imaginative kid's adventure designer analyzing a child's drawing or toy photo.
+Category: "${category}".
+Describe what this drawing/photo represents in 1 enthusiastic sentence suitable for a 3-8 year old.
+Return ONLY valid JSON:
+{
+  "name": "Catchy Heroic Name (Max 4 words)",
+  "concept": "Enthusiastic 1-sentence description of the creature/object",
+  "theme": "space, cyber, royal, dragon, ocean, or rainbow",
+  "archetypeOrSlot": "visor, wings, jetpack, bed, desk, trampoline, or dragon",
+  "voiceLine": "What this item says to cheer on the child (max 12 words)!"
+}`;
+
+        const imagePart = {
+          inlineData: {
+            data: base64Data,
+            mimeType: mimeType || 'image/jpeg'
+          }
+        };
+
+        const res = await this.model.generateContent([visionPrompt, imagePart]);
+        const txt = res.response.text().replace(/\\`\\`\\`json/g, '').replace(/\\`\\`\\`/g, '').trim();
+        const parsed = JSON.parse(txt);
+        if (parsed.name) conceptPrompt = parsed.name;
+        if (parsed.theme) detectedTheme = parsed.theme;
+        if (parsed.voiceLine) options.petVoiceLine = parsed.voiceLine;
+      } catch (err) {
+        console.warn("Multimodal AI Vision fallback:", err.message);
+        conceptPrompt = promptText || "Starlight Imagination Masterpiece";
+      }
+    } else {
+      conceptPrompt = promptText || "Color-Splashed Heroic Artifact";
+    }
+
+    // Now generate the full 3D content with matching asset
+    return this.generate3DContent({
+      ...options,
+      promptText: conceptPrompt,
+      theme: detectedTheme,
+      category
+    });
+  }
+
   async generate3DContent(options = {}) {
     const category = options.category || 'gear';
+    const matched3DAsset = matchBestThreeDAsset(options.promptText || '', category);
+    if (matched3DAsset && !options.modelUrl && !options.threeDAssetId) {
+      options.threeDAssetId = matched3DAsset.id;
+      options.modelUrl = matched3DAsset.modelUrl;
+      if (!options.splineUrl) options.splineUrl = matched3DAsset.splineUrl;
+      if (!options.meshArchetype && matched3DAsset.archetype) options.meshArchetype = matched3DAsset.archetype;
+      if (!options.furnitureType && matched3DAsset.furnType) options.furnitureType = matched3DAsset.furnType;
+      if (!options.domain && matched3DAsset.domain) options.domain = matched3DAsset.domain;
+    }
     if (category === 'furniture') {
       return this.generate3DHeroHQFurniture(options);
     } else if (category === 'toy') {
@@ -596,3 +684,6 @@ function getThemeColorName(hex) {
 }
 
 export const firebaseAI = new FirebaseAILogicService();
+
+
+export { THREE_D_ASSETS, getThreeDAssetsByCategory, matchBestThreeDAsset };

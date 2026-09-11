@@ -459,7 +459,11 @@ export function renderPetPenView() {
                 data-toy-id="${toy.id}"
                 title="${toy.desc || toy.name}"
               >
-                <div class="text-3xl group-hover:scale-115 transition-transform drop-shadow">${toy.emoji || '🎪'}</div>
+                ${toy.modelUrl ? `
+                  <model-viewer src="${toy.modelUrl}" auto-rotate camera-controls shadow-intensity="1" ar style="width: 50px; height: 50px; background: transparent;"></model-viewer>
+                ` : `
+                  <div class="text-3xl group-hover:scale-115 transition-transform drop-shadow">${toy.emoji || '🎪'}</div>
+                `}
                 <span class="font-headline text-xs font-black text-white truncate max-w-full">${toy.name}</span>
                 <span class="text-[9px] font-black text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded-full border border-purple-400/30">
                   +${toy.statRefillAmount || 30} ${(toy.statRefillTarget || 'Joy').toUpperCase()}

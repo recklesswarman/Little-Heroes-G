@@ -46,6 +46,9 @@ const defaultState = {
   parentCustomFurniture: [],
   parentCustomToys: [],
   parentCustomBosses: [],
+  pendingGiftCrates: [],
+  pendingBounties: [],
+  activeUnboxingCrateId: null,
 
   // Household Link Architecture & Parent User Administration
   household: {
@@ -639,6 +642,12 @@ class Store {
         }
         if (!parsed.expeditionModal) {
           parsed.expeditionModal = { isOpen: false, selectedPetId: null, selectedBiomeId: 'fern_woods', selectedDuration: 15, snackPacked: false, activeTab: 'dispatch' };
+        }
+        if (!parsed.pendingGiftCrates || !Array.isArray(parsed.pendingGiftCrates)) {
+          parsed.pendingGiftCrates = [];
+        }
+        if (!parsed.pendingBounties || !Array.isArray(parsed.pendingBounties)) {
+          parsed.pendingBounties = [];
         }
         if (!parsed.parentCustomGear || !Array.isArray(parsed.parentCustomGear)) {
           parsed.parentCustomGear = [];
@@ -1318,6 +1327,7 @@ class Store {
     currentHero.coins += finalCoins;
     this.addXP(finalXP);
     this.awardTaskCareSynergy(habit.id, 'habit');
+    this.checkAndAwardHabitBounties(habit.id, currentHero);
     Sound.coin();
     Sound.fanfare();
 
@@ -2460,6 +2470,61 @@ class Store {
     return calculateActiveGearBuffs(equipped);
   }
 
+  
+  getPendingGiftCrates() {
+    return this.state.pendingGiftCrates || [];
+  }
+
+  getPendingBounties() {
+    return this.state.pendingBounties || [];
+  }
+
+  checkAndAwardHabitBounties(habitId, currentHero) {
+    if (!this.state.pendingBounties || !this.state.pendingBounties.length) return;
+    const heroId = currentHero?.id || 'hero_1';
+
+    for (let i = this.state.pendingBounties.length - 1; i >= 0; i--) {
+      const b = this.state.pendingBounties[i];
+      if (b.targetChildProfile && b.targetChildProfile !== 'all' && b.targetChildProfile !== heroId) continue;
+      if (b.habitId && b.habitId !== 'any' && b.habitId !== habitId) continue;
+
+      b.currentStreakProgress = (b.currentStreakProgress || 0) + 1;
+      if (b.currentStreakProgress >= (b.targetStreakDays || 1)) {
+        const crate = {
+          id: `crate_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+          item: b.item,
+          category: b.category,
+          targetChildProfile: b.targetChildProfile,
+          isBountyReward: true,
+          isOpened: false,
+          unboxed: false,
+          createdAt: new Date().toISOString()
+        };
+        if (!this.state.pendingGiftCrates) this.state.pendingGiftCrates = [];
+        this.state.pendingGiftCrates.unshift(crate);
+        this.state.activeUnboxingCrateId = crate.id;
+
+        if (b.category === 'gear' && b.item.socket) {
+          b.item.unlocked = true;
+          this.equipPetStudioGear(this.state.selectedHero?.activePetId || 1, b.item.socket, b.item.id);
+        } else if (b.category === 'furniture') {
+          if (!this.state.heroHQ.unlockedFurnitureIds.includes(b.item.id)) {
+            this.state.heroHQ.unlockedFurnitureIds.push(b.item.id);
+          }
+        }
+
+        this.state.pendingBounties.splice(i, 1);
+
+        Sound.fanfare();
+        confetti({ particleCount: 80, spread: 85, origin: { y: 0.6 } });
+        this.logAction(
+          `🎉 Habit Bounty Unlocked: '${b.item.name}'!`,
+          `Earned by completing streak goal for '${habitId}'!`
+        );
+      }
+    }
+  }
+
   getParentCustomGear() {
     return this.state.parentCustomGear || [];
   }
@@ -2469,6 +2534,9 @@ class Store {
 
     const socket = gearItem.socket || gearItem.targetPetSocket || 'head';
     const name = gearItem.name || gearItem.title || 'Custom Hero Gear';
+    const deliveryMethod = gearItem.deliveryMethod || 'instant_gift';
+    const targetChildProfile = gearItem.targetChildProfile || 'all';
+
     const gear = {
       ...gearItem,
       id: gearItem.id || `ai_gear_${Date.now()}`,
@@ -2478,7 +2546,9 @@ class Store {
       targetPetSocket: socket,
       isParentCrafted: true,
       isCustomAI: true,
-      unlocked: false,
+      unlocked: deliveryMethod === 'instant_gift',
+      deliveryMethod,
+      targetChildProfile,
       statBonusType: gearItem.statBonusType || (socket === 'feet' ? 'speed_boost' : socket === 'chest' ? 'defense_boost' : socket === 'head' ? 'damage_boost' : 'xp_boost'),
       statBonusPercent: Number(gearItem.statBonusPercent) || 25,
       statBonusLabel: gearItem.statBonusLabel || `+${gearItem.statBonusPercent || 25}% ${formatStatBonusName(gearItem.statBonusType)}`,
@@ -2511,16 +2581,47 @@ class Store {
       }
     }
 
+    // Handle delivery channels
+    if (deliveryMethod === 'instant_gift') {
+      const crate = {
+        id: `crate_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+        item: gear,
+        category: 'gear',
+        targetChildProfile,
+        isOpened: false,
+        unboxed: false,
+        createdAt: new Date().toISOString()
+      };
+      if (!this.state.pendingGiftCrates) this.state.pendingGiftCrates = [];
+      this.state.pendingGiftCrates.unshift(crate);
+      this.state.activeUnboxingCrateId = crate.id;
+      // Auto-equip for active pet
+      this.equipPetStudioGear(this.state.selectedHero?.activePetId || 1, socket, gear.id);
+    } else if (deliveryMethod === 'habit_bounty') {
+      const bounty = {
+        id: `bounty_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+        item: gear,
+        category: 'gear',
+        targetChildProfile,
+        habitId: gearItem.bountyRequirement?.habitId || 'any',
+        targetStreakDays: Number(gearItem.bountyRequirement?.targetStreakDays) || 3,
+        currentStreakProgress: 0,
+        createdAt: new Date().toISOString()
+      };
+      if (!this.state.pendingBounties) this.state.pendingBounties = [];
+      this.state.pendingBounties.unshift(bounty);
+    }
+
     this.logAction(
       `Parent crafted 3D Pet Gear: '${gear.name}'`,
-      `Published to Hero Shop for ${gear.costCoins} Tokens 🪙. (${gear.statBonusLabel})`
+      `Published via ${deliveryMethod.toUpperCase()} (Target: ${targetChildProfile}). (${gear.statBonusLabel})`
     );
 
     Sound.fanfare();
     confetti({ particleCount: 75, spread: 80, origin: { y: 0.6 } });
     this.showReward(
       '✨ 3D Pet Gear Published!',
-      `"${gear.name}" is now live in the Hero Shop!\n🪙 Price: ${gear.costCoins} Habit Tokens\n⚡ Bonus: ${gear.statBonusLabel}\n🐾 Ready to equip on your companion pets!`,
+      `"${gear.name}" is now live via ${deliveryMethod === 'instant_gift' ? 'Surprise Gift Delivery 🎁' : deliveryMethod === 'habit_bounty' ? 'Habit Bounty 🎯' : 'Hero Shop 🪙'}!\n⚡ Bonus: ${gear.statBonusLabel}\n🐾 Companion ready!`,
       0,
       0,
       gear.image,
@@ -2561,6 +2662,9 @@ class Store {
     if (!item || (!item.name && !item.title)) return null;
     const name = item.name || item.title || 'Custom Hero Furniture';
     const slot = item.slot || (item.furnitureType === 'light' || item.furnitureType === 'display' ? 'decor' : item.furnitureType || 'bed');
+    const deliveryMethod = item.deliveryMethod || 'instant_gift';
+    const targetChildProfile = item.targetChildProfile || 'all';
+
     const furniture = {
       ...item,
       id: item.id || `ai_furn_${Date.now()}`,
@@ -2570,6 +2674,8 @@ class Store {
       furnitureType: item.furnitureType || slot,
       isParentCrafted: true,
       isCustomAI: true,
+      deliveryMethod,
+      targetChildProfile,
       costCoins: Number(item.costCoins || item.coinPrice) || 180,
       comfortBuffPercent: Number(item.comfortBuffPercent) || 25,
       comfortBuffLabel: item.comfortBuffLabel || `+${item.comfortBuffPercent || 25}% HQ Room Comfort & Focus`,
@@ -2584,7 +2690,16 @@ class Store {
       this.state.parentCustomFurniture.unshift(furniture);
     }
 
-    // Inject into FURNITURE_ITEMS catalog
+    if (!this.state.heroHQ) {
+      this.state.heroHQ = { ...defaultState.heroHQ };
+    }
+    if (!this.state.heroHQ.unlockedFurnitureIds) {
+      this.state.heroHQ.unlockedFurnitureIds = [];
+    }
+    if (!this.state.heroHQ.unlockedFurnitureIds.includes(furniture.id)) {
+      this.state.heroHQ.unlockedFurnitureIds.push(furniture.id);
+    }
+
     const catIdx = FURNITURE_ITEMS.findIndex(f => f.id === furniture.id);
     if (catIdx >= 0) {
       FURNITURE_ITEMS[catIdx] = furniture;
@@ -2592,28 +2707,44 @@ class Store {
       FURNITURE_ITEMS.unshift(furniture);
     }
 
-    // Auto-unlock & equip in Hero HQ
-    if (!this.state.heroHQ) {
-      this.state.heroHQ = JSON.parse(JSON.stringify(defaultState.heroHQ));
+    if (deliveryMethod === 'instant_gift') {
+      const crate = {
+        id: `crate_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+        item: furniture,
+        category: 'furniture',
+        targetChildProfile,
+        isOpened: false,
+        unboxed: false,
+        createdAt: new Date().toISOString()
+      };
+      if (!this.state.pendingGiftCrates) this.state.pendingGiftCrates = [];
+      this.state.pendingGiftCrates.unshift(crate);
+      this.state.activeUnboxingCrateId = crate.id;
+    } else if (deliveryMethod === 'habit_bounty') {
+      const bounty = {
+        id: `bounty_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+        item: furniture,
+        category: 'furniture',
+        targetChildProfile,
+        habitId: item.bountyRequirement?.habitId || 'any',
+        targetStreakDays: Number(item.bountyRequirement?.targetStreakDays) || 3,
+        currentStreakProgress: 0,
+        createdAt: new Date().toISOString()
+      };
+      if (!this.state.pendingBounties) this.state.pendingBounties = [];
+      this.state.pendingBounties.unshift(bounty);
     }
-    if (!this.state.heroHQ.unlockedFurnitureIds.includes(furniture.id)) {
-      this.state.heroHQ.unlockedFurnitureIds.push(furniture.id);
-    }
-    if (!this.state.heroHQ.equippedFurniture) {
-      this.state.heroHQ.equippedFurniture = {};
-    }
-    this.state.heroHQ.equippedFurniture[slot] = furniture.id;
 
     this.logAction(
-      `Parent crafted 3D HQ Furniture: '${furniture.name}'`,
-      `Installed in Hero HQ with ${furniture.comfortBuffLabel}!`
+      `Parent crafted 3D Furniture: '${furniture.name}'`,
+      `Unlocked into Hero HQ via ${deliveryMethod.toUpperCase()} (${furniture.comfortBuffLabel})`
     );
 
     Sound.fanfare();
-    confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
+    confetti({ particleCount: 70, spread: 80 });
     this.showReward(
-      '🛋️ HQ Furniture Published!',
-      `"${furniture.name}" is now unlocked & placed in your Hero HQ!\n✨ Comfort: ${furniture.comfortBuffLabel}\n🐾 Your companion pets can sit and sleep on it!`,
+      '🛋️ 3D HQ Furniture Published!',
+      `"${furniture.name}" is now live!\n✨ Comfort: ${furniture.comfortBuffLabel}\n🏠 Placed in your Hero HQ superhero hideout!`,
       0,
       0,
       furniture.image,
