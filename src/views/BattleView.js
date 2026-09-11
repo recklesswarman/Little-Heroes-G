@@ -1,3 +1,5 @@
+import { renderBoss3DViewer, initBoss3DViewer, getActiveBoss3DInstance } from '../components/Boss3DViewer.js';
+import { renderPet3DViewer, initPet3DViewer, getActivePet3DInstance } from '../components/Pet3DViewer.js';
 import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import confetti from 'canvas-confetti';
@@ -53,6 +55,7 @@ let shieldMilestonesTriggered = { 90: false, 30: false };
 let bossAttackInterval = null;
 let currentBossAttackType = null;
 let isHeroShieldActive = false;
+let isCoPilotEnabled = true;
 let heroShieldTimer = null;
 let currentRexCoachText = 'Look in the mirror and brush in circles!';
 
@@ -685,8 +688,14 @@ export function renderBattleView() {
 
         <!-- UPPER ARENA: ANIMATED BOSS ATTACKING TEETH -->
         <div class="relative z-10 w-full flex flex-col items-center pt-2">
-          <div id="boss-character-wrapper" class="relative flex flex-col items-center">
-            ${renderBossCharacterSvg(currentBoss, !!currentBossAttackType, false)}
+          <div id="boss-character-wrapper" class="relative flex flex-col items-center w-full">
+            ${renderBoss3DViewer({
+              canvasId: 'boss-3d-canvas',
+              bossId: currentBoss.id,
+              width: 320,
+              height: 260,
+              showBadge: true
+            })}
           </div>
         </div>
 
@@ -718,18 +727,39 @@ export function renderBattleView() {
             <span class="text-[10px] text-white/80 font-bold hidden sm:inline">• ${activeQuad.instruction}</span>
           </div>
 
-          <!-- Dental Arch SVG with Real-time Plaque Dissolve -->
-          ${renderMouthArchSvg(activeQuad)}
+          <!-- Dental Arch SVG with Real-time Plaque Dissolve & 3D Splatter Overlay -->
+          <div class="relative w-full flex items-center justify-center">
+            ${renderMouthArchSvg(activeQuad)}
+            <!-- Sticky Slime Splatters on Teeth Layer -->
+            <div id="teeth-splatter-overlay" class="absolute inset-0 pointer-events-none z-10 overflow-visible"></div>
+            <!-- Frothy Foam Trails Layer -->
+            <div id="teeth-foam-overlay" class="absolute inset-0 pointer-events-none z-20 overflow-visible"></div>
+          </div>
 
         </div>
 
-        <!-- PICTURE-IN-PICTURE REX DINO COACH (Bottom Left Corner) -->
-        <div id="rex-coach-card" class="absolute left-2.5 bottom-16 sm:bottom-20 z-20 bg-black/85 backdrop-blur-md rounded-2xl border-2 border-primary/60 p-2 shadow-2xl flex flex-col items-center max-w-[110px] sm:max-w-[125px]">
-          <div class="text-[9px] font-black uppercase text-primary border-b border-white/10 pb-0.5 w-full text-center">
-            🦖 Rex Demo
+        <!-- PICTURE-IN-PICTURE REX DINO COACH / 3D CO-PILOT (Bottom Left Corner) -->
+        <div id="rex-coach-card" class="absolute left-2.5 bottom-16 sm:bottom-20 z-20 bg-black/85 backdrop-blur-md rounded-2xl border-2 border-primary/60 p-2 shadow-2xl flex flex-col items-center max-w-[120px] sm:max-w-[135px]">
+          <div class="text-[9px] font-black uppercase text-primary border-b border-white/10 pb-0.5 w-full flex items-center justify-between px-0.5">
+            <span>🦖 Co-Pilot</span>
+            <button id="copilot-toggle-btn" class="text-[8px] bg-white/10 hover:bg-white/20 px-1 py-0.5 rounded text-white font-bold" title="Toggle 3D Pet Co-Pilot">
+              ${isCoPilotEnabled ? '3D' : '2D'}
+            </button>
           </div>
           <div id="rex-demo-svg-container" class="w-full flex justify-center py-0.5">
-            ${renderRexMirrorDemoSvg(activeQuad, isToothbrushMoving)}
+            ${
+              isCoPilotEnabled
+                ? renderPet3DViewer({
+                    canvasId: 'battle-copilot-3d-canvas',
+                    petId: store.getActivePet()?.id || 'rex',
+                    stage: store.getActivePet()?.stage || 1,
+                    mode: 'sanctuary',
+                    width: 105,
+                    height: 105,
+                    showControls: false
+                  })
+                : renderRexMirrorDemoSvg(activeQuad, isToothbrushMoving)
+            }
           </div>
         </div>
 
@@ -869,6 +899,21 @@ function handleSuccessfulScrubHit(isTargetHit, activeQuad) {
     updateMouthMapUI(activeQuad);
   }
 
+  // Scrub and remove sticky slime splatters
+  const splats = document.querySelectorAll('.teeth-slime-splat');
+  if (splats.length > 0) {
+    const firstSplat = splats[0];
+    firstSplat.style.opacity = '0';
+    firstSplat.style.transform = 'scale(1.5)';
+    setTimeout(() => firstSplat.remove(), 200);
+  }
+
+  // 3D Pet Co-Pilot cheering reaction
+  if (isCoPilotEnabled && currentCombo % 3 === 0) {
+    const coPilot = getActivePet3DInstance('battle-copilot-3d-canvas');
+    if (coPilot) coPilot.triggerHeadScratch();
+  }
+
   // Periodic foam bubbles
   if (Math.random() < 0.4) {
     spawnToothpasteFoam(activeQuad);
@@ -929,6 +974,12 @@ function applyBrushingHit(multiplier = 1) {
     return;
   }
 
+  // Trigger 3D Boss knockback recoil & foam hit particles
+  const boss3D = getActiveBoss3DInstance('boss-3d-canvas');
+  if (boss3D) {
+    boss3D.triggerKnockback(multiplier > 1 ? 45 : 30);
+  }
+
   Sound.laser();
   if (Math.random() < 0.4) {
     showComicHit(multiplier > 1 ? 'ZONE CRITICAL! 🪥💥' : 'SCRUB HIT! ✨');
@@ -951,9 +1002,15 @@ function triggerBossShield() {
   showComicHit(`${boss.shieldName.toUpperCase()}! 🛡️⚡`);
   voicePrompts.speak(`Watch out! ${boss.name} put up ${boss.shieldName}! Scrub super fast to shatter it!`);
 
+  // Activate 3D Boss Shield barrier
+  const boss3DShield = getActiveBoss3DInstance('boss-3d-canvas');
+  if (boss3DShield) {
+    boss3DShield.setShield(true);
+  }
+
   const container = document.getElementById('boss-character-wrapper');
   if (container) {
-    container.innerHTML = renderBossCharacterSvg(boss, false, true);
+    // Keep 3D canvas active
   }
 
   store.notify();
@@ -972,11 +1029,19 @@ function updateBossShieldUI() {
 
 function shatterBossShield() {
   isBossShieldActive = false;
+  
+  // Shatter 3D Boss Shield & stun into dizzy spin
+  const boss3D = getActiveBoss3DInstance('boss-3d-canvas');
+  if (boss3D) {
+    boss3D.setShield(false);
+    boss3D.triggerDizzy(2500);
+  }
+
   Sound.shieldShatter();
   Sound.speedUpBattleRhythm(false);
 
   showComicHit('SHIELD SHATTERED! 💥');
-  voicePrompts.speak('Great job! You smashed the boss armor! Keep scrubbing your teeth!');
+  voicePrompts.speakBossDizzy();
 
   confetti({
     particleCount: 50,
@@ -989,18 +1054,61 @@ function shatterBossShield() {
 }
 
 // Boss Attack Cycle: Boss attacks the teeth every 12-16 seconds
+
+// Splatter-and-Scrub: Spawns sticky slime on the teeth mirror overlay during boss attack
+function spawnTeethSlimeSplatters(quadrantId, boss) {
+  const container = document.getElementById('teeth-splatter-overlay');
+  if (!container) return;
+
+  const color = boss.id.includes('kraken') ? '#10b981' : boss.id.includes('goblin') ? '#c084fc' : '#f59e0b';
+  const emoji = boss.id.includes('kraken') ? '🦠' : boss.id.includes('goblin') ? '🧪' : '🍯';
+
+  for (let i = 0; i < 4; i++) {
+    const splat = document.createElement('div');
+    const x = Math.random() * 70 + 15;
+    const y = Math.random() * 50 + 25;
+    splat.className = 'absolute transition-all duration-300 pointer-events-none z-20 teeth-slime-splat animate-bounce';
+    splat.style.left = `${x}%`;
+    splat.style.top = `${y}%`;
+    splat.innerHTML = `
+      <div class="relative flex items-center justify-center filter drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)]">
+        <div class="w-7 h-7 rounded-full blur-[1px] opacity-90" style="background-color: ${color};"></div>
+        <span class="absolute text-sm select-none">${emoji}</span>
+      </div>
+    `;
+    container.appendChild(splat);
+
+    setTimeout(() => {
+      if (splat.parentNode) {
+        splat.style.opacity = '0';
+        splat.style.transform = 'scale(1.4)';
+        setTimeout(() => splat.remove(), 300);
+      }
+    }, 4000);
+  }
+}
+
 function triggerBossAttack() {
   if (!isBattleRunning) return;
   const boss = getHygieneBoss(selectedBossId);
   currentBossAttackType = boss.attackName;
+  const activeQuad = getDentalQuadrant(secondsRemaining, totalDuration);
 
-  const wrapper = document.getElementById('boss-character-wrapper');
-  if (wrapper) {
-    wrapper.innerHTML = renderBossCharacterSvg(boss, true, false);
+  // Trigger 3D Boss Lunge on 3D Canvas
+  const boss3D = getActiveBoss3DInstance('boss-3d-canvas');
+  if (boss3D) {
+    boss3D.triggerLunge(activeQuad.id);
   }
 
-  Sound.hit();
-  voicePrompts.speak(`${boss.name} is launching ${boss.attackName}! Keep scrubbing to defend your enamel!`);
+  // Spawn animated sticky slime splatters directly on teeth overlay
+  spawnTeethSlimeSplatters(activeQuad.id, boss);
+
+  if (typeof Sound.bossLunge === 'function') {
+    Sound.bossLunge();
+  } else {
+    Sound.hit();
+  }
+  voicePrompts.speakBossLunge(boss.name, activeQuad.name);
 
   setTimeout(() => {
     if (!isBattleRunning) return;
@@ -1340,7 +1448,19 @@ function concludeVictory() {
     ? Math.round(cadenceSamples.reduce((a, b) => a + b, 0) / cadenceSamples.length)
     : 85;
 
-  voicePrompts.speak(`ROAAAR! Super victory, Hero! You defeated ${boss.name} and your teeth are diamond sparkling!`);
+  // Trigger 3D Defeat Climax on 3D Boss
+  const boss3D = getActiveBoss3DInstance('boss-3d-canvas');
+  if (boss3D) {
+    boss3D.triggerDefeat();
+  }
+
+  // Trigger Co-Pilot victory backflip
+  if (isCoPilotEnabled) {
+    const coPilot = getActivePet3DInstance('battle-copilot-3d-canvas');
+    if (coPilot) coPilot.triggerBellyTickle();
+  }
+
+  voicePrompts.speakBossDefeated(boss.name);
 
   // Award full Toothbrush Battle 2.0 rewards (+50 coins, +75 XP, +15 sparks, badges)
   store.completeToothbrushBattle(selectedBossId, totalDuration, avgCadence);
@@ -1480,8 +1600,29 @@ export function attachBattleListeners() {
   window.addEventListener('rex-battle-cheer', onRexCheer);
   window.addEventListener('rex-battle-victory', onRexVictory);
 
-  // If in battle mode, ensure camera and motion detector are active
+  // Co-pilot toggle button
+  const copilotBtn = document.getElementById('copilot-toggle-btn');
+  if (copilotBtn) {
+    copilotBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      isCoPilotEnabled = !isCoPilotEnabled;
+      Sound.tap();
+      store.notify();
+    });
+  }
+
+  // If in battle mode, initialize 3D Viewers, camera, and motion detector
   if (isBattleRunning) {
+    initBoss3DViewer('boss-3d-canvas', {
+      bossId: selectedBossId
+    });
+    if (isCoPilotEnabled) {
+      initPet3DViewer('battle-copilot-3d-canvas', {
+        petId: store.getActivePet()?.id || 'rex',
+        stage: store.getActivePet()?.stage || 1,
+        mode: 'sanctuary'
+      });
+    }
     initCamera();
     initMotionDetector();
   }

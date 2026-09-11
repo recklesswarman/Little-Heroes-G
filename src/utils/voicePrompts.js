@@ -59,6 +59,22 @@ class VoicePromptsService {
     this.speak(`Awesome choice! Your ${furnitureName} looks fantastic in our secret base!`);
   }
 
+  speakBossLunge(bossName = 'The Boss', quadrantName = 'your teeth') {
+    this.speak(`Watch out, Little Hero! ${bossName} is lunging at ${quadrantName}! Brush in circles to knock him back!`);
+  }
+
+  speakShieldActive(bossName = 'The Boss') {
+    this.speak(`He summoned a sugar shield! Keep scrubbing with power to smash through it!`);
+  }
+
+  speakBossDizzy() {
+    this.speak(`Woohoo! He is dizzy! Blast him with toothpaste bubbles!`);
+  }
+
+  speakBossDefeated(bossName = 'The Boss') {
+    this.speak(`Incredible job! We washed away ${bossName}! Your teeth are sparkling clean!`);
+  }
+
   stop() {
     stopRex();
   }

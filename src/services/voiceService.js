@@ -233,7 +233,7 @@ export function selectPreferredVoice(preferredName = 'daniel') {
  * Gets voice parameters for the given pet companion
  */
 export function getCompanionVoiceParams(petId = 'rex') {
-  const normId = (petId || '').toLowerCase().replace(/\s+/g, '_');
+  const normId = String(petId || 'rex').toLowerCase().replace(/\s+/g, '_');
   return COMPANION_VOICE_PROFILES[normId] || COMPANION_VOICE_PROFILES.rex;
 }
 

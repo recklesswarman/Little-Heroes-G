@@ -1181,6 +1181,128 @@ export const Sound = {
         }
       }, 70);
     } catch (e) {}
+  },
+
+  // 26. BOSS 3D LUNGE (Deep charging whoosh with monster surge)
+  bossLunge() {
+    if (isMuted) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(120, now);
+      osc.frequency.exponentialRampToValueAtTime(360, now + 0.22);
+      osc.frequency.exponentialRampToValueAtTime(90, now + 0.38);
+
+      gain.gain.setValueAtTime(0.01, now);
+      gain.gain.linearRampToValueAtTime(0.25, now + 0.1);
+      gain.gain.exponentialRampToValueAtTime(0.005, now + 0.39);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.4);
+    } catch (e) {}
+  },
+
+  // 27. BOSS SLIME SPLAT (Squishy wet caramel/biofilm slap on mirror teeth)
+  bossSplat() {
+    if (isMuted) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(320, now);
+      osc.frequency.exponentialRampToValueAtTime(80, now + 0.14);
+
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.16);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.17);
+    } catch (e) {}
+  },
+
+  // 28. FOAM HIT (Crisp fizzy toothpaste bubble blast against 3D boss)
+  foamHit() {
+    if (isMuted) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(1400, now);
+      osc.frequency.exponentialRampToValueAtTime(220, now + 0.09);
+
+      gain.gain.setValueAtTime(0.28, now);
+      gain.gain.exponentialRampToValueAtTime(0.005, now + 0.1);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.11);
+    } catch (e) {}
+  },
+
+  // 29. DIZZY STARS (Cartoon twinkling chime arpeggio)
+  dizzyStars() {
+    if (isMuted) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const notes = [880, 1174, 1318, 1760];
+      notes.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.06);
+
+        gain.gain.setValueAtTime(0.12, now + idx * 0.06);
+        gain.gain.exponentialRampToValueAtTime(0.005, now + idx * 0.06 + 0.18);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + idx * 0.06);
+        osc.stop(now + idx * 0.06 + 0.19);
+      });
+    } catch (e) {}
+  },
+
+  // 30. SHIELD SHATTER (Crisp crystalline glass shatter)
+  shieldShatter() {
+    if (isMuted) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const freqs = [1600, 2100, 2900, 3800];
+      freqs.forEach((f, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(f, now + idx * 0.02);
+        osc.frequency.exponentialRampToValueAtTime(f * 0.4, now + idx * 0.02 + 0.2);
+
+        gain.gain.setValueAtTime(0.18, now + idx * 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.005, now + idx * 0.02 + 0.22);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + idx * 0.02);
+        osc.stop(now + idx * 0.02 + 0.23);
+      });
+    } catch (e) {}
   }
 };
 
