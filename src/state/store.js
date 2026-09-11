@@ -17,6 +17,15 @@ import {
   calculateExpeditionAffinity,
   generateExpeditionRewards
 } from '../data/petExpeditionsData.js';
+import {
+  ROOM_THEMES,
+  FURNITURE_SLOTS,
+  FURNITURE_ITEMS,
+  getHQTheme,
+  getFurnitureItem,
+  getTrophiesForDisplay
+} from '../data/heroHQData.js';
+
 
 
 export const KID_AVATARS = [
@@ -394,6 +403,28 @@ const defaultState = {
   dentalBattleHistory: [],
   lastBrushedMorning: null,
   lastBrushedEvening: null,
+    // Hero HQ & Superhero Hideout Studio
+  heroHQ: {
+    themeId: 'dino_treehouse',
+    isNightMode: false,
+    equippedFurniture: {
+      bed: 'dino_leaf_canopy',
+      petLounge: 'giant_beanbag',
+      desk: 'hologram_mission_table',
+      decor: 'starlight_projector_lamp',
+      rug: 'hero_road_rug'
+    },
+    unlockedFurnitureIds: [
+      'dino_leaf_canopy',
+      'giant_beanbag',
+      'hologram_mission_table',
+      'starlight_projector_lamp',
+      'hero_road_rug'
+    ],
+    featuredTrophyIds: ['rookie_hero_crest'],
+    redecorateDrawerOpen: false,
+    redecorateActiveCategory: 'themes'
+  },
   activeExpeditions: [],
   expeditionHistory: [],
   unlockedArtifacts: [],
@@ -547,6 +578,24 @@ class Store {
         }
         if (!parsed.expeditionHistory || !Array.isArray(parsed.expeditionHistory)) {
           parsed.expeditionHistory = [];
+        }
+                if (!parsed.heroHQ || typeof parsed.heroHQ !== 'object') {
+          parsed.heroHQ = JSON.parse(JSON.stringify(defaultState.heroHQ));
+        } else {
+          parsed.heroHQ = {
+            ...defaultState.heroHQ,
+            ...parsed.heroHQ,
+            equippedFurniture: {
+              ...defaultState.heroHQ.equippedFurniture,
+              ...(parsed.heroHQ.equippedFurniture || {})
+            },
+            unlockedFurnitureIds: Array.isArray(parsed.heroHQ.unlockedFurnitureIds)
+              ? Array.from(new Set([...defaultState.heroHQ.unlockedFurnitureIds, ...parsed.heroHQ.unlockedFurnitureIds]))
+              : [...defaultState.heroHQ.unlockedFurnitureIds],
+            featuredTrophyIds: Array.isArray(parsed.heroHQ.featuredTrophyIds)
+              ? parsed.heroHQ.featuredTrophyIds
+              : [...defaultState.heroHQ.featuredTrophyIds]
+          };
         }
         if (!parsed.unlockedArtifacts || !Array.isArray(parsed.unlockedArtifacts)) {
           parsed.unlockedArtifacts = [];
@@ -734,6 +783,9 @@ class Store {
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
       // When kid selects the pet pen for the first time after profile creation:
+      if (viewName === 'hero_hq') {
+        this.checkHQMilestoneUnlocks();
+      }
       if (viewName === 'pet_pen') {
         const hero = this.state.selectedHero;
         if (!hero?.hasChosenStarterPet || !hero?.unlockedPetIds || hero.unlockedPetIds.length === 0) {
@@ -4092,6 +4144,250 @@ class Store {
 
     // 6. Notify subscribers and trigger immediate UI re-render
     this.notify();
+  }
+
+  // --- HERO HQ & SUPERHERO HIDEOUT STUDIO ACTIONS ---
+  setHQTheme(themeId) {
+    if (!this.state.heroHQ) {
+      this.state.heroHQ = JSON.parse(JSON.stringify(defaultState.heroHQ));
+    }
+    const theme = getHQTheme(themeId);
+    this.state.heroHQ.themeId = theme.id;
+    Sound.sparkle();
+    this.saveState();
+    this.notify();
+    return theme;
+  }
+
+  toggleHQNightMode(forceState = null) {
+    if (!this.state.heroHQ) {
+      this.state.heroHQ = JSON.parse(JSON.stringify(defaultState.heroHQ));
+    }
+    this.state.heroHQ.isNightMode = forceState !== null ? Boolean(forceState) : !this.state.heroHQ.isNightMode;
+    Sound.lightSwitch();
+    this.saveState();
+    this.notify();
+    return this.state.heroHQ.isNightMode;
+  }
+
+  equipHQFurniture(slot, furnitureId) {
+    if (!this.state.heroHQ) {
+      this.state.heroHQ = JSON.parse(JSON.stringify(defaultState.heroHQ));
+    }
+    const item = getFurnitureItem(furnitureId);
+    if (!item) return false;
+
+    if (!this.state.heroHQ.unlockedFurnitureIds.includes(furnitureId)) {
+      return false;
+    }
+
+    this.state.heroHQ.equippedFurniture[slot] = furnitureId;
+    Sound.placeFurniture();
+    this.saveState();
+    this.notify();
+    return true;
+  }
+
+  unlockHQFurniture(furnitureId, autoEquip = true) {
+    if (!this.state.heroHQ) {
+      this.state.heroHQ = JSON.parse(JSON.stringify(defaultState.heroHQ));
+    }
+    const item = getFurnitureItem(furnitureId);
+    if (!item) return { success: false, reason: 'Item not found' };
+
+    if (this.state.heroHQ.unlockedFurnitureIds.includes(furnitureId)) {
+      if (autoEquip && item.slot) {
+        this.equipHQFurniture(item.slot, furnitureId);
+      }
+      return { success: true, reason: 'Already unlocked' };
+    }
+
+    const currentCoins = this.state.selectedHero?.coins || 0;
+    const cost = item.costCoins || 0;
+
+    if (cost > 0 && currentCoins < cost) {
+      Sound.pop();
+      return { success: false, reason: `Need ${cost - currentCoins} more Tokens 🪙` };
+    }
+
+    if (cost > 0) {
+      this.state.selectedHero.coins = Math.max(0, currentCoins - cost);
+    }
+
+    this.state.heroHQ.unlockedFurnitureIds.push(furnitureId);
+    if (autoEquip && item.slot) {
+      this.state.heroHQ.equippedFurniture[item.slot] = furnitureId;
+    }
+
+    Sound.fanfare();
+    Sound.placeFurniture();
+    try {
+      confetti({
+        particleCount: 75,
+        spread: 80,
+        origin: { y: 0.6 }
+      });
+    } catch (e) {}
+
+    this.showReward(
+      `Unlocked: ${item.name}!`,
+      `Your new ${item.name} is ready in Hero HQ!\n🪙 Spent ${cost} Tokens. Tap to interact anytime!`,
+      cost,
+      25,
+      item.emoji,
+      'place'
+    );
+
+    this.saveState(true);
+    this.notify();
+    return { success: true, item };
+  }
+
+  setFeaturedTrophy(slotIndex, trophyId) {
+    if (!this.state.heroHQ) {
+      this.state.heroHQ = JSON.parse(JSON.stringify(defaultState.heroHQ));
+    }
+    if (!Array.isArray(this.state.heroHQ.featuredTrophyIds)) {
+      this.state.heroHQ.featuredTrophyIds = ['rookie_hero_crest'];
+    }
+    const list = [...this.state.heroHQ.featuredTrophyIds];
+    while (list.length < 4) {
+      list.push(null);
+    }
+    if (slotIndex >= 0 && slotIndex < 4) {
+      list[slotIndex] = trophyId;
+    }
+    this.state.heroHQ.featuredTrophyIds = list;
+    Sound.sparkle();
+    this.saveState();
+    this.notify();
+    return true;
+  }
+
+  setHQRedecorateDrawer(isOpen, activeCategory = null) {
+    if (!this.state.heroHQ) {
+      this.state.heroHQ = JSON.parse(JSON.stringify(defaultState.heroHQ));
+    }
+    this.state.heroHQ.redecorateDrawerOpen = Boolean(isOpen);
+    if (activeCategory) {
+      this.state.heroHQ.redecorateActiveCategory = activeCategory;
+    }
+    Sound.whoosh();
+    this.saveState();
+    this.notify();
+  }
+
+  getHQStats() {
+    const heroHQ = this.state.heroHQ || defaultState.heroHQ;
+    const theme = getHQTheme(heroHQ.themeId);
+    const trophies = getTrophiesForDisplay(this.state);
+    const unlockedCount = (heroHQ.unlockedFurnitureIds || []).length;
+    const totalFurnitureCount = FURNITURE_ITEMS.length;
+    return {
+      theme,
+      themeId: heroHQ.themeId,
+      isNightMode: Boolean(heroHQ.isNightMode),
+      equippedFurniture: heroHQ.equippedFurniture || {},
+      unlockedCount,
+      totalFurnitureCount,
+      trophiesCount: trophies.length,
+      coins: this.state.selectedHero?.coins || 0
+    };
+  }
+
+  checkHQMilestoneUnlocks() {
+    if (!this.state.heroHQ) {
+      this.state.heroHQ = JSON.parse(JSON.stringify(defaultState.heroHQ));
+    }
+    const unlocked = new Set(this.state.heroHQ.unlockedFurnitureIds || []);
+    const newlyUnlocked = [];
+
+    const brushStreak = this.state.brushStreak || this.state.selectedHero?.streak || 0;
+    const choreCount = (this.state.choresCompletedCount || 0) + (this.state.taskCompletionLogs?.length || 0);
+    const danceCount = this.state.movementSessionHistory?.length || 0;
+    const expCount = this.state.expeditionHistory?.length || 0;
+    const bossDefeatCount = (this.state.dentalBattleHistory?.length || 0) + (this.state.hygieneBattle?.bossesDefeated?.length || 0);
+    const learningStars = this.state.learningGames?.totalStars || 0;
+
+    FURNITURE_ITEMS.forEach(item => {
+      if (unlocked.has(item.id)) return;
+      if (!item.milestoneRequirement) return;
+
+      let qualifies = false;
+      switch (item.milestoneRequirement) {
+        case '3_day_brush_streak':
+          qualifies = brushStreak >= 3;
+          break;
+        case '4_day_brush_streak':
+          qualifies = brushStreak >= 4;
+          break;
+        case '5_day_brush_streak':
+          qualifies = brushStreak >= 5;
+          break;
+        case '7_day_brush_streak':
+          qualifies = brushStreak >= 7;
+          break;
+        case '5_chores_completed':
+          qualifies = choreCount >= 5;
+          break;
+        case '10_chores_completed':
+          qualifies = choreCount >= 10;
+          break;
+        case '15_chores_completed':
+          qualifies = choreCount >= 15;
+          break;
+        case 'dance_party_1':
+          qualifies = danceCount >= 1;
+          break;
+        case 'dance_party_2':
+          qualifies = danceCount >= 2;
+          break;
+        case 'pet_expedition_1':
+          qualifies = expCount >= 1;
+          break;
+        case 'pet_expedition_2':
+          qualifies = expCount >= 2;
+          break;
+        case 'pet_level_5':
+          qualifies = (this.state.selectedHero?.level || 1) >= 5;
+          break;
+        case 'learning_streak_3':
+          qualifies = learningStars >= 3;
+          break;
+        case 'learning_streak_5':
+          qualifies = learningStars >= 5;
+          break;
+        case 'learning_math_1':
+          qualifies = Boolean(this.state.learningGames?.mathPassed || this.state.gameMasteryMap?.math);
+          break;
+        case 'learning_science_1':
+          qualifies = Boolean(this.state.learningGames?.sciencePassed || this.state.gameMasteryMap?.science);
+          break;
+        case 'boss_defeat_1':
+          qualifies = bossDefeatCount >= 1;
+          break;
+        case 'boss_defeat_3':
+          qualifies = bossDefeatCount >= 3;
+          break;
+        case 'boss_cavity_king':
+          qualifies = Boolean(this.state.dentalBadges?.includes('cavity_crusher') || this.state.hygieneBattle?.sugarfangDefeated);
+          break;
+        default:
+          break;
+      }
+
+      if (qualifies) {
+        this.state.heroHQ.unlockedFurnitureIds.push(item.id);
+        unlocked.add(item.id);
+        newlyUnlocked.push(item);
+      }
+    });
+
+    if (newlyUnlocked.length > 0) {
+      this.saveState(true);
+      this.notify();
+    }
+    return newlyUnlocked;
   }
 
   resetAllProgress() {

@@ -133,6 +133,36 @@ export function renderDashboardView() {
         </div>
       ` : ''}
 
+      <!-- HERO HQ & SUPERHERO HIDEOUT STUDIO QUICK LAUNCH CARD -->
+      <section class="bg-gradient-to-r from-emerald-950/80 via-slate-900/90 to-cyan-950/80 rounded-3xl p-4 sm:p-5 border-2 border-emerald-400/40 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4 relative overflow-hidden group">
+        <div class="absolute -right-10 -bottom-10 w-48 h-48 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none"></div>
+        <div class="flex items-center gap-4 w-full sm:w-auto z-10">
+          <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-surface-container border-2 border-emerald-400 flex items-center justify-center flex-shrink-0 text-3xl sm:text-4xl shadow-[0_0_20px_rgba(16,185,129,0.3)] group-hover:scale-105 transition-transform animate-pulse">
+            🏠✨
+          </div>
+          <div class="flex flex-col">
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] font-black uppercase tracking-wider text-emerald-400 font-headline bg-emerald-950/70 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                Secret Hideout Studio
+              </span>
+              <span class="text-[10px] bg-amber-400/20 text-amber-300 font-black px-2 py-0.5 rounded-full border border-amber-400/30">
+                ${state.heroHQ?.isNightMode ? '🌙 Starlight Night' : '☀️ Daytime Glow'}
+              </span>
+            </div>
+            <h2 class="font-headline text-lg sm:text-xl font-black text-white mt-0.5">
+              Hero HQ Playroom
+            </h2>
+            <p class="text-xs text-slate-300 font-medium">
+              Decorate your bedroom, showcase trophies & chill with companion pets!
+            </p>
+          </div>
+        </div>
+
+        <button id="dash-to-hero-hq-btn" class="w-full sm:w-auto bg-gradient-to-r from-primary to-emerald-500 hover:from-primary/90 hover:to-emerald-400 text-on-primary font-headline text-xs sm:text-sm font-black px-5 py-3 rounded-2xl shadow-lg border-2 border-emerald-300 flex items-center justify-center gap-2 chunky-btn flex-shrink-0 z-10">
+          <span class="material-symbols-outlined text-base sm:text-lg">cottage</span> Enter Hero HQ
+        </button>
+      </section>
+
       <!-- Toddler Easy Mode (Age 3-4) Rex Voice Guide Banner -->
       ${
         isEasyMode
@@ -701,6 +731,14 @@ export function attachDashboardListeners() {
   const toAdvBtn = document.getElementById('dash-to-adventures-btn');
   if (toAdvBtn) {
     toAdvBtn.addEventListener('click', () => store.navigate('quest_map'));
+  }
+
+  const toHeroHQBtn = document.getElementById('dash-to-hero-hq-btn');
+  if (toHeroHQBtn) {
+    toHeroHQBtn.addEventListener('click', () => {
+      Sound.whoosh();
+      store.navigate('hero_hq');
+    });
   }
 
   // AI Spark Quests Generation Listener

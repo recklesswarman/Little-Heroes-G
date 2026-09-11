@@ -20,6 +20,12 @@ export function renderTopHeader() {
           </div>
           <span class="material-symbols-outlined text-xs sm:text-sm text-on-surface-variant hidden sm:inline-block flex-shrink-0">expand_more</span>
         </button>
+
+        <!-- Hero HQ Bedroom & Secret Base Quick Shortcut -->
+        <button id="header-hero-hq-btn" title="Hero HQ Bedroom & Secret Base" aria-label="Hero HQ" class="bg-surface-container hover:bg-surface-bright text-primary rounded-2xl px-2.5 py-1 sm:px-3 sm:py-1.5 border-2 border-emerald-400/40 chunky-btn-sm transition-all flex items-center gap-1 active:scale-95 flex-shrink-0">
+          <span class="text-sm sm:text-base">🏠</span>
+          <span class="font-headline text-xs font-black text-emerald-400 hidden sm:inline">HQ</span>
+        </button>
       </div>
 
       <!-- Right: Dual Currencies (Points ⭐ & Coins 🪙), Household Sync & Parent Gate -->
@@ -62,6 +68,14 @@ export function attachTopHeaderListeners() {
   if (profileBtn) {
     profileBtn.addEventListener('click', () => {
       store.navigate('profile');
+    });
+  }
+
+  const heroHQBtn = document.getElementById('header-hero-hq-btn');
+  if (heroHQBtn) {
+    heroHQBtn.addEventListener('click', () => {
+      Sound.whoosh();
+      store.navigate('hero_hq');
     });
   }
 

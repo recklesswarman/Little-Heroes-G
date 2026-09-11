@@ -30,6 +30,7 @@ import { renderDancePartyView, attachDancePartyListeners } from './views/DancePa
 import { renderProfileView, attachProfileListeners } from './views/ProfileView.js';
 import { renderParentPortalView, attachParentPortalListeners } from './views/ParentPortalView.js';
 import { renderPetLockerView, attachPetLockerListeners } from './views/PetLockerView.js';
+import { renderHeroHQView, attachHeroHQListeners } from './views/HeroHQView.js';
 
 const app = document.getElementById('app');
 
@@ -92,6 +93,10 @@ function renderApp() {
     case 'profile':
       mainContent = renderProfileView();
       attachViewListeners = attachProfileListeners;
+      break;
+    case 'hero_hq':
+      mainContent = renderHeroHQView();
+      attachViewListeners = attachHeroHQListeners;
       break;
     case 'parent_portal':
       if (!store.isParentUnlocked()) {

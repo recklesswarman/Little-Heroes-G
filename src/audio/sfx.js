@@ -1042,6 +1042,145 @@ export const Sound = {
       osc.start(now);
       osc.stop(now + 0.14);
     } catch (e) {}
+  },
+
+  // 21. LIGHT SWITCH (Crisp dual-tone click for starlight lamps and lamps)
+  lightSwitch() {
+    if (isMuted) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc1.type = 'triangle';
+      osc1.frequency.setValueAtTime(1400, now);
+      osc1.frequency.exponentialRampToValueAtTime(800, now + 0.025);
+
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(600, now + 0.02);
+      osc2.frequency.exponentialRampToValueAtTime(300, now + 0.06);
+
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.07);
+
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc1.start(now);
+      osc1.stop(now + 0.03);
+      osc2.start(now + 0.02);
+      osc2.stop(now + 0.07);
+    } catch (e) {}
+  },
+
+  // 22. BOING (Cartoon ascending trampoline spring bounce)
+  boing() {
+    if (isMuted) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(160, now);
+      osc.frequency.exponentialRampToValueAtTime(540, now + 0.18);
+      osc.frequency.exponentialRampToValueAtTime(420, now + 0.25);
+
+      gain.gain.setValueAtTime(0.32, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.26);
+    } catch (e) {}
+  },
+
+  // 23. SNORE (Gentle rhythmic cartoon slumber purr)
+  snore() {
+    if (isMuted) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(85, now);
+      osc.frequency.linearRampToValueAtTime(125, now + 0.2);
+      osc.frequency.linearRampToValueAtTime(75, now + 0.4);
+
+      gain.gain.setValueAtTime(0.01, now);
+      gain.gain.linearRampToValueAtTime(0.18, now + 0.2);
+      gain.gain.linearRampToValueAtTime(0.001, now + 0.42);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.43);
+    } catch (e) {}
+  },
+
+  // 24. HOLOGRAM (Shimmering sci-fi hologram sweep)
+  hologram() {
+    if (isMuted) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const freqs = [520, 780, 1040, 1560];
+      freqs.forEach((f, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(f, now + idx * 0.03);
+        osc.frequency.exponentialRampToValueAtTime(f * 1.5, now + idx * 0.03 + 0.15);
+        gain.gain.setValueAtTime(0.12, now + idx * 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.005, now + idx * 0.03 + 0.18);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + idx * 0.03);
+        osc.stop(now + idx * 0.03 + 0.19);
+      });
+    } catch (e) {}
+  },
+
+  // 25. PLACE FURNITURE (Satisfying tactile thud & sparkle chime)
+  placeFurniture() {
+    if (isMuted) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      // Thud
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(110, now);
+      osc.frequency.exponentialRampToValueAtTime(45, now + 0.09);
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.11);
+
+      // Chime sparkle
+      setTimeout(() => {
+        if (!isMuted && typeof Sound.sparkle === 'function') {
+          Sound.sparkle();
+        }
+      }, 70);
+    } catch (e) {}
   }
 };
 

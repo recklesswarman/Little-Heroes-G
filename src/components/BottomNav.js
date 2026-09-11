@@ -21,7 +21,7 @@ export function renderBottomNav() {
             const isTabActive =
               activeView === item.id ||
               (item.id === 'pet_pen' && ['pet_roster', 'pet_detail', 'pet_bath', 'pet_locker', 'evolution', 'adventures_map'].includes(activeView)) ||
-              (item.id === 'dashboard' && ['profile', 'ar_battle'].includes(activeView));
+              (item.id === 'dashboard' && ['profile', 'ar_battle', 'hero_hq'].includes(activeView));
 
             return `
             <button data-nav-id="${item.id}" class="nav-tab-btn flex flex-col items-center justify-center py-1.5 rounded-2xl transition-all active:scale-90 ${

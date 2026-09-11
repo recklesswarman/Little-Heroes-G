@@ -47,6 +47,18 @@ class VoicePromptsService {
     this.speak(`Hooray! Welcome home, ${petName}!${itemMsg} Check your souvenir shelf!`);
   }
 
+  speakHQWelcome(petName = 'Rex', themeName = 'Hero HQ') {
+    this.speak(`Welcome home to ${themeName}, Little Hero! ${petName} is cozy and ready to play!`);
+  }
+
+  speakTrophyInspect(trophyTitle = 'Super Trophy') {
+    this.speak(`Look at that gleaming ${trophyTitle}! You earned this with true superhero dedication!`);
+  }
+
+  speakFurniturePlaced(furnitureName = 'new furniture') {
+    this.speak(`Awesome choice! Your ${furnitureName} looks fantastic in our secret base!`);
+  }
+
   stop() {
     stopRex();
   }
