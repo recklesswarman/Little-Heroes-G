@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@splinetool/runtime": "^2.0.45",
     "canvas-confetti": "^1.9.4",
     "firebase": "^12.18.0"
   },

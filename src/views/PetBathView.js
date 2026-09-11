@@ -1,3 +1,4 @@
+import { renderPet3DViewer, initPet3DViewer, getActivePet3DInstance } from '../components/Pet3DViewer.js';
 import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import confetti from 'canvas-confetti';
@@ -147,7 +148,7 @@ export function renderPetBathView() {
           </div>
         </div>
 
-        <!-- Central Stage: Pet Target & Interactive Effects -->
+        <!-- Central Stage: Pet Target & Interactive 3D Effects -->
         <div class="relative z-10 my-auto flex flex-col items-center justify-center">
           
           <!-- Blow Dryer Appliance Tool Graphic (Active during dry) -->
@@ -161,48 +162,32 @@ export function renderPetBathView() {
           </div>
 
           <!-- Dynamic Falling / Floating Bubbles Layer -->
-          <div id="bath-bubbles-container" class="absolute inset-0 pointer-events-none z-20 overflow-visible">
-            <!-- Dynamic bubbles injected via script -->
-          </div>
+          <div id="bath-bubbles-container" class="absolute inset-0 pointer-events-none z-20 overflow-visible"></div>
 
           <!-- Dynamic Blow Dry Wind Stream Trails Layer -->
-          <div id="bath-wind-container" class="absolute inset-0 pointer-events-none z-20 overflow-visible">
-            <!-- Dynamic wind stream streaks injected via script -->
-          </div>
+          <div id="bath-wind-container" class="absolute inset-0 pointer-events-none z-20 overflow-visible"></div>
 
-          <!-- Interactive Pet Avatar in the Tub -->
-          <div id="bath-pet-target" class="w-48 h-48 sm:w-56 sm:h-56 flex items-center justify-center relative cursor-pointer active:scale-95 transition-transform ${
-            isBlowingDry ? 'animate-pet-fluff' : 'animate-float'
+          <!-- Interactive 3D Pet Companion in the Tub -->
+          <div id="bath-pet-target" class="w-full flex items-center justify-center relative cursor-pointer active:scale-95 transition-transform ${
+            isBlowingDry ? 'animate-pet-fluff' : ''
           }">
-            
-            <!-- Glow effect when completely finished -->
             ${
               isBathComplete
                 ? `<div class="absolute inset-0 bg-primary/25 rounded-full filter blur-xl animate-pulse pointer-events-none"></div>`
                 : ''
             }
 
-            <!-- Pet Avatar Image -->
-            <img id="bath-pet-img" class="w-full h-full object-contain drop-shadow-[0_15px_25px_rgba(0,0,0,0.9)] select-none transition-transform duration-200" src="${
-              activePet.avatar || activePet.image
-            }" alt="${activePet.name}" />
-
-            <!-- Foamy Suds Overlay on Pet -->
-            <div id="bath-pet-suds" class="absolute inset-0 flex items-center justify-center pointer-events-none transition-all duration-500" style="opacity: ${foamOpacity}; transform: scale(${foamScale});">
-              <div class="relative w-full h-full flex items-center justify-center">
-                <!-- Head Suds -->
-                <div class="absolute -top-2 bg-white/90 backdrop-blur-xs text-blue-500 text-xs font-black px-3 py-1 rounded-full shadow-md border border-cyan-200 flex items-center gap-1 animate-suds-wobble">
-                  <span>🫧</span>
-                  <span class="text-[10px] uppercase font-black text-cyan-700">Suds ${washProgress}%</span>
-                  <span>🧼</span>
-                </div>
-                <!-- Body Suds Clusters -->
-                <span class="absolute top-1/4 -left-2 text-2xl filter drop-shadow animate-bounce">🫧</span>
-                <span class="absolute top-1/3 -right-2 text-3xl filter drop-shadow animate-pulse">🫧</span>
-                <span class="absolute bottom-4 left-4 text-2xl filter drop-shadow animate-bounce">🫧</span>
-                <span class="absolute bottom-6 right-4 text-3xl filter drop-shadow animate-pulse">🫧</span>
-              </div>
-            </div>
+            ${renderPet3DViewer({
+              canvasId: 'bath-tub-3d-canvas',
+              petId: activePet.id,
+              stage: activePet.stage || 1,
+              mode: 'bath',
+              avatarFallback: activePet.avatar || activePet.image,
+              petName: activePet.name,
+              width: 270,
+              height: 270,
+              showControls: false
+            })}
 
             <!-- Sparkle Shine Gleams when clean -->
             ${
@@ -218,7 +203,7 @@ export function renderPetBathView() {
                 : ''
             }
 
-            <!-- Pet Tap Ripple Ripple Hint -->
+            <!-- Pet Tap Ripple Hint -->
             <div class="absolute -bottom-4 bg-surface-container-lowest/80 backdrop-blur-sm text-[10px] font-black text-white/90 px-2.5 py-0.5 rounded-full border border-white/20 shadow pointer-events-none">
               Tap Pet to ${isFullyWashed ? 'Fluff' : 'Scrub'}
             </div>
@@ -361,6 +346,12 @@ function spawnWindGustStreams() {
 }
 
 export function attachPetBathListeners() {
+  // Initialize 3D Pet in Bath Tub
+  initPet3DViewer('bath-tub-3d-canvas', {
+    petId: store.getActivePet()?.id || 'rex',
+    stage: store.getActivePet()?.stage || 1,
+    mode: 'bath'
+  });
   if (!hasSpokenBathIntro && washProgress < 100) {
     hasSpokenBathIntro = true;
     speakRex("Splish splash! I'm all dirty! Pop the bubbles to clean me!");
@@ -487,6 +478,10 @@ function handleScrubAction() {
   washProgress = Math.min(100, washProgress + 25);
   store.bathPetProgress(10); // incrementally raise hygiene stat
 
+  // Trigger 3D bubble lather animation
+  const pet3d = getActivePet3DInstance('bath-tub-3d-canvas');
+  if (pet3d) pet3d.triggerBubbleLather();
+
   // Gentle wiggle animation on pet
   const petImg = document.getElementById('bath-pet-img');
   if (petImg) {
@@ -531,6 +526,10 @@ function handleBlowDryAction() {
 
   // Progress dry by 25% increments
   dryProgress = Math.min(100, dryProgress + 25);
+
+  // Trigger 3D fluffed wiggle animation
+  const pet3dBlow = getActivePet3DInstance('bath-tub-3d-canvas');
+  if (pet3dBlow) pet3dBlow.triggerHeadScratch();
 
   const dryerTool = document.getElementById('bath-dryer-tool');
   if (dryerTool) {

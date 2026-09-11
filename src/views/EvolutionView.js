@@ -1,3 +1,4 @@
+import { renderPet3DViewer, initPet3DViewer } from '../components/Pet3DViewer.js';
 import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import { speakRex } from '../services/voiceService.js';
@@ -53,11 +54,19 @@ export function renderEvolutionView() {
           <span class="text-primary animate-pulse">Stage ${currentStage} / 4 • ${stageNames[currentStage - 1]}</span>
         </div>
 
-        <!-- 3D Companion Render on Pedestal -->
-        <div class="relative z-10 w-56 h-56 flex items-center justify-center animate-float my-3">
-          <img class="w-full h-full object-contain drop-shadow-[0_20px_25px_rgba(0,0,0,0.9)]" src="${
-            currentStage >= 3 && activePet.evolvedAvatar ? activePet.evolvedAvatar : activePet.avatar
-          }" alt="${activePet.name}" />
+        <!-- 3D Companion Interactive Model on Pedestal -->
+        <div class="relative z-10 w-full flex items-center justify-center my-2">
+          ${renderPet3DViewer({
+            canvasId: 'evolution-pedestal-3d-canvas',
+            petId: activePet.id,
+            stage: currentStage,
+            mode: 'evolution',
+            avatarFallback: currentStage >= 3 && activePet.evolvedAvatar ? activePet.evolvedAvatar : activePet.avatar,
+            petName: activePet.name,
+            width: 290,
+            height: 290,
+            showControls: false
+          })}
         </div>
 
         <!-- Pedestal Base -->
@@ -237,6 +246,7 @@ export function playEvolutionCeremony() {
   // Play ascending harmonic chime & fanfare
   Sound.evolutionAscent();
   Sound.fanfare();
+        evo3DController?.triggerEvolutionMorph(nextStage);
 
   // Burst confetti
   confetti({
@@ -264,6 +274,13 @@ export function playEvolutionCeremony() {
 }
 
 export function attachEvolutionListeners() {
+  // Initialize 3D Pet on Evolution Pedestal
+  const evo3DController = initPet3DViewer('evolution-pedestal-3d-canvas', {
+    petId: store.getActivePet()?.id || 'rex',
+    stage: store.getActivePet()?.stage || 1,
+    mode: 'evolution'
+  });
+
   const backBtn = document.getElementById('evolve-back-btn');
   if (backBtn) {
     backBtn.addEventListener('click', () => {

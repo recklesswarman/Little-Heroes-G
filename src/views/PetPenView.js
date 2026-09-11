@@ -1,3 +1,4 @@
+import { renderPet3DViewer, initPet3DViewer } from '../components/Pet3DViewer.js';
 import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import { speakRex } from '../services/voiceService.js';
@@ -195,9 +196,19 @@ export function renderPetPenView() {
             <!-- Butterfly flying across meadow -->
             <div class="absolute top-6 right-8 text-2xl animate-butterfly pointer-events-none select-none">🦋</div>
             
-            <!-- Roaming Pets in Meadow -->
-            <div class="flex items-center justify-around gap-2 my-2 py-2">
-              ${roamingPets.slice(0, 1).map((pet, idx) => renderRoamingPetCard(pet, idx)).join('')}
+            <!-- 3D Interactive Companion Pet Stage in Meadow -->
+            <div class="flex flex-col items-center justify-center my-2 py-1 relative z-20">
+              ${renderPet3DViewer({
+                canvasId: 'pen-meadow-3d-pet',
+                petId: activePet.id,
+                stage: activePet.stage || 1,
+                mode: 'sanctuary',
+                avatarFallback: currentAvatar,
+                petName: activePet.name,
+                width: 280,
+                height: 280,
+                showControls: true
+              })}
             </div>
 
             <div class="text-[10px] font-bold text-on-surface-variant flex items-center gap-1 justify-center">
@@ -601,6 +612,13 @@ function triggerPetHugExcitement(petId) {
 }
 
 export function attachPetPenListeners() {
+  // Initialize 3D Interactive Companion Pet Viewer in Sunny Meadow
+  const meadow3DController = initPet3DViewer('pen-meadow-3d-pet', {
+    petId: hero?.activePetId || 'rex',
+    stage: store.getState().petStageMap?.[hero?.activePetId || 1] || 1,
+    mode: 'sanctuary'
+  });
+
   const isEasy = store.isEasyMode();
   const hero = store.getState().selectedHero;
   const hasNoPet = !hero?.hasChosenStarterPet || !hero?.unlockedPetIds || hero.unlockedPetIds.length === 0;

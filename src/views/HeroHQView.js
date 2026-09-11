@@ -1,3 +1,4 @@
+import { renderPet3DViewer, initPet3DViewer } from '../components/Pet3DViewer.js';
 import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import { speakRex } from '../services/voiceService.js';
@@ -213,9 +214,19 @@ export function renderHeroHQView() {
             <span>🐾</span>
             <span>${isNight ? 'Nighty night, Hero! 🌙' : 'I love our secret base! 🦖'}</span>
           </div>
-          <!-- Pet Avatar Graphic -->
-          <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-gradient-to-br from-emerald-400 to-teal-600 p-1 shadow-[0_8px_20px_rgba(0,0,0,0.5)] border-2 border-white flex items-center justify-center overflow-hidden">
-            <img src="${activePet.avatar}" alt="${activePet.name}" class="w-full h-full object-cover group-hover:scale-110 transition-transform">
+          <!-- 3D Roaming Companion Pet Model -->
+          <div class="w-28 h-28 sm:w-32 sm:h-32 flex items-center justify-center pointer-events-auto">
+            ${renderPet3DViewer({
+              canvasId: 'hq-roaming-pet-3d',
+              petId: activePet.id || 'rex',
+              stage: store.getState().selectedHero?.petStageMap?.[activePet.id || 'rex'] || 1,
+              mode: 'hq',
+              avatarFallback: activePet.avatar,
+              petName: activePet.name,
+              width: 130,
+              height: 130,
+              showControls: false
+            })}
           </div>
           <span class="mt-1 px-2 py-0.5 rounded-full bg-black/60 text-white font-headline text-[10px] font-black border border-white/20">
             ${activePet.name}
@@ -587,6 +598,13 @@ function renderTrophyModal(trophy, state) {
 }
 
 export function attachHeroHQListeners() {
+  // Initialize 3D Roaming Companion Pet in Hero HQ
+  const hqPetController = initPet3DViewer('hq-roaming-pet-3d', {
+    petId: store.getActivePet()?.id || 'rex',
+    stage: store.getState().selectedHero?.petStageMap?.[store.getActivePet()?.id || 'rex'] || 1,
+    mode: 'hq'
+  });
+
   const container = document.querySelector('.hero-hq-container');
   if (!container) return;
 
@@ -699,6 +717,7 @@ export function attachHeroHQListeners() {
       if (isNapping) return;
       isNapping = true;
       Sound.snore();
+      hqPetController?.triggerHeadScratch();
       speakRex("Zzz... Power nap engaged! Dreaming of victory against Sugar Bugs! 🦖💤");
       store.notify();
       if (napTimeout) clearTimeout(napTimeout);
@@ -716,6 +735,7 @@ export function attachHeroHQListeners() {
       if (isBouncing) return;
       isBouncing = true;
       Sound.boing();
+      hqPetController?.triggerBellyTickle();
       speakRex("WHEEEE! Look at that high jump flip! Superhero bounce! 🤸✨");
       try {
         confetti({
