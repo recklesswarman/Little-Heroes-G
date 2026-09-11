@@ -1303,6 +1303,83 @@ export const Sound = {
         osc.stop(now + idx * 0.02 + 0.23);
       });
     } catch (e) {}
+  },
+
+  // 31. RECORD SCRATCH (Classic funny DJ vinyl scratch for sudden freeze pauses)
+  recordScratch() {
+    if (isMuted) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(1100, now);
+      osc.frequency.exponentialRampToValueAtTime(120, now + 0.14);
+      osc.frequency.setValueAtTime(800, now + 0.15);
+      osc.frequency.exponentialRampToValueAtTime(90, now + 0.26);
+
+      gain.gain.setValueAtTime(0.28, now);
+      gain.gain.exponentialRampToValueAtTime(0.005, now + 0.27);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.28);
+    } catch (e) {}
+  },
+
+  // 32. FREEZE CHIME (Crystalline frost sound when freezing into an ice statue)
+  freezeChime() {
+    if (isMuted) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const freqs = [1900, 2300, 2800, 3400];
+      freqs.forEach((f, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(f, now + idx * 0.03);
+        osc.frequency.exponentialRampToValueAtTime(f * 1.15, now + idx * 0.03 + 0.25);
+
+        gain.gain.setValueAtTime(0.12, now + idx * 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.002, now + idx * 0.03 + 0.28);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + idx * 0.03);
+        osc.stop(now + idx * 0.03 + 0.29);
+      });
+    } catch (e) {}
+  },
+
+  // 33. FEVER HORN (Celebratory funky party brass horn for Rainbow Fever Mode)
+  feverHorn() {
+    if (isMuted) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const chord = [523.25, 659.25, 783.99, 1046.50];
+      chord.forEach((freq) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(freq, now);
+
+        gain.gain.setValueAtTime(0.08, now);
+        gain.gain.linearRampToValueAtTime(0.18, now + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.005, now + 0.35);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.36);
+      });
+    } catch (e) {}
   }
 };
 

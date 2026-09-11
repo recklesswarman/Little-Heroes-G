@@ -75,6 +75,26 @@ class VoicePromptsService {
     this.speak(`Incredible job! We washed away ${bossName}! Your teeth are sparkling clean!`);
   }
 
+  speakDanceFreezeCountdown() {
+    this.speak(`3... 2... 1... FREEZE! Don't move a muscle!`);
+  }
+
+  speakDanceFreezeSuccess() {
+    this.speak(`Perfect ice statue! You held so still! Bonus sparks earned!`);
+  }
+
+  speakDanceUnfreeze() {
+    this.speak(`Unfreeze and dance! Shake those wiggles out!`);
+  }
+
+  speakDanceFeverMode() {
+    this.speak(`Rainbow Fever Mode activated! Look at those superhero moves!`);
+  }
+
+  speakDanceRoutineComplete(routineName = 'Movement Routine') {
+    this.speak(`Incredible dancing, Little Hero! You mastered the ${routineName}! You are a true dance star!`);
+  }
+
   stop() {
     stopRex();
   }

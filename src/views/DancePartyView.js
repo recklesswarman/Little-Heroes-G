@@ -1,3 +1,18 @@
+
+// Helper to map pediatric poses to 3D choreography moves
+function getMoveForPose(pose) {
+  if (!pose) return 'dino_march';
+  const id = (pose.id || '').toLowerCase();
+  const action = (pose.actionType || '').toLowerCase();
+
+  if (id.includes('freeze') || action.includes('freeze')) return 'freeze_statue';
+  if (id.includes('star') || id.includes('jack') || id.includes('jump')) return 'star_jump';
+  if (id.includes('tail') || id.includes('wiggle') || id.includes('shake')) return 'tail_shake';
+  if (id.includes('flight') || id.includes('hero') || id.includes('reach') || action.includes('stretch')) return 'superhero_flight';
+  if (id.includes('slumber') || id.includes('breathe') || id.includes('calm') || action.includes('calm')) return 'slumber_sway';
+  return 'dino_march';
+}
+import { renderDance3DViewer, initDance3DViewer, getActiveDance3DInstance } from '../components/Dance3DViewer.js';
 import { store } from '../state/store.js';
 import { PETS_DATABASE } from '../data/petsData.js';
 import { ADVENTURE_GAMES, getGameChallenges } from '../data/learningGamesData.js';
@@ -441,12 +456,18 @@ function renderMovementSession(hero, activePet, petAvatarUrl, petName) {
             <span class="text-[10px] font-black uppercase text-secondary tracking-widest">${isFeverActive ? 'FEVER!' : 'IN SYNC'}</span>
           </div>
 
-          <!-- Companion Dancing Actor -->
-          <div class="flex flex-col items-center gap-2">
-            <div id="movement-pet-actor" class="w-26 h-26 sm:w-30 sm:h-30 rounded-full bg-tertiary-container/30 border-4 border-secondary p-2 flex items-center justify-center shadow-2xl transition-transform duration-200 ${isFreezeActive ? '' : 'animate-bounce-slow'}">
-              <img src="${petAvatarUrl}" alt="${petName}" class="w-full h-full object-contain drop-shadow" />
-            </div>
-            <span class="text-xs font-black text-secondary font-headline">${petName}</span>
+          <!-- 3D Companion Dance Coach Actor -->
+          <div class="flex flex-col items-center gap-1">
+            ${renderDance3DViewer({
+              canvasId: 'dance-coach-3d-canvas',
+              petId: activePet?.id || 'rex',
+              stage: activePet?.stage || 1,
+              width: 220,
+              height: 220,
+              currentMove: getMoveForPose(currentPose),
+              bpm: routine.bpm || 118,
+              showBadge: true
+            })}
           </div>
 
         </div>
@@ -731,6 +752,14 @@ function renderDiscoParty(hero, activePet, petAvatarUrl, petName, state) {
 // EVENT LISTENERS & LIFECYCLE CONTROLS
 // -------------------------------------------------------------
 export function attachDancePartyEvents() {
+  if (arcadeMode === 'movement_session') {
+    initDance3DViewer('dance-coach-3d-canvas', {
+      petId: store.getActivePet()?.id || 'rex',
+      stage: store.getActivePet()?.stage || 1,
+      currentMove: getMoveForPose(activeRoutine?.poses?.[currentPoseIdx]),
+      bpm: activeRoutine?.bpm || 118
+    });
+  }
   // Navigation Back to Dash
   const backDashBtn = document.getElementById('arcade-back-dash-btn');
   if (backDashBtn) {
@@ -857,6 +886,10 @@ export function attachDancePartyEvents() {
     freezeResumeBtn.addEventListener('click', () => {
       isFreezeActive = false;
       movementSynth.unfreezeMusic();
+      if (typeof Sound.shieldShatter === 'function') Sound.shieldShatter();
+      const danceCoach = getActiveDance3DInstance('dance-coach-3d-canvas');
+      if (danceCoach) danceCoach.triggerFreeze(false);
+      voicePrompts.speakDanceUnfreeze();
       advanceNextPose();
     });
   }
@@ -1026,6 +1059,15 @@ function startMovementRoutine(routineId) {
   const firstPose = activeRoutine.poses[0];
   poseTimeLeft = firstPose ? firstPose.duration : 20;
 
+  // Sync 3D Dance Coach
+  setTimeout(() => {
+    const danceCoach = getActiveDance3DInstance('dance-coach-3d-canvas');
+    if (danceCoach) {
+      danceCoach.setBpm(activeRoutine.bpm || 112);
+      danceCoach.setMove(getMoveForPose(firstPose));
+    }
+  }, 50);
+
   // Start Procedural Web Audio Music Track
   if (!isMusicMuted) {
     movementSynth.setVolume(0.4);
@@ -1073,12 +1115,19 @@ function advanceNextPose() {
     poseTimeLeft = nextP.duration || 20;
 
     // Check for Freeze Dance
-    if (nextP.actionType === 'freeze') {
+    const danceCoach = getActiveDance3DInstance('dance-coach-3d-canvas');
+    if (nextP.actionType === 'freeze' || nextP.id.includes('freeze')) {
       isFreezeActive = true;
       movementSynth.freezeMusic();
-      voicePrompts.speak("FREEZE! Hold still like an ice statue!");
+      if (typeof Sound.recordScratch === 'function') Sound.recordScratch();
+      if (danceCoach) danceCoach.triggerFreeze(true);
+      voicePrompts.speakDanceFreezeCountdown();
     } else {
       isFreezeActive = false;
+      if (danceCoach) {
+        danceCoach.triggerFreeze(false);
+        danceCoach.setMove(getMoveForPose(nextP));
+      }
       voicePrompts.speak(nextP.coachSpeech);
     }
 
@@ -1116,6 +1165,9 @@ function handleRhythmPadPress(padType) {
   grooveCombo = Math.min(100, grooveCombo + 15);
   if (grooveCombo >= 100 && !isFeverActive) {
     triggerFeverBurst();
+    const danceCoach = getActiveDance3DInstance('dance-coach-3d-canvas');
+    if (danceCoach) danceCoach.setFeverMode(true);
+    voicePrompts.speakDanceFeverMode();
   }
 
   store.notify();
