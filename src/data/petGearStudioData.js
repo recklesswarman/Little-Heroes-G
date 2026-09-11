@@ -30,7 +30,10 @@ export const PET_GEAR_CATALOG = {
       desc: 'Sleek aerodynamic cowl with hero ear-guards.',
       unlocked: true,
       defaultColor: '#ef4444',
-      aura: 'none'
+      aura: 'none',
+      statBonusType: 'damage_boost',
+      statBonusPercent: 15,
+      statBonusLabel: '+15% AR Boss Damage'
     },
     {
       id: 'crown_golden_horn',
@@ -40,7 +43,10 @@ export const PET_GEAR_CATALOG = {
       desc: 'Regal crown with polished golden spikes.',
       unlocked: true,
       defaultColor: '#f59e0b',
-      aura: 'stardust'
+      aura: 'stardust',
+      statBonusType: 'coin_boost',
+      statBonusPercent: 20,
+      statBonusLabel: '+20% Habit Coins'
     },
     {
       id: 'goggles_aviator',
@@ -51,7 +57,10 @@ export const PET_GEAR_CATALOG = {
       unlocked: false,
       unlockReq: '3-Day Habit Streak',
       defaultColor: '#d97706',
-      aura: 'wind'
+      aura: 'wind',
+      statBonusType: 'xp_boost',
+      statBonusPercent: 15,
+      statBonusLabel: '+15% Quest XP'
     },
     {
       id: 'tiara_phoenix',
@@ -62,7 +71,10 @@ export const PET_GEAR_CATALOG = {
       unlocked: false,
       unlockReq: 'Brush Teeth 5 Times',
       defaultColor: '#f97316',
-      aura: 'fire'
+      aura: 'fire',
+      statBonusType: 'damage_boost',
+      statBonusPercent: 25,
+      statBonusLabel: '+25% AR Boss Damage'
     },
     {
       id: 'visor_cyber_tech',
@@ -73,7 +85,10 @@ export const PET_GEAR_CATALOG = {
       unlocked: false,
       unlockReq: 'Complete 10 Chores',
       defaultColor: '#06b6d4',
-      aura: 'electric'
+      aura: 'electric',
+      statBonusType: 'speed_boost',
+      statBonusPercent: 20,
+      statBonusLabel: '+20% Habit Speed'
     }
   ],
   back: [
@@ -86,7 +101,10 @@ export const PET_GEAR_CATALOG = {
       unlocked: true,
       defaultColor: '#ef4444',
       hasClothPhysics: true,
-      aura: 'none'
+      aura: 'none',
+      statBonusType: 'speed_boost',
+      statBonusPercent: 15,
+      statBonusLabel: '+15% Runway Speed'
     },
     {
       id: 'wings_meteor',
@@ -98,7 +116,10 @@ export const PET_GEAR_CATALOG = {
       unlockReq: 'Active Play 3 Times',
       defaultColor: '#3b82f6',
       hasClothPhysics: false,
-      aura: 'stardust'
+      aura: 'stardust',
+      statBonusType: 'speed_boost',
+      statBonusPercent: 25,
+      statBonusLabel: '+25% Speed & Agility'
     },
     {
       id: 'jetpack_boosters',
@@ -110,7 +131,10 @@ export const PET_GEAR_CATALOG = {
       unlockReq: 'Reach Hero Level 3',
       defaultColor: '#f97316',
       hasClothPhysics: false,
-      aura: 'fire'
+      aura: 'fire',
+      statBonusType: 'speed_boost',
+      statBonusPercent: 30,
+      statBonusLabel: '+30% Speed & Boost'
     },
     {
       id: 'cloak_moonlight',
@@ -122,7 +146,10 @@ export const PET_GEAR_CATALOG = {
       unlockReq: 'Bedtime Routine Streak',
       defaultColor: '#4f46e5',
       hasClothPhysics: true,
-      aura: 'cosmic'
+      aura: 'cosmic',
+      statBonusType: 'xp_boost',
+      statBonusPercent: 20,
+      statBonusLabel: '+20% Bedtime & Quest XP'
     }
   ],
   chest: [
@@ -134,7 +161,10 @@ export const PET_GEAR_CATALOG = {
       desc: 'Heavy-duty spiked collar radiating raw strength.',
       unlocked: true,
       defaultColor: '#475569',
-      aura: 'none'
+      aura: 'none',
+      statBonusType: 'defense_boost',
+      statBonusPercent: 20,
+      statBonusLabel: '+20% Pet Defense'
     },
     {
       id: 'plate_golden_crest',
@@ -145,7 +175,10 @@ export const PET_GEAR_CATALOG = {
       unlocked: false,
       unlockReq: 'Clean Toys 5 Times',
       defaultColor: '#fbbf24',
-      aura: 'stardust'
+      aura: 'stardust',
+      statBonusType: 'defense_boost',
+      statBonusPercent: 25,
+      statBonusLabel: '+25% Pet Defense'
     },
     {
       id: 'harness_power_gem',
@@ -156,7 +189,10 @@ export const PET_GEAR_CATALOG = {
       unlocked: false,
       unlockReq: 'Defeat Any Sugar Boss',
       defaultColor: '#10b981',
-      aura: 'electric'
+      aura: 'electric',
+      statBonusType: 'damage_boost',
+      statBonusPercent: 25,
+      statBonusLabel: '+25% Elemental Power'
     }
   ],
   feet: [
@@ -168,7 +204,10 @@ export const PET_GEAR_CATALOG = {
       desc: 'Aerodynamic boots leaving glowing light trails when running.',
       unlocked: true,
       defaultColor: '#10b981',
-      aura: 'electric'
+      aura: 'electric',
+      statBonusType: 'speed_boost',
+      statBonusPercent: 25,
+      statBonusLabel: '+25% Lightning Speed'
     },
     {
       id: 'bands_sparkle_ankle',
@@ -179,7 +218,10 @@ export const PET_GEAR_CATALOG = {
       unlocked: false,
       unlockReq: 'Complete Dance Routine',
       defaultColor: '#ec4899',
-      aura: 'stardust'
+      aura: 'stardust',
+      statBonusType: 'coin_boost',
+      statBonusPercent: 15,
+      statBonusLabel: '+15% Habit Coins'
     },
     {
       id: 'pads_lava_stomp',
@@ -190,7 +232,10 @@ export const PET_GEAR_CATALOG = {
       unlocked: false,
       unlockReq: 'Reach Hero Level 4',
       defaultColor: '#f97316',
-      aura: 'fire'
+      aura: 'fire',
+      statBonusType: 'damage_boost',
+      statBonusPercent: 30,
+      statBonusLabel: '+30% Stomp Power'
     }
   ]
 };
@@ -202,4 +247,56 @@ export function getGearItem(socket, gearId) {
 
 export function getAllGearForSocket(socket) {
   return PET_GEAR_CATALOG[socket] || [];
+}
+
+export function formatStatBonusName(type) {
+  switch (type) {
+    case 'damage_boost': return 'AR Boss Damage';
+    case 'coin_boost': return 'Habit Coins';
+    case 'xp_boost': return 'Quest XP';
+    case 'speed_boost': return 'Runway & Habit Speed';
+    case 'defense_boost': return 'Pet Defense & Vitality';
+    default: return 'Hero Power';
+  }
+}
+
+export function calculateActiveGearBuffs(equippedMap = {}) {
+  const result = {
+    damage_boost: 0,
+    coin_boost: 0,
+    xp_boost: 0,
+    speed_boost: 0,
+    defense_boost: 0,
+    summary: []
+  };
+
+  const slots = ['head', 'back', 'chest', 'feet'];
+  slots.forEach(slot => {
+    const val = equippedMap[slot];
+    if (!val) return;
+    const item = (typeof val === 'object' && val !== null) ? val : getGearItem(slot, val);
+    if (!item || !item.statBonusType) return;
+
+    const percent = Number(item.statBonusPercent) || 0;
+    if (result[item.statBonusType] !== undefined) {
+      result[item.statBonusType] += percent;
+    }
+    result.summary.push({
+      slot,
+      gearId: item.id,
+      gearName: item.name || item.id,
+      type: item.statBonusType,
+      percent,
+      label: item.statBonusLabel || `+${percent}% ${formatStatBonusName(item.statBonusType)}`
+    });
+  });
+
+  result.coinMultiplier = Number((1 + result.coin_boost / 100).toFixed(2));
+  result.xpMultiplier = Number((1 + result.xp_boost / 100).toFixed(2));
+  result.damageMultiplier = Number((1 + result.damage_boost / 100).toFixed(2));
+  result.speedMultiplier = Number((1 + result.speed_boost / 100).toFixed(2));
+  result.defenseMultiplier = Number((1 + result.defense_boost / 100).toFixed(2));
+  result.activeBuffLabels = result.summary.map(s => s.label);
+
+  return result;
 }

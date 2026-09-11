@@ -425,9 +425,16 @@ export class PetSkeletalBodyCanvas {
     // Ambient Elemental Aura Particle Generation based on equipped gear
     const backItem = getGearItem('back', this.equippedGear.back);
     const headItem = getGearItem('head', this.equippedGear.head);
-    const activeAura = backItem?.aura || headItem?.aura || 'none';
+    const chestItem = getGearItem('chest', this.equippedGear.chest);
+    const feetItem = getGearItem('feet', this.equippedGear.feet);
+    
+    const activeAura = (backItem?.aura && backItem.aura !== 'none') ? backItem.aura
+      : (headItem?.aura && headItem.aura !== 'none') ? headItem.aura
+      : (chestItem?.aura && chestItem.aura !== 'none') ? chestItem.aura
+      : (feetItem?.aura && feetItem.aura !== 'none') ? feetItem.aura
+      : 'none';
 
-    if (activeAura !== 'none' && Math.random() < 0.35) {
+    if (activeAura !== 'none' && Math.random() < 0.4) {
       const rootX = this.bones.root.x;
       const rootY = this.bones.root.y - 35;
       let auraColor = '#fbbf24';
@@ -442,13 +449,19 @@ export class PetSkeletalBodyCanvas {
       } else if (activeAura === 'cosmic') {
         auraColor = '#8b5cf6';
         auraChar = '🌟';
+      } else if (activeAura === 'wind') {
+        auraColor = '#38bdf8';
+        auraChar = '💨';
+      } else if (activeAura === 'stardust') {
+        auraColor = '#facc15';
+        auraChar = '✨';
       }
 
       this.particles.push({
-        x: rootX + (Math.random() - 0.5) * 40,
-        y: rootY + (Math.random() - 0.5) * 30,
-        vx: (Math.random() - 0.5) * 1.5,
-        vy: -Math.random() * 2 - 0.5,
+        x: rootX + (Math.random() - 0.5) * 44,
+        y: rootY + (Math.random() - 0.5) * 36,
+        vx: (Math.random() - 0.5) * 1.6,
+        vy: -Math.random() * 2.2 - 0.6,
         size: Math.random() * 8 + 8,
         alpha: 0.9,
         color: auraColor,
@@ -546,16 +559,33 @@ export class PetSkeletalBodyCanvas {
   }
 
   renderCape(ctx) {
-    if (!this.equippedGear.back || !this.capeCloth || this.capeCloth.length < 2) return;
+    if (!this.equippedGear.back) return;
     const backItem = getGearItem('back', this.equippedGear.back);
-    if (!backItem || backItem.hasClothPhysics === false) return;
+    const archetype = backItem?.meshArchetype || this.equippedGear.back;
+    const backColor = this.gearColors.back || backItem?.defaultColor || '#ef4444';
+    const accentColor = backItem?.secondaryColor || '#fbbf24';
+
+    // Rigid Back Gear: Aero Glider Wings
+    if (archetype === 'wings' || archetype === 'wings_meteor' || (backItem && backItem.id === 'wings_meteor')) {
+      this.renderAeroWings(ctx, backColor, accentColor);
+      return;
+    }
+
+    // Rigid Back Gear: Turbo Jetpack Boosters
+    if (archetype === 'jetpack' || archetype === 'jetpack_boosters' || (backItem && backItem.id === 'jetpack_boosters')) {
+      this.renderTurboJetpack(ctx, backColor, accentColor);
+      return;
+    }
+
+    // Cloth Physics Cape & Star Cloak
+    if (!this.capeCloth || this.capeCloth.length < 2) return;
 
     ctx.save();
     // Transform back to canvas absolute space for cloth points
     ctx.restore();
     ctx.save();
 
-    const capeColor = this.gearColors.back || '#ef4444';
+    const capeColor = backColor;
 
     ctx.beginPath();
     ctx.moveTo(this.capeCloth[0].x - 8, this.capeCloth[0].y);
@@ -583,7 +613,7 @@ export class PetSkeletalBodyCanvas {
     ctx.fill();
 
     // Cape golden trim border
-    ctx.strokeStyle = '#f59e0b';
+    ctx.strokeStyle = accentColor;
     ctx.lineWidth = 2.5;
     ctx.stroke();
 
@@ -592,6 +622,81 @@ export class PetSkeletalBodyCanvas {
     ctx.translate(this.bones.root.x, this.bones.root.y);
     ctx.scale(this.bones.root.scale, this.bones.root.scale);
     ctx.rotate(this.bones.root.rotation);
+  }
+
+  renderAeroWings(ctx, wingColor, accentColor) {
+    ctx.save();
+    for (const side of [-1, 1]) {
+      ctx.save();
+      ctx.scale(side, 1);
+      ctx.translate(14, -36);
+      ctx.rotate(Math.sin(this.poseTime * 3) * 0.08 - 0.2);
+
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.quadraticCurveTo(28, -25, 52, -18);
+      ctx.quadraticCurveTo(45, 8, 20, 14);
+      ctx.quadraticCurveTo(8, 8, 0, 0);
+      ctx.closePath();
+      ctx.fillStyle = wingColor;
+      ctx.fill();
+      ctx.strokeStyle = accentColor;
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(48, -14, 4, 0, Math.PI * 2);
+      ctx.fillStyle = accentColor;
+      ctx.fill();
+
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  renderTurboJetpack(ctx, mainColor, accentColor) {
+    ctx.save();
+    for (const side of [-1, 1]) {
+      ctx.save();
+      ctx.translate(side * 18, -36);
+
+      ctx.fillStyle = mainColor;
+      if (typeof ctx.roundRect === 'function') {
+        ctx.roundRect(-7, -10, 14, 26, 4);
+      } else {
+        ctx.rect(-7, -10, 14, 26);
+      }
+      ctx.fill();
+      ctx.strokeStyle = accentColor;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.fillStyle = accentColor;
+      ctx.beginPath();
+      ctx.arc(0, -10, 6, Math.PI, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#334155';
+      ctx.beginPath();
+      ctx.moveTo(-5, 16);
+      ctx.lineTo(5, 16);
+      ctx.lineTo(7, 21);
+      ctx.lineTo(-7, 21);
+      ctx.closePath();
+      ctx.fill();
+
+      const flameH = 6 + Math.sin(this.poseTime * 15 + side) * 4;
+      ctx.fillStyle = '#f97316';
+      ctx.beginPath();
+      ctx.moveTo(-4, 21);
+      ctx.lineTo(4, 21);
+      ctx.lineTo(0, 21 + flameH);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.restore();
+    }
+    ctx.restore();
   }
 
   renderTail(ctx) {
@@ -662,20 +767,61 @@ export class PetSkeletalBodyCanvas {
 
     // Render Equipped Chest Armor
     if (this.equippedGear.chest) {
-      const chestColor = this.gearColors.chest || '#475569';
-      ctx.fillStyle = chestColor;
-      ctx.beginPath();
-      ctx.ellipse(0, -42, 22, 10, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 2.5;
-      ctx.stroke();
+      const chestItem = getGearItem('chest', this.equippedGear.chest);
+      const archetype = chestItem?.meshArchetype || this.equippedGear.chest;
+      const chestColor = this.gearColors.chest || chestItem?.defaultColor || '#475569';
+      const accent = chestItem?.secondaryColor || '#fbbf24';
 
-      // Power Gem Center Jewel
-      if (this.equippedGear.chest === 'harness_power_gem') {
-        ctx.fillStyle = '#10b981';
+      if (archetype === 'collar' || archetype === 'collar_titan' || this.equippedGear.chest === 'collar_titan') {
+        // Spiked / Studded heavy collar
+        ctx.fillStyle = chestColor;
+        ctx.beginPath();
+        ctx.ellipse(0, -50, 18, 7, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+
+        // Metallic spikes/studs
+        ctx.fillStyle = accent;
+        [-10, 0, 10].forEach(sx => {
+          ctx.beginPath();
+          ctx.arc(sx, -50, 3, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      } else if (archetype === 'harness' || archetype === 'harness_power_gem' || this.equippedGear.chest === 'harness_power_gem') {
+        // Crossed Energy Harness
+        ctx.strokeStyle = chestColor;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(-16, -52);
+        ctx.lineTo(16, -32);
+        ctx.moveTo(16, -52);
+        ctx.lineTo(-16, -32);
+        ctx.stroke();
+
+        // Glowing center jewel
+        ctx.fillStyle = accent || '#10b981';
         ctx.beginPath();
         ctx.arc(0, -42, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      } else {
+        // Golden Crest / Plate armor plate
+        ctx.fillStyle = chestColor;
+        ctx.beginPath();
+        ctx.ellipse(0, -42, 22, 11, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+
+        // Hero Crest Star in center
+        ctx.fillStyle = accent;
+        ctx.beginPath();
+        ctx.arc(0, -42, 4.5, 0, Math.PI * 2);
         ctx.fill();
       }
     }
@@ -686,53 +832,87 @@ export class PetSkeletalBodyCanvas {
   renderForeLimbs(ctx) {
     const p = this.profile;
     const limb = this.bones.limbs;
-    const bootColor = this.gearColors.feet || '#10b981';
+    const feetItem = getGearItem('feet', this.equippedGear.feet);
+    const archetype = feetItem?.meshArchetype || this.equippedGear.feet;
+    const bootColor = this.gearColors.feet || feetItem?.defaultColor || '#10b981';
+    const accent = feetItem?.secondaryColor || '#f59e0b';
 
-    // Front Left Arm/Leg
-    ctx.save();
-    ctx.translate(-18, -25);
-    ctx.rotate(limb.frontLeft.hip.angle);
-    ctx.fillStyle = p.baseColor;
-    ctx.fillRect(-6, 0, 12, 32);
+    for (const [hipAngle, posX] of [
+      [limb.frontLeft.hip.angle, -18],
+      [limb.frontRight.hip.angle, 18]
+    ]) {
+      ctx.save();
+      ctx.translate(posX, -25);
+      ctx.rotate(hipAngle);
+      ctx.fillStyle = p.baseColor;
+      ctx.fillRect(-6, 0, 12, 32);
 
-    // Speed Boot socket
-    if (this.equippedGear.feet) {
-      ctx.fillStyle = bootColor;
-      ctx.beginPath();
-      if (typeof ctx.roundRect === 'function') {
-        ctx.roundRect(-8, 22, 16, 14, 5);
-      } else {
-        ctx.rect(-8, 22, 16, 14);
+      // Foot gear socket
+      if (this.equippedGear.feet) {
+        if (archetype === 'bands_sparkle_ankle' || archetype === 'starlight_bands' || this.equippedGear.feet === 'bands_sparkle_ankle') {
+          // Starlight Ankle Bands
+          ctx.fillStyle = bootColor;
+          ctx.beginPath();
+          if (typeof ctx.roundRect === 'function') {
+            ctx.roundRect(-8, 20, 16, 8, 4);
+          } else {
+            ctx.rect(-8, 20, 16, 8);
+          }
+          ctx.fill();
+          ctx.strokeStyle = accent;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          // Star stud
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(0, 24, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (archetype === 'pads_lava_stomp' || archetype === 'lava_greaves' || this.equippedGear.feet === 'pads_lava_stomp') {
+          // Molten Lava Greaves
+          ctx.fillStyle = '#334155';
+          ctx.beginPath();
+          if (typeof ctx.roundRect === 'function') {
+            ctx.roundRect(-9, 19, 18, 16, 5);
+          } else {
+            ctx.rect(-9, 19, 18, 16);
+          }
+          ctx.fill();
+          ctx.strokeStyle = bootColor;
+          ctx.lineWidth = 2.5;
+          ctx.stroke();
+
+          // Lava vein dot
+          ctx.fillStyle = accent;
+          ctx.beginPath();
+          ctx.arc(0, 27, 3, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          // Speed Boots / Neon Speed Boots
+          ctx.fillStyle = bootColor;
+          ctx.beginPath();
+          if (typeof ctx.roundRect === 'function') {
+            ctx.roundRect(-8, 22, 16, 14, 5);
+          } else {
+            ctx.rect(-8, 22, 16, 14);
+          }
+          ctx.fill();
+          ctx.strokeStyle = accent;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          // Side speed winglet
+          ctx.fillStyle = accent;
+          ctx.beginPath();
+          ctx.moveTo(posX < 0 ? -8 : 8, 24);
+          ctx.lineTo(posX < 0 ? -12 : 12, 21);
+          ctx.lineTo(posX < 0 ? -8 : 8, 28);
+          ctx.closePath();
+          ctx.fill();
+        }
       }
-      ctx.fill();
-      ctx.strokeStyle = '#f59e0b';
-      ctx.lineWidth = 2;
-      ctx.stroke();
+      ctx.restore();
     }
-    ctx.restore();
-
-    // Front Right Arm/Leg
-    ctx.save();
-    ctx.translate(18, -25);
-    ctx.rotate(limb.frontRight.hip.angle);
-    ctx.fillStyle = p.baseColor;
-    ctx.fillRect(-6, 0, 12, 32);
-
-    // Speed Boot socket
-    if (this.equippedGear.feet) {
-      ctx.fillStyle = bootColor;
-      ctx.beginPath();
-      if (typeof ctx.roundRect === 'function') {
-        ctx.roundRect(-8, 22, 16, 14, 5);
-      } else {
-        ctx.rect(-8, 22, 16, 14);
-      }
-      ctx.fill();
-      ctx.strokeStyle = '#f59e0b';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    }
-    ctx.restore();
   }
 
   renderHeadAndHeadgear(ctx) {
@@ -816,9 +996,13 @@ export class PetSkeletalBodyCanvas {
 
     // Render Equipped Headgear
     if (this.equippedGear.head) {
-      const headColor = this.gearColors.head || '#f59e0b';
+      const headItem = getGearItem('head', this.equippedGear.head);
+      const archetype = headItem?.meshArchetype || this.equippedGear.head;
+      const headColor = this.gearColors.head || headItem?.defaultColor || '#f59e0b';
+      const accent = headItem?.secondaryColor || '#ffffff';
 
-      if (this.equippedGear.head === 'crown_golden_horn') {
+      if (archetype === 'crown' || archetype === 'crown_golden_horn' || this.equippedGear.head === 'crown_golden_horn') {
+        // Regal golden horn crown
         ctx.fillStyle = headColor;
         ctx.beginPath();
         ctx.moveTo(-16, -headRadius);
@@ -830,10 +1014,11 @@ export class PetSkeletalBodyCanvas {
         ctx.lineTo(16, -headRadius);
         ctx.closePath();
         ctx.fill();
-        ctx.strokeStyle = '#ffffff';
+        ctx.strokeStyle = accent;
         ctx.lineWidth = 2;
         ctx.stroke();
-      } else if (this.equippedGear.head === 'cowl_hero') {
+      } else if (archetype === 'cowl' || archetype === 'cowl_hero' || this.equippedGear.head === 'cowl_hero') {
+        // Sleek hero cowl
         ctx.fillStyle = headColor;
         ctx.beginPath();
         ctx.arc(0, -4, headRadius * 1.05, Math.PI, Math.PI * 2);
@@ -842,6 +1027,64 @@ export class PetSkeletalBodyCanvas {
         ctx.lineTo(-headRadius * 1.05, 4);
         ctx.closePath();
         ctx.fill();
+      } else if (archetype === 'goggles' || archetype === 'goggles_aviator' || this.equippedGear.head === 'goggles_aviator') {
+        // Aviator steampunk goggles on brow
+        ctx.strokeStyle = '#78350f'; // leather strap
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.arc(0, -headRadius * 0.3, headRadius * 1.05, 0.9 * Math.PI, 0.1 * Math.PI, true);
+        ctx.stroke();
+
+        [-headRadius * 0.38, headRadius * 0.38].forEach(gx => {
+          ctx.fillStyle = headColor; // brass rim
+          ctx.beginPath();
+          ctx.arc(gx, -headRadius * 0.45, 8.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#38bdf8'; // tinted glass
+          ctx.beginPath();
+          ctx.arc(gx, -headRadius * 0.45, 6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#ffffff'; // glass reflection
+          ctx.beginPath();
+          ctx.arc(gx - 2, -headRadius * 0.45 - 2, 2, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      } else if (archetype === 'tiara' || archetype === 'tiara_phoenix' || this.equippedGear.head === 'tiara_phoenix') {
+        // Phoenix fire crest tiara
+        ctx.fillStyle = headColor;
+        ctx.beginPath();
+        ctx.moveTo(-18, -headRadius + 2);
+        ctx.quadraticCurveTo(-10, -headRadius - 18, 0, -headRadius - 26);
+        ctx.quadraticCurveTo(10, -headRadius - 18, 18, -headRadius + 2);
+        ctx.quadraticCurveTo(0, -headRadius - 6, -18, -headRadius + 2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Center ruby jewel
+        ctx.fillStyle = accent;
+        ctx.beginPath();
+        ctx.arc(0, -headRadius - 10, 4, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (archetype === 'visor' || archetype === 'visor_cyber_tech' || this.equippedGear.head === 'visor_cyber_tech') {
+        // Cyber neon holographic HUD visor
+        ctx.fillStyle = headColor;
+        ctx.beginPath();
+        if (typeof ctx.roundRect === 'function') {
+          ctx.roundRect(-headRadius * 0.85, -headRadius * 0.25, headRadius * 1.7, 10, 4);
+        } else {
+          ctx.rect(-headRadius * 0.85, -headRadius * 0.25, headRadius * 1.7, 10);
+        }
+        ctx.fill();
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // HUD digital scanline
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(-headRadius * 0.5, -headRadius * 0.25 + 4, headRadius, 2);
       } else {
         // General Headgear Cap
         ctx.fillStyle = headColor;

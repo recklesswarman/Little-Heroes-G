@@ -188,22 +188,55 @@ export function renderShopView() {
                 const isOwned = (state.inventory || []).includes(item.title);
                 const isEquipped = state.equippedPetGear === item.title;
                 const canAfford = hero.coins >= item.costCoins;
+                const isParentCrafted = Boolean(item.isParentCrafted || item.isCustomAI);
+                const socketIconMap = { head: '👑 Head', back: '🚀 Back', chest: '🛡️ Chest', feet: '👟 Paws' };
+                const socketLabel = item.targetPetSocket ? socketIconMap[item.targetPetSocket] || item.targetPetSocket : null;
 
                 return `
-                <div data-gear-card-id="${item.id}" class="gear-card-item bg-surface-container rounded-3xl p-5 border-2 border-surface-container-highest card-shadow flex flex-col justify-between gap-4 group hover:border-secondary transition-all cursor-pointer">
+                <div data-gear-card-id="${item.id}" class="gear-card-item bg-surface-container rounded-3xl p-5 border-2 ${
+                  isParentCrafted ? 'border-amber-400/60 shadow-[0_0_15px_rgba(245,158,11,0.2)]' : 'border-surface-container-highest'
+                } card-shadow flex flex-col justify-between gap-4 group hover:border-secondary transition-all cursor-pointer">
                   
                   <div class="flex items-start gap-3.5">
-                    <div class="w-16 h-16 rounded-2xl bg-surface-container-high flex items-center justify-center p-2 flex-shrink-0 border border-surface-container-highest group-hover:scale-105 transition-transform">
+                    <div class="w-16 h-16 rounded-2xl bg-surface-container-high flex items-center justify-center p-2 flex-shrink-0 border border-surface-container-highest group-hover:scale-105 transition-transform relative overflow-hidden">
                       <img class="w-full h-full object-contain drop-shadow" src="${item.image}" alt="${item.title}" />
+                      ${isParentCrafted ? `<div class="absolute inset-0 bg-gradient-to-tr from-amber-400/10 via-transparent to-yellow-300/20 pointer-events-none"></div>` : ''}
                     </div>
 
-                    <div class="flex flex-col flex-1 truncate">
-                      <div class="flex items-center gap-1.5">
+                    <div class="flex flex-col flex-1 min-w-0">
+                      <div class="flex items-center gap-1.5 flex-wrap">
                         <span class="text-[10px] font-black uppercase text-secondary">${item.category}</span>
-                        ${item.statBonusPercent ? `<span class="text-[9px] font-black uppercase text-amber-400 bg-amber-500/15 px-1.5 py-0.5 rounded border border-amber-500/30">+${item.statBonusPercent}% Boost</span>` : ''}
+                        ${
+                          isParentCrafted
+                            ? `<span class="text-[9px] font-black uppercase text-amber-300 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 px-1.5 py-0.5 rounded-full border border-amber-400/40 flex items-center gap-0.5">
+                                 <span class="material-symbols-outlined text-[10px]" style="font-variation-settings: 'FILL' 1;">auto_awesome</span> Parent Crafted
+                               </span>`
+                            : ''
+                        }
+                        ${
+                          socketLabel
+                            ? `<span class="text-[9px] font-bold text-cyan-300 bg-cyan-950/40 px-1.5 py-0.5 rounded border border-cyan-700/50">${socketLabel}</span>`
+                            : ''
+                        }
+                        ${
+                          item.statBonusLabel
+                            ? `<span class="text-[9px] font-black uppercase text-emerald-400 bg-emerald-500/15 px-1.5 py-0.5 rounded border border-emerald-500/30 flex items-center gap-0.5">
+                                 <span class="material-symbols-outlined text-[10px]" style="font-variation-settings: 'FILL' 1;">bolt</span> ${item.statBonusLabel}
+                               </span>`
+                            : item.statBonusPercent
+                            ? `<span class="text-[9px] font-black uppercase text-amber-400 bg-amber-500/15 px-1.5 py-0.5 rounded border border-amber-500/30 flex items-center gap-0.5">
+                                 <span class="material-symbols-outlined text-[10px]" style="font-variation-settings: 'FILL' 1;">bolt</span> +${item.statBonusPercent}% ${item.statBonusType ? item.statBonusType.replace('_', ' ') : 'Boost'}
+                               </span>`
+                            : ''
+                        }
                       </div>
-                      <h3 class="font-headline text-base font-black text-inverse-surface leading-tight truncate mt-0.5">${item.title}</h3>
+                      <h3 class="font-headline text-base font-black text-inverse-surface leading-tight truncate mt-1">${item.title}</h3>
                       <p class="text-xs text-on-surface-variant mt-0.5 line-clamp-2">${item.desc}</p>
+                      ${
+                        item.parentNote
+                          ? `<div class="text-[10px] text-amber-300/90 italic mt-1 truncate">💌 "${item.parentNote}"</div>`
+                          : ''
+                      }
                     </div>
                   </div>
 
@@ -448,11 +481,15 @@ export function attachShopListeners() {
       const id = card.getAttribute('data-gear-card-id');
       const item = (store.getState().digitalGear || []).find((g) => g.id === id);
       if (item) {
-        const text = (item.title + ' ' + (item.desc || '')).toLowerCase();
-        if (text.includes('rex') || text.includes('dino')) {
-          speakRex("Rawr! I am Rex the Dino! Let's go on an adventure!");
+        if (item.companionReaction) {
+          speakRex(item.companionReaction);
         } else {
-          speakRex(`Look at this ${item.title}! Super hero power!`);
+          const text = (item.title + ' ' + (item.desc || '')).toLowerCase();
+          if (text.includes('rex') || text.includes('dino')) {
+            speakRex("Rawr! I am Rex the Dino! Let's go on an adventure!");
+          } else {
+            speakRex(`Look at this ${item.title}! Super hero power!`);
+          }
         }
       }
     });

@@ -6,8 +6,14 @@ import { getTaskVisualSvg } from '../utils/taskVisuals.js';
 import { firestoreSync } from '../services/firestoreSyncService.js';
 import { cloudFunctionsService } from '../services/cloudFunctionsService.js';
 import { aiDevelopmentalReportService } from '../services/aiDevelopmentalReportService.js';
+import { PetSkeletalBodyCanvas, RUNWAY_POSES } from '../services/petSkeletalBodyService.js';
+import { firebaseAI } from '../services/firebaseAILogicService.js';
+import { COLOR_DYES, formatStatBonusName } from '../data/petGearStudioData.js';
 
 let activeAdminTab = 'approvals'; // approvals, screentime, reports, kids, tasks, rewards, pricing, studio, analytics, settings
+export function setActiveAdminTab(tab) {
+  activeAdminTab = tab;
+}
 let isAddKidModalOpen = false;
 let isAddParentModalOpen = false;
 let editingKid = null;
@@ -16,6 +22,22 @@ let isNewHouseholdModalOpen = false;
 let selectedAvatarUrl = KID_AVATARS[0].url;
 let activeParentInsights = null;
 let isLoadingInsights = false;
+
+// 3D Pet Gear & Prop Studio State
+let studioSelectedPetId = 1;
+let studioSelectedSocket = 'head';
+let studioSelectedTheme = 'cyber';
+let studioSelectedDye = '#06b6d4';
+let studioItemName = 'Cyber Sentinel Visor';
+let studioItemDesc = 'High-tech neon holographic HUD visor glowing with electric power!';
+let studioItemArchetype = 'visor';
+let studioItemAura = 'electric';
+let studioStatType = 'damage_boost';
+let studioStatPercent = 25;
+let studioItemPrice = 150;
+let studioPetVoiceLine = 'Zap! Ready for hyper-speed hero adventures!';
+let isStudioGenerating = false;
+let activeStudioCanvasInstance = null;
 
 // Screen Time & Privileges Bank State
 let selectedScreenTimeKidId = 'all';
@@ -47,7 +69,7 @@ export function renderParentPortalView() {
     { id: 'tasks', label: 'Tasks & Routines', icon: 'checklist', count: 0 },
     { id: 'rewards', label: 'Real-Life Rewards', icon: 'card_giftcard', count: 0 },
     { id: 'pricing', label: 'Pricing Editor', icon: 'payments', count: 0 },
-    { id: 'studio', label: 'AI Reward Studio', icon: 'auto_awesome', count: 0 },
+    { id: 'studio', label: '3D Pet Gear Studio', icon: 'auto_awesome', count: 0 },
     { id: 'analytics', label: 'Analytics & Ledger', icon: 'monitoring', count: 0 },
     { id: 'settings', label: 'Safety & Sliders', icon: 'tune', count: 0 }
   ];
@@ -1226,57 +1248,494 @@ export function renderParentPortalView() {
           : ''
       }
 
-      <!-- TAB 5: AI Reward Studio with 3D Graphic Generator -->
+      <!-- TAB 5: 3D Pet Gear & Prop Studio with Live Skeletal Canvas & Stat Bonus Engine -->
       ${
         activeAdminTab === 'studio'
-          ? `
-        <section class="flex flex-col gap-5 animate-fade-in">
-          <div class="bg-surface-container rounded-3xl p-6 border-2 border-secondary-container card-shadow flex flex-col gap-4">
-            <div class="flex items-center gap-3">
-              <div class="w-12 h-12 rounded-2xl bg-secondary text-on-secondary flex items-center justify-center text-2xl shadow">
-                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+          ? (() => {
+              const publishedCustomGear = store.getParentCustomGear ? store.getParentCustomGear() : [];
+              const themeWizardOptions = [
+                { key: 'cyber', label: '⚡ Cyber Neon', color: '#06b6d4', desc: 'Holographic visors & electric energy' },
+                { key: 'fire', label: '🔥 Dragon Fire', color: '#f97316', desc: 'Molten embers & phoenix tiaras' },
+                { key: 'rainbow', label: '🦄 Rainbow Sparkle', color: '#ec4899', desc: 'Starlight bands & magical confetti' },
+                { key: 'space', label: '🚀 Deep Space', color: '#3b82f6', desc: 'Jetpack thrusters & cosmic cloaks' },
+                { key: 'royal', label: '👑 Royal Fantasy', color: '#fbbf24', desc: 'Regal golden horn crowns & armor' },
+                { key: 'ocean', label: '🌊 Ocean Glider', color: '#10b981', desc: 'Aero wings & hydro power harnesses' }
+              ];
+              const petModels = [
+                { id: 1, name: 'Rex', emoji: '🦖' },
+                { id: 2, name: 'Aqua', emoji: '🌊' },
+                { id: 3, name: 'Bella', emoji: '🐰' },
+                { id: 4, name: 'Barnaby', emoji: '🐻' },
+                { id: 5, name: 'Pip', emoji: '🦅' }
+              ];
+              const socketPills = [
+                { key: 'head', label: 'Headgear', emoji: '👑' },
+                { key: 'back', label: 'Cape / Back', emoji: '🦸' },
+                { key: 'chest', label: 'Armor Plate', emoji: '🛡️' },
+                { key: 'feet', label: 'Hero Boots', emoji: '⚡' }
+              ];
+
+              return `
+        <section class="flex flex-col gap-6 animate-fade-in">
+          
+          <!-- Top Studio Header Banner -->
+          <div class="bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-950 rounded-3xl p-6 border-2 border-amber-400/40 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-white">
+            <div class="flex items-center gap-3.5">
+              <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-slate-950 flex items-center justify-center text-3xl shadow-lg border-2 border-white/20">
+                🐾
               </div>
               <div>
-                <h3 class="font-headline text-lg font-black text-inverse-surface">AI Reward Generator Studio</h3>
-                <p class="text-xs text-on-surface-variant">Generate customized 3D items, weapons, and accessories live into the Hero Shop!</p>
+                <div class="flex items-center gap-2">
+                  <h2 class="font-headline text-xl sm:text-2xl font-black text-amber-300">3D Pet Gear & Prop Studio</h2>
+                  <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-400/20 text-amber-300 border border-amber-400/40">AI Powered</span>
+                </div>
+                <p class="text-xs text-slate-300 mt-0.5">Craft custom wearable 3D superhero gear with live skeletal canvas preview, stat buffs & voice reactions for the Hero Shop!</p>
               </div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
-              <div>
-                <label class="text-[10px] font-black uppercase text-on-surface-variant">Item Name</label>
-                <input id="ai-asset-name" type="text" placeholder="e.g. Cyber Lightning Jetpack" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-3 text-xs font-bold text-inverse-surface focus:outline-none focus:border-secondary" />
-              </div>
-              
-              <div>
-                <label class="text-[10px] font-black uppercase text-on-surface-variant">Category</label>
-                <select id="ai-asset-type" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-3 text-xs font-bold text-inverse-surface focus:outline-none focus:border-secondary">
-                  <option value="gear">🛡️ Avatar & Pet Gear</option>
-                  <option value="weapon">⚔️ Weapons</option>
-                  <option value="badge">🏆 Badges & Trophies</option>
-                  <option value="snack">🫐 Pet Snacks</option>
-                  <option value="theme">🎨 Kids Profile Theme</option>
-                </select>
-              </div>
-
-              <div class="sm:col-span-2">
-                <label class="text-[10px] font-black uppercase text-on-surface-variant">Description & Lore</label>
-                <input id="ai-asset-desc" type="text" placeholder="e.g. Emits electric sparks and doubles speed in learning adventures." class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-3 text-xs font-bold text-inverse-surface focus:outline-none focus:border-secondary" />
-              </div>
-
-              <div>
-                <label class="text-[10px] font-black uppercase text-on-surface-variant">Habit Tokens Price (🪙)</label>
-                <input id="ai-asset-price" type="number" placeholder="200" value="200" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-3 text-xs font-bold text-secondary focus:outline-none focus:border-secondary" />
-              </div>
+            <div class="flex items-center gap-2 self-end sm:self-auto">
+              <span class="px-3 py-1.5 rounded-xl bg-slate-800/90 text-amber-300 border border-amber-400/30 text-xs font-bold flex items-center gap-1.5 shadow">
+                <span class="material-symbols-outlined text-sm">storefront</span>
+                <span>${publishedCustomGear.length} Published in Shop</span>
+              </span>
             </div>
-
-            <button id="ai-generate-submit-btn" class="bg-secondary text-on-secondary font-headline text-xs font-black py-3.5 rounded-xl chunky-btn border-secondary-container self-end px-8 mt-2 active:scale-95 hover:brightness-110 flex items-center gap-2">
-              <span class="material-symbols-outlined text-base">auto_awesome</span>
-              ✨ Generate Graphic & Publish to Shop
-            </button>
           </div>
+
+          <!-- Quick Sparks Theme Wizard Chips -->
+          <div class="bg-surface-container rounded-3xl p-4 border border-surface-container-highest shadow-sm">
+            <div class="flex items-center justify-between mb-2.5">
+              <span class="text-xs font-black uppercase text-on-surface-variant flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-sm text-secondary">flash_on</span>
+                <span>Quick Sparks Theme Wizard</span>
+              </span>
+              <span class="text-[11px] text-on-surface-variant">Tap a theme to auto-inspire 3D gear, colors & stat buffs</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              ${themeWizardOptions.map(t => {
+                const isSelected = studioSelectedTheme === t.key;
+                return `
+                <button 
+                  class="studio-theme-chip px-3.5 py-2 rounded-2xl text-xs font-black transition-all active:scale-95 flex items-center gap-1.5 border-2 ${
+                    isSelected 
+                      ? 'bg-secondary text-on-secondary border-secondary-container shadow-md scale-102' 
+                      : 'bg-surface-container-high hover:bg-surface-bright text-inverse-surface border-surface-container-highest'
+                  }"
+                  data-theme="${t.key}"
+                  title="${t.desc}"
+                >
+                  <span>${t.label}</span>
+                </button>
+                `;
+              }).join('')}
+            </div>
+          </div>
+
+          <!-- Studio Main Stage: 2-Column Responsive Layout -->
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            
+            <!-- Left Column: Live 3D Skeletal Canvas Preview & Test Stage (5 cols) -->
+            <div class="lg:col-span-5 bg-gradient-to-b from-slate-900/95 via-indigo-950/90 to-slate-900/95 rounded-3xl p-5 border-2 border-amber-400/40 shadow-2xl flex flex-col items-center gap-4 text-white">
+              
+              <!-- Pet Switcher & Stage Title -->
+              <div class="w-full flex items-center justify-between border-b border-amber-400/20 pb-3">
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-black text-amber-300 uppercase tracking-wider">Live Companion Stage</span>
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Rigged 3D</span>
+                </div>
+                
+                <!-- Pet Selector Chips -->
+                <div class="flex items-center gap-1">
+                  ${petModels.map(p => {
+                    const isPetActive = studioSelectedPetId === p.id;
+                    return `
+                    <button 
+                      class="studio-pet-btn w-8 h-8 rounded-xl text-sm flex items-center justify-center transition-all active:scale-95 border ${
+                        isPetActive 
+                          ? 'bg-amber-400 text-slate-950 font-black border-white shadow-md scale-110' 
+                          : 'bg-slate-800/80 hover:bg-slate-700 text-white border-white/20'
+                      }"
+                      data-pet-id="${p.id}"
+                      title="${p.name}"
+                    >
+                      ${p.emoji}
+                    </button>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+
+              <!-- 3D Canvas Theatrical Viewport -->
+              <div class="relative w-full max-w-[320px] aspect-square rounded-3xl overflow-hidden bg-radial from-indigo-900/60 via-slate-900/90 to-black border-2 border-amber-400/30 shadow-2xl flex items-center justify-center group">
+                <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(251,191,36,0.18)_0%,rgba(99,102,241,0.08)_50%,transparent_75%)] pointer-events-none"></div>
+                
+                <canvas 
+                  id="parent-ai-preview-canvas" 
+                  width="320" 
+                  height="320" 
+                  class="relative z-10 w-full h-full object-contain cursor-grab active:cursor-grabbing touch-none"
+                  aria-label="Parent Studio 3D Companion Live Skeletal Stage"
+                ></canvas>
+
+                <!-- Stage Floor Reflection line -->
+                <div class="absolute bottom-4 left-1/2 -translate-x-1/2 w-44 h-2.5 rounded-full bg-gradient-to-r from-transparent via-amber-400/40 to-transparent blur-xs pointer-events-none"></div>
+              </div>
+
+              <!-- Target Socket Selector -->
+              <div class="w-full">
+                <p class="text-[11px] font-bold text-amber-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-xs">extension</span>
+                  <span>Target Attachment Socket</span>
+                </p>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                  ${socketPills.map(s => {
+                    const isSocketActive = studioSelectedSocket === s.key;
+                    return `
+                    <button 
+                      class="studio-socket-btn px-2.5 py-1.5 rounded-xl text-xs font-black transition-all active:scale-95 flex items-center justify-center gap-1 border ${
+                        isSocketActive 
+                          ? 'bg-amber-400 text-slate-950 border-white shadow-md scale-102' 
+                          : 'bg-slate-800/80 hover:bg-slate-700 text-slate-200 border-white/20'
+                      }"
+                      data-socket="${s.key}"
+                    >
+                      <span>${s.emoji}</span>
+                      <span>${s.label}</span>
+                    </button>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+
+              <!-- Superhero Color Dye Palette -->
+              <div class="w-full p-2.5 bg-slate-800/60 rounded-2xl border border-slate-700/60">
+                <div class="flex items-center justify-between mb-1.5">
+                  <span class="text-[11px] font-bold text-amber-300 flex items-center gap-1">
+                    <span class="material-symbols-outlined text-xs">palette</span>
+                    <span>Superhero Dye Swatch</span>
+                  </span>
+                  <span class="text-[10px] text-slate-400">Live Tint</span>
+                </div>
+                <div class="flex flex-wrap items-center gap-1.5">
+                  ${COLOR_DYES.map(dye => {
+                    const isDyeActive = studioSelectedDye === dye.hex;
+                    return `
+                    <button 
+                      class="studio-dye-btn w-7 h-7 rounded-full border-2 transition-transform hover:scale-115 active:scale-95 shadow flex items-center justify-center ${
+                        isDyeActive ? 'border-white ring-2 ring-amber-400 scale-110' : 'border-white/30'
+                      }"
+                      style="background-color: ${dye.hex};"
+                      data-hex="${dye.hex}"
+                      title="${dye.name}"
+                    >
+                      ${isDyeActive ? '<span class="text-white text-[10px] font-black drop-shadow">✓</span>' : ''}
+                    </button>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+
+              <!-- Test Pose Buttons Bar -->
+              <div class="w-full">
+                <p class="text-[11px] font-bold text-amber-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-xs">sports_gymnastics</span>
+                  <span>Test Heroic Catwalk Poses</span>
+                </p>
+                <div class="grid grid-cols-3 gap-1.5">
+                  <button class="studio-pose-btn px-2 py-1.5 rounded-xl bg-slate-800/90 hover:bg-amber-500/20 border border-slate-700 text-xs font-bold text-slate-200 transition-all active:scale-95 flex items-center justify-center gap-1" data-pose="hero_landing">
+                    <span>🦸</span><span>Landing</span>
+                  </button>
+                  <button class="studio-pose-btn px-2 py-1.5 rounded-xl bg-slate-800/90 hover:bg-amber-500/20 border border-slate-700 text-xs font-bold text-slate-200 transition-all active:scale-95 flex items-center justify-center gap-1" data-pose="wing_flare">
+                    <span>✨</span><span>Flare</span>
+                  </button>
+                  <button class="studio-pose-btn px-2 py-1.5 rounded-xl bg-slate-800/90 hover:bg-amber-500/20 border border-slate-700 text-xs font-bold text-slate-200 transition-all active:scale-95 flex items-center justify-center gap-1" data-pose="spin_360">
+                    <span>🔄</span><span>Spin</span>
+                  </button>
+                  <button class="studio-pose-btn px-2 py-1.5 rounded-xl bg-slate-800/90 hover:bg-amber-500/20 border border-slate-700 text-xs font-bold text-slate-200 transition-all active:scale-95 flex items-center justify-center gap-1" data-pose="hero_salute">
+                    <span>🫡</span><span>Salute</span>
+                  </button>
+                  <button class="studio-pose-btn px-2 py-1.5 rounded-xl bg-slate-800/90 hover:bg-amber-500/20 border border-slate-700 text-xs font-bold text-slate-200 transition-all active:scale-95 flex items-center justify-center gap-1" data-pose="runway_walk">
+                    <span>🚶</span><span>Strut</span>
+                  </button>
+                  <button class="studio-pose-btn px-2 py-1.5 rounded-xl bg-slate-800/90 hover:bg-amber-500/20 border border-slate-700 text-xs font-bold text-slate-200 transition-all active:scale-95 flex items-center justify-center gap-1" data-pose="idle">
+                    <span>🧍</span><span>Idle</span>
+                  </button>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Right Column: AI Crafting Form & Stat Bonus Multiplier Engine (7 cols) -->
+            <div class="lg:col-span-7 bg-surface-container rounded-3xl p-6 border-2 border-secondary-container card-shadow flex flex-col gap-5">
+              
+              <!-- Idea Prompt & AI Generation Trigger -->
+              <div class="flex flex-col gap-2">
+                <label class="text-xs font-black uppercase text-on-surface-variant flex items-center justify-between">
+                  <span class="flex items-center gap-1">
+                    <span class="material-symbols-outlined text-sm text-secondary">psychology</span>
+                    <span>Parent Gear Concept & Idea</span>
+                  </span>
+                  <span class="text-[10px] text-secondary font-bold">Powered by Gemini 2.5 Flash Lite</span>
+                </label>
+                <div class="flex gap-2">
+                  <input 
+                    id="studio-gear-prompt" 
+                    type="text" 
+                    value="${studioItemName}"
+                    placeholder="e.g. Phoenix Flame Tiara or Cyber Stealth Jetpack..." 
+                    class="flex-1 bg-surface-container-high border border-surface-container-highest rounded-2xl p-3 text-xs font-bold text-inverse-surface focus:outline-none focus:border-secondary shadow-inner"
+                  />
+                  <button 
+                    id="studio-gear-ai-btn" 
+                    class="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white font-headline text-xs font-black px-4 py-3 rounded-2xl shadow-md hover:brightness-110 active:scale-95 flex items-center gap-1.5 shrink-0 ${
+                      isStudioGenerating ? 'opacity-70 cursor-wait' : ''
+                    }"
+                  >
+                    <span class="material-symbols-outlined text-base">${isStudioGenerating ? 'progress_activity' : 'auto_awesome'}</span>
+                    <span>${isStudioGenerating ? 'Designing...' : '✨ Generate with AI'}</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Item Specifications Grid -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                
+                <!-- Item Name -->
+                <div>
+                  <label class="text-[10px] font-black uppercase text-on-surface-variant">Item Name</label>
+                  <input 
+                    id="studio-gear-name" 
+                    type="text" 
+                    value="${studioItemName}"
+                    class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-none focus:border-secondary" 
+                  />
+                </div>
+
+                <!-- Mesh Archetype (socket-dependent) -->
+                <div>
+                  <label class="text-[10px] font-black uppercase text-on-surface-variant">Procedural 3D Mesh Archetype</label>
+                  <select id="studio-gear-archetype" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-none focus:border-secondary">
+                    ${studioSelectedSocket === 'head' ? `
+                      <option value="visor" ${studioItemArchetype === 'visor' ? 'selected' : ''}>Cyber HUD Visor (Glow Bar)</option>
+                      <option value="crown" ${studioItemArchetype === 'crown' ? 'selected' : ''}>Golden Horn Crown (Spikes)</option>
+                      <option value="cowl" ${studioItemArchetype === 'cowl' ? 'selected' : ''}>Hero Cowl (Aerodynamic Mask)</option>
+                      <option value="goggles" ${studioItemArchetype === 'goggles' ? 'selected' : ''}>Sky-Captain Goggles (Brass Lenses)</option>
+                      <option value="tiara" ${studioItemArchetype === 'tiara' ? 'selected' : ''}>Phoenix Fire Tiara (Crest Gem)</option>
+                    ` : studioSelectedSocket === 'back' ? `
+                      <option value="wings" ${studioItemArchetype === 'wings' ? 'selected' : ''}>Meteor Glider Wings (Dual Thrusters)</option>
+                      <option value="jetpack" ${studioItemArchetype === 'jetpack' ? 'selected' : ''}>Twin Turbo Jetpack (Exhaust Flares)</option>
+                      <option value="cape" ${studioItemArchetype === 'cape' ? 'selected' : ''}>Fluttering Hero Cape (Spring Cloth)</option>
+                      <option value="cloak" ${studioItemArchetype === 'cloak' ? 'selected' : ''}>Moonlight Star Cloak (Silky Cloth)</option>
+                    ` : studioSelectedSocket === 'chest' ? `
+                      <option value="collar" ${studioItemArchetype === 'collar' ? 'selected' : ''}>Titan Spiked Collar (Studded Band)</option>
+                      <option value="crest_plate" ${studioItemArchetype === 'crest_plate' ? 'selected' : ''}>Golden Crest Plate (Hero Star)</option>
+                      <option value="harness" ${studioItemArchetype === 'harness' ? 'selected' : ''}>Power Gem Harness (Prism Core)</option>
+                    ` : `
+                      <option value="speed_boots" ${studioItemArchetype === 'speed_boots' ? 'selected' : ''}>Neon Speed Boots (Winglet Tabs)</option>
+                      <option value="starlight_bands" ${studioItemArchetype === 'starlight_bands' ? 'selected' : ''}>Starlight Ankle Bands (Glow Rings)</option>
+                      <option value="lava_greaves" ${studioItemArchetype === 'lava_greaves' ? 'selected' : ''}>Lava Stomp Greaves (Molten Cracks)</option>
+                    `}
+                  </select>
+                </div>
+
+                <!-- Elemental Aura -->
+                <div>
+                  <label class="text-[10px] font-black uppercase text-on-surface-variant">Elemental Particle Aura</label>
+                  <select id="studio-gear-aura" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-none focus:border-secondary">
+                    <option value="none" ${studioItemAura === 'none' ? 'selected' : ''}>None (Pure Metallic)</option>
+                    <option value="electric" ${studioItemAura === 'electric' ? 'selected' : ''}>⚡ Electric Spark (Cyan)</option>
+                    <option value="fire" ${studioItemAura === 'fire' ? 'selected' : ''}>🔥 Blazing Fire (Orange)</option>
+                    <option value="stardust" ${studioItemAura === 'stardust' ? 'selected' : ''}>✨ Stardust Sparkles (Gold)</option>
+                    <option value="cosmic" ${studioItemAura === 'cosmic' ? 'selected' : ''}>🌟 Cosmic Void (Purple)</option>
+                    <option value="wind" ${studioItemAura === 'wind' ? 'selected' : ''}>💨 Gale Wind (Sky)</option>
+                  </select>
+                </div>
+
+                <!-- Habit Tokens Price Slider -->
+                <div>
+                  <div class="flex items-center justify-between">
+                    <label class="text-[10px] font-black uppercase text-on-surface-variant">Hero Shop Price</label>
+                    <span id="studio-gear-price-label" class="text-xs font-black text-secondary">🪙 ${studioItemPrice} Tokens</span>
+                  </div>
+                  <input 
+                    id="studio-gear-price" 
+                    type="range" 
+                    min="50" 
+                    max="500" 
+                    step="25" 
+                    value="${studioItemPrice}"
+                    class="w-full accent-secondary mt-1.5" 
+                  />
+                </div>
+
+              </div>
+
+              <!-- Functional Stat Buffs & Multiplier Engine -->
+              <div class="p-4 bg-surface-container-high/70 rounded-2xl border-2 border-secondary/30 flex flex-col gap-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-black uppercase text-secondary flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-sm">trending_up</span>
+                    <span>Functional Gameplay Stat Buff</span>
+                  </span>
+                  <span id="studio-stat-badge" class="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-400/20 text-amber-400 border border-amber-400/40">
+                    +${studioStatPercent}% ${formatStatBonusName(studioStatType)}
+                  </span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label class="text-[10px] font-black uppercase text-on-surface-variant">Stat Bonus Category</label>
+                    <select id="studio-gear-stat-type" class="w-full bg-surface-container border border-surface-container-highest rounded-xl p-2 text-xs font-bold text-inverse-surface focus:outline-none focus:border-secondary">
+                      <option value="damage_boost" ${studioStatType === 'damage_boost' ? 'selected' : ''}>⚔️ +AR Boss Battle Damage</option>
+                      <option value="coin_boost" ${studioStatType === 'coin_boost' ? 'selected' : ''}>🪙 +Habit & Chore Tokens</option>
+                      <option value="xp_boost" ${studioStatType === 'xp_boost' ? 'selected' : ''}>✨ +Quest & Adventure XP</option>
+                      <option value="speed_boost" ${studioStatType === 'speed_boost' ? 'selected' : ''}>⚡ +Runway & Habit Speed</option>
+                      <option value="defense_boost" ${studioStatType === 'defense_boost' ? 'selected' : ''}>🛡️ +Pet Defense & Vitality</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <div class="flex items-center justify-between">
+                      <label class="text-[10px] font-black uppercase text-on-surface-variant">Bonus Power Multiplier</label>
+                      <span id="studio-stat-percent-label" class="text-xs font-black text-secondary">+${studioStatPercent}%</span>
+                    </div>
+                    <input 
+                      id="studio-gear-stat-percent" 
+                      type="range" 
+                      min="10" 
+                      max="50" 
+                      step="5" 
+                      value="${studioStatPercent}"
+                      class="w-full accent-secondary mt-1.5" 
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Lore & Spoken Voice Reaction Line -->
+              <div class="grid grid-cols-1 gap-3">
+                <div>
+                  <label class="text-[10px] font-black uppercase text-on-surface-variant">Gear Lore & Encouraging Description</label>
+                  <input 
+                    id="studio-gear-desc" 
+                    type="text" 
+                    value="${studioItemDesc}"
+                    placeholder="e.g. Forged from pure starlight to give brave heroes extra courage!"
+                    class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-none focus:border-secondary" 
+                  />
+                </div>
+
+                <div>
+                  <label class="text-[10px] font-black uppercase text-on-surface-variant flex items-center gap-1">
+                    <span class="material-symbols-outlined text-xs text-secondary">record_voice_over</span>
+                    <span>Companion Spoken Reaction Voice Line (When Equipped)</span>
+                  </label>
+                  <input 
+                    id="studio-gear-voiceline" 
+                    type="text" 
+                    value="${studioPetVoiceLine}"
+                    placeholder="e.g. Woohoo! Look at my new gear! Super hero power!"
+                    class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-secondary focus:outline-none focus:border-secondary" 
+                  />
+                </div>
+              </div>
+
+              <!-- Action Bar: Publish Live to Hero Shop -->
+              <div class="pt-2 flex items-center justify-between gap-3 border-t border-surface-container-highest">
+                <span class="text-xs text-on-surface-variant">
+                  Published gear becomes equippable across <strong>all companion pets</strong>!
+                </span>
+
+                <button 
+                  id="studio-gear-publish-btn" 
+                  class="bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-slate-950 font-headline text-xs font-black py-3.5 px-6 rounded-2xl shadow-xl hover:shadow-amber-500/25 active:scale-95 transition-all flex items-center gap-2 border-2 border-white/30"
+                >
+                  <span class="text-lg">🚀</span>
+                  <span>Publish Live to Hero Shop</span>
+                </button>
+              </div>
+
+            </div>
+
+          </div>
+
+          <!-- Published Custom Pet Gear Gallery -->
+          <div class="bg-surface-container rounded-3xl p-6 border border-surface-container-highest shadow-sm flex flex-col gap-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="font-headline text-base sm:text-lg font-black text-inverse-surface flex items-center gap-2">
+                  <span class="material-symbols-outlined text-amber-500">verified</span>
+                  <span>Parent-Crafted Hero Shop Collection</span>
+                </h3>
+                <p class="text-xs text-on-surface-variant">Kids can save up habit tokens to purchase and equip your custom creations.</p>
+              </div>
+              <span class="text-xs font-bold text-secondary">${publishedCustomGear.length} Live Items</span>
+            </div>
+
+            ${publishedCustomGear.length === 0 ? `
+              <div class="p-8 rounded-2xl bg-surface-container-high/50 border border-dashed border-surface-container-highest text-center flex flex-col items-center justify-center gap-2">
+                <div class="w-12 h-12 rounded-full bg-secondary/15 text-secondary flex items-center justify-center text-2xl">
+                  ✨
+                </div>
+                <h4 class="font-headline text-sm font-black text-inverse-surface">No Parent-Crafted Gear Published Yet</h4>
+                <p class="text-xs text-on-surface-variant max-w-md">Pick a theme or enter an idea above to generate your first custom 3D gear piece live into the child's Hero Shop!</p>
+              </div>
+            ` : `
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                ${publishedCustomGear.map(item => {
+                  return `
+                  <div class="p-4 rounded-2xl bg-surface-container-high border-2 border-amber-400/30 shadow-md flex flex-col justify-between gap-3 relative overflow-hidden group">
+                    
+                    <div class="flex items-start gap-3">
+                      <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow shrink-0 border border-white/20" style="background-color: ${item.primaryColor || '#ef4444'};">
+                        ${item.image ? `<img src="${item.image}" class="w-10 h-10 object-contain drop-shadow" alt="${item.name}" />` : `<span class="material-symbols-outlined text-white">${item.icon || 'shield'}</span>`}
+                      </div>
+
+                      <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-1.5">
+                          <span class="px-2 py-0.2 rounded-full text-[9px] font-black uppercase bg-amber-400/20 text-amber-400 border border-amber-400/30">${item.socket}</span>
+                          <span class="text-[9px] font-black uppercase text-secondary">🪙 ${item.costCoins} Tokens</span>
+                        </div>
+                        <h4 class="font-headline text-sm font-black text-inverse-surface truncate mt-0.5">${item.name}</h4>
+                        <p class="text-xs text-on-surface-variant line-clamp-2 mt-0.5">${item.desc}</p>
+                      </div>
+                    </div>
+
+                    <!-- Stat Bonus Pill & Spoken Line -->
+                    <div class="flex flex-col gap-1.5 pt-2 border-t border-surface-container-highest">
+                      <div class="flex items-center justify-between">
+                        <span class="text-[10px] font-black text-amber-400 bg-amber-500/15 px-2 py-0.5 rounded-md border border-amber-500/30 flex items-center gap-1">
+                          <span>⚡</span>
+                          <span>${item.statBonusLabel || `+${item.statBonusPercent}% Boost`}</span>
+                        </span>
+                        
+                        <button 
+                          class="delete-custom-gear-btn text-error hover:bg-error/15 p-1.5 rounded-xl transition-all active:scale-95" 
+                          data-gear-id="${item.id}"
+                          title="Unpublish and remove from Hero Shop"
+                        >
+                          <span class="material-symbols-outlined text-sm">delete</span>
+                        </button>
+                      </div>
+
+                      ${item.petVoiceLine ? `
+                        <p class="text-[11px] text-secondary italic truncate flex items-center gap-1">
+                          <span class="material-symbols-outlined text-xs">chat</span>
+                          <span>"${item.petVoiceLine}"</span>
+                        </p>
+                      ` : ''}
+                    </div>
+
+                  </div>
+                  `;
+                }).join('')}
+              </div>
+            `}
+
+          </div>
+
         </section>
-      `
+              `;
+            })()
           : ''
       }
 
@@ -3312,20 +3771,320 @@ export function attachParentPortalListeners() {
     });
   });
 
-  // AI STUDIO TAB - Publish Live Item
-  const aiGenerateBtn = document.getElementById('ai-generate-submit-btn');
-  if (aiGenerateBtn) {
-    aiGenerateBtn.addEventListener('click', () => {
-      const name = document.getElementById('ai-asset-name')?.value;
-      const type = document.getElementById('ai-asset-type')?.value;
-      const desc = document.getElementById('ai-asset-desc')?.value;
-      const price = document.getElementById('ai-asset-price')?.value;
+  // 3D PET GEAR STUDIO TAB - LIVE CANVAS & INTERACTIVE STUDIO LISTENERS
+  const studioCanvasEl = document.getElementById('parent-ai-preview-canvas');
+  if (studioCanvasEl && activeAdminTab === 'studio') {
+    // 1. Destroy prior canvas instance
+    if (activeStudioCanvasInstance) {
+      try {
+        activeStudioCanvasInstance.destroy();
+      } catch (e) {}
+      activeStudioCanvasInstance = null;
+    }
 
-      if (name && name.trim()) {
-        store.generateAIReward(name.trim(), type, desc, price);
+    // 2. Initialize PetSkeletalBodyCanvas
+    try {
+      const equipped = store.getEquippedPetStudioGear(studioSelectedPetId);
+      const dyes = store.getCustomGearDyes(studioSelectedPetId);
+      equipped[studioSelectedSocket] = studioItemArchetype || (studioSelectedSocket === 'head' ? 'visor_cyber_tech' : studioSelectedSocket === 'back' ? 'wings_meteor' : studioSelectedSocket === 'chest' ? 'harness_power_gem' : 'boots_speed_neon');
+      dyes[studioSelectedSocket] = studioSelectedDye;
+
+      activeStudioCanvasInstance = new PetSkeletalBodyCanvas(studioCanvasEl, {
+        petId: studioSelectedPetId,
+        equippedGear: equipped,
+        gearColors: dyes,
+        pose: RUNWAY_POSES.HERO_LANDING
+      });
+      activeStudioCanvasInstance.setWind(2.0, -2.5);
+    } catch (err) {
+      console.warn('Parent studio canvas initialization fallback:', err);
+    }
+
+    // Helper to refresh live preview on canvas
+    const refreshStudioCanvas = () => {
+      if (!activeStudioCanvasInstance) return;
+      activeStudioCanvasInstance.setGear(studioSelectedSocket, studioItemArchetype);
+      activeStudioCanvasInstance.setGearColor(studioSelectedSocket, studioSelectedDye);
+    };
+
+    // 3. Quick Sparks Theme Chips
+    document.querySelectorAll('.studio-theme-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const themeKey = btn.getAttribute('data-theme');
+        if (!themeKey) return;
+        studioSelectedTheme = themeKey;
+
+        // Auto-configure inspired presets based on theme
+        if (themeKey === 'cyber') {
+          studioSelectedSocket = 'head';
+          studioItemArchetype = 'visor';
+          studioSelectedDye = '#06b6d4';
+          studioItemAura = 'electric';
+          studioStatType = 'damage_boost';
+          studioStatPercent = 25;
+          studioItemPrice = 150;
+          studioItemName = 'Cyber Sentinel Visor';
+          studioItemDesc = 'High-tech neon holographic HUD visor glowing with electric power!';
+          studioPetVoiceLine = 'Zap! Ready for hyper-speed hero adventures!';
+        } else if (themeKey === 'fire') {
+          studioSelectedSocket = 'head';
+          studioItemArchetype = 'tiara';
+          studioSelectedDye = '#f97316';
+          studioItemAura = 'fire';
+          studioStatType = 'damage_boost';
+          studioStatPercent = 30;
+          studioItemPrice = 200;
+          studioItemName = 'Phoenix Fire Tiara';
+          studioItemDesc = 'Flaming solar crest radiating blazing hero courage!';
+          studioPetVoiceLine = 'Roar! Feel the blazing fire energy!';
+        } else if (themeKey === 'rainbow') {
+          studioSelectedSocket = 'feet';
+          studioItemArchetype = 'starlight_bands';
+          studioSelectedDye = '#ec4899';
+          studioItemAura = 'stardust';
+          studioStatType = 'coin_boost';
+          studioStatPercent = 25;
+          studioItemPrice = 150;
+          studioItemName = 'Starlight Sparkle Bands';
+          studioItemDesc = 'Magical prism bands bursting with colorful confetti bursts!';
+          studioPetVoiceLine = 'Sparkle sparkle! Every step is magical!';
+        } else if (themeKey === 'space') {
+          studioSelectedSocket = 'back';
+          studioItemArchetype = 'jetpack';
+          studioSelectedDye = '#3b82f6';
+          studioItemAura = 'cosmic';
+          studioStatType = 'speed_boost';
+          studioStatPercent = 30;
+          studioItemPrice = 250;
+          studioItemName = 'Cosmic Turbo Thrusters';
+          studioItemDesc = 'High-velocity ion thrusters designed for deep space orbits!';
+          studioPetVoiceLine = 'Blast off! To infinity and beyond!';
+        } else if (themeKey === 'royal') {
+          studioSelectedSocket = 'head';
+          studioItemArchetype = 'crown';
+          studioSelectedDye = '#fbbf24';
+          studioItemAura = 'stardust';
+          studioStatType = 'coin_boost';
+          studioStatPercent = 30;
+          studioItemPrice = 200;
+          studioItemName = 'Regal Sun King Crown';
+          studioItemDesc = 'Polished golden crown with sovereign stardust crests!';
+          studioPetVoiceLine = 'Bow before my regal superhero greatness!';
+        } else if (themeKey === 'ocean') {
+          studioSelectedSocket = 'back';
+          studioItemArchetype = 'wings';
+          studioSelectedDye = '#10b981';
+          studioItemAura = 'wind';
+          studioStatType = 'speed_boost';
+          studioStatPercent = 25;
+          studioItemPrice = 175;
+          studioItemName = 'Ocean Glider Wings';
+          studioItemDesc = 'Hydro-aerodynamic wings built to glide through tidal storms!';
+          studioPetVoiceLine = 'Splash! Gliding through the sky like an ocean wave!';
+        }
+
+        Sound.bloop();
+        store.notify();
+      });
+    });
+
+    // 4. Companion Pet Model Switcher
+    document.querySelectorAll('.studio-pet-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const pId = parseInt(btn.getAttribute('data-pet-id'), 10);
+        if (!pId || pId === studioSelectedPetId) return;
+        studioSelectedPetId = pId;
+        Sound.click();
+        store.notify();
+      });
+    });
+
+    // 5. Target Socket Selector
+    document.querySelectorAll('.studio-socket-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const socket = btn.getAttribute('data-socket');
+        if (!socket || socket === studioSelectedSocket) return;
+        studioSelectedSocket = socket;
+
+        // Auto-select first archetype of socket
+        if (socket === 'head') studioItemArchetype = 'visor';
+        else if (socket === 'back') studioItemArchetype = 'wings';
+        else if (socket === 'chest') studioItemArchetype = 'harness';
+        else if (socket === 'feet') studioItemArchetype = 'speed_boots';
+
+        Sound.click();
+        store.notify();
+      });
+    });
+
+    // 6. Color Dye Swatches
+    document.querySelectorAll('.studio-dye-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const hex = btn.getAttribute('data-hex');
+        if (!hex) return;
+        studioSelectedDye = hex;
+        Sound.sparkle();
+        if (activeStudioCanvasInstance) {
+          activeStudioCanvasInstance.setGearColor(studioSelectedSocket, hex);
+        }
+        document.querySelectorAll('.studio-dye-btn').forEach(b => {
+          b.classList.remove('border-white', 'ring-2', 'ring-amber-400', 'scale-110');
+          b.classList.add('border-white/30');
+          b.innerHTML = '';
+        });
+        btn.classList.remove('border-white/30');
+        btn.classList.add('border-white', 'ring-2', 'ring-amber-400', 'scale-110');
+        btn.innerHTML = '<span class="text-white text-[10px] font-black drop-shadow">✓</span>';
+      });
+    });
+
+    // 7. Catwalk Pose Buttons
+    document.querySelectorAll('.studio-pose-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const pose = btn.getAttribute('data-pose');
+        if (!pose || !activeStudioCanvasInstance) return;
+        activeStudioCanvasInstance.setPose(pose);
+        Sound.click();
+      });
+    });
+
+    // 8. Mesh Archetype Dropdown
+    const archetypeSelect = document.getElementById('studio-gear-archetype');
+    if (archetypeSelect) {
+      archetypeSelect.addEventListener('change', (e) => {
+        studioItemArchetype = e.target.value;
+        refreshStudioCanvas();
+      });
+    }
+
+    // 9. Elemental Aura Dropdown
+    const auraSelect = document.getElementById('studio-gear-aura');
+    if (auraSelect) {
+      auraSelect.addEventListener('change', (e) => {
+        studioItemAura = e.target.value;
+      });
+    }
+
+    // 10. Stat Bonus Category Dropdown
+    const statTypeSelect = document.getElementById('studio-gear-stat-type');
+    if (statTypeSelect) {
+      statTypeSelect.addEventListener('change', (e) => {
+        studioStatType = e.target.value;
+        const badge = document.getElementById('studio-stat-badge');
+        if (badge) {
+          badge.textContent = `+${studioStatPercent}% ${formatStatBonusName(studioStatType)}`;
+        }
+      });
+    }
+
+    // 11. Stat Bonus Percent Slider
+    const statPercentSlider = document.getElementById('studio-gear-stat-percent');
+    if (statPercentSlider) {
+      statPercentSlider.addEventListener('input', (e) => {
+        studioStatPercent = parseInt(e.target.value, 10) || 25;
+        const percentLabel = document.getElementById('studio-stat-percent-label');
+        if (percentLabel) percentLabel.textContent = `+${studioStatPercent}%`;
+        const badge = document.getElementById('studio-stat-badge');
+        if (badge) {
+          badge.textContent = `+${studioStatPercent}% ${formatStatBonusName(studioStatType)}`;
+        }
+      });
+    }
+
+    // 12. Token Price Slider
+    const priceSlider = document.getElementById('studio-gear-price');
+    if (priceSlider) {
+      priceSlider.addEventListener('input', (e) => {
+        studioItemPrice = parseInt(e.target.value, 10) || 150;
+        const priceLabel = document.getElementById('studio-gear-price-label');
+        if (priceLabel) priceLabel.textContent = `🪙 ${studioItemPrice} Tokens`;
+      });
+    }
+
+    // 13. AI Generate Button (Gemini AI + Offline Fallback)
+    const studioAiBtn = document.getElementById('studio-gear-ai-btn');
+    if (studioAiBtn) {
+      studioAiBtn.addEventListener('click', async () => {
+        if (isStudioGenerating) return;
+        isStudioGenerating = true;
+        Sound.sparkle();
+        store.notify();
+
+        try {
+          const promptInput = document.getElementById('studio-gear-prompt')?.value || studioSelectedTheme;
+          const generated = await firebaseAI.generate3DPetGear({
+            promptText: promptInput,
+            theme: studioSelectedTheme,
+            socket: studioSelectedSocket,
+            petId: studioSelectedPetId,
+            defaultPrice: studioItemPrice
+          });
+
+          if (generated) {
+            studioItemName = generated.name || studioItemName;
+            studioItemDesc = generated.desc || studioItemDesc;
+            studioSelectedSocket = generated.socket || studioSelectedSocket;
+            studioItemArchetype = generated.meshArchetype || studioItemArchetype;
+            studioSelectedDye = generated.primaryColor || studioSelectedDye;
+            studioItemAura = generated.aura || studioItemAura;
+            studioStatType = generated.statBonusType || studioStatType;
+            studioStatPercent = generated.statBonusPercent || studioStatPercent;
+            studioItemPrice = generated.costCoins || studioItemPrice;
+            studioPetVoiceLine = generated.petVoiceLine || studioPetVoiceLine;
+          }
+          Sound.fanfare();
+        } catch (err) {
+          console.warn("AI generation failed:", err);
+        } finally {
+          isStudioGenerating = false;
+          store.notify();
+        }
+      });
+    }
+
+    // 14. Publish Live to Hero Shop Button
+    const publishBtn = document.getElementById('studio-gear-publish-btn');
+    if (publishBtn) {
+      publishBtn.addEventListener('click', () => {
+        const nameVal = document.getElementById('studio-gear-name')?.value || studioItemName;
+        const descVal = document.getElementById('studio-gear-desc')?.value || studioItemDesc;
+        const voiceVal = document.getElementById('studio-gear-voiceline')?.value || studioPetVoiceLine;
+
+        const gearToPublish = {
+          id: `parent_gear_${Date.now()}`,
+          name: nameVal.trim() || 'Hero Pet Gear',
+          title: nameVal.trim() || 'Hero Pet Gear',
+          desc: descVal.trim() || 'Legendary 3D superhero gear handcrafted by parent!',
+          socket: studioSelectedSocket,
+          meshArchetype: studioItemArchetype,
+          defaultColor: studioSelectedDye,
+          primaryColor: studioSelectedDye,
+          secondaryColor: '#fbbf24',
+          aura: studioItemAura,
+          statBonusType: studioStatType,
+          statBonusPercent: studioStatPercent,
+          statBonusLabel: `+${studioStatPercent}% ${formatStatBonusName(studioStatType)}`,
+          costCoins: studioItemPrice,
+          petVoiceLine: voiceVal.trim(),
+          category: 'Avatar & Pet Gear',
+          icon: studioSelectedSocket === 'head' ? 'crown' : studioSelectedSocket === 'back' ? 'shield' : studioSelectedSocket === 'chest' ? 'security' : 'sprint'
+        };
+
+        store.publishCustomAIGear(gearToPublish);
+      });
+    }
+  }
+
+  // 15. Delete / Unpublish Custom Gear Buttons
+  document.querySelectorAll('.delete-custom-gear-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const gearId = btn.getAttribute('data-gear-id');
+      if (gearId) {
+        store.deleteCustomAIGear(gearId);
       }
     });
-  }
+  });
 
   // PARENT ADMINISTRATOR MANAGEMENT LISTENERS
   const addParentBtn = document.getElementById('admin-add-parent-btn');

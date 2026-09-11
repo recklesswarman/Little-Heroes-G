@@ -25,8 +25,8 @@ import {
   getFurnitureItem,
   getTrophiesForDisplay
 } from '../data/heroHQData.js';
-
-
+import { PET_GEAR_CATALOG, calculateActiveGearBuffs, formatStatBonusName } from '../data/petGearStudioData.js';
+import { speakCompanion } from '../services/voiceService.js';
 
 export const KID_AVATARS = [
   { id: 'avatar_dragon', label: 'Dragon Explorer', url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZfP7_Cwlp4sz41asI8ymuapAKvjmqHtvI4zcMAF_XwUmibj8IheGrS5cA5QD5gmXgVxEkZM9FlWJPRZnct3x6-9SQB7zJKqkEDjJ3m95tAy3zRqS-PbmcQ4kv_9pmIfm2Py4mh3Fw083hkDookz1w4_r50SBA1jc9igDaAPFLYBFgSP2aQBz7Q4jVE-DwhMOyUEHlxDkQk6Gwc2EAFCSKs1c0QuhUOi3tkrk5MXRARKqZcYVzyJe6gA' },
@@ -42,6 +42,7 @@ const defaultState = {
   previousView: 'dashboard',
   selectedPetDetailId: 1,
   selectedAdventureGameId: 'phonics_forest',
+  parentCustomGear: [],
 
   // Household Link Architecture & Parent User Administration
   household: {
@@ -636,6 +637,24 @@ class Store {
         if (!parsed.expeditionModal) {
           parsed.expeditionModal = { isOpen: false, selectedPetId: null, selectedBiomeId: 'fern_woods', selectedDuration: 15, snackPacked: false, activeTab: 'dispatch' };
         }
+        if (!parsed.parentCustomGear || !Array.isArray(parsed.parentCustomGear)) {
+          parsed.parentCustomGear = [];
+        }
+        // Hydrate parent custom gear into PET_GEAR_CATALOG and digitalGear
+        parsed.parentCustomGear.forEach(item => {
+          if (item && item.socket && PET_GEAR_CATALOG[item.socket]) {
+            const inCatalog = PET_GEAR_CATALOG[item.socket].some(g => g.id === item.id);
+            if (!inCatalog) {
+              PET_GEAR_CATALOG[item.socket].unshift(item);
+            }
+          }
+          if (item && parsed.digitalGear && Array.isArray(parsed.digitalGear)) {
+            const inDigital = parsed.digitalGear.some(g => g.id === item.id);
+            if (!inDigital) {
+              parsed.digitalGear.unshift(item);
+            }
+          }
+        });
 
         // Determine currently pending task IDs so we only preserve pending flags for active requests
         const pendingTaskIds = new Set(
@@ -1252,9 +1271,16 @@ class Store {
     habit.completed = true;
     habit.pointsApproved = false;
 
-    // 🪙 Tokens are auto-issued immediately
-    currentHero.coins += habit.coins;
-    this.addXP(habit.xp);
+    // Factor in Pet Gear Stat Buffs
+    const petBuffs = this.getActivePetGearBuffs ? this.getActivePetGearBuffs(currentHero.activePetId) : { coin_boost: 0, xp_boost: 0 };
+    const bonusCoins = petBuffs.coin_boost > 0 ? Math.ceil((habit.coins || 10) * (petBuffs.coin_boost / 100)) : 0;
+    const finalCoins = (habit.coins || 10) + bonusCoins;
+    const bonusXP = petBuffs.xp_boost > 0 ? Math.ceil((habit.xp || 15) * (petBuffs.xp_boost / 100)) : 0;
+    const finalXP = (habit.xp || 15) + bonusXP;
+
+    // 🪙 Tokens are auto-issued immediately (with pet gear boost)
+    currentHero.coins += finalCoins;
+    this.addXP(finalXP);
     this.awardTaskCareSynergy(habit.id, 'habit');
     Sound.coin();
     Sound.fanfare();
@@ -1280,18 +1306,19 @@ class Store {
       title: habit.title,
       zone: 'Habit Islands',
       pendingPoints: habit.points,
-      tokensAwarded: habit.coins,
+      tokensAwarded: finalCoins,
       date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       timestamp: nowIso,
       status: 'pending'
     });
 
-    this.logAction(`${currentHero.name} logged '${habit.title}'`, `+${habit.coins} Tokens 🪙 auto-issued. (${habit.points} Points ⭐ pending Parent Approval)`);
+    const buffMsg = bonusCoins > 0 ? ` (Includes +${bonusCoins} Pet Gear Buff! 🐾)` : '';
+    this.logAction(`${currentHero.name} logged '${habit.title}'`, `+${finalCoins} Tokens 🪙 auto-issued${buffMsg}. (${habit.points} Points ⭐ pending Parent Approval)`);
     this.showReward(
       `Habit Logged!`,
-      `🪙 +${habit.coins} Habit Tokens auto-added to wallet!\n⭐ +${habit.points} Gold Points sent to Parent for approval.`,
-      habit.coins,
-      habit.xp,
+      `🪙 +${finalCoins} Habit Tokens auto-added to wallet!${buffMsg}\n⭐ +${habit.points} Gold Points sent to Parent for approval.`,
+      finalCoins,
+      finalXP,
       habit.image,
       habit.icon
     );
@@ -1358,9 +1385,16 @@ class Store {
     task.completed = true;
     task.pointsApproved = false;
 
-    // 🪙 Tokens are auto-issued immediately
-    currentHero.coins += task.coins;
-    this.addXP(task.xp);
+    // Factor in Pet Gear Stat Buffs
+    const petBuffs = this.getActivePetGearBuffs ? this.getActivePetGearBuffs(currentHero.activePetId) : { coin_boost: 0, xp_boost: 0 };
+    const bonusCoins = petBuffs.coin_boost > 0 ? Math.ceil((task.coins || 15) * (petBuffs.coin_boost / 100)) : 0;
+    const finalCoins = (task.coins || 15) + bonusCoins;
+    const bonusXP = petBuffs.xp_boost > 0 ? Math.ceil((task.xp || 20) * (petBuffs.xp_boost / 100)) : 0;
+    const finalXP = (task.xp || 20) + bonusXP;
+
+    // 🪙 Tokens are auto-issued immediately (with pet gear boost)
+    currentHero.coins += finalCoins;
+    this.addXP(finalXP);
     this.awardTaskCareSynergy(task.id, 'task');
     Sound.coin();
     Sound.fanfare();
@@ -1386,18 +1420,19 @@ class Store {
       title: task.title,
       zone: 'Task Forest',
       pendingPoints: task.points,
-      tokensAwarded: task.coins,
+      tokensAwarded: finalCoins,
       date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       timestamp: nowIso,
       status: 'pending'
     });
 
-    this.logAction(`${currentHero.name} finished '${task.title}'`, `+${task.coins} Tokens 🪙 auto-issued. (${task.points} Points ⭐ pending Parent Approval)`);
+    const buffMsg = bonusCoins > 0 ? ` (Includes +${bonusCoins} Pet Gear Buff! 🐾)` : '';
+    this.logAction(`${currentHero.name} finished '${task.title}'`, `+${finalCoins} Tokens 🪙 auto-issued${buffMsg}. (${task.points} Points ⭐ pending Parent Approval)`);
     this.showReward(
       `Chore Done: ${task.title}!`,
-      `🪙 +${task.coins} Habit Tokens auto-added to wallet!\n⭐ +${task.points} Gold Points sent to Parent for approval.`,
-      task.coins,
-      task.xp,
+      `🪙 +${finalCoins} Habit Tokens auto-added to wallet!${buffMsg}\n⭐ +${task.points} Gold Points sent to Parent for approval.`,
+      finalCoins,
+      finalXP,
       task.image,
       task.icon
     );
@@ -1510,17 +1545,24 @@ class Store {
     const todayStr = new Date().toDateString();
     const currentHour = new Date().getHours();
 
-    const coinsEarned = boss.rewardCoins || 50;
-    const xpEarned = boss.rewardXP || 75;
+    const baseCoins = boss.rewardCoins || 50;
+    const baseXp = boss.rewardXP || 75;
     const sparksEarned = boss.rewardSparks || 15;
+
+    const activePet = this.getActivePet();
+    const petId = activePet?.id || this.state.selectedHero?.activePetId || 1;
+    const petBuffs = this.getActivePetGearBuffs ? this.getActivePetGearBuffs(petId) : { damage_boost: 0, xp_boost: 0, coin_boost: 0 };
+
+    const damageBonusCoins = petBuffs.damage_boost > 0 ? Math.ceil(baseCoins * (petBuffs.damage_boost / 100)) : 0;
+    const coinsEarned = baseCoins + damageBonusCoins;
+    const xpBonus = petBuffs.xp_boost > 0 ? Math.ceil(baseXp * (petBuffs.xp_boost / 100)) : 0;
+    const xpEarned = baseXp + xpBonus;
 
     // 1. Award Currency and Hero XP
     currentHero.coins = (currentHero.coins || 0) + coinsEarned;
     this.addXP(xpEarned);
 
     // 2. Active Companion Pet Sparks & Vitality Boost
-    const activePet = this.getActivePet();
-    const petId = activePet?.id || this.state.selectedHero?.activePetId || 1;
     this.addEvolutionSparks(petId, sparksEarned);
     if (!this.state.petStatsMap[petId]) {
       this.state.petStatsMap[petId] = { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
@@ -2376,6 +2418,105 @@ class Store {
     return this.state.customGearDyesMap[id];
   }
 
+  getActivePetGearBuffs(petId = null) {
+    const id = petId || this.state.selectedHero?.activePetId || 1;
+    const equipped = this.getEquippedPetStudioGear(id);
+    return calculateActiveGearBuffs(equipped);
+  }
+
+  getParentCustomGear() {
+    return this.state.parentCustomGear || [];
+  }
+
+  publishCustomAIGear(gearItem) {
+    if (!gearItem || (!gearItem.name && !gearItem.title)) return null;
+
+    const socket = gearItem.socket || gearItem.targetPetSocket || 'head';
+    const name = gearItem.name || gearItem.title || 'Custom Hero Gear';
+    const gear = {
+      ...gearItem,
+      id: gearItem.id || `ai_gear_${Date.now()}`,
+      name,
+      title: name,
+      socket,
+      targetPetSocket: socket,
+      isParentCrafted: true,
+      isCustomAI: true,
+      unlocked: false,
+      statBonusType: gearItem.statBonusType || (socket === 'feet' ? 'speed_boost' : socket === 'chest' ? 'defense_boost' : socket === 'head' ? 'damage_boost' : 'xp_boost'),
+      statBonusPercent: Number(gearItem.statBonusPercent) || 25,
+      statBonusLabel: gearItem.statBonusLabel || `+${gearItem.statBonusPercent || 25}% ${formatStatBonusName(gearItem.statBonusType)}`,
+      costCoins: Number(gearItem.costCoins || gearItem.coinPrice) || 150,
+      createdAt: gearItem.createdAt || new Date().toISOString()
+    };
+
+    if (!this.state.parentCustomGear) this.state.parentCustomGear = [];
+    const existingIdx = this.state.parentCustomGear.findIndex(g => g.id === gear.id);
+    if (existingIdx >= 0) {
+      this.state.parentCustomGear[existingIdx] = gear;
+    } else {
+      this.state.parentCustomGear.unshift(gear);
+    }
+
+    if (!this.state.digitalGear) this.state.digitalGear = [];
+    const digIdx = this.state.digitalGear.findIndex(g => g.id === gear.id);
+    if (digIdx >= 0) {
+      this.state.digitalGear[digIdx] = gear;
+    } else {
+      this.state.digitalGear.unshift(gear);
+    }
+
+    if (PET_GEAR_CATALOG[socket]) {
+      const catIdx = PET_GEAR_CATALOG[socket].findIndex(g => g.id === gear.id);
+      if (catIdx >= 0) {
+        PET_GEAR_CATALOG[socket][catIdx] = gear;
+      } else {
+        PET_GEAR_CATALOG[socket].unshift(gear);
+      }
+    }
+
+    this.logAction(
+      `Parent crafted 3D Pet Gear: '${gear.name}'`,
+      `Published to Hero Shop for ${gear.costCoins} Tokens 🪙. (${gear.statBonusLabel})`
+    );
+
+    Sound.fanfare();
+    confetti({ particleCount: 75, spread: 80, origin: { y: 0.6 } });
+    this.showReward(
+      '✨ 3D Pet Gear Published!',
+      `"${gear.name}" is now live in the Hero Shop!\n🪙 Price: ${gear.costCoins} Habit Tokens\n⚡ Bonus: ${gear.statBonusLabel}\n🐾 Ready to equip on your companion pets!`,
+      0,
+      0,
+      gear.image,
+      gear.icon || 'auto_awesome'
+    );
+
+    this.saveState(true);
+    this.notify();
+    return gear;
+  }
+
+  deleteCustomAIGear(gearId) {
+    if (!gearId) return false;
+
+    if (this.state.parentCustomGear) {
+      const item = this.state.parentCustomGear.find(g => g.id === gearId);
+      this.state.parentCustomGear = this.state.parentCustomGear.filter(g => g.id !== gearId);
+      if (item && item.socket && PET_GEAR_CATALOG[item.socket]) {
+        PET_GEAR_CATALOG[item.socket] = PET_GEAR_CATALOG[item.socket].filter(g => g.id !== gearId);
+      }
+    }
+
+    if (this.state.digitalGear) {
+      this.state.digitalGear = this.state.digitalGear.filter(g => g.id !== gearId);
+    }
+
+    Sound.click();
+    this.saveState(true);
+    this.notify();
+    return true;
+  }
+
   getSavedHeroCards() {
     return this.state.savedHeroCards || [];
   }
@@ -2974,6 +3115,25 @@ class Store {
     this.state.selectedHero.coins -= item.costCoins;
     this.state.inventory.push(item.title);
     this.state.equippedPetGear = item.title;
+
+    // Equip wearable pet studio gear & speak companion reaction line
+    if (item.socket || item.isParentCrafted) {
+      const activePetId = this.getActivePet()?.id || this.state.selectedHero?.activePetId || 1;
+      const targetSocket = item.socket || 'head';
+      this.equipPetStudioGear(activePetId, targetSocket, item.id);
+      if (PET_GEAR_CATALOG[targetSocket]) {
+        const catItem = PET_GEAR_CATALOG[targetSocket].find(g => g.id === item.id);
+        if (catItem) catItem.unlocked = true;
+      }
+      if (item.petVoiceLine) {
+        try {
+          speakCompanion(item.petVoiceLine, activePetId);
+        } catch (e) {
+          console.warn("Companion voice line playback failed:", e);
+        }
+      }
+    }
+
     this.addXP(25);
     Sound.coin();
     this.logAction(`${this.state.selectedHero.name} bought ${item.title}`, `Cost: ${item.costCoins} Tokens 🪙`);
