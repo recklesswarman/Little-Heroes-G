@@ -117,6 +117,11 @@ export function renderPetPenView() {
             <span class="material-symbols-outlined text-base">grid_view</span> 24 Pet Roster
           </button>
 
+          <!-- Pet Expeditions Camp Button -->
+          <button id="pen-open-expeditions-btn" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:brightness-110 text-white font-headline text-xs font-black px-3.5 py-2 rounded-2xl border-2 border-emerald-400 flex items-center gap-1.5 chunky-btn-sm shadow-md active:scale-95">
+            <span class="material-symbols-outlined text-base">explore</span> 🧭 Expeditions
+          </button>
+
           <!-- Group Treat Picnic Button -->
           <button id="pen-group-picnic-btn" class="bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 text-black font-headline text-xs font-black px-4 py-2 rounded-2xl border-2 border-amber-400 flex items-center gap-1.5 chunky-btn-sm shadow-md active:scale-95">
             <span class="material-symbols-outlined text-base">shopping_basket</span> 🧺 Group Picnic (15 🪙)
@@ -639,6 +644,22 @@ export function attachPetPenListeners() {
     rosterBtn.addEventListener('click', () => {
       if (isEasy) speakRex("Look at all the 24 magical companions you can unlock on your adventure!");
       store.navigate('pet_roster');
+    });
+  }
+
+  // Pet Expeditions Camp
+  const openExpeditionsBtn = document.getElementById('pen-open-expeditions-btn');
+  if (openExpeditionsBtn) {
+    openExpeditionsBtn.addEventListener('click', () => {
+      Sound.tap();
+      store.openExpeditionModal();
+    });
+  }
+  const bannerExpeditionsBtn = document.getElementById('pen-banner-expeditions-btn');
+  if (bannerExpeditionsBtn) {
+    bannerExpeditionsBtn.addEventListener('click', () => {
+      Sound.tap();
+      store.openExpeditionModal();
     });
   }
 

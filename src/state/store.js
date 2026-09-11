@@ -8,6 +8,15 @@ import { generate3DIcon } from '../utils/graphicsGenerator.js';
 import { triggerInteractiveCelebration, closeInteractiveCelebration } from '../components/InteractiveCelebrationOverlay.js';
 import { ROUTINES, HABIT_ISLANDS } from '../constants/routines.js';
 import { HYGIENE_BOSSES, DENTAL_BADGES, getHygieneBoss } from '../data/hygieneBossesData.js';
+import {
+  EXPEDITION_BIOMES,
+  EXPEDITION_DURATIONS,
+  EXPEDITION_ARTIFACTS,
+  getExpeditionBiome,
+  getExpeditionDuration,
+  calculateExpeditionAffinity,
+  generateExpeditionRewards
+} from '../data/petExpeditionsData.js';
 
 
 export const KID_AVATARS = [
@@ -385,6 +394,10 @@ const defaultState = {
   dentalBattleHistory: [],
   lastBrushedMorning: null,
   lastBrushedEvening: null,
+  activeExpeditions: [],
+  expeditionHistory: [],
+  unlockedArtifacts: [],
+  expeditionModal: { isOpen: false, selectedPetId: null, selectedBiomeId: 'fern_woods', selectedDuration: 15, snackPacked: false, activeTab: 'dispatch' },
 
   // Parent Admin Portal: Action Approvals Queue
   pendingApprovals: [],
@@ -528,6 +541,18 @@ class Store {
         }
         if (!parsed.dentalBattleHistory || !Array.isArray(parsed.dentalBattleHistory)) {
           parsed.dentalBattleHistory = [];
+        }
+        if (!parsed.activeExpeditions || !Array.isArray(parsed.activeExpeditions)) {
+          parsed.activeExpeditions = [];
+        }
+        if (!parsed.expeditionHistory || !Array.isArray(parsed.expeditionHistory)) {
+          parsed.expeditionHistory = [];
+        }
+        if (!parsed.unlockedArtifacts || !Array.isArray(parsed.unlockedArtifacts)) {
+          parsed.unlockedArtifacts = [];
+        }
+        if (!parsed.expeditionModal) {
+          parsed.expeditionModal = { isOpen: false, selectedPetId: null, selectedBiomeId: 'fern_woods', selectedDuration: 15, snackPacked: false, activeTab: 'dispatch' };
         }
 
         // Determine currently pending task IDs so we only preserve pending flags for active requests
@@ -1530,6 +1555,7 @@ class Store {
       this.state.taskCompletionLogs.pop();
     }
 
+    this.applyChoreTurboBoost(15, 'Toothbrush AR Battle');
     this.logAction(
       `${currentHero.name} defeated ${boss.name} in Toothbrush Battle! 🪥🦷`,
       `+${coinsEarned} Tokens 🪙, +${xpEarned} XP, +${sparksEarned} Sparks ⚡ for active companion pet, +30 Hygiene!`
@@ -1575,6 +1601,312 @@ class Store {
       ...b,
       unlocked: unlockedIds.includes(b.id)
     }));
+  }
+
+
+  // ---------------------------------------------------------
+  // PET EXPEDITIONS & MINI-ADVENTURES 1.0
+  // ---------------------------------------------------------
+
+  openExpeditionModal(petId = null, tab = 'dispatch') {
+    if (!this.state.expeditionModal) {
+      this.state.expeditionModal = { isOpen: false, selectedPetId: null, selectedBiomeId: 'fern_woods', selectedDuration: 15, snackPacked: false, activeTab: 'dispatch' };
+    }
+    this.state.expeditionModal.isOpen = true;
+    this.state.expeditionModal.activeTab = tab;
+    if (petId) {
+      this.state.expeditionModal.selectedPetId = petId;
+    } else if (!this.state.expeditionModal.selectedPetId) {
+      // Pick first idle unlocked pet
+      const unlockedIds = this.state.selectedHero?.unlockedPetIds || [1];
+      const activeExpeditionPetIds = (this.state.activeExpeditions || []).map(e => e.petId);
+      const idlePetId = unlockedIds.find(id => !activeExpeditionPetIds.includes(id));
+      this.state.expeditionModal.selectedPetId = idlePetId || unlockedIds[0] || 1;
+    }
+    this.notify();
+  }
+
+  closeExpeditionModal() {
+    if (this.state.expeditionModal) {
+      this.state.expeditionModal.isOpen = false;
+    }
+    this.notify();
+  }
+
+  setExpeditionModalTab(tab) {
+    if (this.state.expeditionModal) {
+      this.state.expeditionModal.activeTab = tab;
+      this.notify();
+    }
+  }
+
+  startPetExpedition(petId, biomeId = 'fern_woods', durationMinutes = 15, snackPacked = false) {
+    if (!this.state.activeExpeditions) {
+      this.state.activeExpeditions = [];
+    }
+
+    const heroLevel = this.state.selectedHero?.level || 1;
+    const maxSlots = heroLevel >= 3 ? 2 : 1;
+
+    if (this.state.activeExpeditions.length >= maxSlots) {
+      return {
+        success: false,
+        error: `Maximum active expeditions reached (${maxSlots}/${maxSlots}). Reach Hero Level 3 to unlock Slot 2!`
+      };
+    }
+
+    const pId = Number(petId);
+    const isAlreadyExploring = this.state.activeExpeditions.some(e => e.petId === pId);
+    if (isAlreadyExploring) {
+      return {
+        success: false,
+        error: 'This companion pet is already exploring! Pick another pet.'
+      };
+    }
+
+    const pet = this.state.pets.find(p => p.id === pId) || this.state.pets[0];
+    const biome = getExpeditionBiome(biomeId);
+    const affinity = calculateExpeditionAffinity(pet, biomeId);
+
+    // If snack packed, deduct small treat tokens (free if insufficient)
+    if (snackPacked && (this.state.selectedHero.coins || 0) >= 5) {
+      this.state.selectedHero.coins -= 5;
+    }
+
+    const now = Date.now();
+    const durationMs = durationMinutes * 60 * 1000;
+    const expeditionRecord = {
+      id: 'exp_' + now + '_' + Math.random().toString(36).substring(2, 6),
+      petId: pId,
+      petName: pet.name,
+      petAvatar: pet.avatar,
+      biomeId: biome.id,
+      biomeName: biome.name,
+      biomeEmoji: biome.emoji,
+      durationMinutes: durationMinutes,
+      startTime: now,
+      endTime: now + durationMs,
+      snackPacked: snackPacked,
+      affinityBonus: affinity.hasAffinity
+    };
+
+    this.state.activeExpeditions.push(expeditionRecord);
+
+    this.logAction(
+      `${pet.name} departed for ${biome.name}! 🎒🗺️`,
+      `${durationMinutes}-min expedition • ${affinity.hasAffinity ? '+35% Affinity Bonus 🌟' : 'Perimeter Exploration'}`
+    );
+
+    Sound.tap();
+    if (this.state.expeditionModal) {
+      this.state.expeditionModal.activeTab = 'active';
+    }
+
+    this.saveState(true);
+    this.notify();
+
+    return {
+      success: true,
+      expedition: expeditionRecord
+    };
+  }
+
+  applyChoreTurboBoost(minutes = 15, sourceTaskTitle = 'Chore Completion') {
+    const active = this.state.activeExpeditions || [];
+    if (active.length === 0) return { boostedCount: 0 };
+
+    let completedAny = false;
+    const now = Date.now();
+
+    active.forEach(exp => {
+      const cutMs = minutes * 60 * 1000;
+      exp.endTime = Math.max(now, exp.endTime - cutMs);
+      if (exp.endTime <= now) {
+        completedAny = true;
+      }
+    });
+
+    this.logAction(
+      `🚀 Chore Turbo Boost: -${minutes} mins travel time!`,
+      `Triggered by ${sourceTaskTitle}. Active expeditions rushed closer to home!`
+    );
+
+    this.saveState(true);
+    this.notify();
+
+    return {
+      boostedCount: active.length,
+      completedAny: completedAny
+    };
+  }
+
+  claimExpeditionRewards(expeditionId) {
+    if (!this.state.activeExpeditions) return null;
+    const expIdx = this.state.activeExpeditions.findIndex(e => e.id === expeditionId);
+    if (expIdx === -1) return null;
+
+    const expedition = this.state.activeExpeditions[expIdx];
+    const pet = this.state.pets.find(p => p.id === expedition.petId) || this.state.pets[0];
+    const currentHero = this.state.selectedHero;
+
+    const rewards = generateExpeditionRewards(expedition, pet);
+
+    // 1. Award Evolution Sparks to exploring pet
+    this.addEvolutionSparks(pet.id, rewards.sparksAwarded);
+
+    // 2. Award Tokens & XP to hero
+    currentHero.coins = (currentHero.coins || 0) + rewards.coinsAwarded;
+    this.addXP(rewards.xpAwarded);
+
+    // 3. Companion Pet Joy & Energy Boost
+    if (!this.state.petStatsMap[pet.id]) {
+      this.state.petStatsMap[pet.id] = { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
+    }
+    const pStats = this.state.petStatsMap[pet.id];
+    pStats.joy = Math.min(100, (pStats.joy || 80) + 25);
+    pStats.energy = Math.min(100, (pStats.energy || 70) + 15);
+
+    // 4. Artifact Drop
+    if (rewards.artifactDropped) {
+      if (!this.state.unlockedArtifacts) this.state.unlockedArtifacts = [];
+      const alreadyHas = this.state.unlockedArtifacts.some(a => a.id === rewards.artifactDropped.id);
+      if (!alreadyHas) {
+        this.state.unlockedArtifacts.push(rewards.artifactDropped);
+      }
+    }
+
+    // 5. Exclusive Pet Gear Drop
+    if (rewards.gearDropped) {
+      if (!this.state.inventory) this.state.inventory = [];
+      if (!this.state.inventory.includes(rewards.gearDropped.name)) {
+        this.state.inventory.push(rewards.gearDropped.name);
+      }
+      if (!currentHero.inventory) currentHero.inventory = [];
+      if (!currentHero.inventory.includes(rewards.gearDropped.name)) {
+        currentHero.inventory.push(rewards.gearDropped.name);
+      }
+    }
+
+    // 6. Save Postcard to Expedition History
+    if (!this.state.expeditionHistory) this.state.expeditionHistory = [];
+    this.state.expeditionHistory.unshift({
+      ...expedition,
+      claimedAt: Date.now(),
+      rewards: rewards,
+      postcard: rewards.postcard
+    });
+    if (this.state.expeditionHistory.length > 100) {
+      this.state.expeditionHistory.pop();
+    }
+
+    // Remove from active expeditions
+    this.state.activeExpeditions.splice(expIdx, 1);
+
+    // 7. Audit Log for Parent Portal
+    const nowIso = new Date().toISOString();
+    const completionLog = {
+      id: 'exp_log_' + Date.now(),
+      taskId: 'expedition_' + expedition.biomeId,
+      taskTitle: `Pet Expedition: ${pet.name} returned from ${expedition.biomeName}`,
+      zone: 'Pet Expeditions',
+      category: 'companion_exploration',
+      durationMinutes: expedition.durationMinutes,
+      petId: pet.id,
+      petName: pet.name,
+      biomeId: expedition.biomeId,
+      heroId: currentHero.id,
+      heroName: currentHero.name,
+      completedAt: nowIso,
+      timestamp: Date.now(),
+      dateString: new Date().toLocaleDateString(),
+      timeString: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      coinsAwarded: rewards.coinsAwarded,
+      pointsAwarded: 10,
+      xpAwarded: rewards.xpAwarded,
+      sparksAwarded: rewards.sparksAwarded,
+      status: 'approved',
+      approvedAt: nowIso
+    };
+    if (!this.state.taskCompletionLogs) this.state.taskCompletionLogs = [];
+    this.state.taskCompletionLogs.unshift(completionLog);
+    if (this.state.taskCompletionLogs.length > 200) {
+      this.state.taskCompletionLogs.pop();
+    }
+
+    this.logAction(
+      `${pet.name} returned from ${expedition.biomeName}! 🎒✨`,
+      `+${rewards.sparksAwarded} Sparks ⚡, +${rewards.coinsAwarded} Coins 🪙, +${rewards.xpAwarded} XP${rewards.artifactDropped ? ' & Found ' + rewards.artifactDropped.name : ''}`
+    );
+
+    Sound.fanfare();
+    confetti({
+      particleCount: 140,
+      spread: 100,
+      origin: { y: 0.5 },
+      colors: ['#2ecc71', '#3498db', '#9b59b6', '#f39c12', '#00bcd4']
+    });
+
+    const dropMessage = rewards.artifactDropped
+      ? `\n🏺 DISCOVERED ARTIFACT: "${rewards.artifactDropped.name}" added to Souvenir Shelf!`
+      : '';
+    const gearMessage = rewards.gearDropped
+      ? `\n🧢 EXCLUSIVE GEAR: "${rewards.gearDropped.name}" added to Pet Locker!`
+      : '';
+
+    this.showReward(
+      `${pet.name.toUpperCase()} RETURNED! 🎒🎉`,
+      `⚡ +${rewards.sparksAwarded} Evolution Sparks for ${pet.name}!\n🪙 +${rewards.coinsAwarded} Habit Tokens & +${rewards.xpAwarded} XP!\n💌 New illustrated postcard added to your Journal!${dropMessage}${gearMessage}`,
+      rewards.coinsAwarded,
+      rewards.xpAwarded,
+      null,
+      'explore'
+    );
+
+    this.saveState(true);
+    this.notify();
+
+    return {
+      rewards,
+      pet,
+      expedition
+    };
+  }
+
+  recallPetExpedition(expeditionId) {
+    if (!this.state.activeExpeditions) return false;
+    const idx = this.state.activeExpeditions.findIndex(e => e.id === expeditionId);
+    if (idx === -1) return false;
+
+    const exp = this.state.activeExpeditions[idx];
+    this.state.activeExpeditions.splice(idx, 1);
+
+    this.logAction(
+      `${exp.petName} was safely recalled home 🏡`,
+      `Expedition to ${exp.biomeName} cancelled without penalty.`
+    );
+
+    Sound.tap();
+    this.saveState(true);
+    this.notify();
+    return true;
+  }
+
+  getExpeditionStats() {
+    const history = this.state.expeditionHistory || [];
+    const active = this.state.activeExpeditions || [];
+    const artifacts = this.state.unlockedArtifacts || [];
+
+    const totalSparksForaged = history.reduce((sum, h) => sum + (h.rewards?.sparksAwarded || 0), 0);
+    const totalMinutesExplored = history.reduce((sum, h) => sum + (h.durationMinutes || 0), 0);
+
+    return {
+      activeCount: active.length,
+      completedCount: history.length,
+      totalSparksForaged,
+      totalMinutesExplored,
+      artifactsCount: artifacts.length,
+      recentPostcards: history.map(h => h.postcard).filter(Boolean).slice(0, 10)
+    };
   }
 
   getDentalStats() {
@@ -2047,6 +2379,7 @@ class Store {
     const stats = this.state.petStatsMap[petId];
     stats.joy = Math.min(100, (stats.joy || 80) + 5);
     stats.energy = Math.min(100, (stats.energy || 70) + 5);
+    this.applyChoreTurboBoost(15, taskId);
     this.saveState(true);
   }
 
@@ -2990,6 +3323,7 @@ class Store {
       this.state.taskCompletionLogs.pop();
     }
 
+    this.applyChoreTurboBoost(15, 'Movement Routine: ' + routine.title);
     this.logAction(
       `${currentHero.name} rocked ${routine.title}! 🕺💃`,
       `+${coinsEarned} Tokens 🪙, +${xpEarned} XP, +${sparksEarned} Sparks ⚡ for ${activePet.name} (${durationMinutes} mins active)`

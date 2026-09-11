@@ -108,6 +108,9 @@ class AIDevelopmentalReportService {
     const totalMovementSessions = movementLogs.length;
     const feverBursts = movementLogs.reduce((acc, l) => acc + (l.feverBursts || 0), 0);
 
+    const expeditionLogs = logs.filter(l => l.zone === 'Pet Expeditions' || l.category === 'companion_exploration');
+    const totalExpeditions = expeditionLogs.length;
+
     // Try cloud function parent insights if available
     try {
       if (typeof navigator !== 'undefined' && navigator.onLine) {
@@ -133,6 +136,7 @@ class AIDevelopmentalReportService {
             totalMovementMinutes,
             totalMovementSessions,
             feverBursts,
+            totalExpeditions,
             petJoy,
             petHygiene,
             executiveSummary: cloudData.insights.executiveSummary,
@@ -160,6 +164,7 @@ class AIDevelopmentalReportService {
       totalMovementMinutes,
       totalMovementSessions,
       feverBursts,
+      totalExpeditions,
       petJoy,
       petHygiene
     });
@@ -179,6 +184,7 @@ class AIDevelopmentalReportService {
     totalMovementMinutes = 0,
     totalMovementSessions = 0,
     feverBursts = 0,
+    totalExpeditions = 0,
     petJoy = 88,
     petHygiene = 92,
     executiveSummary,
@@ -193,8 +199,8 @@ class AIDevelopmentalReportService {
       weekKey,
       weekLabel,
       childName,
-      generatedAt: new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }),
-      overallRating: consistencyScore >= 90 ? 'Exceptional Growth' : 'Steady Progress',
+      generatedAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      overallRating: approvedChores >= 10 ? 'Exceptional Development' : 'Steady Progress',
       consistencyScore,
       pillars: [
         {
@@ -233,11 +239,13 @@ class AIDevelopmentalReportService {
           icon: 'favorite',
           score: petJoy,
           status: 'Joyful & Empathetic',
-          summary: `Regular pet companion care and gentleness. Companion pet joy is currently at ${petJoy}% and hygiene at ${petHygiene}%, reflecting consistent empathy, kindness, and nurturing behaviors.`,
+          summary: totalExpeditions > 0
+            ? `${childName} demonstrated strong empathy and companion bonding through ${totalExpeditions} autonomous foraging expeditions and regular care. Companion joy is at ${petJoy}% and hygiene at ${petHygiene}%, reflecting proactive nurturing.`
+            : `Regular pet companion care and gentleness. Companion pet joy is currently at ${petJoy}% and hygiene at ${petHygiene}%, reflecting consistent empathy, kindness, and nurturing behaviors.`,
           metrics: [
             { label: 'Companion Joy Rating', value: `${petJoy}%` },
-            { label: 'Empathy & Care Index', value: 'Strong' },
-            { label: 'Screen Time Balance', value: 'Healthy' }
+            { label: 'Expedition Quests', value: `${totalExpeditions} Trips` },
+            { label: 'Empathy & Care Index', value: 'Strong' }
           ]
         },
         {

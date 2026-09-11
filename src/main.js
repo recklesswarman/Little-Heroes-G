@@ -11,6 +11,7 @@ import { renderParentLockModal, initParentLockModal, attachParentLockListeners }
 import { renderHouseholdLinkModal, initHouseholdModal, attachHouseholdLinkModalListeners } from './components/HouseholdLinkModal.js';
 import { renderPetSelectionModal, attachPetSelectionModalListeners } from './components/PetSelectionModal.js';
 import { renderPetLockerModal, attachPetLockerModalListeners } from './components/PetLockerModal.js';
+import { renderPetExpeditionsModal, attachPetExpeditionsListeners } from './components/PetExpeditionsModal.js';
 import { renderMysterySurpriseModal, attachMysterySurpriseModalListeners } from './components/MysterySurpriseModal.js';
 import { renderLiveRexWidget, attachLiveRexWidgetListeners } from './components/LiveRexWidget.js';
 
@@ -121,6 +122,7 @@ function renderApp() {
       ${renderHouseholdLinkModal()}
       ${renderPetSelectionModal()}
       ${renderPetLockerModal()}
+      ${renderPetExpeditionsModal()}
       ${renderMysterySurpriseModal()}
       ${renderLiveRexWidget()}
     </div>
@@ -134,6 +136,7 @@ function renderApp() {
   attachHouseholdLinkModalListeners();
   attachPetSelectionModalListeners();
   attachPetLockerModalListeners();
+  attachPetExpeditionsListeners();
   attachMysterySurpriseModalListeners();
   attachLiveRexWidgetListeners();
   attachViewListeners();

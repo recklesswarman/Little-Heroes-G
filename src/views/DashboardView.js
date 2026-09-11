@@ -110,6 +110,29 @@ export function renderDashboardView() {
         }
       </section>
 
+      <!-- Active Expeditions Mini-Tracker -->
+      ${state.activeExpeditions && state.activeExpeditions.length > 0 ? `
+        <div class="bg-gradient-to-r from-emerald-950/70 via-surface-container to-teal-950/70 border-2 border-emerald-500/50 rounded-2xl p-3 flex items-center justify-between gap-3 shadow-md">
+          <div class="flex items-center gap-2.5">
+            <span class="text-2xl animate-bounce">🎒🧭</span>
+            <div>
+              <div class="flex items-center gap-1.5">
+                <span class="font-headline text-xs font-black text-emerald-300">Companion Pet Exploring</span>
+                <span class="bg-emerald-500/20 text-emerald-300 text-[9px] font-black px-2 py-0.5 rounded-full border border-emerald-500/40">
+                  ${state.activeExpeditions.length} Out
+                </span>
+              </div>
+              <div class="text-[11px] text-on-surface-variant font-bold mt-0.5">
+                ${state.activeExpeditions.map(e => `${e.petName} (${e.biomeName})`).join(' • ')}
+              </div>
+            </div>
+          </div>
+          <button id="dash-open-expeditions-btn" class="bg-primary text-on-primary font-headline text-xs font-black px-3.5 py-2 rounded-xl chunky-btn-sm border-primary-container hover:brightness-110 active:scale-95 flex items-center gap-1">
+            <span class="material-symbols-outlined text-sm">explore</span> Camp
+          </button>
+        </div>
+      ` : ''}
+
       <!-- Toddler Easy Mode (Age 3-4) Rex Voice Guide Banner -->
       ${
         isEasyMode

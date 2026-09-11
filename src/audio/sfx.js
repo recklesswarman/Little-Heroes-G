@@ -45,6 +45,10 @@ export const Sound = {
     }
   },
 
+  tap() {
+    this.bloop();
+  },
+
   // 1. CARTOON BUTTON BLOOP (Tactile juicy rubbery pop for buttons, tabs, micro-interactions)
   bloop() {
     if (isMuted) return;
