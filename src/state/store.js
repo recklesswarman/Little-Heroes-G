@@ -7,6 +7,7 @@ import { PROFILE_THEMES } from '../data/profileThemesData.js';
 import { generate3DIcon } from '../utils/graphicsGenerator.js';
 import { triggerInteractiveCelebration, closeInteractiveCelebration } from '../components/InteractiveCelebrationOverlay.js';
 import { ROUTINES, HABIT_ISLANDS } from '../constants/routines.js';
+import { HYGIENE_BOSSES, DENTAL_BADGES, getHygieneBoss } from '../data/hygieneBossesData.js';
 
 
 export const KID_AVATARS = [
@@ -380,6 +381,10 @@ const defaultState = {
   },
   gameMasteryMap: {},
   movementSessionHistory: [],
+  dentalBadges: ['enamel_guardian'],
+  dentalBattleHistory: [],
+  lastBrushedMorning: null,
+  lastBrushedEvening: null,
 
   // Parent Admin Portal: Action Approvals Queue
   pendingApprovals: [],
@@ -517,6 +522,12 @@ class Store {
         }
         if (!parsed.movementSessionHistory || !Array.isArray(parsed.movementSessionHistory)) {
           parsed.movementSessionHistory = [];
+        }
+        if (!parsed.dentalBadges || !Array.isArray(parsed.dentalBadges)) {
+          parsed.dentalBadges = ['enamel_guardian'];
+        }
+        if (!parsed.dentalBattleHistory || !Array.isArray(parsed.dentalBattleHistory)) {
+          parsed.dentalBattleHistory = [];
         }
 
         // Determine currently pending task IDs so we only preserve pending flags for active requests
@@ -1370,51 +1381,145 @@ class Store {
     this.notify();
   }
 
-  // TOOTHBRUSH AR BATTLE COMPLETION
-  completeToothbrushBattle() {
-    const task = this.state.taskForest.find((t) => t.id === 'morning_brush');
+  // TOOTHBRUSH AR BATTLE COMPLETION 2.0
+  completeToothbrushBattle(bossId = 'sugar_bandit', durationSec = 120, avgCadence = 85) {
+    const boss = getHygieneBoss(bossId);
     const currentHero = this.state.selectedHero;
     const heroId = currentHero?.id || 'hero_1';
+    const nowIso = new Date().toISOString();
+    const todayStr = new Date().toDateString();
+    const currentHour = new Date().getHours();
 
-    // Check if already has a pending approval for this hero
-    const isPending = this.isTaskPendingApproval('morning_brush', heroId);
+    const coinsEarned = boss.rewardCoins || 50;
+    const xpEarned = boss.rewardXP || 75;
+    const sparksEarned = boss.rewardSparks || 15;
 
-    if (isPending) {
-      Sound.fanfare();
-      this.showReward(
-        'SUGAR VILLAIN DEFEATED!',
-        'Great toothbrush battle hero! Your reward request is pending parent approval in the Parent Portal.',
-        0,
-        0,
-        task?.image || null,
-        'dentistry'
-      );
-      this.saveState(true);
-      return;
+    // 1. Award Currency and Hero XP
+    currentHero.coins = (currentHero.coins || 0) + coinsEarned;
+    this.addXP(xpEarned);
+
+    // 2. Active Companion Pet Sparks & Vitality Boost
+    const activePet = this.getActivePet();
+    const petId = activePet?.id || this.state.selectedHero?.activePetId || 1;
+    this.addEvolutionSparks(petId, sparksEarned);
+    if (!this.state.petStatsMap[petId]) {
+      this.state.petStatsMap[petId] = { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
+    }
+    const pStats = this.state.petStatsMap[petId];
+    pStats.hygiene = Math.min(100, (pStats.hygiene || 70) + 30);
+    pStats.joy = Math.min(100, (pStats.joy || 80) + 20);
+
+    // 3. Morning / Bedtime Habit Auto-Verification
+    const isMorning = currentHour < 14;
+    if (isMorning) {
+      this.state.lastBrushedMorning = todayStr;
+      const morningTask = this.state.taskForest.find(t => t.id === 'morning_brush');
+      if (morningTask) {
+        morningTask.completed = true;
+        morningTask.pointsApproved = true;
+      }
+    } else {
+      this.state.lastBrushedEvening = todayStr;
+      const eveningTask = this.state.taskForest.find(t => t.id === 'bedtime_brush');
+      if (eveningTask) {
+        eveningTask.completed = true;
+        eveningTask.pointsApproved = true;
+      }
+    }
+    const habitBrush = this.state.habitIslands.find(h => h.id === 'brush_teeth');
+    if (habitBrush) {
+      habitBrush.completed = true;
+      habitBrush.pointsApproved = true;
     }
 
-    const logId = 'compl_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
-    const approvalReqId = 'task_ar_brush_' + Date.now();
-    const nowIso = new Date().toISOString();
+    // 4. Plaque Buster Mastery Badges Evaluation
+    if (!this.state.dentalBadges || !Array.isArray(this.state.dentalBadges)) {
+      this.state.dentalBadges = [];
+    }
+    const newlyAwardedBadges = [];
+    const awardBadge = (badgeId) => {
+      if (!this.state.dentalBadges.includes(badgeId)) {
+        this.state.dentalBadges.push(badgeId);
+        newlyAwardedBadges.push(badgeId);
+      }
+    };
 
+    // Enamel Guardian: Completed full duration (at least 90s or 120s)
+    if (durationSec >= 90) {
+      awardBadge('enamel_guardian');
+    }
+    // Plaque Buster: Defeated Plaque Kraken
+    if (bossId === 'plaque_kraken') {
+      awardBadge('plaque_buster');
+    }
+    // Diamond Grin: Precision Cadence >= 80%
+    if (avgCadence >= 80) {
+      awardBadge('diamond_grin');
+    }
+    // Twice-a-Day Champion: Brushed both AM & PM on same day
+    if (this.state.lastBrushedMorning === todayStr && this.state.lastBrushedEvening === todayStr) {
+      awardBadge('twice_a_day');
+    }
+
+    // Also add Mint Knight Badge / Dental Badges to Inventory if not present
+    if (!this.state.inventory) this.state.inventory = [];
+    if (!this.state.inventory.includes('Mint Knight Badge')) {
+      this.state.inventory.push('Mint Knight Badge');
+    }
+    if (!currentHero.inventory) currentHero.inventory = [];
+    if (!currentHero.inventory.includes('Mint Knight Badge')) {
+      currentHero.inventory.push('Mint Knight Badge');
+    }
+
+    // 5. Record Dental Battle History
+    if (!this.state.dentalBattleHistory) {
+      this.state.dentalBattleHistory = [];
+    }
+    const battleRecord = {
+      id: 'dental_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+      bossId: boss.id,
+      bossName: boss.name,
+      bossAvatar: boss.avatar,
+      durationSec: durationSec,
+      avgCadence: avgCadence,
+      quadrantsCleaned: 4,
+      sparksAwarded: sparksEarned,
+      coinsAwarded: coinsEarned,
+      xpAwarded: xpEarned,
+      newlyAwardedBadges: newlyAwardedBadges,
+      timestamp: Date.now(),
+      dateIso: nowIso,
+      dateString: new Date().toLocaleDateString(),
+      timeString: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+    this.state.dentalBattleHistory.unshift(battleRecord);
+    if (this.state.dentalBattleHistory.length > 100) {
+      this.state.dentalBattleHistory.pop();
+    }
+
+    // 6. Audit Log for Parent Portal Pillar 1 & Pillar 2
     const completionLog = {
-      id: logId,
-      taskId: 'morning_brush',
-      taskTitle: 'Morning Toothbrush AR Battle (2:00 Routine)',
-      zone: 'Task Forest',
-      heroId: heroId,
+      id: 'brush_log_' + Date.now(),
+      taskId: isMorning ? 'morning_brush' : 'bedtime_brush',
+      taskTitle: `Toothbrush AR Battle: Defeated ${boss.name}`,
+      zone: 'Hygiene AR Battle',
+      category: 'hygiene',
+      durationMinutes: Math.round(durationSec / 60),
+      durationSec: durationSec,
+      avgCadence: avgCadence,
+      bossId: boss.id,
+      heroId: currentHero.id,
       heroName: currentHero.name,
       completedAt: nowIso,
       timestamp: Date.now(),
       dateString: new Date().toLocaleDateString(),
       timeString: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      coinsAwarded: 30,
+      coinsAwarded: coinsEarned,
       pointsAwarded: 15,
-      xpAwarded: 50,
-      status: 'pending',
-      approvalRequestId: approvalReqId,
-      approvedAt: null,
-      rejectedAt: null
+      xpAwarded: xpEarned,
+      sparksAwarded: sparksEarned,
+      status: 'approved',
+      approvedAt: nowIso
     };
 
     if (!this.state.taskCompletionLogs) {
@@ -1425,50 +1530,71 @@ class Store {
       this.state.taskCompletionLogs.pop();
     }
 
-    if (task) {
-      task.completed = true;
-      task.pointsApproved = false;
-    }
+    this.logAction(
+      `${currentHero.name} defeated ${boss.name} in Toothbrush Battle! 🪥🦷`,
+      `+${coinsEarned} Tokens 🪙, +${xpEarned} XP, +${sparksEarned} Sparks ⚡ for active companion pet, +30 Hygiene!`
+    );
 
-    currentHero.coins += 30;
-    this.addXP(50);
-    this.awardTaskCareSynergy('morning_brush', 'ar_battle');
-
-    this.state.pendingApprovals.push({
-      id: approvalReqId,
-      logId: logId,
-      kidId: currentHero.id,
-      kidName: currentHero.name,
-      type: 'task_point_approval',
-      taskId: 'morning_brush',
-      title: 'Morning Toothbrush AR Battle (2:00 Routine)',
-      zone: 'Task Forest',
-      pendingPoints: 15,
-      tokensAwarded: 30,
-      date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      timestamp: nowIso,
-      status: 'pending'
+    // 7. Audio & Confetti Celebration
+    Sound.fanfare();
+    confetti({
+      particleCount: 160,
+      spread: 110,
+      origin: { y: 0.5 },
+      colors: ['#54e98a', '#ffb961', '#38bdf8', '#f1c40f', '#ec4899']
     });
 
-    if (!this.state.inventory) this.state.inventory = [];
-    if (!this.state.inventory.includes('Mint Knight Badge')) {
-      this.state.inventory.push('Mint Knight Badge');
-    }
-    if (!currentHero.inventory) currentHero.inventory = [];
-    if (!currentHero.inventory.includes('Mint Knight Badge')) {
-      currentHero.inventory.push('Mint Knight Badge');
-    }
+    const badgeMessage = newlyAwardedBadges.length > 0
+      ? `\n🎖️ UNLOCKED BADGES: ${newlyAwardedBadges.map(b => DENTAL_BADGES.find(db => db.id === b)?.name || b).join(', ')}!`
+      : '';
 
-    this.logAction(`${currentHero.name} finished 2-min Toothbrush AR Battle`, `+30 Tokens 🪙 auto-issued. (+15 Points ⭐ sent to Parent for approval) & Mint Knight Badge unlocked!`);
     this.showReward(
-      'SUGAR VILLAIN DEFEATED! 🏆',
-      '🪙 +30 Habit Tokens auto-added to your wallet!\n⭐ +15 Gold Points submitted to Parent for review.\n🎖️ UNLOCKED: "Mint Knight Badge" added to your Locker!',
-      30,
-      50,
-      task?.image || null,
+      `${boss.name.toUpperCase()} DEFEATED! 🏆`,
+      `🪙 +${coinsEarned} Habit Tokens & ⭐ +15 Points auto-awarded!\n⚡ +${sparksEarned} Evolution Sparks & +30% Hygiene for pet!\n🦷 All 4 Oral Quadrants Gleaming White!${badgeMessage}`,
+      coinsEarned,
+      xpEarned,
+      null,
       'military_tech'
     );
+
     this.saveState(true);
+    this.notify();
+
+    return {
+      coins: coinsEarned,
+      xp: xpEarned,
+      sparks: sparksEarned,
+      newlyAwardedBadges,
+      boss
+    };
+  }
+
+  getDentalBadges() {
+    const unlockedIds = this.state.dentalBadges || ['enamel_guardian'];
+    return DENTAL_BADGES.map(b => ({
+      ...b,
+      unlocked: unlockedIds.includes(b.id)
+    }));
+  }
+
+  getDentalStats() {
+    const history = this.state.dentalBattleHistory || [];
+    const totalBattles = history.length;
+    const avgCadenceAll = totalBattles > 0
+      ? Math.round(history.reduce((sum, h) => sum + (h.avgCadence || 80), 0) / totalBattles)
+      : 85;
+    const bossesDefeated = {
+      sugar_bandit: history.filter(h => h.bossId === 'sugar_bandit').length,
+      plaque_kraken: history.filter(h => h.bossId === 'plaque_kraken').length,
+      cavity_knight: history.filter(h => h.bossId === 'cavity_knight').length
+    };
+    return {
+      totalBattles,
+      avgCadence: avgCadenceAll,
+      bossesDefeated,
+      badges: this.getDentalBadges(),
+      recentBattles: history.slice(0, 10)
+    };
   }
 
   // ---------------------------------------------------------
