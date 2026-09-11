@@ -3,6 +3,9 @@ import { store } from './state/store.js';
 import { initTactileSoundEngine } from './audio/sfx.js';
 import { firestoreSync } from './services/firestoreSyncService.js';
 
+// Connect centralized Firestore Sync Service to Store
+store.setSyncService(firestoreSync);
+
 // Layout Components
 import { renderTopHeader, attachTopHeaderListeners } from './components/TopHeader.js';
 import { renderBottomNav, attachBottomNavListeners } from './components/BottomNav.js';

@@ -485,12 +485,19 @@ class Store {
   constructor() {
     this.subscribers = new Set();
     this.isParentSessionUnlocked = false;
+    this.syncService = null;
     this.state = this.loadState();
+  }
+
+  setSyncService(service) {
+    this.syncService = service;
   }
 
   loadState() {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('little_heroes_adventure_master_v7');
+      const saved = typeof localStorage !== 'undefined' 
+        ? (localStorage.getItem(STORAGE_KEY) || localStorage.getItem('little_heroes_adventure_master_v7'))
+        : null;
       if (saved) {
         const parsed = JSON.parse(saved);
         const testIds = ['leo', 'mia', 'sam', 'alex'];
@@ -736,11 +743,6 @@ class Store {
       }
       if (this.syncService) {
         this.syncService.pushStateToCloud(immediate);
-      } else {
-        import('../services/firestoreSyncService.js').then(({ firestoreSync }) => {
-          this.syncService = firestoreSync;
-          firestoreSync.pushStateToCloud(immediate);
-        }).catch(() => {});
       }
     } catch (e) {
       console.warn('Failed to save store state', e);
@@ -3620,9 +3622,9 @@ class Store {
     Sound.fanfare();
 
     // Connect to new Firestore household document
-    import('../services/firestoreSyncService.js').then(({ firestoreSync }) => {
-      firestoreSync.startSync(newSyncCode);
-    }).catch(() => {});
+    if (this.syncService) {
+      this.syncService.startSync(newSyncCode);
+    }
 
     return newSyncCode;
   }
