@@ -67,6 +67,14 @@ let pendingUnlockSpeech = null;
 let audioContextUnlocked = false;
 let sharedAudioContext = null;
 
+function dispatchSpeechEvent(eventName, detail = {}) {
+  if (typeof window !== 'undefined') {
+    try {
+      window.dispatchEvent(new CustomEvent(eventName, { detail }));
+    } catch {}
+  }
+}
+
 /**
  * Clean stage-direction asterisks and sound action cues (*ROAR!*, *Splish splash!*)
  * so speech synthesizers speak natural, fluid words without reading punctuation aloud.
@@ -173,6 +181,7 @@ export const stopRex = () => {
     }
   }
   activeUtterance = null;
+  dispatchSpeechEvent('companion-speech-end');
 };
 
 export const stopCompanionAudio = stopRex;
@@ -271,8 +280,17 @@ function speakWithSpeechSynthesis(text, petId = 'rex', onEnded = null) {
     // Retain module-level reference to prevent V8 GC from stopping speech mid-sentence
     activeUtterance = utterance;
 
+    // Dispatch speech start for skeletal face lip-sync
+    dispatchSpeechEvent('companion-speech-start', { text: cleanSpokenText, petId });
+
+    // Syllable boundary event for real-time phoneme mouth sync
+    utterance.onboundary = (e) => {
+      dispatchSpeechEvent('companion-speech-syllable', { text: cleanSpokenText, petId, charIndex: e.charIndex });
+    };
+
     utterance.onend = () => {
       activeUtterance = null;
+      dispatchSpeechEvent('companion-speech-end', { petId });
       if (typeof onEnded === 'function') {
         try {
           onEnded();
@@ -287,6 +305,7 @@ function speakWithSpeechSynthesis(text, petId = 'rex', onEnded = null) {
         console.debug('SpeechSynthesis notice:', e.error);
       }
       activeUtterance = null;
+      dispatchSpeechEvent('companion-speech-end', { petId });
       if (typeof onEnded === 'function') {
         try {
           onEnded();
@@ -363,14 +382,26 @@ export const speakCompanion = async (text, petIdOrOptions = 'rex', onEnded = nul
       if (audioBlob && audioBlob.size > 0) {
         const audioUrl = URL.createObjectURL(audioBlob);
         currentAudio = new Audio(audioUrl);
+        dispatchSpeechEvent('companion-speech-start', { text: cleanSpoken, petId });
+
+        let syllableInterval = setInterval(() => {
+          if (!currentAudio || currentAudio.paused || currentAudio.ended) {
+            clearInterval(syllableInterval);
+            return;
+          }
+          dispatchSpeechEvent('companion-speech-syllable', { text: cleanSpoken, petId });
+        }, 115);
 
         currentAudio.onended = () => {
+          clearInterval(syllableInterval);
           URL.revokeObjectURL(audioUrl);
           currentAudio = null;
+          dispatchSpeechEvent('companion-speech-end', { petId });
           if (typeof callback === 'function') callback();
         };
 
         currentAudio.onerror = () => {
+          clearInterval(syllableInterval);
           URL.revokeObjectURL(audioUrl);
           currentAudio = null;
           // Fallback to speech synthesis if audio playback errors

@@ -7,6 +7,8 @@ import { geminiLiveService } from '../services/geminiLiveService.js';
 import { Sound } from '../audio/sfx.js';
 import { triggerInteractiveCelebration } from './InteractiveCelebrationOverlay.js';
 import { rexEngine } from '../services/rexCompanionEngine.js';
+import { renderPetSkeletalFaceViewer, initPetSkeletalFaceViewer, getActivePetSkeletalInstance } from './PetSkeletalFaceViewer.js';
+import { getPetFaceProfile } from '../services/petSkeletalFaceService.js';
 
 /**
  * Generates dynamic SVG for Rex the Dino with expressions for listening, thinking, and speaking
@@ -85,6 +87,12 @@ export function renderLiveRexWidget() {
   const isThinking = rexEngine.currentState === 'thinking';
   const isOpen = liveRex.isOpen;
 
+  const activePet = store?.getActivePet?.() || { id: 'rex', name: 'Rex the Dino' };
+  const activePetId = String(activePet.id || 'rex').toLowerCase();
+  const faceProfile = getPetFaceProfile(activePetId);
+  const petName = activePet.name || faceProfile.name || 'Rex the Dino';
+  const petEmoji = activePet.emoji || (faceProfile.id === 'aqua' ? '🐬' : faceProfile.id === 'bella' ? '🐰' : faceProfile.id === 'barnaby' ? '🐻' : faceProfile.id === 'pip' ? '🐥' : '🦖');
+
   return `
     <!-- Floating Mascot Container -->
     <div id="live-rex-container" class="fixed bottom-24 right-4 sm:bottom-28 sm:right-6 z-40 flex flex-col items-end pointer-events-none select-none">
@@ -98,19 +106,19 @@ export function renderLiveRexWidget() {
           <!-- Card Header with Close Button -->
           <div class="flex items-center justify-between border-b-2 border-surface-container-highest pb-2">
             <div class="flex items-center gap-2">
-              <span class="text-xl">🦖</span>
-              <h3 class="font-headline text-lg font-black text-inverse-surface">Rex the Dino</h3>
+              <span class="text-xl">${petEmoji}</span>
+              <h3 class="font-headline text-lg font-black text-inverse-surface">${petName}</h3>
             </div>
 
             <!-- Minimize / Close Button -->
-            <button id="live-rex-close-btn" class="w-8 h-8 rounded-full bg-surface-container-high hover:bg-surface-bright text-on-surface-variant flex items-center justify-center chunky-btn-sm active:scale-95" title="Close Rex Window">
+            <button id="live-rex-close-btn" class="w-8 h-8 rounded-full bg-surface-container-high hover:bg-surface-bright text-on-surface-variant flex items-center justify-center chunky-btn-sm active:scale-95" title="Close Companion Window">
               <span class="material-symbols-outlined text-lg">close</span>
             </button>
           </div>
 
           <!-- GIANT TAP-TO-TALK MASCOT HERO SECTION -->
           <div class="flex flex-col items-center justify-center pt-1 pb-2">
-            <button id="modal-rex-avatar-btn" class="group relative p-1.5 rounded-full transition-transform active:scale-90 focus:outline-none cursor-pointer" title="Tap Rex to Talk!">
+            <div class="group relative p-1.5 rounded-full transition-transform focus:outline-none" title="Pet or Talk to ${petName}!">
               
               <!-- Ambient Glow & Rings -->
               ${
@@ -124,21 +132,27 @@ export function renderLiveRexWidget() {
                   : ''
               }
 
-              <!-- Giant Mascot Avatar Disc (112px on mobile, 128px on sm) -->
-              <div class="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-surface-container-high p-1.5 shadow-2xl flex items-center justify-center transition-all ${
+              <!-- Giant Mascot Avatar Disc with Skeletal Face Mesh (128px) -->
+              <div class="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-surface-container-high p-1 shadow-2xl flex items-center justify-center transition-all overflow-hidden ${
                 isListening
-                  ? 'animate-bounce ring-4 ring-emerald-400 border-4 border-emerald-400 shadow-[0_0_30px_rgba(52,211,153,0.7)]'
+                  ? 'ring-4 ring-emerald-400 border-4 border-emerald-400 shadow-[0_0_30px_rgba(52,211,153,0.7)]'
                   : isThinking
                   ? 'ring-4 ring-amber-400 border-4 border-amber-400 shadow-[0_0_25px_rgba(251,191,36,0.6)]'
                   : isSpeaking
                   ? 'ring-4 ring-primary border-4 border-primary shadow-[0_0_25px_rgba(16,185,129,0.6)]'
                   : 'border-4 border-primary/40 hover:border-primary group-hover:scale-105'
               }">
-                ${renderRexAvatarSvg({ isListening, isThinking, isSpeaking })}
+                ${renderPetSkeletalFaceViewer({
+                  canvasId: 'modal-mascot-skeletal-canvas',
+                  petId: activePetId,
+                  width: 128,
+                  height: 128,
+                  isInteractive: true
+                })}
               </div>
 
               <!-- Action Indicator Pill -->
-              <div class="absolute -bottom-2.5 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-[11px] font-headline font-black shadow-lg flex items-center gap-1.5 whitespace-nowrap ${
+              <button id="modal-rex-avatar-btn" class="absolute -bottom-2.5 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-[11px] font-headline font-black shadow-lg flex items-center gap-1.5 whitespace-nowrap cursor-pointer z-10 transition-transform active:scale-95 ${
                 isListening
                   ? 'bg-emerald-500 text-white animate-pulse'
                   : isThinking
@@ -153,19 +167,29 @@ export function renderLiveRexWidget() {
                 <span>${
                   isListening ? 'Listening...' : isThinking ? 'Thinking...' : isSpeaking ? 'Talking!' : 'Tap to Talk!'
                 }</span>
-              </div>
-            </button>
+              </button>
+            </div>
+
+            <!-- Tactile Quick Interactions (Pat Forehead & Poke Cheek) -->
+            <div class="flex items-center gap-2 mt-4 z-10">
+              <button id="rex-pat-head-btn" class="bg-surface-container-high hover:bg-surface-bright text-pink-300 hover:text-pink-200 px-3 py-1 rounded-full font-headline text-[11px] font-black border border-pink-400/40 flex items-center gap-1 shadow-sm active:scale-95 transition-all cursor-pointer" title="Pat forehead for heart sparkles!">
+                <span>❤️</span> Pat Head
+              </button>
+              <button id="rex-poke-cheek-btn" class="bg-surface-container-high hover:bg-surface-bright text-amber-300 hover:text-amber-200 px-3 py-1 rounded-full font-headline text-[11px] font-black border border-amber-400/40 flex items-center gap-1 shadow-sm active:scale-95 transition-all cursor-pointer" title="Poke cheek to squish & giggle!">
+                <span>🤭</span> Poke Cheek
+              </button>
+            </div>
 
             <!-- Status Subtitle -->
-            <p id="rex-status-text" class="text-xs font-headline font-bold text-on-surface-variant mt-5 text-center">
+            <p id="rex-status-text" class="text-xs font-headline font-bold text-on-surface-variant mt-2 text-center">
               ${
                 isListening
-                  ? '👂 Speak now! Rex is listening to you!'
+                  ? `👂 Speak now! ${petName} is listening to you!`
                   : isThinking
-                  ? '🤔 Rex is getting your answer ready...'
+                  ? `🤔 ${petName} is getting your answer ready...`
                   : isSpeaking
-                  ? '🦖 Rex is speaking!'
-                  : 'Tap Rex\'s face or choose a picture below!'
+                  ? `🗣️ ${petName} is speaking!`
+                  : `Touch ${petName}'s face or pick a picture below!`
               }
             </p>
           </div>
@@ -277,7 +301,7 @@ export function renderLiveRexWidget() {
       }
 
       <!-- Floating Mascot Icon Button -->
-      <button id="live-rex-floating-btn" class="pointer-events-auto relative group chunky-btn active:scale-90 focus:outline-none transition-transform" title="Tap to talk to Rex the Dino!">
+      <button id="live-rex-floating-btn" class="pointer-events-auto relative group chunky-btn active:scale-90 focus:outline-none transition-transform" title="Tap to talk to ${petName}!">
         
         <!-- Ripple Effect Animations when Listening or Speaking -->
         ${
@@ -293,11 +317,17 @@ export function renderLiveRexWidget() {
             : ''
         }
 
-        <!-- Mascot Avatar Disc -->
+        <!-- Mascot Avatar Disc with Skeletal Face Mesh -->
         <div class="w-16 h-16 sm:w-18 sm:h-18 rounded-full bg-surface-container border-4 ${
           isSpeaking ? 'border-primary ring-4 ring-primary/40' : isListening ? 'border-emerald-400 ring-4 ring-emerald-400' : 'border-primary/50'
-        } p-1 shadow-2xl flex items-center justify-center transition-all">
-          ${renderRexAvatarSvg({ isListening, isThinking, isSpeaking })}
+        } p-0.5 shadow-2xl flex items-center justify-center transition-all overflow-hidden pointer-events-none">
+          ${renderPetSkeletalFaceViewer({
+            canvasId: 'floating-mascot-skeletal-canvas',
+            petId: activePetId,
+            width: 72,
+            height: 72,
+            isInteractive: false
+          })}
         </div>
 
         <!-- Status Pill Badge -->
@@ -313,6 +343,34 @@ export function renderLiveRexWidget() {
 }
 
 export function attachLiveRexWidgetListeners() {
+  const activePet = store?.getActivePet?.() || { id: 'rex', name: 'Rex the Dino' };
+  const activePetId = String(activePet.id || 'rex').toLowerCase();
+
+  // 0. Initialize Skeletal Face Rigs for Floating Mascot and Modal Sheet
+  initPetSkeletalFaceViewer('floating-mascot-skeletal-canvas', { petId: activePetId, isInteractive: false });
+  initPetSkeletalFaceViewer('modal-mascot-skeletal-canvas', { petId: activePetId, isInteractive: true });
+
+  // Tactile micro-buttons inside modal
+  const patBtn = document.getElementById('rex-pat-head-btn');
+  if (patBtn) {
+    patBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      Sound.pop();
+      const inst = getActivePetSkeletalInstance('modal-mascot-skeletal-canvas');
+      if (inst) inst.triggerForeheadPat();
+    });
+  }
+
+  const pokeBtn = document.getElementById('rex-poke-cheek-btn');
+  if (pokeBtn) {
+    pokeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      Sound.chirp();
+      const inst = getActivePetSkeletalInstance('modal-mascot-skeletal-canvas');
+      if (inst) inst.triggerCheekPoke();
+    });
+  }
+
   // 1. Floating mascot button toggle
   const floatBtn = document.getElementById('live-rex-floating-btn');
   if (floatBtn) {
@@ -457,16 +515,19 @@ export function attachLiveRexWidgetListeners() {
     const isThinking = status === 'thinking';
     const isSpeaking = status === 'talking' || status === 'speaking';
 
+    const currentPet = store?.getActivePet?.() || { id: 'rex', name: 'Rex the Dino' };
+    const pName = currentPet.name || 'Rex the Dino';
+
     // A. Update Status Subtitle Text
     const statusTextEl = document.getElementById('rex-status-text');
     if (statusTextEl) {
       statusTextEl.textContent = isListening
-        ? '👂 Speak now! Rex is listening to you!'
+        ? `👂 Speak now! ${pName} is listening to you!`
         : isThinking
-        ? '🤔 Rex is getting your answer ready...'
+        ? `🤔 ${pName} is getting your answer ready...`
         : isSpeaking
-        ? '🦖 Rex is speaking!'
-        : "Tap Rex's face or choose a picture below!";
+        ? `🗣️ ${pName} is speaking!`
+        : `Touch ${pName}'s face or pick a picture below!`;
     }
 
     // B. Update Toggle Button Text & State
