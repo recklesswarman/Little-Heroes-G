@@ -7,12 +7,11 @@ import { geminiLiveService } from '../services/geminiLiveService.js';
 import { Sound } from '../audio/sfx.js';
 import { triggerInteractiveCelebration } from './InteractiveCelebrationOverlay.js';
 import { rexEngine } from '../services/rexCompanionEngine.js';
-import { rexLiveSession } from '../services/rexLiveAudioService.js';
 
 /**
  * Generates dynamic SVG for Rex the Dino with expressions for listening, thinking, and speaking
  */
-function renderRexAvatarSvg({ isListening = false, isThinking = false, isSpeaking = false } = {}) {
+export function renderRexAvatarSvg({ isListening = false, isThinking = false, isSpeaking = false } = {}) {
   // Dynamic eye pupil sizes
   const pupilRadius = isListening ? "4.5" : isThinking ? "2.5" : "3.5";
   const eyeOuterRadius = isListening ? "8" : "7";
@@ -328,18 +327,17 @@ export function attachLiveRexWidgetListeners() {
 
   // Helper to toggle real-time bidirectional Gemini Live session with fallback
   const handleToggleRexLive = async () => {
+    geminiLiveService.unlockAudio();
     rexEngine.unlockAudio();
-    if (rexLiveSession.isActive) {
+    if (geminiLiveService.isActive) {
       Sound.chirp();
-      rexLiveSession.stopSession();
+      geminiLiveService.disconnect();
     } else if (rexEngine.isListening) {
       rexEngine.toggleListen();
     } else {
       Sound.pop();
-      const hero = store.getState().selectedHero;
-      const heroName = hero?.name || "Kayden";
       try {
-        await rexLiveSession.startSession(heroName);
+        await geminiLiveService.connect();
       } catch (liveErr) {
         console.warn("Rex Live WebSocket fallback to local speech engine:", liveErr);
         rexEngine.toggleListen();
@@ -360,8 +358,8 @@ export function attachLiveRexWidgetListeners() {
   if (closeBtn) {
     closeBtn.addEventListener('click', () => {
       Sound.click();
-      if (rexLiveSession.isActive) {
-        rexLiveSession.stopSession();
+      if (geminiLiveService.isActive) {
+        geminiLiveService.disconnect();
       }
       if (rexEngine.isListening) {
         rexEngine.toggleListen();
@@ -385,15 +383,16 @@ export function attachLiveRexWidgetListeners() {
       if (!prompt) return;
       Sound.click();
       rexEngine.unlockAudio();
+      geminiLiveService.unlockAudio();
       await rexEngine.sendToRex(prompt);
     });
   });
 
-  // 6. Connect Rex Live Session State & Volume Listeners for Visualizer
-  rexLiveSession.onStateChange = (state) => {
+  // 6. Connect Gemini Live Session State & Volume Listeners for Visualizer
+  geminiLiveService.onStateChange = (state) => {
     const bars = document.querySelectorAll('.rex-wave-bar');
     if (bars && bars.length > 0) {
-      if (state === 'talking') {
+      if (state === 'speaking' || state === 'talking') {
         bars.forEach((bar, i) => {
           bar.style.height = `${12 + (i % 3) * 8}px`;
           bar.style.backgroundColor = '#10B981';
@@ -412,7 +411,7 @@ export function attachLiveRexWidgetListeners() {
     }
   };
 
-  rexLiveSession.onVolume = (volume, type) => {
+  geminiLiveService.onVolumeCallback = (volume, type) => {
     const bars = document.querySelectorAll('.rex-wave-bar');
     if (bars && bars.length > 0) {
       bars.forEach((bar, idx) => {

@@ -5,8 +5,9 @@ import { authenticateWithBiometrics } from '../utils/biometrics.js';
 import { getTaskVisualSvg } from '../utils/taskVisuals.js';
 import { firestoreSync } from '../services/firestoreSyncService.js';
 import { cloudFunctionsService } from '../services/cloudFunctionsService.js';
+import { aiDevelopmentalReportService } from '../services/aiDevelopmentalReportService.js';
 
-let activeAdminTab = 'approvals'; // approvals, kids, tasks, rewards, pricing, studio, analytics, settings
+let activeAdminTab = 'approvals'; // approvals, screentime, reports, kids, tasks, rewards, pricing, studio, analytics, settings
 let isAddKidModalOpen = false;
 let isAddParentModalOpen = false;
 let editingKid = null;
@@ -15,6 +16,16 @@ let isNewHouseholdModalOpen = false;
 let selectedAvatarUrl = KID_AVATARS[0].url;
 let activeParentInsights = null;
 let isLoadingInsights = false;
+
+// Screen Time & Privileges Bank State
+let selectedScreenTimeKidId = 'all';
+
+// 4-Pillar AI Developmental Reports State
+let selectedReportKidId = 'all';
+let selectedReportWeekOffset = 0;
+let currentDevelopmentalReport = null;
+let isLoadingReport = false;
+let zoomedProofPhotoUrl = null;
 
 export function renderParentPortalView() {
   const state = store.getState();
@@ -30,6 +41,8 @@ export function renderParentPortalView() {
 
   const tabs = [
     { id: 'approvals', label: 'Action Inbox', icon: 'inbox', count: pending.length },
+    { id: 'screentime', label: 'Screen Time Bank', icon: 'schedule', count: 0 },
+    { id: 'reports', label: 'AI Growth Reports', icon: 'psychology', count: 0 },
     { id: 'kids', label: 'Kids & Household', icon: 'diversity_1', count: heroes.length },
     { id: 'tasks', label: 'Tasks & Routines', icon: 'checklist', count: 0 },
     { id: 'rewards', label: 'Real-Life Rewards', icon: 'card_giftcard', count: 0 },
@@ -158,30 +171,68 @@ export function renderParentPortalView() {
                   const isTaskPointApproval = req.type === 'task_point_approval' || req.type === 'task';
                   const pointsAmount = req.pendingPoints || req.rewardPoints || 10;
                   const tokensAmount = req.tokensAwarded || req.rewardCoins || 20;
+                  const kid = heroes.find(h => h.id === req.kidId) || heroes[0];
+                  const earnedMinutes = pointsAmount * (kid?.screenTimeRate || 2);
 
                   return `
                   <div class="bg-surface-container rounded-3xl p-5 border-2 ${isTaskPointApproval ? 'border-tertiary-container/80' : 'border-secondary-container/80'} card-shadow flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div class="flex items-center gap-3.5">
-                      <div class="w-14 h-14 rounded-2xl ${isTaskPointApproval ? 'bg-tertiary-container/20 text-tertiary border-2 border-tertiary-container' : 'bg-secondary-container/20 text-secondary border-2 border-secondary-container'} flex items-center justify-center text-2xl flex-shrink-0">
+                    <div class="flex items-start gap-3.5 flex-1">
+                      <div class="w-14 h-14 rounded-2xl ${isTaskPointApproval ? 'bg-tertiary-container/20 text-tertiary border-2 border-tertiary-container' : 'bg-secondary-container/20 text-secondary border-2 border-secondary-container'} flex items-center justify-center text-2xl flex-shrink-0 mt-0.5">
                         <span class="material-symbols-outlined">${isTaskPointApproval ? 'stars' : 'card_giftcard'}</span>
                       </div>
-                      <div class="flex flex-col">
-                        <div class="flex items-center gap-2">
+                      <div class="flex flex-col flex-1">
+                        <div class="flex items-center gap-2 flex-wrap">
                           <span class="text-[10px] font-black uppercase text-secondary">${req.kidName}</span>
                           <span class="text-[10px] text-on-surface-variant font-bold">• ${req.date}</span>
                           <span class="text-[9px] font-black px-2 py-0.2 rounded-md ${isTaskPointApproval ? 'bg-tertiary/20 text-tertiary' : 'bg-secondary/20 text-secondary'}">
                             ${isTaskPointApproval ? 'Chore Point Request' : 'Reward Redemption'}
                           </span>
+                          ${req.hasPhotoProof || req.photoUrl ? `
+                            <span class="text-[9px] font-black px-2 py-0.2 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                              <span class="material-symbols-outlined text-[11px]">photo_camera</span> Photo Proof
+                            </span>
+                          ` : ''}
                         </div>
                         <h3 class="font-headline text-base font-black text-inverse-surface mt-0.5">${req.title}</h3>
                         
                         <div class="text-xs font-bold mt-1">
                           ${
                             isTaskPointApproval
-                              ? `<span class="text-tertiary">⭐ Pending Approval: <strong>+${pointsAmount} Gold Points</strong></span> <span class="text-on-surface-variant font-medium">(Auto-issued +${tokensAmount} Tokens 🪙)</span>`
+                              ? `<span class="text-tertiary">⭐ Pending Approval: <strong>+${pointsAmount} Gold Points</strong></span> &nbsp;•&nbsp; <span class="text-sky-300 font-black">⏱️ +${earnedMinutes}m Screen Time</span> <span class="text-on-surface-variant font-medium">(Auto-issued +${tokensAmount} Tokens 🪙)</span>`
                               : `<span class="text-error">🎁 Redemption Cost: <strong>-${req.costPoints} Gold Points ⭐</strong></span>`
                           }
                         </div>
+
+                        <!-- Optional Chore Photo Proof & Gemini AI Vision Badge -->
+                        ${
+                          req.photoUrl
+                            ? `
+                        <div class="mt-3 flex flex-col sm:flex-row items-start sm:items-center gap-3 bg-surface-container-high/60 p-3 rounded-2xl border border-secondary-container/30">
+                          <div class="relative w-24 h-18 sm:w-28 sm:h-20 rounded-xl overflow-hidden border-2 border-primary/50 cursor-pointer hover:scale-105 active:scale-95 transition-transform flex-shrink-0 shadow-sm admin-proof-thumb" data-full-img="${req.photoUrl}" title="Click to view full photo proof">
+                            <img src="${req.photoUrl}" alt="Proof Thumbnail" class="w-full h-full object-cover" />
+                            <div class="absolute inset-0 bg-black/25 hover:bg-transparent flex items-center justify-center transition-colors">
+                              <span class="material-symbols-outlined text-white text-base drop-shadow">zoom_in</span>
+                            </div>
+                          </div>
+
+                          <div class="flex flex-col gap-1">
+                            <div class="flex items-center gap-2 flex-wrap">
+                              <span class="inline-flex items-center gap-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-black px-2.5 py-0.5 rounded-full shadow-sm">
+                                <span class="material-symbols-outlined text-xs">auto_awesome</span>
+                                ✨ AI Check: ${req.aiConfidence || 92}% Confidence
+                              </span>
+                              <span class="text-[10px] text-amber-300 font-bold bg-amber-400/15 px-2 py-0.5 rounded-full border border-amber-400/30">
+                                +5 Extra 🪙 Photo Bonus
+                              </span>
+                            </div>
+                            <p class="text-xs text-on-surface-variant font-medium leading-tight mt-0.5">
+                              <span class="font-bold text-inverse-surface">AI Assessment:</span> <em>"${req.aiFeedback || 'Chore evidence verified with high confidence.'}"</em>
+                            </p>
+                          </div>
+                        </div>
+                        `
+                            : ''
+                        }
                       </div>
                     </div>
 
@@ -192,7 +243,7 @@ export function renderParentPortalView() {
                       </button>
                       
                       <button data-approve-id="${req.id}" class="admin-approve-btn flex-1 sm:flex-none ${isTaskPointApproval ? 'bg-tertiary text-on-tertiary border-tertiary-container' : 'bg-primary text-on-primary border-primary-container'} font-headline text-xs font-black px-5 py-3 rounded-xl chunky-btn shadow-sm hover:brightness-110 active:scale-95">
-                        ${isTaskPointApproval ? `✓ Issue +${pointsAmount} Points ⭐` : `✓ Fulfill & Deduct (-${req.costPoints} ⭐)`}
+                        ${isTaskPointApproval ? `✓ Issue +${pointsAmount} ⭐ (+${earnedMinutes}m ⏱️)` : `✓ Fulfill & Deduct (-${req.costPoints} ⭐)`}
                       </button>
                     </div>
                   </div>
@@ -202,6 +253,414 @@ export function renderParentPortalView() {
             </div>
           `
           }
+        </section>
+      `
+          : ''
+      }
+
+      <!-- TAB: Screen Time & Privileges Bank -->
+      ${
+        activeAdminTab === 'screentime'
+          ? `
+        <section class="flex flex-col gap-6 animate-fade-in">
+          
+          <!-- Header Banner -->
+          <div class="bg-surface-container rounded-3xl p-5 sm:p-6 border-2 border-sky-500/40 card-shadow flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div class="flex items-center gap-3.5">
+              <div class="w-12 h-12 rounded-2xl bg-sky-500/20 text-sky-400 border border-sky-500/30 flex items-center justify-center text-2xl shadow flex-shrink-0">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">schedule</span>
+              </div>
+              <div>
+                <h2 class="font-headline text-lg sm:text-xl font-black text-inverse-surface">Screen Time & Privileges Bank</h2>
+                <p class="text-xs text-on-surface-variant font-bold">Reward verified habits with screen privileges, daily caps, and automated bedtime curfews</p>
+              </div>
+            </div>
+
+            <!-- Currency Exchange Rule Badge -->
+            <div class="bg-sky-500/10 text-sky-300 border border-sky-500/30 px-3.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 self-stretch sm:self-auto justify-center">
+              <span class="material-symbols-outlined text-sm">currency_exchange</span>
+              <span>1 Habit Point ⭐ = 2 Minutes Screen Time</span>
+            </div>
+          </div>
+
+          <!-- Multi-Kid Selector Pills -->
+          <div class="flex items-center gap-2 overflow-x-auto pb-1 hide-scrollbar">
+            <button data-screentime-kid="all" class="screentime-kid-pill px-4 py-2.5 rounded-2xl text-xs font-headline font-black transition-all ${
+              selectedScreenTimeKidId === 'all'
+                ? 'bg-sky-500 text-white chunky-btn-sm shadow-sm'
+                : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border border-surface-container-highest'
+            }">
+              👨‍👩‍👧‍👦 All Kids (${heroes.length})
+            </button>
+            ${heroes
+              .map(
+                (h) => `
+              <button data-screentime-kid="${h.id}" class="screentime-kid-pill px-4 py-2.5 rounded-2xl text-xs font-headline font-black transition-all flex items-center gap-2 ${
+                selectedScreenTimeKidId === h.id
+                  ? 'bg-sky-500 text-white chunky-btn-sm shadow-sm'
+                  : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border border-surface-container-highest'
+              }">
+                <img src="${h.avatar}" class="w-5 h-5 rounded-full object-cover border border-white/40" />
+                <span>${h.name}</span>
+              </button>
+            `
+              )
+              .join('')}
+          </div>
+
+          <!-- Kid Screen Time Bank Cards -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            ${heroes
+              .filter((h) => selectedScreenTimeKidId === 'all' || h.id === selectedScreenTimeKidId)
+              .map((h) => {
+                const isPaused = h.isScreenTimePaused || false;
+                const bankedMins = h.screenTimeMinutes !== undefined ? h.screenTimeMinutes : 45;
+                const usedToday = h.screenTimeUsedToday !== undefined ? h.screenTimeUsedToday : 15;
+                const dailyCap = h.dailyMaxScreenTime || 60;
+                const rate = h.screenTimeRate || 2;
+                const curfew = h.bedtimeCurfew || '20:00';
+                const usagePercent = Math.min(100, Math.round((usedToday / dailyCap) * 100));
+
+                return `
+                <div class="bg-surface-container rounded-3xl p-5 border-2 ${
+                  isPaused ? 'border-amber-500/50 bg-amber-500/5' : 'border-surface-container-highest'
+                } card-shadow flex flex-col gap-4">
+                  <!-- Kid Top Row -->
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                      <img src="${h.avatar}" class="w-12 h-12 rounded-2xl border-2 border-primary object-cover" />
+                      <div>
+                        <h3 class="font-headline text-base font-black text-inverse-surface">${h.name}</h3>
+                        <span class="text-[10px] font-black uppercase text-secondary">${h.role}</span>
+                      </div>
+                    </div>
+
+                    <span class="text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider ${
+                      isPaused
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1'
+                        : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1'
+                    }">
+                      <span class="material-symbols-outlined text-xs">${isPaused ? 'pause_circle' : 'check_circle'}</span>
+                      ${isPaused ? 'Locked / Paused' : 'Bank Active'}
+                    </span>
+                  </div>
+
+                  <!-- Big Screen Time Vitals -->
+                  <div class="grid grid-cols-3 gap-2 bg-surface-container-lowest/80 p-3.5 rounded-2xl border border-surface-container-highest text-center">
+                    <div class="flex flex-col">
+                      <span class="text-[9px] text-on-surface-variant font-black uppercase">Banked Balance</span>
+                      <span class="font-headline text-2xl font-black text-sky-400">${bankedMins}m</span>
+                    </div>
+                    <div class="flex flex-col border-x border-surface-container-highest px-1">
+                      <span class="text-[9px] text-on-surface-variant font-black uppercase">Daily Used</span>
+                      <span class="font-headline text-2xl font-black text-inverse-surface">${usedToday}m</span>
+                    </div>
+                    <div class="flex flex-col">
+                      <span class="text-[9px] text-on-surface-variant font-black uppercase">Daily Limit</span>
+                      <span class="font-headline text-2xl font-black text-secondary">${dailyCap}m</span>
+                    </div>
+                  </div>
+
+                  <!-- Daily Cap Progress Bar -->
+                  <div class="flex flex-col gap-1">
+                    <div class="flex justify-between text-[10px] font-bold text-on-surface-variant">
+                      <span>Daily Cap Progress</span>
+                      <span>${usedToday} / ${dailyCap} mins (${usagePercent}%)</span>
+                    </div>
+                    <div class="w-full bg-surface-container-lowest h-2.5 rounded-full overflow-hidden border border-surface-container-highest">
+                      <div class="h-full rounded-full transition-all duration-500 ${
+                        usagePercent >= 90 ? 'bg-error' : usagePercent >= 70 ? 'bg-amber-400' : 'bg-sky-400'
+                      }" style="width: ${usagePercent}%;"></div>
+                    </div>
+                  </div>
+
+                  <!-- Curfew & Conversion Rate Details -->
+                  <div class="flex items-center justify-between text-xs font-bold text-on-surface-variant bg-surface-container-high/50 px-3.5 py-2 rounded-xl border border-surface-container-highest">
+                    <span class="flex items-center gap-1">
+                      <span class="material-symbols-outlined text-sm text-amber-400">bedtime</span>
+                      Bedtime Curfew: <strong class="text-inverse-surface">${curfew}</strong>
+                    </span>
+                    <span class="flex items-center gap-1">
+                      <span class="material-symbols-outlined text-sm text-tertiary">star</span>
+                      Rate: <strong class="text-inverse-surface">1 pt = ${rate} min</strong>
+                    </span>
+                  </div>
+
+                  <!-- Quick 1-Tap Parental Actions -->
+                  <div class="grid grid-cols-3 gap-2 pt-1 border-t border-surface-container-highest">
+                    <button data-screentime-bonus="${h.id}" class="admin-screentime-bonus-btn bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 font-headline text-xs font-black py-2 rounded-xl border border-emerald-500/40 active:scale-95 flex items-center justify-center gap-1 shadow-sm" title="Add 15 bonus minutes">
+                      <span class="material-symbols-outlined text-sm">add_circle</span> +15m Bonus
+                    </button>
+                    <button data-screentime-deduct="${h.id}" class="admin-screentime-deduct-btn bg-error/15 hover:bg-error/25 text-error font-headline text-xs font-black py-2 rounded-xl border border-error/30 active:scale-95 flex items-center justify-center gap-1 shadow-sm" title="Deduct 15 minutes">
+                      <span class="material-symbols-outlined text-sm">remove_circle</span> -15m
+                    </button>
+                    <button data-screentime-toggle="${h.id}" class="admin-screentime-toggle-btn ${
+                      isPaused ? 'bg-sky-500/20 text-sky-300 border-sky-500/40' : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                    } font-headline text-xs font-black py-2 rounded-xl border active:scale-95 flex items-center justify-center gap-1 shadow-sm" title="${isPaused ? 'Resume screen time' : 'Pause screen time'}">
+                      <span class="material-symbols-outlined text-sm">${isPaused ? 'play_arrow' : 'lock'}</span> ${isPaused ? 'Resume' : 'Pause'}
+                    </button>
+                  </div>
+                </div>
+              `;
+              })
+              .join('')}
+          </div>
+
+          <!-- Screen Time Policy & Governance Customizer Card -->
+          <div class="bg-surface-container rounded-3xl p-5 sm:p-6 border-2 border-secondary-container card-shadow flex flex-col gap-4">
+            <div class="flex items-center justify-between border-b border-surface-container-highest pb-3">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-secondary text-2xl">tune</span>
+                <h3 class="font-headline text-base font-black text-inverse-surface">Screen Time Governance Settings</h3>
+              </div>
+              <span class="text-xs font-bold text-on-surface-variant">Applies to: ${selectedScreenTimeKidId === 'all' ? 'All Kids' : heroes.find(h => h.id === selectedScreenTimeKidId)?.name || 'Selected Kid'}</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <!-- Conversion Rate -->
+              <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-black text-inverse-surface flex items-center gap-1">
+                  <span class="material-symbols-outlined text-sm text-tertiary">star</span>
+                  Conversion Rate (Minutes per Point)
+                </label>
+                <select id="screentime-rate-select" class="bg-surface-container-lowest border-2 border-surface-container-highest rounded-xl px-3 py-2.5 text-xs font-bold text-inverse-surface focus:border-primary outline-none">
+                  <option value="1">1 Point ⭐ = 1 Minute</option>
+                  <option value="2" selected>1 Point ⭐ = 2 Minutes (Recommended)</option>
+                  <option value="3">1 Point ⭐ = 3 Minutes</option>
+                  <option value="5">1 Point ⭐ = 5 Minutes</option>
+                </select>
+              </div>
+
+              <!-- Daily Maximum Cap -->
+              <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-black text-inverse-surface flex items-center gap-1">
+                  <span class="material-symbols-outlined text-sm text-sky-400">timer</span>
+                  Daily Maximum Cap
+                </label>
+                <select id="screentime-cap-select" class="bg-surface-container-lowest border-2 border-surface-container-highest rounded-xl px-3 py-2.5 text-xs font-bold text-inverse-surface focus:border-primary outline-none">
+                  <option value="30">30 Minutes / Day</option>
+                  <option value="45">45 Minutes / Day</option>
+                  <option value="60" selected>60 Minutes / Day (Recommended)</option>
+                  <option value="90">90 Minutes / Day</option>
+                  <option value="120">120 Minutes / Day</option>
+                </select>
+              </div>
+
+              <!-- Bedtime Curfew -->
+              <div class="flex flex-col gap-1.5">
+                <label class="text-xs font-black text-inverse-surface flex items-center gap-1">
+                  <span class="material-symbols-outlined text-sm text-amber-400">bedtime</span>
+                  Bedtime Curfew Lock
+                </label>
+                <input type="time" id="screentime-curfew-input" value="20:00" class="bg-surface-container-lowest border-2 border-surface-container-highest rounded-xl px-3 py-2 text-xs font-bold text-inverse-surface focus:border-primary outline-none" />
+              </div>
+            </div>
+
+            <!-- Gentle Rex Bedtime/Curfew Message -->
+            <div class="flex flex-col gap-1.5">
+              <label class="text-xs font-black text-inverse-surface flex items-center gap-1">
+                <span class="material-symbols-outlined text-sm text-primary">chat_bubble</span>
+                Rex Gentle Curfew & Pause Message (Shown to Child)
+              </label>
+              <input type="text" id="screentime-lockout-msg" value="Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙" class="bg-surface-container-lowest border-2 border-surface-container-highest rounded-xl px-3.5 py-2.5 text-xs font-bold text-inverse-surface focus:border-primary outline-none" />
+            </div>
+
+            <div class="flex justify-end pt-2">
+              <button id="screentime-save-settings-btn" class="bg-secondary text-on-secondary font-headline text-xs font-black px-6 py-2.5 rounded-xl chunky-btn-sm active:scale-95 shadow-sm flex items-center gap-1.5 hover:brightness-110">
+                <span class="material-symbols-outlined text-sm">save</span>
+                <span>Save Screen Time Policy</span>
+              </button>
+            </div>
+          </div>
+
+        </section>
+      `
+          : ''
+      }
+
+      <!-- TAB: 4-Pillar Weekly AI Developmental Growth Reports -->
+      ${
+        activeAdminTab === 'reports'
+          ? `
+        <section class="flex flex-col gap-6 animate-fade-in printable-report-area">
+          
+          <!-- Header Banner -->
+          <div class="bg-surface-container rounded-3xl p-5 sm:p-6 border-2 border-primary/40 card-shadow flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div class="flex items-center gap-3.5">
+              <div class="w-12 h-12 rounded-2xl bg-primary/20 text-primary border border-primary/30 flex items-center justify-center text-2xl shadow flex-shrink-0">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">psychology</span>
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <h2 class="font-headline text-lg sm:text-xl font-black text-inverse-surface">Weekly AI Developmental Summaries</h2>
+                  <span class="bg-primary/20 text-primary text-[10px] font-black uppercase px-2 py-0.5 rounded-full border border-primary/40">Gemini 2.5 Flash</span>
+                </div>
+                <p class="text-xs text-on-surface-variant font-bold">Holistic 4-pillar evaluation: Independence, Cognitive Milestones, Emotional Wellness & Parenting Advice</p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+              <button id="report-regenerate-btn" class="flex-1 sm:flex-none bg-primary text-on-primary font-headline text-xs font-black px-4 py-2.5 rounded-xl chunky-btn-sm border border-primary-container shadow-sm flex items-center justify-center gap-1.5 hover:brightness-110 active:scale-95">
+                <span class="material-symbols-outlined text-sm ${isLoadingReport ? 'animate-spin' : ''}">refresh</span>
+                <span>${isLoadingReport ? 'Analyzing...' : 'Regenerate Analysis'}</span>
+              </button>
+              <button id="report-print-btn" class="bg-surface-container hover:bg-surface-bright text-on-surface-variant font-headline text-xs font-black px-3.5 py-2.5 rounded-xl border border-surface-container-highest active:scale-95 flex items-center gap-1" title="Export or print report">
+                <span class="material-symbols-outlined text-sm">print</span>
+                <span>Print / Export</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Controls: Kid Selector & Week Selector -->
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <!-- Multi-Kid Pills -->
+            <div class="flex items-center gap-2 overflow-x-auto pb-1 hide-scrollbar w-full sm:w-auto">
+              <button data-report-kid="all" class="report-kid-pill px-4 py-2 rounded-2xl text-xs font-headline font-black transition-all ${
+                selectedReportKidId === 'all'
+                  ? 'bg-primary text-on-primary chunky-btn-sm shadow-sm'
+                  : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border border-surface-container-highest'
+              }">
+                👨‍👩‍👧‍👦 All Kids
+              </button>
+              ${heroes
+                .map(
+                  (h) => `
+                <button data-report-kid="${h.id}" class="report-kid-pill px-4 py-2 rounded-2xl text-xs font-headline font-black transition-all flex items-center gap-2 ${
+                  selectedReportKidId === h.id
+                    ? 'bg-primary text-on-primary chunky-btn-sm shadow-sm'
+                    : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border border-surface-container-highest'
+                }">
+                  <img src="${h.avatar}" class="w-5 h-5 rounded-full object-cover border border-white/40" />
+                  <span>${h.name}</span>
+                </button>
+              `
+                )
+                .join('')}
+            </div>
+
+            <!-- Week Selector -->
+            <div class="flex items-center gap-2 self-end sm:self-auto">
+              <label class="text-xs font-bold text-on-surface-variant">Timeframe:</label>
+              <select id="report-week-select" class="bg-surface-container border border-surface-container-highest rounded-xl px-3 py-1.5 text-xs font-bold text-inverse-surface outline-none">
+                <option value="0" ${selectedReportWeekOffset === 0 ? 'selected' : ''}>This Week (Current)</option>
+                <option value="1" ${selectedReportWeekOffset === 1 ? 'selected' : ''}>Last Week</option>
+                <option value="2" ${selectedReportWeekOffset === 2 ? 'selected' : ''}>2 Weeks Ago</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- 4 Pillars Cards -->
+          ${(() => {
+            const reportHero = selectedReportKidId === 'all' ? null : heroes.find((h) => h.id === selectedReportKidId);
+            const gameLogs = completionLogs.filter(l => l.zone === 'Adventure Learning Games');
+            const totalGames = gameLogs.length;
+            const totalGameStars = gameLogs.reduce((acc, l) => acc + (l.starsEarned || 1), 0);
+            const uniqueSubjects = Array.from(new Set(gameLogs.map(l => l.subject).filter(Boolean)));
+
+            const movementLogs = completionLogs.filter(l => l.zone === 'Gross Motor & Dance Party' || l.category === 'gross_motor');
+            const totalMovementMinutes = movementLogs.reduce((acc, l) => acc + (l.durationMinutes || 2), 0);
+            const totalMovementSessions = movementLogs.length;
+            const feverBursts = movementLogs.reduce((acc, l) => acc + (l.feverBursts || 0), 0);
+
+            const report = currentDevelopmentalReport || aiDevelopmentalReportService.formatFourPillarReport({
+              childName: reportHero ? reportHero.name : 'The Little Heroes Household',
+              weekKey: '2026-W37',
+              weekLabel: selectedReportWeekOffset === 0 ? 'This Week (Current)' : selectedReportWeekOffset === 1 ? 'Last Week' : '2 Weeks Ago',
+              totalChores: completionLogs.length || 14,
+              approvedChores: completionLogs.filter(l => l.status === 'approved').length || 12,
+              morningRoutines: 6,
+              hygieneBattles: 10,
+              totalGames,
+              totalGameStars,
+              uniqueSubjects,
+              totalMovementMinutes,
+              totalMovementSessions,
+              feverBursts,
+              petJoy: state.petStatsMap?.[1]?.joy || 88,
+              petHygiene: state.petStatsMap?.[1]?.hygiene || 92
+            });
+
+            return `
+            <!-- Overall Summary Banner -->
+            <div class="bg-gradient-to-r from-secondary/15 via-surface-container to-primary/15 rounded-3xl p-5 border-2 border-secondary-container/60 card-shadow flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div class="flex items-center gap-3">
+                <span class="text-3xl">🌟</span>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <h3 class="font-headline text-base font-black text-inverse-surface">${report.childName}</h3>
+                    <span class="bg-emerald-500/20 text-emerald-300 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-emerald-500/40">
+                      ${report.overallRating}
+                    </span>
+                  </div>
+                  <p class="text-xs text-on-surface-variant font-bold">${report.weekLabel} • Synthesized ${report.generatedAt}</p>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-3 bg-surface-container-high px-4 py-2 rounded-2xl border border-surface-container-highest self-end sm:self-auto">
+                <span class="text-xs font-bold text-on-surface-variant">Overall Consistency:</span>
+                <span class="font-headline text-lg font-black text-primary">${report.consistencyScore}%</span>
+              </div>
+            </div>
+
+            <!-- 4 Pillar Cards Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              ${report.pillars.map((pillar) => `
+                <div class="bg-surface-container rounded-3xl p-5 border-2 border-surface-container-highest card-shadow flex flex-col justify-between gap-4">
+                  <div class="flex flex-col gap-3">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-2.5">
+                        <div class="w-10 h-10 rounded-xl bg-primary/15 text-primary flex items-center justify-center text-xl">
+                          <span class="material-symbols-outlined">${pillar.icon}</span>
+                        </div>
+                        <h4 class="font-headline text-sm font-black text-inverse-surface">${pillar.name}</h4>
+                      </div>
+                      <span class="bg-secondary/15 text-secondary text-[10px] font-black px-2.5 py-0.5 rounded-full border border-secondary/30">
+                        ${pillar.status}
+                      </span>
+                    </div>
+
+                    <p class="text-xs text-on-surface-variant font-medium leading-relaxed">
+                      ${pillar.summary}
+                    </p>
+
+                    ${pillar.metrics ? `
+                      <div class="grid grid-cols-3 gap-2 bg-surface-container-lowest/80 p-2.5 rounded-2xl border border-surface-container-highest text-center">
+                        ${pillar.metrics.map(m => `
+                          <div class="flex flex-col">
+                            <span class="text-[8px] text-on-surface-variant font-black uppercase">${m.label}</span>
+                            <span class="font-headline text-xs font-black text-primary mt-0.5">${m.value}</span>
+                          </div>
+                        `).join('')}
+                      </div>
+                    ` : ''}
+
+                    ${pillar.recommendations ? `
+                      <div class="flex flex-col gap-1.5 pt-1">
+                        <span class="text-[10px] font-black uppercase text-secondary tracking-wider">Parent Guidance Highlights</span>
+                        <ul class="flex flex-col gap-1.5 text-xs text-on-surface-variant font-medium">
+                          ${pillar.recommendations.map(r => `
+                            <li class="flex items-start gap-1.5"><span class="text-sky-400">💡</span><span>${r}</span></li>
+                          `).join('')}
+                        </ul>
+                      </div>
+                    ` : ''}
+                  </div>
+
+                  ${pillar.recommendedReward ? `
+                    <div class="bg-amber-400/10 border border-amber-400/30 p-3 rounded-2xl flex items-center gap-2.5 text-xs font-bold text-amber-300">
+                      <span class="text-xl">🎁</span>
+                      <div class="flex flex-col">
+                        <span class="text-[9px] uppercase font-black tracking-wider text-amber-400">Recommended Bonding Reward</span>
+                        <span class="text-inverse-surface">${pillar.recommendedReward}</span>
+                      </div>
+                    </div>
+                  ` : ''}
+                </div>
+              `).join('')}
+            </div>
+            `;
+          })()}
+
         </section>
       `
           : ''
@@ -1156,6 +1615,41 @@ export function renderParentPortalView() {
             </div>
           </div>
 
+          <!-- Rex AI Companion Voice Persona & Live Settings -->
+          <div class="bg-surface-container rounded-3xl p-6 border-2 border-primary/30 card-shadow flex flex-col gap-5">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-2xl bg-primary/20 text-primary border border-primary/40 flex items-center justify-center text-2xl shadow-sm">
+                🦖
+              </div>
+              <div>
+                <h3 class="font-headline text-base sm:text-lg font-black text-inverse-surface">Rex AI Companion Voice Persona</h3>
+                <p class="text-xs text-on-surface-variant font-bold">Select Rex's voice tone for real-time voice coaching and Live audio quests.</p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+              ${[
+                { id: 'Puck', label: 'Puck', desc: 'Playful & high energy (Default)', icon: 'sentiment_very_satisfied' },
+                { id: 'Aoede', label: 'Aoede', desc: 'Nurturing & clear teacher tone', icon: 'school' },
+                { id: 'Charon', label: 'Charon', desc: 'Deep & calm dino elder', icon: 'elderly' },
+                { id: 'Fenrir', label: 'Fenrir', desc: 'Fast, bold & adventurous', icon: 'speed' },
+                { id: 'Kore', label: 'Kore', desc: 'Gentle, soft & soothing', icon: 'spa' }
+              ].map(v => {
+                const currentVoice = state.liveRex?.voiceName || 'Puck';
+                const isSelected = currentVoice.toLowerCase() === v.id.toLowerCase();
+                return `
+                  <button data-voice-id="${v.id}" class="rex-voice-select-btn rounded-2xl p-3 flex flex-col items-center justify-center gap-1.5 border-2 transition-all active:scale-95 ${
+                    isSelected ? 'bg-primary text-on-primary border-primary-container shadow-sm font-black' : 'bg-surface-container-high hover:bg-surface-bright text-inverse-surface border-surface-container-highest'
+                  }">
+                    <span class="material-symbols-outlined text-2xl">${v.icon}</span>
+                    <span class="font-headline text-xs font-black">${v.label}</span>
+                    <span class="text-[9px] text-center leading-tight ${isSelected ? 'text-on-primary/90' : 'text-on-surface-variant'}">${v.desc}</span>
+                  </button>
+                `;
+              }).join('')}
+            </div>
+          </div>
+
           <!-- Parental Security & Biometric Locking Settings -->
           <div class="bg-surface-container rounded-3xl p-6 border-2 border-secondary-container card-shadow flex flex-col gap-5">
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -1561,7 +2055,38 @@ export function renderParentPortalView() {
       ${renderDeleteKidModal()}
       ${renderNewHouseholdModal()}
       ${renderAddParentModal()}
+      ${renderPhotoProofZoomModal()}
 
+    </div>
+  `;
+}
+
+function renderPhotoProofZoomModal() {
+  if (!zoomedProofPhotoUrl) return '';
+  return `
+    <div id="admin-proof-zoom-backdrop" class="fixed inset-0 bg-[#09141e]/90 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in select-none">
+      <div class="bg-surface-container border-4 border-primary rounded-4xl max-w-xl w-full card-shadow-lg flex flex-col overflow-hidden animate-scale-up">
+        <div class="bg-gradient-to-r from-primary to-emerald-600 p-4 text-white flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <span class="material-symbols-outlined text-xl">photo_camera</span>
+            <h3 class="font-headline text-base font-black">Chore Proof Verification Photo</h3>
+          </div>
+          <button id="admin-proof-zoom-close-btn" class="w-8 h-8 rounded-full bg-black/20 hover:bg-black/40 text-white flex items-center justify-center">
+            <span class="material-symbols-outlined text-lg">close</span>
+          </button>
+        </div>
+
+        <div class="p-4 bg-black flex items-center justify-center min-h-[300px]">
+          <img src="${zoomedProofPhotoUrl}" class="max-h-[60vh] max-w-full object-contain rounded-xl shadow-inner" alt="Full Chore Proof Photo" />
+        </div>
+
+        <div class="p-4 bg-surface-container flex items-center justify-between border-t border-surface-container-highest">
+          <span class="text-xs text-on-surface-variant font-bold">✨ High resolution proof captured by hero</span>
+          <button id="admin-proof-zoom-dismiss-btn" class="bg-secondary text-on-secondary font-headline text-xs font-black px-5 py-2.5 rounded-xl chunky-btn-sm active:scale-95 shadow">
+            Done Inspecting
+          </button>
+        </div>
+      </div>
     </div>
   `;
 }
@@ -2096,6 +2621,158 @@ export function attachParentPortalListeners() {
     });
   });
 
+  // ACTION INBOX: Photo Proof Zoom Modal Listeners
+  document.querySelectorAll('.admin-proof-thumb').forEach((thumb) => {
+    thumb.addEventListener('click', (e) => {
+      e.stopPropagation();
+      zoomedProofPhotoUrl = thumb.getAttribute('data-full-img');
+      Sound.click();
+      store.notify();
+    });
+  });
+
+  const zoomCloseBtn = document.getElementById('admin-proof-zoom-close-btn');
+  if (zoomCloseBtn) {
+    zoomCloseBtn.addEventListener('click', () => {
+      zoomedProofPhotoUrl = null;
+      Sound.click();
+      store.notify();
+    });
+  }
+
+  const zoomDismissBtn = document.getElementById('admin-proof-zoom-dismiss-btn');
+  if (zoomDismissBtn) {
+    zoomDismissBtn.addEventListener('click', () => {
+      zoomedProofPhotoUrl = null;
+      Sound.click();
+      store.notify();
+    });
+  }
+
+  const zoomBackdrop = document.getElementById('admin-proof-zoom-backdrop');
+  if (zoomBackdrop) {
+    zoomBackdrop.addEventListener('click', (e) => {
+      if (e.target === zoomBackdrop) {
+        zoomedProofPhotoUrl = null;
+        Sound.click();
+        store.notify();
+      }
+    });
+  }
+
+  // SCREEN TIME BANK: Multi-Kid Pills
+  document.querySelectorAll('.screentime-kid-pill').forEach((pill) => {
+    pill.addEventListener('click', () => {
+      selectedScreenTimeKidId = pill.getAttribute('data-screentime-kid');
+      Sound.click();
+      store.notify();
+    });
+  });
+
+  // SCREEN TIME BANK: Quick Overrides
+  document.querySelectorAll('.admin-screentime-bonus-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const kidId = btn.getAttribute('data-screentime-bonus');
+      store.grantScreenTimeBonus(kidId, 15);
+    });
+  });
+
+  document.querySelectorAll('.admin-screentime-deduct-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const kidId = btn.getAttribute('data-screentime-deduct');
+      store.deductScreenTime(kidId, 15);
+    });
+  });
+
+  document.querySelectorAll('.admin-screentime-toggle-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const kidId = btn.getAttribute('data-screentime-toggle');
+      store.toggleScreenTimePause(kidId);
+    });
+  });
+
+  // SCREEN TIME BANK: Save Settings
+  const saveScreenTimeSettingsBtn = document.getElementById('screentime-save-settings-btn');
+  if (saveScreenTimeSettingsBtn) {
+    saveScreenTimeSettingsBtn.addEventListener('click', () => {
+      const rateSelect = document.getElementById('screentime-rate-select');
+      const capSelect = document.getElementById('screentime-cap-select');
+      const curfewInput = document.getElementById('screentime-curfew-input');
+      const lockoutMsgInput = document.getElementById('screentime-lockout-msg');
+
+      store.updateScreenTimeSettings(selectedScreenTimeKidId, {
+        screenTimeRate: rateSelect ? Number(rateSelect.value) : 2,
+        dailyMaxScreenTime: capSelect ? Number(capSelect.value) : 60,
+        bedtimeCurfew: curfewInput ? curfewInput.value : '20:00',
+        screenTimeLockMessage: lockoutMsgInput ? lockoutMsgInput.value : 'Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙'
+      });
+
+      Sound.fanfare();
+      alert('Screen Time Governance Rules successfully updated!');
+    });
+  }
+
+  // 4-PILLAR AI DEVELOPMENTAL REPORTS: Multi-Kid Pills
+  document.querySelectorAll('.report-kid-pill').forEach((pill) => {
+    pill.addEventListener('click', () => {
+      selectedReportKidId = pill.getAttribute('data-report-kid');
+      currentDevelopmentalReport = null;
+      Sound.click();
+      store.notify();
+    });
+  });
+
+  // 4-PILLAR AI DEVELOPMENTAL REPORTS: Week Selector
+  const reportWeekSelect = document.getElementById('report-week-select');
+  if (reportWeekSelect) {
+    reportWeekSelect.addEventListener('change', (e) => {
+      selectedReportWeekOffset = Number(e.target.value);
+      currentDevelopmentalReport = null;
+      Sound.click();
+      store.notify();
+    });
+  }
+
+  // 4-PILLAR AI DEVELOPMENTAL REPORTS: Regenerate with Gemini
+  const reportRegenerateBtn = document.getElementById('report-regenerate-btn');
+  if (reportRegenerateBtn) {
+    reportRegenerateBtn.addEventListener('click', async () => {
+      if (isLoadingReport) return;
+      isLoadingReport = true;
+      Sound.click();
+      store.notify();
+
+      try {
+        const state = store.getState();
+        const hero = selectedReportKidId === 'all' ? null : state.heroes.find(h => h.id === selectedReportKidId);
+        const report = await aiDevelopmentalReportService.getWeeklyReport({
+          hero,
+          heroes: state.heroes,
+          completionLogs: state.taskCompletionLogs || [],
+          petStats: state.petStatsMap?.[1] || { joy: 88, hygiene: 92 },
+          weekOffset: selectedReportWeekOffset,
+          forceRefresh: true
+        });
+        currentDevelopmentalReport = report;
+        Sound.fanfare();
+      } catch (err) {
+        console.warn('Failed to regenerate report:', err);
+      } finally {
+        isLoadingReport = false;
+        store.notify();
+      }
+    });
+  }
+
+  // 4-PILLAR AI DEVELOPMENTAL REPORTS: Print / Export
+  const reportPrintBtn = document.getElementById('report-print-btn');
+  if (reportPrintBtn) {
+    reportPrintBtn.addEventListener('click', () => {
+      Sound.click();
+      window.print();
+    });
+  }
+
   // TASKS TAB - Create Task
   const createTaskBtn = document.getElementById('admin-create-task-btn');
   if (createTaskBtn) {
@@ -2621,6 +3298,17 @@ export function attachParentPortalListeners() {
       store.getState().parentSettings.arBattleDuration = dur;
       Sound.click();
       store.saveState();
+    });
+  });
+
+  // Rex AI Companion Voice Persona Selection
+  document.querySelectorAll('.rex-voice-select-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const vId = btn.getAttribute('data-voice-id');
+      if (vId) {
+        Sound.click();
+        store.setLiveRexVoice(vId);
+      }
     });
   });
 

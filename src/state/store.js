@@ -2,6 +2,7 @@ import { Sound } from '../audio/sfx.js';
 import confetti from 'canvas-confetti';
 import { PETS_DATABASE } from '../data/petsData.js';
 import { ADVENTURE_GAMES } from '../data/learningGamesData.js';
+import { MOVEMENT_ROUTINES, getMovementRoutine } from '../data/movementRoutinesData.js';
 import { PROFILE_THEMES } from '../data/profileThemesData.js';
 import { generate3DIcon } from '../utils/graphicsGenerator.js';
 import { triggerInteractiveCelebration, closeInteractiveCelebration } from '../components/InteractiveCelebrationOverlay.js';
@@ -63,7 +64,14 @@ const defaultState = {
     petStageMap: {},
     gameDifficulty: 'medium', // 'easy' (Toddler 3-4), 'medium' (Kids 5-6), 'hard' (Kids 7-9)
     equippedProfileTheme: 'theme_dragon_emerald',
-    unlockedThemes: ['theme_dragon_emerald']
+    unlockedThemes: ['theme_dragon_emerald'],
+    screenTimeMinutes: 45,
+    screenTimeUsedToday: 15,
+    dailyMaxScreenTime: 60,
+    bedtimeCurfew: '20:00',
+    screenTimeRate: 2, // 2 minutes per point
+    isScreenTimePaused: false,
+    screenTimeLockMessage: 'Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙'
   },
 
   heroes: [
@@ -84,7 +92,14 @@ const defaultState = {
       completionRate: 100,
       gameDifficulty: 'medium',
       equippedProfileTheme: 'theme_dragon_emerald',
-      unlockedThemes: ['theme_dragon_emerald']
+      unlockedThemes: ['theme_dragon_emerald'],
+      screenTimeMinutes: 45,
+      screenTimeUsedToday: 15,
+      dailyMaxScreenTime: 60,
+      bedtimeCurfew: '20:00',
+      screenTimeRate: 2,
+      isScreenTimePaused: false,
+      screenTimeLockMessage: 'Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙'
     }
   ],
 
@@ -244,6 +259,17 @@ const defaultState = {
       image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDvEPK2k2p8UTY6a_a13uuU4xIdkdywFfYuD-6hXL6loqAk-urCnUbUGdFn-Y19eBDoygO061F0aNul90Ba2JUyfsA-w-3zw4_7pYzFDr1VberTqHQfuSPj2fUJPxNonUg9kWXhB0tivkcacloQX7aSYVFI0gMGh4LxUnHMNOb8AvPWMIBgSUdWC0sxJmD4dJJcdQnnenoMiOhVddEOJO-X7gqho3jVSHQX-aholmgf88Rvee7hDkrcng'
     },
     {
+      id: 'mint_knight_badge',
+      title: 'Mint Knight Badge',
+      desc: 'Earned by defeating the Sugar Boss in the 2-minute Toothbrush AR Battle! Radiates minty fresh dental defense.',
+      category: 'Badges',
+      costCoins: 0,
+      statBonusPercent: 35,
+      statBonusType: 'defense_boost',
+      icon: 'military_tech',
+      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDvEPK2k2p8UTY6a_a13uuU4xIdkdywFfYuD-6hXL6loqAk-urCnUbUGdFn-Y19eBDoygO061F0aNul90Ba2JUyfsA-w-3zw4_7pYzFDr1VberTqHQfuSPj2fUJPxNonUg9kWXhB0tivkcacloQX7aSYVFI0gMGh4LxUnHMNOb8AvPWMIBgSUdWC0sxJmD4dJJcdQnnenoMiOhVddEOJO-X7gqho3jVSHQX-aholmgf88Rvee7hDkrcng'
+    },
+    {
       id: 'flame_kibble_bowl',
       title: 'Flame Kibble Snack Bowl',
       desc: 'Super tasty crunchy pet food that instantly restores +30 Hunger.',
@@ -337,6 +363,23 @@ const defaultState = {
 
   inventory: ['Enchanted Wizard Hat', 'Hero Rocket Badge', 'Crystal Gem Trove'],
   equippedPetGear: 'Enchanted Wizard Hat',
+  equippedPetGearSlots: {
+    1: { hat: 'Enchanted Wizard Hat', cape: null, aura: null }
+  },
+  petSparkMap: {
+    1: 65
+  },
+  petStreakShield: {
+    available: true,
+    usedThisWeek: false,
+    lastProtectedDate: null
+  },
+  petLockerModal: {
+    isOpen: false,
+    petId: null
+  },
+  gameMasteryMap: {},
+  movementSessionHistory: [],
 
   // Parent Admin Portal: Action Approvals Queue
   pendingApprovals: [],
@@ -427,6 +470,14 @@ class Store {
                 h.petStageMap[pId] = 1; // Stage 1!
               });
             }
+            // Screen Time Bank Migration
+            if (h.screenTimeMinutes === undefined) h.screenTimeMinutes = 45;
+            if (h.screenTimeUsedToday === undefined) h.screenTimeUsedToday = 15;
+            if (h.dailyMaxScreenTime === undefined) h.dailyMaxScreenTime = 60;
+            if (h.bedtimeCurfew === undefined) h.bedtimeCurfew = '20:00';
+            if (h.screenTimeRate === undefined) h.screenTimeRate = 2;
+            if (h.isScreenTimePaused === undefined) h.isScreenTimePaused = false;
+            if (!h.screenTimeLockMessage) h.screenTimeLockMessage = 'Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙';
           });
         }
 
@@ -446,6 +497,13 @@ class Store {
               parsed.selectedHero.petStageMap[pId] = 1;
             });
           }
+          if (parsed.selectedHero.screenTimeMinutes === undefined) parsed.selectedHero.screenTimeMinutes = 45;
+          if (parsed.selectedHero.screenTimeUsedToday === undefined) parsed.selectedHero.screenTimeUsedToday = 15;
+          if (parsed.selectedHero.dailyMaxScreenTime === undefined) parsed.selectedHero.dailyMaxScreenTime = 60;
+          if (parsed.selectedHero.bedtimeCurfew === undefined) parsed.selectedHero.bedtimeCurfew = '20:00';
+          if (parsed.selectedHero.screenTimeRate === undefined) parsed.selectedHero.screenTimeRate = 2;
+          if (parsed.selectedHero.isScreenTimePaused === undefined) parsed.selectedHero.isScreenTimePaused = false;
+          if (!parsed.selectedHero.screenTimeLockMessage) parsed.selectedHero.screenTimeLockMessage = 'Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙';
         }
 
         // Never restore to parent_portal while locked on reload
@@ -456,6 +514,9 @@ class Store {
 
         if (!parsed.taskCompletionLogs || !Array.isArray(parsed.taskCompletionLogs)) {
           parsed.taskCompletionLogs = [];
+        }
+        if (!parsed.movementSessionHistory || !Array.isArray(parsed.movementSessionHistory)) {
+          parsed.movementSessionHistory = [];
         }
 
         // Determine currently pending task IDs so we only preserve pending flags for active requests
@@ -506,6 +567,22 @@ class Store {
           parsed.household.parents = [...defaultState.household.parents];
           parsed.household.parentUids = [...defaultState.household.parentUids];
           parsed.household.parentEmails = [...defaultState.household.parentEmails];
+        }
+
+        if (!parsed.petSparkMap || typeof parsed.petSparkMap !== 'object') {
+          parsed.petSparkMap = { ...defaultState.petSparkMap };
+        }
+        if (!parsed.petStreakShield) {
+          parsed.petStreakShield = { ...defaultState.petStreakShield };
+        }
+        if (!parsed.equippedPetGearSlots || typeof parsed.equippedPetGearSlots !== 'object') {
+          parsed.equippedPetGearSlots = { ...defaultState.equippedPetGearSlots };
+        }
+        if (!parsed.petLockerModal) {
+          parsed.petLockerModal = { isOpen: false, petId: null };
+        }
+        if (!parsed.gameMasteryMap || typeof parsed.gameMasteryMap !== 'object') {
+          parsed.gameMasteryMap = {};
         }
 
         return { ...defaultState, ...parsed };
@@ -1047,6 +1124,7 @@ class Store {
     // 🪙 Tokens are auto-issued immediately
     currentHero.coins += habit.coins;
     this.addXP(habit.xp);
+    this.awardTaskCareSynergy(habit.id, 'habit');
     Sound.coin();
     Sound.fanfare();
 
@@ -1152,6 +1230,7 @@ class Store {
     // 🪙 Tokens are auto-issued immediately
     currentHero.coins += task.coins;
     this.addXP(task.xp);
+    this.awardTaskCareSynergy(task.id, 'task');
     Sound.coin();
     Sound.fanfare();
 
@@ -1193,6 +1272,102 @@ class Store {
     );
 
     this.saveState(true);
+  }
+
+  // SUBMIT CHORE WITH OPTIONAL PHOTO PROOF (+5 BONUS TOKENS & AI VISION CONFIRMATION)
+  submitChoreWithPhoto({ task, photoUrl, aiConfidence = 92, aiFeedback = '', kidFeedback = '', badgeEarned = 'Photo Master' }) {
+    if (!task) return;
+    const currentHero = this.state.selectedHero;
+    const heroId = currentHero?.id || 'hero_1';
+
+    const logId = 'compl_photo_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+    const approvalReqId = 'task_chore_photo_' + task.id + '_' + Date.now();
+    const nowIso = new Date().toISOString();
+
+    const bonusCoins = 5; // +5 Bonus for snapping photo proof!
+    const totalCoins = (task.coins || 15) + bonusCoins;
+
+    const completionLog = {
+      id: logId,
+      taskId: task.id,
+      taskTitle: task.title,
+      zone: task.zone || 'Task Forest',
+      heroId: heroId,
+      heroName: currentHero.name,
+      completedAt: nowIso,
+      timestamp: Date.now(),
+      dateString: new Date().toLocaleDateString(),
+      timeString: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      coinsAwarded: totalCoins,
+      pointsAwarded: task.points || 10,
+      xpAwarded: (task.xp || 20) + 15,
+      status: 'pending',
+      approvalRequestId: approvalReqId,
+      hasPhotoProof: true,
+      photoUrl: photoUrl,
+      aiConfidence: aiConfidence,
+      aiFeedback: aiFeedback,
+      badgeEarned: badgeEarned,
+      approvedAt: null,
+      rejectedAt: null
+    };
+
+    if (!this.state.taskCompletionLogs) {
+      this.state.taskCompletionLogs = [];
+    }
+    this.state.taskCompletionLogs.unshift(completionLog);
+    if (this.state.taskCompletionLogs.length > 200) {
+      this.state.taskCompletionLogs.pop();
+    }
+
+    task.completed = true;
+    task.pointsApproved = false;
+
+    // 🪙 Tokens auto-issued with +5 bonus
+    currentHero.coins += totalCoins;
+    this.addXP((task.xp || 20) + 15);
+    this.awardTaskCareSynergy(task.id, 'photo_chore');
+    Sound.coin();
+    Sound.fanfare();
+
+    // Enqueue into pending approvals with photo evidence and AI badge
+    this.state.pendingApprovals.push({
+      id: approvalReqId,
+      logId: logId,
+      kidId: currentHero.id,
+      kidName: currentHero.name,
+      type: 'task_point_approval',
+      taskId: task.id,
+      title: task.title,
+      zone: task.zone || 'Task Forest',
+      pendingPoints: task.points || 10,
+      tokensAwarded: totalCoins,
+      date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: nowIso,
+      status: 'pending',
+      hasPhotoProof: true,
+      photoUrl: photoUrl,
+      aiConfidence: aiConfidence,
+      aiFeedback: aiFeedback,
+      badgeEarned: badgeEarned
+    });
+
+    this.logAction(
+      `${currentHero.name} snapped photo proof for '${task.title}'`,
+      `+${totalCoins} Tokens 🪙 auto-issued (incl. +5 bonus!). AI Verified: ${aiConfidence}% confidence.`
+    );
+
+    this.showReward(
+      '📸 Proof Sent to Rex & Parents!',
+      `${kidFeedback || `Rex says: Incredible job, ${currentHero.name}!`} \n\n🪙 +${totalCoins} Tokens (Includes +5 Photo Bonus!)\n⭐ +${task.points || 10} Gold Points sent to Parent Inbox!`,
+      totalCoins,
+      (task.xp || 20) + 15,
+      photoUrl,
+      'photo_camera'
+    );
+
+    this.saveState(true);
+    this.notify();
   }
 
   // TOOTHBRUSH AR BATTLE COMPLETION
@@ -1257,6 +1432,7 @@ class Store {
 
     currentHero.coins += 30;
     this.addXP(50);
+    this.awardTaskCareSynergy('morning_brush', 'ar_battle');
 
     this.state.pendingApprovals.push({
       id: approvalReqId,
@@ -1274,14 +1450,23 @@ class Store {
       status: 'pending'
     });
 
-    this.logAction(`${currentHero.name} finished 2-min Toothbrush AR Battle`, `+30 Tokens 🪙 auto-issued. (+15 Points ⭐ sent to Parent for approval)`);
+    if (!this.state.inventory) this.state.inventory = [];
+    if (!this.state.inventory.includes('Mint Knight Badge')) {
+      this.state.inventory.push('Mint Knight Badge');
+    }
+    if (!currentHero.inventory) currentHero.inventory = [];
+    if (!currentHero.inventory.includes('Mint Knight Badge')) {
+      currentHero.inventory.push('Mint Knight Badge');
+    }
+
+    this.logAction(`${currentHero.name} finished 2-min Toothbrush AR Battle`, `+30 Tokens 🪙 auto-issued. (+15 Points ⭐ sent to Parent for approval) & Mint Knight Badge unlocked!`);
     this.showReward(
-      'SUGAR VILLAIN DEFEATED!',
-      '🪙 +30 Habit Tokens auto-added to your wallet!\n⭐ +15 Gold Points submitted to Parent for review & credit.',
+      'SUGAR VILLAIN DEFEATED! 🏆',
+      '🪙 +30 Habit Tokens auto-added to your wallet!\n⭐ +15 Gold Points submitted to Parent for review.\n🎖️ UNLOCKED: "Mint Knight Badge" added to your Locker!',
       30,
       50,
       task?.image || null,
-      'dentistry'
+      'military_tech'
     );
     this.saveState(true);
   }
@@ -1345,6 +1530,7 @@ class Store {
 
     currentHero.coins += coins;
     this.addXP(xp);
+    this.awardTaskCareSynergy(quest.id, 'ai_quest');
     Sound.coin();
     Sound.fanfare();
 
@@ -1499,6 +1685,296 @@ class Store {
       return this.state.equippedGearMap[id];
     }
     return this.state.selectedHero?.equippedPetGear || this.state.equippedPetGear || null;
+  }
+
+  getEquippedPetGearSlots(petId) {
+    const id = petId || this.state.selectedHero?.activePetId || 1;
+    if (!this.state.equippedPetGearSlots) {
+      this.state.equippedPetGearSlots = {};
+    }
+    if (!this.state.equippedPetGearSlots[id]) {
+      this.state.equippedPetGearSlots[id] = { hat: 'Enchanted Wizard Hat', cape: null, aura: null };
+    }
+    return { hat: null, cape: null, aura: null, ...this.state.equippedPetGearSlots[id] };
+  }
+
+  equipPetSlotGear(petId, slot, itemTitle) {
+    const id = petId || this.state.selectedHero?.activePetId || 1;
+    if (!this.state.equippedPetGearSlots) {
+      this.state.equippedPetGearSlots = {};
+    }
+    if (!this.state.equippedPetGearSlots[id]) {
+      this.state.equippedPetGearSlots[id] = { hat: null, cape: null, aura: null };
+    }
+
+    // Toggle off if same item is clicked
+    if (this.state.equippedPetGearSlots[id][slot] === itemTitle) {
+      this.state.equippedPetGearSlots[id][slot] = null;
+    } else {
+      this.state.equippedPetGearSlots[id][slot] = itemTitle;
+    }
+
+    // Sync legacy equippedPetGear if slot is hat
+    if (slot === 'hat') {
+      this.state.equippedPetGear = this.state.equippedPetGearSlots[id].hat;
+      if (this.state.selectedHero) {
+        this.state.selectedHero.equippedPetGear = this.state.equippedPetGearSlots[id].hat;
+      }
+    }
+
+    Sound.sparkle();
+    confetti({
+      particleCount: 35,
+      spread: 50,
+      origin: { y: 0.6 }
+    });
+    this.saveState(true);
+    this.notify();
+  }
+
+  openPetLockerModal(petId) {
+    const id = petId || this.getActivePet().id;
+    this.state.petLockerModal = { isOpen: true, petId: id };
+    this.notify();
+  }
+
+  closePetLockerModal() {
+    this.state.petLockerModal = { isOpen: false, petId: null };
+    this.notify();
+  }
+
+  getPetSparks(petId) {
+    const id = petId || this.state.selectedHero?.activePetId || 1;
+    if (!this.state.petSparkMap) {
+      this.state.petSparkMap = {};
+    }
+    if (this.state.petSparkMap[id] === undefined) {
+      this.state.petSparkMap[id] = 65; // High initial sparks for immediate toddler satisfaction
+    }
+    return this.state.petSparkMap[id];
+  }
+
+  addEvolutionSparks(petId, amount = 15) {
+    const id = petId || this.state.selectedHero?.activePetId || 1;
+    if (!this.state.petSparkMap) {
+      this.state.petSparkMap = {};
+    }
+    const current = this.getPetSparks(id);
+    const next = Math.min(100, current + amount);
+    this.state.petSparkMap[id] = next;
+    return next;
+  }
+
+  getPetStreakShield() {
+    if (!this.state.petStreakShield) {
+      this.state.petStreakShield = { available: true, usedThisWeek: false, lastProtectedDate: null };
+    }
+    const activePet = this.getActivePet();
+    const stats = this.state.petStatsMap?.[activePet?.id] || { joy: 85 };
+    const isHappy = (stats.joy || 80) >= 60;
+    return {
+      ...this.state.petStreakShield,
+      isActive: isHappy && this.state.petStreakShield.available && !this.state.petStreakShield.usedThisWeek
+    };
+  }
+
+  feedAllPetsPicnic() {
+    const hero = this.state.selectedHero;
+    const cost = 15;
+    if (hero.coins < cost) {
+      Sound.hit();
+      this.showReward(
+        'Need 15 Habit Tokens! 🧺',
+        `You need 15 Tokens 🪙 to host a Group Treat Picnic! Complete a chore or brush teeth to earn more tokens!`,
+        0,
+        0,
+        null,
+        'shopping_basket'
+      );
+      return false;
+    }
+
+    hero.coins -= cost;
+    Sound.picnicChime();
+    Sound.snackMunch();
+
+    const unlockedIds = hero.unlockedPetIds && hero.unlockedPetIds.length > 0
+      ? hero.unlockedPetIds
+      : [hero.activePetId || 1];
+
+    unlockedIds.forEach(pId => {
+      if (!this.state.petStatsMap[pId]) {
+        this.state.petStatsMap[pId] = { hunger: 70, hygiene: 85, energy: 65, joy: 80 };
+      }
+      const s = this.state.petStatsMap[pId];
+      s.hunger = Math.min(100, (s.hunger || 70) + 30);
+      s.joy = Math.min(100, (s.joy || 80) + 25);
+      s.energy = Math.min(100, (s.energy || 65) + 20);
+      this.addEvolutionSparks(pId, 10);
+    });
+
+    this.addXP(25);
+    confetti({
+      particleCount: 80,
+      spread: 90,
+      origin: { y: 0.6 },
+      colors: ['#2ecc71', '#f1c40f', '#e67e22', '#e74c3c', '#9b59b6']
+    });
+
+    this.logAction(
+      `${hero.name} hosted a Sanctuary Group Treat Picnic!`,
+      `All companions ate fresh fruit snacks: +30 Fullness, +25 Joy, +20 Energy & +10 Evolution Sparks!`
+    );
+
+    this.showReward(
+      'Group Treat Picnic Time! 🧺🍎',
+      `All ${unlockedIds.length} companion(s) gathered at the picnic clearing! Everyone gained +10 Evolution Sparks ⚡ and full bellies!`,
+      0,
+      25,
+      null,
+      'restaurant'
+    );
+
+    this.saveState(true);
+    this.notify();
+    return true;
+  }
+
+  feedSinglePet(petId) {
+    const id = petId || this.state.selectedHero?.activePetId || 1;
+    const hero = this.state.selectedHero;
+    const cost = 5;
+
+    if (hero.coins < cost) {
+      Sound.hit();
+      this.showReward(
+        'Need 5 Habit Tokens! 🍎',
+        `You need 5 Tokens 🪙 for a crunchy snack treat! Complete a chore to earn tokens!`,
+        0,
+        0,
+        null,
+        'nutrition'
+      );
+      return false;
+    }
+
+    hero.coins -= cost;
+    if (!this.state.petStatsMap[id]) {
+      this.state.petStatsMap[id] = { hunger: 70, hygiene: 85, energy: 65, joy: 80 };
+    }
+    const stats = this.state.petStatsMap[id];
+    stats.hunger = Math.min(100, (stats.hunger || 70) + 25);
+    stats.joy = Math.min(100, (stats.joy || 80) + 15);
+    stats.energy = Math.min(100, (stats.energy || 65) + 10);
+    this.addEvolutionSparks(id, 5);
+    this.addXP(10);
+
+    Sound.snackMunch();
+    Sound.chirp();
+    confetti({
+      particleCount: 35,
+      spread: 50,
+      origin: { y: 0.7 }
+    });
+
+    const pet = this.state.pets.find(p => p.id === id) || PETS_DATABASE.find(p => p.id === id);
+    this.logAction(
+      `${hero.name} fed ${pet?.name || 'companion'} a snack`,
+      `+25 Fullness, +15 Joy, +5 Evolution Sparks ⚡`
+    );
+
+    this.saveState(true);
+    this.notify();
+    return true;
+  }
+
+  petHugPet(petId) {
+    const id = petId || this.state.selectedHero?.activePetId || 1;
+    if (!this.state.petStatsMap[id]) {
+      this.state.petStatsMap[id] = { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
+    }
+    const stats = this.state.petStatsMap[id];
+    stats.joy = Math.min(100, (stats.joy || 80) + 20);
+    stats.energy = Math.min(100, (stats.energy || 65) + 10);
+    this.addEvolutionSparks(id, 5);
+    this.addXP(15);
+    Sound.boing();
+    Sound.chirp();
+    this.saveState(true);
+    this.notify();
+  }
+
+  setActiveCompanion(petId) {
+    this.setActivePet(petId);
+  }
+
+  awardTaskCareSynergy(taskId, type = 'chore') {
+    const activePet = this.getActivePet();
+    if (!activePet || !activePet.id) return;
+    const petId = activePet.id;
+    const sparkAmount = type === 'ar_battle' ? 10 : 15;
+    this.addEvolutionSparks(petId, sparkAmount);
+
+    if (!this.state.petStatsMap[petId]) {
+      this.state.petStatsMap[petId] = { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
+    }
+    const stats = this.state.petStatsMap[petId];
+    stats.joy = Math.min(100, (stats.joy || 80) + 5);
+    stats.energy = Math.min(100, (stats.energy || 70) + 5);
+    this.saveState(true);
+  }
+
+  evolvePetStage(petId) {
+    const id = petId || this.state.selectedHero?.activePetId || 1;
+    const currentStage = this.state.petStageMap[id] || 1;
+    const hero = this.state.heroes.find(h => h.id === this.state.selectedHero.id) || this.state.selectedHero;
+    const petData = this.state.pets.find(p => p.id === id) || PETS_DATABASE.find(p => p.id === id) || this.state.pets[0];
+
+    if (currentStage < 4) {
+      const nextStage = currentStage + 1;
+      this.state.petStageMap[id] = nextStage;
+      if (!hero.petStageMap) hero.petStageMap = {};
+      hero.petStageMap[id] = nextStage;
+
+      if (!this.state.petSparkMap) this.state.petSparkMap = {};
+      this.state.petSparkMap[id] = 0;
+
+      this.addXP(100);
+      this.state.selectedHero.coins += 100;
+      Sound.evolutionAscent();
+      Sound.fanfare();
+
+      const stageTitle = petData?.evolutionStages?.[nextStage - 1] || `Stage ${nextStage}`;
+      this.logAction(
+        `${hero.name}'s companion ${petData?.name || 'companion'} evolved to ${stageTitle}!`,
+        `Advanced to Stage ${nextStage}! +100 Coins 🪙 & +100 XP awarded!`
+      );
+
+      this.saveState(true);
+
+      const unlocked = hero.unlockedPetIds || [];
+      const firstPetId = unlocked[0];
+
+      if (id === firstPetId && nextStage >= 2 && unlocked.length === 1) {
+        setTimeout(() => {
+          this.openPetSelectionModal('second_pet');
+        }, 1500);
+      }
+
+      if (unlocked.length === 2) {
+        const p1 = unlocked[0];
+        const p2 = unlocked[1];
+        const s1 = hero.petStageMap[p1] || this.state.petStageMap[p1] || 1;
+        const s2 = hero.petStageMap[p2] || this.state.petStageMap[p2] || 1;
+        if (s1 >= 4 && s2 >= 4) {
+          setTimeout(() => {
+            this.openPetSelectionModal('third_pet');
+          }, 1500);
+        }
+      }
+      return nextStage;
+    }
+    return currentStage;
   }
 
   bathPetProgress(amount = 20, petId) {
@@ -1680,6 +2156,8 @@ class Store {
       this.state.petStageMap[id] = nextStage;
       if (!hero.petStageMap) hero.petStageMap = {};
       hero.petStageMap[id] = nextStage;
+      if (!this.state.petSparkMap) this.state.petSparkMap = {};
+      this.state.petSparkMap[id] = 0;
 
       this.addXP(100);
       this.state.selectedHero.coins += 100;
@@ -1837,8 +2315,15 @@ class Store {
     if (req.type === 'task_point_approval' || req.type === 'task') {
       const pointsToAward = req.pendingPoints || req.rewardPoints || 10;
       hero.points += pointsToAward;
+
+      // Screen Time & Privileges Bank conversion: points convert to screen time minutes!
+      const rate = hero.screenTimeRate !== undefined ? hero.screenTimeRate : 2;
+      const earnedMinutes = pointsToAward * rate;
+      hero.screenTimeMinutes = (hero.screenTimeMinutes || 0) + earnedMinutes;
+
       if (this.state.selectedHero.id === hero.id) {
         this.state.selectedHero.points = hero.points;
+        this.state.selectedHero.screenTimeMinutes = hero.screenTimeMinutes;
       }
 
       // 1. Update the structured completion log record
@@ -1896,10 +2381,13 @@ class Store {
         }
       }
 
-      this.logAction(`Parent verified '${req.title}' for ${req.kidName}`, `+${pointsToAward} Points ⭐ Credited to Balance`);
+      this.logAction(
+        `Parent verified '${req.title}' for ${req.kidName}`,
+        `+${pointsToAward} Points ⭐ & +${earnedMinutes}m Screen Time Credited to Bank`
+      );
       this.showReward(
-        'Points Approved!',
-        `+${pointsToAward} Gold Points ⭐ officially credited to ${req.kidName}'s wallet! Routine is ready for the next cycle.`,
+        'Points & Screen Time Approved!',
+        `+${pointsToAward} Gold Points ⭐ & +${earnedMinutes}m Screen Time ⏱️ credited to ${req.kidName}'s bank!`,
         0,
         0,
         taskItem?.image || null,
@@ -2095,6 +2583,333 @@ class Store {
     this.notify();
   }
 
+  // SCREEN TIME & PRIVILEGES BANK METHODS
+  grantScreenTimeBonus(heroId, minutes = 15) {
+    const hero = this.state.heroes.find(h => h.id === heroId) || this.state.selectedHero;
+    if (!hero) return;
+    hero.screenTimeMinutes = (hero.screenTimeMinutes || 0) + minutes;
+    if (this.state.selectedHero.id === hero.id) {
+      this.state.selectedHero.screenTimeMinutes = hero.screenTimeMinutes;
+    }
+    this.logAction(`Parent granted +${minutes}m screen time bonus for ${hero.name}`, `New balance: ${hero.screenTimeMinutes} minutes`);
+    Sound.coin();
+    this.saveState(true);
+    this.notify();
+  }
+
+  deductScreenTime(heroId, minutes = 15) {
+    const hero = this.state.heroes.find(h => h.id === heroId) || this.state.selectedHero;
+    if (!hero) return;
+    hero.screenTimeMinutes = Math.max(0, (hero.screenTimeMinutes || 0) - minutes);
+    if (this.state.selectedHero.id === hero.id) {
+      this.state.selectedHero.screenTimeMinutes = hero.screenTimeMinutes;
+    }
+    this.logAction(`Parent deducted ${minutes}m screen time for ${hero.name}`, `New balance: ${hero.screenTimeMinutes} minutes`);
+    Sound.click();
+    this.saveState(true);
+    this.notify();
+  }
+
+  toggleScreenTimePause(heroId) {
+    const hero = this.state.heroes.find(h => h.id === heroId) || this.state.selectedHero;
+    if (!hero) return;
+    hero.isScreenTimePaused = !hero.isScreenTimePaused;
+    if (this.state.selectedHero.id === hero.id) {
+      this.state.selectedHero.isScreenTimePaused = hero.isScreenTimePaused;
+    }
+    const status = hero.isScreenTimePaused ? 'PAUSED / LOCKED' : 'RESUMED';
+    this.logAction(`Parent ${status} screen time for ${hero.name}`, `Active lock status: ${hero.isScreenTimePaused}`);
+    Sound.click();
+    this.saveState(true);
+    this.notify();
+  }
+
+  updateScreenTimeSettings(heroId, { dailyMaxScreenTime, bedtimeCurfew, screenTimeRate, screenTimeLockMessage }) {
+    const targets = heroId === 'all' 
+      ? this.state.heroes 
+      : [this.state.heroes.find(h => h.id === heroId) || this.state.selectedHero];
+
+    targets.forEach(h => {
+      if (!h) return;
+      if (dailyMaxScreenTime !== undefined) h.dailyMaxScreenTime = Number(dailyMaxScreenTime);
+      if (bedtimeCurfew !== undefined) h.bedtimeCurfew = bedtimeCurfew;
+      if (screenTimeRate !== undefined) h.screenTimeRate = Number(screenTimeRate);
+      if (screenTimeLockMessage !== undefined) h.screenTimeLockMessage = screenTimeLockMessage;
+      if (this.state.selectedHero.id === h.id) {
+        Object.assign(this.state.selectedHero, {
+          dailyMaxScreenTime: h.dailyMaxScreenTime,
+          bedtimeCurfew: h.bedtimeCurfew,
+          screenTimeRate: h.screenTimeRate,
+          screenTimeLockMessage: h.screenTimeLockMessage
+        });
+      }
+    });
+
+    this.logAction('Parent updated Screen Time governance rules', `Rate: ${screenTimeRate || 2}m/pt, Curfew: ${bedtimeCurfew || '20:00'}`);
+    this.saveState(true);
+    this.notify();
+  }
+
+  getGameMastery(gameId) {
+    if (!this.state.gameMasteryMap) {
+      this.state.gameMasteryMap = {};
+    }
+    return {
+      stars: 0,
+      completedCount: 0,
+      highScore: 0,
+      ...(this.state.gameMasteryMap[gameId] || {})
+    };
+  }
+
+  setGameDifficulty(difficulty) {
+    if (!['easy', 'medium', 'hard'].includes(difficulty)) return;
+    if (this.state.selectedHero) {
+      this.state.selectedHero.gameDifficulty = difficulty;
+    }
+    if (this.state.heroes) {
+      const hero = this.state.heroes.find(h => h.id === this.state.selectedHero?.id);
+      if (hero) hero.gameDifficulty = difficulty;
+    }
+    Sound.click();
+    this.saveState(true);
+    this.notify();
+  }
+
+  completeAdventureGame(gameId, score = 3, maxScore = 3) {
+    const game = ADVENTURE_GAMES.find(g => g.id === gameId);
+    if (!game) return { stars: 1, coins: 25, xp: 30, sparks: 10 };
+
+    const currentHero = this.state.selectedHero;
+    const activePet = this.getActivePet();
+    const petId = activePet.id || 1;
+
+    // Calculate stars earned (1 to 3)
+    let starsEarned = 1;
+    if (score >= maxScore) {
+      starsEarned = 3;
+    } else if (score >= Math.ceil(maxScore * 0.6)) {
+      starsEarned = 2;
+    }
+
+    if (!this.state.gameMasteryMap) {
+      this.state.gameMasteryMap = {};
+    }
+    const prevMastery = this.state.gameMasteryMap[gameId] || { stars: 0, completedCount: 0, highScore: 0 };
+    const newStars = Math.max(prevMastery.stars || 0, starsEarned);
+    this.state.gameMasteryMap[gameId] = {
+      stars: newStars,
+      completedCount: (prevMastery.completedCount || 0) + 1,
+      highScore: Math.max(prevMastery.highScore || 0, score),
+      lastPlayed: new Date().toISOString()
+    };
+
+    // Calculate rewards
+    const baseCoins = game.rewardCoins || 25;
+    const bonusCoins = starsEarned === 3 ? 15 : starsEarned === 2 ? 10 : 5;
+    const totalCoins = baseCoins + bonusCoins;
+    const totalXP = (game.rewardXP || 30) + (starsEarned * 10);
+    const sparksEarned = 10;
+
+    // Auto-issue coins & XP
+    currentHero.coins = (currentHero.coins || 0) + totalCoins;
+    this.addXP(totalXP);
+
+    // Grant +10 Evolution Sparks to companion
+    this.addEvolutionSparks(petId, sparksEarned);
+
+    // Boost Joy and Energy of active companion
+    if (!this.state.petStatsMap[petId]) {
+      this.state.petStatsMap[petId] = { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
+    }
+    const pStats = this.state.petStatsMap[petId];
+    pStats.joy = Math.min(100, (pStats.joy || 80) + 15);
+    pStats.energy = Math.min(100, (pStats.energy || 70) + 10);
+
+    // Log to taskCompletionLogs for Parent Portal Pillar 2 (Cognitive & Motor Milestones) sync
+    const nowIso = new Date().toISOString();
+    const completionLog = {
+      id: 'adv_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+      taskId: gameId,
+      taskTitle: game.title,
+      zone: 'Adventure Learning Games',
+      subject: game.subject,
+      realm: game.realm || game.title,
+      starsEarned: starsEarned,
+      score: score,
+      maxScore: maxScore,
+      heroId: currentHero.id,
+      heroName: currentHero.name,
+      completedAt: nowIso,
+      timestamp: Date.now(),
+      dateString: new Date().toLocaleDateString(),
+      timeString: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      coinsAwarded: totalCoins,
+      pointsAwarded: starsEarned * 5,
+      xpAwarded: totalXP,
+      status: 'approved',
+      approvedAt: nowIso
+    };
+
+    if (!this.state.taskCompletionLogs) {
+      this.state.taskCompletionLogs = [];
+    }
+    this.state.taskCompletionLogs.unshift(completionLog);
+    if (this.state.taskCompletionLogs.length > 200) {
+      this.state.taskCompletionLogs.pop();
+    }
+
+    this.logAction(
+      `${currentHero.name} mastered ${game.realm || game.title} (${starsEarned}⭐)`,
+      `+${totalCoins} Tokens 🪙, +${totalXP} XP, +${sparksEarned} Evolution Sparks ⚡ for ${activePet.name}`
+    );
+
+    Sound.fanfare();
+    confetti({
+      particleCount: 100,
+      spread: 90,
+      origin: { y: 0.5 },
+      colors: ['#f1c40f', '#2ecc71', '#3498db', '#e67e22', '#9b59b6']
+    });
+
+    this.saveState(true);
+    this.notify();
+
+    return {
+      stars: starsEarned,
+      coins: totalCoins,
+      xp: totalXP,
+      sparks: sparksEarned
+    };
+  }
+
+  completeMovementRoutine(routineId, durationMinutes = 2, posesCompleted = 4, feverBursts = 1) {
+    const routine = getMovementRoutine(routineId);
+    const currentHero = this.state.selectedHero;
+    const activePet = this.getActivePet();
+    const petId = activePet.id || 1;
+
+    const coinsEarned = routine.rewardCoins || 40;
+    const xpEarned = routine.rewardXP || 60;
+    const sparksEarned = (routine.rewardSparks || 10) + (feverBursts > 1 ? 5 : 0);
+
+    // 1. Rewards to Hero
+    currentHero.coins = (currentHero.coins || 0) + coinsEarned;
+    this.addXP(xpEarned);
+
+    // 2. Active Pet Evolution Sparks & Vitality Boosts
+    this.addEvolutionSparks(petId, sparksEarned);
+    if (!this.state.petStatsMap[petId]) {
+      this.state.petStatsMap[petId] = { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
+    }
+    const pStats = this.state.petStatsMap[petId];
+    pStats.joy = Math.min(100, (pStats.joy || 80) + 25);
+    pStats.energy = Math.min(100, (pStats.energy || 70) + 20);
+
+    // 3. Movement Session History
+    if (!this.state.movementSessionHistory) {
+      this.state.movementSessionHistory = [];
+    }
+    const sessionRecord = {
+      id: 'move_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+      routineId: routine.id,
+      title: routine.title,
+      category: routine.category,
+      badge: routine.badge,
+      durationMinutes: durationMinutes,
+      posesCompleted: posesCompleted,
+      feverBursts: feverBursts,
+      pediatricMarker: routine.pediatricMarker,
+      timestamp: Date.now(),
+      dateIso: new Date().toISOString(),
+      dateString: new Date().toLocaleDateString(),
+      timeString: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+    this.state.movementSessionHistory.unshift(sessionRecord);
+    if (this.state.movementSessionHistory.length > 100) {
+      this.state.movementSessionHistory.pop();
+    }
+
+    // 4. Audit Log for Parent Portal Pillar 2 (Cognitive & Motor Milestones) & Pillar 4
+    const nowIso = new Date().toISOString();
+    const completionLog = {
+      id: 'move_log_' + Date.now(),
+      taskId: routine.id,
+      taskTitle: routine.title,
+      zone: 'Gross Motor & Dance Party',
+      category: 'gross_motor',
+      pediatricMarker: routine.pediatricMarker,
+      durationMinutes: durationMinutes,
+      posesCompleted: posesCompleted,
+      feverBursts: feverBursts,
+      heroId: currentHero.id,
+      heroName: currentHero.name,
+      completedAt: nowIso,
+      timestamp: Date.now(),
+      dateString: new Date().toLocaleDateString(),
+      timeString: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      coinsAwarded: coinsEarned,
+      pointsAwarded: 10,
+      xpAwarded: xpEarned,
+      sparksAwarded: sparksEarned,
+      status: 'approved',
+      approvedAt: nowIso
+    };
+
+    if (!this.state.taskCompletionLogs) {
+      this.state.taskCompletionLogs = [];
+    }
+    this.state.taskCompletionLogs.unshift(completionLog);
+    if (this.state.taskCompletionLogs.length > 200) {
+      this.state.taskCompletionLogs.pop();
+    }
+
+    this.logAction(
+      `${currentHero.name} rocked ${routine.title}! 🕺💃`,
+      `+${coinsEarned} Tokens 🪙, +${xpEarned} XP, +${sparksEarned} Sparks ⚡ for ${activePet.name} (${durationMinutes} mins active)`
+    );
+
+    Sound.fanfare();
+    confetti({
+      particleCount: 120,
+      spread: 100,
+      origin: { y: 0.5 },
+      colors: ['#f39c12', '#e74c3c', '#9b59b6', '#2ecc71', '#00bcd4']
+    });
+
+    this.saveState(true);
+    this.notify();
+
+    return {
+      coins: coinsEarned,
+      xp: xpEarned,
+      sparks: sparksEarned,
+      durationMinutes: durationMinutes,
+      routine: routine
+    };
+  }
+
+  getMovementStats() {
+    const history = this.state.movementSessionHistory || [];
+    const totalMinutes = history.reduce((acc, s) => acc + (s.durationMinutes || 0), 0);
+    const morningCount = history.filter(s => s.routineId === 'morning_wake_up').length;
+    const afternoonCount = history.filter(s => s.routineId === 'afternoon_wiggle').length;
+    const bedtimeCount = history.filter(s => s.routineId === 'bedtime_wind_down').length;
+    const freestyleCount = history.filter(s => s.routineId === 'freestyle_disco').length;
+    const feverBurstsTotal = history.reduce((acc, s) => acc + (s.feverBursts || 0), 0);
+
+    return {
+      totalSessions: history.length,
+      totalMinutes,
+      morningCount,
+      afternoonCount,
+      bedtimeCount,
+      freestyleCount,
+      feverBurstsTotal,
+      recentSessions: history.slice(0, 10)
+    };
+  }
+
   playAdventureGame(gameId, isWin) {
     const game = ADVENTURE_GAMES.find(g => g.id === gameId);
     if (!game) return;
@@ -2113,24 +2928,13 @@ class Store {
     }
 
     const id = this.state.selectedHero.activePetId || 1;
-    this.state.petStatsMap[id].energy -= game.energyCost;
+    if (this.state.petStatsMap[id]) {
+      this.state.petStatsMap[id].energy = Math.max(0, (this.state.petStatsMap[id].energy || 50) - game.energyCost);
+    }
 
     if (isWin) {
-      this.state.selectedHero.coins += game.rewardCoins;
-      this.addXP(game.rewardXP);
-      this.state.petStatsMap[id].joy = Math.min(100, this.state.petStatsMap[id].joy + 15);
-      Sound.fanfare();
-      confetti({ particleCount: 80, spread: 90, origin: { y: 0.6 } });
-      this.showReward(
-        'Adventure Cleared!',
-        `You mastered ${game.title}! +${game.rewardCoins} Habit Tokens auto-added & +${game.rewardXP} XP!`,
-        game.rewardCoins,
-        game.rewardXP,
-        null,
-        game.icon
-      );
+      this.completeAdventureGame(gameId, 3, 3);
     }
-    this.saveState(true);
   }
 
   switchHero(heroId) {

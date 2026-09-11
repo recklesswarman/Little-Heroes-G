@@ -7,7 +7,7 @@ import { voicePrompts } from '../utils/voicePrompts.js';
 import { Sound } from '../audio/sfx.js';
 import { triggerInteractiveCelebration } from '../components/InteractiveCelebrationOverlay.js';
 
-const LIVE_WS_ENDPOINT = 'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent';
+const LIVE_WS_ENDPOINT = 'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent';
 const INTERACTIONS_API_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/interactions';
 const DEFAULT_FALLBACK_KEY = 'AIzaSyA8bu_j-_7Wr1DW_dS3qHESuCFG08_i4Ic';
 
@@ -31,12 +31,28 @@ class GeminiLiveService {
     this.onVolumeCallback = null;
     this.onTranscriptCallback = null;
     this.onStatusCallback = null;
+    this.onStateChange = null;
     
     // Active Quest Context
     this.currentQuestContext = null;
 
     // Resampling buffer
     this.inputSampleRate = 16000;
+  }
+
+  get isActive() {
+    return this.isConnected;
+  }
+
+  async unlockAudio() {
+    try {
+      if (this.audioOutputContext && this.audioOutputContext.state === 'suspended') {
+        await this.audioOutputContext.resume();
+      }
+      if (this.audioInputContext && this.audioInputContext.state === 'suspended') {
+        await this.audioInputContext.resume();
+      }
+    } catch {}
   }
 
   getApiKey() {
@@ -65,9 +81,18 @@ class GeminiLiveService {
   sendQuestContextUpdate(context) {
     try {
       const optionsText = Array.isArray(context.options)
-        ? context.options.map((opt, i) => `[Option ${String.fromCharCode(65 + i)}: "${opt}"]`).join(', ')
+        ? context.options.map((opt, i) => `[Option ${i} (${String.fromCharCode(65 + i)}): "${opt}"]`).join(', ')
         : '';
-      const promptText = `[GAME CONTEXT UPDATE: Child is currently playing the adventure quest "${context.gameTitle || 'Mini-Game'}", Stop ${context.currentStop || 1} of ${context.totalStops || 1}. Current question on screen: "${context.question}". Available choices: ${optionsText}. If the child says their answer, call the tool 'answerQuestChallenge'. If they ask for help, call 'giveEncouragingHint'.]`;
+      const promptText = `[GAME CONTEXT UPDATE: Child is currently playing the learning adventure "${context.gameTitle || 'Mini-Game'}", Stop ${context.currentStop || 1} of ${context.totalStops || 1}.
+Current question on screen: "${context.question}".
+Available choices: ${optionsText}.
+Correct answer index: ${context.correctAnswerIndex ?? 'unknown'}.
+Tool instructions:
+1. If child says or guesses an answer (word, color, number, or option letter), call 'answerQuestChallenge' with optionIndex and optionText.
+2. If child asks for a hint, clue, or help, call 'giveEncouragingHint'.
+3. If child asks to eliminate or stomp a wrong answer (or 50/50), call 'eliminateWrongOption' with an incorrect optionIndex.
+4. If child asks to read or repeat the question, call 'readQuestionAloud'.
+5. If child completes the challenge, call 'celebrateHeroicVictory'.]`;
       
       const updateMsg = {
         clientContent: {
@@ -77,7 +102,7 @@ class GeminiLiveService {
               parts: [{ text: promptText }]
             }
           ],
-          turnComplete: false
+          turnComplete: true
         }
       };
       this.ws.send(JSON.stringify(updateMsg));
@@ -158,13 +183,23 @@ Personality & Voice:
   Immediately call the tool 'answerQuestChallenge' with the 0-based optionIndex and optionText.
 - If the toddler asks for a hint or sounds confused:
   Call the tool 'giveEncouragingHint' with a simple, friendly clue.
+- If the toddler asks you to stomp out a wrong card or use 50/50:
+  Call the tool 'eliminateWrongOption' with an incorrect optionIndex.
+- If the toddler asks you to read or repeat the question:
+  Call the tool 'readQuestionAloud'.
 - If the child completes a challenge or says they won:
   Call the tool 'celebrateHeroicVictory' with a fun celebration cheer!
+- During Toothbrush AR Battles:
+  - You are their epic Superhero Dental Coach! Cheer them on to scrub in circles!
+  - When the child shouts "Blast" or "Toothpaste Blast" or "Attack", call 'triggerToothpasteFoamBlast'.
+  - When the child shouts "Shield" or "Bubble Shield" or "Protect", call 'activateHeroBubbleShield'.
+  - When a tooth quadrant is finished, call 'cheerQuadrantCleared' with the quadrantName.
+  - When the Sugar Boss is defeated, call 'celebrateBossDefeat'.
 - Never break character. You are their trusted dinosaur best buddy!`;
 
     const setupMessage = {
       setup: {
-        model: 'models/gemini-3.1-flash-live-preview',
+        model: 'models/gemini-2.0-flash-exp',
         generationConfig: {
           responseModalities: ['AUDIO'],
           speechConfig: {
@@ -173,9 +208,6 @@ Personality & Voice:
                 voiceName: voiceName
               }
             }
-          },
-          thinkingConfig: {
-            thinkingLevel: 'minimal'
           }
         },
         systemInstruction: {
@@ -218,6 +250,94 @@ Personality & Voice:
                     }
                   },
                   required: ['hintText']
+                }
+              },
+              {
+                name: 'eliminateWrongOption',
+                description: 'Eliminate one wrong answer option from the screen using Dino Stomp (50/50 power) when the child asks Rex to stomp a wrong answer or needs 50/50 help.',
+                parameters: {
+                  type: 'OBJECT',
+                  properties: {
+                    eliminatedOptionIndex: {
+                      type: 'INTEGER',
+                      description: '0-based index of the incorrect option to stomp out and eliminate'
+                    },
+                    playfulComment: {
+                      type: 'STRING',
+                      description: 'Brief funny dino stomping roar or comment'
+                    }
+                  },
+                  required: ['eliminatedOptionIndex']
+                }
+              },
+              {
+                name: 'readQuestionAloud',
+                description: 'Read the current adventure challenge question aloud in a friendly, animated dino voice when the child asks Rex to read it.',
+                parameters: {
+                  type: 'OBJECT',
+                  properties: {
+                    questionText: {
+                      type: 'STRING',
+                      description: 'The question text to read aloud'
+                    }
+                  }
+                }
+              },
+              {
+                name: 'triggerToothpasteFoamBlast',
+                description: 'Fire a powerful Toothpaste Foam Blast cannon against the Sugar Boss and cavity minions.',
+                parameters: {
+                  type: 'OBJECT',
+                  properties: {
+                    powerLevel: {
+                      type: 'STRING',
+                      description: 'Super or Mega blast'
+                    },
+                    comment: {
+                      type: 'STRING',
+                      description: 'Rex battle roar'
+                    }
+                  }
+                }
+              },
+              {
+                name: 'activateHeroBubbleShield',
+                description: 'Deploy a glowing Hero Bubble Shield with hexagonal energy ripples to deflect Sugar Boss cavity slime.',
+                parameters: {
+                  type: 'OBJECT',
+                  properties: {
+                    shieldType: {
+                      type: 'STRING',
+                      description: 'Mint bubble shield'
+                    }
+                  }
+                }
+              },
+              {
+                name: 'cheerQuadrantCleared',
+                description: 'Celebrate when a tooth brushing quadrant is completed and guide child to next zone.',
+                parameters: {
+                  type: 'OBJECT',
+                  properties: {
+                    quadrantName: {
+                      type: 'STRING',
+                      description: 'Name of quadrant cleared (e.g. Upper Right, Upper Left, Lower Right, Lower Left, Tongue)'
+                    }
+                  },
+                  required: ['quadrantName']
+                }
+              },
+              {
+                name: 'celebrateBossDefeat',
+                description: 'Trigger the grand superhero victory celebration when the Sugar Villain is blasted away.',
+                parameters: {
+                  type: 'OBJECT',
+                  properties: {
+                    victoryRoar: {
+                      type: 'STRING',
+                      description: 'Rex superhero victory shout'
+                    }
+                  }
                 }
               },
               {
@@ -427,6 +547,96 @@ Personality & Voice:
             }
           }
         });
+      } else if (name === 'eliminateWrongOption') {
+        const elimIdx = typeof args.eliminatedOptionIndex === 'number' ? args.eliminatedOptionIndex : parseInt(args.eliminatedOptionIndex, 10);
+        window.dispatchEvent(
+          new CustomEvent('rex-live-eliminate', {
+            detail: {
+              eliminatedOptionIndex: elimIdx,
+              comment: args.playfulComment || 'Dino Stomp!'
+            }
+          })
+        );
+        functionResponses.push({
+          id,
+          name,
+          response: {
+            result: {
+              status: 'success',
+              eliminatedIndex: elimIdx
+            }
+          }
+        });
+      } else if (name === 'readQuestionAloud') {
+        const qText = args.questionText || this.currentQuestContext?.question || '';
+        window.dispatchEvent(
+          new CustomEvent('rex-live-read', {
+            detail: { questionText: qText }
+          })
+        );
+        functionResponses.push({
+          id,
+          name,
+          response: {
+            result: {
+              status: 'success',
+              read: true
+            }
+          }
+        });
+      } else if (name === 'triggerToothpasteFoamBlast') {
+        window.dispatchEvent(
+          new CustomEvent('rex-battle-foam', {
+            detail: { powerLevel: args.powerLevel || 'super', comment: args.comment || 'Foam Cannon!' }
+          })
+        );
+        functionResponses.push({
+          id,
+          name,
+          response: {
+            result: { status: 'success', blasted: true }
+          }
+        });
+      } else if (name === 'activateHeroBubbleShield') {
+        window.dispatchEvent(
+          new CustomEvent('rex-battle-shield', {
+            detail: { shieldType: args.shieldType || 'mint' }
+          })
+        );
+        functionResponses.push({
+          id,
+          name,
+          response: {
+            result: { status: 'success', shieldActive: true }
+          }
+        });
+      } else if (name === 'cheerQuadrantCleared') {
+        window.dispatchEvent(
+          new CustomEvent('rex-battle-cheer', {
+            detail: { quadrantName: args.quadrantName || 'Quadrant' }
+          })
+        );
+        functionResponses.push({
+          id,
+          name,
+          response: {
+            result: { status: 'success', cheered: true }
+          }
+        });
+      } else if (name === 'celebrateBossDefeat') {
+        triggerInteractiveCelebration();
+        window.dispatchEvent(
+          new CustomEvent('rex-battle-victory', {
+            detail: { roar: args.victoryRoar || 'Dino Victory!' }
+          })
+        );
+        functionResponses.push({
+          id,
+          name,
+          response: {
+            result: { status: 'success', defeated: true }
+          }
+        });
       } else if (name === 'celebrateHeroicVictory') {
         triggerInteractiveCelebration();
         window.dispatchEvent(
@@ -567,6 +777,9 @@ Personality & Voice:
     });
     if (this.onStatusCallback) {
       this.onStatusCallback(status, message);
+    }
+    if (this.onStateChange) {
+      this.onStateChange(status);
     }
   }
 

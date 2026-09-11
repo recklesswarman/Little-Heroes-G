@@ -299,6 +299,55 @@ input[type="range"]::-webkit-slider-thumb:active {
   50% { filter: drop-shadow(0 0 18px rgba(46, 204, 113, 0.9)); }
 }
 
+@keyframes villainDefeat {
+  0% { transform: scale(1) rotate(0deg); opacity: 1; filter: brightness(2); }
+  50% { transform: scale(0.6) rotate(180deg); opacity: 0.8; }
+  100% { transform: scale(0) rotate(360deg); opacity: 0; filter: blur(8px); }
+}
+
+@keyframes caramelArmorPulse {
+  0%, 100% { filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.7)); transform: scale(1); }
+  50% { filter: drop-shadow(0 0 24px rgba(245, 158, 11, 1)) drop-shadow(0 0 40px rgba(234, 88, 12, 0.5)); transform: scale(1.03); }
+}
+
+@keyframes heroBubblePulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(56, 189, 248, 0.6), inset 0 0 20px rgba(52, 211, 153, 0.4); transform: scale(1); }
+  50% { box-shadow: 0 0 40px rgba(56, 189, 248, 0.9), inset 0 0 30px rgba(52, 211, 153, 0.7); transform: scale(1.02); }
+}
+
+@keyframes dinoCircularScrub {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(5px, -4px) rotate(6deg); }
+  50% { transform: translate(0, -7px) rotate(0deg); }
+  75% { transform: translate(-5px, -4px) rotate(-6deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+@keyframes dinoTongueScrub {
+  0%, 100% { transform: translateX(-6px) rotate(-2deg); }
+  50% { transform: translateX(6px) rotate(2deg); }
+}
+
+.animate-villain-defeat {
+  animation: villainDefeat 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.animate-caramel-pulse {
+  animation: caramelArmorPulse 1.6s ease-in-out infinite;
+}
+
+.animate-hero-bubble {
+  animation: heroBubblePulse 1.4s ease-in-out infinite;
+}
+
+.animate-dino-scrub {
+  animation: dinoCircularScrub 0.7s linear infinite;
+}
+
+.animate-tongue-scrub {
+  animation: dinoTongueScrub 0.6s ease-in-out infinite;
+}
+
 .animate-villain-hover {
   animation: villainHover 3.2s ease-in-out infinite;
 }

@@ -3,6 +3,8 @@ import { ADVENTURE_GAMES, getGameChallenges } from '../data/learningGamesData.js
 import { Sound } from '../audio/sfx.js';
 import { voicePrompts } from '../utils/voicePrompts.js';
 import { geminiLiveService } from '../services/geminiLiveService.js';
+import { renderRexAvatarSvg } from '../components/LiveRexWidget.js';
+import { rexEngine } from '../services/rexCompanionEngine.js';
 import confetti from 'canvas-confetti';
 
 let activeGame = null;
@@ -53,31 +55,65 @@ export function renderQuestMapView() {
             : ''
         }
 
-        <!-- Interactive Rex Live AI Quest Guide Bar -->
-        <div class="bg-primary/10 border-2 border-primary/40 rounded-3xl p-3.5 flex items-center justify-between gap-3 text-xs animate-fade-in shadow-sm">
-          <div class="flex items-center gap-2.5">
-            <div class="w-10 h-10 rounded-2xl bg-primary/20 border-2 border-primary flex items-center justify-center text-xl shadow-sm ${geminiLiveService.isSpeaking ? 'animate-bounce' : geminiLiveService.isListening ? 'animate-pulse' : ''}">
-              🦖
+        <!-- INTEGRATED REX MASCOT ARENA HUD -->
+        <div id="rex-arena-hud" class="bg-gradient-to-r from-emerald-500/15 via-surface-container to-emerald-500/10 border-3 border-emerald-500/40 rounded-3xl p-4 flex flex-col gap-3 shadow-md animate-fade-in relative overflow-hidden">
+          
+          <div class="flex items-center justify-between gap-3">
+            <!-- Rex Avatar & Real-time Dino Face -->
+            <div class="flex items-center gap-3">
+              <div id="arena-rex-face" class="w-13 h-13 rounded-2xl bg-surface-container-high border-2 border-primary flex items-center justify-center p-1 shadow-md relative transition-transform ${geminiLiveService.isSpeaking ? 'scale-105 ring-4 ring-emerald-400' : geminiLiveService.isListening ? 'ring-2 ring-emerald-300' : ''}">
+                ${renderRexAvatarSvg({ isListening: geminiLiveService.isListening, isSpeaking: geminiLiveService.isSpeaking, isThinking: false })}
+                <div class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px] shadow border border-surface ${geminiLiveService.isConnected ? 'bg-emerald-500 text-white animate-pulse' : 'bg-surface-container-highest text-on-surface-variant'}">
+                  <span class="material-symbols-outlined text-xs">${geminiLiveService.isConnected ? 'mic' : 'mic_off'}</span>
+                </div>
+              </div>
+
+              <div class="flex flex-col text-left">
+                <div class="flex items-center gap-2">
+                  <span class="font-headline text-sm font-black text-inverse-surface">Rex Co-Pilot</span>
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${geminiLiveService.isConnected ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'bg-surface-container-highest text-on-surface-variant'}">
+                    ${geminiLiveService.isConnected ? (geminiLiveService.isSpeaking ? 'Speaking' : 'Listening Live') : 'Offline Voice Ready'}
+                  </span>
+                </div>
+                <p id="rex-arena-subtitle" class="text-xs font-semibold text-on-surface-variant mt-0.5">
+                  ${geminiLiveService.isConnected ? (geminiLiveService.isSpeaking ? '🦖 Rex is talking to you!' : '👂 Speak your answer, ask for a hint, or stomp a card!') : 'Tap "Wake Rex" or speak your answer aloud!'}
+                </p>
+              </div>
             </div>
-            <div class="flex flex-col text-left">
-              <span class="font-headline text-xs font-black text-primary flex items-center gap-1.5">
-                <span>Rex Live Voice Guide</span>
-                <span class="w-2 h-2 rounded-full ${geminiLiveService.isConnected ? 'bg-primary animate-ping' : 'bg-surface-container-highest'}"></span>
-              </span>
-              <span class="text-[11px] text-on-surface-variant font-bold">
-                ${geminiLiveService.isConnected ? (geminiLiveService.isSpeaking ? '🗣️ Rex is speaking!' : '👂 Rex is listening! Say your answer!') : 'Say your answer aloud or ask Rex for a hint!'}
-              </span>
+
+            <!-- Live Audio Waveform Visualizer -->
+            <div class="flex items-center gap-1 bg-surface-container-lowest px-2.5 py-1.5 rounded-xl border border-surface-container-highest shadow-inner">
+              <div class="rex-arena-bar w-1.5 bg-primary rounded-full transition-all duration-75 h-2"></div>
+              <div class="rex-arena-bar w-1.5 bg-primary rounded-full transition-all duration-75 h-3"></div>
+              <div class="rex-arena-bar w-1.5 bg-secondary rounded-full transition-all duration-75 h-5"></div>
+              <div class="rex-arena-bar w-1.5 bg-primary rounded-full transition-all duration-75 h-3"></div>
+              <div class="rex-arena-bar w-1.5 bg-primary rounded-full transition-all duration-75 h-2"></div>
             </div>
           </div>
-          <div class="flex items-center gap-1.5">
-            <button id="map-rex-hint-btn" class="bg-secondary/20 hover:bg-secondary/30 text-secondary font-headline text-[11px] font-black px-3 py-1.5 rounded-xl border border-secondary/40 flex items-center gap-1 chunky-btn-sm active:scale-95 shadow-sm" title="Ask Rex for a helpful hint">
-              <span>💡</span> <span>Rex Hint</span>
+
+          <!-- Dynamic Rex Speech Bubble (Pops up when Rex speaks or gives hints) -->
+          <div id="rex-arena-speech-bubble" class="bg-surface-container-lowest border-2 border-primary/40 rounded-2xl p-2.5 text-xs font-bold text-inverse-surface flex items-start gap-2 shadow-inner transition-all duration-300 ${store.getState().liveRex?.lastRexTranscript ? '' : 'hidden'}">
+            <span class="text-base flex-shrink-0">💬</span>
+            <span id="rex-arena-speech-text" class="flex-1">${store.getState().liveRex?.lastRexTranscript || 'Rex is ready to guide you!'}</span>
+          </div>
+
+          <!-- Action Chips: Hint, Dino Stomp (50/50), Read Aloud, Mic Toggle -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 border-t border-surface-container-highest">
+            <button id="map-rex-hint-btn" class="bg-surface-container-high hover:bg-surface-bright text-secondary font-headline text-xs font-black py-2 px-2.5 rounded-xl border-2 border-secondary/30 flex items-center justify-center gap-1.5 chunky-btn-sm active:scale-95 shadow-sm" title="Ask Rex for a toddler hint">
+              <span class="text-sm">💡</span> <span>Rex Hint</span>
             </button>
-            <button id="map-rex-talk-btn" class="bg-primary text-on-primary font-headline text-[11px] font-black px-3 py-1.5 rounded-xl chunky-btn-sm flex items-center gap-1 hover:brightness-110 active:scale-95 shadow" title="Toggle Rex Live Voice">
+            <button id="map-rex-stomp-btn" class="bg-surface-container-high hover:bg-surface-bright text-emerald-400 font-headline text-xs font-black py-2 px-2.5 rounded-xl border-2 border-emerald-500/30 flex items-center justify-center gap-1.5 chunky-btn-sm active:scale-95 shadow-sm" title="Rex stomps out one wrong answer">
+              <span class="text-sm">🦶</span> <span>Dino Stomp</span>
+            </button>
+            <button id="map-speak-question-btn" class="bg-surface-container-high hover:bg-surface-bright text-sky-400 font-headline text-xs font-black py-2 px-2.5 rounded-xl border-2 border-sky-500/30 flex items-center justify-center gap-1.5 chunky-btn-sm active:scale-95 shadow-sm" title="Read the challenge aloud">
+              <span class="material-symbols-outlined text-sm">volume_up</span> <span>Read Aloud</span>
+            </button>
+            <button id="map-rex-talk-btn" class="font-headline text-xs font-black py-2 px-2.5 rounded-xl border-2 flex items-center justify-center gap-1.5 chunky-btn-sm active:scale-95 shadow-sm ${geminiLiveService.isConnected ? 'bg-emerald-500 text-white border-emerald-600' : 'bg-primary text-on-primary border-primary-container'}" title="Toggle Rex Live Voice">
               <span class="material-symbols-outlined text-sm">${geminiLiveService.isConnected ? 'mic' : 'mic_none'}</span>
-              <span>${geminiLiveService.isConnected ? 'Active' : 'Wake Rex'}</span>
+              <span>${geminiLiveService.isConnected ? 'Live Active' : 'Wake Rex'}</span>
             </button>
           </div>
+
         </div>
 
         <!-- Mini Game Play Arena Card -->
@@ -109,25 +145,15 @@ export function renderQuestMapView() {
             <p class="font-headline text-xl sm:text-2xl font-black text-primary leading-snug">
               ${challenge.question}
             </p>
-            
-            ${
-              isEasyMode
-                ? `
-              <button id="map-speak-question-btn" class="mt-3 bg-secondary/20 hover:bg-secondary/30 text-secondary font-headline text-xs font-black px-3.5 py-1.5 rounded-xl border border-secondary/40 flex items-center gap-1.5 active:scale-95">
-                <span class="material-symbols-outlined text-sm">volume_up</span> Read to Me
-              </button>
-            `
-                : ''
-            }
           </div>
 
           <!-- Multiple Choice Options -->
-          <div class="grid grid-cols-1 gap-3.5">
+          <div class="grid grid-cols-1 gap-3.5" id="map-game-options-container">
             ${challenge.options
               .map((opt, idx) => {
                 return `
-                <button data-map-opt-idx="${idx}" class="map-game-opt-btn bg-surface-container-high hover:bg-surface-bright text-inverse-surface font-headline text-base sm:text-lg font-black py-4 px-6 rounded-2xl border-2 border-surface-container-highest chunky-btn flex items-center justify-between active:scale-98 transition-all hover:border-primary/60">
-                  <span>${opt}</span>
+                <button data-map-opt-idx="${idx}" class="map-game-opt-btn relative overflow-hidden bg-surface-container-high hover:bg-surface-bright text-inverse-surface font-headline text-base sm:text-lg font-black py-4 px-6 rounded-2xl border-2 border-surface-container-highest chunky-btn flex items-center justify-between active:scale-98 transition-all hover:border-primary/60">
+                  <span class="opt-label-text">${opt}</span>
                   <div class="w-7 h-7 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant font-black text-xs border border-surface-container-highest">
                     ${String.fromCharCode(65 + idx)}
                   </div>
@@ -504,6 +530,7 @@ export function attachQuestMapListeners() {
       gameTitle: activeGame.title,
       question: challenge.question,
       options: challenge.options,
+      correctAnswerIndex: challenge.answer,
       currentStop: currentChallengeIdx + 1,
       totalStops: challenges.length
     });
@@ -512,13 +539,28 @@ export function attachQuestMapListeners() {
     if (kidDiff === 'easy' && !geminiLiveService.isConnected && !geminiLiveService.isConnecting) {
       geminiLiveService.connect().catch(() => {});
     }
+
+    // Connect waveform visualizer to arena bars
+    geminiLiveService.onVolumeCallback = (volume, type) => {
+      const arenaBars = document.querySelectorAll('.rex-arena-bar');
+      if (arenaBars && arenaBars.length > 0) {
+        arenaBars.forEach((bar, idx) => {
+          const factor = Math.sin((idx + 1) * 0.8) * 0.5 + 0.5;
+          const h = Math.max(3, Math.round(3 + volume * 18 * factor));
+          bar.style.height = `${h}px`;
+          bar.style.backgroundColor = type === 'output' ? '#10B981' : '#34D399';
+        });
+      }
+    };
   }
 
-  // Rex Live Guide button listeners in active game arena
+  // 1. Rex Live Hint Button
   const rexHintBtn = document.getElementById('map-rex-hint-btn');
   if (rexHintBtn) {
     rexHintBtn.addEventListener('click', async () => {
       Sound.chirp();
+      geminiLiveService.unlockAudio();
+      rexEngine.unlockAudio();
       if (geminiLiveService.isConnected && geminiLiveService.ws?.readyState === WebSocket.OPEN) {
         geminiLiveService.ws.send(
           JSON.stringify({
@@ -539,31 +581,140 @@ export function attachQuestMapListeners() {
     });
   }
 
-  const rexTalkBtn = document.getElementById('map-rex-talk-btn');
-  if (rexTalkBtn) {
-    rexTalkBtn.addEventListener('click', async () => {
-      Sound.click();
-      if (geminiLiveService.isConnected) {
-        geminiLiveService.disconnect();
-      } else {
-        await geminiLiveService.connect();
+  // 2. Dino Stomp Button (50/50 Power)
+  const rexStompBtn = document.getElementById('map-rex-stomp-btn');
+  if (rexStompBtn) {
+    rexStompBtn.addEventListener('click', () => {
+      if (!activeGame) return;
+      Sound.hit();
+      const kidDiff = store.getState().selectedHero.gameDifficulty || 'medium';
+      const challenges = getGameChallenges(activeGame, kidDiff);
+      const challenge = challenges[currentChallengeIdx] || challenges[0];
+      const correctIdx = challenge.answer;
+
+      // Find an incorrect option that hasn't been stomped yet
+      const allBtns = Array.from(document.querySelectorAll('.map-game-opt-btn'));
+      const wrongBtns = allBtns.filter((b) => {
+        const idx = parseInt(b.getAttribute('data-map-opt-idx'), 10);
+        return idx !== correctIdx && !b.classList.contains('pointer-events-none');
+      });
+
+      if (wrongBtns.length > 0) {
+        const targetBtn = wrongBtns[0];
+        const elimIdx = parseInt(targetBtn.getAttribute('data-map-opt-idx'), 10);
+        window.dispatchEvent(
+          new CustomEvent('rex-live-eliminate', {
+            detail: { eliminatedOptionIndex: elimIdx, comment: "Dino Stomp!" }
+          })
+        );
       }
     });
   }
 
-  // Handle Rex choosing answer via live voice tool call
+  // 3. Rex Talk / Mic Button
+  const rexTalkBtn = document.getElementById('map-rex-talk-btn');
+  if (rexTalkBtn) {
+    rexTalkBtn.addEventListener('click', async () => {
+      geminiLiveService.unlockAudio();
+      rexEngine.unlockAudio();
+      if (geminiLiveService.isConnected) {
+        Sound.chirp();
+        geminiLiveService.disconnect();
+      } else if (rexEngine.isListening) {
+        rexEngine.toggleListen();
+      } else {
+        Sound.pop();
+        try {
+          await geminiLiveService.connect();
+        } catch (err) {
+          console.warn("Live socket error, falling back to local voice engine:", err);
+          rexEngine.toggleListen();
+        }
+      }
+    });
+  }
+
+  // 4. Rex Live Custom Event Handlers
   const handleRexLiveAnswer = (e) => {
     const { optionIndex } = e.detail;
     const btn = document.querySelector(`.map-game-opt-btn[data-map-opt-idx="${optionIndex}"]`);
-    if (btn) {
-      btn.classList.add('ring-4', 'ring-primary', 'scale-105');
+    if (btn && !btn.classList.contains('pointer-events-none')) {
+      Sound.pop();
+      btn.classList.add('ring-4', 'ring-emerald-400', 'bg-emerald-500/20', 'scale-102');
+      const bubble = document.getElementById('rex-arena-speech-bubble');
+      const text = document.getElementById('rex-arena-speech-text');
+      if (bubble && text) {
+        text.innerText = `Rex selected: "${btn.querySelector('.opt-label-text')?.innerText || 'Answer'}"!`;
+        bubble.classList.remove('hidden');
+      }
       setTimeout(() => {
-        btn.classList.remove('ring-4', 'ring-primary', 'scale-105');
+        btn.classList.remove('ring-4', 'ring-emerald-400', 'bg-emerald-500/20', 'scale-102');
         btn.click();
-      }, 350);
+      }, 400);
     }
   };
   window.addEventListener('rex-live-answer', handleRexLiveAnswer);
+
+  const handleRexLiveEliminate = (e) => {
+    const { eliminatedOptionIndex } = e.detail;
+    const btn = document.querySelector(`.map-game-opt-btn[data-map-opt-idx="${eliminatedOptionIndex}"]`);
+    if (btn && !btn.classList.contains('pointer-events-none')) {
+      Sound.hit();
+      btn.classList.add('opacity-40', 'line-through', 'pointer-events-none', 'relative');
+      const stamp = document.createElement('div');
+      stamp.className = 'absolute inset-0 bg-red-500/15 rounded-2xl flex items-center justify-center gap-2 border-2 border-red-500/50 animate-bounce pointer-events-none z-10';
+      stamp.innerHTML = `<span class="text-3xl">🦶</span><span class="font-headline font-black text-xs uppercase text-red-400 bg-surface-container/90 px-2.5 py-1 rounded-lg shadow">STOMPED!</span>`;
+      btn.appendChild(stamp);
+
+      const bubble = document.getElementById('rex-arena-speech-bubble');
+      const text = document.getElementById('rex-arena-speech-text');
+      if (bubble && text) {
+        text.innerText = "Dino Stomp! That choice is outta here! 🦖🦶";
+        bubble.classList.remove('hidden');
+      }
+    }
+  };
+  window.addEventListener('rex-live-eliminate', handleRexLiveEliminate);
+
+  const handleRexLiveHint = (e) => {
+    const { hintText } = e.detail;
+    Sound.chirp();
+    const bubble = document.getElementById('rex-arena-speech-bubble');
+    const text = document.getElementById('rex-arena-speech-text');
+    if (bubble && text) {
+      text.innerText = `Rex Hint: ${hintText || 'Look closely at the shapes and colors!'}`;
+      bubble.classList.remove('hidden');
+      bubble.classList.add('animate-pulse');
+      setTimeout(() => bubble.classList.remove('animate-pulse'), 1000);
+    }
+  };
+  window.addEventListener('rex-live-hint', handleRexLiveHint);
+
+  const handleRexLiveRead = (e) => {
+    const { questionText } = e.detail;
+    Sound.pop();
+    voicePrompts.speak(questionText);
+    const bubble = document.getElementById('rex-arena-speech-bubble');
+    const text = document.getElementById('rex-arena-speech-text');
+    if (bubble && text) {
+      text.innerText = `Rex: "${questionText}"`;
+      bubble.classList.remove('hidden');
+    }
+  };
+  window.addEventListener('rex-live-read', handleRexLiveRead);
+
+  const handleRexLiveCelebrate = (e) => {
+    const { phrase } = e.detail;
+    Sound.fanfare();
+    confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
+    const bubble = document.getElementById('rex-arena-speech-bubble');
+    const text = document.getElementById('rex-arena-speech-text');
+    if (bubble && text) {
+      text.innerText = `🎉 ${phrase || 'Super Hero Victory! ROAR!'}`;
+      bubble.classList.remove('hidden');
+    }
+  };
+  window.addEventListener('rex-live-celebrate', handleRexLiveCelebrate);
 
   const toPenBtn = document.getElementById('map-to-pet-pen-btn');
   if (toPenBtn) {

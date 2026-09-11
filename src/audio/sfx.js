@@ -8,6 +8,8 @@
 let audioCtx = null;
 let isMuted = false;
 let discoInterval = null;
+let battleRhythmInterval = null;
+let battleBpm = 118;
 let lastBloopTime = 0;
 
 function getAudioContext() {
@@ -313,6 +315,155 @@ export const Sound = {
 
         osc.start(start);
         osc.stop(start + 0.28);
+      });
+    } catch (e) {
+      console.debug('Audio error', e);
+    }
+  },
+
+  // 6b. CAMERA SNAP (Quick mechanical shutter sound for chore photo proofs)
+  camera() {
+    if (isMuted) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    try {
+      const now = ctx.currentTime;
+      // Click 1 (shutter open)
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'triangle';
+      osc1.frequency.setValueAtTime(800, now);
+      osc1.frequency.exponentialRampToValueAtTime(160, now + 0.04);
+      gain1.gain.setValueAtTime(0.3, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.04);
+
+      // Click 2 (shutter close)
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(1200, now + 0.07);
+      osc2.frequency.exponentialRampToValueAtTime(220, now + 0.12);
+      gain2.gain.setValueAtTime(0.25, now + 0.07);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(now + 0.07);
+      osc2.stop(now + 0.12);
+    } catch (e) {
+      console.debug('Audio error', e);
+    }
+  },
+
+  // 6c. PICNIC CHIME (Warm cheerful melody when tossing treats at the sanctuary picnic)
+  picnicChime() {
+    if (isMuted) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    try {
+      const now = ctx.currentTime;
+      const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+      notes.forEach((freq, idx) => {
+        const start = now + idx * 0.06;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, start);
+
+        gain.gain.setValueAtTime(0.22, start);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.25);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(start);
+        osc.stop(start + 0.25);
+      });
+    } catch (e) {
+      console.debug('Audio error', e);
+    }
+  },
+
+  // 6d. EVOLUTION ASCENT (Epic rising harmonic sweep and major chord for evolution ceremony)
+  evolutionAscent() {
+    if (isMuted) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    try {
+      const now = ctx.currentTime;
+      // Rising energy sweep
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(110, now);
+      osc.frequency.exponentialRampToValueAtTime(880, now + 1.2);
+
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(300, now);
+      filter.frequency.exponentialRampToValueAtTime(3600, now + 1.2);
+      filter.Q.value = 4.0;
+
+      gain.gain.setValueAtTime(0.05, now);
+      gain.gain.linearRampToValueAtTime(0.28, now + 0.9);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 1.3);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 1.3);
+
+      // Climax sparkling bells at 1.1s
+      const bells = [880, 1108.73, 1318.51, 1760]; // A5, C#6, E6, A6
+      bells.forEach((f, i) => {
+        const bStart = now + 1.1 + i * 0.05;
+        const bOsc = ctx.createOscillator();
+        const bGain = ctx.createGain();
+        bOsc.type = 'sine';
+        bOsc.frequency.setValueAtTime(f, bStart);
+        bGain.gain.setValueAtTime(0.25, bStart);
+        bGain.gain.exponentialRampToValueAtTime(0.001, bStart + 0.4);
+        bOsc.connect(bGain);
+        bGain.connect(ctx.destination);
+        bOsc.start(bStart);
+        bOsc.stop(bStart + 0.4);
+      });
+    } catch (e) {
+      console.debug('Audio error', e);
+    }
+  },
+
+  // 6e. SNACK MUNCH (Cute cartoon double-crunch when feeding companion treats)
+  snackMunch() {
+    if (isMuted) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    try {
+      const now = ctx.currentTime;
+      [0, 0.09].forEach((offset) => {
+        const start = now + offset;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(480, start);
+        osc.frequency.exponentialRampToValueAtTime(140, start + 0.06);
+        gain.gain.setValueAtTime(0.28, start);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.06);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(start);
+        osc.stop(start + 0.06);
       });
     } catch (e) {
       console.debug('Audio error', e);
@@ -718,6 +869,175 @@ export const Sound = {
       clearInterval(discoInterval);
       discoInterval = null;
     }
+  },
+
+  // 17. HEROIC TOOTHBRUSH BATTLE RHYTHM (Procedural energetic chiptune drum & bass groove)
+  startBattleRhythm(onBeat) {
+    if (isMuted) return;
+    this.stopBattleRhythm();
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    let step = 0;
+    const bassNotes = [110, 110, 130.81, 146.83, 110, 110, 164.81, 146.83]; // A2, A2, C3, D3, A2, A2, E3, D3
+    const leadNotes = [440, 523.25, 587.33, 659.25, 523.25, 587.33, 659.25, 783.99]; // A4, C5, D5, E5...
+
+    const intervalMs = Math.round(60000 / (battleBpm * 2));
+
+    battleRhythmInterval = setInterval(() => {
+      if (isMuted) return;
+      try {
+        const now = ctx.currentTime;
+        
+        // Kick on beats 0, 4
+        if (step % 4 === 0) {
+          const kick = ctx.createOscillator();
+          const kickGain = ctx.createGain();
+          kick.frequency.setValueAtTime(140, now);
+          kick.frequency.exponentialRampToValueAtTime(38, now + 0.08);
+          kickGain.gain.setValueAtTime(0.32, now);
+          kickGain.gain.exponentialRampToValueAtTime(0.01, now + 0.09);
+          kick.connect(kickGain);
+          kickGain.connect(ctx.destination);
+          kick.start(now);
+          kick.stop(now + 0.09);
+        }
+
+        // Snare on beat 2
+        if (step % 4 === 2) {
+          const snareFilter = ctx.createBiquadFilter();
+          snareFilter.type = 'highpass';
+          snareFilter.frequency.setValueAtTime(800, now);
+          const snare = ctx.createOscillator();
+          const snareGain = ctx.createGain();
+          snare.type = 'triangle';
+          snare.frequency.setValueAtTime(220, now);
+          snare.frequency.exponentialRampToValueAtTime(60, now + 0.07);
+          snareGain.gain.setValueAtTime(0.18, now);
+          snareGain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+          snare.connect(snareFilter);
+          snareFilter.connect(snareGain);
+          snareGain.connect(ctx.destination);
+          snare.start(now);
+          snare.stop(now + 0.08);
+        }
+
+        // Bass groove
+        const bass = ctx.createOscillator();
+        const bassGain = ctx.createGain();
+        bass.type = 'sawtooth';
+        const note = bassNotes[step % bassNotes.length];
+        bass.frequency.setValueAtTime(note, now);
+        const bassFilter = ctx.createBiquadFilter();
+        bassFilter.type = 'lowpass';
+        bassFilter.frequency.setValueAtTime(420, now);
+        bassGain.gain.setValueAtTime(0.15, now);
+        bassGain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+        bass.connect(bassFilter);
+        bassFilter.connect(bassGain);
+        bassGain.connect(ctx.destination);
+        bass.start(now);
+        bass.stop(now + 0.12);
+
+        // Chiptune lead sparkle on upbeat
+        if (step % 2 === 1) {
+          const lead = ctx.createOscillator();
+          const leadGain = ctx.createGain();
+          lead.type = 'sine';
+          lead.frequency.setValueAtTime(leadNotes[step % leadNotes.length], now);
+          leadGain.gain.setValueAtTime(0.07, now);
+          leadGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+          lead.connect(leadGain);
+          leadGain.connect(ctx.destination);
+          lead.start(now);
+          lead.stop(now + 0.1);
+        }
+
+        if (onBeat) onBeat(step);
+        step++;
+      } catch (e) {}
+    }, intervalMs);
+  },
+
+  stopBattleRhythm() {
+    if (battleRhythmInterval) {
+      clearInterval(battleRhythmInterval);
+      battleRhythmInterval = null;
+    }
+  },
+
+  speedUpBattleRhythm(isUrgent = true) {
+    battleBpm = isUrgent ? 142 : 118;
+    if (battleRhythmInterval) {
+      this.startBattleRhythm();
+    }
+  },
+
+  // 18. SHIELD DEFLECT (Metallic bubble bounce when Hero Shield blocks cavity slime)
+  shieldDeflect() {
+    if (isMuted) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(580, now);
+      osc.frequency.exponentialRampToValueAtTime(1180, now + 0.06);
+      osc.frequency.exponentialRampToValueAtTime(740, now + 0.15);
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.16);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.16);
+    } catch (e) {}
+  },
+
+  // 19. SHIELD SHATTER (Crunchy glass / hard candy explosion)
+  shieldShatter() {
+    if (isMuted) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      [880, 1100, 1400, 1760, 2200].forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = idx % 2 === 0 ? 'triangle' : 'square';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.02);
+        osc.frequency.exponentialRampToValueAtTime(200, now + idx * 0.02 + 0.12);
+        gain.gain.setValueAtTime(0.2, now + idx * 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.02 + 0.14);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + idx * 0.02);
+        osc.stop(now + idx * 0.02 + 0.14);
+      });
+    } catch (e) {}
+  },
+
+  // 20. FOAM SPLOOSH (Bubbly foamy splash for toothpaste cannons)
+  foamSploosh() {
+    if (isMuted) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(280, now);
+      osc.frequency.exponentialRampToValueAtTime(640, now + 0.05);
+      osc.frequency.exponentialRampToValueAtTime(320, now + 0.12);
+      gain.gain.setValueAtTime(0.25, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.14);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.14);
+    } catch (e) {}
   }
 };
 

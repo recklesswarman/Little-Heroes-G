@@ -4,6 +4,7 @@ import { speakRex } from '../services/voiceService.js';
 import { Sound } from '../audio/sfx.js';
 import confetti from 'canvas-confetti';
 import { requestAutonomousMicroQuests, submitDailyQuest } from '../services/questService.js';
+import { chorePhotoProofModal } from '../components/ChorePhotoProofModal.js';
 
 export function renderDashboardView() {
   const state = store.getState();
@@ -37,8 +38,9 @@ export function renderDashboardView() {
           <div class="flex flex-col">
             <div class="flex items-center gap-2">
               <h1 class="font-headline text-2xl sm:text-3xl font-black text-inverse-surface">${hero.name}</h1>
-              <span class="text-xs bg-secondary-container/40 text-secondary font-black px-2.5 py-0.5 rounded-full border border-secondary-container">
-                🔥 ${hero.streak} Day Streak
+              <span class="text-xs bg-secondary-container/40 text-secondary font-black px-2.5 py-0.5 rounded-full border border-secondary-container flex items-center gap-1">
+                <span>🔥 ${hero.streak} Day Streak</span>
+                ${store.getPetStreakShield().isActive ? '<span class="text-[9px] bg-primary/25 text-primary px-1.5 py-0.5 rounded-full border border-primary/40 font-black" title="Pet Streak Shield Active! Joyful companions protect your streak">🛡️ Shield</span>' : ''}
               </span>
             </div>
             <span class="text-xs font-bold text-on-surface-variant">${hero.title}</span>
@@ -133,20 +135,51 @@ export function renderDashboardView() {
           : ''
       }
 
-      <!-- Currency Explanation Helper -->
-      <div class="bg-surface-container/60 border border-surface-container-highest px-4 py-2.5 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs font-bold">
-        <div class="flex items-center gap-3">
+      <!-- Screen Time Bank & Currency Status Bar -->
+      <div class="bg-surface-container/70 border-2 ${hero.isScreenTimePaused ? 'border-amber-500/50 bg-amber-500/10' : 'border-surface-container-highest'} px-4 py-3 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-xs font-bold card-shadow">
+        <div class="flex items-center gap-3 flex-wrap">
           <span class="text-secondary flex items-center gap-1">
             <span class="material-symbols-outlined text-sm">monetization_on</span>
-            Tokens (🪙): Auto-issued instantly!
+            Tokens: <strong>${hero.coins || 0} 🪙</strong>
           </span>
           <span class="text-tertiary flex items-center gap-1">
             <span class="material-symbols-outlined text-sm">star</span>
-            Points (⭐): Credited upon Parent Sign-off
+            Points: <strong>${hero.points || 0} ⭐</strong>
+          </span>
+          <!-- Screen Time Bank Balance Pill -->
+          <span class="flex items-center gap-1.5 ${hero.isScreenTimePaused ? 'text-amber-300 bg-amber-500/20 border-amber-500/40' : 'text-sky-300 bg-sky-500/15 border-sky-500/30'} px-3 py-1 rounded-xl border">
+            <span class="material-symbols-outlined text-sm">${hero.isScreenTimePaused ? 'pause_circle' : 'schedule'}</span>
+            Screen Time: <strong>${hero.screenTimeMinutes || 0}m</strong>
+            ${hero.isScreenTimePaused ? '<span class="text-[9px] bg-amber-400 text-slate-900 uppercase px-1.5 py-0.2 rounded font-black">Locked</span>' : ''}
           </span>
         </div>
-        ${pendingCount > 0 ? `<span class="text-tertiary text-[11px] font-black bg-tertiary/15 px-2.5 py-0.5 rounded-full border border-tertiary/30">⭐ ${pendingCount} Task Point Request(s) Pending Review</span>` : ''}
+
+        <div class="flex items-center gap-2">
+          ${pendingCount > 0 ? `<span class="text-tertiary text-[11px] font-black bg-tertiary/15 px-2.5 py-1 rounded-full border border-tertiary/30">⭐ ${pendingCount} Point Request(s) Pending</span>` : ''}
+        </div>
       </div>
+
+      <!-- Gentle Screen Time Pause / Bedtime Lockout Notice (Rex Toddler-Friendly) -->
+      ${
+        hero.isScreenTimePaused
+          ? `
+      <div class="bg-gradient-to-r from-amber-500/20 via-orange-500/15 to-transparent border-2 border-amber-500/50 rounded-2xl p-4 flex items-center gap-3.5 animate-fade-in card-shadow">
+        <div class="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center justify-center text-2xl flex-shrink-0">
+          🦖🌙
+        </div>
+        <div class="flex flex-col">
+          <span class="font-headline text-xs font-black text-amber-300 uppercase tracking-wide flex items-center gap-1">
+            <span>Screen Time Curfew / Lock Active</span>
+            <span class="material-symbols-outlined text-xs">bedtime</span>
+          </span>
+          <p class="text-xs sm:text-sm font-bold text-inverse-surface mt-0.5 leading-snug">
+            ${hero.screenTimeLockMessage || 'Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙'}
+          </p>
+        </div>
+      </div>
+      `
+          : ''
+      }
 
       <!-- ZONE 1: Habit Islands (Preset Positive Behaviors) -->
       <section class="flex flex-col gap-3.5">
@@ -221,11 +254,20 @@ export function renderDashboardView() {
                   </div>
                 </div>
 
-                <button data-habit-id="${h.id}" class="habit-check-btn tactile-check-btn ${btnClass} rounded-2xl w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center flex-shrink-0 active:scale-95 shadow-chunky-sm" title="${btnTitle}">
-                  <span class="material-symbols-outlined text-3xl font-black text-white" style="font-variation-settings: 'FILL' 1;">
-                    ${checkIcon}
-                  </span>
-                </button>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                  ${!isPending ? `
+                    <button data-habit-proof-id="${h.id}" class="habit-proof-btn bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 font-headline text-[10px] font-black px-2.5 py-2 rounded-2xl flex flex-col items-center gap-0.5 active:scale-95 shadow-sm transition-all" title="Snap photo proof for +5 bonus tokens!">
+                      <span class="material-symbols-outlined text-base">photo_camera</span>
+                      <span class="text-[8px] leading-none">+5 🪙</span>
+                    </button>
+                  ` : ''}
+
+                  <button data-habit-id="${h.id}" class="habit-check-btn tactile-check-btn ${btnClass} rounded-2xl w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center flex-shrink-0 active:scale-95 shadow-chunky-sm" title="${btnTitle}">
+                    <span class="material-symbols-outlined text-3xl font-black text-white" style="font-variation-settings: 'FILL' 1;">
+                      ${checkIcon}
+                    </span>
+                  </button>
+                </div>
               </div>
             `;
             })
@@ -317,11 +359,20 @@ export function renderDashboardView() {
                   </button>
                 `
                     : `
-                  <button data-task-id="${t.id}" class="task-check-btn tactile-check-btn ${btnClass} rounded-2xl w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center flex-shrink-0 active:scale-95 shadow-chunky-sm" title="${btnTitle}">
-                    <span class="material-symbols-outlined text-3xl font-black text-white" style="font-variation-settings: 'FILL' 1;">
-                      ${checkIcon}
-                    </span>
-                  </button>
+                  <div class="flex items-center gap-2 flex-shrink-0">
+                    ${!isPending ? `
+                      <button data-task-proof-id="${t.id}" class="task-proof-btn bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 font-headline text-[10px] font-black px-2.5 py-2 rounded-2xl flex flex-col items-center gap-0.5 active:scale-95 shadow-sm transition-all" title="Snap photo proof for +5 bonus tokens!">
+                        <span class="material-symbols-outlined text-base">photo_camera</span>
+                        <span class="text-[8px] leading-none">+5 🪙</span>
+                      </button>
+                    ` : ''}
+
+                    <button data-task-id="${t.id}" class="task-check-btn tactile-check-btn ${btnClass} rounded-2xl w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center flex-shrink-0 active:scale-95 shadow-chunky-sm" title="${btnTitle}">
+                      <span class="material-symbols-outlined text-3xl font-black text-white" style="font-variation-settings: 'FILL' 1;">
+                        ${checkIcon}
+                      </span>
+                    </button>
+                  </div>
                 `
                 }
               </div>
@@ -709,6 +760,31 @@ export function attachDashboardListeners() {
       const quest = (store.getAiQuests() || []).find((q) => q.id === questId);
       if (quest) {
         triggerQuestVoice(quest.title, quest.id, quest.description);
+      }
+    });
+  });
+
+  // Chore Photo Proof Modal Triggers
+  document.querySelectorAll('.task-proof-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const taskId = btn.getAttribute('data-task-proof-id');
+      const task = store.getState().taskForest.find((t) => t.id === taskId);
+      if (task) {
+        Sound.click();
+        chorePhotoProofModal.open(task);
+      }
+    });
+  });
+
+  document.querySelectorAll('.habit-proof-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const habitId = btn.getAttribute('data-habit-proof-id');
+      const habit = store.getState().habitIslands.find((h) => h.id === habitId);
+      if (habit) {
+        Sound.click();
+        chorePhotoProofModal.open(habit);
       }
     });
   });

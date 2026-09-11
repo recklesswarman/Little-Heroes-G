@@ -8,6 +8,7 @@ import { store } from "../state/store.js";
 import { Sound } from "../audio/sfx.js";
 import { auth, functions as existingFunctions } from "../config/firebase.js";
 import { signInAnonymously } from "firebase/auth";
+import { geminiLiveService } from "./geminiLiveService.js";
 
 let functions = existingFunctions;
 if (!functions) {
@@ -50,7 +51,11 @@ class RexVoiceEngine {
         const transcript = event.results?.[0]?.[0]?.transcript;
         if (transcript && transcript.trim()) {
           this.shouldKeepListening = false;
-          await this.sendToRex(transcript.trim());
+          const text = transcript.trim();
+          const handledInGame = this.tryHandleInGameSpeech(text);
+          if (!handledInGame) {
+            await this.sendToRex(text);
+          }
         }
       };
 
@@ -131,6 +136,119 @@ class RexVoiceEngine {
         console.warn("Audio unlock notice:", e);
       }
     }
+  }
+
+  tryHandleInGameSpeech(spokenText) {
+    const clean = spokenText.toLowerCase().trim();
+
+    // Check if in active Toothbrush Battle
+    const activeView = store.getState().currentView;
+    if (activeView === 'battle' || activeView === 'ar_battle') {
+      if (/blast|foam|toothpaste|attack|fire/i.test(clean)) {
+        this.speak("Toothpaste Foam Cannon! Super Blast!");
+        window.dispatchEvent(
+          new CustomEvent('rex-battle-foam', {
+            detail: { powerLevel: 'mega', comment: 'Toothpaste Foam Cannon!' }
+          })
+        );
+        return true;
+      }
+      if (/shield|bubble|protect|block/i.test(clean)) {
+        this.speak("Hero Mint Bubble Shield activated!");
+        window.dispatchEvent(
+          new CustomEvent('rex-battle-shield', {
+            detail: { shieldType: 'mint' }
+          })
+        );
+        return true;
+      }
+      if (/roar|dino|smash|power/i.test(clean)) {
+        this.speak("ROAR! Dino Power Scrub!");
+        window.dispatchEvent(
+          new CustomEvent('rex-battle-foam', {
+            detail: { powerLevel: 'dino-roar', comment: 'Dino Power Scrub!' }
+          })
+        );
+        return true;
+      }
+    }
+
+    const context = geminiLiveService.currentQuestContext;
+    if (!context || !context.options || context.options.length === 0) {
+      return false;
+    }
+
+    // 1. Hint request
+    if (/hint|clue|help|stuck|tell me/i.test(clean)) {
+      this.speak("Rex says: Look closely at the pictures and colors!");
+      window.dispatchEvent(
+        new CustomEvent('rex-live-hint', {
+          detail: { hintText: "Look closely at the pictures and colors!" }
+        })
+      );
+      return true;
+    }
+
+    // 2. Eliminate / 50-50 Stomp request
+    if (/stomp|eliminate|remove|50|take away/i.test(clean)) {
+      const correctIdx = context.correctAnswerIndex ?? 0;
+      const wrongIndices = context.options
+        .map((_, i) => i)
+        .filter(i => i !== correctIdx);
+      const elimIdx = wrongIndices.length > 0 ? wrongIndices[0] : 1;
+      this.speak("Dino Stomp! That one is not the answer!");
+      window.dispatchEvent(
+        new CustomEvent('rex-live-eliminate', {
+          detail: { eliminatedOptionIndex: elimIdx, comment: "Dino Stomp!" }
+        })
+      );
+      return true;
+    }
+
+    // 3. Read question
+    if (/read|repeat|say it|what is/i.test(clean)) {
+      const q = context.question || "Can you find the right answer?";
+      this.speak(q);
+      window.dispatchEvent(
+        new CustomEvent('rex-live-read', {
+          detail: { questionText: q }
+        })
+      );
+      return true;
+    }
+
+    // 4. Answering option: check A, B, C, D or exact/fuzzy word match
+    let matchedIdx = -1;
+    if (/\b(option\s*a|letter\s*a|^a$)\b/i.test(clean)) matchedIdx = 0;
+    else if (/\b(option\s*b|letter\s*b|^b$)\b/i.test(clean)) matchedIdx = 1;
+    else if (/\b(option\s*c|letter\s*c|^c$)\b/i.test(clean)) matchedIdx = 2;
+    else if (/\b(option\s*d|letter\s*d|^d$)\b/i.test(clean)) matchedIdx = 3;
+
+    if (matchedIdx === -1) {
+      for (let i = 0; i < context.options.length; i++) {
+        const optText = String(context.options[i]).toLowerCase().trim();
+        if (clean.includes(optText) || optText.includes(clean)) {
+          matchedIdx = i;
+          break;
+        }
+      }
+    }
+
+    if (matchedIdx >= 0 && matchedIdx < context.options.length) {
+      this.speak(`Rex picked ${context.options[matchedIdx]}! Rawr!`);
+      window.dispatchEvent(
+        new CustomEvent('rex-live-answer', {
+          detail: {
+            optionIndex: matchedIdx,
+            optionText: String(context.options[matchedIdx]),
+            explanation: "Awesome choice!"
+          }
+        })
+      );
+      return true;
+    }
+
+    return false;
   }
 
   toggleListen() {
