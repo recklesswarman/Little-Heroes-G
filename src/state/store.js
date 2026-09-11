@@ -27,6 +27,7 @@ import {
 } from '../data/heroHQData.js';
 import { PET_GEAR_CATALOG, calculateActiveGearBuffs, formatStatBonusName } from '../data/petGearStudioData.js';
 import { speakCompanion } from '../services/voiceService.js';
+import { FORGE_BLUEPRINTS, getBlueprintById, isBlueprintUnlocked } from '../data/heroForgeData.js';
 
 export const KID_AVATARS = [
   { id: 'avatar_dragon', label: 'Dragon Explorer', url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZfP7_Cwlp4sz41asI8ymuapAKvjmqHtvI4zcMAF_XwUmibj8IheGrS5cA5QD5gmXgVxEkZM9FlWJPRZnct3x6-9SQB7zJKqkEDjJ3m95tAy3zRqS-PbmcQ4kv_9pmIfm2Py4mh3Fw083hkDookz1w4_r50SBA1jc9igDaAPFLYBFgSP2aQBz7Q4jVE-DwhMOyUEHlxDkQk6Gwc2EAFCSKs1c0QuhUOi3tkrk5MXRARKqZcYVzyJe6gA' },
@@ -59,6 +60,20 @@ const defaultState = {
     viewMode: '3d',
     discoveredSecrets: [],
     activeDiscoveryModal: null
+  },
+
+  // Hero Crafting Forge & 3D Tinkering Lab
+  heroForge: {
+    selectedCategory: 'wings',
+    selectedBlueprintId: 'bp_cyber_jetpack',
+    customDyes: {
+      primary: '#2ecc71',
+      accent: '#f39c12',
+      glow: '#00d2d3'
+    },
+    forgeMode: 'forge', // 'forge' | 'testing'
+    activeForgedModal: null,
+    craftedHistory: []
   },
 
   // Household Link Architecture & Parent User Administration
@@ -5330,6 +5345,186 @@ class Store {
     const cruise = this.getExpeditionCruiseState();
     cruise.activeDiscoveryModal = null;
     this.notify();
+  }
+
+  // =========================================================================
+  // HERO CRAFTING FORGE & 3D TINKERING LAB METHODS
+  // =========================================================================
+
+  getHeroForgeState() {
+    if (!this.state.heroForge) {
+      this.state.heroForge = {
+        selectedCategory: 'wings',
+        selectedBlueprintId: 'bp_cyber_jetpack',
+        customDyes: {
+          primary: '#2ecc71',
+          accent: '#f39c12',
+          glow: '#00d2d3'
+        },
+        forgeMode: 'forge',
+        activeForgedModal: null,
+        craftedHistory: []
+      };
+    }
+    return this.state.heroForge;
+  }
+
+  selectForgeCategory(category) {
+    const forge = this.getHeroForgeState();
+    forge.selectedCategory = category;
+    const categoryBps = FORGE_BLUEPRINTS.filter(b => b.category === category);
+    if (categoryBps.length > 0) {
+      forge.selectedBlueprintId = categoryBps[0].id;
+    }
+    this.saveState(true);
+    this.notify();
+  }
+
+  selectForgeBlueprint(blueprintId) {
+    const forge = this.getHeroForgeState();
+    forge.selectedBlueprintId = blueprintId;
+    const bp = getBlueprintById(blueprintId);
+    if (bp && bp.defaultDyes) {
+      forge.customDyes = { ...bp.defaultDyes };
+    }
+    this.saveState(true);
+    this.notify();
+  }
+
+  setForgeDye(zone, colorHex) {
+    const forge = this.getHeroForgeState();
+    if (!forge.customDyes) forge.customDyes = {};
+    forge.customDyes[zone] = colorHex;
+    this.saveState(true);
+    this.notify();
+  }
+
+  setForgeMode(mode) {
+    const forge = this.getHeroForgeState();
+    if (['forge', 'testing'].includes(mode)) {
+      forge.forgeMode = mode;
+      this.saveState(true);
+      this.notify();
+    }
+  }
+
+  openForgedCelebrationModal(item) {
+    const forge = this.getHeroForgeState();
+    forge.activeForgedModal = item;
+    this.notify();
+  }
+
+  closeForgedCelebrationModal() {
+    const forge = this.getHeroForgeState();
+    forge.activeForgedModal = null;
+    this.notify();
+  }
+
+  forgeItem(blueprintId = null, customName = null) {
+    const forge = this.getHeroForgeState();
+    const bpId = blueprintId || forge.selectedBlueprintId;
+    const bp = getBlueprintById(bpId);
+    if (!bp) {
+      return { success: false, message: 'Blueprint not found' };
+    }
+
+    const hero = this.state.selectedHero;
+    const level = hero?.level || 1;
+    const streak = hero?.streak || 1;
+    const coins = hero?.coins || 0;
+
+    // Check level & streak unlock
+    if (!isBlueprintUnlocked(bp, level, streak)) {
+      return { success: false, message: `Requires Level ${bp.requiredLevel} and Streak ${bp.requiredStreak}!` };
+    }
+
+    // Check coin cost
+    if (coins < bp.costTokens) {
+      return { success: false, message: `Not enough tokens! Costs ${bp.costTokens} 🪙 (You have ${coins} 🪙)` };
+    }
+
+    // Deduct coins & award XP
+    hero.coins = Math.max(0, hero.coins - bp.costTokens);
+    hero.xp = (hero.xp || 0) + 30;
+
+    const craftedItem = {
+      id: 'forged_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+      blueprintId: bp.id,
+      title: customName || bp.title,
+      category: bp.category,
+      slot: bp.slot,
+      meshType: bp.meshType,
+      buffType: bp.buffType,
+      buffValue: bp.buffValue,
+      buffDesc: bp.buffDesc,
+      dyes: { ...(forge.customDyes || bp.defaultDyes) },
+      forgedAt: new Date().toISOString()
+    };
+
+    if (!forge.craftedHistory) forge.craftedHistory = [];
+    forge.craftedHistory.unshift(craftedItem);
+
+    // Auto-equip to active companion pet
+    const activePet = this.getActivePet();
+    if (activePet && bp.slot) {
+      if (!hero.equippedPetGearMap) hero.equippedPetGearMap = {};
+      if (!hero.equippedPetGearMap[activePet.id]) hero.equippedPetGearMap[activePet.id] = {};
+      hero.equippedPetGearMap[activePet.id][bp.slot] = craftedItem.id;
+
+      // Save custom dyes into gear dyes map
+      if (!hero.customGearDyesMap) hero.customGearDyesMap = {};
+      if (!hero.customGearDyesMap[activePet.id]) hero.customGearDyesMap[activePet.id] = {};
+      hero.customGearDyesMap[activePet.id][bp.slot] = craftedItem.dyes.primary;
+    }
+
+    // Also register into PET_GEAR_CATALOG so it seamlessly works with calculateActiveGearBuffs!
+    if (!PET_GEAR_CATALOG[bp.slot]) PET_GEAR_CATALOG[bp.slot] = [];
+    PET_GEAR_CATALOG[bp.slot].push({
+      id: craftedItem.id,
+      name: craftedItem.title,
+      title: craftedItem.title,
+      desc: bp.desc,
+      socket: bp.slot,
+      statBonusType: bp.buffType,
+      statBonusPercent: bp.buffValue,
+      statBonusLabel: bp.buffDesc,
+      statBonus: { type: bp.buffType, value: bp.buffValue / 100 },
+      price: bp.costTokens,
+      isCustom: true
+    });
+
+    // If marked as HQ trophy, unlock in Hero HQ hideout
+    if (bp.hqTrophy) {
+      if (!this.state.heroHQ.unlockedFurnitureIds.includes(craftedItem.id)) {
+        this.state.heroHQ.unlockedFurnitureIds.push(craftedItem.id);
+      }
+    }
+
+    if (typeof Sound?.fanfare === 'function') {
+      Sound.fanfare();
+    } else if (typeof Sound?.sparkle === 'function') {
+      Sound.sparkle();
+    }
+
+    try {
+      if (typeof confetti === 'function' && typeof document !== 'undefined' && document.body) {
+        confetti({
+          particleCount: 60,
+          spread: 80,
+          origin: { y: 0.6 },
+          colors: ['#2ecc71', '#f39c12', '#00d2d3', '#f1c40f']
+        });
+      }
+    } catch (e) {}
+
+    this.logAction(
+      `${hero?.name || 'Hero'} forged ${craftedItem.title}!`,
+      `Applied ${craftedItem.buffDesc} to ${activePet?.name || 'Pet'}`
+    );
+
+    this.saveState(true);
+    this.notify();
+    return { success: true, item: craftedItem };
   }
 
   resetAllProgress() {

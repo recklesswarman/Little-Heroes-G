@@ -256,6 +256,9 @@ export function formatStatBonusName(type) {
     case 'xp_boost': return 'Quest XP';
     case 'speed_boost': return 'Runway & Habit Speed';
     case 'defense_boost': return 'Pet Defense & Vitality';
+    case 'expedition_speed': return '3D Expedition Speed';
+    case 'expedition_fuel': return 'Starlight Fuel Saver';
+    case 'shield_deflect': return 'Boss Shield Deflect';
     default: return 'Hero Power';
   }
 }
@@ -267,6 +270,9 @@ export function calculateActiveGearBuffs(equippedMap = {}) {
     xp_boost: 0,
     speed_boost: 0,
     defense_boost: 0,
+    expedition_speed: 0,
+    expedition_fuel: 0,
+    shield_deflect: 0,
     summary: []
   };
 

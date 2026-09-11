@@ -123,6 +123,11 @@ export function renderPetPenView() {
             <span class="material-symbols-outlined text-base">explore</span> 🧭 Expeditions
           </button>
 
+          <!-- 3D Hero Forge & Tinkering Lab Button -->
+          <button id="pen-open-forge-btn" class="bg-gradient-to-r from-cyan-600 to-blue-600 hover:brightness-110 text-white font-headline text-xs font-black px-3.5 py-2 rounded-2xl border-2 border-cyan-400 flex items-center gap-1.5 chunky-btn-sm shadow-md active:scale-95" title="Hero Crafting Forge & 3D Tinkering Lab">
+            <span class="material-symbols-outlined text-base">build</span> 🔨 Tinkering Lab
+          </button>
+
           <!-- Heroic Runway Showcase Button -->
           <button id="pen-open-runway-btn" class="bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 hover:brightness-110 text-slate-950 font-headline text-xs font-black px-3.5 py-2 rounded-2xl border-2 border-white/40 flex items-center gap-1.5 chunky-btn-sm shadow-md active:scale-95">
             <span>🌟</span> <span>Runway Show</span>
@@ -735,6 +740,15 @@ export function attachPetPenListeners() {
       Sound.tap();
       const activePet = store.getActivePet();
       store.openPetRunwayModal(activePet?.id || 1);
+    });
+  }
+
+  // 3D Hero Forge & Tinkering Lab Button
+  const openForgeBtn = document.getElementById('pen-open-forge-btn');
+  if (openForgeBtn) {
+    openForgeBtn.addEventListener('click', () => {
+      Sound.tap();
+      store.navigate('hero_forge');
     });
   }
 

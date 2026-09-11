@@ -114,6 +114,12 @@ export function renderHeroHQView() {
           <span class="hidden sm:inline">3D Cruise</span>
         </button>
 
+        <!-- 3D Hero Forge & Tinkering Lab Launch -->
+        <button id="hq-launch-3d-forge-btn" class="bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white px-3.5 py-2 rounded-2xl font-headline text-xs font-black border-2 border-emerald-300 shadow-md flex items-center gap-1.5 chunky-btn-sm cursor-pointer" title="Hero Forge & 3D Tinkering Lab">
+          <span class="material-symbols-outlined text-base">build</span>
+          <span class="hidden sm:inline">Forge &amp; Lab</span>
+        </button>
+
         <!-- Redecorate Studio Button -->
         <button id="hq-open-redecorate-btn" class="bg-gradient-to-r from-primary to-emerald-500 hover:from-primary/90 hover:to-emerald-400 text-on-primary px-4 py-2 rounded-2xl font-headline text-xs font-black border-2 border-emerald-300 shadow-md flex items-center gap-1.5 chunky-btn-sm">
           <span class="material-symbols-outlined text-base">palette</span>
@@ -360,6 +366,33 @@ export function renderHeroHQView() {
 
       </div>
 
+    </div>
+
+    <!-- 3D Hero Forge & Tinkering Lab Interactive Banner -->
+    <div id="hq-forge-banner-card" class="w-full bg-gradient-to-r from-[#121d26] via-[#16212b] to-[#121d26] border-4 border-[#2b3640] hover:border-primary p-4 rounded-3xl shadow-[0_6px_0_0_#050f18] flex flex-col sm:flex-row items-center justify-between gap-4 cursor-pointer transition-all active:scale-98 group">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 rounded-2xl bg-primary-container border-2 border-primary text-[#003919] flex items-center justify-center shadow-[0_3px_0_0_#005027] group-hover:scale-105 transition-transform shrink-0">
+          <span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">hardware</span>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h3 class="font-headline font-black text-sm sm:text-base text-white uppercase tracking-wide">
+              HERO FORGE &amp; 3D TINKERING LAB
+            </h3>
+            <span class="bg-secondary/20 text-secondary border border-secondary/40 text-[9px] font-black px-2 py-0.5 rounded-full uppercase">
+              Interactive 3D
+            </span>
+          </div>
+          <p class="text-xs font-bold text-slate-300">
+            Synthesize level-gated helmets, wings, boots &amp; shields on the 360° magnetic anvil!
+          </p>
+        </div>
+      </div>
+
+      <button id="hq-enter-forge-btn" class="bg-primary hover:bg-[#4ae183] text-[#003919] px-5 py-2.5 rounded-2xl font-headline font-black text-xs uppercase tracking-wider border-2 border-primary-fixed shadow-[0_3px_0_0_#005027] flex items-center gap-2 shrink-0 pointer-events-none group-hover:brightness-110">
+        <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">build</span>
+        <span>ENTER FORGE</span>
+      </button>
     </div>
 
     <!-- Redecorate Studio Slide-Up Drawer -->
@@ -654,6 +687,23 @@ export function attachHeroHQListeners() {
       Sound.click();
       store.setExpeditionViewMode('3d');
       store.navigate('pet-expedition');
+    });
+  }
+
+  // 1c. Launch Hero Forge & 3D Tinkering Lab
+  const launchForgeBtn = document.getElementById('hq-launch-3d-forge-btn');
+  if (launchForgeBtn) {
+    launchForgeBtn.addEventListener('click', () => {
+      Sound.click();
+      store.navigate('hero_forge');
+    });
+  }
+
+  const forgeBannerCard = document.getElementById('hq-forge-banner-card');
+  if (forgeBannerCard) {
+    forgeBannerCard.addEventListener('click', () => {
+      Sound.click();
+      store.navigate('hero_forge');
     });
   }
 

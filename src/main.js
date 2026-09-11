@@ -37,6 +37,7 @@ import { renderParentPortalView, attachParentPortalListeners } from './views/Par
 import { renderPetLockerView, attachPetLockerListeners } from './views/PetLockerView.js';
 import { renderHeroHQView, attachHeroHQListeners } from './views/HeroHQView.js';
 import { renderPetExpeditionView, attachPetExpeditionListeners } from './views/PetExpeditionView.js';
+import { renderHeroForgeView, attachHeroForgeListeners } from './views/HeroForgeView.js';
 
 const app = document.getElementById('app');
 
@@ -108,6 +109,11 @@ function renderApp() {
     case 'hero_hq':
       mainContent = renderHeroHQView();
       attachViewListeners = attachHeroHQListeners;
+      break;
+    case 'hero_forge':
+    case 'hero-forge':
+      mainContent = renderHeroForgeView();
+      attachViewListeners = attachHeroForgeListeners;
       break;
     case 'parent_portal':
       if (!store.isParentUnlocked()) {

@@ -22,7 +22,7 @@ export function renderBottomNav() {
               activeView === item.id ||
               (item.id === 'quest_map' && ['quest_map', 'pet-expedition', 'pet_expedition'].includes(activeView)) ||
               (item.id === 'pet_pen' && ['pet_roster', 'pet_detail', 'pet_bath', 'pet_locker', 'evolution', 'adventures_map'].includes(activeView)) ||
-              (item.id === 'dashboard' && ['profile', 'ar_battle', 'hero_hq'].includes(activeView));
+              (item.id === 'dashboard' && ['profile', 'ar_battle', 'hero_hq', 'hero_forge', 'hero-forge'].includes(activeView));
 
             return `
             <button data-nav-id="${item.id}" class="nav-tab-btn flex flex-col items-center justify-center py-1.5 rounded-2xl transition-all active:scale-90 ${
