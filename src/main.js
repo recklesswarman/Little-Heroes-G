@@ -90,6 +90,7 @@ function renderApp() {
       mainContent = renderShopView();
       attachViewListeners = attachShopListeners;
       break;
+    case 'battle':
     case 'ar_battle':
       mainContent = renderBattleView();
       attachViewListeners = attachBattleListeners;

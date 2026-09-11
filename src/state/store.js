@@ -76,6 +76,26 @@ const defaultState = {
     craftedHistory: []
   },
 
+  // 3D Hygiene Boss Blaster Colosseum
+  bossColosseum: {
+    activeBossId: 'sugar_bandit',
+    currentHp: 100,
+    maxHp: 100,
+    shieldHp: 6,
+    maxShieldHp: 6,
+    isShieldActive: false,
+    shieldMilestonesTriggered: { 90: false, 30: false },
+    ammoTank: 100,
+    choreSupernovaCharge: 100,
+    isDeflecting: false,
+    comboCount: 0,
+    enamelCleanPercent: 0,
+    isVictoryModalOpen: false,
+    victoryReward: null,
+    bossesDefeated: [],
+    showPipCam: false
+  },
+
   // Household Link Architecture & Parent User Administration
   household: {
     syncCode: 'HERO-1555',
@@ -5525,6 +5545,267 @@ class Store {
     this.saveState(true);
     this.notify();
     return { success: true, item: craftedItem };
+  }
+
+  // =========================================================================
+  // 3D HYGIENE BOSS BLASTER COLOSSEUM METHODS
+  // =========================================================================
+
+  getBossColosseumState() {
+    if (!this.state.bossColosseum) {
+      this.state.bossColosseum = {
+        activeBossId: 'sugar_bandit',
+        currentHp: 100,
+        maxHp: 100,
+        shieldHp: 6,
+        maxShieldHp: 6,
+        isShieldActive: false,
+        shieldMilestonesTriggered: { 90: false, 30: false },
+        ammoTank: 100,
+        choreSupernovaCharge: 100,
+        isDeflecting: false,
+        comboCount: 0,
+        enamelCleanPercent: 0,
+        isVictoryModalOpen: false,
+        victoryReward: null,
+        bossesDefeated: [],
+        showPipCam: false
+      };
+    }
+    return this.state.bossColosseum;
+  }
+
+  initColosseumBattle(bossId = 'sugar_bandit') {
+    const col = this.getBossColosseumState();
+    const boss = getHygieneBoss(bossId) || HYGIENE_BOSSES[0];
+    col.activeBossId = boss.id;
+    col.maxHp = boss.maxHp || 100;
+    col.currentHp = col.maxHp;
+    col.maxShieldHp = boss.shieldHp || 6;
+    col.shieldHp = col.maxShieldHp;
+    col.isShieldActive = false;
+    col.shieldMilestonesTriggered = { 90: false, 30: false };
+    col.ammoTank = 100;
+    
+    // Calculate Chore Supernova charge based on real chores completed
+    const choresDone = (this.state.choresCompletedCount || 0) + (this.state.taskCompletionLogs?.length || 0);
+    const brushStreak = this.state.selectedHero?.streak || 1;
+    col.choreSupernovaCharge = Math.min(100, Math.max(30, choresDone * 20 + brushStreak * 10));
+
+    col.isDeflecting = false;
+    col.comboCount = 0;
+    col.enamelCleanPercent = 0;
+    col.isVictoryModalOpen = false;
+    col.victoryReward = null;
+    this.saveState(true);
+    this.notify();
+    return col;
+  }
+
+  fireColosseumBlaster() {
+    const col = this.getBossColosseumState();
+    if (col.currentHp <= 0) return { hit: false, defeated: true };
+
+    const hero = this.state.selectedHero;
+    const activePet = this.getActivePet();
+    const equipped = (hero && activePet && hero.equippedPetGearMap) ? (hero.equippedPetGearMap[activePet.id] || {}) : {};
+    const buffs = calculateActiveGearBuffs(equipped);
+    
+    // Base damage + gear boost
+    const baseDamage = 8;
+    const bonusDamage = Math.round(baseDamage * (buffs.damageMultiplier || 1.0));
+    
+    col.comboCount = (col.comboCount || 0) + 1;
+
+    // Damage shield or boss HP
+    if (col.isShieldActive && col.shieldHp > 0) {
+      col.shieldHp = Math.max(0, col.shieldHp - 1);
+      if (col.shieldHp === 0) {
+        col.isShieldActive = false;
+        if (typeof Sound?.sparkle === 'function') Sound.sparkle();
+      }
+    } else {
+      col.currentHp = Math.max(0, col.currentHp - bonusDamage);
+    }
+
+    // Update clean enamel percentage
+    col.enamelCleanPercent = Math.min(100, Math.round(((col.maxHp - col.currentHp) / col.maxHp) * 100));
+
+    // Check shield milestones (at 90% and 30% HP)
+    const hpPercent = Math.round((col.currentHp / col.maxHp) * 100);
+    if (hpPercent <= 90 && !col.shieldMilestonesTriggered[90]) {
+      col.shieldMilestonesTriggered[90] = true;
+      col.isShieldActive = true;
+      col.shieldHp = col.maxShieldHp;
+    } else if (hpPercent <= 30 && !col.shieldMilestonesTriggered[30]) {
+      col.shieldMilestonesTriggered[30] = true;
+      col.isShieldActive = true;
+      col.shieldHp = col.maxShieldHp;
+    }
+
+    // Ammo drain and refill
+    col.ammoTank = Math.max(20, (col.ammoTank || 100) - 1);
+
+    if (col.currentHp <= 0) {
+      this.defeatColosseumBoss();
+      return { hit: true, damage: bonusDamage, defeated: true };
+    }
+
+    this.notify();
+    return { hit: true, damage: bonusDamage, defeated: false };
+  }
+
+  triggerColosseumDeflect() {
+    const col = this.getBossColosseumState();
+    col.isDeflecting = true;
+
+    const hero = this.state.selectedHero;
+    const activePet = this.getActivePet();
+    const equipped = (hero && activePet && hero.equippedPetGearMap) ? (hero.equippedPetGearMap[activePet.id] || {}) : {};
+    const buffs = calculateActiveGearBuffs(equipped);
+
+    // Deflect damage bounced back to boss
+    const deflectDamage = Math.round(12 * (buffs.defenseMultiplier || 1.0));
+    col.currentHp = Math.max(0, col.currentHp - deflectDamage);
+    col.comboCount = (col.comboCount || 0) + 2;
+    col.enamelCleanPercent = Math.min(100, Math.round(((col.maxHp - col.currentHp) / col.maxHp) * 100));
+
+    if (typeof Sound?.hit === 'function') Sound.hit();
+    else if (typeof Sound?.click === 'function') Sound.click();
+
+    setTimeout(() => {
+      col.isDeflecting = false;
+      this.notify();
+    }, 800);
+
+    if (col.currentHp <= 0) {
+      this.defeatColosseumBoss();
+    } else {
+      this.notify();
+    }
+    return { deflected: true, damage: deflectDamage };
+  }
+
+  unleashChoreSupernova() {
+    const col = this.getBossColosseumState();
+    if ((col.choreSupernovaCharge || 0) < 50) return { success: false, message: 'Supernova charging!' };
+
+    // Screen clearing blast
+    col.choreSupernovaCharge = 0;
+    col.isShieldActive = false;
+    col.shieldHp = 0;
+    const megaDamage = 35;
+    col.currentHp = Math.max(0, col.currentHp - megaDamage);
+    col.comboCount = (col.comboCount || 0) + 5;
+    col.enamelCleanPercent = Math.min(100, Math.round(((col.maxHp - col.currentHp) / col.maxHp) * 100));
+
+    try {
+      if (typeof confetti === 'function' && typeof document !== 'undefined' && document.body) {
+        confetti({
+          particleCount: 80,
+          spread: 100,
+          origin: { y: 0.5 },
+          colors: ['#00d2d3', '#54e98a', '#ffb961', '#ffffff']
+        });
+      }
+    } catch (e) {}
+
+    if (typeof Sound?.fanfare === 'function') Sound.fanfare();
+
+    if (col.currentHp <= 0) {
+      this.defeatColosseumBoss();
+    } else {
+      this.notify();
+    }
+    return { success: true, damage: megaDamage };
+  }
+
+  defeatColosseumBoss() {
+    const col = this.getBossColosseumState();
+    const boss = getHygieneBoss(col.activeBossId) || HYGIENE_BOSSES[0];
+    const hero = this.state.selectedHero;
+    const activePet = this.getActivePet();
+
+    if (!col.bossesDefeated) col.bossesDefeated = [];
+    if (!col.bossesDefeated.includes(boss.id)) {
+      col.bossesDefeated.push(boss.id);
+    }
+
+    // Unlock in hygiene battles state
+    if (!this.state.hygieneBattle) this.state.hygieneBattle = {};
+    if (!this.state.hygieneBattle.colosseumBossesDefeated) this.state.hygieneBattle.colosseumBossesDefeated = [];
+    if (!this.state.hygieneBattle.colosseumBossesDefeated.includes(boss.id)) {
+      this.state.hygieneBattle.colosseumBossesDefeated.push(boss.id);
+    }
+
+    // Unlock Hero HQ Trophy Relic
+    const trophyId = boss.trophyRelicId || ('trophy_' + boss.id);
+    if (this.state.heroHQ && this.state.heroHQ.unlockedFurnitureIds) {
+      if (!this.state.heroHQ.unlockedFurnitureIds.includes(trophyId)) {
+        this.state.heroHQ.unlockedFurnitureIds.push(trophyId);
+      }
+    }
+
+    // Award Rewards (boosted by equipped helmet coinMultiplier)
+    const equipped = (hero && activePet && hero.equippedPetGearMap) ? (hero.equippedPetGearMap[activePet.id] || {}) : {};
+    const buffs = calculateActiveGearBuffs(equipped);
+    const coinMultiplier = buffs.coinMultiplier || 1.0;
+    const earnedCoins = Math.round((boss.rewardCoins || 50) * coinMultiplier);
+    const earnedXP = boss.rewardXP || 75;
+    const earnedSparks = boss.rewardSparks || 15;
+
+    if (hero) {
+      hero.coins = (hero.coins || 0) + earnedCoins;
+      hero.xp = (hero.xp || 0) + earnedXP;
+      hero.streak = (hero.streak || 0) + 1;
+      this.state.brushStreak = (this.state.brushStreak || 0) + 1;
+    }
+
+    col.isVictoryModalOpen = true;
+    col.victoryReward = {
+      bossId: boss.id,
+      bossName: boss.name,
+      cleansedTitle: boss.cleansedTitle || 'Minty Friend 🍬',
+      trophyId,
+      coins: earnedCoins,
+      xp: earnedXP,
+      sparks: earnedSparks
+    };
+
+    try {
+      if (typeof confetti === 'function' && typeof document !== 'undefined' && document.body) {
+        confetti({
+          particleCount: 100,
+          spread: 90,
+          origin: { y: 0.6 },
+          colors: ['#2ecc71', '#f39c12', '#00d2d3', '#ffb961', '#ffffff']
+        });
+      }
+    } catch (e) {}
+
+    if (typeof Sound?.fanfare === 'function') Sound.fanfare();
+    speakCompanion(`ROAR! You cleansed ${boss.name}! Your smile is gleaming like diamond armor!`);
+
+    this.logAction(
+      `${hero?.name || 'Hero'} cleansed ${boss.name} in 3D Colosseum!`,
+      `Earned +${earnedCoins} Coins, +${earnedXP} XP, and unlocked ${trophyId} for Hero HQ!`
+    );
+
+    this.saveState(true);
+    this.notify();
+    return col.victoryReward;
+  }
+
+  toggleColosseumPipCam(show = null) {
+    const col = this.getBossColosseumState();
+    col.showPipCam = (show !== null) ? Boolean(show) : !col.showPipCam;
+    this.notify();
+  }
+
+  closeColosseumVictoryModal() {
+    const col = this.getBossColosseumState();
+    col.isVictoryModalOpen = false;
+    this.notify();
   }
 
   resetAllProgress() {

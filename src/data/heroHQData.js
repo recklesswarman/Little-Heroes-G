@@ -502,6 +502,45 @@ export function getTrophiesForDisplay(storeState = {}) {
     });
   }
 
+  // 2b. 3D Colosseum Boss Trophies
+  const colosseumBosses = hygiene.colosseumBossesDefeated || storeState.bossColosseum?.bossesDefeated || [];
+  if (colosseumBosses.includes('sugar_bandit') || bossesDefeated.includes('sugar_bandit')) {
+    trophies.push({
+      id: 'trophy_sugar_bandit',
+      title: "Sugar Bandit's Golden Candy Crown",
+      category: '3D Colosseum Arena',
+      emoji: '👑',
+      iconColor: 'from-amber-400 to-yellow-500',
+      dateEarned: 'Boss Cleansed',
+      lore: 'The Sticky Caramel Crown purified into solid gold after melting the Sugar Bandit King in the 3D Colosseum!',
+      rexPraise: 'ROAR! You blasted away all that sticky caramel! The Sugar Bandit is now a sweet little minty buddy!'
+    });
+  }
+  if (colosseumBosses.includes('plaque_kraken') || bossesDefeated.includes('plaque_kraken')) {
+    trophies.push({
+      id: 'trophy_plaque_kraken',
+      title: "Plaque Kraken's Pearly Goblet",
+      category: '3D Colosseum Arena',
+      emoji: '🐙',
+      iconColor: 'from-emerald-400 to-teal-500',
+      dateEarned: 'Boss Cleansed',
+      lore: 'Forged from iridescent sea glass after deflecting the Plaque Kraken’s green biofilm slime tentacles!',
+      rexPraise: 'Those back molars are sparkling clean! The Plaque Kraken has released the deep biofilm grip!'
+    });
+  }
+  if (colosseumBosses.includes('cavity_knight') || bossesDefeated.includes('cavity_knight')) {
+    trophies.push({
+      id: 'trophy_cavity_knight',
+      title: "Cavity Knight's Enamel Shield Crest",
+      category: '3D Colosseum Arena',
+      emoji: '🛡️',
+      iconColor: 'from-cyan-400 to-blue-500',
+      dateEarned: 'Boss Cleansed',
+      lore: 'A master shield crest carved from pure pearly white enamel after shattering the Cavity Knight’s acid lance!',
+      rexPraise: 'Invincible enamel! The Cavity Knight’s acid has been completely neutralized by your mint foam blaster!'
+    });
+  }
+
   // 3. Movement / Dance Party Trophies
   const danceRoutines = storeState.movementRoutines || storeState.dancePartyHistory || [];
   const completedRoutinesCount = Array.isArray(danceRoutines) ? danceRoutines.length : (storeState.movementCompletedCount || 0);

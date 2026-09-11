@@ -22,7 +22,12 @@ export const HYGIENE_BOSSES = [
     difficulty: "Toddler & Kid Friendly",
     rewardCoins: 50,
     rewardXP: 75,
-    rewardSparks: 15
+    rewardSparks: 15,
+    trophyRelicId: 'trophy_sugar_bandit',
+    meshType: 'sugar_bandit',
+    bombColor: '#f39c12',
+    bombName: 'Sticky Caramel Bomb',
+    cleansedTitle: 'Minty Sugar Buddy 🍬'
   },
   {
     id: "plaque_kraken",
@@ -42,7 +47,12 @@ export const HYGIENE_BOSSES = [
     difficulty: "Explorer Challenge",
     rewardCoins: 50,
     rewardXP: 75,
-    rewardSparks: 15
+    rewardSparks: 15,
+    trophyRelicId: 'trophy_plaque_kraken',
+    meshType: 'plaque_kraken',
+    bombColor: '#2ecc71',
+    bombName: 'Plaque Slime Bomb',
+    cleansedTitle: 'Friendly Bubble Kraken 🐙'
   },
   {
     id: "cavity_knight",
@@ -62,7 +72,12 @@ export const HYGIENE_BOSSES = [
     difficulty: "Master Hero Battle",
     rewardCoins: 50,
     rewardXP: 75,
-    rewardSparks: 15
+    rewardSparks: 15,
+    trophyRelicId: 'trophy_cavity_knight',
+    meshType: 'cavity_knight',
+    bombColor: '#e74c3c',
+    bombName: 'Acid Shard Bomb',
+    cleansedTitle: 'Enamel Paladin 🛡️'
   }
 ];
 
