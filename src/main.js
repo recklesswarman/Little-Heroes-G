@@ -16,6 +16,7 @@ import { renderPetSelectionModal, attachPetSelectionModalListeners } from './com
 import { renderPetLockerModal, attachPetLockerModalListeners } from './components/PetLockerModal.js';
 import { renderPetExpeditionsModal, attachPetExpeditionsListeners } from './components/PetExpeditionsModal.js';
 import { renderMysterySurpriseModal, attachMysterySurpriseModalListeners } from './components/MysterySurpriseModal.js';
+import { renderPetRunwayModal, attachPetRunwayModalListeners } from './components/PetRunwayModal.js';
 import { renderLiveRexWidget, attachLiveRexWidgetListeners } from './components/LiveRexWidget.js';
 
 // Views
@@ -132,6 +133,7 @@ function renderApp() {
       ${renderPetLockerModal()}
       ${renderPetExpeditionsModal()}
       ${renderMysterySurpriseModal()}
+      ${renderPetRunwayModal()}
       ${renderLiveRexWidget()}
     </div>
   `;
@@ -146,6 +148,7 @@ function renderApp() {
   attachPetLockerModalListeners();
   attachPetExpeditionsListeners();
   attachMysterySurpriseModalListeners();
+  attachPetRunwayModalListeners();
   attachLiveRexWidgetListeners();
   attachViewListeners();
 }

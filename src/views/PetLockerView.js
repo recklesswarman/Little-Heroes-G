@@ -2,6 +2,7 @@ import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import confetti from 'canvas-confetti';
 import { speakRex } from '../services/voiceService.js';
+import { renderPetGearStudioViewer, initPetGearStudioViewer } from '../components/PetGearStudioViewer.js';
 
 let activeCategoryFilter = 'all';
 
@@ -73,6 +74,10 @@ export function renderPetLockerView() {
         </button>
 
         <div class="flex items-center gap-3">
+          <button id="locker-open-runway-btn" class="bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 hover:brightness-110 text-slate-950 font-headline text-xs font-black px-4 py-2.5 rounded-2xl flex items-center gap-1.5 chunky-btn-sm shadow-md active:scale-95 border-2 border-white/30">
+            <span>🌟</span>
+            <span>Runway Showcase</span>
+          </button>
           <!-- Token Wallet -->
           <div class="bg-surface-container-high px-4 py-2 rounded-full border-2 border-secondary-container flex items-center gap-2 shadow-md">
             <span class="material-symbols-outlined text-secondary text-base">monetization_on</span>
@@ -80,6 +85,11 @@ export function renderPetLockerView() {
           </div>
         </div>
       </div>
+
+      <!-- Interactive 3D Skeletal Pet Gear Studio -->
+      <section class="z-10">
+        ${renderPetGearStudioViewer({ petId: activePet.id })}
+      </section>
 
       <!-- Active Companion Equipment Stage -->
       <section class="bg-gradient-to-b from-[#182838] via-[#121e2b] to-[#0a121a] rounded-3xl p-6 border-4 border-amber-500/40 card-shadow flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
@@ -326,6 +336,20 @@ function getStatBonusLabel(percent, type) {
 }
 
 export function attachPetLockerListeners() {
+  const activePet = store.getActivePet();
+
+  // Initialize Interactive 3D Skeletal Pet Gear Studio
+  initPetGearStudioViewer('pet-gear-studio-container', { petId: activePet.id });
+
+  // Open Runway Showcase
+  const openRunwayBtn = document.getElementById('locker-open-runway-btn');
+  if (openRunwayBtn) {
+    openRunwayBtn.addEventListener('click', () => {
+      Sound.tap();
+      store.openPetRunwayModal(activePet.id);
+    });
+  }
+
   // Back to Pet Pen
   const exitBtn = document.getElementById('locker-exit-btn');
   if (exitBtn) {

@@ -84,6 +84,13 @@ const defaultState = {
     gameDifficulty: 'medium', // 'easy' (Toddler 3-4), 'medium' (Kids 5-6), 'hard' (Kids 7-9)
     equippedProfileTheme: 'theme_dragon_emerald',
     unlockedThemes: ['theme_dragon_emerald'],
+    equippedPetGearMap: {
+      1: { head: 'crown_golden_horn', back: 'cape_classic', chest: 'collar_titan', feet: 'boots_speed_neon' }
+    },
+    customGearDyesMap: {
+      1: { head: '#f59e0b', back: '#ef4444', chest: '#475569', feet: '#10b981' }
+    },
+    savedHeroCards: [],
     screenTimeMinutes: 45,
     screenTimeUsedToday: 15,
     dailyMaxScreenTime: 60,
@@ -112,6 +119,13 @@ const defaultState = {
       gameDifficulty: 'medium',
       equippedProfileTheme: 'theme_dragon_emerald',
       unlockedThemes: ['theme_dragon_emerald'],
+      equippedPetGearMap: {
+        1: { head: 'hero_cowl', back: 'fluttering_cape', chest: 'titan_collar', feet: 'neon_speed_boots' }
+      },
+      customGearDyesMap: {
+        1: { head: '#E74C3C', back: '#3498DB', chest: '#F1C40F', feet: '#2ECC71' }
+      },
+      savedHeroCards: [],
       screenTimeMinutes: 45,
       screenTimeUsedToday: 15,
       dailyMaxScreenTime: 60,
@@ -384,6 +398,18 @@ const defaultState = {
   equippedPetGear: 'Enchanted Wizard Hat',
   equippedPetGearSlots: {
     1: { hat: 'Enchanted Wizard Hat', cape: null, aura: null }
+  },
+  equippedPetGearMap: {
+    1: { head: 'crown_golden_horn', back: 'cape_classic', chest: 'collar_titan', feet: 'boots_speed_neon' }
+  },
+  customGearDyesMap: {
+    1: { head: '#f59e0b', back: '#ef4444', chest: '#475569', feet: '#10b981' }
+  },
+  savedHeroCards: [],
+  activeRunwayModal: {
+    isOpen: false,
+    petId: null,
+    currentPose: 'idle'
   },
   petSparkMap: {
     1: 65
@@ -670,6 +696,18 @@ class Store {
         if (!parsed.equippedPetGearSlots || typeof parsed.equippedPetGearSlots !== 'object') {
           parsed.equippedPetGearSlots = { ...defaultState.equippedPetGearSlots };
         }
+        if (!parsed.equippedPetGearMap || typeof parsed.equippedPetGearMap !== 'object') {
+          parsed.equippedPetGearMap = { ...defaultState.equippedPetGearMap };
+        }
+        if (!parsed.customGearDyesMap || typeof parsed.customGearDyesMap !== 'object') {
+          parsed.customGearDyesMap = { ...defaultState.customGearDyesMap };
+        }
+        if (!parsed.savedHeroCards || !Array.isArray(parsed.savedHeroCards)) {
+          parsed.savedHeroCards = [];
+        }
+        if (!parsed.activeRunwayModal) {
+          parsed.activeRunwayModal = { isOpen: false, petId: null, currentPose: 'idle' };
+        }
         if (!parsed.petLockerModal) {
           parsed.petLockerModal = { isOpen: false, petId: null };
         }
@@ -724,6 +762,9 @@ class Store {
       equippedProfileTheme: sHero.equippedProfileTheme || 'theme_dragon_emerald',
       unlockedThemes: [...(sHero.unlockedThemes || ['theme_dragon_emerald'])],
       equippedGear: { ...(sHero.equippedGear || {}) },
+      equippedPetGearMap: { ...(sHero.equippedPetGearMap || this.state.equippedPetGearMap || {}) },
+      customGearDyesMap: { ...(sHero.customGearDyesMap || this.state.customGearDyesMap || {}) },
+      savedHeroCards: [...(sHero.savedHeroCards || this.state.savedHeroCards || [])],
       inventory: [...(sHero.inventory || [])],
       lastUpdated: Date.now()
     };
@@ -2154,7 +2195,10 @@ class Store {
     this.saveState(true);
   }
 
-  equipPetGear(gearTitle, petId) {
+  equipPetGear(gearTitle, petId, gearId) {
+    if (['head', 'back', 'chest', 'feet'].includes(petId)) {
+      return this.equipPetStudioGear(gearTitle, petId, gearId);
+    }
     const id = petId || this.state.selectedHero?.activePetId || 1;
     if (!this.state.equippedGearMap) {
       this.state.equippedGearMap = {};
@@ -2252,6 +2296,139 @@ class Store {
 
   closePetLockerModal() {
     this.state.petLockerModal = { isOpen: false, petId: null };
+    this.notify();
+  }
+
+  // --- PET GEAR STUDIO & SKELETAL RIG METHODS ---
+
+  getEquippedPetStudioGear(petId) {
+    const id = petId || this.state.selectedHero?.activePetId || 1;
+    if (!this.state.equippedPetGearMap) {
+      this.state.equippedPetGearMap = {};
+    }
+    if (!this.state.equippedPetGearMap[id]) {
+      this.state.equippedPetGearMap[id] = { head: 'crown_golden_horn', back: 'cape_classic', chest: 'collar_titan', feet: 'boots_speed_neon' };
+    }
+    return { head: null, back: null, chest: null, feet: null, ...this.state.equippedPetGearMap[id] };
+  }
+
+  equipPetStudioGear(petId, slot, gearId) {
+    const id = petId || this.state.selectedHero?.activePetId || 1;
+    if (!this.state.equippedPetGearMap) {
+      this.state.equippedPetGearMap = {};
+    }
+    if (!this.state.equippedPetGearMap[id]) {
+      this.state.equippedPetGearMap[id] = { head: null, back: null, chest: null, feet: null };
+    }
+
+    // Toggle off if already equipped
+    if (this.state.equippedPetGearMap[id][slot] === gearId) {
+      this.state.equippedPetGearMap[id][slot] = null;
+    } else {
+      this.state.equippedPetGearMap[id][slot] = gearId;
+    }
+
+    if (this.state.selectedHero) {
+      if (!this.state.selectedHero.equippedPetGearMap) this.state.selectedHero.equippedPetGearMap = {};
+      this.state.selectedHero.equippedPetGearMap[id] = { ...this.state.equippedPetGearMap[id] };
+    }
+
+    Sound.gearSnap();
+    confetti({
+      particleCount: 25,
+      spread: 45,
+      origin: { y: 0.6 }
+    });
+    this.saveState(true);
+    this.notify();
+    return this.state.equippedPetGearMap[id];
+  }
+
+  getCustomGearDyes(petId) {
+    const id = petId || this.state.selectedHero?.activePetId || 1;
+    if (!this.state.customGearDyesMap) {
+      this.state.customGearDyesMap = {};
+    }
+    if (!this.state.customGearDyesMap[id]) {
+      this.state.customGearDyesMap[id] = { head: '#f59e0b', back: '#ef4444', chest: '#475569', feet: '#10b981' };
+    }
+    return { head: null, back: null, chest: null, feet: null, ...this.state.customGearDyesMap[id] };
+  }
+
+  setCustomGearDye(petId, slot, colorHex) {
+    const id = petId || this.state.selectedHero?.activePetId || 1;
+    if (!this.state.customGearDyesMap) {
+      this.state.customGearDyesMap = {};
+    }
+    if (!this.state.customGearDyesMap[id]) {
+      this.state.customGearDyesMap[id] = {};
+    }
+    this.state.customGearDyesMap[id][slot] = colorHex;
+
+    if (this.state.selectedHero) {
+      if (!this.state.selectedHero.customGearDyesMap) this.state.selectedHero.customGearDyesMap = {};
+      this.state.selectedHero.customGearDyesMap[id] = { ...this.state.customGearDyesMap[id] };
+    }
+
+    Sound.sparkle();
+    this.saveState(true);
+    this.notify();
+    return this.state.customGearDyesMap[id];
+  }
+
+  getSavedHeroCards() {
+    return this.state.savedHeroCards || [];
+  }
+
+  saveHeroCard(cardData) {
+    if (!this.state.savedHeroCards) {
+      this.state.savedHeroCards = [];
+    }
+    const newCard = {
+      id: 'hero_card_' + Date.now(),
+      createdAt: new Date().toISOString(),
+      dateStr: new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }),
+      ...cardData
+    };
+    this.state.savedHeroCards.unshift(newCard);
+    if (this.state.savedHeroCards.length > 50) {
+      this.state.savedHeroCards = this.state.savedHeroCards.slice(0, 50);
+    }
+    if (this.state.selectedHero) {
+      this.state.selectedHero.savedHeroCards = [...this.state.savedHeroCards];
+    }
+    Sound.cameraShutter();
+    confetti({
+      particleCount: 50,
+      spread: 65,
+      origin: { y: 0.5 }
+    });
+    this.saveState(true);
+    this.notify();
+    return newCard;
+  }
+
+  deleteHeroCard(cardId) {
+    if (!this.state.savedHeroCards) return;
+    this.state.savedHeroCards = this.state.savedHeroCards.filter(c => c.id !== cardId);
+    if (this.state.selectedHero) {
+      this.state.selectedHero.savedHeroCards = [...this.state.savedHeroCards];
+    }
+    Sound.pop();
+    this.saveState(true);
+    this.notify();
+  }
+
+  openPetRunwayModal(petId) {
+    const id = petId || this.getActivePet().id;
+    this.state.activeRunwayModal = { isOpen: true, petId: id, currentPose: 'hero_landing' };
+    Sound.whoosh();
+    this.notify();
+  }
+
+  closePetRunwayModal() {
+    this.state.activeRunwayModal = { isOpen: false, petId: null, currentPose: 'idle' };
+    Sound.pop();
     this.notify();
   }
 

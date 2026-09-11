@@ -123,6 +123,11 @@ export function renderPetPenView() {
             <span class="material-symbols-outlined text-base">explore</span> 🧭 Expeditions
           </button>
 
+          <!-- Heroic Runway Showcase Button -->
+          <button id="pen-open-runway-btn" class="bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 hover:brightness-110 text-slate-950 font-headline text-xs font-black px-3.5 py-2 rounded-2xl border-2 border-white/40 flex items-center gap-1.5 chunky-btn-sm shadow-md active:scale-95">
+            <span>🌟</span> <span>Runway Show</span>
+          </button>
+
           <!-- Group Treat Picnic Button -->
           <button id="pen-group-picnic-btn" class="bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 text-black font-headline text-xs font-black px-4 py-2 rounded-2xl border-2 border-amber-400 flex items-center gap-1.5 chunky-btn-sm shadow-md active:scale-95">
             <span class="material-symbols-outlined text-base">shopping_basket</span> 🧺 Group Picnic (15 🪙)
@@ -678,6 +683,16 @@ export function attachPetPenListeners() {
     bannerExpeditionsBtn.addEventListener('click', () => {
       Sound.tap();
       store.openExpeditionModal();
+    });
+  }
+
+  // Heroic Runway Showcase Button
+  const openRunwayBtn = document.getElementById('pen-open-runway-btn');
+  if (openRunwayBtn) {
+    openRunwayBtn.addEventListener('click', () => {
+      Sound.tap();
+      const activePet = store.getActivePet();
+      store.openPetRunwayModal(activePet?.id || 1);
     });
   }
 

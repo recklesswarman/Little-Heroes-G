@@ -1380,6 +1380,165 @@ export const Sound = {
         osc.stop(now + 0.36);
       });
     } catch (e) {}
+  },
+
+  // 34. CAMERA SHUTTER (Mechanical dual click + quick flash charge tone)
+  cameraShutter() {
+    if (isMuted) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      // First click
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'triangle';
+      osc1.frequency.setValueAtTime(1400, now);
+      osc1.frequency.exponentialRampToValueAtTime(120, now + 0.035);
+      gain1.gain.setValueAtTime(0.35, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.045);
+
+      // Second mechanical latch click (60ms later)
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(900, now + 0.06);
+      osc2.frequency.exponentialRampToValueAtTime(80, now + 0.11);
+      gain2.gain.setValueAtTime(0.25, now + 0.06);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(now + 0.06);
+      osc2.stop(now + 0.13);
+
+      // High sparkle flash tone
+      const flashOsc = ctx.createOscillator();
+      const flashGain = ctx.createGain();
+      flashOsc.type = 'sine';
+      flashOsc.frequency.setValueAtTime(2400, now + 0.02);
+      flashOsc.frequency.exponentialRampToValueAtTime(3200, now + 0.18);
+      flashGain.gain.setValueAtTime(0.12, now + 0.02);
+      flashGain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+      flashOsc.connect(flashGain);
+      flashGain.connect(ctx.destination);
+      flashOsc.start(now + 0.02);
+      flashOsc.stop(now + 0.23);
+    } catch (e) {}
+  },
+
+  // 35. CROWD CHEER (Catwalk audience celebration, clapping resonance & whoops)
+  crowdCheer() {
+    if (isMuted) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const freqs = [330, 392, 523.25, 659.25, 783.99, 1046.5];
+      freqs.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = idx % 2 === 0 ? 'sine' : 'triangle';
+        const startDelay = idx * 0.04;
+        osc.frequency.setValueAtTime(freq * 0.95, now + startDelay);
+        osc.frequency.linearRampToValueAtTime(freq * 1.08, now + startDelay + 0.35);
+        osc.frequency.exponentialRampToValueAtTime(freq, now + startDelay + 0.7);
+
+        gain.gain.setValueAtTime(0.01, now + startDelay);
+        gain.gain.linearRampToValueAtTime(0.12, now + startDelay + 0.15);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + startDelay + 0.85);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + startDelay);
+        osc.stop(now + startDelay + 0.9);
+      });
+
+      for (let i = 0; i < 6; i++) {
+        const t = now + 0.08 * i + (Math.random() * 0.03);
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(180 + Math.random() * 80, t);
+        gain.gain.setValueAtTime(0.08, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.05);
+      }
+    } catch (e) {}
+  },
+
+  // 36. CAPE WHOOSH (Airy flutter and gust of wind)
+  capeWhoosh() {
+    if (isMuted) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(140, now);
+      osc.frequency.exponentialRampToValueAtTime(420, now + 0.12);
+      osc.frequency.exponentialRampToValueAtTime(90, now + 0.32);
+
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(400, now);
+      filter.frequency.linearRampToValueAtTime(1200, now + 0.15);
+      filter.frequency.exponentialRampToValueAtTime(280, now + 0.32);
+      filter.Q.setValueAtTime(2.5, now);
+
+      gain.gain.setValueAtTime(0.02, now);
+      gain.gain.linearRampToValueAtTime(0.25, now + 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.36);
+    } catch (e) {}
+  },
+
+  // 37. GEAR SNAP (Satisfying magnetic lock-in click when equipping items)
+  gearSnap() {
+    if (isMuted) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(1200, now);
+      osc1.frequency.exponentialRampToValueAtTime(320, now + 0.04);
+      gain1.gain.setValueAtTime(0.3, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.06);
+
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'triangle';
+      osc2.frequency.setValueAtTime(240, now + 0.015);
+      osc2.frequency.exponentialRampToValueAtTime(80, now + 0.09);
+      gain2.gain.setValueAtTime(0.24, now + 0.015);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.11);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(now + 0.015);
+      osc2.stop(now + 0.12);
+    } catch (e) {}
   }
 };
 
