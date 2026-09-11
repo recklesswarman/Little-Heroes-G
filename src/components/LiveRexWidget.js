@@ -449,6 +449,51 @@ export function attachLiveRexWidgetListeners() {
     }
   };
 
+  // 8. In-place reactive DOM updates for live-rex-state-update without whole-page DOM re-renders
+  window.addEventListener('live-rex-state-update', (event) => {
+    const data = event.detail || {};
+    const status = data.status || 'idle';
+    const isListening = status === 'listening';
+    const isThinking = status === 'thinking';
+    const isSpeaking = status === 'talking' || status === 'speaking';
+
+    // A. Update Status Subtitle Text
+    const statusTextEl = document.getElementById('rex-status-text');
+    if (statusTextEl) {
+      statusTextEl.textContent = isListening
+        ? '👂 Speak now! Rex is listening to you!'
+        : isThinking
+        ? '🤔 Rex is getting your answer ready...'
+        : isSpeaking
+        ? '🦖 Rex is speaking!'
+        : "Tap Rex's face or choose a picture below!";
+    }
+
+    // B. Update Toggle Button Text & State
+    const toggleBtnEl = document.getElementById('live-rex-toggle-btn');
+    if (toggleBtnEl) {
+      if (isListening) {
+        toggleBtnEl.className = 'flex-1 py-3 px-4 rounded-2xl font-headline text-xs font-black flex items-center justify-center gap-2 chunky-btn shadow-md active:scale-95 transition-all bg-emerald-500 text-white border-emerald-600 animate-pulse';
+        toggleBtnEl.innerHTML = '<span class="material-symbols-outlined text-base">mic</span><span>Listening (Tap to Stop)</span>';
+      } else {
+        toggleBtnEl.className = 'flex-1 py-3 px-4 rounded-2xl font-headline text-xs font-black flex items-center justify-center gap-2 chunky-btn shadow-md active:scale-95 transition-all bg-primary text-on-primary border-primary-container';
+        toggleBtnEl.innerHTML = '<span class="material-symbols-outlined text-base">mic_none</span><span>Start Microphone</span>';
+      }
+    }
+
+    // C. Update Floating Mascot Badge
+    const floatBtn = document.getElementById('live-rex-floating-btn');
+    if (floatBtn) {
+      const badge = floatBtn.querySelector('div.absolute.-bottom-1.-right-1');
+      if (badge) {
+        badge.className = `absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center text-xs shadow-md border-2 border-surface ${
+          isSpeaking ? 'bg-primary text-on-primary animate-bounce' : isListening ? 'bg-emerald-500 text-white animate-pulse' : 'bg-primary text-on-primary'
+        }`;
+        badge.innerHTML = `<span class="material-symbols-outlined text-sm">${isSpeaking ? 'volume_up' : isListening ? 'mic' : 'smart_toy'}</span>`;
+      }
+    }
+  });
+
   // 7. Gemini Live Service audio volume visualizer hook (if active)
   geminiLiveService.onVolumeCallback = (volume, type) => {
     const bars = document.querySelectorAll('.rex-wave-bar');

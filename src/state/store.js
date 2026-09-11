@@ -3664,12 +3664,17 @@ class Store {
     this.notify();
   }
 
-  setLiveRexState(partial) {
+  setLiveRexState(partial, skipNotify = false) {
     if (!this.state.liveRex) {
       this.state.liveRex = { ...defaultState.liveRex };
     }
     this.state.liveRex = { ...this.state.liveRex, ...partial };
-    this.notify();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('live-rex-state-update', { detail: this.state.liveRex }));
+    }
+    if (!skipNotify) {
+      this.notify();
+    }
   }
 
   setLiveRexApiKey(key) {

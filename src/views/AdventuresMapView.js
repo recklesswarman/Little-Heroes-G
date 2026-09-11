@@ -323,6 +323,12 @@ export function attachAdventuresMapListeners() {
     backBtn.addEventListener('click', () => store.navigate('pet_pen'));
   }
 
+  // Easy Mode Toddler Spoken Intro
+  if (!activeGame && !victoryResults && store.isEasyMode?.()) {
+    const activePet = store.getActivePet?.();
+    voicePrompts.speak(`Welcome to the Quest Map! Pick an adventure stop to explore with ${activePet?.name || 'your companion'}!`);
+  }
+
   // Victory continue button
   const victoryBtn = document.getElementById('adv-victory-continue-btn');
   if (victoryBtn) {

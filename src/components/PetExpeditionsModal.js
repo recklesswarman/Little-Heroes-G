@@ -1,5 +1,6 @@
 import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
+import { voicePrompts } from '../utils/voicePrompts.js';
 import {
   EXPEDITION_BIOMES,
   EXPEDITION_DURATIONS,
@@ -516,6 +517,9 @@ export function attachPetExpeditionsListeners() {
       const modal = store.state.expeditionModal;
       if (!modal || !modal.selectedPetId) return;
 
+      const pet = (store.state.pets || []).find(p => p.id === modal.selectedPetId);
+      const biome = getExpeditionBiome(modal.selectedBiomeId);
+
       const res = store.startPetExpedition(
         modal.selectedPetId,
         modal.selectedBiomeId,
@@ -525,6 +529,7 @@ export function attachPetExpeditionsListeners() {
 
       if (res.success) {
         Sound.fanfare();
+        voicePrompts.speakExpeditionDepart(pet?.name || 'Your companion', biome?.name || 'the wilderness');
       }
     });
   }
@@ -535,7 +540,13 @@ export function attachPetExpeditionsListeners() {
     btn.addEventListener('click', () => {
       const expId = btn.getAttribute('data-claim-id');
       if (expId) {
-        store.claimExpeditionRewards(expId);
+        const claimResult = store.claimExpeditionRewards(expId);
+        if (claimResult && claimResult.pet) {
+          voicePrompts.speakExpeditionReturn(
+            claimResult.pet.name,
+            claimResult.rewards?.artifactDropped?.name || ''
+          );
+        }
       }
     });
   });

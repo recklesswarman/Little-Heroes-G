@@ -1,6 +1,6 @@
-// Toddler-Resilient Rex the Dino Voice & Companion Engine
-// Provides audio pre-unlocking, automatic reconnection loops,
-// sound effects, and child-safe speech synthesis for 3-4 year olds.
+// Toddler-Resilient Pet Companion & Rex the Dino Voice Engine
+// Dual-engine SpeechRecognition + unified VoiceService speech synthesis,
+// audio pre-unlocking, automatic reconnection loops, and interactive in-game voice commands.
 
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { getApp } from "firebase/app";
@@ -9,6 +9,7 @@ import { Sound } from "../audio/sfx.js";
 import { auth, functions as existingFunctions } from "../config/firebase.js";
 import { signInAnonymously } from "firebase/auth";
 import { geminiLiveService } from "./geminiLiveService.js";
+import { speakCompanion, unlockVoiceAudio } from "./voiceService.js";
 
 let functions = existingFunctions;
 if (!functions) {
@@ -43,7 +44,7 @@ class RexVoiceEngine {
         try {
           Sound.chirp();
         } catch {
-          // ignore if sound engine is busy
+          // ignore
         }
       };
 
@@ -60,9 +61,8 @@ class RexVoiceEngine {
       };
 
       this.recognition.onerror = (e) => {
-        console.warn("Rex Speech error:", e.error);
         if (e.error === "no-speech" && this.shouldKeepListening) {
-          // Normal timeout on silence - attempt restart loop
+          // Silence timeout on WebKit/Chrome - restart loop
           this.scheduleRestart();
           return;
         }
@@ -90,8 +90,13 @@ class RexVoiceEngine {
       if (this.shouldKeepListening && this.currentState === "listening" && this.recognition) {
         try {
           this.recognition.start();
-        } catch (err) {
-          console.warn("Speech restart retry notice:", err?.message);
+        } catch {
+          // Retry again if still active
+          if (this.shouldKeepListening) {
+            setTimeout(() => {
+              try { if (this.shouldKeepListening) this.recognition.start(); } catch {}
+            }, 300);
+          }
         }
       }
     }, 400);
@@ -100,7 +105,7 @@ class RexVoiceEngine {
   setState(state) {
     this.currentState = state;
 
-    // Update global store so UI components react instantly
+    // Update global store without blowing away the app DOM during active gameplay
     store.setLiveRexState({
       status: state,
       isListening: state === "listening",
@@ -113,7 +118,7 @@ class RexVoiceEngine {
           : state === "talking"
           ? "Rex is talking!"
           : "Tap Rex to talk!"
-    });
+    }, true);
 
     if (this.onStateChange) {
       try {
@@ -124,28 +129,20 @@ class RexVoiceEngine {
     }
   }
 
-  // Pre-unlock speech synthesis on the very first toddler tap
-  // Prevents mobile/WebKit browsers from muting asynchronous TTS
   unlockAudio() {
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      try {
-        const silent = new SpeechSynthesisUtterance("");
-        silent.volume = 0;
-        window.speechSynthesis.speak(silent);
-      } catch (e) {
-        console.warn("Audio unlock notice:", e);
-      }
-    }
+    unlockVoiceAudio();
   }
 
   tryHandleInGameSpeech(spokenText) {
     const clean = spokenText.toLowerCase().trim();
+    const activePet = store.getActivePet?.();
+    const activePetId = activePet?.id || "rex";
 
-    // Check if in active Toothbrush Battle
-    const activeView = store.getState().currentView;
+    // 1. AR TOOTHBRUSH BATTLE VOICE COMMANDS
+    const activeView = store.getState().activeView || store.getState().currentView;
     if (activeView === 'battle' || activeView === 'ar_battle') {
-      if (/blast|foam|toothpaste|attack|fire/i.test(clean)) {
-        this.speak("Toothpaste Foam Cannon! Super Blast!");
+      if (/blast|foam|toothpaste|attack|laser|fire/i.test(clean)) {
+        this.speak("Toothpaste Foam Cannon! Super Blast!", activePetId);
         window.dispatchEvent(
           new CustomEvent('rex-battle-foam', {
             detail: { powerLevel: 'mega', comment: 'Toothpaste Foam Cannon!' }
@@ -154,7 +151,7 @@ class RexVoiceEngine {
         return true;
       }
       if (/shield|bubble|protect|block/i.test(clean)) {
-        this.speak("Hero Mint Bubble Shield activated!");
+        this.speak("Hero Mint Bubble Shield activated!", activePetId);
         window.dispatchEvent(
           new CustomEvent('rex-battle-shield', {
             detail: { shieldType: 'mint' }
@@ -162,8 +159,8 @@ class RexVoiceEngine {
         );
         return true;
       }
-      if (/roar|dino|smash|power/i.test(clean)) {
-        this.speak("ROAR! Dino Power Scrub!");
+      if (/roar|dino|smash|power|scrub/i.test(clean)) {
+        this.speak("ROAR! Dino Power Scrub!", activePetId);
         window.dispatchEvent(
           new CustomEvent('rex-battle-foam', {
             detail: { powerLevel: 'dino-roar', comment: 'Dino Power Scrub!' }
@@ -173,78 +170,128 @@ class RexVoiceEngine {
       }
     }
 
-    const context = geminiLiveService.currentQuestContext;
-    if (!context || !context.options || context.options.length === 0) {
-      return false;
-    }
-
-    // 1. Hint request
-    if (/hint|clue|help|stuck|tell me/i.test(clean)) {
-      this.speak("Rex says: Look closely at the pictures and colors!");
-      window.dispatchEvent(
-        new CustomEvent('rex-live-hint', {
-          detail: { hintText: "Look closely at the pictures and colors!" }
-        })
-      );
-      return true;
-    }
-
-    // 2. Eliminate / 50-50 Stomp request
-    if (/stomp|eliminate|remove|50|take away/i.test(clean)) {
-      const correctIdx = context.correctAnswerIndex ?? 0;
-      const wrongIndices = context.options
-        .map((_, i) => i)
-        .filter(i => i !== correctIdx);
-      const elimIdx = wrongIndices.length > 0 ? wrongIndices[0] : 1;
-      this.speak("Dino Stomp! That one is not the answer!");
-      window.dispatchEvent(
-        new CustomEvent('rex-live-eliminate', {
-          detail: { eliminatedOptionIndex: elimIdx, comment: "Dino Stomp!" }
-        })
-      );
-      return true;
-    }
-
-    // 3. Read question
-    if (/read|repeat|say it|what is/i.test(clean)) {
-      const q = context.question || "Can you find the right answer?";
-      this.speak(q);
-      window.dispatchEvent(
-        new CustomEvent('rex-live-read', {
-          detail: { questionText: q }
-        })
-      );
-      return true;
-    }
-
-    // 4. Answering option: check A, B, C, D or exact/fuzzy word match
-    let matchedIdx = -1;
-    if (/\b(option\s*a|letter\s*a|^a$)\b/i.test(clean)) matchedIdx = 0;
-    else if (/\b(option\s*b|letter\s*b|^b$)\b/i.test(clean)) matchedIdx = 1;
-    else if (/\b(option\s*c|letter\s*c|^c$)\b/i.test(clean)) matchedIdx = 2;
-    else if (/\b(option\s*d|letter\s*d|^d$)\b/i.test(clean)) matchedIdx = 3;
-
-    if (matchedIdx === -1) {
-      for (let i = 0; i < context.options.length; i++) {
-        const optText = String(context.options[i]).toLowerCase().trim();
-        if (clean.includes(optText) || optText.includes(clean)) {
-          matchedIdx = i;
-          break;
-        }
+    // 2. MOVEMENT DANCE PARTY VOICE COMMANDS
+    if (activeView === 'dance_party' || /dance|freeze|statue|jump|spin|fever/i.test(clean)) {
+      if (/freeze|statue|stop/i.test(clean)) {
+        this.speak("FREEZE! Freeze like a statue!", activePetId);
+        window.dispatchEvent(new CustomEvent('rex-dance-freeze'));
+        return true;
+      }
+      if (/jump|star jump|hop/i.test(clean)) {
+        this.speak("Super Star Jump! Reach for the sky!", activePetId);
+        window.dispatchEvent(new CustomEvent('rex-dance-jump'));
+        return true;
+      }
+      if (/spin|twirl|circle/i.test(clean)) {
+        this.speak("Hero Spin! Wheee!", activePetId);
+        window.dispatchEvent(new CustomEvent('rex-dance-spin'));
+        return true;
+      }
+      if (/fever|burst|power/i.test(clean)) {
+        this.speak("FEVER BURST! Look at that rhythm energy!", activePetId);
+        window.dispatchEvent(new CustomEvent('rex-dance-fever'));
+        return true;
       }
     }
 
-    if (matchedIdx >= 0 && matchedIdx < context.options.length) {
-      this.speak(`Rex picked ${context.options[matchedIdx]}! Rawr!`);
-      window.dispatchEvent(
-        new CustomEvent('rex-live-answer', {
-          detail: {
-            optionIndex: matchedIdx,
-            optionText: String(context.options[matchedIdx]),
-            explanation: "Awesome choice!"
+    // 3. LEARNING ADVENTURES QUEST COMMANDS
+    const context = geminiLiveService.currentQuestContext;
+    if (context && context.options && context.options.length > 0) {
+      // A. Hint request
+      if (/hint|clue|help|stuck|tell me/i.test(clean)) {
+        this.speak("Look closely at the pictures and colors!", activePetId);
+        window.dispatchEvent(
+          new CustomEvent('rex-live-hint', {
+            detail: { hintText: "Look closely at the pictures and colors!" }
+          })
+        );
+        return true;
+      }
+
+      // B. Eliminate / 50-50 Stomp request
+      if (/stomp|eliminate|remove|50|take away/i.test(clean)) {
+        const correctIdx = context.correctAnswerIndex ?? 0;
+        const wrongIndices = context.options
+          .map((_, i) => i)
+          .filter(i => i !== correctIdx);
+        const elimIdx = wrongIndices.length > 0 ? wrongIndices[0] : 1;
+        this.speak("Dino Stomp! That choice is out of the way!", activePetId);
+        window.dispatchEvent(
+          new CustomEvent('rex-live-eliminate', {
+            detail: { eliminatedOptionIndex: elimIdx, comment: "Dino Stomp!" }
+          })
+        );
+        return true;
+      }
+
+      // C. Read question
+      if (/read|repeat|say it|what is/i.test(clean)) {
+        const q = context.question || "Can you find the right answer?";
+        this.speak(q, activePetId);
+        window.dispatchEvent(
+          new CustomEvent('rex-live-read', {
+            detail: { questionText: q }
+          })
+        );
+        return true;
+      }
+
+      // D. Answering option: check A, B, C, D or exact/fuzzy word match
+      let matchedIdx = -1;
+      if (/\b(option\s*a|letter\s*a|^a$)\b/i.test(clean)) matchedIdx = 0;
+      else if (/\b(option\s*b|letter\s*b|^b$)\b/i.test(clean)) matchedIdx = 1;
+      else if (/\b(option\s*c|letter\s*c|^c$)\b/i.test(clean)) matchedIdx = 2;
+      else if (/\b(option\s*d|letter\s*d|^d$)\b/i.test(clean)) matchedIdx = 3;
+
+      if (matchedIdx === -1) {
+        for (let i = 0; i < context.options.length; i++) {
+          const optText = String(context.options[i]).toLowerCase().trim();
+          if (clean.includes(optText) || optText.includes(clean)) {
+            matchedIdx = i;
+            break;
           }
-        })
-      );
+        }
+      }
+
+      if (matchedIdx >= 0 && matchedIdx < context.options.length) {
+        this.speak(`You picked ${context.options[matchedIdx]}! Super choice!`, activePetId);
+        window.dispatchEvent(
+          new CustomEvent('rex-live-answer', {
+            detail: {
+              optionIndex: matchedIdx,
+              optionText: String(context.options[matchedIdx]),
+              explanation: "Awesome choice!"
+            }
+          })
+        );
+        return true;
+      }
+    }
+
+    // 4. DAILY HABITS & CHORE VOICE CLAIMS
+    if (/water|drink/i.test(clean) && /drank|done|finished|cup|glass/i.test(clean)) {
+      store.toggleHabitIsland('drink_water');
+      this.speak("Gulp gulp! Super hero hydration power! You earned shiny coins!", activePetId);
+      return true;
+    }
+    if (/teeth|brush/i.test(clean) && /brushed|done|clean|finished/i.test(clean)) {
+      store.toggleHabitIsland('brush_teeth');
+      this.speak("Sparkle smile! Your teeth are super clean and strong!", activePetId);
+      return true;
+    }
+    if (/bed/i.test(clean) && /made|tidy|clean/i.test(clean)) {
+      store.toggleTaskForest('morning_bed');
+      this.speak("Hero bed all made! Your room looks incredible!", activePetId);
+      return true;
+    }
+    if (/toy|toys|blocks/i.test(clean) && /clean|away|tidy|put/i.test(clean)) {
+      store.toggleTaskForest('clean_toys');
+      this.speak("Toys all put away! Great teamwork, Little Hero!", activePetId);
+      return true;
+    }
+    if (/snack|fruit|apple|veggie/i.test(clean) && /ate|eat|healthy/i.test(clean)) {
+      store.toggleHabitIsland('eat_healthy_snack');
+      this.speak("Crunch crunch! Healthy fuel makes heroes super strong!", activePetId);
       return true;
     }
 
@@ -267,7 +314,9 @@ class RexVoiceEngine {
     } else {
       if (!this.recognition) {
         console.warn("SpeechRecognition not supported in this browser.");
-        this.speak("Roar! I hear you, Little Hero! Tap the pictures to play!");
+        const activePet = store.getActivePet?.();
+        this.speak("Roar! I hear you, Little Hero! Tap the pictures to play with me!", activePet?.id || "rex");
+        store.toggleLiveRexModal(true);
         return;
       }
       try {
@@ -276,7 +325,6 @@ class RexVoiceEngine {
         this.recognition.start();
       } catch (err) {
         console.warn("Could not start recognition:", err);
-        // If already started, force restart
         try {
           this.recognition.stop();
           setTimeout(() => {
@@ -292,21 +340,23 @@ class RexVoiceEngine {
     this.shouldKeepListening = false;
     this.setState("thinking");
 
+    const activePet = store.getActivePet?.();
+    const activePetId = activePet?.id || "rex";
+    const activeHero = store.getState().selectedHero;
+    const heroId = activeHero?.name || activeHero?.id || "Little Hero";
+    const isToddler = store.isEasyMode?.() ?? true;
+
     store.setLiveRexState({
       lastUserTranscript: message,
       statusMessage: "Rex is thinking..."
-    });
-
-    const activeHero = store.getState().selectedHero;
-    const heroId = activeHero?.name || activeHero?.id || "Little Hero";
+    }, true);
 
     try {
-      // Ensure anonymous session if Firebase Auth is active
       if (auth && !auth.currentUser) {
         try {
           await signInAnonymously(auth);
         } catch {
-          // Continue gracefully even without auth
+          // Continue gracefully
         }
       }
 
@@ -314,12 +364,13 @@ class RexVoiceEngine {
       const res = await chatFn({
         heroId,
         message,
-        ageTier: "toddler"
+        petId: activePetId,
+        ageTier: isToddler ? "toddler" : "kid"
       });
 
-      const reply = res.data?.reply || "*Happy Roar!* Great job, Little Hero!";
-      store.setLiveRexState({ lastRexTranscript: reply });
-      this.speak(reply);
+      const reply = res.data?.reply || `*Happy cheer!* Great job, ${heroId}! Ready for adventure!`;
+      store.setLiveRexState({ lastRexTranscript: reply }, true);
+      this.speak(reply, activePetId);
     } catch (err) {
       console.error("Rex Cloud Function chatWithPet error details:", {
         code: err?.code,
@@ -329,62 +380,21 @@ class RexVoiceEngine {
         region: "us-central1"
       });
 
-      let errReason = "";
-      if (err?.code === "functions/unauthenticated") {
-        errReason = " (Unauthenticated)";
-      } else if (err?.code === "functions/unavailable" || err?.message?.includes("CORS")) {
-        errReason = " (CORS / Region check failed)";
-      } else if (err?.code === "functions/internal") {
-        errReason = " (API Key / Quota error)";
-      }
-
-      const fallbackReply = "*Happy Roar!* Rex loves you, Little Hero! Let's play!";
+      const fallbackReply = `*Happy Roar!* High five, ${activeHero?.name || "Little Hero"}! Let's do our quests and play together!`;
       store.setLiveRexState({
         lastRexTranscript: fallbackReply,
-        statusMessage: `Note: ${err?.message || "Connection issue"}${errReason}. Ready to play!`
-      });
-      this.speak(fallbackReply);
+        statusMessage: "Rex is ready to play!"
+      }, true);
+      this.speak(fallbackReply, activePetId);
     }
   }
 
-  speak(text) {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-      this.setState("idle");
-      return;
-    }
-
+  speak(text, petId = null) {
+    const activePetId = petId || store.getActivePet?.()?.id || "rex";
     this.setState("talking");
-    try {
-      window.speechSynthesis.cancel();
-    } catch {}
-
-    // Clean out stage-directions (*ROAR!*, *Happy Dino Giggle!*) for crystal-clear TTS audio
-    const speechText = text.replace(/\*.*?\*/g, "").trim() || "Roar! Great job!";
-    const utterance = new SpeechSynthesisUtterance(speechText);
-    utterance.pitch = 1.35; // friendly animated cartoon dino pitch
-    utterance.rate = 0.95;  // gentle, slightly slower cadence for toddlers
-
-    // Select natural child-friendly voice if available
-    const voices = window.speechSynthesis.getVoices();
-    const friendlyVoice =
-      voices.find((v) => v.lang.startsWith("en") && (v.name.includes("Natural") || v.name.includes("Child") || v.name.includes("Junior"))) ||
-      voices.find((v) => v.lang.startsWith("en"));
-    if (friendlyVoice) utterance.voice = friendlyVoice;
-
-    utterance.onend = () => {
+    speakCompanion(text, activePetId, () => {
       this.setState("idle");
-    };
-    utterance.onerror = (e) => {
-      console.warn("Speech synthesis error:", e);
-      this.setState("idle");
-    };
-
-    try {
-      window.speechSynthesis.speak(utterance);
-    } catch (err) {
-      console.error("speechSynthesis.speak failed:", err);
-      this.setState("idle");
-    }
+    });
   }
 }
 

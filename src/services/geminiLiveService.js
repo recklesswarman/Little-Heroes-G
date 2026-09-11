@@ -774,7 +774,7 @@ Personality & Voice:
       isConnected: this.isConnected,
       isListening: this.isListening,
       isSpeaking: this.isSpeaking
-    });
+    }, true);
     if (this.onStatusCallback) {
       this.onStatusCallback(status, message);
     }
