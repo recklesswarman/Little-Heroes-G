@@ -710,6 +710,8 @@ export function attachHeroHQListeners() {
   }
 
   // 10. Interactive Furniture Slots
+  const currentEquippedFurniture = store.getState().heroHQ?.equippedFurniture || {};
+
   // A. Bed Nap
   const bedSlot = document.getElementById('hq-slot-bed');
   if (bedSlot) {
@@ -718,7 +720,12 @@ export function attachHeroHQListeners() {
       isNapping = true;
       Sound.snore();
       hqPetController?.triggerHeadScratch();
-      speakRex("Zzz... Power nap engaged! Dreaming of victory against Sugar Bugs! 🦖💤");
+      const equippedBed = currentEquippedFurniture.bed;
+      if (equippedBed && store.interactWithHQFurniture) {
+        store.interactWithHQFurniture(equippedBed);
+      } else {
+        speakRex("Zzz... Power nap engaged! Dreaming of victory against Sugar Bugs! 🦖💤");
+      }
       store.notify();
       if (napTimeout) clearTimeout(napTimeout);
       napTimeout = setTimeout(() => {
@@ -736,7 +743,12 @@ export function attachHeroHQListeners() {
       isBouncing = true;
       Sound.boing();
       hqPetController?.triggerBellyTickle();
-      speakRex("WHEEEE! Look at that high jump flip! Superhero bounce! 🤸✨");
+      const equippedLounge = currentEquippedFurniture.petLounge;
+      if (equippedLounge && store.interactWithHQFurniture) {
+        store.interactWithHQFurniture(equippedLounge);
+      } else {
+        speakRex("WHEEEE! Look at that high jump flip! Superhero bounce! 🤸✨");
+      }
       try {
         confetti({
           particleCount: 40,
@@ -759,7 +771,10 @@ export function attachHeroHQListeners() {
     deskSlot.addEventListener('click', () => {
       isHologramActive = !isHologramActive;
       Sound.hologram();
-      if (isHologramActive) {
+      const equippedDesk = currentEquippedFurniture.desk;
+      if (equippedDesk && store.interactWithHQFurniture) {
+        store.interactWithHQFurniture(equippedDesk);
+      } else if (isHologramActive) {
         speakRex("Mission Hologram Online! Reviewing today's heroic routine status!");
       }
       store.notify();

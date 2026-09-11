@@ -43,6 +43,9 @@ const defaultState = {
   selectedPetDetailId: 1,
   selectedAdventureGameId: 'phonics_forest',
   parentCustomGear: [],
+  parentCustomFurniture: [],
+  parentCustomToys: [],
+  parentCustomBosses: [],
 
   // Household Link Architecture & Parent User Administration
   household: {
@@ -652,6 +655,39 @@ class Store {
             const inDigital = parsed.digitalGear.some(g => g.id === item.id);
             if (!inDigital) {
               parsed.digitalGear.unshift(item);
+            }
+          }
+        });
+
+        if (!parsed.parentCustomFurniture || !Array.isArray(parsed.parentCustomFurniture)) {
+          parsed.parentCustomFurniture = [];
+        }
+        parsed.parentCustomFurniture.forEach(item => {
+          if (item && item.id) {
+            const inFurn = FURNITURE_ITEMS.some(f => f.id === item.id);
+            if (!inFurn) {
+              FURNITURE_ITEMS.unshift(item);
+            }
+            if (parsed.heroHQ && Array.isArray(parsed.heroHQ.unlockedFurnitureIds)) {
+              if (!parsed.heroHQ.unlockedFurnitureIds.includes(item.id)) {
+                parsed.heroHQ.unlockedFurnitureIds.push(item.id);
+              }
+            }
+          }
+        });
+
+        if (!parsed.parentCustomToys || !Array.isArray(parsed.parentCustomToys)) {
+          parsed.parentCustomToys = [];
+        }
+
+        if (!parsed.parentCustomBosses || !Array.isArray(parsed.parentCustomBosses)) {
+          parsed.parentCustomBosses = [];
+        }
+        parsed.parentCustomBosses.forEach(boss => {
+          if (boss && boss.id) {
+            const inBosses = HYGIENE_BOSSES.some(b => b.id === boss.id);
+            if (!inBosses) {
+              HYGIENE_BOSSES.unshift(boss);
             }
           }
         });
@@ -2515,6 +2551,306 @@ class Store {
     this.saveState(true);
     this.notify();
     return true;
+  }
+
+  getParentCustomFurniture() {
+    return this.state.parentCustomFurniture || [];
+  }
+
+  publishCustomAIFurniture(item) {
+    if (!item || (!item.name && !item.title)) return null;
+    const name = item.name || item.title || 'Custom Hero Furniture';
+    const slot = item.slot || (item.furnitureType === 'light' || item.furnitureType === 'display' ? 'decor' : item.furnitureType || 'bed');
+    const furniture = {
+      ...item,
+      id: item.id || `ai_furn_${Date.now()}`,
+      name,
+      title: name,
+      slot,
+      furnitureType: item.furnitureType || slot,
+      isParentCrafted: true,
+      isCustomAI: true,
+      costCoins: Number(item.costCoins || item.coinPrice) || 180,
+      comfortBuffPercent: Number(item.comfortBuffPercent) || 25,
+      comfortBuffLabel: item.comfortBuffLabel || `+${item.comfortBuffPercent || 25}% HQ Room Comfort & Focus`,
+      createdAt: item.createdAt || new Date().toISOString()
+    };
+
+    if (!this.state.parentCustomFurniture) this.state.parentCustomFurniture = [];
+    const idx = this.state.parentCustomFurniture.findIndex(f => f.id === furniture.id);
+    if (idx >= 0) {
+      this.state.parentCustomFurniture[idx] = furniture;
+    } else {
+      this.state.parentCustomFurniture.unshift(furniture);
+    }
+
+    // Inject into FURNITURE_ITEMS catalog
+    const catIdx = FURNITURE_ITEMS.findIndex(f => f.id === furniture.id);
+    if (catIdx >= 0) {
+      FURNITURE_ITEMS[catIdx] = furniture;
+    } else {
+      FURNITURE_ITEMS.unshift(furniture);
+    }
+
+    // Auto-unlock & equip in Hero HQ
+    if (!this.state.heroHQ) {
+      this.state.heroHQ = JSON.parse(JSON.stringify(defaultState.heroHQ));
+    }
+    if (!this.state.heroHQ.unlockedFurnitureIds.includes(furniture.id)) {
+      this.state.heroHQ.unlockedFurnitureIds.push(furniture.id);
+    }
+    if (!this.state.heroHQ.equippedFurniture) {
+      this.state.heroHQ.equippedFurniture = {};
+    }
+    this.state.heroHQ.equippedFurniture[slot] = furniture.id;
+
+    this.logAction(
+      `Parent crafted 3D HQ Furniture: '${furniture.name}'`,
+      `Installed in Hero HQ with ${furniture.comfortBuffLabel}!`
+    );
+
+    Sound.fanfare();
+    confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
+    this.showReward(
+      '🛋️ HQ Furniture Published!',
+      `"${furniture.name}" is now unlocked & placed in your Hero HQ!\n✨ Comfort: ${furniture.comfortBuffLabel}\n🐾 Your companion pets can sit and sleep on it!`,
+      0,
+      0,
+      furniture.image,
+      furniture.icon || 'bed'
+    );
+
+    this.saveState(true);
+    this.notify();
+    return furniture;
+  }
+
+  deleteCustomAIFurniture(furnitureId) {
+    if (!furnitureId) return false;
+    if (this.state.parentCustomFurniture) {
+      this.state.parentCustomFurniture = this.state.parentCustomFurniture.filter(f => f.id !== furnitureId);
+    }
+    const catIdx = FURNITURE_ITEMS.findIndex(f => f.id === furnitureId);
+    if (catIdx >= 0) {
+      FURNITURE_ITEMS.splice(catIdx, 1);
+    }
+    if (this.state.heroHQ && this.state.heroHQ.unlockedFurnitureIds) {
+      this.state.heroHQ.unlockedFurnitureIds = this.state.heroHQ.unlockedFurnitureIds.filter(id => id !== furnitureId);
+      Object.keys(this.state.heroHQ.equippedFurniture || {}).forEach(s => {
+        if (this.state.heroHQ.equippedFurniture[s] === furnitureId) {
+          this.state.heroHQ.equippedFurniture[s] = null;
+        }
+      });
+    }
+    this.saveState(true);
+    this.notify();
+    return true;
+  }
+
+  getParentCustomToys() {
+    return this.state.parentCustomToys || [];
+  }
+
+  publishCustomAIToy(item) {
+    if (!item || (!item.name && !item.title)) return null;
+    const name = item.name || item.title || 'Custom Hero Toy';
+    const toy = {
+      ...item,
+      id: item.id || `ai_toy_${Date.now()}`,
+      name,
+      title: name,
+      isParentCrafted: true,
+      isCustomAI: true,
+      costCoins: Number(item.costCoins || item.coinPrice) || 120,
+      statRefillType: item.statRefillType || 'joy',
+      statRefillAmount: Number(item.statRefillAmount) || 25,
+      statRefillLabel: item.statRefillLabel || `+${item.statRefillAmount || 25}% Pet ${item.statRefillType || 'Joy'} Refill`,
+      createdAt: item.createdAt || new Date().toISOString()
+    };
+
+    if (!this.state.parentCustomToys) this.state.parentCustomToys = [];
+    const idx = this.state.parentCustomToys.findIndex(t => t.id === toy.id);
+    if (idx >= 0) {
+      this.state.parentCustomToys[idx] = toy;
+    } else {
+      this.state.parentCustomToys.unshift(toy);
+    }
+
+    this.logAction(
+      `Parent crafted 3D Pet Toy: '${toy.name}'`,
+      `Added to Pet Pen playground with ${toy.statRefillLabel}!`
+    );
+
+    Sound.fanfare();
+    confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
+    this.showReward(
+      '🎾 Pet Playground Toy Published!',
+      `"${toy.name}" is now ready in the Pet Pen!\n⚡ Effect: ${toy.statRefillLabel}\n🐾 Tap it in the sanctuary to watch your companion play!`,
+      0,
+      0,
+      toy.image,
+      toy.icon || 'sports_gymnastics'
+    );
+
+    this.saveState(true);
+    this.notify();
+    return toy;
+  }
+
+  deleteCustomAIToy(toyId) {
+    if (!toyId) return false;
+    if (this.state.parentCustomToys) {
+      this.state.parentCustomToys = this.state.parentCustomToys.filter(t => t.id !== toyId);
+    }
+    this.saveState(true);
+    this.notify();
+    return true;
+  }
+
+  getParentCustomBosses() {
+    return this.state.parentCustomBosses || [];
+  }
+
+  publishCustomAIBoss(item) {
+    if (!item || (!item.name && !item.title)) return null;
+    const name = item.name || item.title || 'Custom AR Villain';
+    const boss = {
+      ...item,
+      id: item.id || `ai_boss_${Date.now()}`,
+      name,
+      title: item.title || name,
+      maxHp: Number(item.hp || item.maxHp) || 200,
+      hp: Number(item.hp || item.maxHp) || 200,
+      rewardCoins: Number(item.rewardCoins) || 60,
+      rewardXP: Number(item.rewardXp || item.rewardXP) || 120,
+      rewardSparks: 20,
+      shieldHp: 8,
+      shieldMilestones: [70, 30],
+      shieldName: item.attackName ? `${item.attackName} Barrier` : 'Sugar Shield',
+      attackName: item.attackName || 'Sugar Wave Blast',
+      isParentCrafted: true,
+      isCustomAI: true,
+      createdAt: item.createdAt || new Date().toISOString()
+    };
+
+    if (!this.state.parentCustomBosses) this.state.parentCustomBosses = [];
+    const idx = this.state.parentCustomBosses.findIndex(b => b.id === boss.id);
+    if (idx >= 0) {
+      this.state.parentCustomBosses[idx] = boss;
+    } else {
+      this.state.parentCustomBosses.unshift(boss);
+    }
+
+    // Inject into HYGIENE_BOSSES
+    const bIdx = HYGIENE_BOSSES.findIndex(b => b.id === boss.id);
+    if (bIdx >= 0) {
+      HYGIENE_BOSSES[bIdx] = boss;
+    } else {
+      HYGIENE_BOSSES.unshift(boss);
+    }
+
+    this.logAction(
+      `Parent crafted 3D AR Boss: '${boss.name}'`,
+      `Ready for battle in Toothbrush AR Arena! (HP: ${boss.maxHp}, 🪙 ${boss.rewardCoins} Tokens)`
+    );
+
+    Sound.fanfare();
+    confetti({ particleCount: 70, spread: 80, origin: { y: 0.6 } });
+    this.showReward(
+      '👾 AR Quest Boss Published!',
+      `"${boss.name}" has invaded the AR Battle Arena!\n⚔️ Boss HP: ${boss.maxHp}\n🪙 Bounty: ${boss.rewardCoins} Tokens & ${boss.rewardXP} XP!\n🦷 Grab your toothbrush and defeat the villain!`,
+      0,
+      0,
+      boss.image,
+      boss.icon || 'coronavirus'
+    );
+
+    this.saveState(true);
+    this.notify();
+    return boss;
+  }
+
+  deleteCustomAIBoss(bossId) {
+    if (!bossId) return false;
+    if (this.state.parentCustomBosses) {
+      this.state.parentCustomBosses = this.state.parentCustomBosses.filter(b => b.id !== bossId);
+    }
+    const bIdx = HYGIENE_BOSSES.findIndex(b => b.id === bossId);
+    if (bIdx >= 0) {
+      HYGIENE_BOSSES.splice(bIdx, 1);
+    }
+    this.saveState(true);
+    this.notify();
+    return true;
+  }
+
+  interactWithHQFurniture(furnitureId, petId = null) {
+    const furniture = (this.state.parentCustomFurniture || []).find(f => f.id === furnitureId)
+      || FURNITURE_ITEMS.find(f => f.id === furnitureId);
+    if (!furniture) return null;
+
+    const pId = petId || this.getActivePet()?.id || this.state.selectedHero?.activePetId || 1;
+    const pet = this.getActivePet() || { name: 'Rex' };
+
+    const voiceLine = furniture.petVoiceLine || furniture.companionReaction || `${pet.name} loves resting on the ${furniture.name}!`;
+    speakCompanion(voiceLine);
+    Sound.sparkle();
+    confetti({ particleCount: 25, spread: 45, origin: { y: 0.6 } });
+
+    // Comfort XP award and Pet Energy Refill
+    const comfortBoost = furniture.comfortBuffPercent || furniture.comfort || 15;
+    const comfortXp = Math.round(15 * (1 + comfortBoost / 100));
+    this.addXP(comfortXp);
+
+    if (!this.state.petStatsMap) this.state.petStatsMap = {};
+    if (!this.state.petStatsMap[pId]) {
+      this.state.petStatsMap[pId] = { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
+    }
+    const energyRefill = Math.min(100, (this.state.petStatsMap[pId].energy || 60) + Math.max(10, Math.round(comfortBoost * 0.8)));
+    this.state.petStatsMap[pId].energy = energyRefill;
+
+    this.logAction(
+      `${pet.name} used ${furniture.name} in Hero HQ 🛋️`,
+      `Comfort bonus: +${comfortXp} XP! "${voiceLine}"`
+    );
+
+    this.saveState(true);
+    this.notify();
+    return { success: true, furniture, petId: pId, comfortXp, voiceLine };
+  }
+
+  playWithPenToy(toyId, petId = null) {
+    const toy = (this.state.parentCustomToys || []).find(t => t.id === toyId);
+    if (!toy) return null;
+
+    const pId = petId || this.getActivePet()?.id || this.state.selectedHero?.activePetId || 1;
+    const pet = this.getActivePet() || { name: 'Rex' };
+
+    if (!this.state.petStatsMap) this.state.petStatsMap = {};
+    if (!this.state.petStatsMap[pId]) {
+      this.state.petStatsMap[pId] = { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
+    }
+
+    const statType = toy.statRefillType || 'joy';
+    const amount = toy.statRefillAmount || 25;
+    const currentVal = this.state.petStatsMap[pId][statType] || 70;
+    this.state.petStatsMap[pId][statType] = Math.min(100, currentVal + amount);
+
+    const voiceLine = toy.petVoiceLine || toy.companionReaction || `Wheee! Playing with the ${toy.name} is so much fun!`;
+    speakCompanion(voiceLine);
+    Sound.sparkle();
+    Sound.coin();
+    confetti({ particleCount: 30, spread: 50, origin: { y: 0.6 } });
+
+    this.addXP(10);
+    this.logAction(
+      `${pet.name} played with ${toy.name} in Sanctuary 🎾`,
+      `+${amount}% ${statType.toUpperCase()}! "${voiceLine}"`
+    );
+
+    this.saveState(true);
+    this.notify();
+    return { success: true, toy, petId: pId, refillStat: statType, refillAmount: amount, voiceLine, cheer: voiceLine };
   }
 
   getSavedHeroCards() {

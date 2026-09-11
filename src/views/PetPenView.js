@@ -433,6 +433,44 @@ export function renderPetPenView() {
 
       </section>
 
+      <!-- PARENT-CRAFTED INTERACTIVE TOY CHEST (Living Pet Play) -->
+      ${(() => {
+        const customToys = store.getParentCustomToys ? store.getParentCustomToys() : [];
+        if (customToys.length === 0) return '';
+        return `
+        <section class="bg-gradient-to-r from-purple-950/80 via-slate-900/90 to-purple-950/80 rounded-3xl p-4 border-2 border-purple-400/40 shadow-xl flex flex-col gap-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-400/30 flex items-center justify-center text-lg">🎾</span>
+              <div>
+                <h3 class="font-headline text-xs sm:text-sm font-black text-purple-300 flex items-center gap-1.5">
+                  Parent-Crafted Toy Chest (${customToys.length})
+                </h3>
+                <p class="text-[10px] text-slate-300">Tap any toy to play with ${activePet?.name || 'your companion'} and boost stats!</p>
+              </div>
+            </div>
+            <span class="text-[10px] font-bold text-amber-300 px-2 py-0.5 rounded-full bg-amber-400/10 border border-amber-400/30">Interactive 3D</span>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            ${customToys.map(toy => `
+              <button 
+                class="pen-custom-toy-btn bg-slate-800/80 hover:bg-slate-700 border-2 border-purple-400/30 hover:border-purple-400 rounded-2xl p-3 flex flex-col items-center text-center gap-1.5 transition-all active:scale-95 group shadow-md"
+                data-toy-id="${toy.id}"
+                title="${toy.desc || toy.name}"
+              >
+                <div class="text-3xl group-hover:scale-115 transition-transform drop-shadow">${toy.emoji || '🎪'}</div>
+                <span class="font-headline text-xs font-black text-white truncate max-w-full">${toy.name}</span>
+                <span class="text-[9px] font-black text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded-full border border-purple-400/30">
+                  +${toy.statRefillAmount || 30} ${(toy.statRefillTarget || 'Joy').toUpperCase()}
+                </span>
+              </button>
+            `).join('')}
+          </div>
+        </section>
+        `;
+      })()}
+
       <!-- Floating Hearts Layer for Pet & Hug animations -->
       <div id="pen-hearts-layer" class="fixed inset-0 pointer-events-none z-40 overflow-hidden"></div>
 
@@ -761,6 +799,18 @@ export function attachPetPenListeners() {
       store.openPetLockerModal(store.getActivePet().id);
     });
   }
+
+  // Parent-Crafted Custom Toy Buttons
+  document.querySelectorAll('.pen-custom-toy-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const toyId = btn.getAttribute('data-toy-id');
+      if (toyId && store.playWithPenToy) {
+        const activePetId = store.getActivePet()?.id || 1;
+        store.playWithPenToy(toyId, activePetId);
+        triggerPetHeartShower();
+      }
+    });
+  });
 
   // Roaming Pet Cards (Opens Radial Ring)
   const petCards = document.querySelectorAll('[data-open-radial-pet]');
