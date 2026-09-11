@@ -1,4 +1,4 @@
-import { doc, setDoc, onSnapshot, updateDoc } from "firebase/firestore";
+import { doc, setDoc, onSnapshot, updateDoc, deleteField } from "firebase/firestore";
 import { db, isFirebaseAvailable } from "../config/firebase.js";
 import { store, STORAGE_KEY } from "../state/store.js";
 import { persistentLink } from "./persistentLinkService.js";
@@ -27,6 +27,7 @@ class FirestoreSyncService {
     this.sessionId = 'sess_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now().toString(36);
     this.debounceTimer = null;
     this.lastCloudTimestamp = null;
+    this.lastKnownDevices = {};
     this.initialSyncCallbacks = [];
 
     if (typeof window !== 'undefined') {
@@ -81,6 +82,10 @@ class FirestoreSyncService {
 
         const cloudData = snapshot.data();
         if (!cloudData) return;
+
+        if (cloudData.devices && typeof cloudData.devices === 'object') {
+          this.lastKnownDevices = { ...(this.lastKnownDevices || {}), ...cloudData.devices };
+        }
 
         this.lastCloudTimestamp = cloudData.updatedAt || new Date().toISOString();
 
@@ -228,6 +233,7 @@ class FirestoreSyncService {
             ...h,
             coins: Math.max(0, Number(h.coins) || 0),
             points: Math.max(0, Number(h.points) || 0),
+            tokens: Math.max(0, Number(h.tokens ?? h.coins) || 0),
             level: h.level || 1,
             xp: h.xp || 0,
             xpNext: h.xpNext || 100,
@@ -251,11 +257,23 @@ class FirestoreSyncService {
         }
       });
 
+      // Physically remove deleted heroes from Firestore heroesMap
+      (state.deletedHeroIds || []).forEach((deletedId) => {
+        if (deletedId) {
+          try {
+            heroesMap[deletedId] = deleteField();
+          } catch {
+            // fallback
+          }
+        }
+      });
+
       await setDoc(docRef, {
         householdName: state.household?.name || 'The Hero Family',
         syncCode: householdCode,
         heroes: state.heroes || [],
         heroesMap: heroesMap,
+        deletedHeroIds: state.deletedHeroIds || [],
         selectedHero: state.selectedHero || null,
         pendingApprovals: state.pendingApprovals || [],
         taskCompletionLogs: state.taskCompletionLogs || [],
@@ -267,6 +285,8 @@ class FirestoreSyncService {
         pets: state.pets || [],
         taskForest: state.taskForest || [],
         habitIslands: state.habitIslands || [],
+        aiQuests: state.aiQuests || [],
+        recentlyUnlocked: state.recentlyUnlocked || [],
         realLifeRewards: state.realLifeRewards || [],
         digitalGear: state.digitalGear || [],
         inventory: state.inventory || [],
@@ -281,6 +301,7 @@ class FirestoreSyncService {
         lastWriterSessionId: this.sessionId,
         lastWriterDeviceId: this.deviceId,
         devices: {
+          ...(this.lastKnownDevices || {}),
           [this.deviceId]: {
             lastSeen: timestamp,
             name: 'Hero Device'

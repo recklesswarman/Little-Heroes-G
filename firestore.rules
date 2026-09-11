@@ -35,21 +35,26 @@ service cloud.firestore {
         && (!('devices' in data) || (data.devices is map && data.devices.size() <= 25))
         && (!('heroes' in data) || (data.heroes is list && data.heroes.size() <= 20))
         && (!('heroesMap' in data) || (data.heroesMap is map && data.heroesMap.size() <= 20))
+        && (!('deletedHeroIds' in data) || (data.deletedHeroIds is list && data.deletedHeroIds.size() <= 50))
         && (!('parents' in data) || (data.parents is list && data.parents.size() <= 15))
         && (!('parentUids' in data) || (data.parentUids is list && data.parentUids.size() <= 15))
         && (!('parentEmails' in data) || (data.parentEmails is list && data.parentEmails.size() <= 15))
         && (!('pendingApprovals' in data) || (data.pendingApprovals is list && data.pendingApprovals.size() <= 100))
         && (!('taskCompletionLogs' in data) || (data.taskCompletionLogs is list && data.taskCompletionLogs.size() <= 500))
+        && (!('taskForest' in data) || (data.taskForest is list && data.taskForest.size() <= 50))
+        && (!('habitIslands' in data) || (data.habitIslands is list && data.habitIslands.size() <= 50))
+        && (!('aiQuests' in data) || (data.aiQuests is list && data.aiQuests.size() <= 50))
+        && (!('recentlyUnlocked' in data) || (data.recentlyUnlocked is list && data.recentlyUnlocked.size() <= 50))
         && (!('parentSettings' in data) || (data.parentSettings is map && data.parentSettings.size() <= 30));
     }
 
     // Strict validation for kid/non-parent updates:
-    // Kids CANNOT touch parentSettings, parent admin lists, approve tasks, or manipulate point balances
+    // Kids CANNOT touch parentSettings, parent admin lists, delete kid profiles, approve tasks, or manipulate point balances
     function isAllowedKidChoreUpdate(existingData, newData) {
       let affected = newData.diff(existingData).affectedKeys();
       return isValidHouseholdPayload()
-        // 1. Kids CANNOT modify parental controls or parent admin user lists
-        && !affected.hasAny(['parentSettings', 'parents', 'parentUids', 'parentEmails'])
+        // 1. Kids CANNOT modify parental controls, parent admin user lists, or delete profiles
+        && !affected.hasAny(['parentSettings', 'parents', 'parentUids', 'parentEmails', 'deletedHeroIds'])
         // 2. Kids CANNOT dismiss, delete, or mark pending approvals as approved
         && (!('pendingApprovals' in existingData) || !('pendingApprovals' in newData) || newData.pendingApprovals.size() >= existingData.pendingApprovals.size())
         // 3. Kids CANNOT delete completion logs or mark logs as approved

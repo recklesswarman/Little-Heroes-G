@@ -380,7 +380,13 @@ const defaultState = {
     geminiApiKey: '',
     voiceName: 'Puck',
     autoListenInQuests: true
-  }
+  },
+
+  // Deleted kid profiles tracked to prevent resurrection across concurrent devices
+  deletedHeroIds: [],
+
+  // Active connected devices in household
+  devices: {}
 };
 
 class Store {
@@ -536,6 +542,7 @@ class Store {
       xpNext: sHero.xpNext || 100,
       coins: Math.max(0, Number(sHero.coins) || 0),
       points: Math.max(0, Number(sHero.points) || 0),
+      tokens: Math.max(0, Number(sHero.tokens ?? sHero.coins) || 0),
       activePetId: sHero.activePetId || null,
       unlockedPetIds: [...(sHero.unlockedPetIds || [])],
       hasChosenStarterPet: sHero.hasChosenStarterPet ?? ((sHero.unlockedPetIds || []).length > 0),
@@ -547,6 +554,8 @@ class Store {
       gameDifficulty: sHero.gameDifficulty || 'medium',
       equippedProfileTheme: sHero.equippedProfileTheme || 'theme_dragon_emerald',
       unlockedThemes: [...(sHero.unlockedThemes || ['theme_dragon_emerald'])],
+      equippedGear: { ...(sHero.equippedGear || {}) },
+      inventory: [...(sHero.inventory || [])],
       lastUpdated: Date.now()
     };
 
@@ -2183,6 +2192,7 @@ class Store {
       level: Number(level) || 1,
       points: Number(points) || 0,
       coins: Number(coins) || 0,
+      tokens: Number(coins) || 0,
       activePetId: null,
       unlockedPetIds: [],
       hasChosenStarterPet: false,
@@ -2192,8 +2202,13 @@ class Store {
       completionRate: 100,
       gameDifficulty: gameDifficulty || 'medium',
       equippedProfileTheme: 'theme_dragon_emerald',
-      unlockedThemes: ['theme_dragon_emerald']
+      unlockedThemes: ['theme_dragon_emerald'],
+      equippedGear: {},
+      inventory: []
     };
+    if (this.state.deletedHeroIds) {
+      this.state.deletedHeroIds = this.state.deletedHeroIds.filter((id) => id !== newHero.id);
+    }
     this.state.heroes.push(newHero);
     this.switchHero(newHero.id);
     return newHero;
@@ -2208,7 +2223,10 @@ class Store {
     if (updatedData.avatar !== undefined) hero.avatar = updatedData.avatar;
     if (updatedData.gameDifficulty !== undefined) hero.gameDifficulty = updatedData.gameDifficulty;
     if (updatedData.level !== undefined) hero.level = Math.max(1, Number(updatedData.level));
-    if (updatedData.coins !== undefined) hero.coins = Math.max(0, Number(updatedData.coins));
+    if (updatedData.coins !== undefined) {
+      hero.coins = Math.max(0, Number(updatedData.coins));
+      hero.tokens = hero.coins;
+    }
     if (updatedData.points !== undefined) hero.points = Math.max(0, Number(updatedData.points));
 
     // If currently active hero was edited, synchronize selectedHero
@@ -2219,6 +2237,7 @@ class Store {
       this.state.selectedHero.gameDifficulty = hero.gameDifficulty;
       this.state.selectedHero.level = hero.level;
       this.state.selectedHero.coins = hero.coins;
+      this.state.selectedHero.tokens = hero.coins;
       this.state.selectedHero.points = hero.points;
     }
 
@@ -2228,6 +2247,13 @@ class Store {
 
   // Delete a Kid Profile
   deleteHero(heroId) {
+    if (!this.state.deletedHeroIds) this.state.deletedHeroIds = [];
+    if (!this.state.deletedHeroIds.includes(heroId)) {
+      this.state.deletedHeroIds.push(heroId);
+    }
+    if (this.state.pendingApprovals) {
+      this.state.pendingApprovals = this.state.pendingApprovals.filter((p) => p.kidId !== heroId);
+    }
     this.state.heroes = this.state.heroes.filter((h) => h.id !== heroId);
     if (this.state.heroes.length === 0) {
       // Ensure there's always at least 1 hero
@@ -2239,6 +2265,7 @@ class Store {
         level: 1,
         points: 0,
         coins: 0,
+        tokens: 0,
         activePetId: null,
         unlockedPetIds: [],
         hasChosenStarterPet: false,
@@ -2248,7 +2275,9 @@ class Store {
         completionRate: 100,
         gameDifficulty: 'medium',
         equippedProfileTheme: 'theme_dragon_emerald',
-        unlockedThemes: ['theme_dragon_emerald']
+        unlockedThemes: ['theme_dragon_emerald'],
+        equippedGear: {},
+        inventory: []
       };
       this.state.heroes.push(freshHero);
       this.switchHero(freshHero.id);
@@ -2528,15 +2557,32 @@ class Store {
     }
     this.state.household.lastSync = 'Synced Just Now';
 
-    // 2. Heroes & Kid Profiles (Smart Merge from heroesMap or heroes array)
+    // 2. Deleted Heroes Tracking (Prevents resurrecting deleted kids across devices)
+    if (cloudData.deletedHeroIds && Array.isArray(cloudData.deletedHeroIds)) {
+      this.state.deletedHeroIds = Array.from(new Set([
+        ...(this.state.deletedHeroIds || []),
+        ...cloudData.deletedHeroIds
+      ]));
+    }
+    const deletedHeroIdsSet = new Set(this.state.deletedHeroIds || []);
+
+    // 3. Heroes & Kid Profiles (Smart Merge from heroesMap AND heroes array)
     let incomingHeroes = [];
     if (cloudData.heroesMap && typeof cloudData.heroesMap === 'object') {
-      incomingHeroes = Object.values(cloudData.heroesMap);
-    } else if (Array.isArray(cloudData.heroes) && cloudData.heroes.length > 0) {
-      incomingHeroes = cloudData.heroes;
+      incomingHeroes = Object.values(cloudData.heroesMap).filter(Boolean);
+    }
+    if (Array.isArray(cloudData.heroes)) {
+      cloudData.heroes.forEach((h) => {
+        if (h && h.id && !incomingHeroes.some((existing) => existing && existing.id === h.id)) {
+          incomingHeroes.push(h);
+        }
+      });
     }
 
     if (incomingHeroes.length > 0) {
+      // Filter out any hero that was deleted
+      incomingHeroes = incomingHeroes.filter((h) => h && h.id && !deletedHeroIdsSet.has(h.id));
+
       // Merge with local heroes so no kids or progress are dropped
       const mergedHeroes = incomingHeroes.map((cloudH) => {
         const localH = (this.state.heroes || []).find((h) => h.id === cloudH.id);
@@ -2584,18 +2630,48 @@ class Store {
         };
       });
 
-      // Also preserve any local heroes that aren't yet in incomingHeroes
+      // Also preserve any local heroes that aren't yet in incomingHeroes AND not deleted
       (this.state.heroes || []).forEach((localH) => {
-        if (localH && localH.id && !mergedHeroes.some((h) => h.id === localH.id)) {
+        if (localH && localH.id && !deletedHeroIdsSet.has(localH.id) && !mergedHeroes.some((h) => h.id === localH.id)) {
           mergedHeroes.push(localH);
         }
       });
 
+      if (mergedHeroes.length === 0) {
+        // Guarantee at least 1 hero
+        const freshHero = {
+          id: 'hero_' + Date.now(),
+          name: 'Little Hero',
+          role: 'Brave Adventurer',
+          avatar: KID_AVATARS[0]?.url || defaultState.selectedHero.avatar,
+          level: 1,
+          points: 0,
+          coins: 0,
+          tokens: 0,
+          activePetId: null,
+          unlockedPetIds: [],
+          hasChosenStarterPet: false,
+          habitatSlots: 1,
+          petStageMap: {},
+          streak: 1,
+          completionRate: 100,
+          gameDifficulty: 'medium',
+          equippedProfileTheme: 'theme_dragon_emerald',
+          unlockedThemes: ['theme_dragon_emerald'],
+          equippedGear: {},
+          inventory: []
+        };
+        mergedHeroes.push(freshHero);
+      }
+
       this.state.heroes = mergedHeroes;
 
-      // Update active selectedHero with matching merged data
+      // Update active selectedHero with matching merged data (preserve active kid on this device)
       const currentId = this.state.selectedHero?.id;
-      const matchedHero = this.state.heroes.find((h) => h.id === currentId) || this.state.heroes[0];
+      let matchedHero = this.state.heroes.find((h) => h.id === currentId);
+      if (!matchedHero) {
+        matchedHero = this.state.heroes[0];
+      }
       if (matchedHero) {
         this.state.selectedHero = {
           ...defaultState.selectedHero,
@@ -2604,7 +2680,7 @@ class Store {
       }
     }
 
-    // 3. Pet Stats & Evolution Maps
+    // 4. Pet Stats & Evolution Maps
     if (cloudData.petStatsMap) {
       this.state.petStatsMap = { ...this.state.petStatsMap, ...cloudData.petStatsMap };
     }
@@ -2627,16 +2703,15 @@ class Store {
       this.state.pets = cloudData.pets;
     }
 
-    // 4. Approvals, Completion Logs, Chores, Habits, Settings, Inventory
-    if (cloudData.pendingApprovals !== undefined) {
-      this.state.pendingApprovals = Array.isArray(cloudData.pendingApprovals) ? cloudData.pendingApprovals : [];
+    // 5. Autonomous Micro-Quests (AI Spark) & Badges/Trophies
+    if (cloudData.aiQuests && Array.isArray(cloudData.aiQuests)) {
+      this.state.aiQuests = cloudData.aiQuests;
     }
-    if (cloudData.taskCompletionLogs && Array.isArray(cloudData.taskCompletionLogs)) {
-      this.state.taskCompletionLogs = cloudData.taskCompletionLogs;
+    if (cloudData.recentlyUnlocked && Array.isArray(cloudData.recentlyUnlocked)) {
+      this.state.recentlyUnlocked = cloudData.recentlyUnlocked;
     }
-    if (cloudData.taskLedgerLogs && Array.isArray(cloudData.taskLedgerLogs)) {
-      this.state.taskLedgerLogs = cloudData.taskLedgerLogs;
-    }
+
+    // 6. Chores, Habits, Rewards, Inventory, Rex Guardrails & Progress
     if (cloudData.taskForest && Array.isArray(cloudData.taskForest)) {
       this.state.taskForest = cloudData.taskForest;
     }
@@ -2676,10 +2751,61 @@ class Store {
       this.state.gameProgress = { ...(this.state.gameProgress || {}), ...cloudData.gameProgress };
     }
 
-    // 5. Linked Devices Count
+    // 7. Smart Merge Completion & Ledger Logs (Prevents dropped concurrent logs across devices)
+    if (cloudData.taskCompletionLogs && Array.isArray(cloudData.taskCompletionLogs)) {
+      const logMap = new Map();
+      (this.state.taskCompletionLogs || []).forEach((log) => {
+        if (log && log.id) logMap.set(log.id, log);
+      });
+      cloudData.taskCompletionLogs.forEach((log) => {
+        if (log && log.id) {
+          const existing = logMap.get(log.id);
+          logMap.set(log.id, { ...(existing || {}), ...log });
+        }
+      });
+      this.state.taskCompletionLogs = Array.from(logMap.values())
+        .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+        .slice(0, 300);
+    }
+    if (cloudData.taskLedgerLogs && Array.isArray(cloudData.taskLedgerLogs)) {
+      const ledgerMap = new Map();
+      (this.state.taskLedgerLogs || []).forEach((log) => {
+        if (log && log.id) ledgerMap.set(log.id, log);
+      });
+      cloudData.taskLedgerLogs.forEach((log) => {
+        if (log && log.id) {
+          const existing = ledgerMap.get(log.id);
+          ledgerMap.set(log.id, { ...(existing || {}), ...log });
+        }
+      });
+      this.state.taskLedgerLogs = Array.from(ledgerMap.values())
+        .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+        .slice(0, 300);
+    }
+
+    // 8. Approvals Queue (Authoritative Cloud with In-Flight Local Preservation)
+    if (cloudData.pendingApprovals !== undefined && Array.isArray(cloudData.pendingApprovals)) {
+      const resolvedLogIds = new Set(
+        (this.state.taskCompletionLogs || [])
+          .filter((l) => l.status === 'approved' || l.status === 'rejected')
+          .map((l) => l.approvalRequestId || l.id)
+      );
+      const unconfirmedLocal = (this.state.pendingApprovals || []).filter((localReq) => {
+        if (!localReq || !localReq.id) return false;
+        if (resolvedLogIds.has(localReq.id)) return false;
+        const inCloud = cloudData.pendingApprovals.some((c) => c.id === localReq.id);
+        if (inCloud) return false;
+        const ageMs = localReq.timestamp ? (Date.now() - new Date(localReq.timestamp).getTime()) : 0;
+        return ageMs > 0 && ageMs < 45000;
+      });
+      this.state.pendingApprovals = [...cloudData.pendingApprovals, ...unconfirmedLocal];
+    }
+
+    // 9. Linked Devices Presence Tracking
     if (cloudData.devices && typeof cloudData.devices === 'object') {
+      this.state.devices = { ...(this.state.devices || {}), ...cloudData.devices };
       const now = Date.now();
-      const activeDevs = Object.entries(cloudData.devices).filter(([, dev]) => {
+      const activeDevs = Object.entries(this.state.devices).filter(([, dev]) => {
         if (!dev || !dev.lastSeen) return true;
         return now - new Date(dev.lastSeen).getTime() < 86400000 * 3;
       });
