@@ -1,6 +1,6 @@
 import { Sound } from '../audio/sfx.js';
 import confetti from 'canvas-confetti';
-import { PETS_DATABASE } from '../data/petsData.js';
+import { PETS_DATABASE, getPetArchetype, getPetBondBonus, SANCTUARY_TREATS } from '../data/petsData.js';
 import { ADVENTURE_GAMES } from '../data/learningGamesData.js';
 import { MOVEMENT_ROUTINES, getMovementRoutine } from '../data/movementRoutinesData.js';
 import { PROFILE_THEMES } from '../data/profileThemesData.js';
@@ -47,6 +47,7 @@ const defaultState = {
   parentCustomFurniture: [],
   parentCustomToys: [],
   parentCustomBosses: [],
+  selectedBossId: 'sugar_bandit',
   pendingGiftCrates: [],
   pendingBounties: [],
   activeUnboxingCrateId: null,
@@ -94,6 +95,27 @@ const defaultState = {
     victoryReward: null,
     bossesDefeated: [],
     showPipCam: false
+  },
+
+  // 3D Living Pet Sanctuary & Playpark Overhaul
+  petSanctuary: {
+    activeDrawer: null, // null | 'feed' | 'bath' | 'wardrobe' | 'evolution' | 'roster' | 'egg'
+    petBondMap: {
+      '1': { level: 3, xp: 180, pearlyGleamUntil: 0 },
+      '2': { level: 4, xp: 240, pearlyGleamUntil: 0 },
+      'rex': { level: 4, xp: 240, pearlyGleamUntil: 0 },
+      'sparky': { level: 3, xp: 180, pearlyGleamUntil: 0 }
+    },
+    petNeedsMap: {
+      '1': { hunger: 85, hygiene: 80, joy: 90, energy: 90 },
+      '2': { hunger: 90, hygiene: 85, joy: 95, energy: 90 },
+      'rex': { hunger: 90, hygiene: 85, joy: 95, energy: 90 },
+      'sparky': { hunger: 85, hygiene: 80, joy: 90, energy: 90 }
+    },
+    unhatchedEggs: [],
+    hatchingEggModal: null,
+    activeBathLather: 0,
+    activePicnicSnack: null
   },
 
   // Household Link Architecture & Parent User Administration
@@ -1636,7 +1658,9 @@ class Store {
 
   // TOOTHBRUSH AR BATTLE COMPLETION 2.0
   completeToothbrushBattle(bossId = 'sugar_bandit', durationSec = 120, avgCadence = 85) {
-    const boss = getHygieneBoss(bossId);
+    const parentCustomBosses = this.state.parentCustomBosses || [];
+    const customMatch = parentCustomBosses.find(b => b.id === bossId);
+    const boss = customMatch || getHygieneBoss(bossId) || HYGIENE_BOSSES[0];
     const currentHero = this.state.selectedHero;
     const heroId = currentHero?.id || 'hero_1';
     const nowIso = new Date().toISOString();
@@ -1656,40 +1680,51 @@ class Store {
     const xpBonus = petBuffs.xp_boost > 0 ? Math.ceil(baseXp * (petBuffs.xp_boost / 100)) : 0;
     const xpEarned = baseXp + xpBonus;
 
-    // 1. Award Currency and Hero XP
-    currentHero.coins = (currentHero.coins || 0) + coinsEarned;
-    this.addXP(xpEarned);
+    // Laser Toothbrush Shop Gear Buff (+30% boost)
+    const heroGear = currentHero.equippedGear || {};
+    const hasLaserToothbrush = (Array.isArray(heroGear) && heroGear.includes('laser_toothbrush')) ||
+                               (typeof heroGear === 'object' && Object.values(heroGear).includes('laser_toothbrush')) ||
+                               (heroGear.weapon === 'laser_toothbrush') ||
+                               (Array.isArray(currentHero.inventory) && currentHero.inventory.includes('laser_toothbrush')) ||
+                               (Array.isArray(this.state.inventory) && this.state.inventory.includes('laser_toothbrush'));
+    const laserMult = hasLaserToothbrush ? 1.3 : 1.0;
+    const finalCoinsEarned = Math.round(coinsEarned * laserMult);
+    const finalXpEarned = Math.round(xpEarned * laserMult);
 
-    // 2. Active Companion Pet Sparks & Vitality Boost
+    // 1. Award Currency and Hero XP (Tokens credited immediately)
+    currentHero.coins = (currentHero.coins || 0) + finalCoinsEarned;
+    this.addXP(finalXpEarned);
+
+    // 2. Active Companion Pet Sparks & Max 100% Hygiene Boost
     this.addEvolutionSparks(petId, sparksEarned);
     if (!this.state.petStatsMap[petId]) {
       this.state.petStatsMap[petId] = { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
     }
     const pStats = this.state.petStatsMap[petId];
-    pStats.hygiene = Math.min(100, (pStats.hygiene || 70) + 30);
+    pStats.hygiene = 100; // Refill to 100% sparkling clean
     pStats.joy = Math.min(100, (pStats.joy || 80) + 20);
 
-    // 3. Morning / Bedtime Habit Auto-Verification
+    // 3. Morning / Bedtime Habit Auto-Verification (Pending parent sign-off for Gold Points)
     const isMorning = currentHour < 14;
     if (isMorning) {
       this.state.lastBrushedMorning = todayStr;
-      const morningTask = this.state.taskForest.find(t => t.id === 'morning_brush');
+      const morningTask = this.state.taskForest ? this.state.taskForest.find(t => t.id === 'morning_brush') : null;
       if (morningTask) {
         morningTask.completed = true;
-        morningTask.pointsApproved = true;
+        morningTask.pointsApproved = false;
       }
     } else {
       this.state.lastBrushedEvening = todayStr;
-      const eveningTask = this.state.taskForest.find(t => t.id === 'bedtime_brush');
+      const eveningTask = this.state.taskForest ? this.state.taskForest.find(t => t.id === 'bedtime_brush') : null;
       if (eveningTask) {
         eveningTask.completed = true;
-        eveningTask.pointsApproved = true;
+        eveningTask.pointsApproved = false;
       }
     }
-    const habitBrush = this.state.habitIslands.find(h => h.id === 'brush_teeth');
+    const habitBrush = this.state.habitIslands ? this.state.habitIslands.find(h => h.id === 'brush_teeth') : null;
     if (habitBrush) {
       habitBrush.completed = true;
-      habitBrush.pointsApproved = true;
+      habitBrush.pointsApproved = false;
     }
 
     // 4. Plaque Buster Mastery Badges Evaluation
@@ -1757,9 +1792,11 @@ class Store {
       this.state.dentalBattleHistory.pop();
     }
 
-    // 6. Audit Log for Parent Portal Pillar 1 & Pillar 2
+    // 6. Audit Log for Parent Portal Pillar 1 & Pillar 2 (Queued for Parent Verification of Points)
+    const logId = 'brush_log_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+    const approvalReqId = 'task_brush_' + (isMorning ? 'morning_brush' : 'bedtime_brush') + '_' + Date.now();
     const completionLog = {
-      id: 'brush_log_' + Date.now(),
+      id: logId,
       taskId: isMorning ? 'morning_brush' : 'bedtime_brush',
       taskTitle: `Toothbrush AR Battle: Defeated ${boss.name}`,
       zone: 'Hygiene AR Battle',
@@ -1774,12 +1811,14 @@ class Store {
       timestamp: Date.now(),
       dateString: new Date().toLocaleDateString(),
       timeString: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      coinsAwarded: coinsEarned,
+      coinsAwarded: finalCoinsEarned,
       pointsAwarded: 15,
-      xpAwarded: xpEarned,
+      xpAwarded: finalXpEarned,
       sparksAwarded: sparksEarned,
-      status: 'approved',
-      approvedAt: nowIso
+      status: 'pending',
+      approvalRequestId: approvalReqId,
+      approvedAt: null,
+      rejectedAt: null
     };
 
     if (!this.state.taskCompletionLogs) {
@@ -1790,13 +1829,20 @@ class Store {
       this.state.taskCompletionLogs.pop();
     }
 
+    // 7. Unlock 3D Trophy Relic in HQ
+    const trophyRelic = boss.trophyRelicId || 'trophy_sugar_bandit';
+    if (!this.state.recentlyUnlocked) this.state.recentlyUnlocked = [];
+    if (!this.state.recentlyUnlocked.includes(trophyRelic)) {
+      this.state.recentlyUnlocked.push(trophyRelic);
+    }
+
     this.applyChoreTurboBoost(15, 'Toothbrush AR Battle');
     this.logAction(
       `${currentHero.name} defeated ${boss.name} in Toothbrush Battle! 🪥🦷`,
-      `+${coinsEarned} Tokens 🪙, +${xpEarned} XP, +${sparksEarned} Sparks ⚡ for active companion pet, +30 Hygiene!`
+      `+${finalCoinsEarned} Tokens 🪙, +${finalXpEarned} XP, +${sparksEarned} Sparks ⚡ for active companion pet, 100% Hygiene!`
     );
 
-    // 7. Audio & Confetti Celebration
+    // 8. Audio & Confetti Celebration
     Sound.fanfare();
     confetti({
       particleCount: 160,
@@ -1811,9 +1857,9 @@ class Store {
 
     this.showReward(
       `${boss.name.toUpperCase()} DEFEATED! 🏆`,
-      `🪙 +${coinsEarned} Habit Tokens & ⭐ +15 Points auto-awarded!\n⚡ +${sparksEarned} Evolution Sparks & +30% Hygiene for pet!\n🦷 All 4 Oral Quadrants Gleaming White!${badgeMessage}`,
-      coinsEarned,
-      xpEarned,
+      `🪙 +${finalCoinsEarned} Habit Tokens credited!\n⭐ +15 Points submitted for Parent Sign-off!\n⚡ +${sparksEarned} Evolution Sparks & 100% Hygiene for pet!\n🦷 All 4 Oral Quadrants Gleaming White!${badgeMessage}`,
+      finalCoinsEarned,
+      finalXpEarned,
       null,
       'military_tech'
     );
@@ -1822,8 +1868,8 @@ class Store {
     this.notify();
 
     return {
-      coins: coinsEarned,
-      xp: xpEarned,
+      coins: finalCoinsEarned,
+      xp: finalXpEarned,
       sparks: sparksEarned,
       newlyAwardedBadges,
       boss
@@ -2474,11 +2520,15 @@ class Store {
     }
 
     Sound.gearSnap();
-    confetti({
-      particleCount: 25,
-      spread: 45,
-      origin: { y: 0.6 }
-    });
+    try {
+      if (typeof confetti === 'function' && typeof document !== 'undefined' && document.body) {
+        confetti({
+          particleCount: 25,
+          spread: 45,
+          origin: { y: 0.6 }
+        });
+      }
+    } catch (e) {}
     this.saveState(true);
     this.notify();
     return this.state.equippedPetGearMap[id];
@@ -2892,6 +2942,15 @@ class Store {
 
   getParentCustomBosses() {
     return this.state.parentCustomBosses || [];
+  }
+
+  setSelectedBossId(bossId) {
+    this.state.selectedBossId = bossId;
+    this.notify();
+  }
+
+  getSelectedBossId() {
+    return this.state.selectedBossId || 'sugar_bandit';
   }
 
   publishCustomAIBoss(item) {
@@ -5806,6 +5865,321 @@ class Store {
     const col = this.getBossColosseumState();
     col.isVictoryModalOpen = false;
     this.notify();
+  }
+
+  // =========================================================================
+  // 3D PET SANCTUARY & LIVING COMPANION PLAYPARK METHODS
+  // =========================================================================
+
+  getPetSanctuaryState() {
+    if (!this.state.petSanctuary) {
+      this.state.petSanctuary = {
+        activeDrawer: null,
+        petBondMap: {
+          '1': { level: 3, xp: 180, pearlyGleamUntil: 0 },
+          '2': { level: 4, xp: 240, pearlyGleamUntil: 0 },
+          'rex': { level: 4, xp: 240, pearlyGleamUntil: 0 },
+          'sparky': { level: 3, xp: 180, pearlyGleamUntil: 0 }
+        },
+        petNeedsMap: {
+          '1': { hunger: 85, hygiene: 80, joy: 90, energy: 90 },
+          '2': { hunger: 90, hygiene: 85, joy: 95, energy: 90 },
+          'rex': { hunger: 90, hygiene: 85, joy: 95, energy: 90 },
+          'sparky': { hunger: 85, hygiene: 80, joy: 90, energy: 90 }
+        },
+        unhatchedEggs: [],
+        hatchingEggModal: null,
+        activeBathLather: 0,
+        activePicnicSnack: null
+      };
+    }
+    return this.state.petSanctuary;
+  }
+
+  getPetBondState(petId = null) {
+    const sanct = this.getPetSanctuaryState();
+    const pId = String(petId || this.getActivePet()?.id || '2');
+    if (!sanct.petBondMap[pId]) {
+      sanct.petBondMap[pId] = { level: 1, xp: 0, pearlyGleamUntil: 0 };
+    }
+    const bond = sanct.petBondMap[pId];
+    const bonus = getPetBondBonus(bond.level);
+    const isPearly = (bond.pearlyGleamUntil || 0) > Date.now();
+    return {
+      ...bonus,
+      currentXp: bond.xp,
+      pearlyGleamActive: isPearly
+    };
+  }
+
+  getPearlyGleamStatus(petId = null) {
+    const bond = this.getPetBondState(petId);
+    return bond.pearlyGleamActive;
+  }
+
+  openSanctuaryDrawer(drawerName) {
+    const sanct = this.getPetSanctuaryState();
+    sanct.activeDrawer = drawerName;
+    if (typeof Sound?.tap === 'function') Sound.tap();
+    this.notify();
+  }
+
+  closeSanctuaryDrawer() {
+    const sanct = this.getPetSanctuaryState();
+    sanct.activeDrawer = null;
+    this.notify();
+  }
+
+  feedPetTreat(petId = null, treatId = 'crunchy_apple') {
+    const sanct = this.getPetSanctuaryState();
+    const pId = String(petId || this.getActivePet()?.id || '2');
+    const treat = SANCTUARY_TREATS.find(t => t.id === treatId) || SANCTUARY_TREATS[0];
+
+    // Check token cost
+    const hero = this.state.selectedHero;
+    if (treat.costCoins > 0 && (hero.coins || 0) < treat.costCoins) {
+      if (typeof Sound?.hit === 'function') Sound.hit();
+      return { success: false, message: 'Need more coins for this treat!' };
+    }
+    if (treat.costCoins > 0) {
+      hero.coins = Math.max(0, (hero.coins || 0) - treat.costCoins);
+    }
+
+    // Refill hunger & energy
+    if (!sanct.petNeedsMap[pId]) {
+      sanct.petNeedsMap[pId] = { hunger: 70, hygiene: 80, joy: 80, energy: 80 };
+    }
+    const needs = sanct.petNeedsMap[pId];
+    needs.hunger = Math.min(100, (needs.hunger || 70) + treat.hungerFill);
+    needs.energy = Math.min(100, (needs.energy || 70) + treat.energyFill);
+    needs.joy = Math.min(100, (needs.joy || 70) + treat.joyBoost);
+
+    // Boost Bond XP (+20 XP)
+    if (!sanct.petBondMap[pId]) {
+      sanct.petBondMap[pId] = { level: 1, xp: 0, pearlyGleamUntil: 0 };
+    }
+    const bond = sanct.petBondMap[pId];
+    bond.xp = (bond.xp || 0) + 20;
+    const requiredXp = bond.level * 100;
+    if (bond.xp >= requiredXp && bond.level < 10) {
+      bond.level += 1;
+      bond.xp -= requiredXp;
+      if (typeof Sound?.fanfare === 'function') Sound.fanfare();
+    } else {
+      if (typeof Sound?.bloop === 'function') Sound.bloop();
+    }
+
+    sanct.activePicnicSnack = treat;
+    this.saveState(true);
+    this.notify();
+    return { success: true, treat, needs, bond };
+  }
+
+  bathPetScrub(petId = null, scrubAmount = 15) {
+    const sanct = this.getPetSanctuaryState();
+    const pId = String(petId || this.getActivePet()?.id || '2');
+    if (!sanct.petNeedsMap[pId]) {
+      sanct.petNeedsMap[pId] = { hunger: 70, hygiene: 80, joy: 80, energy: 80 };
+    }
+    const needs = sanct.petNeedsMap[pId];
+    needs.hygiene = Math.min(100, (needs.hygiene || 70) + scrubAmount);
+    needs.joy = Math.min(100, (needs.joy || 70) + 10);
+
+    // Boost Bond XP (+15 XP)
+    if (!sanct.petBondMap[pId]) {
+      sanct.petBondMap[pId] = { level: 1, xp: 0, pearlyGleamUntil: 0 };
+    }
+    const bond = sanct.petBondMap[pId];
+    bond.xp = (bond.xp || 0) + 15;
+    const requiredXp = bond.level * 100;
+    if (bond.xp >= requiredXp && bond.level < 10) {
+      bond.level += 1;
+      bond.xp -= requiredXp;
+      if (typeof Sound?.fanfare === 'function') Sound.fanfare();
+    } else {
+      if (typeof Sound?.sparkle === 'function') Sound.sparkle();
+    }
+
+    sanct.activeBathLather = Math.min(100, (sanct.activeBathLather || 0) + 20);
+    this.saveState(true);
+    this.notify();
+    return { success: true, needs, bond };
+  }
+
+  equipPetForgeGear(petId, slot, gearItem) {
+    const pId = String(petId || this.getActivePet()?.id || '2');
+    if (!this.state.petGear) this.state.petGear = {};
+    if (!this.state.petGear[pId]) this.state.petGear[pId] = {};
+    const item = typeof gearItem === 'string' ? { id: gearItem, name: gearItem } : gearItem;
+    this.state.petGear[pId][slot] = item;
+    
+    // Also sync to equippedPetGearMap for backwards compatibility
+    if (item && item.id) {
+      this.equipPetStudioGear(pId, slot, item.id);
+    }
+    this.saveState(true);
+    this.notify();
+    return this.state.petGear[pId];
+  }
+
+  evolvePetStarlight(petId = null) {
+    const pId = petId || this.getActivePet()?.id || '2';
+    const currentSparks = this.getPetSparks(pId);
+    if (currentSparks < 100) {
+      return { success: false, message: 'Need 100 Evolution Sparks to awaken!' };
+    }
+
+    // Deduct sparks
+    this.deductPetSparks(pId, 100);
+
+    // Advance evolution stage
+    const currentStage = this.state.petStageMap?.[pId] || 1;
+    const nextStage = Math.min(4, currentStage + 1);
+    if (!this.state.petStageMap) this.state.petStageMap = {};
+    this.state.petStageMap[pId] = nextStage;
+    if (this.state.selectedHero?.petStageMap) {
+      this.state.selectedHero.petStageMap[pId] = nextStage;
+    }
+
+    // Celebration
+    try {
+      if (typeof confetti === 'function' && typeof document !== 'undefined' && document.body) {
+        confetti({
+          particleCount: 120,
+          spread: 100,
+          origin: { y: 0.5 },
+          colors: ['#2ecc71', '#00d2d3', '#f39c12', '#ffb961', '#ffffff']
+        });
+      }
+    } catch (e) {}
+
+    if (typeof Sound?.fanfare === 'function') Sound.fanfare();
+
+    this.saveState(true);
+    this.notify();
+    return { success: true, newStage: nextStage };
+  }
+
+  addCustomAIPet(petConfig, deliveryMode = 'egg') {
+    const petId = petConfig.id || ('ai_pet_' + Date.now());
+    const newPet = {
+      id: petId,
+      name: petConfig.name || 'Starfire Companion',
+      title: petConfig.title || 'The AI Guardian',
+      element: petConfig.element || 'Starlight',
+      color: petConfig.primaryColor || '#2ecc71',
+      accentColor: petConfig.accentColor || '#f39c12',
+      archetype: petConfig.archetype || 'dragon',
+      avatar: petConfig.avatar || makePetSvg('🐾', 'pet', petConfig.primaryColor || '#2ecc71'),
+      backstory: petConfig.backstory || 'Born from creative stardust in the Parent Studio.',
+      habitBonus: petConfig.habitBonus || '+25% Coins on Daily Routine',
+      assignedHabit: petConfig.assignedHabit || 'brush_teeth',
+      modelUrl: petConfig.modelUrl || null,
+      splineUrl: petConfig.splineUrl || null,
+      isCustom: true,
+      customVoiceLines: petConfig.customVoiceLines || []
+    };
+
+    if (!this.state.pets) this.state.pets = [];
+    this.state.pets.push(newPet);
+
+    const sanct = this.getPetSanctuaryState();
+    if (deliveryMode === 'egg' || deliveryMode === 'magic_egg') {
+      sanct.unhatchedEggs.push({
+        id: petConfig.id || ('egg_' + Date.now()),
+        petId: newPet.id,
+        petName: newPet.name,
+        petColor: newPet.color,
+        archetype: newPet.archetype,
+        tapsRemaining: 3
+      });
+    } else {
+      // Instant unlock
+      if (!this.state.selectedHero.unlockedPetIds) this.state.selectedHero.unlockedPetIds = [];
+      if (!this.state.selectedHero.unlockedPetIds.includes(newPet.id)) {
+        this.state.selectedHero.unlockedPetIds.push(newPet.id);
+      }
+      this.state.selectedHero.activePetId = newPet.id;
+    }
+
+    this.saveState(true);
+    this.notify();
+    return newPet;
+  }
+
+  hatchMagicEgg(eggId) {
+    const sanct = this.getPetSanctuaryState();
+    const eggIdx = (sanct.unhatchedEggs || []).findIndex(e => e.id === eggId);
+    if (eggIdx === -1) return { success: false };
+
+    const egg = sanct.unhatchedEggs[eggIdx];
+    sanct.unhatchedEggs.splice(eggIdx, 1);
+
+    // Unlock pet for hero
+    if (!this.state.selectedHero.unlockedPetIds) this.state.selectedHero.unlockedPetIds = [];
+    if (!this.state.selectedHero.unlockedPetIds.includes(egg.petId)) {
+      this.state.selectedHero.unlockedPetIds.push(egg.petId);
+    }
+    this.state.selectedHero.activePetId = egg.petId;
+
+    try {
+      if (typeof confetti === 'function' && typeof document !== 'undefined' && document.body) {
+        confetti({
+          particleCount: 150,
+          spread: 120,
+          origin: { y: 0.5 },
+          colors: ['#2ecc71', '#00d2d3', '#f39c12', '#ffb961', '#ffffff']
+        });
+      }
+    } catch (e) {}
+
+    if (typeof Sound?.fanfare === 'function') Sound.fanfare();
+    speakCompanion(`Hooray! ${egg.petName} hatched from the Magic Egg! Welcome to our sanctuary!`);
+
+    this.saveState(true);
+    this.notify();
+    return { success: true, petId: egg.petId, petName: egg.petName };
+  }
+
+  addPetSparks(petId, amount = 15) {
+    return this.addEvolutionSparks(petId, amount);
+  }
+
+  deductPetSparks(petId, amount = 100) {
+    const id = petId || this.state.selectedHero?.activePetId || 1;
+    if (!this.state.petSparkMap) this.state.petSparkMap = {};
+    const current = this.getPetSparks(id);
+    const next = Math.max(0, current - amount);
+    this.state.petSparkMap[id] = next;
+    return next;
+  }
+
+  syncHabitPetCare(habitId, type = 'habit', petId = null) {
+    const activePet = this.getActivePet();
+    const pId = String(petId || activePet?.id || '2');
+    const sanct = this.getPetSanctuaryState();
+
+    // 1. Award +15 Evolution Sparks
+    this.addPetSparks(pId, 15);
+
+    // 2. Award +35 Bond XP
+    if (!sanct.petBondMap[pId]) {
+      sanct.petBondMap[pId] = { level: 1, xp: 0, pearlyGleamUntil: 0 };
+    }
+    const bond = sanct.petBondMap[pId];
+    bond.xp = (bond.xp || 0) + 35;
+    const requiredXp = bond.level * 100;
+    if (bond.xp >= requiredXp && bond.level < 10) {
+      bond.level += 1;
+      bond.xp -= requiredXp;
+    }
+
+    // 3. Activate 24h Pearly Gleam
+    bond.pearlyGleamUntil = Date.now() + (24 * 60 * 60 * 1000);
+
+    this.saveState(true);
+    this.notify();
+    return { sparksAwarded: 15, bondXpAwarded: 35, pearlyGleam: true };
   }
 
   resetAllProgress() {

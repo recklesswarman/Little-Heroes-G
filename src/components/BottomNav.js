@@ -8,7 +8,7 @@ export function renderBottomNav() {
   const navItems = [
     { id: 'dashboard', label: 'Quests', icon: 'swords', color: 'primary' },
     { id: 'quest_map', label: 'Map', icon: 'map', color: 'secondary' },
-    { id: 'pet_pen', label: 'Pet Pen', icon: 'pets', color: 'tertiary' },
+    { id: 'pet_sanctuary', label: 'Sanctuary', icon: 'pets', color: 'tertiary' },
     { id: 'shop', label: 'Shop', icon: 'storefront', color: 'secondary' },
     { id: 'dance_party', label: 'Arcade', icon: 'sports_esports', color: 'primary' }
   ];
@@ -21,7 +21,7 @@ export function renderBottomNav() {
             const isTabActive =
               activeView === item.id ||
               (item.id === 'quest_map' && ['quest_map', 'pet-expedition', 'pet_expedition'].includes(activeView)) ||
-              (item.id === 'pet_pen' && ['pet_roster', 'pet_detail', 'pet_bath', 'pet_locker', 'evolution', 'adventures_map'].includes(activeView)) ||
+              (['pet_sanctuary', 'pet_pen'].includes(item.id) && ['pet_sanctuary', 'pet_pen', 'pet_roster', 'pet_detail', 'pet_bath', 'pet_locker', 'evolution', 'adventures_map'].includes(activeView)) ||
               (item.id === 'dashboard' && ['profile', 'ar_battle', 'hero_hq', 'hero_forge', 'hero-forge'].includes(activeView));
 
             return `

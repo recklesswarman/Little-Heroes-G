@@ -479,3 +479,203 @@ export const PETS_DATABASE = [
     ]
   }
 ];
+
+// =========================================================================
+// 3D PET ARCHETYPES & SANCTUARY REWARDS
+// =========================================================================
+
+export const PET_ARCHETYPES = {
+  dino: {
+    id: 'dino',
+    name: 'Prehistoric Dino',
+    emoji: '🦖',
+    baseBodyColor: '#2ecc71',
+    bellyColor: '#6bfe9c',
+    hasTail: true,
+    hasSpines: true,
+    habitBonus: '+15% Chore Streak',
+    description: 'Chunky bipedal toy reptile with back spines, tail sweep, and stomping strength.'
+  },
+  dragon: {
+    id: 'dragon',
+    name: 'Azure Dragon',
+    emoji: '🐉',
+    baseBodyColor: '#00d2d3',
+    bellyColor: '#cce5ff',
+    hasWings: true,
+    hasHorns: true,
+    habitBonus: '+25% Expedition Fuel',
+    description: 'Winged sky serpent with aerodynamic horns, soaring loops, and spark sneeze.'
+  },
+  beast: {
+    id: 'beast',
+    name: 'Woodland Beast',
+    emoji: '🐻',
+    baseBodyColor: '#f39c12',
+    bellyColor: '#ffddb9',
+    hasPaws: true,
+    hasEars: true,
+    habitBonus: '+20% Treat Joy',
+    description: 'Cozy quadrupedal bear/hound with rounded ears, wagging tail, and snuggly hugs.'
+  },
+  aquatic: {
+    id: 'aquatic',
+    name: 'Tidal Aquatic',
+    emoji: '🐢',
+    baseBodyColor: '#008889',
+    bellyColor: '#48dbfb',
+    hasShell: true,
+    hasFlippers: true,
+    habitBonus: '+20% Bath Duration',
+    description: 'Armored sea swimmer with crystal shell plating, water fin flippers, and bubble rings.'
+  },
+  robot: {
+    id: 'robot',
+    name: 'Cyber Mecha',
+    emoji: '🤖',
+    baseBodyColor: '#121d26',
+    bellyColor: '#2b3640',
+    hasVisor: true,
+    hasAntenna: true,
+    habitBonus: '+30% Colosseum Assist',
+    description: 'High-tech robotic companion with LED visor, antenna pulse, and jet thrusters.'
+  },
+  mystic: {
+    id: 'mystic',
+    name: 'Astral Mystic',
+    emoji: '✨',
+    baseBodyColor: '#ffb961',
+    bellyColor: '#ffe5b4',
+    hasHorns: true,
+    hasStardust: true,
+    habitBonus: '+1 Daily Spark',
+    description: 'Celestial stardust spirit with glowing aura rings, unicorn crest, and fairy wings.'
+  }
+};
+
+export const SANCTUARY_TREATS = [
+  {
+    id: 'crunchy_apple',
+    name: 'Crunchy Orchard Apple',
+    emoji: '🍎',
+    color: '#e74c3c',
+    hungerFill: 25,
+    energyFill: 15,
+    joyBoost: 10,
+    costCoins: 0,
+    unlockedByDefault: true,
+    lore: 'Crisp sweet apple picked from the Sanctuary Meadow trees.'
+  },
+  {
+    id: 'star_berry',
+    name: 'Cosmic Starberry',
+    emoji: '🍓',
+    color: '#ffb961',
+    hungerFill: 35,
+    energyFill: 25,
+    joyBoost: 20,
+    costCoins: 10,
+    unlockedByDefault: true,
+    lore: 'Bursting with sparkling stardust juice that fills pets with giddy energy!'
+  },
+  {
+    id: 'honey_crunch',
+    name: 'Golden Honey Crunch',
+    emoji: '🍯',
+    color: '#f39c12',
+    hungerFill: 45,
+    energyFill: 30,
+    joyBoost: 25,
+    costCoins: 15,
+    unlockedByDefault: true,
+    lore: 'Barnaby’s secret recipe! Sweet honeycomb cluster with crunch.'
+  },
+  {
+    id: 'super_carrot',
+    name: 'Heroic Mega Carrot',
+    emoji: '🥕',
+    color: '#f39c12',
+    hungerFill: 50,
+    energyFill: 40,
+    joyBoost: 30,
+    costCoins: 20,
+    unlockedByDefault: true,
+    lore: 'Super-charged with vitamin power for massive leaping power!'
+  }
+];
+
+/**
+ * Resolves pet archetype from ID or metadata
+ */
+export function getPetArchetype(pet) {
+  if (!pet) return PET_ARCHETYPES.dino;
+  const idStr = String(pet.id || pet).toLowerCase();
+  const nameStr = (pet.name || '').toLowerCase();
+
+  if (idStr === '2' || idStr === 'rex' || nameStr.includes('dino') || nameStr.includes('rex')) {
+    return PET_ARCHETYPES.dino;
+  }
+  if (idStr === '1' || idStr === 'sparky' || nameStr.includes('dragon') || nameStr.includes('griffin')) {
+    return PET_ARCHETYPES.dragon;
+  }
+  if (idStr === '3' || idStr === 'barnaby' || nameStr.includes('bear') || nameStr.includes('pup') || nameStr.includes('fox') || nameStr.includes('hound')) {
+    return PET_ARCHETYPES.beast;
+  }
+  if (idStr === '4' || idStr === 'hydro' || nameStr.includes('turtle') || nameStr.includes('whale') || nameStr.includes('dolphin') || nameStr.includes('shark')) {
+    return PET_ARCHETYPES.aquatic;
+  }
+  if (idStr === '24' || idStr === 'cosmo' || nameStr.includes('cyber') || nameStr.includes('robot') || nameStr.includes('mecha') || nameStr.includes('bolt')) {
+    return PET_ARCHETYPES.robot;
+  }
+  if (pet.archetype && PET_ARCHETYPES[pet.archetype]) {
+    return PET_ARCHETYPES[pet.archetype];
+  }
+  return PET_ARCHETYPES.mystic;
+}
+
+/**
+ * Calculates live benefits and multipliers for Pet Bond Level (1 to 10)
+ */
+export function getPetBondBonus(level = 1) {
+  const lvl = Math.max(1, Math.min(10, Math.floor(level)));
+  const titles = [
+    'New Companion',
+    'Playful Buddy',
+    'Trusted Friend',
+    'Heroic Partner',
+    'Loyal Guardian',
+    'Adventure Champion',
+    'Starlight Ally',
+    'Invincible Bond',
+    'Mythic Duo',
+    'Inseparable Soulmate'
+  ];
+
+  return {
+    level: lvl,
+    title: titles[lvl - 1] || 'Loyal Guardian',
+    coinBoostPercent: lvl * 5, // +5% to +50%
+    bossDeflectAssistDamage: 10 + (lvl * 3), // 13 to 40 bonus damage
+    expeditionFuelBonus: lvl >= 5 ? 25 : 0, // +25% fuel at Lv 5+
+    pearlyGleam: lvl >= 5,
+    pearlyGleamPerk: lvl >= 5,
+    xpToNext: lvl < 10 ? lvl * 100 : 0
+  };
+}
+
+/**
+ * Helper to fetch a pet by string ID or numeric ID
+ */
+export function getPetById(id) {
+  if (id === undefined || id === null) return PETS_DATABASE[1]; // default to Rex
+  if (typeof id === 'number') {
+    return PETS_DATABASE.find(p => p.id === id) || PETS_DATABASE[1];
+  }
+  const idStr = String(id).toLowerCase();
+  if (idStr === 'rex' || idStr === '2') return PETS_DATABASE[1];
+  if (idStr === 'sparky' || idStr === '1') return PETS_DATABASE[0];
+  if (idStr === 'barnaby' || idStr === '3') return PETS_DATABASE[2];
+  if (idStr === 'hydro' || idStr === '4') return PETS_DATABASE[3];
+  return PETS_DATABASE.find(p => String(p.id).toLowerCase() === idStr || p.name.toLowerCase().includes(idStr)) || PETS_DATABASE[1];
+}
+

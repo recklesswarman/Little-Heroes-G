@@ -24,6 +24,12 @@ export const THREE_D_CATEGORIES = {
     emoji: '🎾',
     description: 'Interactive 3D play objects refilling companion needs and Joy in the sanctuary.'
   },
+  pet: {
+    id: 'pet',
+    name: '3D Pet Companions',
+    emoji: '🐾',
+    description: 'Living 3D companion creatures with habit bonding, gear attachments, and starlight evolution.'
+  },
   boss: {
     id: 'boss',
     name: 'AR Quest Bosses',
@@ -252,19 +258,134 @@ export const THREE_D_ASSETS = [
     description: 'A bubbly puddle of sweet syrup that dissolves with warm water and soap.',
     format: 'glb',
     modelUrl: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/ToyCar/glTF-Binary/ToyCar.glb',
-    splineUrl: 'https://my.spline.design/interactivecubes-9975b36711585efad636c28bf16dbd7d/',
     domain: 'bath',
     hp: 280,
     rewardCoins: 75,
     taunt: "Everything will stick to my sweet sticky syrup puddle!",
     rallyCall: "Power up the bubble bath scrub! Wash away the sticky syrup!",
     tags: ['slime', 'sugar', 'bath', 'soap', 'clean', 'boss']
+  },
+
+  // --- 3D PET COMPANIONS (6 Archetypes) ---
+  {
+    id: 'pet_rex_dino',
+    category: 'pet',
+    name: 'Rex the Earth Dino',
+    emoji: '🦖',
+    badge: '3D Dino Companion',
+    description: 'Chunky emerald prehistoric dino who stomps through chores and protects teeth enamel.',
+    format: 'glb',
+    modelUrl: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/DragonAttenuation/glTF-Binary/DragonAttenuation.glb',
+    splineUrl: 'https://my.spline.design/interactivecubes-9975b36711585efad636c28bf16dbd7d/',
+    archetype: 'dino',
+    primaryColor: '#2ecc71',
+    accentColor: '#f39c12',
+    bellyColor: '#6bfe9c',
+    assignedHabit: 'clean_toys',
+    habitBonusDesc: '+25% Toy Cleaning Coins & +20% Colosseum Assist Damage',
+    tags: ['dino', 'rex', 'earth', 'green', 'clean', 'loyal'],
+    defaultVoiceLine: "ROAR! Let's stomp some chores and keep our smile sparkling clean!"
+  },
+  {
+    id: 'pet_sparky_dragon',
+    category: 'pet',
+    name: 'Sparky the Azure Dragon',
+    emoji: '🐉',
+    badge: '3D Dragon Companion',
+    description: 'Playful sky dragon who loves soaring loops, active sports, and fire sneezes.',
+    format: 'glb',
+    modelUrl: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/DragonAttenuation/glTF-Binary/DragonAttenuation.glb',
+    splineUrl: 'https://my.spline.design/interactivecubes-9975b36711585efad636c28bf16dbd7d/',
+    archetype: 'dragon',
+    primaryColor: '#00d2d3',
+    accentColor: '#ffb961',
+    bellyColor: '#cce5ff',
+    assignedHabit: 'active_play',
+    habitBonusDesc: '+25% Active Play Coins & +25% 3D Expedition Speed',
+    tags: ['dragon', 'fire', 'azure', 'flying', 'sports', 'speed'],
+    defaultVoiceLine: "FWOOSH! Ready to fly high and power up our habits, Hero!"
+  },
+  {
+    id: 'pet_barnaby_bear',
+    category: 'pet',
+    name: 'Barnaby the Cozy Bear',
+    emoji: '🐻',
+    badge: '3D Beast Companion',
+    description: 'Warm golden woodland bear who loves honey snacks and peaceful bedtime routines.',
+    format: 'glb',
+    modelUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+    splineUrl: 'https://my.spline.design/interactivecubes-9975b36711585efad636c28bf16dbd7d/',
+    archetype: 'beast',
+    primaryColor: '#f39c12',
+    accentColor: '#2ecc71',
+    bellyColor: '#ffddb9',
+    assignedHabit: 'bedtime_routine',
+    habitBonusDesc: '+30% Bedtime Routine Joy & +15 Daily Token Generation',
+    tags: ['bear', 'beast', 'cozy', 'bedtime', 'honey', 'snack'],
+    defaultVoiceLine: "Cozy hugs and sweet dreams! Great job completing today's superhero quests!"
+  },
+  {
+    id: 'pet_hydro_turtle',
+    category: 'pet',
+    name: 'Hydro the Tidal Turtle',
+    emoji: '🐢',
+    badge: '3D Aquatic Companion',
+    description: 'Armored sea turtle with crystal water shell who reminds kids to drink plenty of water.',
+    format: 'glb',
+    modelUrl: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/ToyCar/glTF-Binary/ToyCar.glb',
+    splineUrl: 'https://my.spline.design/interactivecubes-9975b36711585efad636c28bf16dbd7d/',
+    archetype: 'aquatic',
+    primaryColor: '#008889',
+    accentColor: '#54e98a',
+    bellyColor: '#48dbfb',
+    assignedHabit: 'drink_water',
+    habitBonusDesc: '+20 Coins & +10 XP every time you log water intake',
+    tags: ['turtle', 'water', 'aquatic', 'hydrate', 'ocean', 'shell'],
+    defaultVoiceLine: "Splash! Stay hydrated, Little Hero! Water fuels our super muscles!"
+  },
+  {
+    id: 'pet_bolt_cyber_pup',
+    category: 'pet',
+    name: 'Bolt the Cyber Mecha-Pup',
+    emoji: '🤖',
+    badge: '3D Robotic Companion',
+    description: 'Futuristic robotic pup with glowing antenna and turbo charging speed.',
+    format: 'glb',
+    modelUrl: 'https://modelviewer.dev/shared-assets/models/RobotExpressive.glb',
+    splineUrl: 'https://my.spline.design/nexbotrobotcharacterconcept-0e5a939f4d436155949d012435df1782/',
+    archetype: 'robot',
+    primaryColor: '#121d26',
+    accentColor: '#00d2d3',
+    bellyColor: '#2b3640',
+    assignedHabit: 'learning_challenge',
+    habitBonusDesc: '+30% Learning Challenge Points & Fast Recharge Boost',
+    tags: ['robot', 'mecha', 'cyber', 'dog', 'future', 'tech'],
+    defaultVoiceLine: "Beep boop! All systems operational! Brainpower maximum!"
+  },
+  {
+    id: 'pet_celeste_astral_fox',
+    category: 'pet',
+    name: 'Celeste the Astral Fox',
+    emoji: '🦊',
+    badge: '3D Mystic Companion',
+    description: 'Celestial starlight fox who leaves glowing stardust footprints and loves reading.',
+    format: 'glb',
+    modelUrl: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/DragonAttenuation/glTF-Binary/DragonAttenuation.glb',
+    splineUrl: 'https://my.spline.design/interactivecubes-9975b36711585efad636c28bf16dbd7d/',
+    archetype: 'mystic',
+    primaryColor: '#ffb961',
+    accentColor: '#00d2d3',
+    bellyColor: '#ffe5b4',
+    assignedHabit: 'reading_time',
+    habitBonusDesc: '+40% Reading XP & Starlight Aura in Hero HQ',
+    tags: ['fox', 'mystic', 'astral', 'stars', 'reading', 'celestial'],
+    defaultVoiceLine: "The stars shine brightly on curious minds! Let's read an epic tale!"
   }
 ];
 
 /**
  * Get 3D assets filtered by category
- * @param {'gear'|'furniture'|'toy'|'boss'} category
+ * @param {'gear'|'furniture'|'toy'|'boss'|'pet'} category
  */
 export function getThreeDAssetsByCategory(category) {
   if (!category) return THREE_D_ASSETS;
@@ -282,7 +403,7 @@ export function getThreeDAssetById(id) {
 /**
  * Smart Search: Finds the best matching 3D asset from a user concept string
  * @param {string} prompt
- * @param {'gear'|'furniture'|'toy'|'boss'} category
+ * @param {'gear'|'furniture'|'toy'|'boss'|'pet'} category
  */
 export function matchBestThreeDAsset(prompt = '', category = 'gear') {
   const pool = getThreeDAssetsByCategory(category);

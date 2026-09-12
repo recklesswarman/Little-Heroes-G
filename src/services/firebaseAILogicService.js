@@ -552,6 +552,110 @@ Generate a fun, cartoonish villain boss for kids to defeat. Return ONLY valid JS
    */
   
   /**
+   * Generates a living 3D Pet Companion with procedural archetype, custom colors,
+   * habit synergy, voice reaction lines, and delivers as a Magic Egg or instant companion.
+   */
+  async generate3DPetCompanion(options = {}) {
+    const { promptText = "", habitSynergy = "dental", deliveryMethod = "magic_egg", defaultPrice = 250 } = options;
+    const requestedArchetype = options.archetype || options.meshArchetype || "dragon";
+
+    const archetypeDefaults = {
+      dino: { name: "Rex Hatchling", archetype: "dino", color: "#2ecc71", accent: "#f39c12", icon: "pets", desc: "A curious dino with armored emerald plates who loves exploring!", perk: "Tough Scales: +15% chore streak bonus", cheer: "Roaaar! Great job brushing teeth!", sleep: "Yaaawn! Dino dreams time!" },
+      dragon: { name: "Ember Drake", archetype: "dragon", color: "#f39c12", accent: "#00d2d3", icon: "flight", desc: "A friendly miniature drake with shimmering cyan wingtips!", perk: "Starlight Lift: +25% Pet Expedition Fuel", cheer: "Whoosh! Sparkling clean smiles power up my flames!", sleep: "Curling my tail into a warm sleep ball..." },
+      beast: { name: "Barnaby Pup", archetype: "beast", color: "#ffb961", accent: "#2ecc71", icon: "pets", desc: "A bouncy, fluffy forest companion with super soft ears!", perk: "Joyful Paws: +20% Joy refill from treats", cheer: "Yip yip hurray! You did it!", sleep: "Zzz... chasing dream butterflies..." },
+      aquatic: { name: "Hydro Turtle", archetype: "aquatic", color: "#00d2d3", accent: "#2ecc71", icon: "water", desc: "A peaceful lagoon navigator with a glowing coral shell!", perk: "Pearly Gleam: +20% hygiene duration after baths", cheer: "Splash splash! Sparkling like the ocean!", sleep: "Floating gently in warm lagoon bubbles..." },
+      robot: { name: "Byte Bot", archetype: "robot", color: "#48dbfb", accent: "#f39c12", icon: "smart_toy", desc: "A loyal mecha companion with expressive digital LED eyes!", perk: "Overclock Battery: +30% Assist Colosseum damage", cheer: "Beep boop! Habit mission 100% complete!", sleep: "Powering down into energy-saving recharge mode..." },
+      mystic: { name: "Stella Fawn", archetype: "mystic", color: "#2ecc71", accent: "#ffb961", icon: "auto_awesome", desc: "A celestial creature crowned with floating starlight horns!", perk: "Cosmic Resonance: Generates +1 Starlight Spark daily", cheer: "The stars shine brightest when you shine!", sleep: "Resting under the starlight constellation canopy..." }
+    };
+
+    const chosenArch = archetypeDefaults[requestedArchetype] ? requestedArchetype : "dragon";
+    const def = archetypeDefaults[chosenArch];
+
+    let name = promptText.trim() || def.name;
+    let desc = def.desc;
+    let primaryColor = def.color;
+    let accentColor = def.accent;
+    let icon = def.icon;
+    let perk = def.perk;
+    let cheerVoice = def.cheer;
+    let sleepVoice = def.sleep;
+    let costCoins = parseInt(defaultPrice) || 250;
+
+    if (this.isAiReady && this.model) {
+      try {
+        const aiPrompt = `You are an imaginative creature designer for a kids (ages 3-9) adventure app called "Little Heroes".
+Parent Idea: "${promptText || chosenArch}"
+Creature Archetype: "${chosenArch}"
+Routine Synergy: "${habitSynergy}"
+Rules: STRICTLY NO pink or purple colors (allowed: emerald green, solar orange, amber gold, cyan blue, teal slate).
+Generate a cute 3D companion pet. Return ONLY valid JSON:
+{
+  "name": "Catchy Heroic Pet Name (Max 3 words)",
+  "desc": "Loving, kid-friendly backstory (1-2 sentences)",
+  "primaryColor": "#2ecc71 or #f39c12 or #00d2d3 or #ffb961 or #48dbfb",
+  "accentColor": "#f39c12 or #2ecc71 or #00d2d3 or #ffb961",
+  "archetype": "${chosenArch}",
+  "habitSynergyLabel": "Friendly habit perk (e.g. +20% Toothbrushing Boost)",
+  "cheerVoiceLine": "Excited, encouraging cheer (max 10 words)!",
+  "sleepVoiceLine": "Cozy sleepy murmur (max 8 words)!"
+}`;
+        const result = await this.model.generateContent(aiPrompt);
+        const text = result.response.text().replaceAll("```json", "").replaceAll("```", "").trim();
+        const parsed = JSON.parse(text);
+        if (parsed.name) name = parsed.name;
+        if (parsed.desc) desc = parsed.desc;
+        if (parsed.primaryColor && !parsed.primaryColor.includes("ec4899") && !parsed.primaryColor.includes("a855f7")) primaryColor = parsed.primaryColor;
+        if (parsed.accentColor) accentColor = parsed.accentColor;
+        if (parsed.habitSynergyLabel) perk = parsed.habitSynergyLabel;
+        if (parsed.cheerVoiceLine) cheerVoice = parsed.cheerVoiceLine;
+        if (parsed.sleepVoiceLine) sleepVoice = parsed.sleepVoiceLine;
+      } catch (err) {
+        console.warn("AI Pet Companion generation fallback:", err.message);
+      }
+    }
+
+    const uniqueId = `ai_pet_${Date.now()}`;
+    const graphicDataUrl = generate3DIcon(icon, getThemeColorName(primaryColor), name.slice(0, 12));
+
+    return {
+      id: uniqueId,
+      name,
+      title: name,
+      desc,
+      category: "pet",
+      archetype: chosenArch,
+      stage: 1,
+      maxStage: 4,
+      level: 1,
+      xp: 0,
+      bondLevel: 1,
+      bondXp: 0,
+      color: primaryColor,
+      accentColor: accentColor,
+      eyeColor: "#ffffff",
+      habitSynergy,
+      habitSynergyLabel: perk,
+      cheerVoiceLine: cheerVoice,
+      sleepVoiceLine: sleepVoice,
+      companionReaction: cheerVoice,
+      splineUrl: options.splineUrl || undefined,
+      modelUrl: options.modelUrl || undefined,
+      costCoins,
+      coinPrice: costCoins,
+      icon,
+      image: graphicDataUrl,
+      avatar: graphicDataUrl,
+      isParentCrafted: true,
+      isCustomAI: true,
+      unhatched: deliveryMethod === "magic_egg",
+      deliveryMethod,
+      bountyRequirement: options.bountyRequirement || null,
+      targetChildProfile: options.targetChildProfile || "all",
+      createdAt: new Date().toISOString()
+    };
+  }
+
+  /**
    * Multimodal Gemini 2.5 Vision: Generates 3D content from child drawing / photo upload
    */
   async generate3DContentFromImage(options = {}) {
@@ -618,6 +722,7 @@ Return ONLY valid JSON:
       if (!options.meshArchetype && matched3DAsset.archetype) options.meshArchetype = matched3DAsset.archetype;
       if (!options.furnitureType && matched3DAsset.furnType) options.furnitureType = matched3DAsset.furnType;
       if (!options.domain && matched3DAsset.domain) options.domain = matched3DAsset.domain;
+      if (!options.archetype && matched3DAsset.archetype) options.archetype = matched3DAsset.archetype;
     }
     if (category === 'furniture') {
       return this.generate3DHeroHQFurniture(options);
@@ -625,6 +730,8 @@ Return ONLY valid JSON:
       return this.generate3DPetPenToy(options);
     } else if (category === 'boss') {
       return this.generate3DARBoss(options);
+    } else if (category === 'pet') {
+      return this.generate3DPetCompanion(options);
     } else {
       return this.generate3DPetGear(options);
     }
@@ -632,6 +739,12 @@ Return ONLY valid JSON:
 }
 
 export const SPLINE_3D_PRESETS = {
+  pet: [
+    { id: 'spline_pet_dragon', name: 'Baby Ember Drake 3D', url: 'https://prod.spline.design/pet-dragon/scene.splinecode', splineUrl: 'https://prod.spline.design/pet-dragon/scene.splinecode', icon: 'flight', category: 'pet', archetype: 'dragon' },
+    { id: 'spline_pet_dino', name: 'Tiny Rex Brawler 3D', url: 'https://prod.spline.design/pet-dino/scene.splinecode', splineUrl: 'https://prod.spline.design/pet-dino/scene.splinecode', icon: 'pets', category: 'pet', archetype: 'dino' },
+    { id: 'spline_pet_cyber', name: 'Cyber Rover Bot 3D', url: 'https://prod.spline.design/pet-cyber/scene.splinecode', splineUrl: 'https://prod.spline.design/pet-cyber/scene.splinecode', icon: 'smart_toy', category: 'pet', archetype: 'robot' },
+    { id: 'spline_pet_aquatic', name: 'Coral Lagoon Turtle 3D', url: 'https://prod.spline.design/pet-turtle/scene.splinecode', splineUrl: 'https://prod.spline.design/pet-turtle/scene.splinecode', icon: 'water', category: 'pet', archetype: 'aquatic' }
+  ],
   gear: [
     { id: 'spline_neon_visor', name: 'Cyber Neon Visor 3D', url: 'https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode', splineUrl: 'https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode', icon: 'smart_toy', category: 'gear' },
     { id: 'spline_aero_wings', name: 'Meteor Thruster Wings 3D', url: 'https://prod.spline.design/6Wq1Q7YGyM-iab9i/scene.splinecode', splineUrl: 'https://prod.spline.design/6Wq1Q7YGyM-iab9i/scene.splinecode', icon: 'flight', category: 'gear' },

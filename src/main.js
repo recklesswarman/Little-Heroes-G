@@ -23,6 +23,7 @@ import { renderGiftCrateWidget, renderGiftCrateModal, attachGiftCrateListeners }
 // Views
 import { renderDashboardView, attachDashboardListeners } from './views/DashboardView.js';
 import { renderQuestMapView, attachQuestMapListeners } from './views/QuestMapView.js';
+import { renderPetSanctuaryView, attachPetSanctuaryListeners } from './views/PetSanctuaryView.js';
 import { renderPetPenView, attachPetPenListeners } from './views/PetPenView.js';
 import { renderPetRosterView, attachPetRosterListeners } from './views/PetRosterView.js';
 import { renderPetDetailView, attachPetDetailListeners } from './views/PetDetailView.js';

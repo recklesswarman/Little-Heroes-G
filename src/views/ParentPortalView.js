@@ -51,10 +51,19 @@ let studioToyType = 'trampoline';
 let studioToyStat = 'joy';
 let studioToyAmount = 30;
 
+// 3D Pet Companion State
+let studioPetArchetype = 'dragon'; // 'dino', 'dragon', 'beast', 'aquatic', 'robot', 'mystic'
+let studioPetSynergy = 'dental';
+let studioPetCheer = 'Whoosh! Sparkling clean smiles power up my flames!';
+let studioPetSleep = 'Curling my tail into a warm sleep ball...';
+
 // AR Boss State
 let studioBossDomain = 'dental';
 let studioBossHp = 250;
 let studioBossCoins = 60;
+let studioBossBattleDuration = 120; // 60s Toddler, 120s Standard, 180s Master
+let studioBossAttackType = 'caramel_bomb'; // 'caramel_bomb', 'plaque_slime', 'acid_shard', 'sticky_taffy'
+let studioBossFocusQuadrant = 'all'; // 'all', 'upper', 'lower'
 let studioBossTaunt = 'You cannot defeat the Plaque Monster!';
 let studioBossRally = 'Heroes, brush thoroughly to break its shield!';
 
@@ -1291,12 +1300,14 @@ export function renderParentPortalView() {
               const publishedCustomFurniture = store.getParentCustomFurniture ? store.getParentCustomFurniture() : [];
               const publishedCustomToys = store.getParentCustomToys ? store.getParentCustomToys() : [];
               const publishedCustomBosses = store.getParentCustomBosses ? store.getParentCustomBosses() : [];
+              const publishedCustomPets = store.getPetSanctuaryState ? (store.getPetSanctuaryState().unhatchedEggs || []) : [];
 
               const categoryTabs = [
                 { id: 'gear', label: 'Pet Wearable Gear', emoji: '🛡️', count: publishedCustomGear.length, desc: 'Costumes, capes, boots & visors' },
                 { id: 'furniture', label: 'Hero HQ Furniture', emoji: '🛋️', count: publishedCustomFurniture.length, desc: 'Beds, desks, lounges & rugs' },
                 { id: 'toy', label: 'Pet Pen Toys', emoji: '🎾', count: publishedCustomToys.length, desc: 'Trampolines, balls & puzzles' },
-                { id: 'boss', label: 'AR Quest Bosses', emoji: '👾', count: publishedCustomBosses.length, desc: 'Hygiene, dental & bedtime villains' }
+                { id: 'boss', label: 'AR Quest Bosses', emoji: '👾', count: publishedCustomBosses.length, desc: 'Hygiene, dental & bedtime villains' },
+                { id: 'pet', label: '3D Pet Companions', emoji: '🐾', count: publishedCustomPets.length, desc: '6 Archetypes, Habit Bond Perks & Magic Eggs' }
               ];
 
               const petModels = [
@@ -1330,6 +1341,15 @@ export function renderParentPortalView() {
                 { key: 'laser_mouse', label: '✨ Starlight Laser Pointer', type: 'laser', stat: 'joy', amount: 25, desc: 'Dancing laser beam that pets chase' },
                 { key: 'treat_puzzle', label: '🧩 Magic Treat Puzzle Box', type: 'puzzle', stat: 'hunger', amount: 40, desc: 'Brain game dispensing healthy snacks' },
                 { key: 'agility_ramp', label: '⚡ Agility Loop Obstacle', type: 'agility', stat: 'all', amount: 25, desc: 'Fun obstacle course for speed practice' }
+              ];
+
+                            const petThemes = [
+                { key: 'dino', label: '🦖 Emerald Rex', archetype: 'dino', color: '#2ecc71', desc: 'Armored plates & tough habit resilience' },
+                { key: 'dragon', label: '🔥 Ember Drake', archetype: 'dragon', color: '#f39c12', desc: 'Miniature wings & +25% expedition fuel' },
+                { key: 'beast', label: '🐻 Barnaby Pup', archetype: 'beast', color: '#ffb961', desc: 'Super soft ears & high treat joy' },
+                { key: 'aquatic', label: '🌊 Hydro Turtle', archetype: 'aquatic', color: '#00d2d3', desc: 'Glowing shell & long Pearly Gleam' },
+                { key: 'robot', label: '🤖 Byte Bot', archetype: 'robot', color: '#48dbfb', desc: 'LED visor & +30% Colosseum assist' },
+                { key: 'mystic', label: '✨ Stella Fawn', archetype: 'mystic', color: '#2ecc71', desc: 'Starlight horns & +1 daily spark' }
               ];
 
               const bossThemes = [
@@ -1376,7 +1396,7 @@ export function renderParentPortalView() {
           </div>
 
           <!-- 4-Mode Category Navigation Switcher -->
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
             ${categoryTabs.map(tab => {
               const isSelected = studioActiveCategory === tab.id;
               return `
@@ -1755,6 +1775,62 @@ export function renderParentPortalView() {
                       <span>🥦</span><span>Healthy Nutrition</span>
                     </button>
                   </div>
+
+                  <!-- Toothbrush Battle Dental Controls (When Dental Domain selected) -->
+                  ${studioBossDomain === 'dental' ? `
+                    <div class="mt-3 pt-3 border-t border-slate-700/60 flex flex-col gap-2.5">
+                      <!-- Battle Duration -->
+                      <div>
+                        <label class="text-[10px] font-bold text-cyan-300 uppercase tracking-wider mb-1 block">Toothbrush Battle Timer Duration</label>
+                        <div class="grid grid-cols-3 gap-1.5">
+                          <button type="button" class="studio-boss-duration-btn p-1.5 rounded-lg text-[10px] font-black border transition-all ${studioBossBattleDuration === 60 ? 'bg-cyan-500 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'}" data-duration="60">
+                            60s (Toddler)
+                          </button>
+                          <button type="button" class="studio-boss-duration-btn p-1.5 rounded-lg text-[10px] font-black border transition-all ${studioBossBattleDuration === 120 ? 'bg-cyan-500 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'}" data-duration="120">
+                            120s (Standard)
+                          </button>
+                          <button type="button" class="studio-boss-duration-btn p-1.5 rounded-lg text-[10px] font-black border transition-all ${studioBossBattleDuration === 180 ? 'bg-cyan-500 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'}" data-duration="180">
+                            180s (Master)
+                          </button>
+                        </div>
+                      </div>
+
+                      <!-- Attack Archetype -->
+                      <div>
+                        <label class="text-[10px] font-bold text-cyan-300 uppercase tracking-wider mb-1 block">Dental Attack Archetype</label>
+                        <div class="grid grid-cols-2 gap-1.5">
+                          <button type="button" class="studio-boss-attack-btn p-1.5 rounded-lg text-[10px] font-bold border transition-all flex items-center gap-1.5 ${studioBossAttackType === 'caramel_bomb' ? 'bg-amber-500 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'}" data-attack="caramel_bomb">
+                            <span>🍬</span><span>Caramel Bomb</span>
+                          </button>
+                          <button type="button" class="studio-boss-attack-btn p-1.5 rounded-lg text-[10px] font-bold border transition-all flex items-center gap-1.5 ${studioBossAttackType === 'plaque_slime' ? 'bg-emerald-500 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'}" data-attack="plaque_slime">
+                            <span>🦠</span><span>Plaque Slime</span>
+                          </button>
+                          <button type="button" class="studio-boss-attack-btn p-1.5 rounded-lg text-[10px] font-bold border transition-all flex items-center gap-1.5 ${studioBossAttackType === 'acid_shard' ? 'bg-rose-500 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'}" data-attack="acid_shard">
+                            <span>⚔️</span><span>Acid Shard</span>
+                          </button>
+                          <button type="button" class="studio-boss-attack-btn p-1.5 rounded-lg text-[10px] font-bold border transition-all flex items-center gap-1.5 ${studioBossAttackType === 'sticky_taffy' ? 'bg-purple-500 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'}" data-attack="sticky_taffy">
+                            <span>🕸️</span><span>Sticky Taffy</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <!-- Focus Quadrant -->
+                      <div>
+                        <label class="text-[10px] font-bold text-cyan-300 uppercase tracking-wider mb-1 block">Brushing Focus Zone</label>
+                        <div class="grid grid-cols-3 gap-1.5">
+                          <button type="button" class="studio-boss-focus-btn p-1 rounded-lg text-[10px] font-bold border transition-all ${studioBossFocusQuadrant === 'all' ? 'bg-cyan-500 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'}" data-focus="all">
+                            🦷 All 4 Zones
+                          </button>
+                          <button type="button" class="studio-boss-focus-btn p-1 rounded-lg text-[10px] font-bold border transition-all ${studioBossFocusQuadrant === 'upper' ? 'bg-cyan-500 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'}" data-focus="upper">
+                            ⬆️ Upper Molars
+                          </button>
+                          <button type="button" class="studio-boss-focus-btn p-1 rounded-lg text-[10px] font-bold border transition-all ${studioBossFocusQuadrant === 'lower' ? 'bg-cyan-500 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'}" data-focus="lower">
+                            ⬇️ Lower Chew
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ` : ''}
                 </div>
               `}
 
@@ -2337,9 +2413,14 @@ export function renderParentPortalView() {
                       </div>
                       <div class="flex items-center justify-between pt-1.5 border-t border-surface-container-highest">
                         <span class="text-[10px] font-black text-rose-300">Reward: ${item.rewardCoins || 50} 🪙</span>
-                        <button class="delete-custom-boss-btn text-error hover:bg-error/15 p-1 rounded-lg" data-boss-id="${item.id}" title="Delete Boss">
-                          <span class="material-symbols-outlined text-sm">delete</span>
-                        </button>
+                        <div class="flex items-center gap-1.5">
+                          <button class="test-custom-boss-btn bg-primary text-on-primary px-2.5 py-1 rounded-xl text-[10px] font-black flex items-center gap-1 hover:brightness-110 active:scale-95 shadow-sm" data-boss-id="${item.id}" title="Test in Toothbrush Battle">
+                            <span class="material-symbols-outlined text-xs">swords</span> Battle
+                          </button>
+                          <button class="delete-custom-boss-btn text-error hover:bg-error/15 p-1 rounded-lg" data-boss-id="${item.id}" title="Delete Boss">
+                            <span class="material-symbols-outlined text-sm">delete</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   `).join('')}
@@ -4572,6 +4653,15 @@ export function attachParentPortalListeners() {
           studioToyStat = 'joy';
           studioToyAmount = 35;
           studioActiveSplineUrl = SPLINE_3D_PRESETS.toy[0]?.splineUrl || '';
+                } else if (cat === 'pet') {
+          studioPetArchetype = sparkKey;
+          const matched = petThemes.find(t => t.key === sparkKey);
+          if (matched) {
+            studioItemName = matched.label.split(' ').slice(1).join(' ');
+            studioItemDesc = matched.desc;
+            studioSelectedDye = matched.color;
+            studioPetVoiceLine = 'Ready for adventures and chores!';
+          }
         } else if (cat === 'boss') {
           studioItemName = 'Lord Plaque The Sticky';
           studioItemDesc = 'Sneaky tooth-decay overlord lurking in deep enamel crevices!';
@@ -4926,6 +5016,40 @@ export function attachParentPortalListeners() {
       });
     });
 
+    // Boss Dental Battle Controls Listeners
+    document.querySelectorAll('.studio-boss-duration-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const dur = parseInt(btn.getAttribute('data-duration'), 10);
+        if (dur) {
+          studioBossBattleDuration = dur;
+          Sound.click();
+          store.notify();
+        }
+      });
+    });
+
+    document.querySelectorAll('.studio-boss-attack-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const atk = btn.getAttribute('data-attack');
+        if (atk) {
+          studioBossAttackType = atk;
+          Sound.click();
+          store.notify();
+        }
+      });
+    });
+
+    document.querySelectorAll('.studio-boss-focus-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const foc = btn.getAttribute('data-focus');
+        if (foc) {
+          studioBossFocusQuadrant = foc;
+          Sound.click();
+          store.notify();
+        }
+      });
+    });
+
     // 16. Sliders & Input Syncs
     const archetypeSelect = document.getElementById('studio-gear-archetype');
     if (archetypeSelect) {
@@ -5079,7 +5203,23 @@ export function attachParentPortalListeners() {
               studioToyStat = generated.statRefillTarget || studioToyStat;
               studioToyAmount = generated.statRefillAmount || studioToyAmount;
               studioPetVoiceLine = generated.cheerVoiceLine || studioPetVoiceLine;
-            } else if (studioActiveCategory === 'boss') {
+                    } else if (studioActiveCategory === 'pet') {
+          const petToPublish = {
+            id: `parent_pet_${Date.now()}`,
+            name: nameVal.trim() || 'Hero Companion',
+            archetype: studioPetArchetype || 'dragon',
+            color: studioSelectedDye || '#2ecc71',
+            accentColor: '#f39c12',
+            desc: descVal.trim() || 'A loyal 3D companion crafted with love by parent!',
+            cheerVoiceLine: voiceVal.trim() || 'Woohoo! Great job on your chores!',
+            sleepVoiceLine: 'Zzz... peaceful dreams, little hero...',
+            habitSynergy: studioPetSynergy || 'dental',
+            splineUrl: studioActiveSplineUrl || undefined,
+            isCustom: true
+          };
+          store.addCustomAIPet(petToPublish, studioDeliveryMode || 'magic_egg');
+          Sound.fanfare();
+        } else if (studioActiveCategory === 'boss') {
               studioBossHp = generated.maxHp || studioBossHp;
               studioBossCoins = generated.rewardCoins || studioBossCoins;
               studioBossTaunt = generated.taunt || studioBossTaunt;
@@ -5169,6 +5309,9 @@ export function attachParentPortalListeners() {
             taunt: voiceVal.trim() || studioBossTaunt,
             rallyCall: studioBossRally,
             splineUrl: studioActiveSplineUrl || undefined,
+            battleDurationSec: studioBossBattleDuration || 120,
+            attackType: studioBossAttackType || 'caramel_bomb',
+            focusQuadrant: studioBossFocusQuadrant || 'all',
             emoji: studioBossDomain === 'dental' ? '👾' : studioBossDomain === 'bedtime' ? '⏰' : studioBossDomain === 'screens' ? '📱' : '🥦',
             gradient: studioBossDomain === 'dental' ? 'from-purple-900 to-indigo-950' : studioBossDomain === 'bedtime' ? 'from-blue-900 to-slate-950' : studioBossDomain === 'screens' ? 'from-emerald-900 to-slate-950' : 'from-rose-900 to-amber-950',
             accentBorder: 'border-purple-500',
@@ -5210,6 +5353,18 @@ export function attachParentPortalListeners() {
       e.stopPropagation();
       const bossId = btn.getAttribute('data-boss-id');
       if (bossId) store.deleteCustomAIBoss(bossId);
+    });
+  });
+
+  document.querySelectorAll('.test-custom-boss-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const bossId = btn.getAttribute('data-boss-id');
+      if (bossId) {
+        if (store.setSelectedBossId) store.setSelectedBossId(bossId);
+        Sound.tap();
+        store.navigate('ar_battle');
+      }
     });
   });
 
