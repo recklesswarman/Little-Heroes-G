@@ -302,7 +302,9 @@ export function renderBattleView() {
   // =========================================================================
   const elapsed = totalDuration - secondsRemaining;
   const progressRatio = Math.min(1, elapsed / totalDuration);
-  const hpPercent = Math.max(0, Math.round(((colState.currentHp || (1 - progressRatio) * 100) / (colState.maxHp || 100)) * 100));
+  const hpPercent = secondsRemaining <= 0
+    ? 0
+    : Math.max(1, Math.min(100, Math.round(((colState.currentHp || (1 - progressRatio) * 100) / (colState.maxHp || 100)) * 100)));
 
   const mins = Math.floor(secondsRemaining / 60);
   const secs = secondsRemaining % 60;
@@ -796,8 +798,8 @@ export function startBattle() {
   // Reset quadrant cleanliness to 0
   quadrantCleanliness = { q1: 0, q2: 0, q3: 0, q4: 0, q5: 0 };
 
-  // Init Colosseum State in Store
-  store.initColosseumBattle(selectedBossId);
+  // Init Colosseum State in Store with full routine duration
+  store.initColosseumBattle(selectedBossId, totalDuration);
 
   // Audio & Hardware Init
   Sound.startBattleRhythm();
@@ -853,12 +855,17 @@ export function startBattle() {
     secondsRemaining--;
     const elapsedSeconds = totalDuration - secondsRemaining;
 
+    // Sync timer progress with store so Boss HP and shields are paced across the 2-minute duration
+    store.updateColosseumTimer(secondsRemaining, totalDuration);
+
     // Timer string update
     const mins = Math.floor(secondsRemaining / 60);
     const secs = secondsRemaining % 60;
     const timeStr = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     const timerDisplay = document.getElementById('battle-timer-display');
     if (timerDisplay) timerDisplay.textContent = timeStr;
+
+    syncCockpitHUD();
 
     // Quadrant transitions based on fractional duration
     const ratio = secondsRemaining / totalDuration;
@@ -959,7 +966,10 @@ function handleScrubHit(activeQuad, source = 'manual') {
 
 function syncCockpitHUD() {
   const colState = store.getBossColosseumState();
-  const hpPercent = Math.max(0, Math.round((colState.currentHp / colState.maxHp) * 100));
+  // Boss HP is 0% only when the full 2-minute countdown completes, floored to >= 1% while active
+  const hpPercent = secondsRemaining <= 0
+    ? 0
+    : Math.max(1, Math.min(100, Math.round((colState.currentHp / colState.maxHp) * 100)));
   
   const hpBar = document.getElementById('boss-hp-bar');
   if (hpBar) hpBar.style.width = `${hpPercent}%`;
@@ -975,8 +985,14 @@ function syncCockpitHUD() {
     }
   }
 
-  if (colState.currentHp <= 0 && !colState.isVictoryModalOpen) {
-    concludeVictory();
+  // Update Shield Stars
+  const star1 = document.getElementById('shield-star-1');
+  if (star1) {
+    star1.className = `text-sm ${colState.shieldMilestonesTriggered?.[90] ? 'text-slate-600' : 'text-[#ffb961] drop-shadow-[0_0_6px_#ffb961]'}`;
+  }
+  const star2 = document.getElementById('shield-star-2');
+  if (star2) {
+    star2.className = `text-sm ${colState.shieldMilestonesTriggered?.[30] ? 'text-slate-600' : 'text-[#ffb961] drop-shadow-[0_0_6px_#ffb961]'}`;
   }
 }
 
@@ -996,6 +1012,7 @@ function concludeVictory() {
 
   isBattleRunning = false;
   isBattlePaused = false;
+  secondsRemaining = 0;
   Sound.stopBattleRhythm();
   brushAudioAnalyzer.stopListening();
   stopCamera();
@@ -1014,6 +1031,7 @@ function concludeVictory() {
   voicePrompts.speakBossDefeated(boss.name);
 
   // Trigger defeat in Colosseum State & Complete Toothbrush Battle in Store
+  store.updateColosseumTimer(0, totalDuration);
   store.defeatColosseumBoss();
   store.completeToothbrushBattle(selectedBossId, totalDuration, avgCadence);
 }

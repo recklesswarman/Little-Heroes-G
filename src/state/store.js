@@ -5634,12 +5634,14 @@ class Store {
     return this.state.bossColosseum;
   }
 
-  initColosseumBattle(bossId = 'sugar_bandit') {
+  initColosseumBattle(bossId = 'sugar_bandit', durationSec = 120) {
     const col = this.getBossColosseumState();
     const boss = getHygieneBoss(bossId) || HYGIENE_BOSSES[0];
     col.activeBossId = boss.id;
     col.maxHp = boss.maxHp || 100;
     col.currentHp = col.maxHp;
+    col.totalDuration = durationSec || 120;
+    col.secondsRemaining = durationSec || 120;
     col.maxShieldHp = boss.shieldHp || 6;
     col.shieldHp = col.maxShieldHp;
     col.isShieldActive = false;
@@ -5661,9 +5663,39 @@ class Store {
     return col;
   }
 
+  updateColosseumTimer(secondsRemaining, totalDuration = 120) {
+    const col = this.getBossColosseumState();
+    col.secondsRemaining = secondsRemaining;
+    col.totalDuration = totalDuration;
+
+    if (secondsRemaining <= 0) {
+      col.currentHp = 0;
+      col.enamelCleanPercent = 100;
+    } else {
+      const timeRatio = Math.max(0, secondsRemaining / totalDuration);
+      // Floor boss HP across 5 zones so it stays alive throughout the full routine (at least 1 HP)
+      const minHpFloor = Math.max(1, Math.round(col.maxHp * timeRatio * 0.75));
+      col.currentHp = Math.max(minHpFloor, col.currentHp);
+
+      // Trigger shield milestones based on timer progress (Zone 2 switch ~75% time, Zone 4 switch ~25% time)
+      const hpPercent = Math.round((col.currentHp / col.maxHp) * 100);
+      if ((hpPercent <= 90 || timeRatio <= 0.75) && !col.shieldMilestonesTriggered[90]) {
+        col.shieldMilestonesTriggered[90] = true;
+        col.isShieldActive = true;
+        col.shieldHp = col.maxShieldHp;
+      } else if ((hpPercent <= 30 || timeRatio <= 0.25) && !col.shieldMilestonesTriggered[30]) {
+        col.shieldMilestonesTriggered[30] = true;
+        col.isShieldActive = true;
+        col.shieldHp = col.maxShieldHp;
+      }
+    }
+    this.notify();
+  }
+
   fireColosseumBlaster() {
     const col = this.getBossColosseumState();
-    if (col.currentHp <= 0) return { hit: false, defeated: true };
+    // Do not hit if battle is already concluded at 0s
+    if (col.secondsRemaining !== undefined && col.secondsRemaining <= 0) return { hit: false, defeated: true };
 
     const hero = this.state.selectedHero;
     const activePet = this.getActivePet();
@@ -5684,7 +5716,9 @@ class Store {
         if (typeof Sound?.sparkle === 'function') Sound.sparkle();
       }
     } else {
-      col.currentHp = Math.max(0, col.currentHp - bonusDamage);
+      // During active 2-minute battle, boss stays alive (min 1 HP) until 0 seconds remain
+      const minHp = (col.secondsRemaining === undefined || col.secondsRemaining > 0) ? 1 : 0;
+      col.currentHp = Math.max(minHp, col.currentHp - bonusDamage);
     }
 
     // Update clean enamel percentage
@@ -5705,11 +5739,6 @@ class Store {
     // Ammo drain and refill
     col.ammoTank = Math.max(20, (col.ammoTank || 100) - 1);
 
-    if (col.currentHp <= 0) {
-      this.defeatColosseumBoss();
-      return { hit: true, damage: bonusDamage, defeated: true };
-    }
-
     this.notify();
     return { hit: true, damage: bonusDamage, defeated: false };
   }
@@ -5725,7 +5754,8 @@ class Store {
 
     // Deflect damage bounced back to boss
     const deflectDamage = Math.round(12 * (buffs.defenseMultiplier || 1.0));
-    col.currentHp = Math.max(0, col.currentHp - deflectDamage);
+    const minHp = (col.secondsRemaining === undefined || col.secondsRemaining > 0) ? 1 : 0;
+    col.currentHp = Math.max(minHp, col.currentHp - deflectDamage);
     col.comboCount = (col.comboCount || 0) + 2;
     col.enamelCleanPercent = Math.min(100, Math.round(((col.maxHp - col.currentHp) / col.maxHp) * 100));
 
@@ -5737,11 +5767,7 @@ class Store {
       this.notify();
     }, 800);
 
-    if (col.currentHp <= 0) {
-      this.defeatColosseumBoss();
-    } else {
-      this.notify();
-    }
+    this.notify();
     return { deflected: true, damage: deflectDamage };
   }
 
@@ -5754,7 +5780,8 @@ class Store {
     col.isShieldActive = false;
     col.shieldHp = 0;
     const megaDamage = 35;
-    col.currentHp = Math.max(0, col.currentHp - megaDamage);
+    const minHp = (col.secondsRemaining === undefined || col.secondsRemaining > 0) ? 1 : 0;
+    col.currentHp = Math.max(minHp, col.currentHp - megaDamage);
     col.comboCount = (col.comboCount || 0) + 5;
     col.enamelCleanPercent = Math.min(100, Math.round(((col.maxHp - col.currentHp) / col.maxHp) * 100));
 
@@ -5771,11 +5798,7 @@ class Store {
 
     if (typeof Sound?.fanfare === 'function') Sound.fanfare();
 
-    if (col.currentHp <= 0) {
-      this.defeatColosseumBoss();
-    } else {
-      this.notify();
-    }
+    this.notify();
     return { success: true, damage: megaDamage };
   }
 
