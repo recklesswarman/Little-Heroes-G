@@ -137,18 +137,9 @@ Tool instructions:
       const url = `${LIVE_WS_ENDPOINT}?key=${apiKey}`;
       this.ws = new WebSocket(url);
 
-      this.ws.onopen = async () => {
+      this.ws.onopen = () => {
         this.isConnected = true;
-        this.isConnecting = false;
         this.sendSetupMessage();
-        await this.startMicrophone();
-        this.updateStatus('listening', 'Rex is listening! Talk to Rex!');
-        Sound.chirp();
-
-        // If there is already a quest context, share it immediately
-        if (this.currentQuestContext) {
-          this.sendQuestContextUpdate(this.currentQuestContext);
-        }
       };
 
       this.ws.onmessage = (event) => {
@@ -463,6 +454,20 @@ Personality & Voice:
         const reader = new FileReader();
         reader.onload = () => this.handleServerMessage(reader.result);
         reader.readAsText(rawMessage);
+        return;
+      }
+
+      if (data.setupComplete) {
+        this.isConnecting = false;
+        this.startMicrophone().then(() => {
+          this.updateStatus('listening', 'Rex is listening! Talk to Rex!');
+          Sound.chirp();
+          if (this.currentQuestContext) {
+            this.sendQuestContextUpdate(this.currentQuestContext);
+          }
+        }).catch(err => {
+          this.updateStatus('error', 'Mic error: ' + err.message);
+        });
         return;
       }
 

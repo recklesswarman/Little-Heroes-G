@@ -1,6 +1,6 @@
 import { Sound } from '../audio/sfx.js';
 import confetti from 'canvas-confetti';
-import { PETS_DATABASE, getPetArchetype, getPetBondBonus, SANCTUARY_TREATS } from '../data/petsData.js';
+import { PETS_DATABASE, getPetArchetype, getPetBondBonus, SANCTUARY_TREATS, makePetSvg } from '../data/petsData.js';
 import { ADVENTURE_GAMES } from '../data/learningGamesData.js';
 import { MOVEMENT_ROUTINES, getMovementRoutine } from '../data/movementRoutinesData.js';
 import { PROFILE_THEMES } from '../data/profileThemesData.js';
@@ -28,6 +28,7 @@ import {
 import { PET_GEAR_CATALOG, calculateActiveGearBuffs, formatStatBonusName } from '../data/petGearStudioData.js';
 import { speakCompanion } from '../services/voiceService.js';
 import { FORGE_BLUEPRINTS, getBlueprintById, isBlueprintUnlocked } from '../data/heroForgeData.js';
+import { firebaseAI } from '../services/firebaseAILogicService.js';
 
 export const KID_AVATARS = [
   { id: 'avatar_dragon', label: 'Dragon Explorer', url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZfP7_Cwlp4sz41asI8ymuapAKvjmqHtvI4zcMAF_XwUmibj8IheGrS5cA5QD5gmXgVxEkZM9FlWJPRZnct3x6-9SQB7zJKqkEDjJ3m95tAy3zRqS-PbmcQ4kv_9pmIfm2Py4mh3Fw083hkDookz1w4_r50SBA1jc9igDaAPFLYBFgSP2aQBz7Q4jVE-DwhMOyUEHlxDkQk6Gwc2EAFCSKs1c0QuhUOi3tkrk5MXRARKqZcYVzyJe6gA' },
@@ -977,10 +978,33 @@ class Store {
     }
   }
 
+  setView(viewName, params = {}) {
+    this.navigate(viewName, params);
+  }
+
+  setActiveWorkoutId(id) {
+    this.state.activeWorkoutId = id;
+    this.saveState(true);
+    this.notify();
+  }
+
+  getPet(id) {
+    if (id === undefined || id === null) return this.getActivePet();
+    const idStr = String(id).toLowerCase().trim();
+    const allPets = this.state.pets || PETS_DATABASE;
+    const petData = allPets.find(p => String(p.id).toLowerCase() === idStr || p.name.toLowerCase().includes(idStr)) || PETS_DATABASE[0];
+    const hero = this.state.selectedHero;
+    const stage = this.state.petStageMap?.[petData.id] || hero?.petStageMap?.[petData.id] || 1;
+    const stats = this.state.petStatsMap?.[petData.id] || { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
+    const currentAvatar = (stage >= 3 && petData.evolvedAvatar) ? petData.evolvedAvatar : (petData.avatar || PETS_DATABASE[0].avatar);
+    return { ...petData, stage, ...stats, image: currentAvatar, avatar: currentAvatar };
+  }
+
   getActivePet() {
     const hero = this.state.selectedHero;
-    const petId = hero?.activePetId || (hero?.unlockedPetIds?.[0] || 1);
-    const petData = this.state.pets.find((p) => p.id === petId) || PETS_DATABASE.find((p) => p.id === petId) || this.state.pets[0] || PETS_DATABASE[0];
+    const petId = hero?.activePetId || (hero?.unlockedPetIds?.[0] || '1');
+    const allPets = this.state.pets || PETS_DATABASE;
+    const petData = allPets.find((p) => String(p.id) === String(petId)) || PETS_DATABASE.find((p) => String(p.id) === String(petId)) || allPets[0] || PETS_DATABASE[0];
     const stage = this.state.petStageMap?.[petId] || hero?.petStageMap?.[petId] || 1;
     const stats = this.state.petStatsMap?.[petId] || { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
     const currentAvatar = (stage >= 3 && petData?.evolvedAvatar) ? petData.evolvedAvatar : (petData?.avatar || PETS_DATABASE[0].avatar);
@@ -988,8 +1012,11 @@ class Store {
   }
 
   setActivePet(petId) {
-    this.state.selectedHero.activePetId = petId;
-    const pet = this.state.pets.find(p => p.id === petId) || PETS_DATABASE.find(p => p.id === petId);
+    const pId = String(petId);
+    if (!this.state.selectedHero) this.state.selectedHero = {};
+    this.state.selectedHero.activePetId = pId;
+    const allPets = this.state.pets || PETS_DATABASE;
+    const pet = allPets.find(p => String(p.id) === pId) || PETS_DATABASE.find(p => String(p.id) === pId) || PETS_DATABASE[0];
     const petImg = pet?.avatar || pet?.evolvedAvatar;
     
     Sound.fanfare();
@@ -1003,6 +1030,11 @@ class Store {
       'pets'
     );
     this.saveState(true);
+    this.notify();
+  }
+
+  selectHeroPet(petId) {
+    this.setActivePet(petId);
   }
 
   // 1. ADD NEW TASK / ROUTINE (Parent Portal)
@@ -1213,7 +1245,6 @@ class Store {
   // 6. AI REWARD GENERATOR STUDIO WITH 3D GRAPHIC ENGINE
   async generateAIReward(name, type, description, costCoins) {
     try {
-      const { firebaseAI } = await import('../services/firebaseAILogicService.js');
       const newItem = await firebaseAI.generateRewardItem(name, type, costCoins);
       if (description && description.trim()) {
         newItem.desc = description.trim();
@@ -1922,6 +1953,19 @@ class Store {
   }
 
   startPetExpedition(petId, biomeId = 'fern_woods', durationMinutes = 15, snackPacked = false) {
+    const rawPetId = petId || (this.state.selectedHero && this.state.selectedHero.activePetId) || '1';
+    const durationMs = durationMinutes * 60 * 1000;
+    const now = Date.now();
+
+    // Set simplified sanctuary state for PetSanctuaryView
+    const sanct = this.getPetSanctuaryState();
+    sanct.expedition = {
+      active: true,
+      petId: String(rawPetId),
+      startTime: now,
+      durationMs: durationMs
+    };
+
     if (!this.state.activeExpeditions) {
       this.state.activeExpeditions = [];
     }
@@ -1929,54 +1973,40 @@ class Store {
     const heroLevel = this.state.selectedHero?.level || 1;
     const maxSlots = heroLevel >= 3 ? 2 : 1;
 
-    if (this.state.activeExpeditions.length >= maxSlots) {
-      return {
-        success: false,
-        error: `Maximum active expeditions reached (${maxSlots}/${maxSlots}). Reach Hero Level 3 to unlock Slot 2!`
+    const pId = Number(rawPetId) || rawPetId;
+    const isAlreadyExploring = this.state.activeExpeditions.some(e => String(e.petId) === String(pId));
+    if (!isAlreadyExploring && this.state.activeExpeditions.length < maxSlots) {
+      const pet = this.state.pets.find(p => String(p.id) === String(pId)) || PETS_DATABASE.find(p => String(p.id) === String(pId)) || this.state.pets[0] || PETS_DATABASE[0];
+      const biome = getExpeditionBiome(biomeId);
+      const affinity = calculateExpeditionAffinity(pet, biomeId);
+
+      // If snack packed, deduct small treat tokens (free if insufficient)
+      if (snackPacked && (this.state.selectedHero.coins || 0) >= 5) {
+        this.state.selectedHero.coins -= 5;
+      }
+
+      const expeditionRecord = {
+        id: 'exp_' + now + '_' + Math.random().toString(36).substring(2, 6),
+        petId: pId,
+        petName: pet.name,
+        petAvatar: pet.avatar,
+        biomeId: biome.id,
+        biomeName: biome.name,
+        biomeEmoji: biome.emoji,
+        durationMinutes: durationMinutes,
+        startTime: now,
+        endTime: now + durationMs,
+        snackPacked: snackPacked,
+        affinityBonus: affinity.hasAffinity
       };
+
+      this.state.activeExpeditions.push(expeditionRecord);
+
+      this.logAction(
+        `${pet.name} departed for ${biome.name}! 🎒🗺️`,
+        `${durationMinutes}-min expedition • ${affinity.hasAffinity ? '+35% Affinity Bonus 🌟' : 'Perimeter Exploration'}`
+      );
     }
-
-    const pId = Number(petId);
-    const isAlreadyExploring = this.state.activeExpeditions.some(e => e.petId === pId);
-    if (isAlreadyExploring) {
-      return {
-        success: false,
-        error: 'This companion pet is already exploring! Pick another pet.'
-      };
-    }
-
-    const pet = this.state.pets.find(p => p.id === pId) || this.state.pets[0];
-    const biome = getExpeditionBiome(biomeId);
-    const affinity = calculateExpeditionAffinity(pet, biomeId);
-
-    // If snack packed, deduct small treat tokens (free if insufficient)
-    if (snackPacked && (this.state.selectedHero.coins || 0) >= 5) {
-      this.state.selectedHero.coins -= 5;
-    }
-
-    const now = Date.now();
-    const durationMs = durationMinutes * 60 * 1000;
-    const expeditionRecord = {
-      id: 'exp_' + now + '_' + Math.random().toString(36).substring(2, 6),
-      petId: pId,
-      petName: pet.name,
-      petAvatar: pet.avatar,
-      biomeId: biome.id,
-      biomeName: biome.name,
-      biomeEmoji: biome.emoji,
-      durationMinutes: durationMinutes,
-      startTime: now,
-      endTime: now + durationMs,
-      snackPacked: snackPacked,
-      affinityBonus: affinity.hasAffinity
-    };
-
-    this.state.activeExpeditions.push(expeditionRecord);
-
-    this.logAction(
-      `${pet.name} departed for ${biome.name}! 🎒🗺️`,
-      `${durationMinutes}-min expedition • ${affinity.hasAffinity ? '+35% Affinity Bonus 🌟' : 'Perimeter Exploration'}`
-    );
 
     Sound.tap();
     if (this.state.expeditionModal) {
@@ -1988,7 +2018,7 @@ class Store {
 
     return {
       success: true,
-      expedition: expeditionRecord
+      expedition: sanct.expedition
     };
   }
 
@@ -2022,6 +2052,34 @@ class Store {
   }
 
   claimExpeditionRewards(expeditionId) {
+    const sanct = this.getPetSanctuaryState();
+    if (!expeditionId && sanct.expedition && sanct.expedition.active) {
+      const exp = sanct.expedition;
+      const elapsed = Date.now() - exp.startTime;
+      if (elapsed >= exp.durationMs) {
+        if (!this.state.selectedHero) this.state.selectedHero = {};
+        this.state.selectedHero.coins = (this.state.selectedHero.coins || 0) + 100;
+        this.addEvolutionSparks(exp.petId, 20);
+        this.addXP(35);
+        sanct.expedition = { active: false };
+        if (this.state.activeExpeditions) {
+          this.state.activeExpeditions = this.state.activeExpeditions.filter(e => String(e.petId) !== String(exp.petId));
+        }
+        Sound.fanfare();
+        confetti({ particleCount: 80, spread: 80, origin: { y: 0.5 } });
+        this.saveState(true);
+        this.notify();
+        return { coins: 100, sparks: 20, xp: 35 };
+      }
+      return null;
+    }
+
+    if (!expeditionId && this.state.activeExpeditions && this.state.activeExpeditions.length > 0) {
+      const now = Date.now();
+      const ready = this.state.activeExpeditions.find(e => now >= e.endTime);
+      if (ready) expeditionId = ready.id;
+    }
+
     if (!this.state.activeExpeditions) return null;
     const expIdx = this.state.activeExpeditions.findIndex(e => e.id === expeditionId);
     if (expIdx === -1) return null;
@@ -2082,6 +2140,9 @@ class Store {
 
     // Remove from active expeditions
     this.state.activeExpeditions.splice(expIdx, 1);
+    if (sanct.expedition && String(sanct.expedition.petId) === String(pet.id)) {
+      sanct.expedition = { active: false };
+    }
 
     // 7. Audit Log for Parent Portal
     const nowIso = new Date().toISOString();
@@ -2340,8 +2401,18 @@ class Store {
     }
   }
 
+  addCoins(amount) {
+    if (!amount || isNaN(amount)) return;
+    const hero = this.state.selectedHero;
+    if (!hero) return;
+    hero.coins = (hero.coins || 0) + Number(amount);
+    this.saveState(true);
+    this.notify();
+  }
+
   feedPet(petId) {
-    const id = petId || this.state.selectedHero.activePetId || 1;
+    const id = String(petId || this.state.selectedHero?.activePetId || '1');
+    if (!this.state.petStatsMap) this.state.petStatsMap = {};
     if (!this.state.petStatsMap[id]) this.state.petStatsMap[id] = { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
     const stats = this.state.petStatsMap[id];
     const activePet = this.getActivePet();
@@ -2358,27 +2429,48 @@ class Store {
       return;
     }
 
-    stats.hunger = Math.min(100, stats.hunger + 25);
-    stats.joy = Math.min(100, stats.joy + 15);
-    stats.energy = Math.min(100, stats.energy + 20);
+    stats.hunger = Math.min(100, (stats.hunger || 75) + 25);
+    stats.joy = Math.min(100, (stats.joy || 85) + 15);
+    stats.energy = Math.min(100, (stats.energy || 65) + 20);
+
+    const sanct = this.getPetSanctuaryState();
+    if (!sanct.petNeedsMap[id]) {
+      sanct.petNeedsMap[id] = { hunger: stats.hunger, hygiene: stats.hygiene, joy: stats.joy, energy: stats.energy };
+    } else {
+      sanct.petNeedsMap[id].hunger = stats.hunger;
+      sanct.petNeedsMap[id].joy = stats.joy;
+      sanct.petNeedsMap[id].energy = stats.energy;
+    }
+
     this.addXP(10);
     Sound.crunch();
     Sound.chirp();
     this.saveState(true);
+    this.notify();
   }
 
   playWithPet(petId) {
-    const id = petId || this.state.selectedHero.activePetId || 1;
+    const id = String(petId || this.state.selectedHero?.activePetId || '1');
+    if (!this.state.petStatsMap) this.state.petStatsMap = {};
     if (!this.state.petStatsMap[id]) this.state.petStatsMap[id] = { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
     const stats = this.state.petStatsMap[id];
 
     // Increases BOTH Joy and Energy (not decreasing)
-    stats.joy = Math.min(100, stats.joy + 20);
-    stats.energy = Math.min(100, stats.energy + 15);
+    stats.joy = Math.min(100, (stats.joy || 85) + 20);
+    stats.energy = Math.min(100, (stats.energy || 65) + 15);
+
+    const sanct = this.getPetSanctuaryState();
+    if (!sanct.petNeedsMap[id]) {
+      sanct.petNeedsMap[id] = { hunger: stats.hunger, hygiene: stats.hygiene, joy: stats.joy, energy: stats.energy };
+    } else {
+      sanct.petNeedsMap[id].joy = stats.joy;
+      sanct.petNeedsMap[id].energy = stats.energy;
+    }
+
     this.addXP(15);
-    Sound.boing();
-    Sound.chirp();
+    Sound.cheer();
     this.saveState(true);
+    this.notify();
   }
 
   equipPetGear(gearTitle, petId, gearId) {
@@ -3163,13 +3255,19 @@ class Store {
   }
 
   addEvolutionSparks(petId, amount = 15) {
-    const id = petId || this.state.selectedHero?.activePetId || 1;
+    const id = petId || this.state.selectedHero?.activePetId || '1';
     if (!this.state.petSparkMap) {
       this.state.petSparkMap = {};
     }
     const current = this.getPetSparks(id);
     const next = Math.min(100, current + amount);
     this.state.petSparkMap[id] = next;
+    if (this.state.selectedHero) {
+      this.state.selectedHero.sparks = next;
+      this.state.selectedHero.evolutionSparks = next;
+    }
+    this.saveState(true);
+    this.notify();
     return next;
   }
 
@@ -3387,22 +3485,45 @@ class Store {
   }
 
   bathPetProgress(amount = 20, petId) {
-    const id = petId || this.state.selectedHero.activePetId || 1;
+    const id = String(petId || this.state.selectedHero?.activePetId || '1');
+    if (!this.state.petStatsMap) this.state.petStatsMap = {};
     if (!this.state.petStatsMap[id]) this.state.petStatsMap[id] = { hunger: 75, hygiene: 60, energy: 65, joy: 85 };
     const stats = this.state.petStatsMap[id];
     stats.hygiene = Math.min(100, (stats.hygiene || 60) + amount);
+
+    // Sync with Pet Sanctuary state
+    const sanct = this.getPetSanctuaryState();
+    if (!sanct.petNeedsMap[id]) {
+      sanct.petNeedsMap[id] = { hunger: stats.hunger, hygiene: stats.hygiene, joy: stats.joy, energy: stats.energy };
+    } else {
+      sanct.petNeedsMap[id].hygiene = stats.hygiene;
+    }
+
     this.saveState(true);
+    this.notify();
   }
 
   completePetBathReward(petId) {
-    const id = petId || this.state.selectedHero.activePetId || 1;
+    const id = String(petId || this.state.selectedHero?.activePetId || '1');
+    if (!this.state.petStatsMap) this.state.petStatsMap = {};
     if (!this.state.petStatsMap[id]) this.state.petStatsMap[id] = { hunger: 75, hygiene: 60, energy: 65, joy: 85 };
     const stats = this.state.petStatsMap[id];
     const activePet = this.getActivePet();
 
     stats.hygiene = 100;
     stats.joy = 100;
-    this.state.selectedHero.coins += 25;
+
+    // Sync with Pet Sanctuary state
+    const sanct = this.getPetSanctuaryState();
+    if (!sanct.petNeedsMap[id]) {
+      sanct.petNeedsMap[id] = { hunger: stats.hunger, hygiene: 100, joy: 100, energy: stats.energy };
+    } else {
+      sanct.petNeedsMap[id].hygiene = 100;
+      sanct.petNeedsMap[id].joy = 100;
+    }
+
+    if (!this.state.selectedHero) this.state.selectedHero = {};
+    this.state.selectedHero.coins = (this.state.selectedHero.coins || 0) + 25;
     this.addXP(35);
     Sound.sparkle();
     Sound.coin();
@@ -3415,7 +3536,7 @@ class Store {
     });
 
     this.logAction(
-      `${this.state.selectedHero.name} washed and blow-dried ${activePet.name}`,
+      `${this.state.selectedHero?.name || 'Hero'} washed and blow-dried ${activePet.name}`,
       `+25 Tokens 🪙 & +35 XP awarded! Pet is 100% clean and fluffy warm.`
     );
 
@@ -5993,6 +6114,13 @@ class Store {
     }
 
     sanct.activePicnicSnack = treat;
+    if (!this.state.petStatsMap) this.state.petStatsMap = {};
+    this.state.petStatsMap[pId] = {
+      hunger: needs.hunger,
+      hygiene: needs.hygiene,
+      joy: needs.joy,
+      energy: needs.energy
+    };
     this.saveState(true);
     this.notify();
     return { success: true, treat, needs, bond };
@@ -6024,6 +6152,13 @@ class Store {
     }
 
     sanct.activeBathLather = Math.min(100, (sanct.activeBathLather || 0) + 20);
+    if (!this.state.petStatsMap) this.state.petStatsMap = {};
+    this.state.petStatsMap[pId] = {
+      hunger: needs.hunger,
+      hygiene: needs.hygiene,
+      joy: needs.joy,
+      energy: needs.energy
+    };
     this.saveState(true);
     this.notify();
     return { success: true, needs, bond };
@@ -6169,11 +6304,17 @@ class Store {
   }
 
   deductPetSparks(petId, amount = 100) {
-    const id = petId || this.state.selectedHero?.activePetId || 1;
+    const id = petId || this.state.selectedHero?.activePetId || '1';
     if (!this.state.petSparkMap) this.state.petSparkMap = {};
     const current = this.getPetSparks(id);
     const next = Math.max(0, current - amount);
     this.state.petSparkMap[id] = next;
+    if (this.state.selectedHero) {
+      this.state.selectedHero.sparks = next;
+      this.state.selectedHero.evolutionSparks = next;
+    }
+    this.saveState(true);
+    this.notify();
     return next;
   }
 

@@ -320,7 +320,7 @@ export function renderAdventuresMapView() {
 export function attachAdventuresMapListeners() {
   const backBtn = document.getElementById('adv-back-btn');
   if (backBtn) {
-    backBtn.addEventListener('click', () => store.navigate('pet_pen'));
+    backBtn.addEventListener('click', () => store.navigate('pet_sanctuary'));
   }
 
   // Easy Mode Toddler Spoken Intro
@@ -438,6 +438,7 @@ export function attachAdventuresMapListeners() {
         const petId = hero?.activePetId || 1;
         if (store.getState().petStatsMap[petId]) {
           store.getState().petStatsMap[petId].energy = Math.max(0, (store.getState().petStatsMap[petId].energy || 50) - game.energyCost);
+          store.saveState(true);
         }
 
         activeGame = game;

@@ -355,7 +355,7 @@ export function attachPetLockerListeners() {
   if (exitBtn) {
     exitBtn.addEventListener('click', () => {
       Sound.click();
-      store.navigate('pet_pen');
+      store.navigate('pet_sanctuary');
     });
   }
 

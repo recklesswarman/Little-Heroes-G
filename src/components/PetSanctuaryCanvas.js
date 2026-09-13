@@ -48,7 +48,7 @@ export class PetSanctuaryCanvas {
     this.petX = 0;
     this.petY = 0;
     this.petScaleX = 1.0;
-    this.petScaleY = 1.0;
+    this.petScaleY = 1.0; this.isWorkingOut = false; this.workoutAnimProgress = 0;
     this.petHeadRot = 0;
     this.petTailAngle = 0;
     this.isPettingHead = false;
@@ -212,6 +212,7 @@ export class PetSanctuaryCanvas {
     const sanct = store.getPetSanctuaryState();
     if (sanct.petBondMap[petId]) {
       sanct.petBondMap[petId].xp = (sanct.petBondMap[petId].xp || 0) + 5;
+      store.saveState(true);
     }
 
     setTimeout(() => { this.isPettingHead = false; }, 800);
@@ -314,6 +315,90 @@ export class PetSanctuaryCanvas {
 
   update(dt) {
     this.clock += dt;
+    if (this.isWorkingOut) {
+      this.workoutAnimProgress += dt * 6;
+      const progress = this.workoutAnimProgress;
+      const mode = this.workoutMode || 'trex_run';
+
+      switch (mode) {
+        case 'velociraptor_run':
+          // Rapid sprint: high-speed leg/body bounce and forward head lean
+          this.petScaleY = 1.0 + Math.sin(progress * 2.2) * 0.12;
+          this.petScaleX = 1.0 - Math.sin(progress * 2.2) * 0.08;
+          this.petHeadRot = 0.12 + Math.sin(progress * 2.2) * 0.15;
+          this.petY = -Math.abs(Math.sin(progress * 2.2)) * 10;
+          this.petX = 0;
+          break;
+
+        case 'stegosaurus_walks':
+          // Heavy stomping walk: rocking side-to-side with deep stomps
+          this.petScaleY = 1.0 + Math.sin(progress * 0.8) * 0.1;
+          this.petScaleX = 1.0 + Math.cos(progress * 0.8) * 0.08;
+          this.petHeadRot = Math.sin(progress * 0.8) * 0.15;
+          this.petX = Math.sin(progress * 0.8) * 12;
+          this.petY = -Math.abs(Math.sin(progress * 1.6)) * 8;
+          break;
+
+        case 'pterodactyl_takeoff':
+          // Wing takeoff: high vertical bounding leap with arm-wing flapping
+          this.petY = -Math.abs(Math.sin(progress * 1.0)) * 28;
+          this.petScaleY = 1.0 + Math.sin(progress * 1.0) * 0.22;
+          this.petScaleX = 1.0 - Math.sin(progress * 1.0) * 0.15;
+          this.petHeadRot = -0.15 + Math.sin(progress * 1.0) * 0.2;
+          this.petX = 0;
+          break;
+
+        case 'compsognathus_prance':
+          // Prancing left & right: crossing legs, bouncy zig-zag hop
+          this.petX = Math.sin(progress * 1.1) * 22;
+          this.petY = -Math.abs(Math.sin(progress * 2.2)) * 16;
+          this.petScaleY = 1.0 + Math.sin(progress * 2.2) * 0.15;
+          this.petScaleX = 1.0 - Math.sin(progress * 2.2) * 0.08;
+          this.petHeadRot = Math.sin(progress * 1.1) * 0.25;
+          break;
+
+        case 'brachiosaurus_stretch':
+          // Tip-toe tall stretch: tall vertical elongation reaching for the sky
+          this.petScaleY = 1.0 + (0.5 + 0.5 * Math.sin(progress * 0.7)) * 0.28;
+          this.petScaleX = 1.0 - (0.5 + 0.5 * Math.sin(progress * 0.7)) * 0.12;
+          this.petHeadRot = -0.25 + Math.sin(progress * 0.7) * 0.1;
+          this.petY = -Math.abs(Math.sin(progress * 0.7)) * 14;
+          this.petX = 0;
+          break;
+
+        case 'diplodocus':
+          // Hands and knees balance: cross-body reach & counterweight sway
+          this.petScaleX = 1.0 + Math.sin(progress * 0.75) * 0.14;
+          this.petScaleY = 1.0 - Math.sin(progress * 0.75) * 0.06;
+          this.petHeadRot = Math.cos(progress * 0.75) * 0.22;
+          this.petX = Math.sin(progress * 0.75) * 10;
+          this.petY = Math.cos(progress * 1.5) * 6;
+          break;
+
+        case 'spinosaurus_stretch':
+          // Spine rounding arch: belly to spine, back curving toward ceiling
+          this.petScaleY = 1.0 + (0.5 + 0.5 * Math.sin(progress * 0.8)) * 0.24;
+          this.petScaleX = 1.0 - (0.5 + 0.5 * Math.sin(progress * 0.8)) * 0.14;
+          this.petHeadRot = 0.25 * Math.sin(progress * 0.8);
+          this.petY = -Math.abs(Math.sin(progress * 0.8)) * 12;
+          this.petX = 0;
+          break;
+
+        case 'trex_run':
+        default:
+          // T-Rex run: high knee stomps, elbows in armpits, heavy ground-shaking rhythm
+          this.petScaleY = 1.0 + Math.abs(Math.sin(progress * 1.5)) * 0.18;
+          this.petScaleX = 1.0 - Math.abs(Math.sin(progress * 1.5)) * 0.08;
+          this.petHeadRot = Math.sin(progress * 1.5) * 0.25;
+          this.petY = -Math.abs(Math.sin(progress * 1.5)) * 14;
+          this.petX = Math.sin(progress * 0.75) * 6;
+          break;
+      }
+    } else {
+      this.petX = 0;
+      this.petY = 0;
+    }
+  
 
     // 1. Smooth Orbit Rotation
     if (!this.isDragging) {
@@ -322,7 +407,9 @@ export class PetSanctuaryCanvas {
     this.rotY += (this.targetRotY - this.rotY) * 0.08;
 
     // 2. Pet Gentle Breathing & Tail Wag
-    this.petHeadRot = Math.sin(this.clock * 2) * 0.06;
+    if (!this.isWorkingOut) {
+      this.petHeadRot = Math.sin(this.clock * 2) * 0.06;
+    }
     this.petTailAngle = Math.sin(this.clock * 4) * 0.25;
 
     // 3. Update Pond Bubbles
@@ -364,7 +451,8 @@ export class PetSanctuaryCanvas {
 
     const w = this.width;
     const h = this.height;
-    const activePet = store.getActivePet() || { name: 'Rex', archetype: 'dino', color: '#2ecc71' };
+    const petId = this.petId || store.getActivePet()?.id || '1';
+    const activePet = (store.getPet ? store.getPet(petId) : getPetById(petId)) || store.getActivePet() || { name: 'Rex', archetype: 'dino', color: '#2ecc71' };
     const archetype = getPetArchetype(activePet);
     const isPearly = store.getPearlyGleamStatus ? store.getPearlyGleamStatus(activePet.id) : false;
 
@@ -564,7 +652,7 @@ export class PetSanctuaryCanvas {
     // =========================================================================
     ctx.save();
     const petBaseY = -12;
-    ctx.translate(0, petBaseY);
+    ctx.translate(this.petX, petBaseY + this.petY);
 
     // Backflip Tickle Physics
     if (this.isTickled) {
@@ -787,8 +875,10 @@ export class PetSanctuaryCanvas {
   }
 
   renderEquippedGear(ctx, pet) {
-    const hero = store.getState().selectedHero;
-    const gearMap = (hero && hero.equippedPetGearMap) ? (hero.equippedPetGearMap[pet.id] || {}) : {};
+    const state = store.getState();
+    const hero = state.selectedHero;
+    const pId = String(pet.id);
+    const gearMap = this.options.gear || (state.petGear && state.petGear[pId]) || (hero && hero.equippedPetGearMap && hero.equippedPetGearMap[pId]) || {};
 
     // 1. Helmet / Aviator Cap on Head
     if (gearMap.head || gearMap.helmet) {
@@ -835,7 +925,7 @@ export class PetSanctuaryCanvas {
     }
 
     // 3. Greaves on Boots
-    if (gearMap.boots || gearMap.legs) {
+    if (gearMap.boots || gearMap.legs || gearMap.feet) {
       ctx.fillStyle = '#ffb961';
       ctx.fillRect(-26, 26, 12, 6);
       ctx.fillRect(14, 26, 12, 6);
@@ -864,8 +954,42 @@ export class PetSanctuaryCanvas {
     ctx.restore();
   }
 
+  
+  setPetId(petId) {
+    this.petId = String(petId);
+  }
+
+  setWorkoutMode(workoutId) {
+    this.workoutMode = workoutId;
+    this.workoutAnimProgress = 0;
+  }
+
+  startWorkoutAnimation() {
+    this.isWorkingOut = true;
+    this.workoutAnimProgress = 0;
+    if (this.workoutInterval) {
+      clearInterval(this.workoutInterval);
+      this.workoutInterval = null;
+    }
+  }
+
+  stopWorkoutAnimation() {
+    this.isWorkingOut = false;
+    if (this.workoutInterval) {
+      clearInterval(this.workoutInterval);
+      this.workoutInterval = null;
+    }
+    this.workoutAnimProgress = 0;
+    this.petX = 0;
+    this.petY = 0;
+    this.petScaleX = 1.0;
+    this.petScaleY = 1.0;
+    this.petHeadRot = 0;
+  }
+
   destroy() {
     this.isDestroyed = true;
+    this.stopWorkoutAnimation();
     this.stopLoop();
     if (this.canvas) {
       if (this._onPointerDown) this.canvas.removeEventListener('pointerdown', this._onPointerDown);

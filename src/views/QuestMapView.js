@@ -749,7 +749,7 @@ export function attachQuestMapListeners() {
   const toPenBtn = document.getElementById('map-to-pet-pen-btn');
   if (toPenBtn) {
     toPenBtn.addEventListener('click', () => {
-      store.navigate('pet_pen');
+      store.navigate('pet_sanctuary');
     });
   }
 

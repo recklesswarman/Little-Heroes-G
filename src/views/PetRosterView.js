@@ -25,7 +25,7 @@ export function renderPetRosterView() {
       <!-- Header -->
       <div class="flex items-center justify-between">
         <button id="roster-back-btn" class="bg-surface-container hover:bg-surface-bright text-on-surface-variant font-headline text-xs font-bold px-3.5 py-2.5 rounded-2xl border-2 border-surface-container-highest flex items-center gap-1.5 chunky-btn-sm">
-          <span class="material-symbols-outlined text-base">arrow_back</span> Back to Pen
+          <span class="material-symbols-outlined text-base">arrow_back</span> Back to Sanctuary
         </button>
         <div class="flex flex-col items-end">
           <h1 class="font-headline text-2xl font-black text-inverse-surface text-shadow">The 24 Pet Roster</h1>
@@ -165,7 +165,6 @@ export function renderPetRosterView() {
           })
           .join('')}
       </div>
-
     </div>
   `;
 }
@@ -173,7 +172,7 @@ export function renderPetRosterView() {
 export function attachPetRosterListeners() {
   const backBtn = document.getElementById('roster-back-btn');
   if (backBtn) {
-    backBtn.addEventListener('click', () => store.navigate('pet_pen'));
+    backBtn.addEventListener('click', () => store.navigate('pet_sanctuary'));
   }
 
   // Buy Habitat Slot Button

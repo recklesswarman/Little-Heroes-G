@@ -84,7 +84,7 @@ export function renderDashboardView() {
           </div>
 
           <button id="dash-to-pen-btn" class="bg-primary text-on-primary font-headline text-xs font-black px-3 py-2 rounded-xl chunky-btn-sm border-primary-container ml-auto hover:brightness-110 active:scale-95">
-            Pet Pen
+            Sanctuary
           </button>
         </div>
         `
@@ -96,14 +96,14 @@ export function renderDashboardView() {
 
           <div class="flex flex-col">
             <span class="font-headline text-xs font-black text-secondary flex items-center gap-1">
-              Pet Pen
+              Pet Sanctuary
               <span class="bg-primary/20 text-primary text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full border border-primary/40">New!</span>
             </span>
-            <span class="text-[10px] text-on-surface-variant font-bold">Select Pet Pen to adopt 1st pet</span>
+            <span class="text-[10px] text-on-surface-variant font-bold">Visit Sanctuary to meet companions</span>
           </div>
 
           <button id="dash-to-pen-btn" class="bg-gradient-to-r from-primary to-secondary text-on-primary font-headline text-xs font-black px-3.5 py-2.5 rounded-xl chunky-btn-sm border-primary-container ml-auto hover:brightness-110 active:scale-95 flex items-center gap-1">
-            <span class="material-symbols-outlined text-base">pets</span> Pet Pen
+            <span class="material-symbols-outlined text-base">pets</span> Sanctuary
           </button>
         </div>
         `
@@ -720,12 +720,12 @@ export function attachDashboardListeners() {
 
   const toPenBtn = document.getElementById('dash-to-pen-btn');
   if (toPenBtn) {
-    toPenBtn.addEventListener('click', () => store.navigate('pet_pen'));
+    toPenBtn.addEventListener('click', () => store.navigate('pet_sanctuary'));
   }
 
   const activePetTrigger = document.getElementById('dash-active-pet-trigger');
   if (activePetTrigger) {
-    activePetTrigger.addEventListener('click', () => store.navigate('pet_pen'));
+    activePetTrigger.addEventListener('click', () => store.navigate('pet_sanctuary'));
   }
 
   const toAdvBtn = document.getElementById('dash-to-adventures-btn');

@@ -285,7 +285,7 @@ export function attachEvolutionListeners() {
   if (backBtn) {
     backBtn.addEventListener('click', () => {
       Sound.click();
-      store.navigate('pet_pen');
+      store.navigate('pet_sanctuary');
     });
   }
 
@@ -302,7 +302,7 @@ export function attachEvolutionListeners() {
       Sound.click();
       isCeremonyPlaying = false;
       ceremonyData = null;
-      store.navigate('pet_pen');
+      store.navigate('pet_sanctuary');
     });
   }
 }

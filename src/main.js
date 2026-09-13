@@ -14,9 +14,7 @@ import { renderParentLockModal, initParentLockModal, attachParentLockListeners }
 import { renderHouseholdLinkModal, initHouseholdModal, attachHouseholdLinkModalListeners } from './components/HouseholdLinkModal.js';
 import { renderPetSelectionModal, attachPetSelectionModalListeners } from './components/PetSelectionModal.js';
 import { renderPetLockerModal, attachPetLockerModalListeners } from './components/PetLockerModal.js';
-import { renderPetExpeditionsModal, attachPetExpeditionsListeners } from './components/PetExpeditionsModal.js';
 import { renderMysterySurpriseModal, attachMysterySurpriseModalListeners } from './components/MysterySurpriseModal.js';
-import { renderPetRunwayModal, attachPetRunwayModalListeners } from './components/PetRunwayModal.js';
 import { renderLiveRexWidget, attachLiveRexWidgetListeners } from './components/LiveRexWidget.js';
 import { renderGiftCrateWidget, renderGiftCrateModal, attachGiftCrateListeners } from './components/GiftCrateModal.js';
 
@@ -39,6 +37,7 @@ import { renderPetLockerView, attachPetLockerListeners } from './views/PetLocker
 import { renderHeroHQView, attachHeroHQListeners } from './views/HeroHQView.js';
 import { renderPetExpeditionView, attachPetExpeditionListeners } from './views/PetExpeditionView.js';
 import { renderHeroForgeView, attachHeroForgeListeners } from './views/HeroForgeView.js';
+import { renderDinoWorkoutView, attachDinoWorkoutListeners } from './views/DinoWorkoutView.js';
 
 const app = document.getElementById('app');
 
@@ -58,14 +57,21 @@ function renderApp() {
       mainContent = renderQuestMapView();
       attachViewListeners = attachQuestMapListeners;
       break;
+    case 'pet_sanctuary':
+    case 'pet-sanctuary':
+    case 'pet_pen':
+    case 'pet-pen':
+      mainContent = renderPetSanctuaryView();
+      attachViewListeners = attachPetSanctuaryListeners;
+      break;
     case 'pet_expedition':
     case 'pet-expedition':
       mainContent = renderPetExpeditionView();
       attachViewListeners = attachPetExpeditionListeners;
       break;
-    case 'pet_pen':
-      mainContent = renderPetPenView();
-      attachViewListeners = attachPetPenListeners;
+    case 'dino_workout':
+      mainContent = renderDinoWorkoutView();
+      attachViewListeners = attachDinoWorkoutListeners;
       break;
     case 'pet_roster':
       mainContent = renderPetRosterView();
@@ -146,9 +152,7 @@ function renderApp() {
       ${renderHouseholdLinkModal()}
       ${renderPetSelectionModal()}
       ${renderPetLockerModal()}
-      ${renderPetExpeditionsModal()}
       ${renderMysterySurpriseModal()}
-      ${renderPetRunwayModal()}
       ${renderLiveRexWidget()}
       ${renderGiftCrateWidget()}
       ${renderGiftCrateModal()}
@@ -163,9 +167,7 @@ function renderApp() {
   attachHouseholdLinkModalListeners();
   attachPetSelectionModalListeners();
   attachPetLockerModalListeners();
-  attachPetExpeditionsListeners();
   attachMysterySurpriseModalListeners();
-  attachPetRunwayModalListeners();
   attachLiveRexWidgetListeners();
   attachGiftCrateListeners();
   attachViewListeners();

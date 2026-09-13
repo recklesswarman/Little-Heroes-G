@@ -14,6 +14,7 @@ import { Sound } from '../audio/sfx.js';
 
 let activeCanvasInstance = null;
 let eggCrackTaps = {}; // { [eggId]: tapCount }
+let expeditionInterval = null;
 
 export function renderPetSanctuaryView() {
   const state = store.getState();
@@ -220,7 +221,7 @@ export function renderPetSanctuaryView() {
       <!-- BOTTOM ACTION DOCK (4 GIANT CHUNKY TACTILE BUTTONS)                  -->
       <!-- ===================================================================== -->
       <nav class="fixed bottom-0 left-0 right-0 z-30 bg-surface-container/95 backdrop-blur-lg border-t-2 border-surface-container-highest px-3 sm:px-6 py-3 shadow-2xl">
-        <div class="max-w-xl mx-auto grid grid-cols-4 gap-2 sm:gap-3">
+        <div class="max-w-xl mx-auto grid grid-cols-6 gap-2 sm:gap-3">
           
           <!-- 1. FEED TREAT -->
           <button 
@@ -277,6 +278,35 @@ export function renderPetSanctuaryView() {
             <span class="text-2xl sm:text-3xl leading-none">⚡</span>
             <span class="mt-1 text-[10px] sm:text-xs">EVOLVE</span>
           </button>
+
+          <!-- 5. EXPEDITION -->
+          <button 
+            id="action-expedition-btn" 
+            class="sanctuary-dock-btn flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-2xl font-headline font-black text-xs transition-all active:translate-y-1 active:border-b-0 border-b-4 ${
+              activeDrawer === 'expedition'
+                ? 'bg-amber-400 text-slate-950 border-[#b7791f] shadow-md ring-2 ring-amber-400/60'
+                : 'bg-surface-container-high hover:bg-surface-bright text-on-surface border-surface-container-highest'
+            }"
+            aria-label="Send on Adventure"
+          >
+            <span class="text-2xl sm:text-3xl leading-none">🏕️</span>
+            <span class="mt-1 text-[10px] sm:text-xs">EXPLORE</span>
+          </button>
+
+          <!-- 6. WORKOUT -->
+          <button 
+            id="action-workout-btn" 
+            class="sanctuary-dock-btn flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-2xl font-headline font-black text-xs transition-all active:translate-y-1 active:border-b-0 border-b-4 ${
+              activeDrawer === 'workout'
+                ? 'bg-rose-400 text-slate-950 border-[#9b2c2c] shadow-md ring-2 ring-rose-400/60'
+                : 'bg-surface-container-high hover:bg-surface-bright text-on-surface border-surface-container-highest'
+            }"
+            aria-label="Dino Workout"
+          >
+            <span class="text-2xl sm:text-3xl leading-none">💪</span>
+            <span class="mt-1 text-[10px] sm:text-xs">WORKOUT</span>
+          </button>
+
         </div>
       </nav>
 
@@ -306,10 +336,10 @@ function renderActiveDrawer(drawer, activePet, archetype, needs, sparks, bondSta
         
         <div class="flex items-center gap-2 mt-1">
           <span class="text-xl">
-            ${drawer === 'feed' ? '🍎' : drawer === 'bath' ? '🫧' : drawer === 'wardrobe' ? '🪞' : drawer === 'evolution' ? '⚡' : '🐾'}
+            ${drawer === 'feed' ? '🍎' : drawer === 'expedition' ? '🏕️' : drawer === 'workout' ? '💪'  : drawer === 'bath' ? '🫧' : drawer === 'wardrobe' ? '🪞' : drawer === 'evolution' ? '⚡' : '🐾'}
           </span>
           <h3 class="font-headline font-black text-base text-on-surface uppercase tracking-wide">
-            ${drawer === 'feed' ? 'Snack Shelf' : drawer === 'bath' ? 'Bubble Spa Lagoon' : drawer === 'wardrobe' ? '3D Hero Wardrobe' : drawer === 'evolution' ? 'Starlight Evolution Altar' : '24 Pet Companion Roster'}
+            ${drawer === 'feed' ? 'Snack Shelf' : drawer === 'expedition' ? 'Adventure Expedition' : drawer === 'workout' ? 'Dino Workout'  : drawer === 'bath' ? 'Bubble Spa Lagoon' : drawer === 'wardrobe' ? '3D Hero Wardrobe' : drawer === 'evolution' ? 'Starlight Evolution Altar' : '24 Pet Companion Roster'}
           </h3>
         </div>
 
@@ -326,6 +356,8 @@ function renderActiveDrawer(drawer, activePet, archetype, needs, sparks, bondSta
       <div class="p-6 flex flex-col gap-6">
         ${
           drawer === 'feed' ? renderFeedDrawer(activePet, needs) :
+          drawer === 'expedition' ? renderExpeditionDrawer(activePet) :
+          drawer === 'workout' ? renderWorkoutDrawer(activePet) :
           drawer === 'bath' ? renderBathDrawer(activePet, needs) :
           drawer === 'wardrobe' ? renderWardrobeDrawer(activePet, equippedGear) :
           drawer === 'evolution' ? renderEvolutionDrawer(activePet, sparks, currentStage(activePet)) :
@@ -379,8 +411,8 @@ function renderFeedDrawer(pet, needs) {
             >
               <span class="text-3xl sm:text-4xl group-hover:scale-110 transition-transform">${treat.emoji}</span>
               <span class="font-headline font-black text-xs text-on-surface mt-2">${treat.name}</span>
-              <span class="text-[10px] font-bold text-secondary mt-0.5">+${treat.hunger} Hunger</span>
-              <span class="text-[10px] font-black text-primary">+${treat.bondXp} Bond XP</span>
+              <span class="text-[10px] font-bold text-secondary mt-0.5">+${treat.hungerFill || treat.hunger || 25} Hunger</span>
+              <span class="text-[10px] font-black text-primary">+${treat.bondXp || 20} Bond XP</span>
             </button>
           `).join('')}
         </div>
@@ -583,6 +615,85 @@ function renderEvolutionDrawer(pet, sparks, stage) {
 }
 
 // -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// DRAWER: EXPEDITION
+// -----------------------------------------------------------------------------
+function renderExpeditionDrawer(pet) {
+  const sanct = store.getPetSanctuaryState();
+  const exp = sanct.expedition || { active: false };
+  let content = '';
+
+  if (exp.active) {
+    const elapsed = Date.now() - exp.startTime;
+    const remaining = exp.durationMs - elapsed;
+    if (remaining <= 0) {
+      content = `
+        <div class="flex flex-col items-center gap-4 text-center">
+          <span class="text-5xl">🏆</span>
+          <h4 class="font-bold text-xl text-emerald-400">Expedition Complete!</h4>
+          <button id="claim-expedition-btn" class="bg-emerald-500 hover:bg-emerald-400 text-white font-bold py-3 px-6 rounded-full text-lg shadow-lg">
+            Claim Rewards (100 Coins, 20 Sparks)
+          </button>
+        </div>
+      `;
+    } else {
+      const min = Math.floor(remaining / 60000);
+      const sec = Math.floor((remaining % 60000) / 1000);
+      content = `
+        <div class="flex flex-col items-center gap-4 text-center">
+          <span class="text-5xl animate-bounce">🏕️</span>
+          <h4 class="font-bold text-xl text-amber-400">${pet.name} is Exploring!</h4>
+          <p id="expedition-countdown-display" class="text-lg text-white font-mono">${min}m ${sec}s remaining</p>
+        </div>
+      `;
+    }
+  } else {
+    content = `
+      <div class="flex flex-col items-center gap-4 text-center">
+        <p class="text-sm text-slate-300">Send ${pet.name} on a 15-minute adventure to find treasures!</p>
+        <button id="start-expedition-btn" class="bg-amber-500 hover:bg-amber-400 text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg">
+          Send on Adventure
+        </button>
+      </div>
+    `;
+  }
+
+  return `<div class="flex flex-col gap-5">${content}</div>`;
+}
+
+// -----------------------------------------------------------------------------
+// DRAWER: WORKOUT
+// -----------------------------------------------------------------------------
+function renderWorkoutDrawer(pet) {
+  const workouts = [
+    { id: 'velociraptor_run', name: 'Velociraptor Run' },
+    { id: 'stegosaurus_walks', name: 'Stegosaurus Walks' },
+    { id: 'pterodactyl_takeoff', name: 'Pterodactyl Take Off' },
+    { id: 'trex_run', name: 'T-Rex Run' },
+    { id: 'compsognathus_prance', name: 'Compsognathus Prance' },
+    { id: 'brachiosaurus_stretch', name: 'Brachiosaurus Stretch' },
+    { id: 'diplodocus', name: 'The Diplodocus' },
+    { id: 'spinosaurus_stretch', name: 'Spinosaurus Stretch' }
+  ];
+
+  return `
+    <div class="flex flex-col gap-4 text-center">
+      <p class="text-sm text-slate-300">Train with the Dino Coaches!</p>
+      <div class="grid grid-cols-2 gap-3">
+        ${workouts.map(w => {
+          const isHighlighted = pet.workoutId === w.id;
+          return `
+            <button class="start-workout-btn p-3 rounded-xl border-2 transition-all active:scale-95 ${isHighlighted ? 'bg-emerald-500 border-emerald-400 text-white font-bold' : 'bg-slate-700 hover:bg-slate-600 border-slate-600 text-slate-200'}" data-workout-id="${w.id}">
+              ${w.name}
+            </button>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
+
 // DRAWER 5: 24 PET COMPANION ROSTER DRAWER
 // -----------------------------------------------------------------------------
 function renderRosterDrawer(activePet) {
@@ -644,7 +755,7 @@ export function attachPetSanctuaryListeners() {
   if (backBtn) {
     backBtn.addEventListener('click', () => {
       Sound.bloop();
-      store.setView('dashboard');
+      store.navigate('dashboard');
     });
   }
 
@@ -698,6 +809,86 @@ export function attachPetSanctuaryListeners() {
     });
   }
 
+  
+  const expBtn = document.getElementById('action-expedition-btn');
+  if (expBtn) {
+    expBtn.addEventListener('click', () => { Sound.bloop(); store.openSanctuaryDrawer('expedition'); });
+  }
+
+  const workBtn = document.getElementById('action-workout-btn');
+  if (workBtn) {
+    workBtn.addEventListener('click', () => { Sound.bloop(); store.openSanctuaryDrawer('workout'); });
+  }
+
+  if (expeditionInterval) {
+    clearInterval(expeditionInterval);
+    expeditionInterval = null;
+  }
+
+  const sanctState = store.getPetSanctuaryState();
+  if (sanctState.activeDrawer === 'expedition' && sanctState.expedition?.active) {
+    const countdownEl = document.getElementById('expedition-countdown-display');
+    if (countdownEl) {
+      expeditionInterval = setInterval(() => {
+        const currentExp = store.getPetSanctuaryState().expedition;
+        if (!currentExp || !currentExp.active) {
+          clearInterval(expeditionInterval);
+          expeditionInterval = null;
+          return;
+        }
+        const elapsed = Date.now() - currentExp.startTime;
+        const remaining = currentExp.durationMs - elapsed;
+        if (remaining <= 0) {
+          clearInterval(expeditionInterval);
+          expeditionInterval = null;
+          store.notify();
+        } else {
+          const min = Math.floor(remaining / 60000);
+          const sec = Math.floor((remaining % 60000) / 1000);
+          countdownEl.textContent = `${min}m ${sec}s remaining`;
+        }
+      }, 1000);
+    }
+  }
+
+  const startExpBtn = document.getElementById('start-expedition-btn');
+  if (startExpBtn) {
+    startExpBtn.addEventListener('click', () => {
+      if (expeditionInterval) {
+        clearInterval(expeditionInterval);
+        expeditionInterval = null;
+      }
+      Sound.fanfare();
+      store.startPetExpedition();
+      store.closeSanctuaryDrawer();
+    });
+  }
+
+  const claimExpBtn = document.getElementById('claim-expedition-btn');
+  if (claimExpBtn) {
+    claimExpBtn.addEventListener('click', () => {
+      if (expeditionInterval) {
+        clearInterval(expeditionInterval);
+        expeditionInterval = null;
+      }
+      Sound.fanfare();
+      const rewards = store.claimExpeditionRewards();
+      const activePet = store.getActivePet();
+      store.showReward('Expedition Complete! 🏆', `${activePet?.name || 'Your companion'} brought back 100 Coins 🪙 and 20 Evolution Sparks ⚡!`, 100, 0, null, 'explore');
+      store.closeSanctuaryDrawer();
+    });
+  }
+
+  document.querySelectorAll('.start-workout-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const wId = btn.getAttribute('data-workout-id');
+      store.setActiveWorkoutId(wId);
+      store.saveState(true);
+      store.closeSanctuaryDrawer();
+      store.navigate('dino_workout');
+    });
+  });
+
   // Roster Switch Button
   const rosterBtn = document.getElementById('sanctuary-roster-btn');
   if (rosterBtn) {
@@ -711,6 +902,10 @@ export function attachPetSanctuaryListeners() {
   const closeBtn = document.getElementById('drawer-close-btn');
   const backdrop = document.getElementById('drawer-backdrop');
   const closeDrawer = () => {
+    if (expeditionInterval) {
+      clearInterval(expeditionInterval);
+      expeditionInterval = null;
+    }
     Sound.bloop();
     store.closeSanctuaryDrawer();
   };
@@ -780,7 +975,7 @@ export function attachPetSanctuaryListeners() {
       const petId = btn.getAttribute('data-pet-id');
       if (petId) {
         Sound.bloop();
-        store.selectHeroPet(petId);
+        store.setActivePet(petId);
         store.closeSanctuaryDrawer();
       }
     });

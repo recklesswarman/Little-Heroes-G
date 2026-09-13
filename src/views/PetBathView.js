@@ -35,7 +35,7 @@ export function renderPetBathView() {
       <div class="flex items-center justify-between z-20">
         <button id="bath-exit-btn" class="bg-surface-container hover:bg-surface-bright text-on-surface-variant font-headline text-xs font-bold px-3.5 py-2.5 rounded-2xl border-2 border-surface-container-highest flex items-center gap-1.5 chunky-btn-sm active:scale-95 shadow-sm">
           <span class="material-symbols-outlined text-base">arrow_back</span>
-          <span>Back to Pen</span>
+          <span>Back to Sanctuary</span>
         </button>
 
         <div class="flex items-center gap-2.5">
@@ -352,18 +352,19 @@ export function attachPetBathListeners() {
     stage: store.getActivePet()?.stage || 1,
     mode: 'bath'
   });
+
   if (!hasSpokenBathIntro && washProgress < 100) {
     hasSpokenBathIntro = true;
     speakRex("Splish splash! I'm all dirty! Pop the bubbles to clean me!");
   }
 
-  // 1. Back to Pen Button
+  // 1. Back to Sanctuary Button
   const exitBtn = document.getElementById('bath-exit-btn');
   if (exitBtn) {
     exitBtn.addEventListener('click', () => {
       hasSpokenBathIntro = false;
       Sound.click();
-      store.navigate('pet_pen');
+      store.navigate('pet_sanctuary');
     });
   }
 
