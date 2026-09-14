@@ -3934,33 +3934,16 @@ class Store {
         `Parent verified '${req.title}' for ${req.kidName}`,
         `+${pointsToAward} Points ⭐ & +${earnedMinutes}m Screen Time Credited to Bank`
       );
-      this.showReward(
-        'Points & Screen Time Approved!',
-        `+${pointsToAward} Gold Points ⭐ & +${earnedMinutes}m Screen Time ⏱️ credited to ${req.kidName}'s bank!`,
-        0,
-        0,
-        taskItem?.image || null,
-        'stars'
-      );
     } else if (req.type === 'reward') {
       hero.points = Math.max(0, hero.points - req.costPoints);
       if (this.state.selectedHero.id === hero.id) {
         this.state.selectedHero.points = hero.points;
       }
-      const rewardItem = this.state.realLifeRewards.find(r => r.id === req.rewardId);
       this.logAction(`Parent fulfilled reward '${req.title}' for ${req.kidName}`, `-${req.costPoints} Points ⭐ Deducted`);
-      this.showReward(
-        'Reward Approved!',
-        `"${req.title}" has been signed off! Have fun enjoying your reward!`,
-        0,
-        0,
-        rewardItem?.image || null,
-        'card_giftcard'
-      );
     }
 
     this.state.pendingApprovals.splice(reqIndex, 1);
-    Sound.fanfare();
+    Sound.click();
     this.saveState(true);
   }
 
@@ -4018,24 +4001,8 @@ class Store {
         }
       }
       this.logAction(`Parent rejected Point Approval for '${req.title}' (${req.kidName})`, `0 Points ⭐ Issued`);
-      this.showReward(
-        'Request Rejected',
-        `Point approval for "${req.title}" was declined. Button reset to ready.`,
-        0,
-        0,
-        null,
-        'cancel'
-      );
     } else if (req.type === 'reward') {
       this.logAction(`Parent declined reward '${req.title}' for ${req.kidName}`, `0 Points Deducted`);
-      this.showReward(
-        'Reward Declined',
-        `The request for "${req.title}" was declined by parent.`,
-        0,
-        0,
-        null,
-        'cancel'
-      );
     }
 
     this.state.pendingApprovals.splice(reqIndex, 1);
@@ -4109,15 +4076,7 @@ class Store {
 
     this.logAction('Parent Cleared All Pending Approvals', 'All pending approval notifications and button states were reset to ready.');
     this.saveState(true);
-    Sound.fanfare();
-    this.showReward(
-      'Pending Notifications Cleared!',
-      'All pending parent approval notifications on buttons have been cleared and reset to ready across all tasks & habits.',
-      0,
-      0,
-      null,
-      'cleaning_services'
-    );
+    Sound.click();
     this.notify();
   }
 

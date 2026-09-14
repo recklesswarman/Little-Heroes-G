@@ -74,7 +74,8 @@ function generateCelebrationIcon(reward) {
 export function renderRewardModal() {
   const state = store.getState();
   const reward = state.rewardModal;
-  if (!reward) return '';
+  // Parent portal is for parents, so no celebration popups should ever appear there
+  if (!reward || state.activeView === 'parent_portal') return '';
 
   const isEscaped = reward.title?.includes('Escaped');
   const isDeclined = reward.title?.includes('Declined') || reward.title?.includes('Rejected');
@@ -321,6 +322,9 @@ function clearRewardAutoCloseTimers() {
 }
 
 export function attachRewardModalListeners() {
+  const state = store.getState();
+  if (state.activeView === 'parent_portal') return;
+
   const backdrop = document.getElementById('reward-modal-backdrop');
   if (!backdrop) {
     clearRewardAutoCloseTimers();

@@ -5420,10 +5420,9 @@ export function attachParentPortalListeners() {
 
       const res = store.addParentUser({ email, displayName: name, role });
       if (res.success) {
-        Sound.fanfare();
+        Sound.click();
         isAddParentModalOpen = false;
         firestoreSync.pushStateToCloud(true);
-        store.showReward('Parent Authorized!', `${name || email} has been authorized as a Parent Administrator for ${store.getState().household.name}!`, 0, 0);
         store.notify();
       } else {
         Sound.hit();
@@ -5580,8 +5579,7 @@ export function attachParentPortalListeners() {
         settings: store.getState().parentSettings
       });
 
-      Sound.fanfare();
-      store.showReward('Rules Saved!', 'Rex the Dino has updated his bedtime, tone, and topic restrictions!', 0, 0);
+      Sound.click();
       store.notify();
     });
   }
