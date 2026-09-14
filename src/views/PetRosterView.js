@@ -24,7 +24,7 @@ export function renderPetRosterView() {
       
       <!-- Header -->
       <div class="flex items-center justify-between">
-        <button id="roster-back-btn" class="bg-surface-container hover:bg-surface-bright text-on-surface-variant font-headline text-xs font-bold px-3.5 py-2.5 rounded-2xl border-2 border-surface-container-highest flex items-center gap-1.5 chunky-btn-sm">
+        <button id="roster-back-btn" class="bg-surface-container hover:bg-surface-bright text-on-surface-variant font-headline text-xs font-bold px-3.5 py-2.5 rounded-2xl border-2 border-surface-container-highest flex items-center gap-1.5 chunky-btn-sm min-h-[44px]">
           <span class="material-symbols-outlined text-base">arrow_back</span> Back to Sanctuary
         </button>
         <div class="flex flex-col items-end">
@@ -62,7 +62,7 @@ export function renderPetRosterView() {
           </div>
         </div>
 
-        <button id="buy-habitat-slot-btn" class="bg-gradient-to-r from-secondary to-primary text-on-secondary font-headline text-xs font-black px-4 py-3 rounded-2xl chunky-btn border-secondary-container shadow-sm flex items-center gap-1.5 active:scale-95 flex-shrink-0">
+        <button id="buy-habitat-slot-btn" class="bg-gradient-to-r from-secondary to-primary text-on-secondary font-headline text-xs font-black px-4 py-3 rounded-2xl chunky-btn border-secondary-container shadow-sm flex items-center gap-1.5 active:scale-95 flex-shrink-0 min-h-[48px]">
           <span class="material-symbols-outlined text-base">add_home</span>
           <span>+ Habitat Slot (🪙 250)</span>
         </button>
@@ -74,7 +74,7 @@ export function renderPetRosterView() {
           .map((elem) => {
             const isActive = activeElementFilter === elem;
             return `
-            <button data-elem="${elem}" class="elem-filter-btn px-4 py-2 rounded-2xl font-headline text-xs font-black whitespace-nowrap transition-all ${
+            <button data-elem="${elem}" class="elem-filter-btn px-4 py-2 rounded-2xl font-headline text-xs font-black whitespace-nowrap transition-all min-h-[44px] inline-flex items-center justify-center ${
               isActive
                 ? 'bg-primary text-on-primary chunky-btn-sm border-primary-container shadow-sm'
                 : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border border-surface-container-highest'
@@ -132,30 +132,30 @@ export function renderPetRosterView() {
                 ${
                   isEquipped
                     ? `
-                  <div class="w-full bg-primary/20 text-primary font-headline text-[10px] font-black py-2 rounded-xl border border-primary/40">
+                  <div class="w-full bg-primary/20 text-primary font-headline text-[10px] font-black py-2 rounded-xl border border-primary/40 min-h-[44px] flex items-center justify-center">
                     ✓ Active Companion
                   </div>
                 `
                     : isUnlocked
                     ? `
-                  <button data-equip-pet-id="${pet.id}" class="equip-roster-pet-btn w-full bg-primary text-on-primary font-headline text-[11px] font-black py-2 rounded-xl chunky-btn-sm border-primary-container shadow-sm hover:brightness-110 active:scale-95">
+                  <button data-equip-pet-id="${pet.id}" class="equip-roster-pet-btn w-full bg-primary text-on-primary font-headline text-[11px] font-black py-2 rounded-xl chunky-btn-sm border-primary-container shadow-sm hover:brightness-110 active:scale-95 min-h-[44px] flex items-center justify-center">
                     Equip Companion
                   </button>
                 `
                     : hasOpenSlot
                     ? `
-                  <button data-adopt-pet-id="${pet.id}" class="adopt-roster-pet-btn w-full bg-gradient-to-r from-primary to-secondary text-on-primary font-headline text-[11px] font-black py-2 rounded-xl chunky-btn-sm border-primary-container shadow-sm hover:brightness-110 active:scale-95 flex items-center justify-center gap-1">
+                  <button data-adopt-pet-id="${pet.id}" class="adopt-roster-pet-btn w-full bg-gradient-to-r from-primary to-secondary text-on-primary font-headline text-[11px] font-black py-2 rounded-xl chunky-btn-sm border-primary-container shadow-sm hover:brightness-110 active:scale-95 flex items-center justify-center gap-1 min-h-[44px]">
                     <span class="material-symbols-outlined text-sm">pets</span> Adopt (Slot Open!)
                   </button>
                 `
                     : `
-                  <button data-buy-adopt-pet-id="${pet.id}" class="buy-adopt-roster-pet-btn w-full bg-surface-container-high hover:bg-secondary text-secondary hover:text-on-secondary font-headline text-[11px] font-black py-2 rounded-xl border border-secondary/40 transition-colors flex items-center justify-center gap-1">
+                  <button data-buy-adopt-pet-id="${pet.id}" class="buy-adopt-roster-pet-btn w-full bg-surface-container-high hover:bg-secondary text-secondary hover:text-on-secondary font-headline text-[11px] font-black py-2 rounded-xl border border-secondary/40 transition-colors flex items-center justify-center gap-1 min-h-[44px]">
                     <span class="material-symbols-outlined text-sm">add_home</span> Unlock Slot (🪙 250)
                   </button>
                 `
                 }
 
-                <button data-inspect-pet-id="${pet.id}" class="inspect-roster-pet-btn w-full bg-surface-container-high hover:bg-surface-bright text-on-surface-variant font-headline text-[10px] font-bold py-1 rounded-xl border border-surface-container-lowest transition-colors">
+                <button data-inspect-pet-id="${pet.id}" class="inspect-roster-pet-btn w-full bg-surface-container-high hover:bg-surface-bright text-on-surface-variant font-headline text-[10px] font-bold py-1.5 rounded-xl border border-surface-container-lowest transition-colors min-h-[44px] flex items-center justify-center">
                   View Lore & Stats
                 </button>
               </div>

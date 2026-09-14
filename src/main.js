@@ -5,8 +5,10 @@ import { firestoreSync } from './services/firestoreSyncService.js';
 
 // Connect centralized Firestore Sync Service to Store
 store.setSyncService(firestoreSync);
+import { firebaseAuth } from './services/firebaseAuthService.js';
 
 // Layout Components
+import { renderLandingAuthModal, attachLandingAuthModalListeners } from './components/LandingAuthModal.js';
 import { renderTopHeader, attachTopHeaderListeners } from './components/TopHeader.js';
 import { renderBottomNav, attachBottomNavListeners } from './components/BottomNav.js';
 import { renderRewardModal, attachRewardModalListeners } from './components/RewardModal.js';
@@ -44,6 +46,19 @@ const app = document.getElementById('app');
 function renderApp() {
   const state = store.getState();
   const activeView = state.activeView;
+
+  // Strict Auth Wall Gate:
+  // If user is unauthenticated OR household has not been configured/joined yet,
+  // strictly render the Landing Auth Wall so that NO stranger's data is displayed!
+  if (!state.isAuthenticated || !state.isHouseholdConfigured) {
+    app.innerHTML = `
+      <div class="min-h-screen bg-background text-on-surface flex flex-col font-body selection:bg-primary selection:text-on-primary">
+        ${renderLandingAuthModal()}
+      </div>
+    `;
+    attachLandingAuthModalListeners();
+    return;
+  }
 
   let mainContent = '';
   let attachViewListeners = () => {};
@@ -199,28 +214,32 @@ initParentLockModal();
 initHouseholdModal();
 store.subscribe(handleStateUpdate);
 
-// Start Real-Time Live Multi-Device Sync on App Launch
-const activeHouseholdCode = store.getState().household.syncCode || 'HERO-1555';
-firestoreSync.startSync(activeHouseholdCode);
-
-// Perform authoritative cloud verification & real-time hydration on startup
-firestoreSync.syncNow().catch(() => {});
+// Start Real-Time Live Multi-Device Sync on App Launch ONLY if household is configured
+const activeHouseholdCode = store.getState().household.syncCode;
+if (store.getState().isHouseholdConfigured && activeHouseholdCode) {
+  firestoreSync.startSync(activeHouseholdCode);
+  firestoreSync.syncNow().catch(() => {});
+}
 
 // Auto-resync when returning to the tab, gaining window focus, or coming online
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') {
+  if (document.visibilityState === 'visible' && store.getState().isHouseholdConfigured) {
     firestoreSync.syncNow().catch(() => {});
   }
 });
 
 window.addEventListener('focus', () => {
-  firestoreSync.syncNow().catch(() => {});
+  if (store.getState().isHouseholdConfigured) {
+    firestoreSync.syncNow().catch(() => {});
+  }
 });
 
 window.addEventListener('online', () => {
-  const code = store.getState().household.syncCode || 'HERO-1555';
-  firestoreSync.startSync(code);
-  firestoreSync.syncNow().catch(() => {});
+  const code = store.getState().household.syncCode;
+  if (store.getState().isHouseholdConfigured && code) {
+    firestoreSync.startSync(code);
+    firestoreSync.syncNow().catch(() => {});
+  }
 });
 
 // Initial Render

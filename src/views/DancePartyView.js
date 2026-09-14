@@ -112,7 +112,7 @@ export function renderDancePartyView() {
       
       <!-- Top Navigation Header -->
       <div class="flex items-center justify-between">
-        <button id="arcade-back-dash-btn" class="bg-surface-container hover:bg-surface-bright text-on-surface-variant font-headline text-xs font-black px-3.5 py-2.5 rounded-2xl border-2 border-surface-container-highest flex items-center gap-1.5 chunky-btn-sm active:scale-95">
+        <button id="arcade-back-dash-btn" class="bg-surface-container hover:bg-surface-bright text-on-surface-variant font-headline text-xs font-black px-3.5 py-2.5 min-h-[44px] rounded-2xl border-2 border-surface-container-highest flex items-center gap-1.5 chunky-btn-sm active:scale-95">
           <span class="material-symbols-outlined text-base">arrow_back</span> Quests
         </button>
 
@@ -177,13 +177,13 @@ export function renderDancePartyView() {
 
           <!-- Quick Warmup Actions -->
           <div class="flex flex-wrap items-center justify-center gap-2 pt-2 z-10">
-            <button id="pet-warmup-stretch-btn" class="bg-surface-container hover:bg-surface-bright text-amber-400 font-headline text-xs font-black px-3.5 py-2 rounded-xl border-2 border-amber-500/40 chunky-btn-sm flex items-center gap-1.5 active:scale-95">
+            <button id="pet-warmup-stretch-btn" class="bg-surface-container hover:bg-surface-bright text-amber-400 font-headline text-xs font-black px-3.5 py-2 min-h-[44px] rounded-xl border-2 border-amber-500/40 chunky-btn-sm flex items-center justify-center gap-1.5 active:scale-95">
               <span>🧘</span> Morning Stretch
             </button>
-            <button id="pet-dance-spin-btn" class="bg-surface-container hover:bg-surface-bright text-primary font-headline text-xs font-black px-3.5 py-2 rounded-xl border-2 border-primary/40 chunky-btn-sm flex items-center gap-1.5 active:scale-95">
+            <button id="pet-dance-spin-btn" class="bg-surface-container hover:bg-surface-bright text-primary font-headline text-xs font-black px-3.5 py-2 min-h-[44px] rounded-xl border-2 border-primary/40 chunky-btn-sm flex items-center justify-center gap-1.5 active:scale-95">
               <span>🌪️</span> Tornado Spin
             </button>
-            <button id="pet-high-five-btn" class="bg-surface-container hover:bg-surface-bright text-secondary font-headline text-xs font-black px-3.5 py-2 rounded-xl border-2 border-secondary/40 chunky-btn-sm flex items-center gap-1.5 active:scale-95">
+            <button id="pet-high-five-btn" class="bg-surface-container hover:bg-surface-bright text-secondary font-headline text-xs font-black px-3.5 py-2 min-h-[44px] rounded-xl border-2 border-secondary/40 chunky-btn-sm flex items-center justify-center gap-1.5 active:scale-95">
               <span>🐾</span> Hero High-Five
             </button>
           </div>
@@ -238,7 +238,7 @@ export function renderDancePartyView() {
                   <span>•</span>
                   <span class="text-amber-400 font-bold">+10 ⚡ Sparks</span>
                 </div>
-                <button data-launch-routine-id="${routine.id}" class="launch-routine-btn ${routine.buttonClass} font-headline text-xs font-black px-6 py-2.5 rounded-xl chunky-btn shadow-chunky-sm active:scale-95 hover:brightness-110">
+                <button data-launch-routine-id="${routine.id}" class="launch-routine-btn ${routine.buttonClass} font-headline text-xs font-black px-6 py-2.5 min-h-[44px] rounded-xl chunky-btn shadow-chunky-sm active:scale-95 hover:brightness-110">
                   LET'S MOVE!
                 </button>
               </div>
@@ -362,7 +362,7 @@ function renderMovementSession(hero, activePet, petAvatarUrl, petName) {
       
       <!-- Top Session Bar -->
       <div class="flex items-center justify-between">
-        <button id="movement-exit-to-hub-btn" class="bg-surface-container hover:bg-surface-bright text-on-surface-variant font-headline text-xs font-black px-3.5 py-2.5 rounded-2xl border-2 border-surface-container-highest flex items-center gap-1.5 chunky-btn-sm active:scale-95">
+        <button id="movement-exit-to-hub-btn" class="bg-surface-container hover:bg-surface-bright text-on-surface-variant font-headline text-xs font-black px-3.5 py-2.5 min-h-[44px] rounded-2xl border-2 border-surface-container-highest flex items-center gap-1.5 chunky-btn-sm active:scale-95">
           <span class="material-symbols-outlined text-base">arrow_back</span> Hub
         </button>
 
@@ -374,7 +374,7 @@ function renderMovementSession(hero, activePet, petAvatarUrl, petName) {
 
         <div class="flex items-center gap-2">
           <!-- Audio Mute Toggle -->
-          <button id="movement-toggle-audio-btn" class="bg-surface-container hover:bg-surface-bright px-3 py-1.5 rounded-xl border border-surface-container-highest text-xs font-black flex items-center gap-1">
+          <button id="movement-toggle-audio-btn" class="bg-surface-container hover:bg-surface-bright px-3 py-2 min-h-[44px] rounded-xl border border-surface-container-highest text-xs font-black flex items-center gap-1">
             <span class="material-symbols-outlined text-sm">${isMusicMuted ? 'volume_off' : 'volume_up'}</span>
             <span>${isMusicMuted ? 'Muted' : 'Music ON'}</span>
           </button>

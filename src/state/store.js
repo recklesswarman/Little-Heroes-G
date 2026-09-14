@@ -40,6 +40,10 @@ export const KID_AVATARS = [
 export const STORAGE_KEY = 'little_heroes_adventure_master_v8';
 
 const defaultState = {
+  isAuthenticated: false,
+  isAuthReady: false,
+  isHouseholdConfigured: false,
+  householdSetupStep: 'auth', // 'auth' | 'choice' | 'create' | 'join' | 'ready'
   activeView: 'dashboard', // dashboard, quest_map, pet_pen, pet_roster, pet_detail, pet_bath, shop, ar_battle, evolution, dance_party, profile, parent_portal, adventures_map, adventure_game
   previousView: 'dashboard',
   selectedPetDetailId: 1,
@@ -121,21 +125,13 @@ const defaultState = {
 
   // Household Link Architecture & Parent User Administration
   household: {
-    syncCode: 'HERO-1555',
-    name: "The Hero Family",
+    syncCode: '',
+    name: '',
     linkedDevices: 1,
-    lastSync: 'Just now',
-    parents: [
-      {
-        uid: 'parent_default_admin',
-        email: 'parent@hero.family',
-        displayName: 'Family Admin',
-        role: 'owner',
-        addedAt: new Date().toISOString()
-      }
-    ],
-    parentUids: ['parent_default_admin'],
-    parentEmails: ['parent@hero.family']
+    lastSync: 'Not connected',
+    parents: [],
+    parentUids: [],
+    parentEmails: []
   },
 
   // Active Hero Profile (Starts with 0 pets, prompts starter choice at Stage 1)
@@ -814,10 +810,30 @@ class Store {
         if (!parsed.household) {
           parsed.household = { ...defaultState.household };
         }
-        if (!parsed.household.parents || !Array.isArray(parsed.household.parents) || parsed.household.parents.length === 0) {
-          parsed.household.parents = [...defaultState.household.parents];
-          parsed.household.parentUids = [...defaultState.household.parentUids];
-          parsed.household.parentEmails = [...defaultState.household.parentEmails];
+        if (!parsed.household.parents || !Array.isArray(parsed.household.parents)) {
+          parsed.household.parents = [];
+          parsed.household.parentUids = [];
+          parsed.household.parentEmails = [];
+        }
+
+        // Strict Auth Gate Check: Validate whether a real household is configured
+        const hasAuthenticParent = Boolean(parsed.household?.parentUser?.uid || (parsed.household?.parents && parsed.household.parents.length > 0 && parsed.household.parents[0]?.uid !== 'parent_default_admin'));
+        const hasValidCustomCode = Boolean(parsed.household?.syncCode && parsed.household.syncCode !== 'HERO-1555' && parsed.household.syncCode !== 'HERO-8842' && parsed.household.syncCode.trim() !== '');
+
+        if (parsed.isHouseholdConfigured === true && (hasAuthenticParent || hasValidCustomCode)) {
+          parsed.isAuthenticated = true;
+          parsed.isHouseholdConfigured = true;
+          parsed.householdSetupStep = 'ready';
+        } else {
+          // Unauthenticated or unconfigured visitor: strictly show Landing Auth Wall
+          parsed.isAuthenticated = false;
+          parsed.isHouseholdConfigured = false;
+          parsed.householdSetupStep = 'auth';
+          parsed.household.syncCode = '';
+          parsed.household.name = '';
+          parsed.household.parents = [];
+          parsed.household.parentUids = [];
+          parsed.household.parentEmails = [];
         }
 
         if (!parsed.petSparkMap || typeof parsed.petSparkMap !== 'object') {
@@ -4849,12 +4865,271 @@ class Store {
     return this.isParentUnlocked();
   }
 
+  setAuthService(service) {
+    this.authService = service;
+  }
+
+  setPersistentLinkService(service) {
+    this.persistentLinkService = service;
+  }
+
+  setHouseholdSetupStep(step) {
+    this.state.householdSetupStep = step;
+    this.notify();
+  }
+
+  /**
+   * Initialize a fresh, isolated household for a verified parent user.
+   * Generates a unique sync code (HERO-XXXX) and dentists/parents approved starter habits.
+   */
+  async initNewHousehold({ familyName, childName, avatar, parentUser }) {
+    const randomCode = 'HERO-' + Math.floor(1000 + Math.random() * 9000);
+    const user = parentUser || this.state.household?.parentUser;
+
+    const ownerRecord = user ? {
+      uid: user.uid,
+      email: user.email || '',
+      displayName: user.displayName || 'Parent Admin',
+      role: 'owner',
+      addedAt: new Date().toISOString()
+    } : {
+      uid: 'parent_' + Date.now(),
+      email: '',
+      displayName: 'Parent Admin',
+      role: 'owner',
+      addedAt: new Date().toISOString()
+    };
+
+    this.state.household = {
+      syncCode: randomCode,
+      name: (familyName || `The ${childName || 'Hero'} Family`).trim(),
+      linkedDevices: 1,
+      lastSync: 'Cloud Connected',
+      parents: [ownerRecord],
+      parentUids: [ownerRecord.uid],
+      parentEmails: ownerRecord.email ? [ownerRecord.email] : [],
+      parentUser: user || ownerRecord
+    };
+
+    const starterAvatar = avatar || KID_AVATARS[0].url;
+    const heroName = (childName || 'Little Hero').trim();
+
+    const starterHero = {
+      id: 'hero_1',
+      name: heroName,
+      title: 'Brave Adventurer',
+      avatar: starterAvatar,
+      color: '#2ecc71',
+      level: 1,
+      xp: 0,
+      xpNext: 100,
+      points: 0,
+      coins: 0,
+      streak: 1,
+      stars: 0,
+      activePetId: '1',
+      unlockedPetIds: ['1'],
+      hasChosenStarterPet: true,
+      habitatSlots: 1,
+      petStageMap: { '1': 1 },
+      gameDifficulty: 'medium',
+      equippedProfileTheme: 'theme_dragon_emerald',
+      unlockedThemes: ['theme_dragon_emerald'],
+      equippedPetGearMap: {},
+      customGearDyesMap: {},
+      savedHeroCards: [],
+      screenTimeMinutes: 45,
+      screenTimeUsedToday: 0,
+      dailyMaxScreenTime: 60,
+      bedtimeCurfew: '20:00',
+      screenTimeRate: 2,
+      isScreenTimePaused: false,
+      screenTimeLockMessage: 'Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙'
+    };
+
+    this.state.selectedHero = starterHero;
+    this.state.heroes = [starterHero];
+    this.state.deletedHeroIds = [];
+    this.state.pendingApprovals = [];
+    this.state.taskCompletionLogs = [];
+    this.state.taskLedgerLogs = [];
+
+    // Clean starter habits (Dentist & Parent Approved)
+    this.state.habitIslands = [
+      {
+        id: 'brush_teeth_am',
+        title: 'Morning Toothbrush Quest',
+        subtitle: '2 min brush to banish morning sugar bugs',
+        icon: 'clean_hands',
+        points: 1,
+        tokens: 15,
+        type: 'hygiene',
+        category: 'hygiene',
+        targetPerDay: 1,
+        timeWindow: 'morning'
+      },
+      {
+        id: 'brush_teeth_pm',
+        title: 'Nighttime Toothbrush Quest',
+        subtitle: 'Defeat the Plaque Monster before bed',
+        icon: 'bedtime',
+        points: 1,
+        tokens: 15,
+        type: 'hygiene',
+        category: 'hygiene',
+        targetPerDay: 1,
+        timeWindow: 'evening'
+      },
+      {
+        id: 'clean_toys',
+        title: 'Tidy Toys & Hero Base',
+        subtitle: 'Put toys in bins and make bed neat',
+        icon: 'toys',
+        points: 2,
+        tokens: 20,
+        type: 'responsibility',
+        category: 'chores',
+        targetPerDay: 1,
+        timeWindow: 'anytime'
+      },
+      {
+        id: 'drink_water',
+        title: 'Hero Hydration Power-Up',
+        subtitle: 'Drink a glass of water to recharge energy',
+        icon: 'water_drop',
+        points: 1,
+        tokens: 10,
+        type: 'health',
+        category: 'health',
+        targetPerDay: 3,
+        timeWindow: 'anytime'
+      }
+    ];
+
+    this.state.isAuthenticated = true;
+    this.state.isHouseholdConfigured = true;
+    this.state.householdSetupStep = 'ready';
+    this.state.activeView = 'dashboard';
+
+    // Establish persistent linking
+    if (this.persistentLinkService && user) {
+      try {
+        await this.persistentLinkService.establishPersistentLink({
+          userId: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+          householdCode: randomCode
+        });
+      } catch (err) {
+        console.warn('Could not establish persistent link:', err);
+      }
+    }
+
+    this.saveState(true);
+
+    if (this.syncService) {
+      this.syncService.startSync(randomCode);
+      this.syncService.pushStateToCloud(true);
+    }
+
+    this.notify();
+    return { success: true, syncCode: randomCode, householdName: this.state.household.name };
+  }
+
+  /**
+   * Connect and link this device into an existing household via sync code.
+   */
+  async joinExistingHousehold(syncCode) {
+    const cleanCode = (syncCode || '').trim().toUpperCase();
+    if (!cleanCode || cleanCode.length < 4) {
+      return { success: false, error: 'Please enter a valid household sync code (e.g. HERO-XXXX).' };
+    }
+
+    this.state.household.syncCode = cleanCode;
+
+    if (this.syncService) {
+      const joinRes = await this.syncService.joinHousehold(cleanCode);
+      if (joinRes && joinRes.success === false) {
+        return joinRes;
+      }
+    }
+
+    this.state.isAuthenticated = true;
+    this.state.isHouseholdConfigured = true;
+    this.state.householdSetupStep = 'ready';
+    this.state.activeView = 'dashboard';
+
+    const parentUser = this.state.household.parentUser;
+    if (this.persistentLinkService && parentUser) {
+      try {
+        await this.persistentLinkService.establishPersistentLink({
+          userId: parentUser.uid,
+          email: parentUser.email,
+          displayName: parentUser.displayName,
+          householdCode: cleanCode
+        });
+      } catch (err) {
+        console.warn('Could not link session on join:', err);
+      }
+    }
+
+    this.saveState(true);
+    this.notify();
+    return { success: true, householdName: this.state.household.name || cleanCode };
+  }
+
+  /**
+   * Safe Sign Out: Clears persistent device link, unhooks Firestore, and returns to Auth Wall.
+   */
+  async signOutHousehold() {
+    if (this.persistentLinkService && this.persistentLinkService.clearSession) {
+      this.persistentLinkService.clearSession();
+    }
+
+    if (this.syncService && this.syncService.stopSync) {
+      this.syncService.stopSync();
+    }
+
+    if (this.state.household) {
+      delete this.state.household.parentUser;
+      this.state.household.syncCode = '';
+      this.state.household.name = '';
+      this.state.household.parents = [];
+      this.state.household.parentUids = [];
+      this.state.household.parentEmails = [];
+      this.state.household.lastSync = 'Not connected';
+    }
+
+    this.state.isAuthenticated = false;
+    this.state.isHouseholdConfigured = false;
+    this.state.householdSetupStep = 'auth';
+    this.state.activeView = 'dashboard';
+
+    if (this.authService && this.authService.signOut) {
+      await this.authService.signOut().catch(() => {});
+    }
+
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    } catch (e) {
+      console.warn('Could not remove storage on signout:', e);
+    }
+
+    this.notify();
+  }
+
   /**
    * Hydrate store with real-time cloud data from Firestore
    * Automatically updates heroes, tasks, habits, inventory, and persists to localStorage
    */
   hydrateFromCloud(cloudData) {
     if (!cloudData) return;
+
+    this.state.isAuthenticated = true;
+    this.state.isHouseholdConfigured = true;
+    this.state.householdSetupStep = 'ready';
 
     // 1. Household Details & Parent Administrators
     if (cloudData.householdName) {

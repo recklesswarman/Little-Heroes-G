@@ -393,8 +393,8 @@ export function renderPetPenView() {
       <section class="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
         
         <!-- Feed Snack -->
-        <button id="pen-feed-btn" class="bg-surface-container hover:bg-surface-bright rounded-3xl p-4 border-2 border-surface-container-highest card-shadow flex flex-col items-center justify-center gap-2 chunky-btn text-center active:scale-95 group">
-          <div class="w-13 h-13 rounded-2xl bg-secondary-container/20 text-secondary flex items-center justify-center text-3xl border border-secondary-container/40 group-hover:scale-110 transition-transform">
+        <button id="pen-feed-btn" class="bg-surface-container hover:bg-surface-bright rounded-3xl p-4 border-2 border-surface-container-highest card-shadow flex flex-col items-center justify-center gap-2 chunky-btn text-center active:scale-95 group min-h-[56px]">
+          <div class="w-14 h-14 rounded-2xl bg-secondary-container/20 text-secondary flex items-center justify-center text-3xl border border-secondary-container/40 group-hover:scale-110 transition-transform">
             <span class="material-symbols-outlined text-3xl">nutrition</span>
           </div>
           <div class="flex flex-col">
@@ -404,8 +404,8 @@ export function renderPetPenView() {
         </button>
 
         <!-- Bathtub Wash -->
-        <button id="pen-bath-btn" class="bg-surface-container hover:bg-surface-bright rounded-3xl p-4 border-2 border-surface-container-highest card-shadow flex flex-col items-center justify-center gap-2 chunky-btn text-center active:scale-95 group">
-          <div class="w-13 h-13 rounded-2xl bg-tertiary-container/20 text-tertiary flex items-center justify-center text-3xl border border-tertiary-container/40 group-hover:scale-110 transition-transform">
+        <button id="pen-bath-btn" class="bg-surface-container hover:bg-surface-bright rounded-3xl p-4 border-2 border-surface-container-highest card-shadow flex flex-col items-center justify-center gap-2 chunky-btn text-center active:scale-95 group min-h-[56px]">
+          <div class="w-14 h-14 rounded-2xl bg-tertiary-container/20 text-tertiary flex items-center justify-center text-3xl border border-tertiary-container/40 group-hover:scale-110 transition-transform">
             <span class="material-symbols-outlined text-3xl">bathtub</span>
           </div>
           <div class="flex flex-col">
@@ -415,8 +415,8 @@ export function renderPetPenView() {
         </button>
 
         <!-- Pet & Hug -->
-        <button id="pen-play-btn" class="bg-surface-container hover:bg-surface-bright rounded-3xl p-4 border-2 border-surface-container-highest card-shadow flex flex-col items-center justify-center gap-2 chunky-btn text-center active:scale-95 group">
-          <div class="w-13 h-13 rounded-2xl bg-primary-container/20 text-primary flex items-center justify-center text-3xl border border-primary-container/40 group-hover:scale-110 transition-transform">
+        <button id="pen-play-btn" class="bg-surface-container hover:bg-surface-bright rounded-3xl p-4 border-2 border-surface-container-highest card-shadow flex flex-col items-center justify-center gap-2 chunky-btn text-center active:scale-95 group min-h-[56px]">
+          <div class="w-14 h-14 rounded-2xl bg-primary-container/20 text-primary flex items-center justify-center text-3xl border border-primary-container/40 group-hover:scale-110 transition-transform">
             <span class="material-symbols-outlined text-3xl">favorite</span>
           </div>
           <div class="flex flex-col">
@@ -426,8 +426,8 @@ export function renderPetPenView() {
         </button>
 
         <!-- Pet Locker Dressing Room -->
-        <button id="pen-locker-btn" class="bg-surface-container hover:bg-surface-bright rounded-3xl p-4 border-2 border-amber-500/40 card-shadow flex flex-col items-center justify-center gap-2 chunky-btn text-center active:scale-95 group">
-          <div class="w-13 h-13 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-3xl border border-amber-500/50 group-hover:scale-110 transition-transform">
+        <button id="pen-locker-btn" class="bg-surface-container hover:bg-surface-bright rounded-3xl p-4 border-2 border-amber-500/40 card-shadow flex flex-col items-center justify-center gap-2 chunky-btn text-center active:scale-95 group min-h-[56px]">
+          <div class="w-14 h-14 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-3xl border border-amber-500/50 group-hover:scale-110 transition-transform">
             <span class="material-symbols-outlined text-3xl">checkroom</span>
           </div>
           <div class="flex flex-col">

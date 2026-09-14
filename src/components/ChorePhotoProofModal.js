@@ -220,8 +220,8 @@ class ChorePhotoProofModal {
             </div>
           </div>
 
-          <button id="chore-modal-close-btn" class="w-9 h-9 rounded-full bg-black/20 hover:bg-black/40 text-white flex items-center justify-center transition-transform active:scale-90">
-            <span class="material-symbols-outlined text-xl">close</span>
+          <button id="chore-modal-close-btn" class="w-11 h-11 min-w-[44px] min-h-[44px] rounded-2xl bg-black/20 hover:bg-black/40 text-white flex items-center justify-center transition-transform active:scale-90" title="Close Photo Proof">
+            <span class="material-symbols-outlined text-2xl">close</span>
           </button>
         </div>
 
@@ -257,7 +257,7 @@ class ChorePhotoProofModal {
             <div id="chore-file-fallback-prompt" class="hidden w-full h-full flex flex-col items-center justify-center p-6 text-center gap-3 bg-surface-container-high">
               <span class="material-symbols-outlined text-4xl text-secondary">photo_library</span>
               <p class="text-xs text-on-surface-variant font-bold">Camera preview not available. Choose a photo from your library:</p>
-              <label class="bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2.5 rounded-xl cursor-pointer hover:brightness-110 active:scale-95 shadow-sm">
+              <label class="bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2.5 min-h-[44px] rounded-2xl cursor-pointer hover:brightness-110 active:scale-95 shadow-sm inline-flex items-center justify-center">
                 Browse Photos
                 <input type="file" id="chore-file-input-fallback" accept="image/*" class="hidden" />
               </label>
@@ -268,7 +268,7 @@ class ChorePhotoProofModal {
           <!-- Controls Bar -->
           <div class="w-full flex items-center justify-between gap-3">
             <!-- Gallery Upload Button -->
-            <label class="bg-surface-container hover:bg-surface-bright text-on-surface-variant border border-surface-container-highest font-headline text-xs font-bold px-3 py-2.5 rounded-xl flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-sm" title="Choose from gallery">
+            <label class="bg-surface-container hover:bg-surface-bright text-on-surface-variant border border-surface-container-highest font-headline text-xs font-bold px-3 py-2.5 min-h-[44px] rounded-2xl flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-sm" title="Choose from gallery">
               <span class="material-symbols-outlined text-lg text-primary">add_photo_alternate</span>
               <span class="hidden sm:inline">Upload</span>
               <input type="file" id="chore-file-input" accept="image/*" class="hidden" />
@@ -276,18 +276,18 @@ class ChorePhotoProofModal {
 
             <!-- Snap / Retake Center Button -->
             <div class="flex items-center gap-2">
-              <button id="chore-snap-btn" class="bg-gradient-to-r from-primary to-emerald-500 text-white font-headline text-sm font-black px-6 py-3 rounded-2xl chunky-btn shadow-lg flex items-center gap-2 hover:brightness-110 active:scale-95">
+              <button id="chore-snap-btn" class="bg-gradient-to-r from-primary to-emerald-500 text-white font-headline text-sm font-black px-6 py-3 min-h-[48px] rounded-2xl chunky-btn shadow-lg flex items-center gap-2 hover:brightness-110 active:scale-95">
                 <span class="material-symbols-outlined text-xl">photo_camera</span>
                 <span>Snap Photo!</span>
               </button>
 
-              <button id="chore-retake-btn" class="hidden bg-surface-container-high text-on-surface-variant font-headline text-xs font-bold px-4 py-3 rounded-xl border border-surface-container-highest active:scale-95 flex items-center gap-1">
+              <button id="chore-retake-btn" class="hidden bg-surface-container-high text-on-surface-variant font-headline text-xs font-bold px-4 py-3 min-h-[44px] rounded-2xl border border-surface-container-highest active:scale-95 flex items-center gap-1">
                 <span class="material-symbols-outlined text-sm">replay</span> Retake
               </button>
             </div>
 
             <!-- Submit Button -->
-            <button id="chore-submit-proof-btn" class="opacity-50 pointer-events-none bg-gradient-to-r from-amber-400 to-amber-500 text-slate-900 font-headline text-xs font-black px-4 py-3 rounded-2xl chunky-btn shadow flex items-center gap-1.5 hover:brightness-110 active:scale-95">
+            <button id="chore-submit-proof-btn" class="opacity-50 pointer-events-none bg-gradient-to-r from-amber-400 to-amber-500 text-slate-900 font-headline text-xs font-black px-4 py-3 min-h-[48px] rounded-2xl chunky-btn shadow flex items-center gap-1.5 hover:brightness-110 active:scale-95">
               <span>Send</span>
               <span class="material-symbols-outlined text-base">send</span>
             </button>

@@ -83,7 +83,7 @@ export function renderHeroHQView() {
     <!-- Top Action & Navigation Bar -->
     <div class="flex flex-wrap items-center justify-between gap-3 bg-surface-container/90 backdrop-blur-md px-4 py-3 rounded-3xl border-2 border-surface-container-highest shadow-md z-30">
       <div class="flex items-center gap-3">
-        <button id="hq-back-dashboard-btn" class="bg-surface-bright hover:bg-surface-container-highest text-primary p-2.5 rounded-2xl border border-primary/30 transition-all flex items-center justify-center chunky-btn-sm" title="Back to Quests">
+        <button id="hq-back-dashboard-btn" class="bg-surface-bright hover:bg-surface-container-highest text-primary p-2.5 min-w-[44px] min-h-[44px] rounded-2xl border border-primary/30 transition-all flex items-center justify-center chunky-btn-sm" title="Back to Quests">
           <span class="material-symbols-outlined text-xl">arrow_back</span>
         </button>
         <div class="flex flex-col">
@@ -103,25 +103,25 @@ export function renderHeroHQView() {
 
       <div class="flex items-center gap-2">
         <!-- Day/Night Lighting Switch -->
-        <button id="hq-toggle-night-btn" class="px-3.5 py-2 rounded-2xl font-headline text-xs font-black border-2 transition-all flex items-center gap-1.5 chunky-btn-sm ${isNight ? 'bg-indigo-950 text-cyan-300 border-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.3)]' : 'bg-amber-100 text-amber-900 border-amber-400 hover:bg-amber-200'}">
+        <button id="hq-toggle-night-btn" class="px-3.5 py-2 min-h-[44px] rounded-2xl font-headline text-xs font-black border-2 transition-all flex items-center gap-1.5 chunky-btn-sm ${isNight ? 'bg-indigo-950 text-cyan-300 border-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.3)]' : 'bg-amber-100 text-amber-900 border-amber-400 hover:bg-amber-200'}">
           <span class="material-symbols-outlined text-base">${isNight ? 'bedtime' : 'light_mode'}</span>
           <span class="hidden sm:inline">${isNight ? 'Night Starlight' : 'Daylight Mode'}</span>
         </button>
 
         <!-- 3D Expedition Cruise Launch -->
-        <button id="hq-launch-3d-expedition-btn" class="bg-gradient-to-r from-secondary to-amber-500 hover:from-secondary/90 hover:to-amber-400 text-on-secondary px-3.5 py-2 rounded-2xl font-headline text-xs font-black border-2 border-amber-300 shadow-md flex items-center gap-1.5 chunky-btn-sm cursor-pointer" title="Launch 3D Pet Expedition">
+        <button id="hq-launch-3d-expedition-btn" class="bg-gradient-to-r from-secondary to-amber-500 hover:from-secondary/90 hover:to-amber-400 text-on-secondary px-3.5 py-2 min-h-[44px] rounded-2xl font-headline text-xs font-black border-2 border-amber-300 shadow-md flex items-center gap-1.5 chunky-btn-sm cursor-pointer" title="Launch 3D Pet Expedition">
           <span class="material-symbols-outlined text-base">rocket_launch</span>
           <span class="hidden sm:inline">3D Cruise</span>
         </button>
 
         <!-- 3D Hero Forge & Tinkering Lab Launch -->
-        <button id="hq-launch-3d-forge-btn" class="bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white px-3.5 py-2 rounded-2xl font-headline text-xs font-black border-2 border-emerald-300 shadow-md flex items-center gap-1.5 chunky-btn-sm cursor-pointer" title="Hero Forge & 3D Tinkering Lab">
+        <button id="hq-launch-3d-forge-btn" class="bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white px-3.5 py-2 min-h-[44px] rounded-2xl font-headline text-xs font-black border-2 border-emerald-300 shadow-md flex items-center gap-1.5 chunky-btn-sm cursor-pointer" title="Hero Forge & 3D Tinkering Lab">
           <span class="material-symbols-outlined text-base">build</span>
           <span class="hidden sm:inline">Forge &amp; Lab</span>
         </button>
 
         <!-- Redecorate Studio Button -->
-        <button id="hq-open-redecorate-btn" class="bg-gradient-to-r from-primary to-emerald-500 hover:from-primary/90 hover:to-emerald-400 text-on-primary px-4 py-2 rounded-2xl font-headline text-xs font-black border-2 border-emerald-300 shadow-md flex items-center gap-1.5 chunky-btn-sm">
+        <button id="hq-open-redecorate-btn" class="bg-gradient-to-r from-primary to-emerald-500 hover:from-primary/90 hover:to-emerald-400 text-on-primary px-4 py-2 min-h-[44px] rounded-2xl font-headline text-xs font-black border-2 border-emerald-300 shadow-md flex items-center gap-1.5 chunky-btn-sm">
           <span class="material-symbols-outlined text-base">palette</span>
           <span>Redecorate</span>
         </button>
@@ -166,8 +166,8 @@ export function renderHeroHQView() {
               Trophy Showcase & Spotlights
             </h3>
           </div>
-          <button id="hq-view-all-trophies-btn" class="text-[10px] font-headline font-black text-cyan-300 hover:text-cyan-200 flex items-center gap-1 bg-black/30 px-2.5 py-1 rounded-xl border border-cyan-400/30">
-            <span class="material-symbols-outlined text-xs">military_tech</span>
+          <button id="hq-view-all-trophies-btn" class="text-xs font-headline font-black text-cyan-300 hover:text-cyan-200 flex items-center gap-1 bg-black/30 px-3 py-1.5 min-h-[44px] rounded-xl border border-cyan-400/30 active:scale-95">
+            <span class="material-symbols-outlined text-sm">military_tech</span>
             All Trophies (${totalTrophies})
           </button>
         </div>

@@ -73,7 +73,7 @@ export function renderHeroForgeView() {
       <header class="w-full bg-[#16212b] border-4 border-[#2b3640] rounded-3xl p-3 sm:p-4 shadow-[0_6px_0_0_#050f18] flex flex-wrap items-center justify-between gap-3">
         <!-- Back Button & Brand Headline -->
         <div class="flex items-center gap-3">
-          <button id="forge-back-btn" class="flex items-center gap-1.5 bg-[#121d26] hover:bg-[#202b35] px-3.5 py-2 rounded-2xl border-2 border-[#2b3640] text-slate-200 shadow-[0_3px_0_0_#050f18] active:translate-y-1 active:shadow-none transition-all" type="button">
+          <button id="forge-back-btn" class="flex items-center gap-1.5 bg-[#121d26] hover:bg-[#202b35] px-3.5 py-2 min-h-[44px] rounded-2xl border-2 border-[#2b3640] text-slate-200 shadow-[0_3px_0_0_#050f18] active:translate-y-1 active:shadow-none transition-all" type="button">
             <span class="material-symbols-outlined text-primary text-xl">arrow_back</span>
             <span class="font-headline font-black text-xs uppercase tracking-wider hidden sm:inline">Back to HQ</span>
           </button>
@@ -132,7 +132,7 @@ export function renderHeroForgeView() {
             </div>
 
             <!-- Top-Right Mode Toggle: Forge Anvil vs 3D Testing Range -->
-            <button id="forge-mode-toggle-btn" class="pointer-events-auto flex items-center gap-2 px-3.5 py-1.5 rounded-2xl border-2 transition-all active:translate-y-1 shadow-[0_3px_0_0_#004970] ${
+            <button id="forge-mode-toggle-btn" class="pointer-events-auto flex items-center gap-2 px-3.5 py-1.5 min-h-[44px] rounded-2xl border-2 transition-all active:translate-y-1 shadow-[0_3px_0_0_#004970] ${
               mode === 'testing' 
                 ? 'bg-secondary text-[#050f18] border-secondary-fixed shadow-[0_3px_0_0_#563400]' 
                 : 'bg-[#5fbaff] hover:bg-[#92ccff] text-[#001d31] border-[#cce5ff]'
@@ -254,9 +254,9 @@ export function renderHeroForgeView() {
             </div>
 
             <!-- Zone 1: Primary Shell -->
-            <div class="bg-[#121d26] p-2.5 rounded-2xl border-2 border-[#202b35] flex items-center justify-between gap-2">
-              <div class="flex items-center gap-2">
-                <div class="w-7 h-7 rounded-xl border-2 border-white shadow-[0_2px_0_0_#000] flex items-center justify-center" style="background-color: ${dyes.primary};">
+            <div class="bg-[#121d26] p-3 rounded-2xl border-2 border-[#202b35] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl border-2 border-white shadow-[0_2px_0_0_#000] flex items-center justify-center flex-shrink-0" style="background-color: ${dyes.primary};">
                   <span class="material-symbols-outlined text-white text-xs">check</span>
                 </div>
                 <div>
@@ -266,17 +266,17 @@ export function renderHeroForgeView() {
               </div>
 
               <!-- Swatches -->
-              <div class="flex items-center gap-1.5">
+              <div class="flex items-center gap-2 flex-wrap">
                 ${DYE_PALETTES.primary.map(color => `
-                  <button data-dye-zone="primary" data-dye-hex="${color.hex}" class="w-6 h-6 rounded-full border-2 transition-all ${dyes.primary === color.hex ? 'border-white scale-110 shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'border-slate-600 hover:scale-105'}" style="background-color: ${color.hex};" title="${color.label}"></button>
+                  <button data-dye-zone="primary" data-dye-hex="${color.hex}" class="w-11 h-11 min-w-[44px] min-h-[44px] rounded-full border-3 transition-all ${dyes.primary === color.hex ? 'border-white scale-110 shadow-[0_0_10px_rgba(255,255,255,0.9)] ring-2 ring-primary' : 'border-slate-600 hover:scale-105 active:scale-95'}" style="background-color: ${color.hex};" title="${color.label}"></button>
                 `).join('')}
               </div>
             </div>
 
             <!-- Zone 2: Accent Trim -->
-            <div class="bg-[#121d26] p-2.5 rounded-2xl border-2 border-[#202b35] flex items-center justify-between gap-2">
-              <div class="flex items-center gap-2">
-                <div class="w-7 h-7 rounded-xl border-2 border-white shadow-[0_2px_0_0_#000] flex items-center justify-center" style="background-color: ${dyes.accent};">
+            <div class="bg-[#121d26] p-3 rounded-2xl border-2 border-[#202b35] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl border-2 border-white shadow-[0_2px_0_0_#000] flex items-center justify-center flex-shrink-0" style="background-color: ${dyes.accent};">
                   <span class="material-symbols-outlined text-white text-xs">check</span>
                 </div>
                 <div>
@@ -286,17 +286,17 @@ export function renderHeroForgeView() {
               </div>
 
               <!-- Swatches -->
-              <div class="flex items-center gap-1.5">
+              <div class="flex items-center gap-2 flex-wrap">
                 ${DYE_PALETTES.accent.map(color => `
-                  <button data-dye-zone="accent" data-dye-hex="${color.hex}" class="w-6 h-6 rounded-full border-2 transition-all ${dyes.accent === color.hex ? 'border-white scale-110 shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'border-slate-600 hover:scale-105'}" style="background-color: ${color.hex};" title="${color.label}"></button>
+                  <button data-dye-zone="accent" data-dye-hex="${color.hex}" class="w-11 h-11 min-w-[44px] min-h-[44px] rounded-full border-3 transition-all ${dyes.accent === color.hex ? 'border-white scale-110 shadow-[0_0_10px_rgba(255,255,255,0.9)] ring-2 ring-secondary' : 'border-slate-600 hover:scale-105 active:scale-95'}" style="background-color: ${color.hex};" title="${color.label}"></button>
                 `).join('')}
               </div>
             </div>
 
             <!-- Zone 3: Glow Core -->
-            <div class="bg-[#121d26] p-2.5 rounded-2xl border-2 border-[#202b35] flex items-center justify-between gap-2">
-              <div class="flex items-center gap-2">
-                <div class="w-7 h-7 rounded-xl border-2 border-white shadow-[0_2px_0_0_#000] flex items-center justify-center" style="background-color: ${dyes.glow};">
+            <div class="bg-[#121d26] p-3 rounded-2xl border-2 border-[#202b35] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl border-2 border-white shadow-[0_2px_0_0_#000] flex items-center justify-center flex-shrink-0" style="background-color: ${dyes.glow};">
                   <span class="material-symbols-outlined text-white text-xs">check</span>
                 </div>
                 <div>
@@ -306,9 +306,9 @@ export function renderHeroForgeView() {
               </div>
 
               <!-- Swatches -->
-              <div class="flex items-center gap-1.5">
+              <div class="flex items-center gap-2 flex-wrap">
                 ${DYE_PALETTES.glow.map(color => `
-                  <button data-dye-zone="glow" data-dye-hex="${color.hex}" class="w-6 h-6 rounded-full border-2 transition-all ${dyes.glow === color.hex ? 'border-white scale-110 shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'border-slate-600 hover:scale-105'}" style="background-color: ${color.hex};" title="${color.label}"></button>
+                  <button data-dye-zone="glow" data-dye-hex="${color.hex}" class="w-11 h-11 min-w-[44px] min-h-[44px] rounded-full border-3 transition-all ${dyes.glow === color.hex ? 'border-white scale-110 shadow-[0_0_10px_rgba(255,255,255,0.9)] ring-2 ring-cyan-400' : 'border-slate-600 hover:scale-105 active:scale-95'}" style="background-color: ${color.hex};" title="${color.label}"></button>
                 `).join('')}
               </div>
             </div>

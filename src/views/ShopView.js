@@ -101,7 +101,7 @@ export function renderShopView() {
         
         <!-- Filter Pills -->
         <div class="flex overflow-x-auto gap-2 pb-1 hide-scrollbar w-full sm:w-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-          <button data-cat="all" class="cat-pill-btn flex-shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all ${
+          <button data-cat="all" class="cat-pill-btn flex-shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all min-h-[44px] inline-flex items-center justify-center ${
             selectedCategory === 'all'
               ? 'bg-primary text-on-primary border-primary-container shadow-md'
               : 'bg-surface-container-low text-on-surface-variant border-surface-container hover:bg-surface-variant'
@@ -109,7 +109,7 @@ export function renderShopView() {
             All Items
           </button>
           
-          <button data-cat="weapons" class="cat-pill-btn flex-shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all ${
+          <button data-cat="weapons" class="cat-pill-btn flex-shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all min-h-[44px] inline-flex items-center justify-center ${
             selectedCategory === 'weapons'
               ? 'bg-primary text-on-primary border-primary-container shadow-md'
               : 'bg-surface-container-low text-on-surface-variant border-surface-container hover:bg-surface-variant'
@@ -117,7 +117,7 @@ export function renderShopView() {
             ⚔️ Weapons
           </button>
 
-          <button data-cat="gear" class="cat-pill-btn flex-shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all ${
+          <button data-cat="gear" class="cat-pill-btn flex-shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all min-h-[44px] inline-flex items-center justify-center ${
             selectedCategory === 'gear'
               ? 'bg-primary text-on-primary border-primary-container shadow-md'
               : 'bg-surface-container-low text-on-surface-variant border-surface-container hover:bg-surface-variant'
@@ -125,7 +125,7 @@ export function renderShopView() {
             🛡️ Avatar & Pet Gear
           </button>
 
-          <button data-cat="badges" class="cat-pill-btn flex-shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all ${
+          <button data-cat="badges" class="cat-pill-btn flex-shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all min-h-[44px] inline-flex items-center justify-center ${
             selectedCategory === 'badges'
               ? 'bg-primary text-on-primary border-primary-container shadow-md'
               : 'bg-surface-container-low text-on-surface-variant border-surface-container hover:bg-surface-variant'
@@ -133,7 +133,7 @@ export function renderShopView() {
             🏆 Badges & Loot
           </button>
 
-          <button data-cat="snacks" class="cat-pill-btn flex-shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all ${
+          <button data-cat="snacks" class="cat-pill-btn flex-shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all min-h-[44px] inline-flex items-center justify-center ${
             selectedCategory === 'snacks'
               ? 'bg-primary text-on-primary border-primary-container shadow-md'
               : 'bg-surface-container-low text-on-surface-variant border-surface-container hover:bg-surface-variant'
@@ -141,7 +141,7 @@ export function renderShopView() {
             🫐 Snacks & Soaps
           </button>
 
-          <button data-cat="themes" class="cat-pill-btn flex-shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all ${
+          <button data-cat="themes" class="cat-pill-btn flex-shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all min-h-[44px] inline-flex items-center justify-center ${
             selectedCategory === 'themes'
               ? 'bg-primary text-on-primary border-primary-container shadow-md'
               : 'bg-surface-container-low text-on-surface-variant border-surface-container hover:bg-surface-variant'
@@ -149,7 +149,7 @@ export function renderShopView() {
             🎨 Profile Themes
           </button>
 
-          <button data-cat="real_life" class="cat-pill-btn flex-shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all ${
+          <button data-cat="real_life" class="cat-pill-btn flex-shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all min-h-[44px] inline-flex items-center justify-center ${
             selectedCategory === 'real_life'
               ? 'bg-tertiary text-on-tertiary border-tertiary-container shadow-md'
               : 'bg-surface-container-low text-tertiary border-surface-container hover:bg-surface-variant'
@@ -159,7 +159,7 @@ export function renderShopView() {
         </div>
 
         <!-- Sort Control -->
-        <div class="flex items-center gap-2 bg-surface-container-low px-3 py-1.5 rounded-2xl border-2 border-surface-container self-end sm:self-auto">
+        <div class="flex items-center gap-2 bg-surface-container-low px-3 py-1.5 rounded-2xl border-2 border-surface-container self-end sm:self-auto min-h-[44px]">
           <span class="material-symbols-outlined text-on-surface-variant text-sm">sort</span>
           <select id="shop-sort-select" class="bg-transparent text-xs font-black text-inverse-surface focus:outline-none cursor-pointer">
             <option value="cheapest" ${selectedSort === 'cheapest' ? 'selected' : ''}>Cheapest</option>
@@ -256,18 +256,18 @@ export function renderShopView() {
                       `
                           : isOwned
                           ? `
-                        <button data-buy-gear-id="${item.id}" class="buy-gear-btn bg-surface-container-high hover:bg-surface-bright text-inverse-surface font-headline text-xs font-black px-4 py-2 rounded-xl border border-surface-container-highest chunky-btn-sm active:scale-95">
+                        <button data-buy-gear-id="${item.id}" class="buy-gear-btn min-h-[44px] bg-surface-container-high hover:bg-surface-bright text-inverse-surface font-headline text-xs font-black px-4 py-2 rounded-xl border border-surface-container-highest chunky-btn-sm active:scale-95">
                           Equip
                         </button>
                       `
                           : canAfford
                           ? `
-                        <button data-buy-gear-id="${item.id}" class="buy-gear-btn bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2 rounded-xl chunky-btn border-secondary-container shadow-chunky-sm hover:brightness-110 active:scale-95">
+                        <button data-buy-gear-id="${item.id}" class="buy-gear-btn min-h-[44px] bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2 rounded-xl chunky-btn border-secondary-container shadow-chunky-sm hover:brightness-110 active:scale-95">
                           Buy Now
                         </button>
                       `
                           : `
-                        <button class="bg-surface-container-highest text-on-surface-variant font-headline text-xs font-black px-4 py-2 rounded-xl border border-surface-container-low opacity-60 cursor-not-allowed">
+                        <button class="min-h-[44px] bg-surface-container-highest text-on-surface-variant font-headline text-xs font-black px-4 py-2 rounded-xl border border-surface-container-low opacity-60 cursor-not-allowed">
                           Need ${item.costCoins - hero.coins} more
                         </button>
                       `
@@ -350,18 +350,18 @@ export function renderShopView() {
                     `
                         : isUnlocked
                         ? `
-                      <button data-theme-id="${theme.id}" class="shop-theme-btn bg-primary text-on-primary font-headline text-xs font-black px-4 py-2 rounded-xl chunky-btn-sm hover:brightness-110 active:scale-95">
+                      <button data-theme-id="${theme.id}" class="shop-theme-btn min-h-[44px] bg-primary text-on-primary font-headline text-xs font-black px-4 py-2 rounded-xl chunky-btn-sm hover:brightness-110 active:scale-95">
                         Equip
                       </button>
                     `
                         : canAfford
                         ? `
-                      <button data-theme-id="${theme.id}" class="shop-theme-btn bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2 rounded-xl chunky-btn-sm hover:brightness-110 active:scale-95">
+                      <button data-theme-id="${theme.id}" class="shop-theme-btn min-h-[44px] bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2 rounded-xl chunky-btn-sm hover:brightness-110 active:scale-95">
                         Unlock Theme
                       </button>
                     `
                         : `
-                      <button class="bg-surface-container-highest text-white/40 text-xs font-black px-4 py-2 rounded-xl opacity-60 cursor-not-allowed">
+                      <button class="min-h-[44px] bg-surface-container-highest text-white/40 text-xs font-black px-4 py-2 rounded-xl opacity-60 cursor-not-allowed">
                         Need ${theme.costCoins - hero.coins} more
                       </button>
                     `
@@ -425,12 +425,12 @@ export function renderShopView() {
                       ${
                         canAfford
                           ? `
-                        <button data-redeem-id="${reward.id}" class="redeem-reward-btn bg-tertiary text-on-tertiary font-headline text-xs font-black px-4 py-2.5 rounded-xl chunky-btn border-tertiary-container shadow-chunky-sm hover:brightness-110 active:scale-95 flex-1 sm:flex-none">
+                        <button data-redeem-id="${reward.id}" class="redeem-reward-btn min-h-[44px] bg-tertiary text-on-tertiary font-headline text-xs font-black px-4 py-2.5 rounded-xl chunky-btn border-tertiary-container shadow-chunky-sm hover:brightness-110 active:scale-95 flex-1 sm:flex-none">
                           Request Parent Sign-off
                         </button>
                       `
                           : `
-                        <button class="bg-surface-container-highest text-on-surface-variant font-headline text-xs font-black px-4 py-2.5 rounded-xl border border-surface-container-low opacity-75 cursor-not-allowed flex-1 sm:flex-none">
+                        <button class="min-h-[44px] bg-surface-container-highest text-on-surface-variant font-headline text-xs font-black px-4 py-2.5 rounded-xl border border-surface-container-low opacity-75 cursor-not-allowed flex-1 sm:flex-none">
                           Need ${pointsNeeded} more
                         </button>
                       `

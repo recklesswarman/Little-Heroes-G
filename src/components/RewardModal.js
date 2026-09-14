@@ -112,7 +112,7 @@ export function renderRewardModal() {
       <div class="relative z-10 w-full max-w-md px-margin-mobile flex flex-col items-center justify-center h-full">
         
         <!-- Reward Card Container (Stitch Design Specification) -->
-        <div class="bg-surface-container-high rounded-4xl p-6 sm:p-8 w-full flex flex-col items-center justify-center shadow-[0_12px_0_0_#121d26] border-2 border-outline-variant relative overflow-hidden text-center animate-scale-up">
+        <div class="bg-surface-container-high rounded-4xl p-6 sm:p-8 w-full max-h-[90vh] overflow-y-auto my-auto flex flex-col items-center justify-center shadow-[0_12px_0_0_#121d26] border-2 border-outline-variant relative text-center animate-scale-up">
           
           <!-- Confetti/Stars Decorative Elements (Purely CSS/HTML) -->
           <div class="absolute top-4 left-4 text-secondary rotate-12 pointer-events-none">
@@ -134,7 +134,7 @@ export function renderRewardModal() {
           </h1>
 
           <!-- 3D Celebration Portal Circle with Generated Task / Reward Icon -->
-          <div class="relative w-44 h-44 sm:w-48 sm:h-48 mb-6 animate-float glow-effect rounded-full bg-surface-container flex items-center justify-center overflow-hidden">
+          <div class="relative w-44 h-44 sm:w-48 sm:h-48 mb-6 animate-float glow-effect rounded-full bg-surface-container flex items-center justify-center overflow-hidden flex-shrink-0">
             <!-- Inner highlight/bevel for sticker container -->
             <div class="absolute inset-0 rounded-full border-4 border-surface-bright shadow-inner z-0 pointer-events-none"></div>
             
@@ -151,7 +151,7 @@ export function renderRewardModal() {
           ${
             reward.coins > 0 || reward.xp > 0
               ? `
-            <div class="glass-pill rounded-full px-5 sm:px-6 py-2.5 flex items-center justify-center gap-3 mb-6 border border-secondary/30">
+            <div class="glass-pill rounded-full px-5 sm:px-6 py-2.5 flex items-center justify-center gap-3 mb-6 border border-secondary/30 flex-shrink-0">
               <div class="bg-secondary text-on-secondary rounded-full p-1 flex items-center justify-center shadow-inner">
                 <span class="material-symbols-outlined text-base sm:text-lg" style="font-variation-settings: 'FILL' 1;">generating_tokens</span>
               </div>
@@ -173,18 +173,20 @@ export function renderRewardModal() {
               : ''
           }
 
-          <!-- Interactive Celebration Star Popping Mini-Game -->
-          <button id="reward-modal-stars-btn" class="w-full bg-gradient-to-r from-amber-400 to-amber-500 text-amber-950 font-headline text-xs sm:text-sm font-black rounded-xl py-2.5 uppercase tracking-wider flex items-center justify-center gap-1.5 chunky-btn-sm hover:brightness-110 active:scale-95 shadow-md">
-            <span>✨</span> Pop Floating Stars & Confetti! <span>✨</span>
-          </button>
+          <div class="flex flex-col gap-3 w-full">
+            <!-- Interactive Celebration Star Popping Mini-Game -->
+            <button id="reward-modal-stars-btn" class="w-full bg-gradient-to-r from-amber-400 to-amber-500 text-amber-950 font-headline text-xs sm:text-sm font-black rounded-xl py-2.5 min-h-[44px] uppercase tracking-wider flex items-center justify-center gap-1.5 chunky-btn-sm hover:brightness-110 active:scale-95 shadow-md">
+              <span>✨</span> Pop Floating Stars & Confetti! <span>✨</span>
+            </button>
 
-          <!-- Action Button (Chunky Button with Shine Sweep Effect) -->
-          <button id="reward-modal-cool-btn" class="w-full ${btnClass} font-headline-lg-mobile text-base sm:text-lg font-black rounded-xl py-3.5 uppercase tracking-widest relative overflow-hidden group hover:brightness-110 active:scale-98 transition-all flex items-center justify-center gap-2">
-            <span class="relative z-10">${btnText}</span>
-            <span id="reward-timer-countdown" class="relative z-10 text-xs bg-black/25 px-2 py-0.5 rounded-full font-bold">15s</span>
-            <!-- Button shine effect -->
-            <div class="absolute top-0 left-[-100%] w-1/2 h-full bg-white/20 skew-x-[-20deg] group-hover:left-[200%] transition-all duration-700 ease-in-out"></div>
-          </button>
+            <!-- Action Button (Chunky Button with Shine Sweep Effect) -->
+            <button id="reward-modal-cool-btn" class="w-full ${btnClass} font-headline-lg-mobile text-base sm:text-lg font-black rounded-xl py-3.5 min-h-[48px] uppercase tracking-widest relative overflow-hidden group hover:brightness-110 active:scale-98 transition-all flex items-center justify-center gap-2">
+              <span class="relative z-10">${btnText}</span>
+              <span id="reward-timer-countdown" class="relative z-10 text-xs bg-black/25 px-2 py-0.5 rounded-full font-bold">15s</span>
+              <!-- Button shine effect -->
+              <div class="absolute top-0 left-[-100%] w-1/2 h-full bg-white/20 skew-x-[-20deg] group-hover:left-[200%] transition-all duration-700 ease-in-out"></div>
+            </button>
+          </div>
 
         </div>
       </div>

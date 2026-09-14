@@ -126,7 +126,7 @@ export function renderBattleView() {
         
         <!-- HEADER NAVIGATION BAR -->
         <div class="flex items-center justify-between">
-          <button id="battle-lobby-back-btn" class="bg-surface-container hover:bg-surface-bright text-on-surface-variant font-headline text-xs font-bold px-3.5 py-2.5 rounded-2xl border-2 border-surface-container-highest flex items-center gap-1.5 chunky-btn-sm active:scale-95 transition-all">
+          <button id="battle-lobby-back-btn" class="bg-surface-container hover:bg-surface-bright text-on-surface-variant font-headline text-xs font-bold px-3.5 py-2.5 min-h-[44px] rounded-2xl border-2 border-surface-container-highest flex items-center gap-1.5 chunky-btn-sm active:scale-95 transition-all">
             <span class="material-symbols-outlined text-base">arrow_back</span> Back to Hub
           </button>
           
@@ -268,7 +268,7 @@ export function renderBattleView() {
             </div>
           </div>
 
-          <button id="start-ar-battle-btn" class="w-full sm:w-auto bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-headline text-base font-black px-8 py-4 rounded-2xl shadow-[0_6px_0_0_#0891b2] active:translate-y-1 active:shadow-none transition-all flex items-center justify-center gap-2">
+          <button id="start-ar-battle-btn" class="w-full sm:w-auto bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-headline text-base font-black px-8 py-4 min-h-[54px] rounded-2xl shadow-[0_6px_0_0_#0891b2] active:translate-y-1 active:shadow-none transition-all flex items-center justify-center gap-2">
             <span class="material-symbols-outlined text-2xl">swords</span> ENTER 3D BATTLE COCKPIT!
           </button>
         </div>
@@ -323,7 +323,7 @@ export function renderBattleView() {
         <div class="flex items-center justify-between gap-2 sm:gap-4 max-w-6xl mx-auto w-full">
           
           <!-- Back / Exit Button -->
-          <button id="battle-quit-btn" class="flex items-center justify-center w-11 h-11 rounded-2xl bg-[#0f172a] border-2 border-[#334155] text-cyan-400 shadow-[0_4px_0_0_#020617] hover:bg-[#1e293b] active:scale-95 transition-all flex-shrink-0" title="Exit Battle">
+          <button id="battle-quit-btn" class="flex items-center justify-center w-11 h-11 min-w-[44px] min-h-[44px] rounded-2xl bg-[#0f172a] border-2 border-[#334155] text-cyan-400 shadow-[0_4px_0_0_#020617] hover:bg-[#1e293b] active:scale-95 transition-all flex-shrink-0" title="Exit Battle">
             <span class="material-symbols-outlined text-2xl font-bold">arrow_back</span>
           </button>
 
@@ -417,11 +417,11 @@ export function renderBattleView() {
 
             <!-- Mirror Controls -->
             <div class="flex items-center gap-1 mt-1">
-              <button id="camera-flip-btn" class="text-[9px] font-bold text-slate-300 bg-[#0b1320]/90 px-2 py-1 rounded-xl border border-slate-700 flex items-center gap-1 hover:text-cyan-400 active:scale-95 shadow" title="Flip Camera">
-                <span class="material-symbols-outlined text-xs">cameraswitch</span> Flip
+              <button id="camera-flip-btn" class="text-[10px] font-bold text-slate-300 bg-[#0b1320]/90 px-3 py-1.5 min-h-[38px] rounded-xl border border-slate-700 flex items-center gap-1 hover:text-cyan-400 active:scale-95 shadow" title="Flip Camera">
+                <span class="material-symbols-outlined text-sm">cameraswitch</span> Flip
               </button>
-              <button id="pip-toggle-btn" class="text-[9px] font-bold text-slate-300 bg-[#0b1320]/90 px-2 py-1 rounded-xl border border-slate-700 flex items-center gap-1 hover:text-cyan-400 active:scale-95 shadow">
-                <span class="material-symbols-outlined text-xs">flip_camera_ios</span> ${showPip ? 'Hide' : 'Mirror'}
+              <button id="pip-toggle-btn" class="text-[10px] font-bold text-slate-300 bg-[#0b1320]/90 px-3 py-1.5 min-h-[38px] rounded-xl border border-slate-700 flex items-center gap-1 hover:text-cyan-400 active:scale-95 shadow">
+                <span class="material-symbols-outlined text-sm">flip_camera_ios</span> ${showPip ? 'Hide' : 'Mirror'}
               </button>
             </div>
           </div>
@@ -429,10 +429,10 @@ export function renderBattleView() {
           <!-- Spline 3D vs Colosseum Viewport Switcher (If splineUrl exists) -->
           ${currentBoss.splineUrl ? `
             <div class="absolute top-3 left-3 z-30 flex items-center gap-1 bg-[#0b1320]/90 p-1 rounded-2xl border border-purple-500/50 shadow-lg">
-              <button id="viewmode-colosseum-btn" class="px-2.5 py-1 rounded-xl text-[10px] font-black transition-all ${studioViewportMode === 'colosseum' ? 'bg-cyan-500 text-slate-950 shadow' : 'text-slate-300 hover:text-white'}">
+              <button id="viewmode-colosseum-btn" class="px-3 py-2 min-h-[44px] rounded-xl text-xs font-black transition-all ${studioViewportMode === 'colosseum' ? 'bg-cyan-500 text-slate-950 shadow' : 'text-slate-300 hover:text-white'}">
                 ⚔️ Colosseum
               </button>
-              <button id="viewmode-spline-btn" class="px-2.5 py-1 rounded-xl text-[10px] font-black transition-all ${studioViewportMode === 'spline' ? 'bg-purple-500 text-white shadow' : 'text-slate-300 hover:text-white'}">
+              <button id="viewmode-spline-btn" class="px-3 py-2 min-h-[44px] rounded-xl text-xs font-black transition-all ${studioViewportMode === 'spline' ? 'bg-purple-500 text-white shadow' : 'text-slate-300 hover:text-white'}">
                 ✨ Spline 3D
               </button>
             </div>
@@ -513,7 +513,7 @@ export function renderBattleView() {
         <div class="flex items-center justify-between gap-2 sm:gap-3 max-w-lg mx-auto w-full">
           
           <!-- Rapid-Foam Blaster Button -->
-          <button id="hero-foam-blast-btn" class="flex-1 flex flex-col items-center justify-center py-2.5 px-2 rounded-2xl bg-[#0f172a] border-3 border-cyan-400 text-cyan-400 shadow-[0_6px_0_0_#0891b2] hover:bg-[#1e293b] active:translate-y-1 active:shadow-none transition-all">
+          <button id="hero-foam-blast-btn" class="flex-1 flex flex-col items-center justify-center py-2.5 px-2 min-h-[56px] rounded-2xl bg-[#0f172a] border-3 border-cyan-400 text-cyan-400 shadow-[0_6px_0_0_#0891b2] hover:bg-[#1e293b] active:translate-y-1 active:shadow-none transition-all">
             <div class="flex items-center gap-1">
               <span class="material-symbols-outlined text-xl sm:text-2xl">water_bottle</span>
               <span class="font-headline font-black text-xs sm:text-sm tracking-wide">FOAM BLAST</span>
@@ -522,7 +522,7 @@ export function renderBattleView() {
           </button>
 
           <!-- Giant Chunky DEFLECT! Button -->
-          <button id="hero-deflect-btn" class="flex-[1.3] flex flex-col items-center justify-center py-3 sm:py-3.5 px-3 sm:px-4 rounded-2xl bg-emerald-500 border-3 border-emerald-300 text-slate-950 font-headline font-black shadow-[0_8px_0_0_#047857,0_10px_20px_rgba(16,185,129,0.4)] hover:brightness-110 active:translate-y-1.5 active:shadow-[0_2px_0_0_#047857] transition-all">
+          <button id="hero-deflect-btn" class="flex-[1.3] flex flex-col items-center justify-center py-3 sm:py-3.5 px-3 sm:px-4 min-h-[58px] rounded-2xl bg-emerald-500 border-3 border-emerald-300 text-slate-950 font-headline font-black shadow-[0_8px_0_0_#047857,0_10px_20px_rgba(16,185,129,0.4)] hover:brightness-110 active:translate-y-1.5 active:shadow-[0_2px_0_0_#047857] transition-all">
             <div class="flex items-center gap-1.5">
               <span class="material-symbols-outlined text-2xl text-slate-950 font-black">shield</span>
               <span class="text-sm sm:text-base tracking-wider uppercase text-slate-950">DEFLECT! 🛡️</span>
@@ -531,7 +531,7 @@ export function renderBattleView() {
           </button>
 
           <!-- CHORE SUPERNOVA Mega-Bubble Button -->
-          <button id="hero-supernova-btn" class="flex-1 flex flex-col items-center justify-center py-2.5 px-2 rounded-2xl ${isSupernovaReady ? 'bg-gradient-to-br from-amber-400 to-yellow-500 border-amber-300 shadow-[0_6px_0_0_#b45309] animate-pulse' : 'bg-slate-800 border-slate-700 text-slate-400 shadow-[0_4px_0_0_#1e293b]'} border-3 font-headline font-black active:translate-y-1 active:shadow-none transition-all">
+          <button id="hero-supernova-btn" class="flex-1 flex flex-col items-center justify-center py-2.5 px-2 min-h-[56px] rounded-2xl ${isSupernovaReady ? 'bg-gradient-to-br from-amber-400 to-yellow-500 border-amber-300 shadow-[0_6px_0_0_#b45309] animate-pulse' : 'bg-slate-800 border-slate-700 text-slate-400 shadow-[0_4px_0_0_#1e293b]'} border-3 font-headline font-black active:translate-y-1 active:shadow-none transition-all">
             <div class="flex items-center gap-1">
               <span class="text-base">⭐</span>
               <span class="font-black text-xs sm:text-sm tracking-tight text-slate-950 uppercase">SUPERNOVA</span>
@@ -542,18 +542,18 @@ export function renderBattleView() {
         </div>
 
         <!-- Secondary Controls: Pause, Rhythm Guide, Quit -->
-        <div class="flex items-center justify-between max-w-lg mx-auto w-full text-xs text-slate-400 font-bold px-1">
-          <button id="battle-pause-btn" class="flex items-center gap-1 px-3 py-1 rounded-xl bg-slate-800/80 border border-slate-700 hover:text-white active:scale-95">
+        <div class="flex flex-wrap items-center justify-between gap-1.5 max-w-lg mx-auto w-full text-xs text-slate-400 font-bold px-1">
+          <button id="battle-pause-btn" class="flex items-center gap-1 px-3 py-2 min-h-[44px] rounded-xl bg-slate-800/80 border border-slate-700 hover:text-white active:scale-95">
             <span class="material-symbols-outlined text-sm">${isBattlePaused ? 'play_arrow' : 'pause'}</span>
             <span>${isBattlePaused ? 'Resume' : 'Pause (Rinse/Spit)'}</span>
           </button>
 
-          <button id="rhythm-toggle-btn" class="flex items-center gap-1 px-3 py-1 rounded-xl bg-slate-800/80 border border-slate-700 hover:text-cyan-400 active:scale-95">
+          <button id="rhythm-toggle-btn" class="flex items-center gap-1 px-3 py-2 min-h-[44px] rounded-xl bg-slate-800/80 border border-slate-700 hover:text-cyan-400 active:scale-95">
             <span class="material-symbols-outlined text-sm">music_note</span>
             <span>${isRhythmBeatActive ? 'Rhythm: ON' : 'Rhythm: OFF'}</span>
           </button>
 
-          <button id="battle-quit-footer-btn" class="flex items-center gap-1 px-3 py-1 rounded-xl bg-slate-800/80 border border-slate-700 hover:text-rose-400 active:scale-95 text-slate-400">
+          <button id="battle-quit-footer-btn" class="flex items-center gap-1 px-3 py-2 min-h-[44px] rounded-xl bg-slate-800/80 border border-slate-700 hover:text-rose-400 active:scale-95 text-slate-400">
             <span class="material-symbols-outlined text-sm">close</span>
             <span>Quit</span>
           </button>
@@ -630,11 +630,11 @@ function renderVictoryModal(colState, currentBoss) {
 
         <!-- Action Buttons -->
         <div class="w-full flex flex-col gap-2">
-          <button id="colosseum-visit-hq-btn" class="w-full py-3 rounded-2xl bg-emerald-500 text-slate-950 font-headline font-black text-sm uppercase tracking-wider shadow-[0_6px_0_0_#047857] hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-1.5">
+          <button id="colosseum-visit-hq-btn" class="w-full py-3 min-h-[48px] rounded-2xl bg-emerald-500 text-slate-950 font-headline font-black text-sm uppercase tracking-wider shadow-[0_6px_0_0_#047857] hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-1.5">
             <span class="material-symbols-outlined text-lg font-bold">apartment</span> VIEW TROPHY IN HERO HQ
           </button>
           
-          <button id="colosseum-play-again-btn" class="w-full py-2.5 rounded-2xl bg-slate-800 text-cyan-400 border-2 border-slate-700 font-headline font-bold text-xs uppercase hover:bg-slate-700 active:scale-95 transition-all flex items-center justify-center gap-1">
+          <button id="colosseum-play-again-btn" class="w-full py-2.5 min-h-[44px] rounded-2xl bg-slate-800 text-cyan-400 border-2 border-slate-700 font-headline font-bold text-xs uppercase hover:bg-slate-700 active:scale-95 transition-all flex items-center justify-center gap-1">
             <span class="material-symbols-outlined text-base">replay</span> BATTLE AGAIN
           </button>
         </div>

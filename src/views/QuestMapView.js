@@ -61,7 +61,7 @@ export function renderQuestMapView() {
           <div class="flex items-center justify-between gap-3">
             <!-- Rex Avatar & Real-time Dino Face -->
             <div class="flex items-center gap-3">
-              <div id="arena-rex-face" class="w-13 h-13 rounded-2xl bg-surface-container-high border-2 border-primary flex items-center justify-center p-1 shadow-md relative transition-transform ${geminiLiveService.isSpeaking ? 'scale-105 ring-4 ring-emerald-400' : geminiLiveService.isListening ? 'ring-2 ring-emerald-300' : ''}">
+              <div id="arena-rex-face" class="w-14 h-14 rounded-2xl bg-surface-container-high border-2 border-primary flex items-center justify-center p-1 shadow-md relative transition-transform ${geminiLiveService.isSpeaking ? 'scale-105 ring-4 ring-emerald-400' : geminiLiveService.isListening ? 'ring-2 ring-emerald-300' : ''}">
                 ${renderRexAvatarSvg({ isListening: geminiLiveService.isListening, isSpeaking: geminiLiveService.isSpeaking, isThinking: false })}
                 <div class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px] shadow border border-surface ${geminiLiveService.isConnected ? 'bg-emerald-500 text-white animate-pulse' : 'bg-surface-container-highest text-on-surface-variant'}">
                   <span class="material-symbols-outlined text-xs">${geminiLiveService.isConnected ? 'mic' : 'mic_off'}</span>
@@ -99,16 +99,16 @@ export function renderQuestMapView() {
 
           <!-- Action Chips: Hint, Dino Stomp (50/50), Read Aloud, Mic Toggle -->
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 border-t border-surface-container-highest">
-            <button id="map-rex-hint-btn" class="bg-surface-container-high hover:bg-surface-bright text-secondary font-headline text-xs font-black py-2 px-2.5 rounded-xl border-2 border-secondary/30 flex items-center justify-center gap-1.5 chunky-btn-sm active:scale-95 shadow-sm" title="Ask Rex for a toddler hint">
+            <button id="map-rex-hint-btn" class="bg-surface-container-high hover:bg-surface-bright text-secondary font-headline text-xs font-black py-2 px-2.5 min-h-[44px] rounded-xl border-2 border-secondary/30 flex items-center justify-center gap-1.5 chunky-btn-sm active:scale-95 shadow-sm" title="Ask Rex for a toddler hint">
               <span class="text-sm">💡</span> <span>Rex Hint</span>
             </button>
-            <button id="map-rex-stomp-btn" class="bg-surface-container-high hover:bg-surface-bright text-emerald-400 font-headline text-xs font-black py-2 px-2.5 rounded-xl border-2 border-emerald-500/30 flex items-center justify-center gap-1.5 chunky-btn-sm active:scale-95 shadow-sm" title="Rex stomps out one wrong answer">
+            <button id="map-rex-stomp-btn" class="bg-surface-container-high hover:bg-surface-bright text-emerald-400 font-headline text-xs font-black py-2 px-2.5 min-h-[44px] rounded-xl border-2 border-emerald-500/30 flex items-center justify-center gap-1.5 chunky-btn-sm active:scale-95 shadow-sm" title="Rex stomps out one wrong answer">
               <span class="text-sm">🦶</span> <span>Dino Stomp</span>
             </button>
-            <button id="map-speak-question-btn" class="bg-surface-container-high hover:bg-surface-bright text-sky-400 font-headline text-xs font-black py-2 px-2.5 rounded-xl border-2 border-sky-500/30 flex items-center justify-center gap-1.5 chunky-btn-sm active:scale-95 shadow-sm" title="Read the challenge aloud">
+            <button id="map-speak-question-btn" class="bg-surface-container-high hover:bg-surface-bright text-sky-400 font-headline text-xs font-black py-2 px-2.5 min-h-[44px] rounded-xl border-2 border-sky-500/30 flex items-center justify-center gap-1.5 chunky-btn-sm active:scale-95 shadow-sm" title="Read the challenge aloud">
               <span class="material-symbols-outlined text-sm">volume_up</span> <span>Read Aloud</span>
             </button>
-            <button id="map-rex-talk-btn" class="font-headline text-xs font-black py-2 px-2.5 rounded-xl border-2 flex items-center justify-center gap-1.5 chunky-btn-sm active:scale-95 shadow-sm ${geminiLiveService.isConnected ? 'bg-emerald-500 text-white border-emerald-600' : 'bg-primary text-on-primary border-primary-container'}" title="Toggle Rex Live Voice">
+            <button id="map-rex-talk-btn" class="font-headline text-xs font-black py-2 px-2.5 min-h-[44px] rounded-xl border-2 flex items-center justify-center gap-1.5 chunky-btn-sm active:scale-95 shadow-sm ${geminiLiveService.isConnected ? 'bg-emerald-500 text-white border-emerald-600' : 'bg-primary text-on-primary border-primary-container'}" title="Toggle Rex Live Voice">
               <span class="material-symbols-outlined text-sm">${geminiLiveService.isConnected ? 'mic' : 'mic_none'}</span>
               <span>${geminiLiveService.isConnected ? 'Live Active' : 'Wake Rex'}</span>
             </button>

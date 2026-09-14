@@ -46,9 +46,17 @@ export function renderParentLockModal() {
     activeAuthTab = enabledTabs[0].id;
   }
 
+  const tabGridClass = enabledTabs.length === 4 
+    ? 'grid-cols-4' 
+    : enabledTabs.length === 3 
+    ? 'grid-cols-3' 
+    : enabledTabs.length === 2 
+    ? 'grid-cols-2' 
+    : 'grid-cols-1';
+
   return `
     <div id="parent-modal-backdrop" class="fixed inset-0 bg-background/85 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in select-none">
-      <div class="bg-surface-container border-4 border-secondary/50 rounded-3xl p-6 sm:p-7 max-w-md w-full card-shadow-lg flex flex-col gap-5 relative">
+      <div class="bg-surface-container border-4 border-secondary/50 rounded-3xl p-6 sm:p-7 max-w-md w-full max-h-[90vh] overflow-y-auto my-auto card-shadow-lg flex flex-col gap-5 relative">
         
         <!-- Header -->
         <div class="flex justify-between items-center border-b-2 border-surface-container-highest pb-3">
@@ -61,7 +69,7 @@ export function renderParentLockModal() {
               <p class="text-[11px] text-on-surface-variant font-bold">Adult verification required for dashboard</p>
             </div>
           </div>
-          <button id="parent-modal-close" class="text-on-surface-variant hover:text-error text-2xl p-1 active:scale-95 transition-transform" title="Close Gate">
+          <button id="parent-modal-close" class="w-11 h-11 min-w-[44px] min-h-[44px] rounded-2xl flex items-center justify-center text-on-surface-variant hover:text-error text-2xl active:scale-95 transition-transform" title="Close Gate">
             <span class="material-symbols-outlined">close</span>
           </button>
         </div>
@@ -70,11 +78,11 @@ export function renderParentLockModal() {
         ${
           enabledTabs.length > 1
             ? `
-          <div class="grid grid-cols-${enabledTabs.length} gap-2 bg-surface-container-high p-1.5 rounded-2xl border border-surface-container-highest">
+          <div class="grid ${tabGridClass} gap-2 bg-surface-container-high p-1.5 rounded-2xl border border-surface-container-highest">
             ${enabledTabs
               .map(
                 (tab) => `
-              <button data-auth-tab="${tab.id}" class="parent-auth-tab-btn flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl font-headline text-xs font-black transition-all ${
+              <button data-auth-tab="${tab.id}" class="parent-auth-tab-btn min-h-[44px] flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl font-headline text-xs font-black transition-all ${
                 activeAuthTab === tab.id
                   ? 'bg-secondary text-on-secondary shadow-sm'
                   : 'text-on-surface-variant hover:text-secondary'

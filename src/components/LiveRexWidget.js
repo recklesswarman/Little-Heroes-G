@@ -111,8 +111,8 @@ export function renderLiveRexWidget() {
             </div>
 
             <!-- Minimize / Close Button -->
-            <button id="live-rex-close-btn" class="w-8 h-8 rounded-full bg-surface-container-high hover:bg-surface-bright text-on-surface-variant flex items-center justify-center chunky-btn-sm active:scale-95" title="Close Companion Window">
-              <span class="material-symbols-outlined text-lg">close</span>
+            <button id="live-rex-close-btn" class="w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-surface-container-high hover:bg-surface-bright text-on-surface-variant flex items-center justify-center chunky-btn-sm active:scale-95" title="Close Companion Window">
+              <span class="material-symbols-outlined text-xl">close</span>
             </button>
           </div>
 
@@ -152,7 +152,7 @@ export function renderLiveRexWidget() {
               </div>
 
               <!-- Action Indicator Pill -->
-              <button id="modal-rex-avatar-btn" class="absolute -bottom-2.5 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-[11px] font-headline font-black shadow-lg flex items-center gap-1.5 whitespace-nowrap cursor-pointer z-10 transition-transform active:scale-95 ${
+              <button id="modal-rex-avatar-btn" class="absolute -bottom-2.5 left-1/2 -translate-x-1/2 px-3 py-1 min-h-[32px] rounded-full text-[11px] font-headline font-black shadow-lg flex items-center gap-1.5 whitespace-nowrap cursor-pointer z-10 transition-transform active:scale-95 ${
                 isListening
                   ? 'bg-emerald-500 text-white animate-pulse'
                   : isThinking
@@ -172,10 +172,10 @@ export function renderLiveRexWidget() {
 
             <!-- Tactile Quick Interactions (Pat Forehead & Poke Cheek) -->
             <div class="flex items-center gap-2 mt-4 z-10">
-              <button id="rex-pat-head-btn" class="bg-surface-container-high hover:bg-surface-bright text-pink-300 hover:text-pink-200 px-3 py-1 rounded-full font-headline text-[11px] font-black border border-pink-400/40 flex items-center gap-1 shadow-sm active:scale-95 transition-all cursor-pointer" title="Pat forehead for heart sparkles!">
+              <button id="rex-pat-head-btn" class="bg-surface-container-high hover:bg-surface-bright text-pink-300 hover:text-pink-200 px-3.5 py-2 min-h-[44px] rounded-full font-headline text-xs font-black border border-pink-400/40 flex items-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer" title="Pat forehead for heart sparkles!">
                 <span>❤️</span> Pat Head
               </button>
-              <button id="rex-poke-cheek-btn" class="bg-surface-container-high hover:bg-surface-bright text-amber-300 hover:text-amber-200 px-3 py-1 rounded-full font-headline text-[11px] font-black border border-amber-400/40 flex items-center gap-1 shadow-sm active:scale-95 transition-all cursor-pointer" title="Poke cheek to squish & giggle!">
+              <button id="rex-poke-cheek-btn" class="bg-surface-container-high hover:bg-surface-bright text-amber-300 hover:text-amber-200 px-3.5 py-2 min-h-[44px] rounded-full font-headline text-xs font-black border border-amber-400/40 flex items-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer" title="Poke cheek to squish & giggle!">
                 <span>🤭</span> Poke Cheek
               </button>
             </div>
@@ -245,37 +245,37 @@ export function renderLiveRexWidget() {
             <div class="grid grid-cols-3 gap-2">
               
               <!-- 1. ROAR -->
-              <button data-rex-prompt="Make your best dino roar!" class="rex-toddler-action-btn bg-gradient-to-b from-emerald-500/20 to-emerald-500/10 hover:from-emerald-500/30 hover:to-emerald-500/20 text-inverse-surface border-2 border-emerald-500/40 rounded-2xl p-2 flex flex-col items-center justify-center gap-1 chunky-btn active:scale-90 transition-all shadow-sm">
+              <button data-rex-prompt="Make your best dino roar!" class="rex-toddler-action-btn min-h-[56px] bg-gradient-to-b from-emerald-500/20 to-emerald-500/10 hover:from-emerald-500/30 hover:to-emerald-500/20 text-inverse-surface border-2 border-emerald-500/40 rounded-2xl p-2 flex flex-col items-center justify-center gap-1 chunky-btn active:scale-90 transition-all shadow-sm">
                 <span class="text-2xl sm:text-3xl">🦖</span>
                 <span class="font-headline text-[11px] font-black text-emerald-400">ROAR!</span>
               </button>
 
               <!-- 2. TEETH -->
-              <button data-rex-prompt="I brushed my teeth!" class="rex-toddler-action-btn bg-gradient-to-b from-sky-500/20 to-sky-500/10 hover:from-sky-500/30 hover:to-sky-500/20 text-inverse-surface border-2 border-sky-500/40 rounded-2xl p-2 flex flex-col items-center justify-center gap-1 chunky-btn active:scale-90 transition-all shadow-sm">
+              <button data-rex-prompt="I brushed my teeth!" class="rex-toddler-action-btn min-h-[56px] bg-gradient-to-b from-sky-500/20 to-sky-500/10 hover:from-sky-500/30 hover:to-sky-500/20 text-inverse-surface border-2 border-sky-500/40 rounded-2xl p-2 flex flex-col items-center justify-center gap-1 chunky-btn active:scale-90 transition-all shadow-sm">
                 <span class="text-2xl sm:text-3xl">🪥</span>
                 <span class="font-headline text-[11px] font-black text-sky-400">Teeth!</span>
               </button>
 
               <!-- 3. YAY / HIGH FIVE -->
-              <button data-rex-prompt="High five Rex!" class="rex-toddler-action-btn bg-gradient-to-b from-amber-500/20 to-amber-500/10 hover:from-amber-500/30 hover:to-amber-500/20 text-inverse-surface border-2 border-amber-500/40 rounded-2xl p-2 flex flex-col items-center justify-center gap-1 chunky-btn active:scale-90 transition-all shadow-sm">
+              <button data-rex-prompt="High five Rex!" class="rex-toddler-action-btn min-h-[56px] bg-gradient-to-b from-amber-500/20 to-amber-500/10 hover:from-amber-500/30 hover:to-amber-500/20 text-inverse-surface border-2 border-amber-500/40 rounded-2xl p-2 flex flex-col items-center justify-center gap-1 chunky-btn active:scale-90 transition-all shadow-sm">
                 <span class="text-2xl sm:text-3xl">⭐</span>
                 <span class="font-headline text-[11px] font-black text-amber-400">Yay!</span>
               </button>
 
               <!-- 4. CLEAN TOYS -->
-              <button data-rex-prompt="I cleaned up all my toys!" class="rex-toddler-action-btn bg-gradient-to-b from-purple-500/20 to-purple-500/10 hover:from-purple-500/30 hover:to-purple-500/20 text-inverse-surface border-2 border-purple-500/40 rounded-2xl p-2 flex flex-col items-center justify-center gap-1 chunky-btn active:scale-90 transition-all shadow-sm">
+              <button data-rex-prompt="I cleaned up all my toys!" class="rex-toddler-action-btn min-h-[56px] bg-gradient-to-b from-purple-500/20 to-purple-500/10 hover:from-purple-500/30 hover:to-purple-500/20 text-inverse-surface border-2 border-purple-500/40 rounded-2xl p-2 flex flex-col items-center justify-center gap-1 chunky-btn active:scale-90 transition-all shadow-sm">
                 <span class="text-2xl sm:text-3xl">🧸</span>
                 <span class="font-headline text-[11px] font-black text-purple-400">Toys!</span>
               </button>
 
               <!-- 5. HEALTHY SNACK -->
-              <button data-rex-prompt="I ate my healthy snack!" class="rex-toddler-action-btn bg-gradient-to-b from-rose-500/20 to-rose-500/10 hover:from-rose-500/30 hover:to-rose-500/20 text-inverse-surface border-2 border-rose-500/40 rounded-2xl p-2 flex flex-col items-center justify-center gap-1 chunky-btn active:scale-90 transition-all shadow-sm">
+              <button data-rex-prompt="I ate my healthy snack!" class="rex-toddler-action-btn min-h-[56px] bg-gradient-to-b from-rose-500/20 to-rose-500/10 hover:from-rose-500/30 hover:to-rose-500/20 text-inverse-surface border-2 border-rose-500/40 rounded-2xl p-2 flex flex-col items-center justify-center gap-1 chunky-btn active:scale-90 transition-all shadow-sm">
                 <span class="text-2xl sm:text-3xl">🍎</span>
                 <span class="font-headline text-[11px] font-black text-rose-400">Snack!</span>
               </button>
 
               <!-- 6. DRINK WATER -->
-              <button data-rex-prompt="I drank fresh water!" class="rex-toddler-action-btn bg-gradient-to-b from-blue-500/20 to-blue-500/10 hover:from-blue-500/30 hover:to-blue-500/20 text-inverse-surface border-2 border-blue-500/40 rounded-2xl p-2 flex flex-col items-center justify-center gap-1 chunky-btn active:scale-90 transition-all shadow-sm">
+              <button data-rex-prompt="I drank fresh water!" class="rex-toddler-action-btn min-h-[56px] bg-gradient-to-b from-blue-500/20 to-blue-500/10 hover:from-blue-500/30 hover:to-blue-500/20 text-inverse-surface border-2 border-blue-500/40 rounded-2xl p-2 flex flex-col items-center justify-center gap-1 chunky-btn active:scale-90 transition-all shadow-sm">
                 <span class="text-2xl sm:text-3xl">💧</span>
                 <span class="font-headline text-[11px] font-black text-blue-400">Water!</span>
               </button>

@@ -95,25 +95,25 @@ export function renderAdventuresMapView() {
     return `
       <div class="max-w-3xl mx-auto px-4 pt-3 pb-28 flex flex-col gap-4 animate-fade-in select-none">
         
-        <!-- Game Top Bar -->
-        <div class="flex items-center justify-between gap-2">
-          <button id="game-exit-btn" class="bg-surface-container hover:bg-surface-bright text-on-surface-variant font-headline text-xs font-bold px-3.5 py-2 rounded-2xl border-2 border-surface-container-highest flex items-center gap-1.5 chunky-btn-sm active:scale-95">
+        <!-- Top Bar: Exit & Level Tracker -->
+        <div class="flex items-center justify-between">
+          <button id="game-exit-btn" class="bg-surface-container hover:bg-surface-bright text-on-surface-variant font-headline text-xs font-bold px-3.5 py-2.5 min-h-[44px] rounded-2xl border-2 border-surface-container-highest flex items-center gap-1.5 chunky-btn-sm active:scale-95">
             <span class="material-symbols-outlined text-base">close</span> Exit
           </button>
 
           <!-- Difficulty Switcher Pills -->
           <div class="flex items-center gap-1 bg-surface-container-lowest p-1 rounded-2xl border border-surface-container-highest">
-            <button data-set-diff="easy" class="px-2.5 py-1 rounded-xl text-[10px] font-headline font-black transition-all ${
+            <button data-set-diff="easy" class="px-3 py-2 min-h-[44px] inline-flex items-center justify-center rounded-xl text-xs font-headline font-black transition-all ${
               currentDiff === 'easy' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
             }">
               🐣 Toddler (3-4)
             </button>
-            <button data-set-diff="medium" class="px-2.5 py-1 rounded-xl text-[10px] font-headline font-black transition-all ${
+            <button data-set-diff="medium" class="px-3 py-2 min-h-[44px] inline-flex items-center justify-center rounded-xl text-xs font-headline font-black transition-all ${
               currentDiff === 'medium' ? 'bg-secondary text-on-secondary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
             }">
               🌟 Explorer (5-6)
             </button>
-            <button data-set-diff="hard" class="px-2.5 py-1 rounded-xl text-[10px] font-headline font-black transition-all ${
+            <button data-set-diff="hard" class="px-3 py-2 min-h-[44px] inline-flex items-center justify-center rounded-xl text-xs font-headline font-black transition-all ${
               currentDiff === 'hard' ? 'bg-amber-500 text-black shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
             }">
               🚀 Master (7-9)
@@ -155,7 +155,7 @@ export function renderAdventuresMapView() {
             </div>
 
             <!-- Companion Super Move Button -->
-            <button id="companion-super-move-btn" class="px-3 py-2 rounded-2xl font-headline text-xs font-black flex items-center gap-1.5 chunky-btn-sm transition-all ${
+            <button id="companion-super-move-btn" class="px-3.5 py-2.5 min-h-[44px] rounded-2xl font-headline text-xs font-black flex items-center gap-1.5 chunky-btn-sm transition-all ${
               superMoveUsedForCurrentChallenge
                 ? 'bg-surface-container text-on-surface-variant/40 border border-surface-container-highest cursor-default'
                 : 'bg-gradient-to-r from-amber-500 to-orange-500 text-black border-2 border-amber-400 shadow-sm hover:brightness-110 active:scale-95 animate-pulse'
@@ -176,10 +176,10 @@ export function renderAdventuresMapView() {
 
           <!-- Action Bar (Read Aloud & Rex Hint) -->
           <div class="flex items-center gap-2 pt-1 border-t border-surface-container-highest">
-            <button id="adv-speak-question-btn" class="bg-surface-container-high hover:bg-surface-bright text-sky-400 font-headline text-xs font-black py-1.5 px-3 rounded-xl border border-sky-500/30 flex items-center gap-1 chunky-btn-sm active:scale-95">
+            <button id="adv-speak-question-btn" class="bg-surface-container-high hover:bg-surface-bright text-sky-400 font-headline text-xs font-black py-2 px-3.5 min-h-[44px] rounded-xl border border-sky-500/30 flex items-center gap-1 chunky-btn-sm active:scale-95">
               <span class="material-symbols-outlined text-sm">volume_up</span> Read Aloud
             </button>
-            <button id="adv-rex-hint-btn" class="bg-surface-container-high hover:bg-surface-bright text-secondary font-headline text-xs font-black py-1.5 px-3 rounded-xl border border-secondary/30 flex items-center gap-1 chunky-btn-sm active:scale-95">
+            <button id="adv-rex-hint-btn" class="bg-surface-container-high hover:bg-surface-bright text-secondary font-headline text-xs font-black py-2 px-3.5 min-h-[44px] rounded-xl border border-secondary/30 flex items-center gap-1 chunky-btn-sm active:scale-95">
               <span class="text-sm">💡</span> Clue
             </button>
           </div>
@@ -202,11 +202,11 @@ export function renderAdventuresMapView() {
           </div>
 
           <!-- Multiple Choice Options (Large, forgiving buttons) -->
-          <div class="grid grid-cols-1 sm:grid-cols- ${challenge.options.length > 2 ? '3' : '2'} gap-3" id="adv-game-options-container">
+          <div class="grid grid-cols-1 ${challenge.options.length > 2 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-3" id="adv-game-options-container">
             ${challenge.options
               .map((opt, idx) => {
                 return `
-                <button data-opt-idx="${idx}" class="game-opt-btn relative overflow-hidden bg-surface-container-high hover:bg-surface-bright text-inverse-surface font-headline text-base sm:text-lg font-black py-4 sm:py-5 px-5 rounded-2xl border-2 border-surface-container-highest chunky-btn flex items-center justify-between active:scale-98 transition-all">
+                <button data-opt-idx="${idx}" class="game-opt-btn relative overflow-hidden bg-surface-container-high hover:bg-surface-bright text-inverse-surface font-headline text-base sm:text-lg font-black min-h-[56px] py-4 sm:py-5 px-5 rounded-2xl border-2 border-surface-container-highest chunky-btn flex items-center justify-between active:scale-98 transition-all">
                   <span class="adv-opt-label text-left">${opt}</span>
                   <div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant font-black text-xs border border-surface-container-highest flex-shrink-0">
                     ${String.fromCharCode(65 + idx)}
@@ -232,7 +232,7 @@ export function renderAdventuresMapView() {
       
       <!-- Top Title & Companion Energy -->
       <div class="flex items-center justify-between">
-        <button id="adv-back-btn" class="bg-surface-container hover:bg-surface-bright text-on-surface-variant font-headline text-xs font-bold px-3.5 py-2.5 rounded-2xl border-2 border-surface-container-highest flex items-center gap-1.5 chunky-btn-sm">
+        <button id="adv-back-btn" class="bg-surface-container hover:bg-surface-bright text-on-surface-variant font-headline text-xs font-bold px-3.5 py-2.5 min-h-[44px] rounded-2xl border-2 border-surface-container-highest flex items-center gap-1.5 chunky-btn-sm">
           <span class="material-symbols-outlined text-base">arrow_back</span> Back to Pen
         </button>
         
@@ -303,7 +303,7 @@ export function renderAdventuresMapView() {
                   </span>
                 </div>
 
-                <button data-play-game-id="${game.id}" class="play-adventure-btn bg-primary text-on-primary font-headline text-xs font-black px-5 py-2.5 rounded-xl chunky-btn border-primary-container shadow-chunky-sm hover:brightness-110 active:scale-95">
+                <button data-play-game-id="${game.id}" class="play-adventure-btn bg-primary text-on-primary font-headline text-xs font-black px-5 py-2.5 min-h-[44px] rounded-xl chunky-btn border-primary-container shadow-chunky-sm hover:brightness-110 active:scale-95">
                   Play!
                 </button>
               </div>

@@ -23,7 +23,7 @@ export function renderGiftCrateWidget() {
 
   return `
     <div id="floating-gift-crate-banner" 
-      class="fixed bottom-20 right-4 z-50 animate-bounce cursor-pointer group"
+      class="fixed bottom-20 left-4 sm:bottom-24 sm:left-6 z-50 animate-bounce cursor-pointer group"
       onclick="window.openActiveGiftCrate && window.openActiveGiftCrate('${activeCrate.id}')">
       <div class="bg-gradient-to-r from-amber-500 via-yellow-400 to-orange-500 p-1 rounded-2xl shadow-2xl shadow-amber-500/50 flex items-center gap-3 pr-4 pl-3 py-2 border-2 border-white/80 hover:scale-105 transition-transform">
         <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center text-3xl animate-pulse">
@@ -70,7 +70,7 @@ export function renderGiftCrateModal() {
 
   return `
     <div id="gift-crate-modal-backdrop" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
-      <div class="relative w-full max-w-md bg-gradient-to-b from-slate-900 to-slate-950 border-2 border-amber-400/50 rounded-3xl p-6 text-center text-white shadow-2xl overflow-hidden">
+      <div class="relative w-full max-w-md max-h-[90vh] overflow-y-auto my-auto bg-gradient-to-b from-slate-900 to-slate-950 border-2 border-amber-400/50 rounded-3xl p-6 text-center text-white shadow-2xl">
         
         <!-- Background Glowing Ray Aura -->
         <div class="absolute -top-24 -left-24 w-72 h-72 bg-amber-500/20 rounded-full blur-3xl pointer-events-none"></div>
@@ -79,7 +79,7 @@ export function renderGiftCrateModal() {
         <!-- Close button if opened -->
         ${isOpened ? `
           <button onclick="window.closeGiftCrateModal && window.closeGiftCrateModal()" 
-            class="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors">
+            class="absolute top-4 right-4 w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-lg active:scale-95 transition-colors" title="Close Gift Crate">
             ✕
           </button>
         ` : ''}
@@ -110,7 +110,7 @@ export function renderGiftCrateModal() {
             </p>
 
             <button onclick="window.unboxGiftCrate && window.unboxGiftCrate('${crate.id}')"
-              class="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-black text-lg shadow-xl shadow-amber-500/30 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2">
+              class="w-full py-4 px-6 min-h-[50px] rounded-2xl bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-black text-lg shadow-xl shadow-amber-500/30 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2">
               <span>✨ Open Gift Box ✨</span>
             </button>
           </div>
@@ -184,7 +184,7 @@ export function renderGiftCrateModal() {
 
             <!-- Action Button -->
             <button onclick="window.claimAndNavigateItem && window.claimAndNavigateItem('${category}')"
-              class="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-emerald-400 to-green-500 text-slate-950 font-black text-sm shadow-xl shadow-green-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2">
+              class="w-full py-3.5 px-6 min-h-[50px] rounded-2xl bg-gradient-to-r from-emerald-400 to-green-500 text-slate-950 font-black text-sm shadow-xl shadow-green-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2">
               <span>🚀 Use My New 3D ${category.toUpperCase()}!</span>
             </button>
           </div>
@@ -233,15 +233,14 @@ export function attachGiftCrateListeners() {
   window.claimAndNavigateItem = (category) => {
     window.closeGiftCrateModal();
     if (category === 'furniture') {
-      store.state.activeTab = 'hero_hq';
+      store.navigate('hero_hq');
     } else if (category === 'toy') {
-      store.state.activeTab = 'pet_pen';
+      store.navigate('pet_sanctuary');
     } else if (category === 'boss') {
-      store.state.activeTab = 'battle';
+      store.navigate('battle');
     } else {
-      store.state.activeTab = 'locker';
+      store.navigate('pet_sanctuary');
     }
-    store.notify();
   };
 
   window.speakCompanionText = (text) => {

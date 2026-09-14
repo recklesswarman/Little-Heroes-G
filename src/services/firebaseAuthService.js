@@ -49,6 +49,7 @@ class FirebaseAuthService {
   async handleAuthUser(user) {
     this.currentUser = user;
     const state = store.getState();
+    state.isAuthReady = true;
 
     if (user) {
       console.log("Firebase Auth: User authenticated as", user.displayName || user.email || user.uid);
@@ -69,26 +70,36 @@ class FirebaseAuthService {
           const targetCode = existingLink.householdCode.trim().toUpperCase();
           console.log(`🏠 Multi-Device Sync: User ${user.email} belongs to Household ${targetCode}. Joining & hydrating all data...`);
           await firestoreSync.joinHousehold(targetCode);
-        } else {
-          // First time this Google account signs in - bind current household to user
-          const currentCode = state.household.syncCode || 'HERO-8842';
+          state.isAuthenticated = true;
+          state.isHouseholdConfigured = true;
+          state.householdSetupStep = 'ready';
+
+          // Slide window
           await persistentLink.establishPersistentLink({
             userId: user.uid,
             email: user.email,
             displayName: user.displayName,
-            householdCode: currentCode
+            householdCode: targetCode
           });
+        } else {
+          // If the device already has a configured household code locally (not demo HERO-1555), bind to this user
+          if (state.isHouseholdConfigured && state.household?.syncCode && state.household.syncCode !== 'HERO-1555' && state.household.syncCode !== 'HERO-8842') {
+            await persistentLink.establishPersistentLink({
+              userId: user.uid,
+              email: user.email,
+              displayName: user.displayName,
+              householdCode: state.household.syncCode
+            });
+            state.isAuthenticated = true;
+            state.isHouseholdConfigured = true;
+            state.householdSetupStep = 'ready';
+          } else {
+            // Brand-new Google user: route to 2-Card Choice Screen (Create vs Join)!
+            state.isAuthenticated = true;
+            state.isHouseholdConfigured = false;
+            state.householdSetupStep = 'choice';
+          }
         }
-
-        // 2. PERSISTENT LINKING SLIDING WINDOW (RFC 6749 Section 6):
-        // Extend expiration on the EXISTING refresh token without rotation
-        await persistentLink.establishPersistentLink({
-          userId: user.uid,
-          email: user.email,
-          displayName: user.displayName,
-          householdCode: store.getState().household.syncCode
-        });
-
       } catch (e) {
         console.warn("Error establishing persistent link on auth:", e.message);
       }
@@ -103,11 +114,17 @@ class FirebaseAuthService {
         console.log(`🛡️ Persistent link active within sliding window for Household ${session.householdCode}. Retaining link.`);
         state.household.syncCode = session.householdCode;
         state.household.lastSync = "Persistent Link Active";
+        state.isAuthenticated = true;
+        state.isHouseholdConfigured = true;
+        state.householdSetupStep = 'ready';
       } else {
-        if (state.household.parentUser) {
+        if (state.household?.parentUser) {
           delete state.household.parentUser;
         }
-        state.household.lastSync = "Local Mode";
+        state.isAuthenticated = false;
+        state.isHouseholdConfigured = false;
+        state.householdSetupStep = 'auth';
+        state.household.lastSync = "Not connected";
       }
       store.notify();
     }
@@ -282,9 +299,23 @@ class FirebaseAuthService {
     // Explicit sign out cleans up the persistent link session
     persistentLink.clearSession();
 
-    if (store.getState().household.parentUser) {
-      delete store.getState().household.parentUser;
+    const state = store.getState();
+    if (state.household) {
+      delete state.household.parentUser;
+      state.household.syncCode = '';
+      state.household.name = '';
+      state.household.parents = [];
+      state.household.parentUids = [];
+      state.household.parentEmails = [];
+      state.household.lastSync = 'Not connected';
     }
+
+    state.isAuthenticated = false;
+    state.isHouseholdConfigured = false;
+    state.householdSetupStep = 'auth';
+    state.activeView = 'dashboard';
+
+    firestoreSync.stopSync();
 
     if (isFirebaseAvailable && auth) {
       try {
@@ -294,24 +325,39 @@ class FirebaseAuthService {
       }
     }
 
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(store.STORAGE_KEY || 'little_heroes_adventure_master_v8');
+      }
+    } catch (e) {}
+
     Sound.click();
-    store.showReward("Signed Out", "You have signed out of your parent account.", 0, 0);
-    store.saveState(true);
+    store.showReward("Signed Out", "You have signed out. Safe family cloud link disconnected.", 0, 0);
+    store.notify();
   }
 
   simulateLocalParentAuth(name) {
-    store.getState().household.parentUser = {
+    const state = store.getState();
+    state.household.parentUser = {
       uid: "simulated_parent_" + Date.now(),
       email: "parent@littleheroes.local",
       displayName: name,
       photoURL: "https://lh3.googleusercontent.com/aida-public/AB6AXuAZfP7_Cwlp4sz41asI8ymuapAKvjmqHtvI4zcMAF_XwUmibj8IheGrS5cA5QD5gmXgVxEkZM9FlWJPRZnct3x6-9SQB7zJKqkEDjJ3m95tAy3zRqS-PbmcQ4kv_9pmIfm2Py4mh3Fw083hkDookz1w4_r50SBA1jc9igDaAPFLYBFgSP2aQBz7Q4jVE-DwhMOyUEHlxDkQk6Gwc2EAFCSKs1c0QuhUOi3tkrk5MXRARKqZcYVzyJe6gA",
       isAnonymous: false
     };
-    store.getState().household.lastSync = "Cloud Connected";
+    state.household.lastSync = "Cloud Connected";
+    state.isAuthenticated = true;
+    if (!state.isHouseholdConfigured) {
+      state.householdSetupStep = 'choice';
+    } else {
+      state.householdSetupStep = 'ready';
+    }
     Sound.fanfare();
-    store.showReward("Parent Account Linked!", `Welcome, ${name}! Your device is synced.`, 0, 0);
     store.saveState(true);
+    store.notify();
   }
 }
 
 export const firebaseAuth = new FirebaseAuthService();
+store.setAuthService(firebaseAuth);
+store.setPersistentLinkService(persistentLink);

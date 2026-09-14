@@ -68,18 +68,18 @@ export function renderPetLockerView() {
       
       <!-- Top Navigation Header -->
       <div class="flex items-center justify-between z-20">
-        <button id="locker-exit-btn" class="bg-surface-container hover:bg-surface-bright text-on-surface-variant font-headline text-xs font-bold px-3.5 py-2.5 rounded-2xl border-2 border-surface-container-highest flex items-center gap-1.5 chunky-btn-sm active:scale-95 shadow-sm">
+        <button id="locker-exit-btn" class="bg-surface-container hover:bg-surface-bright text-on-surface-variant font-headline text-xs font-bold px-3.5 py-2.5 rounded-2xl border-2 border-surface-container-highest flex items-center gap-1.5 chunky-btn-sm active:scale-95 shadow-sm min-h-[44px]">
           <span class="material-symbols-outlined text-base">arrow_back</span>
           <span>Back to Pet Pen</span>
         </button>
 
         <div class="flex items-center gap-3">
-          <button id="locker-open-runway-btn" class="bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 hover:brightness-110 text-slate-950 font-headline text-xs font-black px-4 py-2.5 rounded-2xl flex items-center gap-1.5 chunky-btn-sm shadow-md active:scale-95 border-2 border-white/30">
+          <button id="locker-open-runway-btn" class="bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 hover:brightness-110 text-slate-950 font-headline text-xs font-black px-4 py-2.5 rounded-2xl flex items-center gap-1.5 chunky-btn-sm shadow-md active:scale-95 border-2 border-white/30 min-h-[44px]">
             <span>🌟</span>
             <span>Runway Showcase</span>
           </button>
           <!-- Token Wallet -->
-          <div class="bg-surface-container-high px-4 py-2 rounded-full border-2 border-secondary-container flex items-center gap-2 shadow-md">
+          <div class="bg-surface-container-high px-4 py-2 rounded-full border-2 border-secondary-container flex items-center gap-2 shadow-md min-h-[44px]">
             <span class="material-symbols-outlined text-secondary text-base">monetization_on</span>
             <span class="font-headline text-xs font-black text-inverse-surface">${coins} Tokens</span>
           </div>
@@ -130,7 +130,7 @@ export function renderPetLockerView() {
             </span>
             ${
               equippedGear
-                ? `<button id="locker-unequip-active-btn" class="text-error hover:text-error/80 text-[10px] font-black uppercase flex items-center gap-0.5" title="Remove Gear">
+                ? `<button id="locker-unequip-active-btn" class="text-error hover:text-error/80 text-[10px] font-black uppercase flex items-center gap-0.5 min-h-[44px] px-2" title="Remove Gear">
                      <span class="material-symbols-outlined text-xs">close</span> Unequip
                    </button>`
                 : ''
@@ -165,28 +165,28 @@ export function renderPetLockerView() {
 
       <!-- Category Filter Pills -->
       <div class="flex items-center gap-2 overflow-x-auto pb-1 z-10">
-        <button data-locker-cat="all" class="locker-filter-btn px-4 py-2 rounded-xl font-headline text-xs font-black whitespace-nowrap transition-all ${
+        <button data-locker-cat="all" class="locker-filter-btn px-4 py-2 rounded-xl font-headline text-xs font-black whitespace-nowrap transition-all min-h-[44px] inline-flex items-center justify-center ${
           activeCategoryFilter === 'all'
             ? 'bg-amber-500 text-on-primary shadow-sm'
             : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
         }">
           All Digital Items (${uniqueContent.length})
         </button>
-        <button data-locker-cat="unlocked" class="locker-filter-btn px-4 py-2 rounded-xl font-headline text-xs font-black whitespace-nowrap transition-all ${
+        <button data-locker-cat="unlocked" class="locker-filter-btn px-4 py-2 rounded-xl font-headline text-xs font-black whitespace-nowrap transition-all min-h-[44px] inline-flex items-center justify-center ${
           activeCategoryFilter === 'unlocked'
             ? 'bg-amber-500 text-on-primary shadow-sm'
             : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
         }">
           Unlocked & Owned (${uniqueContent.filter(i => i.isUnlocked).length})
         </button>
-        <button data-locker-cat="accessories" class="locker-filter-btn px-4 py-2 rounded-xl font-headline text-xs font-black whitespace-nowrap transition-all ${
+        <button data-locker-cat="accessories" class="locker-filter-btn px-4 py-2 rounded-xl font-headline text-xs font-black whitespace-nowrap transition-all min-h-[44px] inline-flex items-center justify-center ${
           activeCategoryFilter === 'accessories'
             ? 'bg-amber-500 text-on-primary shadow-sm'
             : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
         }">
           Accessories & Gear
         </button>
-        <button data-locker-cat="badges" class="locker-filter-btn px-4 py-2 rounded-xl font-headline text-xs font-black whitespace-nowrap transition-all ${
+        <button data-locker-cat="badges" class="locker-filter-btn px-4 py-2 rounded-xl font-headline text-xs font-black whitespace-nowrap transition-all min-h-[44px] inline-flex items-center justify-center ${
           activeCategoryFilter === 'badges'
             ? 'bg-amber-500 text-on-primary shadow-sm'
             : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
@@ -255,17 +255,17 @@ export function renderPetLockerView() {
                 ${
                   isCurrentlyEquipped
                     ? `
-                  <span class="bg-amber-500/20 text-amber-300 font-headline text-xs font-black px-4 py-2 rounded-xl border border-amber-500/50 flex items-center gap-1.5 shadow-sm">
+                  <span class="bg-amber-500/20 text-amber-300 font-headline text-xs font-black px-4 py-2 rounded-xl border border-amber-500/50 flex items-center gap-1.5 shadow-sm min-h-[44px]">
                     <span class="material-symbols-outlined text-sm">check_circle</span>
                     <span>EQUIPPED</span>
                   </span>
-                  <button data-unequip-title="${item.title}" class="locker-unequip-btn text-error hover:bg-error/10 font-headline text-xs font-bold px-3 py-2 rounded-xl border border-error/30 active:scale-95">
+                  <button data-unequip-title="${item.title}" class="locker-unequip-btn text-error hover:bg-error/10 font-headline text-xs font-bold px-3 py-2 rounded-xl border border-error/30 active:scale-95 min-h-[44px] inline-flex items-center justify-center">
                     Unequip
                   </button>
                 `
                     : item.isUnlocked
                     ? `
-                  <button data-equip-title="${item.title}" class="locker-equip-btn w-full bg-amber-500 text-on-primary font-headline text-xs font-black py-2.5 px-4 rounded-xl chunky-btn-sm active:scale-95 shadow-sm hover:brightness-110 flex items-center justify-center gap-1.5">
+                  <button data-equip-title="${item.title}" class="locker-equip-btn w-full bg-amber-500 text-on-primary font-headline text-xs font-black py-2.5 px-4 rounded-xl chunky-btn-sm active:scale-95 shadow-sm hover:brightness-110 flex items-center justify-center gap-1.5 min-h-[48px]">
                     <span class="material-symbols-outlined text-sm">checkroom</span>
                     <span>EQUIP ON PET</span>
                   </button>
@@ -275,7 +275,7 @@ export function renderPetLockerView() {
                     <span class="text-[10px] font-bold text-on-surface-variant flex items-center gap-1">
                       <span class="material-symbols-outlined text-xs">lock</span> Locked in Shop
                     </span>
-                    <button id="locker-go-shop-btn" class="bg-surface-container-high hover:bg-secondary/20 text-secondary font-headline text-[10px] font-black px-3 py-1.5 rounded-xl border border-secondary/30 active:scale-95 flex items-center gap-1">
+                    <button id="locker-go-shop-btn" class="bg-surface-container-high hover:bg-secondary/20 text-secondary font-headline text-[10px] font-black px-3 py-1.5 rounded-xl border border-secondary/30 active:scale-95 flex items-center gap-1 min-h-[44px]">
                       <span class="material-symbols-outlined text-xs">shopping_bag</span> Unlock
                     </button>
                   </div>
@@ -302,7 +302,7 @@ export function renderPetLockerView() {
           </div>
         </div>
 
-        <button id="locker-footer-shop-btn" class="bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2.5 rounded-xl chunky-btn-sm active:scale-95 shadow-sm hover:brightness-110 flex items-center gap-1 whitespace-nowrap">
+        <button id="locker-footer-shop-btn" class="bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2.5 rounded-xl chunky-btn-sm active:scale-95 shadow-sm hover:brightness-110 flex items-center gap-1 whitespace-nowrap min-h-[44px]">
           <span class="material-symbols-outlined text-sm">shopping_bag</span>
           <span>Open Shop</span>
         </button>

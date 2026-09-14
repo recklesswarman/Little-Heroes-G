@@ -21,7 +21,7 @@ export function renderDinoWorkoutView() {
     <div class="p-6 h-full flex flex-col bg-slate-900 text-slate-100 overflow-y-auto">
       <div class="flex items-center justify-between mb-4">
         <h2 class="text-3xl font-black text-emerald-400 drop-shadow-md">Dino Workout!</h2>
-        <button id="btn-close-workout" class="bg-slate-700 hover:bg-slate-600 text-white rounded-full p-2 shadow">
+        <button id="btn-close-workout" class="bg-slate-700 hover:bg-slate-600 text-white rounded-full w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center shadow active:scale-95 transition-all" aria-label="Close Workout">
           <span class="material-symbols-outlined text-2xl">close</span>
         </button>
       </div>
@@ -31,17 +31,17 @@ export function renderDinoWorkoutView() {
         <h3 class="text-2xl font-bold text-amber-400 mb-2">${workoutDetails.name}</h3>
         <p class="text-slate-300 text-lg mb-6 max-w-md">${workoutDetails.instructions}</p>
         
-        <div class="relative w-64 h-64 mb-6 bg-slate-900 rounded-full border-4 border-emerald-500 shadow-lg overflow-hidden flex items-center justify-center" id="workout-canvas-container">
+        <div class="relative w-48 h-48 sm:w-64 sm:h-64 max-w-full aspect-square mb-6 bg-slate-900 rounded-full border-4 border-emerald-500 shadow-lg overflow-hidden flex items-center justify-center" id="workout-canvas-container">
           <!-- 3D Canvas goes here -->
         </div>
 
         <div id="workout-timer-display" class="text-5xl font-black text-white mb-6 hidden font-mono">30</div>
         
-        <button id="btn-start-workout" class="bg-emerald-500 hover:bg-emerald-400 text-white font-bold py-4 px-10 rounded-full text-2xl shadow-lg transition-transform transform hover:scale-105 active:scale-95">
+        <button id="btn-start-workout" class="bg-emerald-500 hover:bg-emerald-400 text-white font-bold py-3.5 sm:py-4 px-8 sm:px-10 rounded-full text-xl sm:text-2xl shadow-lg min-h-[52px] transition-transform transform hover:scale-105 active:scale-95">
           START
         </button>
 
-        <button id="btn-finish-workout" class="bg-amber-500 hover:bg-amber-400 text-white font-bold py-4 px-10 rounded-full text-2xl shadow-lg hidden">
+        <button id="btn-finish-workout" class="bg-amber-500 hover:bg-amber-400 text-white font-bold py-3.5 sm:py-4 px-8 sm:px-10 rounded-full text-xl sm:text-2xl shadow-lg hidden min-h-[52px]">
           FINISH
         </button>
       </div>

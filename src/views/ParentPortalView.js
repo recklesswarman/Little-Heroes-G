@@ -135,7 +135,7 @@ export function renderParentPortalView() {
 
         <!-- Lock & Return to Kids Button -->
         <div class="flex items-center gap-2">
-          <button id="admin-lock-exit-btn" class="bg-error/20 hover:bg-error/30 text-error border-2 border-error/40 font-headline text-xs font-black px-4 py-2.5 rounded-xl flex items-center gap-1.5 chunky-btn-sm active:scale-95 shadow-sm" title="Lock Parent Dashboard and return to Kid Mode">
+          <button id="admin-lock-exit-btn" class="bg-error/20 hover:bg-error/30 text-error border-2 border-error/40 font-headline text-xs font-black px-4 py-2.5 rounded-xl flex items-center gap-1.5 chunky-btn-sm active:scale-95 shadow-sm min-h-[44px]" title="Lock Parent Dashboard and return to Kid Mode">
             <span class="material-symbols-outlined text-base">lock</span>
             <span>Lock & Exit to Kids</span>
           </button>
@@ -155,7 +155,7 @@ export function renderParentPortalView() {
           </span>
         </div>
         <div class="flex items-center gap-2 self-end sm:self-auto">
-          <span class="bg-secondary/15 text-secondary px-3 py-1.5 rounded-xl font-black text-[11px] border border-secondary/30">
+          <span class="bg-secondary/15 text-secondary px-3 py-1.5 rounded-xl font-black text-[11px] border border-secondary/30 min-h-[44px] inline-flex items-center">
             ${pending.length} Pending Approval(s)
           </span>
         </div>
@@ -167,7 +167,7 @@ export function renderParentPortalView() {
           .map((tab) => {
             const isTabActive = activeAdminTab === tab.id;
             return `
-            <button data-admin-tab="${tab.id}" class="admin-tab-btn px-4 py-2.5 rounded-2xl font-headline text-xs font-black flex items-center gap-2 whitespace-nowrap transition-all ${
+            <button data-admin-tab="${tab.id}" class="admin-tab-btn px-4 py-2.5 rounded-2xl font-headline text-xs font-black flex items-center gap-2 whitespace-nowrap transition-all min-h-[44px] ${
               isTabActive
                 ? 'bg-secondary text-on-secondary chunky-btn-sm border-secondary-container shadow-sm'
                 : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border border-surface-container-highest'
@@ -200,7 +200,7 @@ export function renderParentPortalView() {
               ${
                 pending.length > 0
                   ? `
-                <button id="admin-approve-all-btn" class="flex-1 sm:flex-none bg-primary text-on-primary font-headline text-xs font-black px-4 py-2.5 rounded-xl border border-primary-container chunky-btn-sm active:scale-95 shadow-sm flex items-center gap-1.5 hover:brightness-110">
+                <button id="admin-approve-all-btn" class="flex-1 sm:flex-none bg-primary text-on-primary font-headline text-xs font-black px-4 py-2.5 rounded-xl border border-primary-container chunky-btn-sm active:scale-95 shadow-sm flex items-center gap-1.5 hover:brightness-110 min-h-[44px]">
                   <span class="material-symbols-outlined text-base">done_all</span>
                   <span>Approve All (${pending.length})</span>
                 </button>
@@ -208,7 +208,7 @@ export function renderParentPortalView() {
                   : ''
               }
 
-              <button id="admin-clear-all-pending-btn" class="flex-1 sm:flex-none bg-surface-container-high hover:bg-error/20 text-error font-headline text-xs font-black px-4 py-2.5 rounded-xl border border-error/30 chunky-btn-sm active:scale-95 shadow-sm flex items-center gap-1.5" title="Clear all pending parent approval notifications off buttons">
+              <button id="admin-clear-all-pending-btn" class="flex-1 sm:flex-none bg-surface-container-high hover:bg-error/20 text-error font-headline text-xs font-black px-4 py-2.5 rounded-xl border border-error/30 chunky-btn-sm active:scale-95 shadow-sm flex items-center gap-1.5 min-h-[44px]" title="Clear all pending parent approval notifications off buttons">
                 <span class="material-symbols-outlined text-base">cleaning_services</span>
                 <span>Clear All Pending Button Notifications</span>
               </button>
@@ -223,7 +223,7 @@ export function renderParentPortalView() {
               <h3 class="font-headline text-lg font-black text-inverse-surface">Inbox is Clear!</h3>
               <p class="text-xs text-on-surface-variant">All completed chores have been verified and rewards signed off.</p>
               <div class="pt-2">
-                <button id="admin-clear-all-pending-empty-btn" class="bg-surface-container-high hover:bg-error/20 text-error font-headline text-xs font-black px-4 py-2.5 rounded-xl border border-error/30 chunky-btn-sm active:scale-95 flex items-center gap-1.5 shadow-sm">
+                <button id="admin-clear-all-pending-empty-btn" class="bg-surface-container-high hover:bg-error/20 text-error font-headline text-xs font-black px-4 py-2.5 rounded-xl border border-error/30 chunky-btn-sm active:scale-95 flex items-center gap-1.5 shadow-sm min-h-[44px]">
                   <span class="material-symbols-outlined text-base">cleaning_services</span>
                   <span>Clear All Pending Button Notifications</span>
                 </button>
@@ -304,11 +304,11 @@ export function renderParentPortalView() {
 
                     <!-- Action Buttons -->
                     <div class="flex items-center gap-2 w-full sm:w-auto">
-                      <button data-reject-id="${req.id}" class="admin-reject-btn flex-1 sm:flex-none bg-surface-container-high hover:bg-error/20 text-error font-headline text-xs font-black px-4 py-3 rounded-xl border border-error/30 chunky-btn-sm active:scale-95">
+                      <button data-reject-id="${req.id}" class="admin-reject-btn flex-1 sm:flex-none bg-surface-container-high hover:bg-error/20 text-error font-headline text-xs font-black px-4 py-3 rounded-xl border border-error/30 chunky-btn-sm active:scale-95 min-h-[44px]">
                         ✕ Reject (0 Points)
                       </button>
                       
-                      <button data-approve-id="${req.id}" class="admin-approve-btn flex-1 sm:flex-none ${isTaskPointApproval ? 'bg-tertiary text-on-tertiary border-tertiary-container' : 'bg-primary text-on-primary border-primary-container'} font-headline text-xs font-black px-5 py-3 rounded-xl chunky-btn shadow-sm hover:brightness-110 active:scale-95">
+                      <button data-approve-id="${req.id}" class="admin-approve-btn flex-1 sm:flex-none ${isTaskPointApproval ? 'bg-tertiary text-on-tertiary border-tertiary-container' : 'bg-primary text-on-primary border-primary-container'} font-headline text-xs font-black px-5 py-3 rounded-xl chunky-btn shadow-sm hover:brightness-110 active:scale-95 min-h-[44px]">
                         ${isTaskPointApproval ? `✓ Issue +${pointsAmount} ⭐ (+${earnedMinutes}m ⏱️)` : `✓ Fulfill & Deduct (-${req.costPoints} ⭐)`}
                       </button>
                     </div>
@@ -771,6 +771,10 @@ export function renderParentPortalView() {
               <button id="admin-remove-test-data-btn" class="bg-surface-container-high hover:bg-error/20 hover:text-error text-on-surface-variant font-headline text-xs font-black px-3 py-2.5 rounded-xl border border-surface-container-highest flex items-center gap-1.5 active:scale-95 transition-colors" title="Remove all default test kids and start with fresh family">
                 <span class="material-symbols-outlined text-sm">mop</span>
                 Remove Test Kids
+              </button>
+              <button id="admin-signout-household-btn" class="bg-error/20 hover:bg-error/30 text-error border border-error/40 font-headline text-xs font-black px-3.5 py-2.5 rounded-xl flex items-center gap-1.5 active:scale-95 transition-all shadow-sm" title="Disconnect device from household and return to Google sign-in">
+                <span class="material-symbols-outlined text-sm">logout</span>
+                Sign Out / Switch Family
               </button>
             </div>
           </div>
@@ -4435,6 +4439,20 @@ export function attachParentPortalListeners() {
     removeTestDataBtn.addEventListener('click', () => {
       store.removeTestKids();
       store.notify();
+    });
+  }
+
+  // SIGN OUT / SWITCH HOUSEHOLD
+  const signOutHouseholdBtn = document.getElementById('admin-signout-household-btn');
+  if (signOutHouseholdBtn) {
+    signOutHouseholdBtn.addEventListener('click', async () => {
+      const confirmSignOut = window.confirm(
+        'Are you sure you want to sign out and disconnect this device from your household?\n\nYou will be returned to the Welcome screen.'
+      );
+      if (confirmSignOut) {
+        Sound.click();
+        await store.signOutHousehold();
+      }
     });
   }
 

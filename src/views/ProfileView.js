@@ -26,7 +26,7 @@ export function renderProfileView() {
       
       <!-- Top Navigation & Header -->
       <div class="flex items-center justify-between">
-        <button id="profile-back-btn" class="bg-surface-container hover:bg-surface-bright text-on-surface-variant font-headline text-xs font-bold px-3.5 py-2.5 rounded-2xl border-2 border-surface-container-highest flex items-center gap-1.5 chunky-btn-sm active:scale-95">
+        <button id="profile-back-btn" class="bg-surface-container hover:bg-surface-bright text-on-surface-variant font-headline text-xs font-bold px-3.5 py-2.5 rounded-2xl border-2 border-surface-container-highest flex items-center gap-1.5 chunky-btn-sm active:scale-95 min-h-[44px]">
           <span class="material-symbols-outlined text-base">arrow_back</span> Back to Quests
         </button>
         <div class="flex items-center gap-2">
@@ -56,7 +56,7 @@ export function renderProfileView() {
             </div>
 
             <!-- Quick Action Floating Camera Button -->
-            <label for="profile-avatar-file-input" class="absolute -bottom-1 -right-1 w-9 h-9 rounded-full bg-primary text-on-primary border-2 border-surface-container-lowest flex items-center justify-center shadow-lg cursor-pointer hover:scale-110 active:scale-95 transition-transform" title="Upload child photo">
+            <label for="profile-avatar-file-input" class="absolute -bottom-1 -right-1 w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-primary text-on-primary border-2 border-surface-container-lowest flex items-center justify-center shadow-lg cursor-pointer hover:scale-110 active:scale-95 transition-transform" title="Upload child photo">
               <span class="material-symbols-outlined text-lg">add_a_photo</span>
             </label>
 
@@ -90,13 +90,13 @@ export function renderProfileView() {
 
             <!-- Profile Photo Upload & Options Buttons -->
             <div class="flex flex-wrap items-center gap-2 mt-3">
-              <label for="profile-avatar-file-input" class="bg-white/20 hover:bg-white/30 text-white text-xs font-black px-3.5 py-1.5 rounded-xl border border-white/30 flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all shadow-sm">
+              <label for="profile-avatar-file-input" class="bg-white/20 hover:bg-white/30 text-white text-xs font-black px-3.5 py-1.5 rounded-xl border border-white/30 inline-flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all shadow-sm min-h-[44px]">
                 <span class="material-symbols-outlined text-sm">photo_camera</span>
                 <span>Upload Photo</span>
               </label>
 
               <!-- Reset to Default 3D Avatar -->
-              <button id="profile-reset-avatar-btn" class="bg-surface-container/60 hover:bg-surface-container text-white/80 hover:text-white text-xs font-bold px-2.5 py-1.5 rounded-xl border border-white/20 flex items-center gap-1 active:scale-95 transition-all" title="Reset to default 3D adventurer avatar">
+              <button id="profile-reset-avatar-btn" class="bg-surface-container/60 hover:bg-surface-container text-white/80 hover:text-white text-xs font-bold px-3 py-1.5 rounded-xl border border-white/20 inline-flex items-center gap-1 active:scale-95 transition-all min-h-[44px]" title="Reset to default 3D adventurer avatar">
                 <span class="material-symbols-outlined text-sm">replay</span>
                 <span>Preset Avatars</span>
               </button>
@@ -181,7 +181,7 @@ export function renderProfileView() {
             </div>
           </div>
 
-          <button id="profile-shop-themes-btn" class="bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2 rounded-xl chunky-btn-sm flex items-center gap-1.5 active:scale-95 hover:brightness-110 shadow">
+          <button id="profile-shop-themes-btn" class="bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2 rounded-xl chunky-btn-sm inline-flex items-center justify-center gap-1.5 active:scale-95 hover:brightness-110 shadow min-h-[44px]">
             <span class="material-symbols-outlined text-sm">storefront</span>
             Shop Themes
           </button>
@@ -223,15 +223,15 @@ export function renderProfileView() {
                   <span class="text-[9px] font-black text-white/50 uppercase">${theme.bannerPattern} Skin</span>
                   
                   ${isEquipped ? `
-                    <button class="bg-surface-container/50 text-white/40 text-xs font-black px-3 py-1.5 rounded-xl cursor-default">
+                    <button class="bg-surface-container/50 text-white/40 text-xs font-black px-3 py-1.5 rounded-xl cursor-default min-h-[44px] inline-flex items-center justify-center">
                       Equipped
                     </button>
                   ` : isUnlocked ? `
-                    <button data-equip-theme-id="${theme.id}" class="profile-equip-theme-btn bg-primary text-on-primary font-headline text-xs font-black px-4 py-1.5 rounded-xl chunky-btn-sm hover:brightness-110 active:scale-95 shadow">
+                    <button data-equip-theme-id="${theme.id}" class="profile-equip-theme-btn bg-primary text-on-primary font-headline text-xs font-black px-4 py-1.5 rounded-xl chunky-btn-sm hover:brightness-110 active:scale-95 shadow min-h-[44px] inline-flex items-center justify-center">
                       Equip
                     </button>
                   ` : `
-                    <button data-buy-theme-id="${theme.id}" class="profile-buy-theme-btn bg-secondary text-on-secondary font-headline text-xs font-black px-3.5 py-1.5 rounded-xl chunky-btn-sm hover:brightness-110 active:scale-95 shadow flex items-center gap-1">
+                    <button data-buy-theme-id="${theme.id}" class="profile-buy-theme-btn bg-secondary text-on-secondary font-headline text-xs font-black px-3.5 py-1.5 rounded-xl chunky-btn-sm hover:brightness-110 active:scale-95 shadow inline-flex items-center justify-center gap-1 min-h-[44px]">
                       <span>Unlock</span>
                       <span class="text-[10px]">🪙 ${theme.costCoins}</span>
                     </button>
@@ -245,7 +245,7 @@ export function renderProfileView() {
 
       <!-- Quick Action: Open Parent Portal -->
       <div class="flex justify-center pt-1">
-        <button id="profile-parent-portal-btn" class="bg-surface-container-high hover:bg-surface-bright text-on-surface-variant font-headline text-xs font-bold px-6 py-3.5 rounded-2xl border-2 border-dashed border-outline-variant flex items-center gap-2 chunky-btn-sm active:scale-95">
+        <button id="profile-parent-portal-btn" class="bg-surface-container-high hover:bg-surface-bright text-on-surface-variant font-headline text-xs font-bold px-6 py-3.5 rounded-2xl border-2 border-dashed border-outline-variant flex items-center gap-2 chunky-btn-sm active:scale-95 min-h-[48px]">
           <span class="material-symbols-outlined text-xl">shield_person</span>
           <span>Open Parent Portal (Safety, Sliders & Learning Levels)</span>
         </button>

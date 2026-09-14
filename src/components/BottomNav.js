@@ -5,6 +5,11 @@ export function renderBottomNav() {
   const state = store.getState();
   const activeView = state.activeView;
 
+  // Don't display bottom navigation bar during full-screen battle cockpits
+  if (['battle', 'ar_battle'].includes(activeView)) {
+    return '';
+  }
+
   const navItems = [
     { id: 'dashboard', label: 'Quests', icon: 'swords', color: 'primary' },
     { id: 'quest_map', label: 'Map', icon: 'map', color: 'secondary' },
@@ -14,7 +19,7 @@ export function renderBottomNav() {
   ];
 
   return `
-    <nav class="bg-surface-container/95 backdrop-blur-lg fixed bottom-0 left-0 right-0 border-t-4 border-surface-container-highest shadow-[0_-8px_20px_rgba(0,0,0,0.5)] z-40 px-2 py-2 select-none">
+    <nav class="bg-surface-container/95 backdrop-blur-lg fixed bottom-0 left-0 right-0 border-t-4 border-surface-container-highest shadow-[0_-8px_20px_rgba(0,0,0,0.5)] z-40 px-2 py-1.5 select-none">
       <div class="max-w-xl mx-auto grid grid-cols-5 gap-1 items-center">
         ${navItems
           .map((item) => {
@@ -25,7 +30,7 @@ export function renderBottomNav() {
               (item.id === 'dashboard' && ['profile', 'ar_battle', 'hero_hq', 'hero_forge', 'hero-forge'].includes(activeView));
 
             return `
-            <button data-nav-id="${item.id}" class="nav-tab-btn flex flex-col items-center justify-center py-1.5 rounded-2xl transition-all active:scale-90 ${
+            <button data-nav-id="${item.id}" class="nav-tab-btn min-h-[50px] flex flex-col items-center justify-center py-1.5 px-1 rounded-2xl transition-all active:scale-90 ${
               isTabActive
                 ? 'bg-surface-container-high text-primary -translate-y-1 shadow-chunky-sm border-2 border-primary/40'
                 : 'text-on-surface-variant hover:text-primary hover:bg-surface-container-high/50'

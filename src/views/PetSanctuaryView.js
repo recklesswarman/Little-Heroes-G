@@ -46,7 +46,7 @@ export function renderPetSanctuaryView() {
   const equippedGear = (state.petGear && state.petGear[activePet.id]) || {};
 
   return `
-    <div class="min-h-screen bg-surface-container-lowest text-on-background flex flex-col font-body select-none pb-28 sm:pb-32 animate-fade-in relative overflow-x-hidden">
+    <div class="min-h-screen bg-surface-container-lowest text-on-background flex flex-col font-body select-none pb-36 sm:pb-44 animate-fade-in relative overflow-x-hidden">
       
       <!-- ===================================================================== -->
       <!-- TOP NAVIGATION & STATUS HUD                                           -->
@@ -218,93 +218,94 @@ export function renderPetSanctuaryView() {
       </main>
 
       <!-- ===================================================================== -->
-      <!-- BOTTOM ACTION DOCK (4 GIANT CHUNKY TACTILE BUTTONS)                  -->
+      <!-- BOTTOM ACTION DOCK (6 TACTILE ACTION BUTTONS)                         -->
+      <!-- Positioned right above the BottomNav bar (68px-72px)                 -->
       <!-- ===================================================================== -->
-      <nav class="fixed bottom-0 left-0 right-0 z-30 bg-surface-container/95 backdrop-blur-lg border-t-2 border-surface-container-highest px-3 sm:px-6 py-3 shadow-2xl">
-        <div class="max-w-xl mx-auto grid grid-cols-6 gap-2 sm:gap-3">
+      <nav class="fixed bottom-[68px] sm:bottom-[72px] left-0 right-0 z-30 bg-surface-container/95 backdrop-blur-lg border-t-2 border-surface-container-highest px-2 sm:px-6 py-2 sm:py-2.5 shadow-2xl">
+        <div class="max-w-xl mx-auto grid grid-cols-6 gap-1.5 sm:gap-3">
           
           <!-- 1. FEED TREAT -->
           <button 
             id="action-feed-btn" 
-            class="sanctuary-dock-btn flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-2xl font-headline font-black text-xs transition-all active:translate-y-1 active:border-b-0 border-b-4 ${
+            class="sanctuary-dock-btn min-h-[48px] flex flex-col items-center justify-center p-1.5 sm:p-2.5 rounded-2xl font-headline font-black text-xs transition-all active:translate-y-1 active:border-b-0 border-b-4 ${
               activeDrawer === 'feed'
                 ? 'bg-primary text-slate-950 border-[#1b7a43] shadow-md ring-2 ring-primary/60'
                 : 'bg-surface-container-high hover:bg-surface-bright text-on-surface border-surface-container-highest'
             }"
             aria-label="Feed pet treats"
           >
-            <span class="text-2xl sm:text-3xl leading-none">🍎</span>
-            <span class="mt-1 text-[10px] sm:text-xs">FEED</span>
+            <span class="text-xl sm:text-3xl leading-none">🍎</span>
+            <span class="mt-0.5 sm:mt-1 text-[9px] sm:text-xs">FEED</span>
           </button>
 
           <!-- 2. BUBBLE BATH -->
           <button 
             id="action-bath-btn" 
-            class="sanctuary-dock-btn flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-2xl font-headline font-black text-xs transition-all active:translate-y-1 active:border-b-0 border-b-4 ${
+            class="sanctuary-dock-btn min-h-[48px] flex flex-col items-center justify-center p-1.5 sm:p-2.5 rounded-2xl font-headline font-black text-xs transition-all active:translate-y-1 active:border-b-0 border-b-4 ${
               activeDrawer === 'bath'
                 ? 'bg-tertiary text-slate-950 border-[#007b83] shadow-md ring-2 ring-tertiary/60'
                 : 'bg-surface-container-high hover:bg-surface-bright text-on-surface border-surface-container-highest'
             }"
             aria-label="Scrub in bubble lagoon"
           >
-            <span class="text-2xl sm:text-3xl leading-none">🫧</span>
-            <span class="mt-1 text-[10px] sm:text-xs">BATH</span>
+            <span class="text-xl sm:text-3xl leading-none">🫧</span>
+            <span class="mt-0.5 sm:mt-1 text-[9px] sm:text-xs">BATH</span>
           </button>
 
           <!-- 3. HERO WARDROBE -->
           <button 
             id="action-wardrobe-btn" 
-            class="sanctuary-dock-btn flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-2xl font-headline font-black text-xs transition-all active:translate-y-1 active:border-b-0 border-b-4 ${
+            class="sanctuary-dock-btn min-h-[48px] flex flex-col items-center justify-center p-1.5 sm:p-2.5 rounded-2xl font-headline font-black text-xs transition-all active:translate-y-1 active:border-b-0 border-b-4 ${
               activeDrawer === 'wardrobe'
                 ? 'bg-secondary text-slate-950 border-[#b26a00] shadow-md ring-2 ring-secondary/60'
                 : 'bg-surface-container-high hover:bg-surface-bright text-on-surface border-surface-container-highest'
             }"
             aria-label="Snap-on 3D forged gear"
           >
-            <span class="text-2xl sm:text-3xl leading-none">🪞</span>
-            <span class="mt-1 text-[10px] sm:text-xs">GEAR</span>
+            <span class="text-xl sm:text-3xl leading-none">🪞</span>
+            <span class="mt-0.5 sm:mt-1 text-[9px] sm:text-xs">GEAR</span>
           </button>
 
           <!-- 4. STARLIGHT EVOLUTION -->
           <button 
             id="action-evolution-btn" 
-            class="sanctuary-dock-btn flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-2xl font-headline font-black text-xs transition-all active:translate-y-1 active:border-b-0 border-b-4 ${
+            class="sanctuary-dock-btn min-h-[48px] flex flex-col items-center justify-center p-1.5 sm:p-2.5 rounded-2xl font-headline font-black text-xs transition-all active:translate-y-1 active:border-b-0 border-b-4 ${
               activeDrawer === 'evolution'
                 ? 'bg-gradient-to-r from-secondary to-primary text-slate-950 border-[#1b7a43] shadow-md ring-2 ring-primary/60'
                 : 'bg-surface-container-high hover:bg-surface-bright text-on-surface border-surface-container-highest'
             }"
             aria-label="Starlight pet evolution altar"
           >
-            <span class="text-2xl sm:text-3xl leading-none">⚡</span>
-            <span class="mt-1 text-[10px] sm:text-xs">EVOLVE</span>
+            <span class="text-xl sm:text-3xl leading-none">⚡</span>
+            <span class="mt-0.5 sm:mt-1 text-[9px] sm:text-xs">EVOLVE</span>
           </button>
 
           <!-- 5. EXPEDITION -->
           <button 
             id="action-expedition-btn" 
-            class="sanctuary-dock-btn flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-2xl font-headline font-black text-xs transition-all active:translate-y-1 active:border-b-0 border-b-4 ${
+            class="sanctuary-dock-btn min-h-[48px] flex flex-col items-center justify-center p-1.5 sm:p-2.5 rounded-2xl font-headline font-black text-xs transition-all active:translate-y-1 active:border-b-0 border-b-4 ${
               activeDrawer === 'expedition'
                 ? 'bg-amber-400 text-slate-950 border-[#b7791f] shadow-md ring-2 ring-amber-400/60'
                 : 'bg-surface-container-high hover:bg-surface-bright text-on-surface border-surface-container-highest'
             }"
             aria-label="Send on Adventure"
           >
-            <span class="text-2xl sm:text-3xl leading-none">🏕️</span>
-            <span class="mt-1 text-[10px] sm:text-xs">EXPLORE</span>
+            <span class="text-xl sm:text-3xl leading-none">🏕️</span>
+            <span class="mt-0.5 sm:mt-1 text-[9px] sm:text-xs">EXPLORE</span>
           </button>
 
           <!-- 6. WORKOUT -->
           <button 
             id="action-workout-btn" 
-            class="sanctuary-dock-btn flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-2xl font-headline font-black text-xs transition-all active:translate-y-1 active:border-b-0 border-b-4 ${
+            class="sanctuary-dock-btn min-h-[48px] flex flex-col items-center justify-center p-1.5 sm:p-2.5 rounded-2xl font-headline font-black text-xs transition-all active:translate-y-1 active:border-b-0 border-b-4 ${
               activeDrawer === 'workout'
                 ? 'bg-rose-400 text-slate-950 border-[#9b2c2c] shadow-md ring-2 ring-rose-400/60'
                 : 'bg-surface-container-high hover:bg-surface-bright text-on-surface border-surface-container-highest'
             }"
             aria-label="Dino Workout"
           >
-            <span class="text-2xl sm:text-3xl leading-none">💪</span>
-            <span class="mt-1 text-[10px] sm:text-xs">WORKOUT</span>
+            <span class="text-xl sm:text-3xl leading-none">💪</span>
+            <span class="mt-0.5 sm:mt-1 text-[9px] sm:text-xs">WORKOUT</span>
           </button>
 
         </div>
