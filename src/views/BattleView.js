@@ -154,6 +154,10 @@ export function renderBattleView() {
           </button>
           
           <div class="flex items-center gap-2">
+            <button id="battle-force-reload-btn" class="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-headline text-xs font-bold px-3 py-1.5 rounded-full border border-amber-500/40 flex items-center gap-1 active:scale-95 transition-all shadow-sm" title="Force Reload App to latest version & clear cache">
+              <span class="material-symbols-outlined text-sm">cached</span>
+              <span>v3.1 Reload</span>
+            </button>
             <span class="text-xs font-black text-cyan-400 bg-cyan-950/70 border border-cyan-500/40 px-3 py-1.5 rounded-full flex items-center gap-1 shadow-sm">
               <span>🦷</span> 4 Zones + Tongue
             </span>
@@ -173,7 +177,7 @@ export function renderBattleView() {
             </div>
             <div>
               <div class="flex items-center gap-2">
-                <span class="bg-cyan-500 text-slate-950 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">Hana 3D Cockpit</span>
+                <span class="bg-cyan-500 text-slate-950 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">Hana 3D Cockpit v3.1</span>
                 <span class="text-xs font-bold text-slate-300">Hands-Free Live Action</span>
               </div>
               <h1 class="font-headline text-xl sm:text-2xl font-black text-white mt-1">Toothbrush Battle Cockpit</h1>
@@ -195,6 +199,28 @@ export function renderBattleView() {
               </span>
             </div>
           </div>
+        </div>
+
+        <!-- PRIMARY TOP LAUNCH BAR (Immediately visible above the fold on mobile screens) -->
+        <div class="bg-gradient-to-r from-emerald-950 via-slate-900 to-cyan-950 rounded-3xl p-4 sm:p-5 border-3 border-emerald-400/80 shadow-[0_0_30px_rgba(16,185,129,0.35)] flex flex-col sm:flex-row items-center justify-between gap-4 card-shadow">
+          <div class="flex items-center gap-3.5 w-full sm:w-auto">
+            <div class="w-14 h-14 rounded-2xl bg-emerald-500/20 text-emerald-300 border-2 border-emerald-400/50 flex items-center justify-center text-3xl shadow-inner flex-shrink-0 animate-bounce">
+              ${currentBoss.emoji || currentBoss.avatar || '👾'}
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="bg-emerald-400 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse">2-MIN ROUTINE READY</span>
+                <span class="text-xs font-bold text-slate-300">${currentBoss.name}</span>
+              </div>
+              <div class="font-headline text-base sm:text-lg font-black text-white mt-0.5">Live-Action Hana 3D Battle Arena</div>
+              <div class="text-[11px] text-emerald-400 font-bold">100% Hands-Free • Audio Bristle Detection Active</div>
+            </div>
+          </div>
+
+          <button id="top-start-ar-battle-btn" class="w-full sm:w-auto bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 hover:brightness-110 text-slate-950 font-headline text-base sm:text-lg font-black px-8 py-4 min-h-[56px] rounded-2xl shadow-[0_6px_0_0_#065f46] active:translate-y-1 active:shadow-none transition-all flex items-center justify-center gap-2.5 flex-shrink-0 cursor-pointer">
+            <span class="material-symbols-outlined text-2xl font-black">swords</span>
+            <span>START 2-MINUTE 3D BATTLE!</span>
+          </button>
         </div>
 
         <!-- BOSS SELECTION CAROUSEL -->
@@ -270,6 +296,12 @@ export function renderBattleView() {
                     <span class="text-amber-400 font-black">+${b.rewardSparks || 15} ⚡ Sparks</span>
                     <span class="text-emerald-400 font-black">+${b.rewardXP || 75} XP</span>
                   </div>
+
+                  ${isSelected ? `
+                    <button data-launch-boss-id="${b.id}" class="boss-card-launch-btn w-full mt-1 bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-headline font-black text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all">
+                      <span class="material-symbols-outlined text-sm font-bold">swords</span> Battle ${b.name} Now!
+                    </button>
+                  ` : ''}
                 </div>
               `;
             }).join('')}
@@ -1426,6 +1458,18 @@ export function attachBattleListeners() {
     });
   });
 
+  document.querySelectorAll('.boss-card-launch-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const bId = btn.getAttribute('data-launch-boss-id');
+      if (bId) {
+        selectedBossId = bId;
+        if (store.setSelectedBossId) store.setSelectedBossId(bId);
+      }
+      startBattle();
+    });
+  });
+
   const lobbyBackBtn = document.getElementById('battle-lobby-back-btn');
   if (lobbyBackBtn) {
     lobbyBackBtn.addEventListener('click', () => {
@@ -1433,9 +1477,26 @@ export function attachBattleListeners() {
     });
   }
 
+  const forceReloadBtn = document.getElementById('battle-force-reload-btn');
+  if (forceReloadBtn) {
+    forceReloadBtn.addEventListener('click', () => {
+      Sound.tap();
+      if (typeof window.forceAppHardRefresh === 'function') {
+        window.forceAppHardRefresh();
+      } else {
+        window.location.reload();
+      }
+    });
+  }
+
   const startBtn = document.getElementById('start-ar-battle-btn');
   if (startBtn) {
     startBtn.addEventListener('click', startBattle);
+  }
+
+  const topStartBtn = document.getElementById('top-start-ar-battle-btn');
+  if (topStartBtn) {
+    topStartBtn.addEventListener('click', startBattle);
   }
 
   // 2. Active Cockpit Header Controls

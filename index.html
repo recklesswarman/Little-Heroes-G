@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Little Hero Adventures</title>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800;900&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet" />
@@ -13,6 +16,76 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
   <link rel="apple-touch-icon" href="icon-192.png">
   <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"></script>
+  <script>
+    // Bulletproof PWA Cache-Buster & Service Worker Auto-Updater
+    const APP_BUILD_VERSION = 'v3.1.0-hana3d-cockpit-20260918';
+    window.__LITTLE_HEROES_VERSION__ = APP_BUILD_VERSION;
+
+    window.forceAppHardRefresh = async function() {
+      try {
+        if ('serviceWorker' in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          for (const reg of registrations) {
+            await reg.unregister();
+          }
+        }
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          for (const key of keys) {
+            await caches.delete(key);
+          }
+        }
+        localStorage.setItem('little_heroes_app_version', APP_BUILD_VERSION);
+      } catch (e) {
+        console.warn('Cache purge error:', e);
+      }
+      window.location.reload(true);
+    };
+
+    // Auto-detect version mismatch on page load
+    (function() {
+      try {
+        const storedVersion = localStorage.getItem('little_heroes_app_version');
+        if (storedVersion !== APP_BUILD_VERSION) {
+          console.log('[PWA] New version detected:', APP_BUILD_VERSION, '(previously: ' + storedVersion + ') - Purging stale caches...');
+          if ('caches' in window) {
+            caches.keys().then(keys => {
+              keys.forEach(k => caches.delete(k));
+            });
+          }
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(regs => {
+              regs.forEach(r => r.unregister());
+            });
+          }
+          localStorage.setItem('little_heroes_app_version', APP_BUILD_VERSION);
+        }
+      } catch (e) {}
+
+      // Register modern Service Worker with updateViaCache: 'none'
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
+            .then(reg => {
+              reg.update();
+              reg.addEventListener('updatefound', () => {
+                const newWorker = reg.installing;
+                if (newWorker) {
+                  newWorker.addEventListener('statechange', () => {
+                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                      console.log('[PWA] New version installed and ready.');
+                    }
+                  });
+                }
+              });
+            })
+            .catch(err => {
+              console.warn('[PWA] Service Worker registration skipped:', err);
+            });
+        });
+      }
+    })();
+  </script>
 </head>
 <body class="bg-background text-on-background font-body select-none overflow-x-hidden min-h-screen antialiased">
   <div id="app" class="relative min-h-screen flex flex-col justify-between">

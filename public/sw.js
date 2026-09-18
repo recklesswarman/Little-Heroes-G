@@ -1,8 +1,8 @@
-const CACHE_NAME = 'little-heroes-v2-3d';
+const CACHE_NAME = 'little-heroes-v3-hana3d-cockpit-final';
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json'
+  './',
+  './index.html',
+  './manifest.json'
 ];
 
 // Offline 3D asset extensions
@@ -23,6 +23,7 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames.map((cache) => {
           if (cache !== CACHE_NAME) {
+            console.log('[SW] Deleting obsolete cache:', cache);
             return caches.delete(cache);
           }
         })

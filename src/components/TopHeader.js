@@ -58,6 +58,12 @@ export function renderTopHeader() {
         <button id="header-lock-btn" title="Parent Admin Portal" aria-label="Parent Portal" class="bg-surface-container-highest text-on-surface-variant rounded-xl w-11 h-11 min-w-[44px] min-h-[44px] chunky-btn-sm border-surface-container-low hover:bg-surface-bright hover:text-secondary active:scale-95 flex items-center justify-center transition-all flex-shrink-0">
           <span class="material-symbols-outlined text-base sm:text-lg md:text-xl" style="font-variation-settings: 'FILL' 1;">shield_person</span>
         </button>
+
+        <!-- App Version / Cache Refresh Badge -->
+        <button id="header-version-btn" title="App Version v3.1.0 (Hana 3D Battle) • Tap to Reload Clean Cache" aria-label="App Version" class="hidden sm:flex items-center gap-1 bg-surface-container text-on-surface-variant hover:text-cyan-400 rounded-xl px-2.5 py-1.5 min-h-[44px] chunky-btn-sm border-2 border-surface-container-highest transition-all flex-shrink-0 active:scale-95">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="font-headline text-[10px] font-black uppercase tracking-wider text-cyan-400">v3.1 3D</span>
+        </button>
       </div>
     </header>
   `;
@@ -103,6 +109,18 @@ export function attachTopHeaderListeners() {
       // Security Enforcement: Header button ALWAYS locks and requires fresh adult authentication
       store.lockParentSession();
       window.dispatchEvent(new CustomEvent('open-parent-modal'));
+    });
+  }
+
+  const versionBtn = document.getElementById('header-version-btn');
+  if (versionBtn) {
+    versionBtn.addEventListener('click', () => {
+      Sound.tap();
+      if (typeof window.forceAppHardRefresh === 'function') {
+        window.forceAppHardRefresh();
+      } else {
+        window.location.reload();
+      }
     });
   }
 }
