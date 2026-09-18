@@ -653,6 +653,8 @@ export function attachDashboardListeners() {
       triggerQuestVoice(task?.title || '', taskId || '', task?.desc || '');
       const isAR = card.querySelector('.task-ar-launch-btn');
       if (isAR) {
+        Sound.click();
+        speakRex("3, 2, 1, BRUSH!");
         store.navigate('ar_battle');
       } else if (taskId) {
         store.toggleTaskForest(taskId);
@@ -663,7 +665,8 @@ export function attachDashboardListeners() {
   document.querySelectorAll('.task-ar-launch-btn').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      speakRex("Time to brush our teeth and defeat the sugar villains!");
+      Sound.click();
+      speakRex("3, 2, 1, BRUSH!");
       store.navigate('ar_battle');
     });
   });

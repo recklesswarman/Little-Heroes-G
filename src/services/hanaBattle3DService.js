@@ -6,14 +6,17 @@
  * Features:
  * 1. Spline 3D Runtime Application integration (@splinetool/runtime) with variable bindings:
  *    - BossHP (0-100), ShieldActive (bool), ActiveQuadrant (1-5), LaserEquipped (bool).
- * 2. High-performance procedural 3D WebGL / Canvas Fallback:
- *    - 3D Sugar Boss with breathing, wobbles, and visual reactivity.
- *    - Breakable 3D Candy Armor Deconstruction: 4 quadrant candy plates that fracture and fly off.
- *    - Floating 3D Hero Mirror: Live video texture rendered in 3D perspective with neon holographic chassis.
- *    - Interactive 3D Mouth Hologram HUD: Dental arch transforming plaque from amber to gleaming diamond white.
- *    - Dynamic 3D Foam & Laser Particle Streams: Physics-driven particle arcs from nozzle to boss.
- *    - 3D Enamel Shield Dome & Caramel Bomb Deflection: Deflect flurry ricochets attacks back at boss.
- *    - 3D Cleanse Victory Sequence: Boss purifies into friendly companion with starburst particles.
+ * 2. Vibrant Cartoon 3D WebGL / Canvas Engine:
+ *    - Whimsical pastel bubble sky with floating candy clouds and twinkling stars.
+ *    - Pearly floating tooth platform with golden rim, enamel sheen, and ambient lighting.
+ *    - Animated 3D Cartoon Boss (Sugar Bandit, Plaque Kraken, Tartar Titan):
+ *      * Bouncy breathing animations, expressive cartoon eyes that blink and track brushing.
+ *      * 4 Breakable 3D Candy Armor Plates (Q1-Q4) fracturing into 3D physics shards when quadrants hit 100%.
+ *    - Real-time fizzy rainbow soap particle foam cannons driven by toothbrush audio FFT.
+ *    - Translucent 3D enamel shield dome deflecting incoming caramel sugar bombs.
+ *    - 3D Hero Magic Mirror portal with heroic golden frame and sparkles.
+ *    - Interactive 3D Mouth Hologram HUD transforming plaque into gleaming diamond white.
+ *    - 3D Purification Transformation: Boss turns into a radiant, sparkling happy companion at 00:00!
  */
 
 import { Application } from '@splinetool/runtime';
@@ -40,10 +43,10 @@ class HanaBattle3DService {
     this.bossData = {
       id: 'sugar_bandit',
       name: 'The Sugar Bandit King',
-      color: '#f39c12',
+      color: '#f59e0b',
       bodyColor: '#d97706',
       armorColor: '#f59e0b',
-      bombColor: '#f39c12'
+      bombColor: '#f59e0b'
     };
 
     this.bossHp = 100;
@@ -67,13 +70,29 @@ class HanaBattle3DService {
     this.caramelBombs = [];
     this.sparkles = [];
     this.shockwaves = [];
+    this.bgClouds = [];
+    this.bgBubbles = [];
+
+    // Initialize background floating ambient elements
+    for (let i = 0; i < 16; i++) {
+      this.bgBubbles.push({
+        x: Math.random() * 800,
+        y: Math.random() * 600,
+        radius: 4 + Math.random() * 12,
+        speed: 15 + Math.random() * 25,
+        wobbleSpeed: 1 + Math.random() * 2,
+        wobbleOffset: Math.random() * Math.PI * 2,
+        hue: Math.floor(Math.random() * 360),
+        alpha: 0.2 + Math.random() * 0.4
+      });
+    }
 
     // Breakable Armor State (quadrants q1, q2, q3, q4)
     this.armorPlates = {
-      q1: { id: 'q1', name: 'Upper Right', intact: true, cracks: 0, color: '#f59e0b', offset: { x: 35, y: -25, z: 20 } },
-      q2: { id: 'q2', name: 'Upper Left', intact: true, cracks: 0, color: '#f59e0b', offset: { x: -35, y: -25, z: 20 } },
-      q3: { id: 'q3', name: 'Lower Right', intact: true, cracks: 0, color: '#e89300', offset: { x: 32, y: 22, z: 20 } },
-      q4: { id: 'q4', name: 'Lower Left', intact: true, cracks: 0, color: '#e89300', offset: { x: -32, y: 22, z: 20 } }
+      q1: { id: 'q1', name: 'Upper Right', intact: true, cracks: 0, color: '#f59e0b', offset: { x: 38, y: -26, z: 22 } },
+      q2: { id: 'q2', name: 'Upper Left', intact: true, cracks: 0, color: '#f59e0b', offset: { x: -38, y: -26, z: 22 } },
+      q3: { id: 'q3', name: 'Lower Right', intact: true, cracks: 0, color: '#e89300', offset: { x: 34, y: 24, z: 22 } },
+      q4: { id: 'q4', name: 'Lower Left', intact: true, cracks: 0, color: '#e89300', offset: { x: -34, y: 24, z: 22 } }
     };
 
     // Dental Hologram Teeth Nodes (q1..q5)
@@ -197,9 +216,6 @@ class HanaBattle3DService {
       ? (this.canvas.getContext('2d') || null)
       : null;
 
-    // If canvas already had WebGL context acquired by Spline load attempt,
-    // getContext('2d') returns null per HTML5 Canvas spec.
-    // Replace with a fresh canvas element to cleanly obtain a 2D rendering context.
     if (!this.ctx && this.canvas && this.canvas.parentElement) {
       try {
         const newCanvas = document.createElement('canvas');
@@ -233,12 +249,32 @@ class HanaBattle3DService {
 
   setBoss(bossData) {
     if (!bossData) return;
+    const bId = bossData.id || 'sugar_bandit';
+    let bodyColor = '#d97706';
+    let armorColor = '#f59e0b';
+    let bombColor = '#f59e0b';
+
+    if (bId === 'plaque_kraken') {
+      bodyColor = '#0891b2';
+      armorColor = '#06b6d4';
+      bombColor = '#06b6d4';
+    } else if (bId === 'tartar_titan') {
+      bodyColor = '#7c3aed';
+      armorColor = '#8b5cf6';
+      bombColor = '#a855f7';
+    } else if (bossData.color) {
+      bodyColor = bossData.color;
+      armorColor = bossData.color;
+      bombColor = bossData.color;
+    }
+
     this.bossData = {
       ...this.bossData,
       ...bossData,
-      color: bossData.color || '#f39c12',
-      bodyColor: bossData.color || '#d97706',
-      armorColor: bossData.accentBorder ? '#f59e0b' : '#f39c12'
+      id: bId,
+      bodyColor,
+      armorColor,
+      bombColor
     };
 
     // Set colors for armor plates based on boss
@@ -292,16 +328,15 @@ class HanaBattle3DService {
 
   /**
    * Breakable 3D Candy Armor Deconstruction
-   * When a quadrant reaches 100% or is cleansed, candy plates fracture into 3D shards
    */
   onArmorFracture(quadrantId = 'q1') {
     // 1. Boss Shield Barrier Shatter
     if (quadrantId === 'shield') {
       const bx = this.width * 0.5;
-      const by = this.height * 0.35;
-      for (let i = 0; i < 22; i++) {
-        const angle = (i / 22) * Math.PI * 2;
-        const speed = 3.5 + Math.random() * 4.0;
+      const by = this.height * 0.38;
+      for (let i = 0; i < 24; i++) {
+        const angle = (i / 24) * Math.PI * 2;
+        const speed = 4.0 + Math.random() * 4.5;
         this.candyShards.push({
           x: bx + Math.cos(angle) * 45,
           y: by + Math.sin(angle) * 45,
@@ -315,7 +350,7 @@ class HanaBattle3DService {
           vRotX: (Math.random() - 0.5) * 0.3,
           vRotY: (Math.random() - 0.5) * 0.3,
           vRotZ: (Math.random() - 0.5) * 0.3,
-          size: 7 + Math.random() * 7,
+          size: 8 + Math.random() * 8,
           color: '#fbbf24',
           alpha: 1.0,
           gravity: 0.12
@@ -325,7 +360,7 @@ class HanaBattle3DService {
         x: bx,
         y: by,
         radius: 30,
-        maxRadius: 200,
+        maxRadius: 220,
         color: '#fbbf24',
         alpha: 1.0
       });
@@ -336,19 +371,19 @@ class HanaBattle3DService {
     // 2. Tongue Polish Sparkle
     if (quadrantId === 'q5') {
       const bx = this.width * 0.5;
-      const by = this.height * 0.35;
-      for (let j = 0; j < 16; j++) {
+      const by = this.height * 0.38;
+      for (let j = 0; j < 20; j++) {
         const angle = Math.random() * Math.PI * 2;
-        const speed = 2.0 + Math.random() * 4.0;
+        const speed = 2.5 + Math.random() * 4.5;
         this.sparkles.push({
           x: bx,
           y: by,
           vx: Math.cos(angle) * speed,
           vy: Math.sin(angle) * speed,
           color: '#ec4899',
-          size: 4 + Math.random() * 4,
+          size: 5 + Math.random() * 5,
           alpha: 1.0,
-          life: 1.2
+          life: 1.4
         });
       }
       if (typeof Sound?.sparkle === 'function') Sound.sparkle();
@@ -360,44 +395,42 @@ class HanaBattle3DService {
       plate.intact = false;
       plate.cracks = 3;
 
-      // Spawn 14 3D candy shards bursting outward
       const bx = this.width * 0.5 + (plate.offset.x * (this.width / 400));
-      const by = this.height * 0.35 + (plate.offset.y * (this.height / 300));
+      const by = this.height * 0.38 + (plate.offset.y * (this.height / 300));
 
-      for (let i = 0; i < 14; i++) {
+      for (let i = 0; i < 16; i++) {
         const angle = Math.random() * Math.PI * 2;
-        const speed = 2.5 + Math.random() * 5.0;
+        const speed = 3.0 + Math.random() * 5.5;
         this.candyShards.push({
           x: bx,
           y: by,
           z: 20 + Math.random() * 40,
           vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed - 2.5,
+          vy: Math.sin(angle) * speed - 2.8,
           vz: Math.random() * 4 - 2,
           rotX: Math.random() * Math.PI,
           rotY: Math.random() * Math.PI,
           rotZ: Math.random() * Math.PI,
-          vRotX: (Math.random() - 0.5) * 0.25,
-          vRotY: (Math.random() - 0.5) * 0.25,
-          vRotZ: (Math.random() - 0.5) * 0.25,
-          size: 6 + Math.random() * 10,
+          vRotX: (Math.random() - 0.5) * 0.3,
+          vRotY: (Math.random() - 0.5) * 0.3,
+          vRotZ: (Math.random() - 0.5) * 0.3,
+          size: 7 + Math.random() * 11,
           color: plate.color,
           alpha: 1.0,
           gravity: 0.18
         });
       }
 
-      // Sparkle burst
-      for (let j = 0; j < 12; j++) {
+      for (let j = 0; j < 14; j++) {
         this.sparkles.push({
-          x: bx + (Math.random() - 0.5) * 30,
-          y: by + (Math.random() - 0.5) * 30,
-          vx: (Math.random() - 0.5) * 3,
-          vy: (Math.random() - 0.5) * 3,
+          x: bx + (Math.random() - 0.5) * 32,
+          y: by + (Math.random() - 0.5) * 32,
+          vx: (Math.random() - 0.5) * 3.5,
+          vy: (Math.random() - 0.5) * 3.5,
           color: '#ffffff',
-          size: 3 + Math.random() * 3,
+          size: 4 + Math.random() * 4,
           alpha: 1.0,
-          life: 0.8
+          life: 0.9
         });
       }
 
@@ -406,55 +439,55 @@ class HanaBattle3DService {
   }
 
   /**
-   * Dynamic 3D Foam / Laser Particle Streams
+   * Real-Time Fizzy Rainbow Soap Particle Foam Cannons
    */
   onFoamStream(intensity = 1.0, hasLaser = false, damageBoost = 0) {
-    const streamCount = Math.round((3 + Math.round(intensity * 4)) * (1 + (damageBoost / 100)));
+    const streamCount = Math.round((4 + Math.round(intensity * 4)) * (1 + (damageBoost / 100)));
     const originX = this.width * 0.5;
-    const originY = this.height * 0.95;
-    const targetX = this.width * 0.5 + (Math.sin(this.clock * 4) * 30);
-    const targetY = this.height * 0.35;
+    const originY = this.height * 0.96;
+    const targetX = this.width * 0.5 + (Math.sin(this.clock * 4) * 32);
+    const targetY = this.height * 0.38;
+
+    const rainbowColors = ['#38bdf8', '#34d399', '#f472b6', '#fbbf24', '#a78bfa', '#ffffff'];
 
     for (let i = 0; i < streamCount; i++) {
-      const spreadX = (Math.random() - 0.5) * 16;
+      const spreadX = (Math.random() - 0.5) * 22;
       const vx = (targetX - originX) * 0.05 + spreadX;
-      const vy = (targetY - originY) * 0.05 - 1.5;
+      const vy = (targetY - originY) * 0.05 - 1.8;
+      const randColor = rainbowColors[Math.floor(Math.random() * rainbowColors.length)];
 
       this.foamParticles.push({
         x: originX + spreadX,
         y: originY,
         z: -20,
-        vx: vx + (Math.random() - 0.5) * 1.5,
-        vy: vy + (Math.random() - 0.5) * 1.5,
-        vz: 1.5 + Math.random() * 2,
-        radius: (hasLaser ? 7 : 6) + Math.random() * 6,
+        vx: vx + (Math.random() - 0.5) * 1.6,
+        vy: vy + (Math.random() - 0.5) * 1.6,
+        vz: 1.8 + Math.random() * 2.2,
+        radius: (hasLaser ? 8 : 7) + Math.random() * 6,
         alpha: 0.95,
         isLaser: hasLaser,
-        color: hasLaser ? '#22d3ee' : '#ffffff',
+        color: hasLaser ? '#22d3ee' : randColor,
         glowColor: hasLaser ? '#06b6d4' : '#bae6fd',
         life: 1.0
       });
     }
 
-    if (this.foamParticles.length > 90) {
-      this.foamParticles.splice(0, this.foamParticles.length - 90);
+    if (this.foamParticles.length > 100) {
+      this.foamParticles.splice(0, this.foamParticles.length - 100);
     }
   }
 
-  /**
-   * Deploy 3D Enamel Shield Dome
-   */
   setDeflectActive(active = true) {
     this.isDeflectActive = active;
-    this.deflectTimer = active ? 1.4 : 0;
+    this.deflectTimer = active ? 1.5 : 0;
     if (active) {
       this.shockwaves.push({
         x: this.width * 0.5,
-        y: this.height * 0.7,
-        radius: 20,
-        maxRadius: 180,
+        y: this.height * 0.72,
+        radius: 24,
+        maxRadius: 200,
         color: '#10b981',
-        alpha: 0.8
+        alpha: 0.85
       });
     }
   }
@@ -464,22 +497,21 @@ class HanaBattle3DService {
    */
   onDeflectRicochet() {
     this.setDeflectActive(true);
-    this.deflectTimer = 1.4;
-    // Find active bomb heading toward player and reverse its direction
+    this.deflectTimer = 1.5;
+
     this.caramelBombs.forEach(bomb => {
-      if (bomb.vz < 0) { // moving toward player
+      if (bomb.vz < 0) {
         bomb.vz = Math.abs(bomb.vz) * 1.6;
-        bomb.vy = -Math.abs(bomb.vy) * 1.2;
+        bomb.vy = -Math.abs(bomb.vy) * 1.3;
         bomb.deflected = true;
       }
     });
 
-    // Spawn massive reflective shockwave
     this.shockwaves.push({
       x: this.width * 0.5,
-      y: this.height * 0.65,
-      radius: 30,
-      maxRadius: 220,
+      y: this.height * 0.68,
+      radius: 35,
+      maxRadius: 240,
       color: '#34d399',
       alpha: 1.0
     });
@@ -493,20 +525,18 @@ class HanaBattle3DService {
   triggerSupernova() {
     this.shockwaves.push({
       x: this.width * 0.5,
-      y: this.height * 0.4,
-      radius: 10,
-      maxRadius: 360,
+      y: this.height * 0.42,
+      radius: 12,
+      maxRadius: 380,
       color: '#fbbf24',
       alpha: 1.0
     });
 
-    // Clear all incoming bombs
     this.caramelBombs.forEach(b => {
       b.vz = 8;
       b.deflected = true;
     });
 
-    // Fracture all remaining armor
     Object.keys(this.armorPlates).forEach(k => this.onArmorFracture(k));
   }
 
@@ -516,29 +546,24 @@ class HanaBattle3DService {
   onCleanseVictory() {
     this.isVictory = true;
     this.bossHp = 0;
-    // Shatter any remaining armor
     Object.keys(this.armorPlates).forEach(k => this.onArmorFracture(k));
 
-    // Starburst victory particles
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 50; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const speed = 2.0 + Math.random() * 6.0;
+      const speed = 2.5 + Math.random() * 6.5;
       this.sparkles.push({
         x: this.width * 0.5,
-        y: this.height * 0.35,
+        y: this.height * 0.38,
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed,
-        color: ['#54e98a', '#ffb961', '#38bdf8', '#f1c40f', '#ec4899'][i % 5],
-        size: 5 + Math.random() * 5,
+        color: ['#54e98a', '#ffb961', '#38bdf8', '#f1c40f', '#ec4899', '#a78bfa'][i % 6],
+        size: 6 + Math.random() * 6,
         alpha: 1.0,
-        life: 2.0
+        life: 2.2
       });
     }
   }
 
-  /**
-   * Main 3D Render Loop (RAF at 60 FPS)
-   */
   renderLoop(timestamp) {
     if (this.isDestroyed) return;
 
@@ -558,45 +583,37 @@ class HanaBattle3DService {
     const w = this.width;
     const h = this.height;
 
-    // 1. Clear Arena Viewport with high-contrast gradient
-    ctx.clearRect(0, 0, w, h);
+    // 1. Whimsical Cartoon Pastel Arena Skybox & Clouds
+    this.renderCartoonSkybox(ctx, w, h, dt);
 
-    // Deep space/bathroom arena background gradient
-    const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
-    bgGrad.addColorStop(0, '#040911');
-    bgGrad.addColorStop(0.5, '#071322');
-    bgGrad.addColorStop(1, '#050b14');
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, w, h);
-
-    // 2. 3D Perspective Grid Floor (Sugar Kingdom Ruins)
-    this.render3DGridFloor(ctx, w, h);
-
-    // 3. Shockwave Rings
+    // 2. Shockwave Rings
     this.renderShockwaves(ctx, dt);
 
-    // 4. Floating 3D Hero Mirror (Live Webcam Feed Video Texture)
+    // 3. Pearly Floating Tooth Platform
+    this.renderFloatingToothPlatform(ctx, w, h);
+
+    // 4. Floating 3D Hero Mirror
     this.renderFloatingHeroMirror(ctx, w, h);
 
-    // 5. Interactive 3D Mouth Hologram HUD (Dental Arch transforming plaque)
+    // 5. Interactive 3D Mouth Hologram HUD
     this.render3DMouthHologram(ctx, w, h);
 
-    // 6. 3D Boss & Breakable Candy Armor Deconstruction
+    // 6. 3D Boss & Breakable Candy Armor
     this.render3DBossAndArmor(ctx, w, h, dt);
 
     // 7. 3D Caramel Bomb Projectiles
     this.renderCaramelBombs(ctx, w, h, dt);
 
-    // 8. 3D Foam / Laser Particle Streams
+    // 8. Fizzy Rainbow Soap Particle Foam Cannons
     this.renderFoamParticles(ctx, dt);
 
-    // 9. Fractured Candy Shards Physics
+    // 9. Fractured Candy Shards
     this.renderCandyShards(ctx, dt);
 
     // 10. Sparkles & Stars
     this.renderSparkles(ctx, dt);
 
-    // 11. 3D Enamel Shield Dome
+    // 11. Translucent 3D Enamel Shield Dome
     if (this.deflectTimer > 0) {
       this.deflectTimer -= dt;
       if (this.deflectTimer <= 0) {
@@ -610,75 +627,185 @@ class HanaBattle3DService {
   }
 
   /**
-   * 3D Perspective Grid Floor
+   * 1. Whimsical Cartoon Pastel Arena Skybox & Clouds
    */
-  render3DGridFloor(ctx, w, h) {
-    const horizonY = h * 0.45;
+  renderCartoonSkybox(ctx, w, h, dt) {
+    ctx.clearRect(0, 0, w, h);
+
+    // Whimsical starry bubble sky gradient
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, h);
+    if (this.isVictory) {
+      skyGrad.addColorStop(0, '#064e3b');
+      skyGrad.addColorStop(0.5, '#047857');
+      skyGrad.addColorStop(1, '#065f46');
+    } else {
+      skyGrad.addColorStop(0, '#0f172a');
+      skyGrad.addColorStop(0.4, '#1e1b4b');
+      skyGrad.addColorStop(0.8, '#0f2b48');
+      skyGrad.addColorStop(1, '#081a2e');
+    }
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, w, h);
+
+    // Twinkling stars in sky
     ctx.save();
-    ctx.strokeStyle = 'rgba(6, 182, 212, 0.12)';
-    ctx.lineWidth = 1;
-
-    // Perspective lines
-    const fovX = w * 0.5;
-    for (let x = -w * 0.8; x <= w * 1.8; x += 40) {
+    for (let i = 0; i < 28; i++) {
+      const sx = ((i * 73 + this.clock * 2) % w);
+      const sy = ((i * 47) % (h * 0.65));
+      const twinkle = (Math.sin(this.clock * 3 + i) + 1) * 0.5;
+      ctx.fillStyle = `rgba(255, 255, 255, ${0.3 + twinkle * 0.6})`;
       ctx.beginPath();
-      ctx.moveTo(fovX + (x - fovX) * 0.05, horizonY);
-      ctx.lineTo(x, h);
-      ctx.stroke();
+      ctx.arc(sx, sy, 1.2 + twinkle * 1.5, 0, Math.PI * 2);
+      ctx.fill();
     }
+    ctx.restore();
 
-    // Horizontal depth rungs
-    for (let d = 0; d < 8; d++) {
-      const ratio = Math.pow(d / 8, 2.2);
-      const y = horizonY + (h - horizonY) * ratio;
+    // Floating background ambient rainbow soap bubbles
+    ctx.save();
+    this.bgBubbles.forEach(b => {
+      b.y -= b.speed * dt;
+      if (b.y < -20) {
+        b.y = h + 20;
+        b.x = Math.random() * w;
+      }
+      const bx = b.x + Math.sin(this.clock * b.wobbleSpeed + b.wobbleOffset) * 12;
+
+      ctx.save();
+      ctx.strokeStyle = `hsla(${b.hue + this.clock * 20}, 85%, 75%, ${b.alpha})`;
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(w, y);
+      ctx.arc(bx, b.y, b.radius, 0, Math.PI * 2);
       ctx.stroke();
-    }
+
+      // Specular highlight
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.beginPath();
+      ctx.arc(bx - b.radius * 0.35, b.y - b.radius * 0.35, b.radius * 0.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    });
+    ctx.restore();
+
+    // Soft floating candy clouds
+    ctx.save();
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.07)';
+    const cloud1X = ((this.clock * 12) % (w + 200)) - 100;
+    this.drawCartoonCloud(ctx, cloud1X, h * 0.22, 90);
+    const cloud2X = (((this.clock * 8) + 260) % (w + 200)) - 100;
+    this.drawCartoonCloud(ctx, cloud2X, h * 0.45, 120);
+    ctx.restore();
+  }
+
+  drawCartoonCloud(ctx, x, y, size) {
+    ctx.beginPath();
+    ctx.arc(x, y, size * 0.35, 0, Math.PI * 2);
+    ctx.arc(x + size * 0.3, y - size * 0.15, size * 0.4, 0, Math.PI * 2);
+    ctx.arc(x + size * 0.6, y, size * 0.35, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  /**
+   * 3. Pearly Floating Tooth Platform
+   * Renders an animated pearly white molar platform floating in 3D perspective beneath the boss
+   */
+  renderFloatingToothPlatform(ctx, w, h) {
+    const px = w * 0.5;
+    const py = h * 0.58 + Math.sin(this.clock * 2) * 5;
+    const pw = Math.min(220, w * 0.52);
+    const ph = pw * 0.44;
+
+    ctx.save();
+    ctx.translate(px, py);
+
+    // Ambient floating shadow beneath platform
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.beginPath();
+    ctx.ellipse(0, ph * 0.9, pw * 0.7, ph * 0.28, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Platform Root / Molar Base (Depth)
+    const baseGrad = ctx.createLinearGradient(0, 0, 0, ph * 0.7);
+    baseGrad.addColorStop(0, '#e0f2fe');
+    baseGrad.addColorStop(0.6, '#93c5fd');
+    baseGrad.addColorStop(1, '#3b82f6');
+    ctx.fillStyle = baseGrad;
+    ctx.beginPath();
+    ctx.moveTo(-pw * 0.5, 0);
+    ctx.bezierCurveTo(-pw * 0.5, ph * 0.6, -pw * 0.2, ph * 0.75, 0, ph * 0.65);
+    ctx.bezierCurveTo(pw * 0.2, ph * 0.75, pw * 0.5, ph * 0.6, pw * 0.5, 0);
+    ctx.closePath();
+    ctx.fill();
+
+    // Golden decorative rim
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, pw * 0.5, ph * 0.32, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Pearly Enamel Top Surface
+    const topGrad = ctx.createRadialGradient(0, -ph * 0.1, 10, 0, 0, pw * 0.5);
+    topGrad.addColorStop(0, '#ffffff');
+    topGrad.addColorStop(0.7, '#f0f9ff');
+    topGrad.addColorStop(1, '#bae6fd');
+    ctx.fillStyle = topGrad;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, pw * 0.5 - 2, ph * 0.32 - 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Celestial Tooth Rune / Sparkle in center
+    ctx.fillStyle = 'rgba(14, 165, 233, 0.35)';
+    ctx.font = `${Math.round(pw * 0.18)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🦷', 0, 0);
+
     ctx.restore();
   }
 
   /**
-   * Floating 3D Hero Mirror (Live Video Texture)
-   * Top-Left floating portal rendered in 3D perspective
+   * Floating 3D Hero Mirror (Live Webcam Feed Video Texture)
    */
   renderFloatingHeroMirror(ctx, w, h) {
     const mirrorW = Math.min(130, w * 0.28);
     const mirrorH = mirrorW * 1.25;
     const mx = w * 0.18;
-    const my = h * 0.22 + Math.sin(this.clock * 2) * 5; // gentle 3D bobbing
+    const my = h * 0.22 + Math.sin(this.clock * 2) * 5;
 
     ctx.save();
     ctx.translate(mx, my);
 
-    // Holographic shadow & glow
-    ctx.shadowColor = '#06b6d4';
+    // Heroic Golden Frame with sparkles
+    ctx.shadowColor = '#fbbf24';
     ctx.shadowBlur = 16;
 
-    // Frame chassis
-    ctx.fillStyle = 'rgba(5, 14, 26, 0.9)';
-    ctx.strokeStyle = '#22d3ee';
-    ctx.lineWidth = 2.5;
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 3;
 
     ctx.beginPath();
-    ctx.roundRect(-mirrorW * 0.5, -mirrorH * 0.5, mirrorW, mirrorH, 16);
+    ctx.roundRect(-mirrorW * 0.5, -mirrorH * 0.5, mirrorW, mirrorH, 18);
     ctx.fill();
     ctx.stroke();
     ctx.shadowBlur = 0;
 
+    // Crown Star Crest on top
+    ctx.fillStyle = '#fbbf24';
+    ctx.font = '16px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('⭐', 0, -mirrorH * 0.5);
+
     // Inner Clip for video texture
     ctx.save();
     ctx.beginPath();
-    ctx.roundRect(-mirrorW * 0.5 + 4, -mirrorH * 0.5 + 4, mirrorW - 8, mirrorH - 8, 12);
+    ctx.roundRect(-mirrorW * 0.5 + 4, -mirrorH * 0.5 + 4, mirrorW - 8, mirrorH - 8, 14);
     ctx.clip();
 
     if (this.videoElement && this.videoElement.readyState >= 2 && !this.videoElement.paused) {
-      // Mirrored video texture (selfie perspective)
       ctx.scale(-1, 1);
       ctx.drawImage(this.videoElement, -mirrorW * 0.5 + 4, -mirrorH * 0.5 + 4, mirrorW - 8, mirrorH - 8);
     } else {
-      // Animated Hero hologram avatar fallback
       ctx.fillStyle = '#0f172a';
       ctx.fillRect(-mirrorW * 0.5, -mirrorH * 0.5, mirrorW, mirrorH);
       ctx.fillStyle = '#38bdf8';
@@ -692,51 +819,20 @@ class HanaBattle3DService {
     }
     ctx.restore();
 
-    // Futuristic corner brackets
-    ctx.strokeStyle = '#38bdf8';
-    ctx.lineWidth = 2;
-    const cSize = 10;
-    const hw = mirrorW * 0.5;
-    const hh = mirrorH * 0.5;
-
-    // Top-left bracket
-    ctx.beginPath();
-    ctx.moveTo(-hw, -hh + cSize);
-    ctx.lineTo(-hw, -hh);
-    ctx.lineTo(-hw + cSize, -hh);
-    ctx.stroke();
-
-    // Top-right bracket
-    ctx.beginPath();
-    ctx.moveTo(hw - cSize, -hh);
-    ctx.lineTo(hw, -hh);
-    ctx.lineTo(hw, -hh + cSize);
-    ctx.stroke();
-
-    // Hologram scanner line
-    const scanY = (-hh + 6) + (((this.clock * 60) % (mirrorH - 12)));
-    ctx.strokeStyle = 'rgba(34, 211, 238, 0.4)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(-hw + 6, scanY);
-    ctx.lineTo(hw - 6, scanY);
-    ctx.stroke();
-
     // Badge Title
-    ctx.fillStyle = '#06b6d4';
-    ctx.font = 'bold 8px sans-serif';
+    ctx.fillStyle = '#f59e0b';
+    ctx.font = 'bold 9px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('3D HERO MIRROR', 0, hh + 12);
+    ctx.fillText('MAGIC MIRROR', 0, mirrorH * 0.5 + 13);
 
     ctx.restore();
   }
 
   /**
    * Interactive 3D Mouth Hologram HUD
-   * Displays teeth arc; plaque turns from amber to gleaming diamond white as brushed!
    */
   render3DMouthHologram(ctx, w, h) {
-    const hudW = Math.min(110, w * 0.24);
+    const hudW = Math.min(115, w * 0.25);
     const hudH = hudW * 0.95;
     const hx = w * 0.82;
     const hy = h * 0.22 + Math.cos(this.clock * 1.8) * 4;
@@ -744,22 +840,19 @@ class HanaBattle3DService {
     ctx.save();
     ctx.translate(hx, hy);
 
-    // HUD frame
-    ctx.fillStyle = 'rgba(5, 14, 26, 0.88)';
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
     ctx.strokeStyle = 'rgba(6, 182, 212, 0.6)';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.roundRect(-hudW * 0.5, -hudH * 0.5, hudW, hudH, 14);
+    ctx.roundRect(-hudW * 0.5, -hudH * 0.5, hudW, hudH, 16);
     ctx.fill();
     ctx.stroke();
 
-    // Arch Title
     ctx.fillStyle = '#38bdf8';
     ctx.font = 'bold 8px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('3D DENTAL ARCH', 0, -hudH * 0.5 + 12);
 
-    // Render teeth nodes
     const scale = hudW * 0.01;
     this.dentalTeeth.forEach(tooth => {
       const tx = tooth.x * scale;
@@ -767,26 +860,22 @@ class HanaBattle3DService {
       const isDone = tooth.cleanPct >= 100;
       const isActive = this.activeQuadrant === tooth.id;
 
-      // Outer active ring
       if (isActive) {
         ctx.strokeStyle = '#22d3ee';
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = 1.6;
         ctx.beginPath();
-        ctx.arc(tx, ty, 6.5 + Math.sin(this.clock * 8) * 1.2, 0, Math.PI * 2);
+        ctx.arc(tx, ty, 7 + Math.sin(this.clock * 8) * 1.4, 0, Math.PI * 2);
         ctx.stroke();
       }
 
-      // Tooth Base Enamel (Diamond white when clean, amber when plaque)
       ctx.beginPath();
       ctx.arc(tx, ty, 4.5, 0, Math.PI * 2);
 
       if (isDone) {
-        // Gleaming diamond white
         ctx.fillStyle = '#ffffff';
         ctx.shadowColor = '#22d3ee';
         ctx.shadowBlur = 8;
       } else {
-        // Plaque amber gradient depending on cleanPct
         const dirtyRatio = 1 - (tooth.cleanPct / 100);
         ctx.fillStyle = dirtyRatio > 0.5 ? '#d97706' : '#fef08a';
         ctx.shadowBlur = 0;
@@ -795,7 +884,6 @@ class HanaBattle3DService {
       ctx.shadowBlur = 0;
     });
 
-    // Active Quadrant Text
     const qUpper = this.activeQuadrant.toUpperCase();
     ctx.fillStyle = '#22d3ee';
     ctx.font = 'bold 8px sans-serif';
@@ -809,57 +897,164 @@ class HanaBattle3DService {
    */
   render3DBossAndArmor(ctx, w, h, dt) {
     const bx = w * 0.5;
-    const by = h * 0.35 + Math.sin(this.clock * 2.5) * 8;
-    const wobble = Math.sin(this.clock * 4) * 0.06;
+    const by = h * 0.40 + Math.sin(this.clock * 2.5) * 8;
+    const wobble = Math.sin(this.clock * 3.5) * 0.05;
+    const breatheScaleY = 1 + Math.sin(this.clock * 3.5) * 0.04;
+    const breatheScaleX = 1 - Math.sin(this.clock * 3.5) * 0.02;
 
     ctx.save();
     ctx.translate(bx, by);
     ctx.rotate(wobble);
+    ctx.scale(breatheScaleX, breatheScaleY);
 
-    // Boss Core Body (Candy Monster)
-    const baseRadius = Math.min(54, w * 0.12);
+    const baseRadius = Math.min(58, w * 0.13);
 
-    // Boss Aura Glow
-    const auraGrad = ctx.createRadialGradient(0, 0, 10, 0, 0, baseRadius * 1.6);
-    auraGrad.addColorStop(0, this.isVictory ? 'rgba(74, 222, 128, 0.6)' : 'rgba(245, 158, 11, 0.4)');
+    // Aura Glow
+    const auraGrad = ctx.createRadialGradient(0, 0, 10, 0, 0, baseRadius * 1.7);
+    auraGrad.addColorStop(0, this.isVictory ? 'rgba(74, 222, 128, 0.7)' : 'rgba(245, 158, 11, 0.4)');
     auraGrad.addColorStop(1, 'transparent');
     ctx.fillStyle = auraGrad;
     ctx.beginPath();
-    ctx.arc(0, 0, baseRadius * 1.6, 0, Math.PI * 2);
+    ctx.arc(0, 0, baseRadius * 1.7, 0, Math.PI * 2);
     ctx.fill();
 
-    // Body Mesh
-    ctx.fillStyle = this.isVictory ? '#4ade80' : this.bossData.bodyColor;
+    // 1. Specific Boss Geometry & Accessories
+    const bId = this.bossData.id;
+
+    if (bId === 'plaque_kraken') {
+      // Plaque Kraken wavy tentacles
+      ctx.fillStyle = this.bossData.bodyColor;
+      for (let t = 0; t < 5; t++) {
+        const tx = (t - 2) * (baseRadius * 0.4);
+        const wave = Math.sin(this.clock * 4 + t) * 8;
+        ctx.beginPath();
+        ctx.arc(tx + wave, baseRadius * 0.75, baseRadius * 0.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (bId === 'tartar_titan') {
+      // Tartar Titan Crystal Horns
+      ctx.fillStyle = '#a855f7';
+      ctx.beginPath();
+      ctx.moveTo(-baseRadius * 0.6, -baseRadius * 0.6);
+      ctx.lineTo(-baseRadius * 0.9, -baseRadius * 1.3);
+      ctx.lineTo(-baseRadius * 0.3, -baseRadius * 0.8);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(baseRadius * 0.6, -baseRadius * 0.6);
+      ctx.lineTo(baseRadius * 0.9, -baseRadius * 1.3);
+      ctx.lineTo(baseRadius * 0.3, -baseRadius * 0.8);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      // Sugar Bandit Golden Candy Crown
+      ctx.fillStyle = '#fbbf24';
+      ctx.beginPath();
+      ctx.moveTo(-baseRadius * 0.45, -baseRadius * 0.85);
+      ctx.lineTo(-baseRadius * 0.3, -baseRadius * 1.35);
+      ctx.lineTo(0, -baseRadius * 1.05);
+      ctx.lineTo(baseRadius * 0.3, -baseRadius * 1.35);
+      ctx.lineTo(baseRadius * 0.45, -baseRadius * 0.85);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#d97706';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    // Boss Core Body Mesh
+    ctx.fillStyle = this.isVictory ? '#fef08a' : this.bossData.bodyColor;
     ctx.beginPath();
-    ctx.ellipse(0, 0, baseRadius, baseRadius * 0.9, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 0, baseRadius, baseRadius * 0.92, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = this.isVictory ? '#22c55e' : '#b45309';
-    ctx.lineWidth = 3;
+    ctx.strokeStyle = this.isVictory ? '#fbbf24' : '#b45309';
+    ctx.lineWidth = 3.5;
     ctx.stroke();
 
-    // Monster Eyes
+    // Expressive Cartoon Eyes
     const eyeOffsetX = baseRadius * 0.35;
-    const eyeOffsetY = -baseRadius * 0.15;
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.ellipse(-eyeOffsetX, eyeOffsetY, 9, 12, -0.1, 0, Math.PI * 2);
-    ctx.ellipse(eyeOffsetX, eyeOffsetY, 9, 12, 0.1, 0, Math.PI * 2);
-    ctx.fill();
+    const eyeOffsetY = -baseRadius * 0.12;
+    const isBlinking = (Math.floor(this.clock * 0.4) % 3 === 0) && ((this.clock * 3) % 1 < 0.25);
 
-    // Pupils (Focus on player)
-    ctx.fillStyle = this.isVictory ? '#166534' : '#1c1917';
-    ctx.beginPath();
-    ctx.arc(-eyeOffsetX + 1, eyeOffsetY + 1, 4.5, 0, Math.PI * 2);
-    ctx.arc(eyeOffsetX - 1, eyeOffsetY + 1, 4.5, 0, Math.PI * 2);
-    ctx.fill();
+    if (this.isVictory) {
+      // Happy curved upside-down eyes (^ ^)
+      ctx.strokeStyle = '#d97706';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.arc(-eyeOffsetX, eyeOffsetY, 10, Math.PI * 1.1, Math.PI * 1.9);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(eyeOffsetX, eyeOffsetY, 10, Math.PI * 1.1, Math.PI * 1.9);
+      ctx.stroke();
 
-    // Crown / Monster Antenna
-    ctx.fillStyle = '#fbbf24';
-    ctx.beginPath();
-    ctx.moveTo(-baseRadius * 0.4, -baseRadius * 0.85);
-    ctx.lineTo(0, -baseRadius * 1.35);
-    ctx.lineTo(baseRadius * 0.4, -baseRadius * 0.85);
-    ctx.fill();
+      // Blushing cute cheeks
+      ctx.fillStyle = '#f472b6';
+      ctx.beginPath();
+      ctx.arc(-eyeOffsetX - 8, eyeOffsetY + 16, 7, 0, Math.PI * 2);
+      ctx.arc(eyeOffsetX + 8, eyeOffsetY + 16, 7, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Sweet beaming smile
+      ctx.strokeStyle = '#b45309';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.arc(0, 8, 14, 0.2, Math.PI - 0.2);
+      ctx.stroke();
+
+      // Sparkling Halo
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.ellipse(0, -baseRadius * 1.15, baseRadius * 0.45, 8, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (isBlinking) {
+      // Closed cartoon blink lines
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(-eyeOffsetX - 8, eyeOffsetY);
+      ctx.lineTo(-eyeOffsetX + 8, eyeOffsetY);
+      ctx.moveTo(eyeOffsetX - 8, eyeOffsetY);
+      ctx.lineTo(eyeOffsetX + 8, eyeOffsetY);
+      ctx.stroke();
+    } else {
+      // Big expressive cartoon whites
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.ellipse(-eyeOffsetX, eyeOffsetY, 11, 14, -0.08, 0, Math.PI * 2);
+      ctx.ellipse(eyeOffsetX, eyeOffsetY, 11, 14, 0.08, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Big pupils tracking player
+      const lookX = Math.sin(this.clock * 2) * 2;
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(-eyeOffsetX + lookX, eyeOffsetY + 1, 5.5, 0, Math.PI * 2);
+      ctx.arc(eyeOffsetX + lookX, eyeOffsetY + 1, 5.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Double specular sparkle highlights
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(-eyeOffsetX + lookX - 2, eyeOffsetY - 1, 2.2, 0, Math.PI * 2);
+      ctx.arc(-eyeOffsetX + lookX + 1.5, eyeOffsetY + 2.5, 1.2, 0, Math.PI * 2);
+      ctx.arc(eyeOffsetX + lookX - 2, eyeOffsetY - 1, 2.2, 0, Math.PI * 2);
+      ctx.arc(eyeOffsetX + lookX + 1.5, eyeOffsetY + 2.5, 1.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Grumpy cartoon teeth mouth
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.rect(-14, 10, 28, 8);
+      ctx.fill();
+      ctx.stroke();
+    }
 
     // 4 Breakable 3D Candy Armor Plates (q1, q2, q3, q4)
     Object.values(this.armorPlates).forEach(plate => {
@@ -867,8 +1062,8 @@ class HanaBattle3DService {
 
       const px = plate.offset.x * (baseRadius / 45);
       const py = plate.offset.y * (baseRadius / 45);
-      const pw = baseRadius * 0.55;
-      const ph = baseRadius * 0.45;
+      const pw = baseRadius * 0.58;
+      const ph = baseRadius * 0.46;
 
       ctx.save();
       ctx.translate(px, py);
@@ -879,19 +1074,19 @@ class HanaBattle3DService {
       ctx.lineWidth = 2.5;
 
       ctx.beginPath();
-      ctx.roundRect(-pw * 0.5, -ph * 0.5, pw, ph, 8);
+      ctx.roundRect(-pw * 0.5, -ph * 0.5, pw, ph, 9);
       ctx.fill();
       ctx.stroke();
 
       // Candy gloss highlight
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
       ctx.beginPath();
-      ctx.roundRect(-pw * 0.5 + 2, -ph * 0.5 + 2, pw - 4, ph * 0.3, 4);
+      ctx.roundRect(-pw * 0.5 + 2, -ph * 0.5 + 2, pw - 4, ph * 0.32, 5);
       ctx.fill();
 
       // Plate Zone Label
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 8px sans-serif';
+      ctx.font = 'bold 9px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(plate.id.toUpperCase(), 0, 0);
@@ -899,12 +1094,12 @@ class HanaBattle3DService {
       ctx.restore();
     });
 
-    // Boss Shield Barrier Sphere (if shieldActive)
+    // Boss Shield Barrier Sphere
     if (this.isShieldActive) {
-      ctx.strokeStyle = 'rgba(251, 191, 36, 0.8)';
-      ctx.lineWidth = 3.5;
+      ctx.strokeStyle = 'rgba(251, 191, 36, 0.85)';
+      ctx.lineWidth = 4;
       ctx.beginPath();
-      ctx.arc(0, 0, baseRadius * 1.35 + Math.sin(this.clock * 6) * 3, 0, Math.PI * 2);
+      ctx.arc(0, 0, baseRadius * 1.38 + Math.sin(this.clock * 6) * 3, 0, Math.PI * 2);
       ctx.stroke();
     }
 
@@ -918,13 +1113,13 @@ class HanaBattle3DService {
     if (this.isVictory) return;
     this.caramelBombs.push({
       x: this.width * 0.5 + (Math.random() - 0.5) * 40,
-      y: this.height * 0.35,
-      z: 80, // far away
-      vz: -32, // traveling toward player
+      y: this.height * 0.38,
+      z: 80,
+      vz: -32,
       vx: (Math.random() - 0.5) * 8,
       vy: 6,
       radius: 16,
-      color: this.bossData.bombColor || '#f39c12',
+      color: this.bossData.bombColor || '#f59e0b',
       deflected: false
     });
   }
@@ -939,16 +1134,15 @@ class HanaBattle3DService {
       b.x += b.vx * dt;
       b.y += b.vy * dt;
 
-      // 3D scale based on depth
       const depthScale = Math.max(0.4, (120 - b.z) / 70);
       const drawRadius = b.radius * depthScale;
 
       ctx.save();
       ctx.fillStyle = b.color;
       ctx.strokeStyle = '#b45309';
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2.5;
       ctx.shadowColor = b.color;
-      ctx.shadowBlur = 12;
+      ctx.shadowBlur = 14;
 
       ctx.beginPath();
       ctx.arc(b.x, b.y, drawRadius, 0, Math.PI * 2);
@@ -958,9 +1152,9 @@ class HanaBattle3DService {
 
       // Deflected bomb impacts the boss!
       if (b.deflected && b.z >= 75) {
-        for (let s = 0; s < 14; s++) {
+        for (let s = 0; s < 16; s++) {
           const angle = Math.random() * Math.PI * 2;
-          const speed = 2.5 + Math.random() * 4.5;
+          const speed = 2.5 + Math.random() * 5.0;
           this.candyShards.push({
             x: b.x,
             y: b.y,
@@ -970,7 +1164,7 @@ class HanaBattle3DService {
             vz: -2,
             rotX: 0, rotY: 0, rotZ: Math.random() * Math.PI,
             vRotX: 0, vRotY: 0, vRotZ: 0.2,
-            size: 6 + Math.random() * 6,
+            size: 6 + Math.random() * 7,
             color: b.color,
             alpha: 1.0,
             gravity: 0.15
@@ -980,7 +1174,7 @@ class HanaBattle3DService {
           x: b.x,
           y: b.y,
           radius: 20,
-          maxRadius: 160,
+          maxRadius: 180,
           color: '#34d399',
           alpha: 1.0
         });
@@ -989,10 +1183,9 @@ class HanaBattle3DService {
         continue;
       }
 
-      // Near player collision (splash at camera if not deflected)
+      // Near player collision
       if (b.z <= 0) {
         if (!b.deflected) {
-          // Splashes harmlessly into bubbles
           for (let s = 0; s < 8; s++) {
             this.foamParticles.push({
               x: b.x,
@@ -1001,7 +1194,7 @@ class HanaBattle3DService {
               vx: (Math.random() - 0.5) * 4,
               vy: (Math.random() - 0.5) * 4,
               vz: 1,
-              radius: 5 + Math.random() * 4,
+              radius: 6 + Math.random() * 4,
               alpha: 0.8,
               isLaser: false,
               color: '#fed7aa',
@@ -1024,7 +1217,7 @@ class HanaBattle3DService {
       p.x += p.vx;
       p.y += p.vy;
       p.z += p.vz;
-      p.life -= dt * 1.4;
+      p.life -= dt * 1.3;
       p.alpha = Math.max(0, p.life);
 
       if (p.life <= 0) {
@@ -1038,23 +1231,22 @@ class HanaBattle3DService {
 
       if (p.isLaser) {
         ctx.shadowColor = p.glowColor;
-        ctx.shadowBlur = 10;
+        ctx.shadowBlur = 12;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
         ctx.fill();
 
-        // Laser core
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.radius * 0.45, 0, Math.PI * 2);
         ctx.fill();
       } else {
-        // Minty foam bubble with specular highlight
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+        // Shiny rainbow bubble highlight
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
         ctx.beginPath();
         ctx.arc(p.x - p.radius * 0.3, p.y - p.radius * 0.3, p.radius * 0.35, 0, Math.PI * 2);
         ctx.fill();
@@ -1163,9 +1355,9 @@ class HanaBattle3DService {
 
     ctx.save();
     ctx.strokeStyle = 'rgba(52, 211, 153, 0.85)';
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 3.5;
     ctx.shadowColor = '#34d399';
-    ctx.shadowBlur = 18;
+    ctx.shadowBlur = 20;
 
     // Arc dome
     ctx.beginPath();
@@ -1173,8 +1365,8 @@ class HanaBattle3DService {
     ctx.stroke();
 
     // Shimmering geodesic lines
-    ctx.lineWidth = 1.2;
-    ctx.strokeStyle = 'rgba(167, 243, 208, 0.6)';
+    ctx.lineWidth = 1.4;
+    ctx.strokeStyle = 'rgba(167, 243, 208, 0.65)';
     for (let a = Math.PI * 1.15; a <= Math.PI * 1.85; a += 0.15) {
       const x1 = cx + Math.cos(a) * r;
       const y1 = cy + Math.sin(a) * r;
