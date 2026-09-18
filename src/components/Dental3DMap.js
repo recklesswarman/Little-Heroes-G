@@ -8,51 +8,51 @@
 export const DENTAL_ZONES = [
   {
     id: 'q1',
-    name: 'Top Left Molars',
-    shortName: 'Top Left',
+    name: 'Top Right Molars',
+    shortName: 'Top Right',
     color: '#06b6d4',
     bgLight: 'rgba(6, 182, 212, 0.15)',
     border: 'border-cyan-400',
     text: 'text-cyan-300',
     icon: '🦷',
-    arrowAngle: -45,
-    instruction: 'Brush in small circles on upper left teeth!'
+    arrowAngle: 45,
+    instruction: 'Brush in small circles on upper right teeth!'
   },
   {
     id: 'q2',
-    name: 'Top Right Molars',
-    shortName: 'Top Right',
+    name: 'Top Left Molars',
+    shortName: 'Top Left',
     color: '#10b981',
     bgLight: 'rgba(16, 185, 129, 0.15)',
     border: 'border-emerald-400',
     text: 'text-emerald-300',
     icon: '🦷',
-    arrowAngle: 45,
-    instruction: 'Clean the biting surfaces on top right!'
+    arrowAngle: -45,
+    instruction: 'Switch over to top left teeth! Round and round!'
   },
   {
     id: 'q3',
-    name: 'Bottom Left Molars',
-    shortName: 'Bottom Left',
+    name: 'Bottom Right Molars',
+    shortName: 'Bottom Right',
     color: '#f59e0b',
     bgLight: 'rgba(245, 158, 11, 0.15)',
     border: 'border-amber-400',
     text: 'text-amber-300',
     icon: '🦷',
-    arrowAngle: -135,
-    instruction: 'Sweep along the lower left gumline!'
+    arrowAngle: 135,
+    instruction: 'Down to bottom right teeth! Gentle circles on chew surfaces!'
   },
   {
     id: 'q4',
-    name: 'Bottom Right Molars',
-    shortName: 'Bottom Right',
+    name: 'Bottom Left Molars',
+    shortName: 'Bottom Left',
     color: '#8b5cf6',
     bgLight: 'rgba(139, 92, 246, 0.15)',
     border: 'border-purple-400',
     text: 'text-purple-300',
     icon: '🦷',
-    arrowAngle: 135,
-    instruction: 'Scrub all sides of the bottom right teeth!'
+    arrowAngle: -135,
+    instruction: 'Bottom left side! Clean away cavity bugs!'
   },
   {
     id: 'q5',
@@ -73,6 +73,16 @@ export function renderDental3DMap({
   activeQuadrant = 'q1',
   containerId = 'dental-3d-map-container'
 } = {}) {
+  const arrowPositions = {
+    q1: { x: 265, y: 65 },
+    q2: { x: 135, y: 65 },
+    q3: { x: 265, y: 230 },
+    q4: { x: 135, y: 230 },
+    q5: { x: 200, y: 150 }
+  };
+  const initArrow = arrowPositions[activeQuadrant] || arrowPositions.q1;
+  const activeZoneObj = DENTAL_ZONES.find(z => z.id === activeQuadrant) || DENTAL_ZONES[0];
+
   return `
     <div id="${containerId}" class="relative w-full max-w-[420px] mx-auto select-none">
       <!-- Glow Underlay -->
@@ -88,7 +98,7 @@ export function renderDental3DMap({
             <span class="text-xs sm:text-sm font-black text-slate-200 uppercase tracking-wide">Dental Arch Map</span>
           </div>
           <div id="dental-active-zone-badge" class="px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-cyan-500/20 text-cyan-300 border border-cyan-400/40">
-            Active: Top Left
+            Active: ${activeZoneObj.shortName}
           </div>
         </div>
 
@@ -107,22 +117,22 @@ export function renderDental3DMap({
           <svg id="dental-arch-svg" class="w-full h-full p-2" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
             <defs>
               <!-- Plaque Biofilm Gradients -->
-              <radialGradient id="plaqueGradQ1" cx="35%" cy="30%" r="65%">
+              <radialGradient id="plaqueGradQ2" cx="35%" cy="30%" r="65%">
                 <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.9" />
                 <stop offset="60%" stop-color="#b45309" stop-opacity="0.75" />
                 <stop offset="100%" stop-color="#78350f" stop-opacity="0.85" />
               </radialGradient>
-              <radialGradient id="plaqueGradQ2" cx="65%" cy="30%" r="65%">
+              <radialGradient id="plaqueGradQ1" cx="65%" cy="30%" r="65%">
                 <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.9" />
                 <stop offset="60%" stop-color="#b45309" stop-opacity="0.75" />
                 <stop offset="100%" stop-color="#78350f" stop-opacity="0.85" />
               </radialGradient>
-              <radialGradient id="plaqueGradQ3" cx="35%" cy="70%" r="65%">
+              <radialGradient id="plaqueGradQ4" cx="35%" cy="70%" r="65%">
                 <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.9" />
                 <stop offset="60%" stop-color="#b45309" stop-opacity="0.75" />
                 <stop offset="100%" stop-color="#78350f" stop-opacity="0.85" />
               </radialGradient>
-              <radialGradient id="plaqueGradQ4" cx="65%" cy="70%" r="65%">
+              <radialGradient id="plaqueGradQ3" cx="65%" cy="70%" r="65%">
                 <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.9" />
                 <stop offset="60%" stop-color="#b45309" stop-opacity="0.75" />
                 <stop offset="100%" stop-color="#78350f" stop-opacity="0.85" />
@@ -161,12 +171,12 @@ export function renderDental3DMap({
                   fill="url(#gumGradient)" stroke="#be123c" stroke-width="2" />
 
             <!-- ============================================== -->
-            <!-- QUADRANT 1: UPPER LEFT TEETH (User's View Left) -->
+            <!-- QUADRANT 2: UPPER LEFT TEETH (User's View Left) -->
             <!-- ============================================== -->
-            <g id="dental-quadrant-q1" class="cursor-pointer transition-all duration-300">
+            <g id="dental-quadrant-q2" class="cursor-pointer transition-all duration-300">
               <!-- Active Highlight Halo -->
-              <path id="q1-halo" d="M 75 80 C 85 48, 175 42, 195 52 L 195 95 C 165 85, 95 90, 75 80 Z" 
-                    fill="none" stroke="#06b6d4" stroke-width="6" opacity="0.6" filter="url(#activeZoneGlow)" class="animate-pulse" />
+              <path id="q2-halo" d="M 75 80 C 85 48, 175 42, 195 52 L 195 95 C 165 85, 95 90, 75 80 Z" 
+                    fill="none" stroke="#10b981" stroke-width="6" opacity="0" filter="url(#activeZoneGlow)" />
               
               <!-- Upper Left Teeth Arch -->
               <!-- Molar 1 -->
@@ -180,18 +190,18 @@ export function renderDental3DMap({
               <!-- Canine/Incisor Left -->
               <rect x="172" y="45" width="20" height="26" rx="5" fill="url(#cleanEnamelGrad)" stroke="#94a3b8" stroke-width="1.5" />
 
-              <!-- Plaque Biofilm Layer Q1 (Dissolves as progress reaches 100%) -->
-              <path id="plaque-layer-q1" d="M 76 70 C 95 48, 170 42, 194 44 C 196 68, 170 70, 76 96 Z" 
-                    fill="url(#plaqueGradQ1)" opacity="0.85" class="transition-opacity duration-300" />
+              <!-- Plaque Biofilm Layer Q2 -->
+              <path id="plaque-layer-q2" d="M 76 70 C 95 48, 170 42, 194 44 C 196 68, 170 70, 76 96 Z" 
+                    fill="url(#plaqueGradQ2)" opacity="0.85" class="transition-opacity duration-300" />
             </g>
 
             <!-- ============================================== -->
-            <!-- QUADRANT 2: UPPER RIGHT TEETH (User's View Right) -->
+            <!-- QUADRANT 1: UPPER RIGHT TEETH (User's View Right) -->
             <!-- ============================================== -->
-            <g id="dental-quadrant-q2" class="cursor-pointer transition-all duration-300">
+            <g id="dental-quadrant-q1" class="cursor-pointer transition-all duration-300">
               <!-- Active Highlight Halo -->
-              <path id="q2-halo" d="M 205 52 C 225 42, 315 48, 325 80 L 325 80 C 305 90, 235 85, 205 95 Z" 
-                    fill="none" stroke="#10b981" stroke-width="6" opacity="0" filter="url(#activeZoneGlow)" />
+              <path id="q1-halo" d="M 205 52 C 225 42, 315 48, 325 80 L 325 80 C 305 90, 235 85, 205 95 Z" 
+                    fill="none" stroke="#06b6d4" stroke-width="6" opacity="0.6" filter="url(#activeZoneGlow)" class="animate-pulse" />
 
               <!-- Upper Right Teeth Arch -->
               <!-- Canine/Incisor Right -->
@@ -205,18 +215,18 @@ export function renderDental3DMap({
               <!-- Molar 1 -->
               <rect x="300" y="72" width="22" height="26" rx="6" fill="url(#cleanEnamelGrad)" stroke="#94a3b8" stroke-width="1.5" />
 
-              <!-- Plaque Biofilm Layer Q2 -->
-              <path id="plaque-layer-q2" d="M 206 44 C 230 42, 305 48, 324 70 C 324 96, 230 70, 206 68 Z" 
-                    fill="url(#plaqueGradQ2)" opacity="0.85" class="transition-opacity duration-300" />
+              <!-- Plaque Biofilm Layer Q1 (Dissolves as progress reaches 100%) -->
+              <path id="plaque-layer-q1" d="M 206 44 C 230 42, 305 48, 324 70 C 324 96, 230 70, 206 68 Z" 
+                    fill="url(#plaqueGradQ1)" opacity="0.85" class="transition-opacity duration-300" />
             </g>
 
             <!-- ============================================== -->
-            <!-- QUADRANT 3: LOWER LEFT TEETH (User's View Left) -->
+            <!-- QUADRANT 4: LOWER LEFT TEETH (User's View Left) -->
             <!-- ============================================== -->
-            <g id="dental-quadrant-q3" class="cursor-pointer transition-all duration-300">
+            <g id="dental-quadrant-q4" class="cursor-pointer transition-all duration-300">
               <!-- Active Highlight Halo -->
-              <path id="q3-halo" d="M 75 220 C 85 252, 175 258, 195 248 L 195 205 C 165 215, 95 210, 75 220 Z" 
-                    fill="none" stroke="#f59e0b" stroke-width="6" opacity="0" filter="url(#activeZoneGlow)" />
+              <path id="q4-halo" d="M 75 220 C 85 252, 175 258, 195 248 L 195 205 C 165 215, 95 210, 75 220 Z" 
+                    fill="none" stroke="#8b5cf6" stroke-width="6" opacity="0" filter="url(#activeZoneGlow)" />
 
               <!-- Lower Left Teeth Arch -->
               <!-- Molar 1 -->
@@ -230,18 +240,18 @@ export function renderDental3DMap({
               <!-- Canine/Incisor Left -->
               <rect x="172" y="229" width="20" height="26" rx="5" fill="url(#cleanEnamelGrad)" stroke="#94a3b8" stroke-width="1.5" />
 
-              <!-- Plaque Biofilm Layer Q3 -->
-              <path id="plaque-layer-q3" d="M 76 230 C 95 252, 170 258, 194 256 C 196 232, 170 230, 76 204 Z" 
-                    fill="url(#plaqueGradQ3)" opacity="0.85" class="transition-opacity duration-300" />
+              <!-- Plaque Biofilm Layer Q4 -->
+              <path id="plaque-layer-q4" d="M 76 230 C 95 252, 170 258, 194 256 C 196 232, 170 230, 76 204 Z" 
+                    fill="url(#plaqueGradQ4)" opacity="0.85" class="transition-opacity duration-300" />
             </g>
 
             <!-- ============================================== -->
-            <!-- QUADRANT 4: LOWER RIGHT TEETH (User's View Right) -->
+            <!-- QUADRANT 3: LOWER RIGHT TEETH (User's View Right) -->
             <!-- ============================================== -->
-            <g id="dental-quadrant-q4" class="cursor-pointer transition-all duration-300">
+            <g id="dental-quadrant-q3" class="cursor-pointer transition-all duration-300">
               <!-- Active Highlight Halo -->
-              <path id="q4-halo" d="M 205 248 C 225 258, 315 252, 325 220 L 325 220 C 305 210, 235 215, 205 205 Z" 
-                    fill="none" stroke="#8b5cf6" stroke-width="6" opacity="0" filter="url(#activeZoneGlow)" />
+              <path id="q3-halo" d="M 205 248 C 225 258, 315 252, 325 220 L 325 220 C 305 210, 235 215, 205 205 Z" 
+                    fill="none" stroke="#f59e0b" stroke-width="6" opacity="0" filter="url(#activeZoneGlow)" />
 
               <!-- Lower Right Teeth Arch -->
               <!-- Canine/Incisor Right -->
@@ -255,9 +265,9 @@ export function renderDental3DMap({
               <!-- Molar 1 -->
               <rect x="300" y="202" width="22" height="26" rx="6" fill="url(#cleanEnamelGrad)" stroke="#94a3b8" stroke-width="1.5" />
 
-              <!-- Plaque Biofilm Layer Q4 -->
-              <path id="plaque-layer-q4" d="M 206 256 C 230 258, 305 252, 324 230 C 324 204, 230 230, 206 232 Z" 
-                    fill="url(#plaqueGradQ4)" opacity="0.85" class="transition-opacity duration-300" />
+              <!-- Plaque Biofilm Layer Q3 -->
+              <path id="plaque-layer-q3" d="M 206 256 C 230 258, 305 252, 324 230 C 324 204, 230 230, 206 232 Z" 
+                    fill="url(#plaqueGradQ3)" opacity="0.85" class="transition-opacity duration-300" />
             </g>
 
             <!-- ============================================== -->
@@ -281,7 +291,7 @@ export function renderDental3DMap({
             </g>
 
             <!-- Animated Brushing Guidance Arrow Pointer -->
-            <g id="dental-guidance-arrow" class="transition-transform duration-500 origin-center" transform="translate(135, 75)">
+            <g id="dental-guidance-arrow" class="transition-transform duration-500 origin-center" transform="translate(${initArrow.x}, ${initArrow.y})">
               <circle cx="0" cy="0" r="14" fill="#06b6d4" opacity="0.85" class="animate-ping" />
               <circle cx="0" cy="0" r="10" fill="#0891b2" stroke="#ffffff" stroke-width="2" />
               <path d="M -4 -2 L 4 -2 L 0 5 Z" fill="#ffffff" />
@@ -359,13 +369,13 @@ class DentalFoamEngine {
     if (!this.canvas) return;
     this.hasLaserBuff = hasLaser;
 
-    // Center coordinates according to quadrant
-    let cx = this.canvas.width * 0.35;
+    // Center coordinates according to quadrant (mirrored bathroom perspective)
+    let cx = this.canvas.width * 0.65;
     let cy = this.canvas.height * 0.35;
 
-    if (quadrantId === 'q2') { cx = this.canvas.width * 0.65; cy = this.canvas.height * 0.35; }
-    else if (quadrantId === 'q3') { cx = this.canvas.width * 0.35; cy = this.canvas.height * 0.75; }
-    else if (quadrantId === 'q4') { cx = this.canvas.width * 0.65; cy = this.canvas.height * 0.75; }
+    if (quadrantId === 'q2') { cx = this.canvas.width * 0.35; cy = this.canvas.height * 0.35; }
+    else if (quadrantId === 'q3') { cx = this.canvas.width * 0.65; cy = this.canvas.height * 0.75; }
+    else if (quadrantId === 'q4') { cx = this.canvas.width * 0.35; cy = this.canvas.height * 0.75; }
     else if (quadrantId === 'q5') { cx = this.canvas.width * 0.5; cy = this.canvas.height * 0.55; }
 
     for (let i = 0; i < count; i++) {
@@ -502,14 +512,14 @@ export function updateDental3DMapProgress(quadrantProgress, activeQuadrant, isSc
     coachEl.textContent = currentZone.instruction;
   }
 
-  // 3. Guidance Arrow Movement
+  // 3. Guidance Arrow Movement (mirrored bathroom perspective)
   const arrowEl = document.getElementById('dental-guidance-arrow');
   if (arrowEl) {
-    let tx = 135, ty = 65;
-    if (activeQuadrant === 'q2') { tx = 265; ty = 65; }
-    else if (activeQuadrant === 'q3') { tx = 135; ty = 230; }
-    else if (activeQuadrant === 'q4') { tx = 265; ty = 230; }
-    else if (activeQuadrant === 'q5') { tx = 200; ty = 150; }
+    let tx = 265, ty = 65; // q1 Top Right
+    if (activeQuadrant === 'q2') { tx = 135; ty = 65; } // q2 Top Left
+    else if (activeQuadrant === 'q3') { tx = 265; ty = 230; } // q3 Bottom Right
+    else if (activeQuadrant === 'q4') { tx = 135; ty = 230; } // q4 Bottom Left
+    else if (activeQuadrant === 'q5') { tx = 200; ty = 150; } // q5 Tongue
     arrowEl.setAttribute('transform', `translate(${tx}, ${ty})`);
   }
 

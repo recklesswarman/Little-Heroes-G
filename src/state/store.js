@@ -98,6 +98,7 @@ const defaultState = {
     enamelCleanPercent: 0,
     isVictoryModalOpen: false,
     victoryReward: null,
+    hasAwardedVictory: false,
     bossesDefeated: [],
     showPipCam: false
   },
@@ -1705,6 +1706,12 @@ class Store {
 
   // TOOTHBRUSH AR BATTLE COMPLETION 2.0
   completeToothbrushBattle(bossId = 'sugar_bandit', durationSec = 120, avgCadence = 85) {
+    const col = this.getBossColosseumState();
+    // Guard against duplicate reward minting
+    if (col.hasAwardedVictory && col.victoryReward) {
+      return col.victoryReward;
+    }
+
     const parentCustomBosses = this.state.parentCustomBosses || [];
     const customMatch = parentCustomBosses.find(b => b.id === bossId);
     const boss = customMatch || getHygieneBoss(bossId) || HYGIENE_BOSSES[0];
@@ -1877,10 +1884,46 @@ class Store {
     }
 
     // 7. Unlock 3D Trophy Relic in HQ
+    // 7. Unlock 3D Trophy Relic in HQ
     const trophyRelic = boss.trophyRelicId || 'trophy_sugar_bandit';
     if (!this.state.recentlyUnlocked) this.state.recentlyUnlocked = [];
     if (!this.state.recentlyUnlocked.includes(trophyRelic)) {
       this.state.recentlyUnlocked.push(trophyRelic);
+    }
+    if (this.state.heroHQ && this.state.heroHQ.unlockedFurnitureIds) {
+      if (!this.state.heroHQ.unlockedFurnitureIds.includes(trophyRelic)) {
+        this.state.heroHQ.unlockedFurnitureIds.push(trophyRelic);
+      }
+    }
+
+    // Mark boss defeated in colosseum state and hygiene battle state
+    if (!col.bossesDefeated) col.bossesDefeated = [];
+    if (!col.bossesDefeated.includes(boss.id)) {
+      col.bossesDefeated.push(boss.id);
+    }
+    if (!this.state.hygieneBattle) this.state.hygieneBattle = {};
+    if (!this.state.hygieneBattle.colosseumBossesDefeated) this.state.hygieneBattle.colosseumBossesDefeated = [];
+    if (!this.state.hygieneBattle.colosseumBossesDefeated.includes(boss.id)) {
+      this.state.hygieneBattle.colosseumBossesDefeated.push(boss.id);
+    }
+
+    // Consolidated single victory celebration modal state (eliminates duplicate rewards and modal conflict)
+    col.isVictoryModalOpen = true;
+    col.hasAwardedVictory = true;
+    col.victoryReward = {
+      bossId: boss.id,
+      bossName: boss.name,
+      cleansedTitle: boss.cleansedTitle || 'Minty Friend 🍬',
+      trophyId: trophyRelic,
+      coins: finalCoinsEarned,
+      xp: finalXpEarned,
+      sparks: sparksEarned
+    };
+
+    // Increment hero streak
+    if (currentHero) {
+      currentHero.streak = (currentHero.streak || 0) + 1;
+      this.state.brushStreak = (this.state.brushStreak || 0) + 1;
     }
 
     this.applyChoreTurboBoost(15, 'Toothbrush AR Battle');
@@ -1891,36 +1934,25 @@ class Store {
 
     // 8. Audio & Confetti Celebration
     Sound.fanfare();
-    confetti({
-      particleCount: 160,
-      spread: 110,
-      origin: { y: 0.5 },
-      colors: ['#54e98a', '#ffb961', '#38bdf8', '#f1c40f', '#ec4899']
-    });
+    try {
+      if (typeof confetti === 'function') {
+        confetti({
+          particleCount: 160,
+          spread: 110,
+          origin: { y: 0.5 },
+          colors: ['#54e98a', '#ffb961', '#38bdf8', '#f1c40f', '#ec4899']
+        });
+      }
+    } catch (e) {
+      // Non-fatal confetti error in headless or restricted canvas environments
+    }
 
-    const badgeMessage = newlyAwardedBadges.length > 0
-      ? `\n🎖️ UNLOCKED BADGES: ${newlyAwardedBadges.map(b => DENTAL_BADGES.find(db => db.id === b)?.name || b).join(', ')}!`
-      : '';
-
-    this.showReward(
-      `${boss.name.toUpperCase()} DEFEATED! 🏆`,
-      `🪙 +${finalCoinsEarned} Habit Tokens credited!\n⭐ +15 Points submitted for Parent Sign-off!\n⚡ +${sparksEarned} Evolution Sparks & 100% Hygiene for pet!\n🦷 All 4 Oral Quadrants Gleaming White!${badgeMessage}`,
-      finalCoinsEarned,
-      finalXpEarned,
-      null,
-      'military_tech'
-    );
+    speakCompanion(`ROAR! You cleansed ${boss.name}! Your smile is gleaming like diamond armor!`);
 
     this.saveState(true);
     this.notify();
 
-    return {
-      coins: finalCoinsEarned,
-      xp: finalXpEarned,
-      sparks: sparksEarned,
-      newlyAwardedBadges,
-      boss
-    };
+    return col.victoryReward;
   }
 
   getDentalBadges() {
@@ -2040,18 +2072,25 @@ class Store {
 
   applyChoreTurboBoost(minutes = 15, sourceTaskTitle = 'Chore Completion') {
     const active = this.state.activeExpeditions || [];
-    if (active.length === 0) return { boostedCount: 0 };
-
-    let completedAny = false;
+    const sanct = this.getPetSanctuaryState ? this.getPetSanctuaryState() : this.state.petSanctuary;
     const now = Date.now();
+    let completedAny = false;
+    let boostedCount = active.length;
+    const cutMs = minutes * 60 * 1000;
 
     active.forEach(exp => {
-      const cutMs = minutes * 60 * 1000;
       exp.endTime = Math.max(now, exp.endTime - cutMs);
       if (exp.endTime <= now) {
         completedAny = true;
       }
     });
+
+    if (sanct && sanct.expedition && sanct.expedition.active) {
+      sanct.expedition.durationMs = Math.max(0, (sanct.expedition.durationMs || 0) - cutMs);
+      boostedCount++;
+    }
+
+    if (boostedCount === 0) return { boostedCount: 0, completedAny: false };
 
     this.logAction(
       `🚀 Chore Turbo Boost: -${minutes} mins travel time!`,
@@ -2062,8 +2101,8 @@ class Store {
     this.notify();
 
     return {
-      boostedCount: active.length,
-      completedAny: completedAny
+      boostedCount,
+      completedAny
     };
   }
 
@@ -2399,12 +2438,16 @@ class Store {
       Sound.sparkle();
       Sound.coin();
 
-      confetti({
-        particleCount: 120,
-        spread: 100,
-        origin: { y: 0.5 },
-        colors: ['#f1c40f', '#2ecc71', '#54e98a', '#ffffff']
-      });
+      try {
+        if (typeof confetti === 'function') {
+          confetti({
+            particleCount: 120,
+            spread: 100,
+            origin: { y: 0.5 },
+            colors: ['#f1c40f', '#2ecc71', '#54e98a', '#ffffff']
+          });
+        }
+      } catch (e) {}
 
       this.showReward(
         `LEVEL UP! Hero Level ${hero.level}!`,
@@ -6013,6 +6056,7 @@ class Store {
     col.enamelCleanPercent = 0;
     col.isVictoryModalOpen = false;
     col.victoryReward = null;
+    col.hasAwardedVictory = false;
     this.saveState(true);
     this.notify();
     return col;
@@ -6128,7 +6172,7 @@ class Store {
 
   unleashChoreSupernova() {
     const col = this.getBossColosseumState();
-    if ((col.choreSupernovaCharge || 0) < 50) return { success: false, message: 'Supernova charging!' };
+    if ((col.choreSupernovaCharge || 0) < 40) return { success: false, message: 'Supernova charging!' };
 
     // Screen clearing blast
     col.choreSupernovaCharge = 0;
@@ -6159,78 +6203,11 @@ class Store {
 
   defeatColosseumBoss() {
     const col = this.getBossColosseumState();
-    const boss = getHygieneBoss(col.activeBossId) || HYGIENE_BOSSES[0];
-    const hero = this.state.selectedHero;
-    const activePet = this.getActivePet();
-
-    if (!col.bossesDefeated) col.bossesDefeated = [];
-    if (!col.bossesDefeated.includes(boss.id)) {
-      col.bossesDefeated.push(boss.id);
+    // Guard against duplicate reward minting
+    if (col.hasAwardedVictory && col.victoryReward) {
+      return col.victoryReward;
     }
-
-    // Unlock in hygiene battles state
-    if (!this.state.hygieneBattle) this.state.hygieneBattle = {};
-    if (!this.state.hygieneBattle.colosseumBossesDefeated) this.state.hygieneBattle.colosseumBossesDefeated = [];
-    if (!this.state.hygieneBattle.colosseumBossesDefeated.includes(boss.id)) {
-      this.state.hygieneBattle.colosseumBossesDefeated.push(boss.id);
-    }
-
-    // Unlock Hero HQ Trophy Relic
-    const trophyId = boss.trophyRelicId || ('trophy_' + boss.id);
-    if (this.state.heroHQ && this.state.heroHQ.unlockedFurnitureIds) {
-      if (!this.state.heroHQ.unlockedFurnitureIds.includes(trophyId)) {
-        this.state.heroHQ.unlockedFurnitureIds.push(trophyId);
-      }
-    }
-
-    // Award Rewards (boosted by equipped helmet coinMultiplier)
-    const equipped = (hero && activePet && hero.equippedPetGearMap) ? (hero.equippedPetGearMap[activePet.id] || {}) : {};
-    const buffs = calculateActiveGearBuffs(equipped);
-    const coinMultiplier = buffs.coinMultiplier || 1.0;
-    const earnedCoins = Math.round((boss.rewardCoins || 50) * coinMultiplier);
-    const earnedXP = boss.rewardXP || 75;
-    const earnedSparks = boss.rewardSparks || 15;
-
-    if (hero) {
-      hero.coins = (hero.coins || 0) + earnedCoins;
-      hero.xp = (hero.xp || 0) + earnedXP;
-      hero.streak = (hero.streak || 0) + 1;
-      this.state.brushStreak = (this.state.brushStreak || 0) + 1;
-    }
-
-    col.isVictoryModalOpen = true;
-    col.victoryReward = {
-      bossId: boss.id,
-      bossName: boss.name,
-      cleansedTitle: boss.cleansedTitle || 'Minty Friend 🍬',
-      trophyId,
-      coins: earnedCoins,
-      xp: earnedXP,
-      sparks: earnedSparks
-    };
-
-    try {
-      if (typeof confetti === 'function' && typeof document !== 'undefined' && document.body) {
-        confetti({
-          particleCount: 100,
-          spread: 90,
-          origin: { y: 0.6 },
-          colors: ['#2ecc71', '#f39c12', '#00d2d3', '#ffb961', '#ffffff']
-        });
-      }
-    } catch (e) {}
-
-    if (typeof Sound?.fanfare === 'function') Sound.fanfare();
-    speakCompanion(`ROAR! You cleansed ${boss.name}! Your smile is gleaming like diamond armor!`);
-
-    this.logAction(
-      `${hero?.name || 'Hero'} cleansed ${boss.name} in 3D Colosseum!`,
-      `Earned +${earnedCoins} Coins, +${earnedXP} XP, and unlocked ${trophyId} for Hero HQ!`
-    );
-
-    this.saveState(true);
-    this.notify();
-    return col.victoryReward;
+    return this.completeToothbrushBattle(col.activeBossId || 'sugar_bandit');
   }
 
   toggleColosseumPipCam(show = null) {

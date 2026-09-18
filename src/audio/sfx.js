@@ -13,6 +13,7 @@ let battleBpm = 118;
 let lastBloopTime = 0;
 
 function getAudioContext() {
+  if (typeof window === 'undefined') return null;
   if (!audioCtx) {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     if (AudioContext) {

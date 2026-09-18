@@ -1,4 +1,4 @@
-import { BossColosseumCanvas } from '../components/BossColosseumCanvas.js';
+import { hanaBattle3DService } from '../services/hanaBattle3DService.js';
 import { renderDental3DMap, initDental3DMap, updateDental3DMapProgress, destroyDental3DMap, DENTAL_ZONES } from '../components/Dental3DMap.js';
 import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
@@ -10,24 +10,32 @@ import { brushAudioAnalyzer } from '../audio/brushAudioAnalyzer.js';
 const sugarVillainEscapedImg = new URL('../assets/sugar_villain_escaped.jpg', import.meta.url).href;
 
 // =========================================================================
-// 3D HYGIENE BOSS BLASTER COLOSSEUM 3.0 (KID-ERGONOMIC COCKPIT + SENSOR FUSION)
-// Complete Revamp: High-contrast bathroom cockpit, 3D Dental Arch Map,
-// Plaque Dissolve Engine, Optical Motion + Acoustic Mic Cadence + Auto-Assist,
-// Spline 3D Boss Viewer & Parent AI Studio Integration.
+// 3D HYGIENE BOSS BLASTER COLOSSEUM 4.0 (HANA 3D WEBGL ARENA + HANDS-FREE SENSOR FUSION)
+// Features:
+// - Pure 3D WebGL Scene via hanaBattle3DService (Spline 3D Runtime & Procedural Fallback)
+// - Breakable 3D Candy Armor Deconstruction per Quadrant
+// - Floating 3D Hero Mirror (Live Webcam Video Texture)
+// - Interactive 3D Mouth Hologram HUD (Plaque to Diamond White)
+// - Dynamic 3D Foam & Laser Particle Streams
+// - 100% Hands-Free Atomic MediaStream (Single getUserMedia for Video + 2.8kHz Mic)
+// - Incoming Caramel Bombs & Deflect Flurry
+// - Spoken Rex /learn Voice Micro-Challenge at 60s Mark
+// - Mirrored Bathroom Perspective for Quadrants 1-5
+// - Atomic Consolidated Victory & -15min Chore Turbo Boost
 // =========================================================================
 
 // Battle State Variables
 let selectedBossId = 'sugar_bandit';
 let battleTimer = null;
+let bombTimer = null;
 let secondsRemaining = 120;
 let totalDuration = 120;
 let isBattleRunning = false;
 let isBattlePaused = false;
 let isRhythmBeatActive = true;
-let activeColosseumCanvas = null;
 let studioViewportMode = 'colosseum'; // 'colosseum' or 'spline'
 
-// Hardware & Multi-Modal Sensors State
+// Hardware & Multi-Modal Sensors State (Single Atomic MediaStream)
 let videoStream = null;
 let isCameraActive = false;
 let cameraError = null;
@@ -42,6 +50,14 @@ let motionCheckInterval = null;
 let micCadenceScore = 0;
 let cadenceSamples = [];
 let isMicActive = false;
+
+// Deflect Flurry & Spoken /learn State
+let isDeflectFlurryActive = false;
+let deflectFlurryTimer = null;
+let isLearnChallengeActive = false;
+let learnChallengeTimer = null;
+let speechRecognitionInstance = null;
+let hasTriggeredLearnChallenge = false;
 
 // Auto-Assist Pulse State (Non-frustrating steady rhythm for kids)
 let lastScrubTimestamp = 0;
@@ -58,9 +74,16 @@ let quadrantCleanliness = {
   q4: 0,
   q5: 0
 };
+let lastProgressTimestamp = {
+  q1: 0,
+  q2: 0,
+  q3: 0,
+  q4: 0,
+  q5: 0
+};
 
 // Dynamic Companion Dialogue Text
-let currentRexCoachText = 'Get ready! Scrub in gentle circles on your top teeth!';
+let currentRexCoachText = 'Get ready! Scrub in gentle circles on your top right teeth!';
 
 // Helper to retrieve boss data from parent custom bosses or preset hygiene bosses
 export function getBattleBoss(bossId) {
@@ -112,7 +135,7 @@ export function renderBattleView() {
   const parentCustomBosses = store.getParentCustomBosses ? store.getParentCustomBosses() : [];
   const activePet = store.getActivePet ? store.getActivePet() : { name: 'Rex', avatar: '🦖' };
 
-  if (!isBattleRunning) {
+  if (!isBattleRunning && !colState.isVictoryModalOpen) {
     // =========================================================================
     // 1. LOBBY & BOSS SELECTION SCREEN (PRE-BATTLE)
     // =========================================================================
@@ -150,12 +173,12 @@ export function renderBattleView() {
             </div>
             <div>
               <div class="flex items-center gap-2">
-                <span class="bg-cyan-500 text-slate-950 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">3D Cockpit 3.0</span>
-                <span class="text-xs font-bold text-slate-300">Dentist & AI Powered</span>
+                <span class="bg-cyan-500 text-slate-950 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">Hana 3D Cockpit</span>
+                <span class="text-xs font-bold text-slate-300">Hands-Free Live Action</span>
               </div>
               <h1 class="font-headline text-xl sm:text-2xl font-black text-white mt-1">Toothbrush Battle Cockpit</h1>
               <p class="text-xs text-slate-300 mt-0.5 max-w-md leading-relaxed">
-                Cleanse sugar villains, watch plaque dissolve on the 3D dental arch, deflect sugar bombs, and max out ${activePet.name || 'Rex'}'s hygiene!
+                Hands-free 3D combat! Your toothbrush audio & optical motion crack candy armor, deflect sugar bombs, and purify bosses in real-time.
               </p>
             </div>
           </div>
@@ -263,7 +286,7 @@ export function renderBattleView() {
               <div class="text-xs text-slate-400 font-bold">Encounter Selected:</div>
               <div class="font-headline text-base font-black text-white">${currentBoss.name}</div>
               <div class="text-[10px] text-cyan-400 font-bold">
-                ${currentBoss.battleDurationSec || 120}s Routine • Dual-Sensor Fusion • Deflect Shield Ready
+                ${currentBoss.battleDurationSec || 120}s Routine • Hands-Free Sensor Fusion • Deflect Shield Ready
               </div>
             </div>
           </div>
@@ -292,6 +315,9 @@ export function renderBattleView() {
           </div>
         </div>
 
+        <!-- Safety fallback for Victory Modal -->
+        ${renderVictoryModal(colState, currentBoss)}
+
       </div>
     `;
   }
@@ -311,8 +337,7 @@ export function renderBattleView() {
   const timeStr = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 
   const activeQuad = getDentalQuadrant(secondsRemaining, totalDuration);
-  const showPip = colState.showPipCam !== false; // default true in cockpit
-  const ammoPercent = colState.ammoTank || 95;
+  const showPip = colState.showPipCam !== false;
   const isSupernovaReady = (colState.choreSupernovaCharge || 0) >= 40;
 
   return `
@@ -353,7 +378,7 @@ export function renderBattleView() {
             ${colState.isShieldActive ? `
               <div class="flex justify-between items-center text-[9px] font-black text-amber-300 bg-amber-950/90 px-2 py-0.5 rounded-full border border-amber-500/60 mt-1 animate-pulse">
                 <span>🛡️ ${currentBoss.shieldName || 'Shield'}: ${colState.shieldHp}/${colState.maxShieldHp || 8} HP</span>
-                <span>TAP DEFLECT TO RICHOCHET! 💥</span>
+                <span>BRUSH FAST OR ANSWER TO SHATTER! 💥</span>
               </div>
             ` : ''}
           </div>
@@ -383,21 +408,35 @@ export function renderBattleView() {
       <!-- ================= CENTER COCKPIT: 3D ARENA + DENTAL ARCH MAP ================= -->
       <main id="cockpit-viewport" class="relative flex-1 w-full overflow-hidden flex flex-col lg:flex-row items-center justify-between p-2 sm:p-4 gap-3 bg-gradient-to-b from-[#070f17] via-[#091522] to-[#050b12]">
         
-        <!-- LEFT / MAIN: 3D ARENA & AR WEBCAM MIRROR -->
+        <!-- LEFT / MAIN: PURE 3D WEBGL ARENA CANVAS & AR WEBCAM MIRROR -->
         <div class="relative flex-1 w-full h-[320px] sm:h-[420px] lg:h-full rounded-3xl overflow-hidden border-2 border-slate-800 bg-slate-950 shadow-2xl flex flex-col items-center justify-center">
           
-          <!-- Colosseum 3D Canvas Mount -->
-          <div id="colosseum-canvas-mount" class="absolute inset-0 w-full h-full z-10 ${studioViewportMode === 'colosseum' ? 'block' : 'hidden'}"></div>
+          <!-- Unified Pure 3D WebGL / Spline Battle Canvas -->
+          <canvas id="battle-webgl-canvas" class="absolute inset-0 w-full h-full z-10 block select-none cursor-crosshair"></canvas>
 
-          <!-- Spline 3D Scene View (If boss has custom Spline URL) -->
-          ${currentBoss.splineUrl ? `
-            <div id="spline-scene-mount" class="absolute inset-0 w-full h-full z-10 ${studioViewportMode === 'spline' ? 'block' : 'hidden'} bg-slate-950">
-              <iframe src="${currentBoss.splineUrl}" frameborder="0" width="100%" height="100%" class="w-full h-full pointer-events-auto" title="Spline 3D Boss"></iframe>
+          <!-- Camera Feed for Optical Motion Detection & 3D Video Texture (visually offscreen to keep WebKit decoding active) -->
+          <video id="ar-camera-feed" class="absolute pointer-events-none opacity-0 w-px h-px" autoplay playsinline muted></video>
+
+          <!-- DEFLECT FLURRY ALERT BANNER -->
+          <div id="deflect-flurry-banner" class="absolute top-4 left-1/2 transform -translate-x-1/2 z-40 pointer-events-none transition-all duration-300 opacity-0 scale-90">
+            <div class="bg-gradient-to-r from-amber-500 via-rose-500 to-amber-500 text-slate-950 font-headline font-black text-xs sm:text-sm px-5 py-2 rounded-full shadow-[0_0_25px_rgba(245,158,11,0.9)] border-2 border-white animate-bounce flex items-center gap-2">
+              <span class="text-base">💣</span>
+              <span>DEFLECT FLURRY! SCRUB FASTER!</span>
+              <span class="text-base">🛡️</span>
             </div>
-          ` : ''}
+          </div>
 
-          <!-- Camera Hidden Feed for Optical Motion Detection -->
-          <video id="ar-camera-feed" class="hidden absolute" autoplay playsinline muted></video>
+          <!-- SPOKEN REX LEARN MICRO-CHALLENGE BANNER -->
+          <div id="rex-learn-banner" class="absolute top-16 left-1/2 transform -translate-x-1/2 z-40 pointer-events-none transition-all duration-300 opacity-0 scale-90 max-w-sm w-[92%]">
+            <div class="bg-slate-900/95 border-3 border-amber-400 text-white font-headline p-3 rounded-2xl shadow-2xl flex items-center gap-3">
+              <span class="text-3xl animate-bounce flex-shrink-0">🦖</span>
+              <div class="flex-1 min-w-0">
+                <div class="text-[9px] font-black text-amber-400 uppercase tracking-wide">REX LEARN MICRO-QUIZ</div>
+                <div id="rex-learn-question-text" class="text-xs font-bold text-slate-100 leading-snug">How many times a day do Little Heroes brush their teeth?</div>
+                <div class="text-[9px] font-extrabold text-emerald-400 mt-0.5">SAY YOUR ANSWER OR SCRUB FAST TO SHATTER! 💥</div>
+              </div>
+            </div>
+          </div>
 
           <!-- PIP AR MAGIC MIRROR (Top-Right of Arena) -->
           <div class="absolute top-3 right-3 z-30 flex flex-col items-end">
@@ -425,18 +464,6 @@ export function renderBattleView() {
               </button>
             </div>
           </div>
-
-          <!-- Spline 3D vs Colosseum Viewport Switcher (If splineUrl exists) -->
-          ${currentBoss.splineUrl ? `
-            <div class="absolute top-3 left-3 z-30 flex items-center gap-1 bg-[#0b1320]/90 p-1 rounded-2xl border border-purple-500/50 shadow-lg">
-              <button id="viewmode-colosseum-btn" class="px-3 py-2 min-h-[44px] rounded-xl text-xs font-black transition-all ${studioViewportMode === 'colosseum' ? 'bg-cyan-500 text-slate-950 shadow' : 'text-slate-300 hover:text-white'}">
-                ⚔️ Colosseum
-              </button>
-              <button id="viewmode-spline-btn" class="px-3 py-2 min-h-[44px] rounded-xl text-xs font-black transition-all ${studioViewportMode === 'spline' ? 'bg-purple-500 text-white shadow' : 'text-slate-300 hover:text-white'}">
-                ✨ Spline 3D
-              </button>
-            </div>
-          ` : ''}
 
           <!-- REX / PET COMPANION REAL-TIME VOICE COACHING (Bottom-Left) -->
           <div class="absolute bottom-2 left-3 sm:left-4 z-20 flex items-end gap-2 pointer-events-none">
@@ -483,13 +510,13 @@ export function renderBattleView() {
           <!-- Optical Camera Motion Sensor -->
           <div id="sensor-camera-badge" class="flex items-center gap-1 px-2 py-0.5 rounded-lg ${isCameraMotionDetected ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/50' : 'bg-slate-800 text-slate-400 border border-slate-700'}">
             <span class="w-1.5 h-1.5 rounded-full ${isCameraMotionDetected ? 'bg-cyan-400 animate-ping' : 'bg-slate-500'}"></span>
-            <span>CAMERA MOTION</span>
+            <span>CAMERA OPTICAL</span>
           </div>
 
           <!-- Acoustic Microphone Bristle Cadence -->
           <div id="sensor-mic-badge" class="flex items-center gap-1 px-2 py-0.5 rounded-lg ${isMicActive ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/50' : 'bg-slate-800 text-slate-400 border border-slate-700'}">
             <span class="w-1.5 h-1.5 rounded-full ${isMicActive ? 'bg-emerald-400 animate-ping' : 'bg-slate-500'}"></span>
-            <span>MIC 2.8kHz FRICTION</span>
+            <span>2.8kHz ACOUSTIC</span>
           </div>
 
           <!-- Auto-Assist Pulse -->
@@ -645,30 +672,37 @@ function renderVictoryModal(colState, currentBoss) {
 }
 
 // =========================================================================
-// CAMERA INITIALIZATION & OPTICAL MOTION TRACKING
+// SINGLE ATOMIC MEDIASTREAM INITIALIZATION (CAMERA + MIC FUSION)
 // =========================================================================
-async function initCamera() {
+async function initSensors() {
   const video = document.getElementById('ar-camera-feed');
-  const pipCanvas = document.getElementById('pip-mirror-canvas');
   const pipPlaceholder = document.getElementById('pip-placeholder');
 
   if (videoStream && videoStream.active) {
     if (video) {
-      if (video.srcObject !== videoStream) video.srcObject = videoStream;
+      video.srcObject = videoStream;
       video.play().catch(() => {});
     }
+    hanaBattle3DService.setVideoElement(video);
     isCameraActive = true;
     if (pipPlaceholder) pipPlaceholder.classList.add('hidden');
     startOpticalMotionTracker();
+    brushAudioAnalyzer.startListening(handleCadenceUpdate, videoStream);
     return;
   }
 
   if (typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
     try {
+      // Single atomic getUserMedia for both video (640x480 user facing) and audio
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: cameraFacingMode, width: { ideal: 640 }, height: { ideal: 480 } },
-        audio: false
+        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: cameraFacingMode },
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false
+        }
       });
+
       videoStream = stream;
       isCameraActive = true;
       cameraError = null;
@@ -677,10 +711,21 @@ async function initCamera() {
         video.srcObject = stream;
         video.play().catch(() => {});
       }
+      hanaBattle3DService.setVideoElement(video);
       if (pipPlaceholder) pipPlaceholder.classList.add('hidden');
       startOpticalMotionTracker();
+
+      // Pass atomic stream directly to acoustic brush audio analyzer
+      brushAudioAnalyzer.startListening(handleCadenceUpdate, stream);
     } catch (err) {
-      console.warn('Camera restricted or unavailable; optical fallback to acoustic mic & auto-assist active.', err);
+      console.warn('Atomic camera + mic failed, attempting audio fallback:', err);
+      try {
+        const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        videoStream = audioStream;
+        brushAudioAnalyzer.startListening(handleCadenceUpdate, audioStream);
+      } catch (e) {
+        console.warn('Microphone also restricted; using optical/auto-assist fallback.');
+      }
       isCameraActive = false;
       cameraError = err;
       if (pipPlaceholder) pipPlaceholder.classList.remove('hidden');
@@ -688,18 +733,42 @@ async function initCamera() {
   }
 }
 
-function flipCamera() {
-  cameraFacingMode = (cameraFacingMode === 'user') ? 'environment' : 'user';
-  stopCamera();
-  initCamera();
+function handleCadenceUpdate({ isScrubbing, cadenceScore }) {
+  if (isBattlePaused || !isBattleRunning) return;
+  micCadenceScore = cadenceScore;
+  cadenceSamples.push(cadenceScore);
+  isMicActive = isScrubbing;
+
+  if (isScrubbing) {
+    const activeQuad = getDentalQuadrant(secondsRemaining, totalDuration);
+    handleScrubHit(activeQuad, 'acoustic');
+
+    // Deflect flurry check
+    if (isDeflectFlurryActive && cadenceScore >= 45) {
+      triggerDeflectSuccess();
+    }
+
+    // Learn micro-challenge check
+    if (isLearnChallengeActive && cadenceScore >= 55) {
+      resolveLearnChallenge(true, 'cadence');
+    }
+  }
+  updateSensorBadges();
 }
 
-function stopCamera() {
+function flipCamera() {
+  cameraFacingMode = (cameraFacingMode === 'user') ? 'environment' : 'user';
+  stopSensors();
+  initSensors();
+}
+
+function stopSensors() {
+  brushAudioAnalyzer.stopListening();
   if (videoStream) {
     videoStream.getTracks().forEach(t => t.stop());
     videoStream = null;
-    isCameraActive = false;
   }
+  isCameraActive = false;
   if (motionCheckInterval) {
     clearInterval(motionCheckInterval);
     motionCheckInterval = null;
@@ -708,7 +777,7 @@ function stopCamera() {
   prevFrameData = null;
 }
 
-// Lightweight optical motion tracker comparing luminance changes across 64x48 thumbnail
+// Lightweight optical motion tracker comparing mirrored luminance changes across 64x48 thumbnail
 function startOpticalMotionTracker() {
   if (motionCheckInterval) clearInterval(motionCheckInterval);
 
@@ -726,7 +795,13 @@ function startOpticalMotionTracker() {
 
     const video = document.getElementById('ar-camera-feed');
     if (video && video.readyState >= 2 && !video.paused && motionCtx) {
+      // Draw mirrored so pixel coordinates match mirrored bathroom perspective
+      motionCtx.save();
+      motionCtx.translate(64, 0);
+      motionCtx.scale(-1, 1);
       motionCtx.drawImage(video, 0, 0, 64, 48);
+      motionCtx.restore();
+
       const currentFrame = motionCtx.getImageData(0, 0, 64, 48);
       const data = currentFrame.data;
 
@@ -741,11 +816,40 @@ function startOpticalMotionTracker() {
           if (avgDiff > 25) diffPixels += 2;
         }
 
+        const activeQuad = getDentalQuadrant(secondsRemaining, totalDuration);
+        const roi = activeQuad.roi || { minX: 8, maxX: 56, minY: 12, maxY: 44 };
+
+        let roiDiffPixels = 0;
+        let roiSampled = 0;
         const motionRatio = diffPixels / totalSampled;
-        if (motionRatio > 0.08) {
+
+        // Sample active quadrant ROI specifically for precision mouth tracking
+        for (let y = roi.minY; y < roi.maxY; y += 2) {
+          for (let x = roi.minX; x < roi.maxX; x += 2) {
+            const idx = (y * 64 + x) * 4;
+            const rDiff = Math.abs(data[idx] - prevFrameData[idx]);
+            const gDiff = Math.abs(data[idx + 1] - prevFrameData[idx + 1]);
+            const bDiff = Math.abs(data[idx + 2] - prevFrameData[idx + 2]);
+            if ((rDiff + gDiff + bDiff) / 3 > 25) roiDiffPixels++;
+            roiSampled++;
+          }
+        }
+        const roiRatio = roiSampled > 0 ? (roiDiffPixels / roiSampled) : 0;
+        const hasMotion = motionRatio > 0.08 || roiRatio > 0.09;
+
+        if (hasMotion) {
           isCameraMotionDetected = true;
-          const activeQuad = getDentalQuadrant(secondsRemaining, totalDuration);
           handleScrubHit(activeQuad, 'optical');
+
+          // Deflect flurry requires scrubbing faster (higher velocity threshold)
+          if (isDeflectFlurryActive && (motionRatio >= 0.16 || roiRatio >= 0.16)) {
+            triggerDeflectSuccess();
+          }
+
+          // Learn challenge check (vigorous scrubbing option)
+          if (isLearnChallengeActive && (motionRatio >= 0.18 || roiRatio >= 0.18)) {
+            resolveLearnChallenge(true, 'cadence');
+          }
         } else {
           isCameraMotionDetected = false;
         }
@@ -753,7 +857,7 @@ function startOpticalMotionTracker() {
       }
       prevFrameData = data;
     }
-  }, 120); // ~8 FPS check is fast, ultra-low CPU
+  }, 100); // 10 FPS is ultra-responsive, low CPU
 }
 
 function updateSensorBadges() {
@@ -778,6 +882,172 @@ function updateSensorBadges() {
 }
 
 // =========================================================================
+// DEFLECT FLURRY & SPOKEN /LEARN MICRO-CHALLENGE
+// =========================================================================
+
+function triggerDeflectFlurry() {
+  if (isDeflectFlurryActive || !isBattleRunning || isBattlePaused) return;
+  isDeflectFlurryActive = true;
+
+  hanaBattle3DService.spawnCaramelBomb();
+
+  const banner = document.getElementById('deflect-flurry-banner');
+  if (banner) {
+    banner.classList.remove('opacity-0', 'scale-90');
+    banner.classList.add('opacity-100', 'scale-100');
+  }
+
+  currentRexCoachText = 'Caramel Bomb incoming! Scrub faster to raise your enamel shield!';
+  updateRexDialogue();
+  voicePrompts.speak('Caramel bomb incoming! Scrub faster to deflect!');
+
+  if (deflectFlurryTimer) clearTimeout(deflectFlurryTimer);
+  deflectFlurryTimer = setTimeout(() => {
+    isDeflectFlurryActive = false;
+    hideDeflectBanner();
+    hanaBattle3DService.setDeflectActive(false);
+  }, 2800);
+}
+
+function triggerDeflectSuccess() {
+  if (!isDeflectFlurryActive) return;
+  isDeflectFlurryActive = false;
+  if (deflectFlurryTimer) clearTimeout(deflectFlurryTimer);
+  hideDeflectBanner();
+
+  hanaBattle3DService.onDeflectRicochet();
+  // Deal deflect damage and register shield deflection in store economy
+  store.triggerColosseumDeflect();
+  showComicHit('DEFLECTED! 🛡️✨');
+  if (typeof Sound?.fanfare === 'function') Sound.fanfare();
+  currentRexCoachText = 'Awesome deflect! The caramel bounced right back at the boss!';
+  updateRexDialogue();
+  syncCockpitHUD();
+}
+
+function hideDeflectBanner() {
+  const banner = document.getElementById('deflect-flurry-banner');
+  if (banner) {
+    banner.classList.remove('opacity-100', 'scale-100');
+    banner.classList.add('opacity-0', 'scale-90');
+  }
+}
+
+function triggerLearnChallenge() {
+  isLearnChallengeActive = true;
+  const colState = store.getBossColosseumState();
+  colState.isShieldActive = true;
+  hanaBattle3DService.updateState({ shieldActive: true });
+
+  const banner = document.getElementById('rex-learn-banner');
+  if (banner) {
+    banner.classList.remove('opacity-0', 'scale-90');
+    banner.classList.add('opacity-100', 'scale-100');
+  }
+
+  const question = "Rex Learn Challenge: How many times a day do Little Heroes brush their teeth? Say your answer or scrub fast!";
+  currentRexCoachText = question;
+  updateRexDialogue();
+
+  // Wait for the synthesized voice prompt to finish before opening the mic listener,
+  // preventing the microphone from picking up the device's own speech output!
+  let recognitionStarted = false;
+  const startSafeListening = () => {
+    if (!recognitionStarted && isLearnChallengeActive) {
+      recognitionStarted = true;
+      startSpeechRecognition();
+    }
+  };
+
+  voicePrompts.speak(question, startSafeListening);
+  setTimeout(startSafeListening, 2400); // safety fallback
+
+  if (learnChallengeTimer) clearTimeout(learnChallengeTimer);
+  learnChallengeTimer = setTimeout(() => {
+    resolveLearnChallenge(false, 'assist');
+  }, 8500);
+}
+
+function startSpeechRecognition() {
+  if (typeof window === 'undefined') return;
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRec) return;
+
+  try {
+    speechRecognitionInstance = new SpeechRec();
+    speechRecognitionInstance.continuous = false;
+    speechRecognitionInstance.interimResults = true;
+    speechRecognitionInstance.lang = 'en-US';
+
+    speechRecognitionInstance.onresult = (event) => {
+      let transcript = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript.toLowerCase() + ' ';
+      }
+      if (transcript.includes('two') || transcript.includes('twice') || transcript.includes('2') || transcript.includes('to') || transcript.includes('too')) {
+        resolveLearnChallenge(true, 'voice');
+      }
+    };
+
+    speechRecognitionInstance.onerror = () => {};
+    speechRecognitionInstance.onend = () => {
+      if (isLearnChallengeActive) {
+        try { speechRecognitionInstance.start(); } catch (e) {}
+      }
+    };
+    speechRecognitionInstance.start();
+  } catch (e) {}
+}
+
+function stopSpeechRecognition() {
+  if (speechRecognitionInstance) {
+    try { speechRecognitionInstance.stop(); } catch (e) {}
+    speechRecognitionInstance = null;
+  }
+}
+
+function resolveLearnChallenge(success, method = 'voice') {
+  if (!isLearnChallengeActive) return;
+  isLearnChallengeActive = false;
+  if (learnChallengeTimer) clearTimeout(learnChallengeTimer);
+  stopSpeechRecognition();
+
+  const banner = document.getElementById('rex-learn-banner');
+  if (banner) {
+    banner.classList.remove('opacity-100', 'scale-100');
+    banner.classList.add('opacity-0', 'scale-90');
+  }
+
+  const colState = store.getBossColosseumState();
+  colState.isShieldActive = false;
+  colState.shieldHp = 0;
+  if (colState.shieldMilestonesTriggered) {
+    colState.shieldMilestonesTriggered[90] = true;
+  }
+  // Deal critical learn damage to boss and charge Supernova
+  colState.currentHp = Math.max(1, colState.currentHp - 15);
+  colState.choreSupernovaCharge = Math.min(100, (colState.choreSupernovaCharge || 0) + 15);
+  hanaBattle3DService.onArmorFracture('shield');
+  hanaBattle3DService.updateState({ shieldActive: false, bossHp: colState.currentHp });
+
+  if (method === 'voice') {
+    currentRexCoachText = "CRITICAL HIT! That's right! You brush twice a day! Barrier shattered!";
+    showComicHit('CRITICAL LEARN HIT! 🎓💥');
+    if (typeof Sound?.fanfare === 'function') Sound.fanfare();
+  } else if (method === 'cadence') {
+    currentRexCoachText = "VIGOROUS CADENCE! You shattered the caramel barrier!";
+    showComicHit('SCRUB SHATTER! ⚡💥');
+    if (typeof Sound?.fanfare === 'function') Sound.fanfare();
+  } else {
+    currentRexCoachText = "Rex power assist! We shattered the barrier together!";
+    showComicHit('BARRIER CRACKED! ✨');
+  }
+  updateRexDialogue();
+  voicePrompts.speak(currentRexCoachText);
+  syncCockpitHUD();
+}
+
+// =========================================================================
 // BATTLE LIFECYCLE CONTROLLERS
 // =========================================================================
 export function startBattle() {
@@ -786,7 +1056,6 @@ export function startBattle() {
   isBattleRunning = true;
   isBattlePaused = false;
   
-  // Set duration based on boss custom settings or parent settings
   const bossDuration = currentBoss.battleDurationSec || store.getState().parentSettings?.arBattleDuration || 120;
   secondsRemaining = bossDuration;
   totalDuration = bossDuration;
@@ -794,37 +1063,24 @@ export function startBattle() {
   currentCombo = 0;
   cadenceSamples = [];
   lastScrubTimestamp = Date.now();
+  hasTriggeredLearnChallenge = false;
 
   // Reset quadrant cleanliness to 0
   quadrantCleanliness = { q1: 0, q2: 0, q3: 0, q4: 0, q5: 0 };
+  lastProgressTimestamp = { q1: 0, q2: 0, q3: 0, q4: 0, q5: 0 };
 
-  // Init Colosseum State in Store with full routine duration
+  // Init Colosseum State in Store
   store.initColosseumBattle(selectedBossId, totalDuration);
 
-  // Audio & Hardware Init
+  // Audio & Hardware Sensor Fusion Init
   Sound.startBattleRhythm();
-  initCamera();
-
-  // Initialize Acoustic Microphone Scrub Analyzer (2.8 kHz Bristle Friction)
-  brushAudioAnalyzer.startListening(({ isScrubbing, cadenceScore }) => {
-    if (isBattlePaused || !isBattleRunning) return;
-    micCadenceScore = cadenceScore;
-    cadenceSamples.push(cadenceScore);
-    isMicActive = isScrubbing;
-
-    if (isScrubbing) {
-      const activeQuad = getDentalQuadrant(secondsRemaining, totalDuration);
-      handleScrubHit(activeQuad, 'acoustic');
-    }
-    updateSensorBadges();
-  });
+  initSensors();
 
   // Start Auto-Assist Fallback Pulse (Ensures steady progress for young kids)
   if (autoAssistInterval) clearInterval(autoAssistInterval);
   autoAssistInterval = setInterval(() => {
     if (!isBattleRunning || isBattlePaused) return;
     const now = Date.now();
-    // If no sensor hits in last 1.8s, trigger gentle auto-assist
     if (now - lastScrubTimestamp > 1800) {
       isAutoAssistPulseActive = true;
       const activeQuad = getDentalQuadrant(secondsRemaining, totalDuration);
@@ -833,9 +1089,17 @@ export function startBattle() {
     }
   }, 1000);
 
+  // Periodic Caramel Bomb Attack Timer (Every 14 seconds)
+  if (bombTimer) clearInterval(bombTimer);
+  bombTimer = setInterval(() => {
+    if (isBattleRunning && !isBattlePaused && secondsRemaining > 10) {
+      triggerDeflectFlurry();
+    }
+  }, 14000);
+
   // Companion Initial Voice Cue
   const initialQuad = getDentalQuadrant(secondsRemaining, totalDuration);
-  currentRexCoachText = initialQuad.coachMessage || 'Get ready! Scrub in gentle circles on your top teeth!';
+  currentRexCoachText = initialQuad.coachMessage || 'Get ready! Scrub in gentle circles on your top right teeth!';
   voicePrompts.speak(`Battle start! ${initialQuad.coachMessage || ''}`);
 
   // Notify store to render cockpit
@@ -855,7 +1119,7 @@ export function startBattle() {
     secondsRemaining--;
     const elapsedSeconds = totalDuration - secondsRemaining;
 
-    // Sync timer progress with store so Boss HP and shields are paced across the 2-minute duration
+    // Sync timer progress with store
     store.updateColosseumTimer(secondsRemaining, totalDuration);
 
     // Timer string update
@@ -866,6 +1130,12 @@ export function startBattle() {
     if (timerDisplay) timerDisplay.textContent = timeStr;
 
     syncCockpitHUD();
+
+    // Spoken Rex Learn Micro-Challenge at halfway mark
+    if (secondsRemaining === Math.floor(totalDuration / 2) && !hasTriggeredLearnChallenge) {
+      hasTriggeredLearnChallenge = true;
+      triggerLearnChallenge();
+    }
 
     // Quadrant transitions based on fractional duration
     const ratio = secondsRemaining / totalDuration;
@@ -923,39 +1193,68 @@ function updatePipCanvas() {
   }
 }
 
-// Scrub Hit Handler: Updates cleanliness, triggers foam particles, applies damage & checks laser gear buff
+// Scrub Hit Handler: Updates cleanliness, triggers 3D foam streams, checks armor fractures & gear buff
 function handleScrubHit(activeQuad, source = 'manual') {
   if (isBattlePaused || !isBattleRunning) return;
 
   totalScrubHits++;
   lastScrubTimestamp = Date.now();
-  currentCombo = Math.min(30, currentCombo + 1);
+  currentCombo = Math.min(50, currentCombo + 1);
 
   const hasLaser = checkLaserToothbrushEquipped();
   const scrubMultiplier = hasLaser ? 1.3 : 1.0;
 
-  // Advance quadrant cleanliness (3.5% base increment, 4.5% with laser)
+  // Pet gear damage boost multiplier
+  const hero = store.getState().selectedHero;
+  const activePet = store.getActivePet ? store.getActivePet() : null;
+  const petId = activePet?.id || hero?.activePetId || 1;
+  const petBuffs = store.getActivePetGearBuffs ? store.getActivePetGearBuffs(petId) : { damage_boost: 0, defense_boost: 0 };
+  const damageBoost = petBuffs.damage_boost || 0;
+
+  // Advance quadrant cleanliness (paced to ~24s full quadrant routine duration)
   const zoneId = activeQuad.id;
   if (quadrantCleanliness[zoneId] !== undefined) {
     const prevClean = quadrantCleanliness[zoneId];
-    quadrantCleanliness[zoneId] = Math.min(100, quadrantCleanliness[zoneId] + Math.round(3.5 * scrubMultiplier));
+    if (source === 'manual') {
+      quadrantCleanliness[zoneId] = Math.min(100, quadrantCleanliness[zoneId] + Math.round(4 * scrubMultiplier));
+    } else {
+      const now = Date.now();
+      const lastT = lastProgressTimestamp[zoneId] || (now - 80);
+      const dtSec = Math.min(0.25, Math.max(0.04, (now - lastT) / 1000));
+      lastProgressTimestamp[zoneId] = now;
+      const ratePerSec = (100 / 24) * scrubMultiplier;
+      const inc = ratePerSec * dtSec;
+      quadrantCleanliness[zoneId] = Math.min(100, Math.round((quadrantCleanliness[zoneId] + inc) * 10) / 10);
+    }
     
-    // Play chime when zone hits 100% clean
+    // When zone hits 100% clean: trigger 3D candy armor deconstruction!
     if (prevClean < 100 && quadrantCleanliness[zoneId] >= 100) {
-      Sound.sparkle ? Sound.sparkle() : Sound.fanfare();
+      if (typeof Sound?.sparkle === 'function') Sound.sparkle();
+      else if (typeof Sound?.fanfare === 'function') Sound.fanfare();
       showComicHit(`${activeQuad.name.toUpperCase()} 100% CLEAN! ✨`);
+      hanaBattle3DService.onArmorFracture(zoneId);
     }
   }
 
-  // Fire minty foam stream in 3D Colosseum Canvas
-  if (activeColosseumCanvas) {
-    activeColosseumCanvas.fireFoam();
-  } else {
-    store.fireColosseumBlaster();
-  }
+  // Fire 3D foam / laser beam in WebGL scene
+  const intensity = Math.min(2.0, (micCadenceScore / 50) || 1.0);
+  hanaBattle3DService.onFoamStream(intensity, hasLaser, damageBoost);
 
-  // Update Interactive 3D Dental Map
+  // Update Interactive 3D Dental Map HUD
   updateDental3DMapProgress(quadrantCleanliness, zoneId, true, hasLaser);
+
+  // Sync state with 3D engine
+  const colState = store.getBossColosseumState ? store.getBossColosseumState() : {};
+  hanaBattle3DService.updateState({
+    bossHp: colState.currentHp,
+    maxHp: colState.maxHp,
+    shieldActive: colState.isShieldActive,
+    activeQuadrant: activeQuad.id,
+    hasLaser: hasLaser,
+    cadenceScore: micCadenceScore,
+    isScrubbing: true,
+    quadrantCleanliness: quadrantCleanliness
+  });
 
   if (source === 'manual') {
     showComicHit(hasLaser ? 'LASER BLAST! ⚡' : 'MINTY BLAST! 🫧');
@@ -966,7 +1265,6 @@ function handleScrubHit(activeQuad, source = 'manual') {
 
 function syncCockpitHUD() {
   const colState = store.getBossColosseumState();
-  // Boss HP is 0% only when the full 2-minute countdown completes, floored to >= 1% while active
   const hpPercent = secondsRemaining <= 0
     ? 0
     : Math.max(1, Math.min(100, Math.round((colState.currentHp / colState.maxHp) * 100)));
@@ -974,7 +1272,6 @@ function syncCockpitHUD() {
   const hpBar = document.getElementById('boss-hp-bar');
   if (hpBar) hpBar.style.width = `${hpPercent}%`;
 
-  // Check if Supernova is charged
   const supernovaBtn = document.getElementById('hero-supernova-btn');
   if (supernovaBtn) {
     const isCharged = (colState.choreSupernovaCharge || 0) >= 40;
@@ -985,7 +1282,6 @@ function syncCockpitHUD() {
     }
   }
 
-  // Update Shield Stars
   const star1 = document.getElementById('shield-star-1');
   if (star1) {
     star1.className = `text-sm ${colState.shieldMilestonesTriggered?.[90] ? 'text-slate-600' : 'text-[#ffb961] drop-shadow-[0_0_6px_#ffb961]'}`;
@@ -1001,6 +1297,10 @@ function concludeVictory() {
     clearInterval(battleTimer);
     battleTimer = null;
   }
+  if (bombTimer) {
+    clearInterval(bombTimer);
+    bombTimer = null;
+  }
   if (motionCheckInterval) {
     clearInterval(motionCheckInterval);
     motionCheckInterval = null;
@@ -1009,19 +1309,26 @@ function concludeVictory() {
     clearInterval(autoAssistInterval);
     autoAssistInterval = null;
   }
+  if (deflectFlurryTimer) {
+    clearTimeout(deflectFlurryTimer);
+    deflectFlurryTimer = null;
+  }
+  if (learnChallengeTimer) {
+    clearTimeout(learnChallengeTimer);
+    learnChallengeTimer = null;
+  }
+  stopSpeechRecognition();
 
-  isBattleRunning = false;
-  isBattlePaused = false;
-  secondsRemaining = 0;
+  // Stop active rhythms and sensors while keeping victory cockpit alive
   Sound.stopBattleRhythm();
   brushAudioAnalyzer.stopListening();
-  stopCamera();
-  destroyDental3DMap();
+  stopSensors();
+  secondsRemaining = 0;
+  isBattlePaused = true;
+  // Keep isBattleRunning = true while victory modal is displayed so the cleansed 3D arena remains visible!
 
-  if (activeColosseumCanvas) {
-    activeColosseumCanvas.destroy();
-    activeColosseumCanvas = null;
-  }
+  // Trigger 3D Cleanse Victory Transformation Sequence
+  hanaBattle3DService.onCleanseVictory();
 
   const boss = getBattleBoss(selectedBossId);
   const avgCadence = cadenceSamples.length > 0
@@ -1030,9 +1337,8 @@ function concludeVictory() {
 
   voicePrompts.speakBossDefeated(boss.name);
 
-  // Trigger defeat in Colosseum State & Complete Toothbrush Battle in Store
+  // Single Atomic Victory State Transition in Store
   store.updateColosseumTimer(0, totalDuration);
-  store.defeatColosseumBoss();
   store.completeToothbrushBattle(selectedBossId, totalDuration, avgCadence);
 }
 
@@ -1040,6 +1346,10 @@ export function quitBattle() {
   if (battleTimer) {
     clearInterval(battleTimer);
     battleTimer = null;
+  }
+  if (bombTimer) {
+    clearInterval(bombTimer);
+    bombTimer = null;
   }
   if (motionCheckInterval) {
     clearInterval(motionCheckInterval);
@@ -1049,16 +1359,21 @@ export function quitBattle() {
     clearInterval(autoAssistInterval);
     autoAssistInterval = null;
   }
+  if (deflectFlurryTimer) {
+    clearTimeout(deflectFlurryTimer);
+    deflectFlurryTimer = null;
+  }
+  if (learnChallengeTimer) {
+    clearTimeout(learnChallengeTimer);
+    learnChallengeTimer = null;
+  }
+  stopSpeechRecognition();
 
   Sound.stopBattleRhythm();
   brushAudioAnalyzer.stopListening();
-  stopCamera();
+  stopSensors();
   destroyDental3DMap();
-
-  if (activeColosseumCanvas) {
-    activeColosseumCanvas.destroy();
-    activeColosseumCanvas = null;
-  }
+  hanaBattle3DService.destroy();
 
   if (isBattleRunning && secondsRemaining > 0) {
     isBattleRunning = false;
@@ -1146,8 +1461,8 @@ export function attachBattleListeners() {
   const deflectBtn = document.getElementById('hero-deflect-btn');
   if (deflectBtn) {
     deflectBtn.addEventListener('click', () => {
-      if (activeColosseumCanvas) activeColosseumCanvas.triggerDeflect();
-      else store.triggerColosseumDeflect();
+      hanaBattle3DService.onDeflectRicochet();
+      store.triggerColosseumDeflect();
       showComicHit('DEFLECT ACTIVE! 🛡️');
       syncCockpitHUD();
     });
@@ -1156,10 +1471,12 @@ export function attachBattleListeners() {
   const supernovaBtn = document.getElementById('hero-supernova-btn');
   if (supernovaBtn) {
     supernovaBtn.addEventListener('click', () => {
-      if (activeColosseumCanvas) activeColosseumCanvas.triggerSupernova();
-      else store.unleashChoreSupernova();
-      showComicHit('SUPERNOVA BLAST! ⭐');
-      syncCockpitHUD();
+      const res = store.unleashChoreSupernova();
+      if (res && res.success) {
+        hanaBattle3DService.triggerSupernova();
+        showComicHit('SUPERNOVA BLAST! ⭐');
+        syncCockpitHUD();
+      }
     });
   }
 
@@ -1201,30 +1518,11 @@ export function attachBattleListeners() {
   if (pipToggleBtn) {
     pipToggleBtn.addEventListener('click', () => {
       store.toggleColosseumPipCam();
-      if (!isCameraActive) initCamera();
+      if (!isCameraActive) initSensors();
     });
   }
 
-  // 5. Spline vs Colosseum Viewport Mode Switcher
-  const viewColBtn = document.getElementById('viewmode-colosseum-btn');
-  if (viewColBtn) {
-    viewColBtn.addEventListener('click', () => {
-      studioViewportMode = 'colosseum';
-      Sound.click();
-      store.notify();
-    });
-  }
-
-  const viewSplineBtn = document.getElementById('viewmode-spline-btn');
-  if (viewSplineBtn) {
-    viewSplineBtn.addEventListener('click', () => {
-      studioViewportMode = 'spline';
-      Sound.click();
-      store.notify();
-    });
-  }
-
-  // 6. Interactive Quadrant Card Taps on Dental Map
+  // 5. Interactive Quadrant Card Taps on Dental Map
   document.querySelectorAll('.dental-zone-card').forEach(card => {
     card.addEventListener('click', () => {
       const zoneId = card.id.replace('zone-card-', '');
@@ -1235,10 +1533,13 @@ export function attachBattleListeners() {
     });
   });
 
-  // 7. Victory Modal Actions
+  // 6. Victory Modal Actions
   const visitHqBtn = document.getElementById('colosseum-visit-hq-btn');
   if (visitHqBtn) {
     visitHqBtn.addEventListener('click', () => {
+      isBattleRunning = false;
+      destroyDental3DMap();
+      hanaBattle3DService.destroy();
       store.closeColosseumVictoryModal();
       store.navigate('hero_hq');
     });
@@ -1247,19 +1548,32 @@ export function attachBattleListeners() {
   const playAgainBtn = document.getElementById('colosseum-play-again-btn');
   if (playAgainBtn) {
     playAgainBtn.addEventListener('click', () => {
+      isBattleRunning = false;
+      destroyDental3DMap();
+      hanaBattle3DService.destroy();
       store.closeColosseumVictoryModal();
       startBattle();
     });
   }
 
-  // 8. Mount 3D Boss Colosseum Canvas Engine
-  if (isBattleRunning && studioViewportMode === 'colosseum') {
-    const mountEl = document.getElementById('colosseum-canvas-mount');
-    if (mountEl) {
-      if (activeColosseumCanvas) {
-        activeColosseumCanvas.destroy();
-      }
-      activeColosseumCanvas = new BossColosseumCanvas(mountEl, { bossId: selectedBossId });
+  // 7. Mount Pure 3D WebGL / Spline Arena Engine
+  if (isBattleRunning) {
+    const canvas = document.getElementById('battle-webgl-canvas');
+    if (canvas) {
+      canvas.addEventListener('pointerdown', () => {
+        if (isBattleRunning && !isBattlePaused) {
+          const activeQuad = getDentalQuadrant(secondsRemaining, totalDuration);
+          handleScrubHit(activeQuad, 'manual');
+        }
+      });
+
+      const currentBoss = getBattleBoss(selectedBossId);
+      hanaBattle3DService.init(canvas, {
+        bossData: currentBoss,
+        splineUrl: currentBoss.splineUrl || null,
+        hasLaserEquipped: checkLaserToothbrushEquipped(),
+        videoElement: document.getElementById('ar-camera-feed')
+      });
     }
   }
 }

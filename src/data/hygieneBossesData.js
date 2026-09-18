@@ -124,8 +124,8 @@ export const DENTAL_QUADRANTS = [
     endTime: 90,
     instruction: "Scrub circular circles on your top right molars!",
     coachMessage: "Zone 1: Upper Right! Scrub round and round on your top right teeth!",
-    brushPosition: { x: 62, y: 35, rotation: -20 },
-    roi: { minX: 32, maxX: 54, minY: 14, maxY: 29 }
+    brushPosition: { x: 65, y: 35, rotation: -20 },
+    roi: { minX: 32, maxX: 56, minY: 12, maxY: 28 }
   },
   {
     id: "q2",
@@ -138,8 +138,8 @@ export const DENTAL_QUADRANTS = [
     endTime: 60,
     instruction: "Switch over to top left teeth! Round and round!",
     coachMessage: "Zone 2: Upper Left! Keep circling on your top left teeth!",
-    brushPosition: { x: 38, y: 35, rotation: 20 },
-    roi: { minX: 10, maxX: 32, minY: 14, maxY: 29 }
+    brushPosition: { x: 35, y: 35, rotation: 20 },
+    roi: { minX: 8, maxX: 32, minY: 12, maxY: 28 }
   },
   {
     id: "q3",
@@ -152,8 +152,8 @@ export const DENTAL_QUADRANTS = [
     endTime: 30,
     instruction: "Down to bottom right teeth! Gentle circles on chew surfaces!",
     coachMessage: "Zone 3: Halfway there! Bottom right teeth next! Keep scrubbing!",
-    brushPosition: { x: 62, y: 65, rotation: -15 },
-    roi: { minX: 32, maxX: 54, minY: 29, maxY: 44 }
+    brushPosition: { x: 65, y: 65, rotation: -15 },
+    roi: { minX: 32, maxX: 56, minY: 28, maxY: 44 }
   },
   {
     id: "q4",
@@ -166,8 +166,8 @@ export const DENTAL_QUADRANTS = [
     endTime: 10,
     instruction: "Bottom left side! Clean away cavity bugs!",
     coachMessage: "Zone 4: Bottom left side! Clean away those cavity bugs!",
-    brushPosition: { x: 38, y: 65, rotation: 15 },
-    roi: { minX: 10, maxX: 32, minY: 29, maxY: 44 }
+    brushPosition: { x: 35, y: 65, rotation: 15 },
+    roi: { minX: 8, maxX: 32, minY: 28, maxY: 44 }
   },
   {
     id: "q5",
@@ -180,8 +180,8 @@ export const DENTAL_QUADRANTS = [
     endTime: 0,
     instruction: "Gentle tongue polish for fresh minty breath!",
     coachMessage: "Final 10 seconds: Gentle tongue polish for a shiny mint smile!",
-    brushPosition: { x: 50, y: 52, rotation: 0 },
-    roi: { minX: 20, maxX: 44, minY: 22, maxY: 38 }
+    brushPosition: { x: 50, y: 50, rotation: 0 },
+    roi: { minX: 20, maxX: 44, minY: 20, maxY: 40 }
   }
 ];
 

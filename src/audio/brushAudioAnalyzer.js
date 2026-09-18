@@ -19,23 +19,36 @@ class BrushAudioAnalyzer {
     this.onCadenceCallback = null;
   }
 
-  async startListening(onCadenceUpdate = null) {
-    this.onCadenceCallback = onCadenceUpdate;
-    if (this.isListeningActive) return true;
+  async startListening(onCadenceUpdate, existingStream = null) {
+    this.onCadenceCallback = onCadenceUpdate || null;
+    if (this.isListeningActive) {
+      if (existingStream && existingStream !== this.stream) {
+        this.stopListening();
+      } else {
+        return true;
+      }
+    }
+    this.isExternalStream = false;
 
     try {
-      if (typeof window === 'undefined' || !navigator?.mediaDevices?.getUserMedia) {
-        console.warn('Microphone access not supported in this environment.');
-        return false;
-      }
-
-      this.stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: false
+      if (existingStream && existingStream.getAudioTracks().length > 0) {
+        this.stream = existingStream;
+        this.isExternalStream = true;
+      } else {
+        if (typeof window === 'undefined' || !navigator?.mediaDevices?.getUserMedia) {
+          console.warn('Microphone access not supported in this environment.');
+          return false;
         }
-      });
+
+        this.stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false
+          }
+        });
+        this.isExternalStream = false;
+      }
 
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
       if (!AudioContextClass) return false;
@@ -47,11 +60,11 @@ class BrushAudioAnalyzer {
 
       this.source = this.audioCtx.createMediaStreamSource(this.stream);
 
-      // Bandpass filter centered at 2800 Hz to isolate bristle scrubbing friction
+      // Bandpass filter centered at 2800 Hz (Q: 2.2) to isolate bristle scrubbing friction
       this.filter = this.audioCtx.createBiquadFilter();
       this.filter.type = 'bandpass';
       this.filter.frequency.setValueAtTime(2800, this.audioCtx.currentTime);
-      this.filter.Q.setValueAtTime(2.5, this.audioCtx.currentTime);
+      this.filter.Q.setValueAtTime(2.2, this.audioCtx.currentTime);
 
       // Analyser Node
       this.analyser = this.audioCtx.createAnalyser();
@@ -114,10 +127,13 @@ class BrushAudioAnalyzer {
       clearInterval(this.cadenceInterval);
       this.cadenceInterval = null;
     }
-    if (this.stream) {
+    if (this.stream && !this.isExternalStream) {
       this.stream.getTracks().forEach(t => t.stop());
       this.stream = null;
+    } else {
+      this.stream = null;
     }
+    this.isExternalStream = false;
     if (this.source) {
       this.source.disconnect();
       this.source = null;
