@@ -57,7 +57,17 @@ function renderWelcomeAuthScreen() {
       (h.level && Number(h.level) > 1)
     ))
   );
-  const hasExistingHousehold = Boolean((existingCode && existingCode.length >= 4) || hasParent || hasCustomHeroes);
+
+  const myDeviceId = (typeof localStorage !== 'undefined') ? localStorage.getItem('stitch_device_id') : null;
+  const isDeviceRevoked = Boolean(
+    state.isDeviceRevoked === true ||
+    (myDeviceId && (
+      state.devices?.[myDeviceId]?.revoked === true ||
+      (Array.isArray(state.revokedDeviceIds) && state.revokedDeviceIds.includes(myDeviceId))
+    ))
+  );
+
+  const hasExistingHousehold = Boolean(!isDeviceRevoked && ((existingCode && existingCode.length >= 4) || hasParent || hasCustomHeroes));
   const displayCode = (existingCode && existingCode.length >= 4) ? existingCode : 'HERO-8842';
 
   return `
@@ -114,6 +124,14 @@ function renderWelcomeAuthScreen() {
         </div>
       </div>
     </div>
+
+    <!-- Revocation Notice if device was logged out by parent -->
+    ${isDeviceRevoked ? `
+      <div class="bg-amber-500/20 border-2 border-amber-500/50 rounded-2xl p-3.5 text-amber-300 text-xs font-bold flex items-center gap-2.5 animate-pulse">
+        <span class="material-symbols-outlined text-xl flex-shrink-0">phonelink_erase</span>
+        <span><strong class="font-headline font-black">Device Logged Out by Parent:</strong> This device was logged out of the household by a parent. Please enter your family sync code below or sign in to reconnect.</span>
+      </div>
+    ` : ''}
 
     <!-- Error Notice if any -->
     ${authErrorMessage ? `

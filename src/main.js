@@ -48,7 +48,17 @@ function renderApp() {
   const state = store.getState();
   const activeView = state.activeView;
 
-  // Auto-heal active household devices if valid household signals exist locally
+  // Check if this device has been revoked by a household parent
+  const myDeviceId = (typeof localStorage !== 'undefined') ? localStorage.getItem('stitch_device_id') : null;
+  const isRevoked = Boolean(
+    state.isDeviceRevoked === true ||
+    (myDeviceId && (
+      state.devices?.[myDeviceId]?.revoked === true ||
+      (Array.isArray(state.revokedDeviceIds) && state.revokedDeviceIds.includes(myDeviceId))
+    ))
+  );
+
+  // Auto-heal active household devices if valid household signals exist locally AND not revoked
   const activeSyncCode = (state.household?.syncCode || '').trim().toUpperCase();
   const hasParent = Boolean(
     state.household?.parentUser?.uid ||
@@ -68,9 +78,11 @@ function renderApp() {
     ))
   );
   const isExistingHouseholdDevice = Boolean(
-    (activeSyncCode && activeSyncCode.length >= 4) ||
-    hasParent ||
-    hasCustomHeroes
+    !isRevoked && (
+      (activeSyncCode && activeSyncCode.length >= 4) ||
+      hasParent ||
+      hasCustomHeroes
+    )
   );
 
   if ((!state.isAuthenticated || !state.isHouseholdConfigured) && isExistingHouseholdDevice) {
@@ -79,6 +91,14 @@ function renderApp() {
     state.householdSetupStep = 'ready';
     if (!state.household.syncCode || state.household.syncCode.trim().length < 4) {
       state.household.syncCode = activeSyncCode || 'HERO-8842';
+    }
+  } else if (isRevoked) {
+    state.isAuthenticated = false;
+    state.isHouseholdConfigured = false;
+    state.householdSetupStep = 'auth';
+    state.isDeviceRevoked = true;
+    if (state.household) {
+      state.household.syncCode = '';
     }
   }
 
