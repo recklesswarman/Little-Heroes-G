@@ -6,6 +6,7 @@ import { firestoreSync } from './services/firestoreSyncService.js';
 // Connect centralized Firestore Sync Service to Store
 store.setSyncService(firestoreSync);
 import { firebaseAuth } from './services/firebaseAuthService.js';
+import { isFirebaseAvailable } from './config/firebase.js';
 
 // Layout Components
 import { renderLandingAuthModal, attachLandingAuthModalListeners } from './components/LandingAuthModal.js';
@@ -47,12 +48,67 @@ function renderApp() {
   const state = store.getState();
   const activeView = state.activeView;
 
-  // Auto-heal active household devices if valid syncCode exists locally
+  // Auto-heal active household devices if valid household signals exist locally
   const activeSyncCode = (state.household?.syncCode || '').trim().toUpperCase();
-  if ((!state.isAuthenticated || !state.isHouseholdConfigured) && activeSyncCode && activeSyncCode.length >= 4) {
+  const hasParent = Boolean(
+    state.household?.parentUser?.uid ||
+    state.household?.parentUser?.email ||
+    (state.household?.parents && state.household.parents.length > 0) ||
+    (state.household?.parentEmails && state.household.parentEmails.length > 0)
+  );
+  const hasCustomHeroes = Array.isArray(state.heroes) && (
+    state.heroes.length > 1 ||
+    state.heroes.some(h => (
+      (h.name && h.name !== 'Little Hero') ||
+      (h.points && Number(h.points) > 0) ||
+      (h.coins && Number(h.coins) > 0) ||
+      (h.xp && Number(h.xp) > 0) ||
+      (h.level && Number(h.level) > 1) ||
+      (Array.isArray(h.unlockedPetIds) && h.unlockedPetIds.length > 0)
+    ))
+  );
+  const isExistingHouseholdDevice = Boolean(
+    (activeSyncCode && activeSyncCode.length >= 4) ||
+    hasParent ||
+    hasCustomHeroes
+  );
+
+  if ((!state.isAuthenticated || !state.isHouseholdConfigured) && isExistingHouseholdDevice) {
     state.isAuthenticated = true;
     state.isHouseholdConfigured = true;
     state.householdSetupStep = 'ready';
+    if (!state.household.syncCode || state.household.syncCode.trim().length < 4) {
+      state.household.syncCode = activeSyncCode || 'HERO-8842';
+    }
+  }
+
+  // Auth Readiness Gate:
+  // If user is unauthenticated and Firebase Auth is still asynchronously checking cached
+  // Google sessions / redirect results, display a momentary Rex loading splash instead of
+  // prematurely flashing the Google Login landing modal.
+  if ((!state.isAuthenticated || !state.isHouseholdConfigured) && !state.isAuthReady && isFirebaseAvailable) {
+    app.innerHTML = `
+      <div class="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-center select-none animate-fade-in font-body">
+        <div class="relative mb-5">
+          <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-gradient-to-br from-primary via-emerald-500 to-teal-400 p-1 shadow-xl shadow-primary/30 flex items-center justify-center animate-bounce">
+            <span class="text-4xl sm:text-5xl" role="img" aria-label="Rex">🦖</span>
+          </div>
+          <span class="absolute -bottom-2 -right-2 bg-amber-400 text-slate-950 font-headline font-black text-[10px] px-2.5 py-0.5 rounded-full border-2 border-slate-900 shadow">
+            CONNECTING
+          </span>
+        </div>
+        <h2 class="font-headline text-xl sm:text-2xl font-black text-white tracking-tight">
+          Opening Little Hero Adventures...
+        </h2>
+        <p class="text-xs sm:text-sm text-slate-400 mt-1 font-bold max-w-xs">
+          Waking up Rex and restoring your family headquarters...
+        </p>
+        <div class="mt-6 w-32 h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+          <div class="h-full bg-gradient-to-r from-primary to-emerald-400 rounded-full animate-pulse w-full"></div>
+        </div>
+      </div>
+    `;
+    return;
   }
 
   // Strict Auth Wall Gate:

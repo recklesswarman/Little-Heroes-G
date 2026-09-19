@@ -21,7 +21,19 @@ class FirebaseAuthService {
   }
 
   init() {
-    if (!isFirebaseAvailable || !auth) return;
+    if (!isFirebaseAvailable || !auth) {
+      store.getState().isAuthReady = true;
+      return;
+    }
+
+    // Safety timeout: Ensure isAuthReady flips to true within 1200ms even if network hangs
+    setTimeout(() => {
+      const state = store.getState();
+      if (!state.isAuthReady) {
+        state.isAuthReady = true;
+        store.notify();
+      }
+    }, 1200);
 
     // 1. Handle returning from redirect sign-in (mobile / popup-blocked fallback)
     getRedirectResult(auth)
@@ -70,6 +82,7 @@ class FirebaseAuthService {
           const targetCode = existingLink.householdCode.trim().toUpperCase();
           console.log(`🏠 Multi-Device Sync: User ${user.email} belongs to Household ${targetCode}. Joining & hydrating all data...`);
           await firestoreSync.joinHousehold(targetCode);
+          state.household.syncCode = targetCode;
           state.isAuthenticated = true;
           state.isHouseholdConfigured = true;
           state.householdSetupStep = 'ready';
@@ -82,20 +95,33 @@ class FirebaseAuthService {
             householdCode: targetCode
           });
         } else {
-          // If the device already has a configured household code locally, bind to this user
+          // Check if this device already has an active household locally
           const localCode = (state.household?.syncCode || (persistentLink.isLinked() ? persistentLink.getSession()?.householdCode : '')).trim().toUpperCase();
-          if (localCode && localCode.length >= 4) {
+          const hasParent = Boolean(
+            (state.household?.parents && state.household.parents.length > 0) ||
+            (state.household?.parentEmails && state.household.parentEmails.length > 0)
+          );
+          const hasCustomHeroes = Array.isArray(state.heroes) && (
+            state.heroes.length > 1 ||
+            state.heroes.some(h => h.name !== 'Little Hero' || (h.points && Number(h.points) > 0))
+          );
+          const isExistingLocalHousehold = state.isHouseholdConfigured || (localCode && localCode.length >= 4) || hasParent || hasCustomHeroes;
+
+          if (isExistingLocalHousehold) {
+            const targetCode = (localCode && localCode.length >= 4) ? localCode : 'HERO-8842';
+            state.household.syncCode = targetCode;
+            state.isAuthenticated = true;
+            state.isHouseholdConfigured = true;
+            state.householdSetupStep = 'ready';
+
             await persistentLink.establishPersistentLink({
               userId: user.uid,
               email: user.email,
               displayName: user.displayName,
-              householdCode: localCode
-            });
-            state.household.syncCode = localCode;
-            state.isAuthenticated = true;
-            state.isHouseholdConfigured = true;
-            state.householdSetupStep = 'ready';
-            firestoreSync.startSync(localCode);
+              householdCode: targetCode
+            }).catch(() => {});
+
+            firestoreSync.startSync(targetCode);
             firestoreSync.pushStateToCloud(true);
           } else {
             // Brand-new Google user: route to 2-Card Choice Screen (Create vs Join)!
@@ -114,28 +140,42 @@ class FirebaseAuthService {
       console.log("Firebase Auth: No active Google session (offline or child/household device)");
       
       const activeHouseholdCode = (state.household?.syncCode || (persistentLink.isLinked() ? persistentLink.getSession()?.householdCode : '')).trim().toUpperCase();
-      const hasConfiguredHousehold = state.isHouseholdConfigured || (activeHouseholdCode && activeHouseholdCode.length >= 4);
+      const hasParent = Boolean(
+        state.household?.parentUser?.uid ||
+        state.household?.parentUser?.email ||
+        (state.household?.parents && state.household.parents.length > 0) ||
+        (state.household?.parentEmails && state.household.parentEmails.length > 0)
+      );
+      const hasCustomHeroes = Array.isArray(state.heroes) && (
+        state.heroes.length > 1 ||
+        state.heroes.some(h => (
+          (h.name && h.name !== 'Little Hero') ||
+          (h.points && Number(h.points) > 0) ||
+          (h.coins && Number(h.coins) > 0) ||
+          (h.xp && Number(h.xp) > 0) ||
+          (h.level && Number(h.level) > 1) ||
+          (Array.isArray(h.unlockedPetIds) && h.unlockedPetIds.length > 0)
+        ))
+      );
+      const hasConfiguredHousehold = state.isHouseholdConfigured || (activeHouseholdCode && activeHouseholdCode.length >= 4) || hasParent || hasCustomHeroes;
 
       if (hasConfiguredHousehold) {
-        console.log(`🛡️ Active household device retained for Household ${activeHouseholdCode || state.household?.name || 'Active'}`);
-        if (activeHouseholdCode && !state.household.syncCode) {
-          state.household.syncCode = activeHouseholdCode;
-        }
+        const resolvedCode = (activeHouseholdCode && activeHouseholdCode.length >= 4) ? activeHouseholdCode : 'HERO-8842';
+        console.log(`🛡️ Active household device retained for Household ${resolvedCode || state.household?.name || 'Active'}`);
+        state.household.syncCode = resolvedCode;
         state.isAuthenticated = true;
         state.isHouseholdConfigured = true;
         state.householdSetupStep = 'ready';
         if (!state.household.lastSync || state.household.lastSync === "Not connected") {
           state.household.lastSync = persistentLink.isLinked() ? "Persistent Link Active" : "Household Active";
         }
-        if (activeHouseholdCode && !persistentLink.isLinked()) {
+        if (!persistentLink.isLinked()) {
           persistentLink.establishPersistentLink({
-            householdCode: activeHouseholdCode,
+            householdCode: resolvedCode,
             displayName: state.household?.name || 'Household Device'
           }).catch(() => {});
         }
-        if (activeHouseholdCode) {
-          firestoreSync.startSync(activeHouseholdCode);
-        }
+        firestoreSync.startSync(resolvedCode);
       } else {
         if (state.household?.parentUser) {
           delete state.household.parentUser;

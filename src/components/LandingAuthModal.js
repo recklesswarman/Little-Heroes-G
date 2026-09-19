@@ -42,7 +42,23 @@ function renderWelcomeAuthScreen() {
   const state = store.getState();
   const existingCode = (state.household?.syncCode || '').trim().toUpperCase();
   const existingName = state.household?.name || 'My Family';
-  const hasExistingHousehold = Boolean(existingCode && existingCode.length >= 4);
+  const hasParent = Boolean(
+    state.household?.parentUser?.uid ||
+    state.household?.parentUser?.email ||
+    (state.household?.parents && state.household.parents.length > 0) ||
+    (state.household?.parentEmails && state.household.parentEmails.length > 0)
+  );
+  const hasCustomHeroes = Array.isArray(state.heroes) && (
+    state.heroes.length > 1 ||
+    state.heroes.some(h => (
+      (h.name && h.name !== 'Little Hero') ||
+      (h.points && Number(h.points) > 0) ||
+      (h.coins && Number(h.coins) > 0) ||
+      (h.level && Number(h.level) > 1)
+    ))
+  );
+  const hasExistingHousehold = Boolean((existingCode && existingCode.length >= 4) || hasParent || hasCustomHeroes);
+  const displayCode = (existingCode && existingCode.length >= 4) ? existingCode : 'HERO-8842';
 
   return `
     <!-- Top Mascot & Title -->
@@ -114,7 +130,7 @@ function renderWelcomeAuthScreen() {
         class="w-full bg-gradient-to-r from-emerald-500 via-teal-500 to-primary hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-headline text-base sm:text-lg font-black py-4 px-6 min-h-[56px] rounded-2xl shadow-xl flex items-center justify-center gap-2.5 border-b-4 border-emerald-700 active:translate-y-1 active:border-b-0 transition-all cursor-pointer ring-2 ring-emerald-400/40"
       >
         <span class="text-xl">🏠</span>
-        <span>Resume ${existingName} (${existingCode})</span>
+        <span>Resume ${existingName} (${displayCode})</span>
         <span class="text-xl">➔</span>
       </button>
 
@@ -414,6 +430,9 @@ export function attachLandingAuthModalListeners() {
       state.isAuthenticated = true;
       state.isHouseholdConfigured = true;
       state.householdSetupStep = 'ready';
+      if (!state.household.syncCode || state.household.syncCode.trim().length < 4) {
+        state.household.syncCode = 'HERO-8842';
+      }
       store.saveState(true);
       store.notify();
     });

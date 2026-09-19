@@ -111,11 +111,17 @@ assert.strictEqual(state.household.syncCode, 'HERO-9912', "handleAuthUser(null) 
 pass("Firebase Auth handleAuthUser(null) keeps active household device in dashboard without locking");
 
 // TEST 5: Firebase Auth handleAuthUser(null) protects stranger without household
+localStorage.clear();
+localStorage.removeItem('stitch_persistent_link_session');
+persistentLink.clearSession();
+store.loadState();
+state = store.getState();
 state.isAuthenticated = false;
 state.isHouseholdConfigured = false;
 state.household.syncCode = '';
-localStorage.removeItem('stitch_persistent_link_session');
-persistentLink.clearSession();
+state.household.parents = [];
+state.household.parentEmails = [];
+delete state.household.parentUser;
 await firebaseAuth.handleAuthUser(null);
 state = store.getState();
 assert.strictEqual(state.isAuthenticated, false, "handleAuthUser(null) must keep stranger unauthenticated");
@@ -150,6 +156,70 @@ assert(htmlWithCode.includes('auth-resume-household-btn'), "Modal must contain r
 assert(htmlWithCode.includes('HERO-8842'), "Modal must display detected sync code");
 assert(htmlWithCode.includes('auth-enter-code-direct-btn'), "Modal must contain direct sync code link");
 pass("LandingAuthModal renders Resume button for detected sync code and direct sync code entry");
+
+// TEST 8: Active device with parent email in localStorage (without syncCode) is restored
+localStorage.clear();
+const activeParentEmailMock = {
+  household: {
+    syncCode: '',
+    name: 'The Johnson Family',
+    parents: [{ uid: 'p_99', displayName: 'Dad' }],
+    parentEmails: ['dad@johnson.com']
+  },
+  heroes: [{ id: 'hero_1', name: 'Little Hero' }]
+};
+localStorage.setItem(STORAGE_KEY, JSON.stringify(activeParentEmailMock));
+store.loadState();
+state = store.getState();
+assert.strictEqual(state.isAuthenticated, true, "Device with parent email must be authenticated");
+assert.strictEqual(state.isHouseholdConfigured, true, "Device with parent email must be configured");
+assert.strictEqual(state.householdSetupStep, 'ready', "Device with parent email step must be 'ready'");
+assert.strictEqual(Boolean(state.household.syncCode && state.household.syncCode.length >= 4), true, "Sync code must be auto-healed/assigned");
+pass("Active household device with parent email restores isAuthenticated=true and assigns valid syncCode");
+
+// TEST 9: Active device with custom heroes / points whose syncCode was wiped is restored
+localStorage.clear();
+const customKidHeroMock = {
+  household: {
+    syncCode: '',
+    name: ''
+  },
+  heroes: [
+    {
+      id: 'hero_1',
+      name: 'Maya',
+      points: 120,
+      coins: 350,
+      level: 2,
+      unlockedPetIds: ['1']
+    }
+  ]
+};
+localStorage.setItem(STORAGE_KEY, JSON.stringify(customKidHeroMock));
+store.loadState();
+state = store.getState();
+assert.strictEqual(state.isAuthenticated, true, "Device with custom kid hero Maya must be authenticated");
+assert.strictEqual(state.isHouseholdConfigured, true, "Device with custom kid hero Maya must be configured");
+assert.strictEqual(state.householdSetupStep, 'ready', "Device with custom kid hero step must be 'ready'");
+assert.strictEqual(state.household.syncCode, 'HERO-8842', "Canonical fallback syncCode HERO-8842 assigned");
+pass("Active household device with custom heroes/points whose syncCode was wiped is fully restored");
+
+// TEST 10: Google Sign-in on active household device with empty syncCode binds and enters dashboard
+state.household.syncCode = '';
+state.isHouseholdConfigured = true;
+const returningUser = {
+  uid: 'google_user_555',
+  email: 'parent_returning@example.com',
+  displayName: 'Papa Bear',
+  isAnonymous: false
+};
+await firebaseAuth.handleAuthUser(returningUser);
+state = store.getState();
+assert.strictEqual(state.isAuthenticated, true, "Google user on active household must be authenticated");
+assert.strictEqual(state.isHouseholdConfigured, true, "Google user on active household must remain configured");
+assert.strictEqual(state.householdSetupStep, 'ready', "Google user on active household must NOT be demoted to choice");
+assert.strictEqual(Boolean(state.household.syncCode && state.household.syncCode.length >= 4), true, "Valid syncCode must be bound");
+pass("Google Sign-In on active device with empty syncCode binds and stays in ready dashboard mode");
 
 console.log(`\n=============================================`);
 console.log(`ALL ${passedCount} AUTH & HOUSEHOLD RESTORATION TESTS PASSED!`);

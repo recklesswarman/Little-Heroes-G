@@ -842,20 +842,64 @@ class Store {
         const hasActiveSyncCode = Boolean(currentCode && currentCode.length >= 4);
         const hasParent = Boolean(
           parsed.household?.parentUser?.uid ||
+          parsed.household?.parentUser?.email ||
           (parsed.household?.parents && parsed.household.parents.length > 0) ||
           (parsed.household?.parentEmails && parsed.household.parentEmails.length > 0)
         );
         const wasExplicitlyConfigured = parsed.isHouseholdConfigured === true;
-        const hasCustomHeroes = Array.isArray(parsed.heroes) && parsed.heroes.length > 0 && !isPureMock;
+        const hasCustomHeroes = Array.isArray(parsed.heroes) && (
+          parsed.heroes.length > 1 ||
+          parsed.heroes.some(h => (
+            (h.name && h.name !== 'Little Hero') ||
+            (h.points && Number(h.points) > 0) ||
+            (h.coins && Number(h.coins) > 0) ||
+            (h.tokens && Number(h.tokens) > 0) ||
+            (h.xp && Number(h.xp) > 0) ||
+            (h.level && Number(h.level) > 1) ||
+            (h.streak && Number(h.streak) > 1) ||
+            (Array.isArray(h.unlockedPetIds) && h.unlockedPetIds.length > 0) ||
+            h.hasChosenStarterPet === true ||
+            (h.activePetId !== null && h.activePetId !== undefined)
+          ))
+        );
+        const hasCustomProgress = Boolean(
+          (parsed.taskCompletionLogs && parsed.taskCompletionLogs.length > 0) ||
+          (parsed.taskLedgerLogs && parsed.taskLedgerLogs.length > 0) ||
+          (parsed.movementSessionHistory && parsed.movementSessionHistory.length > 0) ||
+          (parsed.dentalBattleHistory && parsed.dentalBattleHistory.length > 0) ||
+          (parsed.selectedHero && (
+            (parsed.selectedHero.name && parsed.selectedHero.name !== 'Little Hero') ||
+            (parsed.selectedHero.points && Number(parsed.selectedHero.points) > 0) ||
+            (parsed.selectedHero.coins && Number(parsed.selectedHero.coins) > 0) ||
+            (parsed.selectedHero.xp && Number(parsed.selectedHero.xp) > 0) ||
+            (parsed.selectedHero.level && Number(parsed.selectedHero.level) > 1) ||
+            (Array.isArray(parsed.selectedHero.unlockedPetIds) && parsed.selectedHero.unlockedPetIds.length > 0) ||
+            parsed.selectedHero.hasChosenStarterPet === true
+          ))
+        );
+        const hasCustomName = Boolean(
+          parsed.household?.name &&
+          parsed.household.name.trim() !== '' &&
+          parsed.household.name.trim() !== 'The Hero Family'
+        );
 
-        const isExistingActiveHousehold = wasExplicitlyConfigured || hasActiveSyncCode || (hasParent && currentCode) || (hasCustomHeroes && hasActiveSyncCode);
+        const isExistingActiveHousehold = Boolean(
+          wasExplicitlyConfigured ||
+          hasActiveSyncCode ||
+          hasParent ||
+          hasCustomHeroes ||
+          hasCustomProgress ||
+          hasCustomName
+        );
 
         if (isExistingActiveHousehold) {
           parsed.isAuthenticated = true;
           parsed.isHouseholdConfigured = true;
           parsed.householdSetupStep = 'ready';
-          if (currentCode && !parsed.household.syncCode) {
-            parsed.household.syncCode = currentCode;
+          const resolvedCode = (currentCode || persistentCode || 'HERO-8842').trim().toUpperCase();
+          parsed.household.syncCode = resolvedCode;
+          if (!parsed.household.name || !parsed.household.name.trim()) {
+            parsed.household.name = 'The Hero Family';
           }
         } else {
           // Unauthenticated or unconfigured visitor: show Landing Auth Wall
@@ -863,6 +907,7 @@ class Store {
           parsed.isAuthenticated = false;
           parsed.isHouseholdConfigured = false;
           parsed.householdSetupStep = 'auth';
+          parsed.household.syncCode = '';
         }
 
         if (!parsed.petSparkMap || typeof parsed.petSparkMap !== 'object') {
