@@ -1,20 +1,35 @@
 // Interactive Floating Rex the Dino Mascot & Toddler Voice Widget
-// Features giant tap-to-talk avatar, auto-audio unlock, animated waveforms,
-// sound cues, and oversized picture quick-actions for 3-4 year olds.
+// Features:
+// 1. Realistic Kid-Friendly Voice Guidance via Gemini 3.8 Live and Gemini 3.1 Flash TTS
+// 2. Real-time Audio Waveform Visualizer & Barge-in Interruption Handling
+// 3. Tactile 3D Pet Face Canvas with Pat Head, Poke Cheek, and Roar Interactions
+// 4. Toddler Pictorial Quick-Action Cards with Habit Auto-Completion
+// 5. Interactive Chat & Hints Tab with Model Speed Toggle and Spoken Read-Aloud
 
 import { store } from '../state/store.js';
 import { geminiLiveService } from '../services/geminiLiveService.js';
+import { rexEngine } from '../services/rexCompanionEngine.js';
+import { speakCompanion, stopRex, isRexSpeaking } from '../services/voiceService.js';
 import { Sound } from '../audio/sfx.js';
 import { triggerInteractiveCelebration } from './InteractiveCelebrationOverlay.js';
-import { rexEngine } from '../services/rexCompanionEngine.js';
 import { renderPetSkeletalFaceViewer, initPetSkeletalFaceViewer, getActivePetSkeletalInstance } from './PetSkeletalFaceViewer.js';
 import { getPetFaceProfile } from '../services/petSkeletalFaceService.js';
+
+let activeTab = 'live'; // 'live' | 'chat'
+let chatSpeedMode = 'smart'; // 'smart' | 'fast'
+let chatMessages = [
+  {
+    id: 'msg_welcome',
+    sender: 'rex',
+    text: "Rawr! Hello Little Hero! I am Rex, your dinosaur champion! You can talk to me, pet my face, or tap any picture below!",
+    timestamp: Date.now()
+  }
+];
 
 /**
  * Generates dynamic SVG for Rex the Dino with expressions for listening, thinking, and speaking
  */
 export function renderRexAvatarSvg({ isListening = false, isThinking = false, isSpeaking = false } = {}) {
-  // Dynamic eye pupil sizes
   const pupilRadius = isListening ? "4.5" : isThinking ? "2.5" : "3.5";
   const eyeOuterRadius = isListening ? "8" : "7";
 
@@ -45,7 +60,7 @@ export function renderRexAvatarSvg({ isListening = false, isThinking = false, is
       <circle cx="46" cy="54" r="2" fill="#059669" />
       <circle cx="54" cy="54" r="2" fill="#059669" />
       
-      <!-- Dino Mouth (Opens dynamically when speaking) -->
+      <!-- Dino Mouth -->
       ${
         isSpeaking
           ? `<ellipse cx="50" cy="65" rx="9" ry="6" fill="#065F46" />
@@ -82,7 +97,7 @@ export function renderLiveRexWidget() {
     lastRexTranscript: ''
   };
 
-  const isSpeaking = liveRex.isSpeaking || rexEngine.currentState === 'talking';
+  const isSpeaking = liveRex.isSpeaking || rexEngine.currentState === 'talking' || isRexSpeaking();
   const isListening = liveRex.isListening || rexEngine.currentState === 'listening';
   const isThinking = rexEngine.currentState === 'thinking';
   const isOpen = liveRex.isOpen;
@@ -101,198 +116,301 @@ export function renderLiveRexWidget() {
       ${
         isOpen
           ? `
-        <div id="live-rex-modal-card" class="pointer-events-auto bg-surface-container rounded-4xl border-4 border-primary/50 shadow-2xl p-5 mb-3 w-[94vw] max-w-sm flex flex-col gap-4 animate-scale-up backdrop-blur-xl">
+        <div id="live-rex-modal-card" class="pointer-events-auto bg-surface-container rounded-4xl border-4 border-primary/50 shadow-2xl p-4 sm:p-5 mb-3 w-[94vw] max-w-sm sm:max-w-md flex flex-col gap-3 animate-scale-up backdrop-blur-xl max-h-[85vh] overflow-hidden">
           
-          <!-- Card Header with Close Button -->
-          <div class="flex items-center justify-between border-b-2 border-surface-container-highest pb-2">
+          <!-- Card Header with Pet Info, Tab Navigation, and Close Button -->
+          <div class="flex items-center justify-between border-b-2 border-surface-container-highest pb-2.5">
             <div class="flex items-center gap-2">
-              <span class="text-xl">${petEmoji}</span>
-              <h3 class="font-headline text-lg font-black text-inverse-surface">${petName}</h3>
+              <span class="text-2xl">${petEmoji}</span>
+              <div>
+                <h3 class="font-headline text-base sm:text-lg font-black text-inverse-surface leading-tight">${petName}</h3>
+                <span class="text-[10px] font-bold text-primary flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full ${isListening ? 'bg-emerald-400 animate-ping' : isSpeaking ? 'bg-purple-400 animate-pulse' : 'bg-primary'}"></span>
+                  Gemini Voice Guide
+                </span>
+              </div>
+            </div>
+
+            <!-- Mode Switcher Tabs -->
+            <div class="flex items-center bg-surface-container-high p-0.5 rounded-full border border-surface-container-highest">
+              <button id="rex-tab-live-btn" class="px-3 py-1 rounded-full text-xs font-headline font-black transition-all flex items-center gap-1 cursor-pointer ${
+                activeTab === 'live' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:text-inverse-surface'
+              }" title="Real-time Voice Conversation">
+                <span class="material-symbols-outlined text-sm">mic</span>
+                <span>Voice</span>
+              </button>
+              <button id="rex-tab-chat-btn" class="px-3 py-1 rounded-full text-xs font-headline font-black transition-all flex items-center gap-1 cursor-pointer ${
+                activeTab === 'chat' ? 'bg-secondary text-on-secondary shadow-sm' : 'text-on-surface-variant hover:text-inverse-surface'
+              }" title="Chat & Ask Questions">
+                <span class="material-symbols-outlined text-sm">forum</span>
+                <span>Chat</span>
+              </button>
             </div>
 
             <!-- Minimize / Close Button -->
-            <button id="live-rex-close-btn" class="w-11 h-11 min-w-[44px] min-h-[44px] rounded-full bg-surface-container-high hover:bg-surface-bright text-on-surface-variant flex items-center justify-center chunky-btn-sm active:scale-95" title="Close Companion Window">
+            <button id="live-rex-close-btn" class="w-10 h-10 min-w-[40px] min-h-[40px] rounded-full bg-surface-container-high hover:bg-surface-bright text-on-surface-variant flex items-center justify-center chunky-btn-sm active:scale-95 cursor-pointer" title="Close Companion Window">
               <span class="material-symbols-outlined text-xl">close</span>
             </button>
           </div>
 
-          <!-- GIANT TAP-TO-TALK MASCOT HERO SECTION -->
-          <div class="flex flex-col items-center justify-center pt-1 pb-2">
-            <div class="group relative p-1.5 rounded-full transition-transform focus:outline-none" title="Pet or Talk to ${petName}!">
-              
-              <!-- Ambient Glow & Rings -->
-              ${
-                isListening
-                  ? `<div class="absolute -inset-2.5 rounded-full bg-emerald-400/40 animate-ping pointer-events-none"></div>
-                     <div class="absolute -inset-1 rounded-full bg-emerald-300/30 animate-pulse pointer-events-none"></div>`
-                  : isThinking
-                  ? `<div class="absolute -inset-2 rounded-full border-4 border-dashed border-amber-400 animate-spin pointer-events-none"></div>`
-                  : isSpeaking
-                  ? `<div class="absolute -inset-2.5 rounded-full bg-primary/30 animate-pulse pointer-events-none"></div>`
-                  : ''
-              }
+          <!-- TAB 1: LIVE VOICE & TACTILE PET CHAMPION -->
+          <div id="rex-view-live" class="${activeTab === 'live' ? 'flex' : 'hidden'} flex-col gap-3 overflow-y-auto pr-1 hide-scrollbar">
+            
+            <!-- GIANT TAP-TO-TALK MASCOT HERO SECTION -->
+            <div class="flex flex-col items-center justify-center pt-1 pb-1">
+              <div class="group relative p-1.5 rounded-full transition-transform focus:outline-none" title="Pet or Talk to ${petName}!">
+                
+                <!-- Ambient Glow & Rings -->
+                ${
+                  isListening
+                    ? `<div class="absolute -inset-2.5 rounded-full bg-emerald-400/40 animate-ping pointer-events-none"></div>
+                       <div class="absolute -inset-1 rounded-full bg-emerald-300/30 animate-pulse pointer-events-none"></div>`
+                    : isThinking
+                    ? `<div class="absolute -inset-2 rounded-full border-4 border-dashed border-amber-400 animate-spin pointer-events-none"></div>`
+                    : isSpeaking
+                    ? `<div class="absolute -inset-2.5 rounded-full bg-primary/30 animate-pulse pointer-events-none"></div>`
+                    : ''
+                }
 
-              <!-- Giant Mascot Avatar Disc with Skeletal Face Mesh (128px) -->
-              <div class="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-surface-container-high p-1 shadow-2xl flex items-center justify-center transition-all overflow-hidden ${
-                isListening
-                  ? 'ring-4 ring-emerald-400 border-4 border-emerald-400 shadow-[0_0_30px_rgba(52,211,153,0.7)]'
-                  : isThinking
-                  ? 'ring-4 ring-amber-400 border-4 border-amber-400 shadow-[0_0_25px_rgba(251,191,36,0.6)]'
-                  : isSpeaking
-                  ? 'ring-4 ring-primary border-4 border-primary shadow-[0_0_25px_rgba(16,185,129,0.6)]'
-                  : 'border-4 border-primary/40 hover:border-primary group-hover:scale-105'
-              }">
-                ${renderPetSkeletalFaceViewer({
-                  canvasId: 'modal-mascot-skeletal-canvas',
-                  petId: activePetId,
-                  width: 128,
-                  height: 128,
-                  isInteractive: true
-                })}
+                <!-- Giant Mascot Avatar Disc with Skeletal Face Mesh (128px) -->
+                <div class="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-surface-container-high p-1 shadow-2xl flex items-center justify-center transition-all overflow-hidden ${
+                  isListening
+                    ? 'ring-4 ring-emerald-400 border-4 border-emerald-400 shadow-[0_0_30px_rgba(52,211,153,0.7)]'
+                    : isThinking
+                    ? 'ring-4 ring-amber-400 border-4 border-amber-400 shadow-[0_0_25px_rgba(251,191,36,0.6)]'
+                    : isSpeaking
+                    ? 'ring-4 ring-primary border-4 border-primary shadow-[0_0_25px_rgba(16,185,129,0.6)]'
+                    : 'border-4 border-primary/40 hover:border-primary group-hover:scale-105'
+                }">
+                  ${renderPetSkeletalFaceViewer({
+                    canvasId: 'modal-mascot-skeletal-canvas',
+                    petId: activePetId,
+                    width: 128,
+                    height: 128,
+                    isInteractive: true
+                  })}
+                </div>
+
+                <!-- Action Indicator Pill -->
+                <button id="modal-rex-avatar-btn" class="absolute -bottom-2.5 left-1/2 -translate-x-1/2 px-3 py-1 min-h-[32px] rounded-full text-[11px] font-headline font-black shadow-lg flex items-center gap-1.5 whitespace-nowrap cursor-pointer z-10 transition-transform active:scale-95 ${
+                  isListening
+                    ? 'bg-emerald-500 text-white animate-pulse'
+                    : isThinking
+                    ? 'bg-amber-500 text-white animate-bounce'
+                    : isSpeaking
+                    ? 'bg-primary text-on-primary'
+                    : 'bg-secondary text-on-secondary hover:brightness-110'
+                }">
+                  <span class="material-symbols-outlined text-xs">${
+                    isListening ? 'mic' : isThinking ? 'hourglass_top' : isSpeaking ? 'volume_up' : 'touch_app'
+                  }</span>
+                  <span>${
+                    isListening ? 'Listening...' : isThinking ? 'Thinking...' : isSpeaking ? 'Talking!' : 'Tap to Talk!'
+                  }</span>
+                </button>
               </div>
 
-              <!-- Action Indicator Pill -->
-              <button id="modal-rex-avatar-btn" class="absolute -bottom-2.5 left-1/2 -translate-x-1/2 px-3 py-1 min-h-[32px] rounded-full text-[11px] font-headline font-black shadow-lg flex items-center gap-1.5 whitespace-nowrap cursor-pointer z-10 transition-transform active:scale-95 ${
+              <!-- Tactile Micro-Interactions (Pat Head, Poke Cheek, Roar) -->
+              <div class="flex items-center gap-2 mt-4 z-10">
+                <button id="rex-pat-head-btn" class="bg-surface-container-high hover:bg-surface-bright text-pink-300 hover:text-pink-200 px-3 py-1.5 min-h-[40px] rounded-full font-headline text-xs font-black border border-pink-400/40 flex items-center gap-1 shadow-sm active:scale-95 transition-all cursor-pointer" title="Pat forehead for heart sparkles!">
+                  <span>❤️</span> Pat
+                </button>
+                <button id="rex-poke-cheek-btn" class="bg-surface-container-high hover:bg-surface-bright text-amber-300 hover:text-amber-200 px-3 py-1.5 min-h-[40px] rounded-full font-headline text-xs font-black border border-amber-400/40 flex items-center gap-1 shadow-sm active:scale-95 transition-all cursor-pointer" title="Poke cheek to squish & giggle!">
+                  <span>🤭</span> Poke
+                </button>
+                <button id="rex-cheer-roar-btn" class="bg-surface-container-high hover:bg-surface-bright text-emerald-300 hover:text-emerald-200 px-3 py-1.5 min-h-[40px] rounded-full font-headline text-xs font-black border border-emerald-400/40 flex items-center gap-1 shadow-sm active:scale-95 transition-all cursor-pointer" title="Happy Dinosaur Roar!">
+                  <span>🦖</span> Roar
+                </button>
+              </div>
+
+              <!-- Status Subtitle -->
+              <p id="rex-status-text" class="text-xs font-headline font-bold text-on-surface-variant mt-2 text-center">
+                ${
+                  isListening
+                    ? `👂 Speak now! ${petName} is listening to you!`
+                    : isThinking
+                    ? `🤔 ${petName} is getting your answer ready...`
+                    : isSpeaking
+                    ? `🗣️ ${petName} is speaking!`
+                    : `Touch ${petName}'s face or pick a picture below!`
+                }
+              </p>
+            </div>
+
+            <!-- Real-Time Waveform Visualizer -->
+            <div class="bg-surface-container-lowest rounded-2xl p-2.5 border-2 border-surface-container-highest flex items-center justify-center gap-1.5 shadow-inner">
+              <div class="flex items-center justify-center gap-1.5 h-7 w-full" id="rex-waveform-bars">
+                <div class="rex-wave-bar w-2 bg-primary rounded-full transition-all duration-75 ${isSpeaking ? 'animate-pulse' : ''} h-2" data-bar="0"></div>
+                <div class="rex-wave-bar w-2 bg-primary rounded-full transition-all duration-75 ${isSpeaking ? 'animate-pulse' : ''} h-4" data-bar="1"></div>
+                <div class="rex-wave-bar w-2 bg-secondary rounded-full transition-all duration-75 ${isSpeaking ? 'animate-pulse' : ''} h-6" data-bar="2"></div>
+                <div class="rex-wave-bar w-2 bg-primary rounded-full transition-all duration-75 ${isSpeaking ? 'animate-pulse' : ''} h-5" data-bar="3"></div>
+                <div class="rex-wave-bar w-2 bg-secondary rounded-full transition-all duration-75 ${isSpeaking ? 'animate-pulse' : ''} h-6" data-bar="4"></div>
+                <div class="rex-wave-bar w-2 bg-primary rounded-full transition-all duration-75 ${isSpeaking ? 'animate-pulse' : ''} h-4" data-bar="5"></div>
+                <div class="rex-wave-bar w-2 bg-primary rounded-full transition-all duration-75 ${isSpeaking ? 'animate-pulse' : ''} h-2" data-bar="6"></div>
+              </div>
+            </div>
+
+            <!-- Live Dialogue Preview -->
+            ${
+              liveRex.lastUserTranscript || liveRex.lastRexTranscript
+                ? `
+              <div class="flex flex-col gap-1.5 max-h-28 overflow-y-auto pr-1 hide-scrollbar">
+                ${
+                  liveRex.lastUserTranscript
+                    ? `
+                  <div class="bg-surface-container-high rounded-2xl rounded-tr-sm p-2 text-xs font-bold text-inverse-surface border border-surface-container-highest self-end max-w-[90%] shadow-sm">
+                    <span class="text-[9px] uppercase font-black text-secondary block">You said:</span>
+                    "${liveRex.lastUserTranscript}"
+                  </div>
+                `
+                    : ''
+                }
+                ${
+                  liveRex.lastRexTranscript
+                    ? `
+                  <div class="bg-primary/15 rounded-2xl rounded-tl-sm p-2 text-xs font-bold text-inverse-surface border border-primary/30 self-start max-w-[90%] shadow-sm flex items-start gap-1.5">
+                    <span class="text-sm pt-0.5">${petEmoji}</span>
+                    <div>
+                      <span class="text-[9px] uppercase font-black text-primary block">${petName}:</span>
+                      <span>"${liveRex.lastRexTranscript}"</span>
+                    </div>
+                  </div>
+                `
+                    : ''
+                }
+              </div>
+            `
+                : ''
+            }
+
+            <!-- PICTURE QUICK-ACTIONS (No Reading Required for Toddlers) -->
+            <div class="flex flex-col gap-1.5 pt-1">
+              <span class="text-[10px] font-black uppercase text-on-surface-variant text-center tracking-wider">Tap a Picture Action</span>
+              <div class="grid grid-cols-4 gap-1.5 sm:gap-2">
+                
+                <!-- 1. ROAR -->
+                <button data-rex-prompt="Make your best dino roar!" class="rex-toddler-action-btn min-h-[52px] bg-gradient-to-b from-emerald-500/20 to-emerald-500/10 hover:from-emerald-500/30 text-inverse-surface border-2 border-emerald-500/40 rounded-2xl p-1.5 flex flex-col items-center justify-center gap-0.5 chunky-btn active:scale-90 transition-all shadow-sm cursor-pointer" title="Roar like a dinosaur!">
+                  <span class="text-xl sm:text-2xl">🦖</span>
+                  <span class="font-headline text-[10px] font-black text-emerald-400">ROAR!</span>
+                </button>
+
+                <!-- 2. TEETH -->
+                <button data-rex-prompt="I brushed my teeth clean!" class="rex-toddler-action-btn min-h-[52px] bg-gradient-to-b from-sky-500/20 to-sky-500/10 hover:from-sky-500/30 text-inverse-surface border-2 border-sky-500/40 rounded-2xl p-1.5 flex flex-col items-center justify-center gap-0.5 chunky-btn active:scale-90 transition-all shadow-sm cursor-pointer" title="Tell Rex you brushed teeth!">
+                  <span class="text-xl sm:text-2xl">🪥</span>
+                  <span class="font-headline text-[10px] font-black text-sky-400">Teeth!</span>
+                </button>
+
+                <!-- 3. YAY / HIGH FIVE -->
+                <button data-rex-prompt="High five Rex!" class="rex-toddler-action-btn min-h-[52px] bg-gradient-to-b from-amber-500/20 to-amber-500/10 hover:from-amber-500/30 text-inverse-surface border-2 border-amber-500/40 rounded-2xl p-1.5 flex flex-col items-center justify-center gap-0.5 chunky-btn active:scale-90 transition-all shadow-sm cursor-pointer" title="Give Rex a high five!">
+                  <span class="text-xl sm:text-2xl">⭐</span>
+                  <span class="font-headline text-[10px] font-black text-amber-400">Yay!</span>
+                </button>
+
+                <!-- 4. CLEAN TOYS -->
+                <button data-rex-prompt="I cleaned up all my toys!" class="rex-toddler-action-btn min-h-[52px] bg-gradient-to-b from-purple-500/20 to-purple-500/10 hover:from-purple-500/30 text-inverse-surface border-2 border-purple-500/40 rounded-2xl p-1.5 flex flex-col items-center justify-center gap-0.5 chunky-btn active:scale-90 transition-all shadow-sm cursor-pointer" title="Tell Rex you cleaned toys!">
+                  <span class="text-xl sm:text-2xl">🧸</span>
+                  <span class="font-headline text-[10px] font-black text-purple-400">Toys!</span>
+                </button>
+
+                <!-- 5. HEALTHY SNACK -->
+                <button data-rex-prompt="I ate my healthy fruit snack!" class="rex-toddler-action-btn min-h-[52px] bg-gradient-to-b from-rose-500/20 to-rose-500/10 hover:from-rose-500/30 text-inverse-surface border-2 border-rose-500/40 rounded-2xl p-1.5 flex flex-col items-center justify-center gap-0.5 chunky-btn active:scale-90 transition-all shadow-sm cursor-pointer" title="Tell Rex you ate healthy snacks!">
+                  <span class="text-xl sm:text-2xl">🍎</span>
+                  <span class="font-headline text-[10px] font-black text-rose-400">Snack!</span>
+                </button>
+
+                <!-- 6. DRINK WATER -->
+                <button data-rex-prompt="I drank fresh cool water!" class="rex-toddler-action-btn min-h-[52px] bg-gradient-to-b from-blue-500/20 to-blue-500/10 hover:from-blue-500/30 text-inverse-surface border-2 border-blue-500/40 rounded-2xl p-1.5 flex flex-col items-center justify-center gap-0.5 chunky-btn active:scale-90 transition-all shadow-sm cursor-pointer" title="Tell Rex you drank water!">
+                  <span class="text-xl sm:text-2xl">💧</span>
+                  <span class="font-headline text-[10px] font-black text-blue-400">Water!</span>
+                </button>
+
+                <!-- 7. CALM DINO BREATHS -->
+                <button data-rex-prompt="Let's take 3 calm dinosaur breaths together!" class="rex-toddler-action-btn min-h-[52px] bg-gradient-to-b from-teal-500/20 to-teal-500/10 hover:from-teal-500/30 text-inverse-surface border-2 border-teal-500/40 rounded-2xl p-1.5 flex flex-col items-center justify-center gap-0.5 chunky-btn active:scale-90 transition-all shadow-sm cursor-pointer" title="Calm dinosaur breathing exercise">
+                  <span class="text-xl sm:text-2xl">🌬️</span>
+                  <span class="font-headline text-[10px] font-black text-teal-400">Breathe</span>
+                </button>
+
+                <!-- 8. FUNNY JOKE -->
+                <button data-rex-prompt="Tell me a funny dinosaur joke!" class="rex-toddler-action-btn min-h-[52px] bg-gradient-to-b from-yellow-500/20 to-yellow-500/10 hover:from-yellow-500/30 text-inverse-surface border-2 border-yellow-500/40 rounded-2xl p-1.5 flex flex-col items-center justify-center gap-0.5 chunky-btn active:scale-90 transition-all shadow-sm cursor-pointer" title="Ask Rex for a joke!">
+                  <span class="text-xl sm:text-2xl">🤣</span>
+                  <span class="font-headline text-[10px] font-black text-yellow-400">Joke!</span>
+                </button>
+
+              </div>
+            </div>
+
+            <!-- Bottom Live Microphone Toggle Button -->
+            <div class="flex items-center gap-2 pt-1 border-t border-surface-container-highest">
+              <button id="live-rex-toggle-btn" class="flex-1 py-3 px-4 rounded-2xl font-headline text-xs font-black flex items-center justify-center gap-2 chunky-btn shadow-md active:scale-95 transition-all cursor-pointer ${
                 isListening
-                  ? 'bg-emerald-500 text-white animate-pulse'
-                  : isThinking
-                  ? 'bg-amber-500 text-white animate-bounce'
-                  : isSpeaking
-                  ? 'bg-primary text-on-primary'
-                  : 'bg-secondary text-on-secondary hover:brightness-110'
+                  ? 'bg-emerald-500 text-white border-emerald-600 animate-pulse'
+                  : 'bg-primary text-on-primary border-primary-container'
               }">
-                <span class="material-symbols-outlined text-xs">${
-                  isListening ? 'mic' : isThinking ? 'hourglass_top' : isSpeaking ? 'volume_up' : 'touch_app'
-                }</span>
-                <span>${
-                  isListening ? 'Listening...' : isThinking ? 'Thinking...' : isSpeaking ? 'Talking!' : 'Tap to Talk!'
-                }</span>
+                <span class="material-symbols-outlined text-base">${isListening ? 'mic' : 'mic_none'}</span>
+                <span>${isListening ? 'Listening (Tap to Stop)' : 'Start Live Conversation'}</span>
               </button>
             </div>
 
-            <!-- Tactile Quick Interactions (Pat Forehead & Poke Cheek) -->
-            <div class="flex items-center gap-2 mt-4 z-10">
-              <button id="rex-pat-head-btn" class="bg-surface-container-high hover:bg-surface-bright text-pink-300 hover:text-pink-200 px-3.5 py-2 min-h-[44px] rounded-full font-headline text-xs font-black border border-pink-400/40 flex items-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer" title="Pat forehead for heart sparkles!">
-                <span>❤️</span> Pat Head
-              </button>
-              <button id="rex-poke-cheek-btn" class="bg-surface-container-high hover:bg-surface-bright text-amber-300 hover:text-amber-200 px-3.5 py-2 min-h-[44px] rounded-full font-headline text-xs font-black border border-amber-400/40 flex items-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer" title="Poke cheek to squish & giggle!">
-                <span>🤭</span> Poke Cheek
-              </button>
-            </div>
-
-            <!-- Status Subtitle -->
-            <p id="rex-status-text" class="text-xs font-headline font-bold text-on-surface-variant mt-2 text-center">
-              ${
-                isListening
-                  ? `👂 Speak now! ${petName} is listening to you!`
-                  : isThinking
-                  ? `🤔 ${petName} is getting your answer ready...`
-                  : isSpeaking
-                  ? `🗣️ ${petName} is speaking!`
-                  : `Touch ${petName}'s face or pick a picture below!`
-              }
-            </p>
           </div>
 
-          <!-- Real-Time Waveform Visualizer -->
-          <div class="bg-surface-container-lowest rounded-2xl p-2.5 border-2 border-surface-container-highest flex items-center justify-center gap-1.5 shadow-inner">
-            <div class="flex items-center justify-center gap-1.5 h-7 w-full" id="rex-waveform-bars">
-              <div class="rex-wave-bar w-2 bg-primary rounded-full transition-all duration-75 ${isSpeaking ? 'animate-pulse' : ''} h-2" data-bar="0"></div>
-              <div class="rex-wave-bar w-2 bg-primary rounded-full transition-all duration-75 ${isSpeaking ? 'animate-pulse' : ''} h-4" data-bar="1"></div>
-              <div class="rex-wave-bar w-2 bg-secondary rounded-full transition-all duration-75 ${isSpeaking ? 'animate-pulse' : ''} h-6" data-bar="2"></div>
-              <div class="rex-wave-bar w-2 bg-primary rounded-full transition-all duration-75 ${isSpeaking ? 'animate-pulse' : ''} h-5" data-bar="3"></div>
-              <div class="rex-wave-bar w-2 bg-secondary rounded-full transition-all duration-75 ${isSpeaking ? 'animate-pulse' : ''} h-6" data-bar="4"></div>
-              <div class="rex-wave-bar w-2 bg-primary rounded-full transition-all duration-75 ${isSpeaking ? 'animate-pulse' : ''} h-4" data-bar="5"></div>
-              <div class="rex-wave-bar w-2 bg-primary rounded-full transition-all duration-75 ${isSpeaking ? 'animate-pulse' : ''} h-2" data-bar="6"></div>
+          <!-- TAB 2: CHAT & QUESTIONS THREAD (GEMINI 3.5 FLASH & 3.1 FLASH LITE) -->
+          <div id="rex-view-chat" class="${activeTab === 'chat' ? 'flex' : 'hidden'} flex-col gap-2.5 overflow-hidden">
+            
+            <!-- Speed Mode Controls & Quick Suggestions -->
+            <div class="flex items-center justify-between bg-surface-container-lowest p-2 rounded-2xl border border-surface-container-highest">
+              <span class="text-[11px] font-headline font-black text-on-surface-variant flex items-center gap-1">
+                <span class="material-symbols-outlined text-sm">psychology</span>
+                Gemini Model:
+              </span>
+              <div class="flex items-center gap-1">
+                <button id="rex-model-smart-btn" class="px-2.5 py-1 rounded-full text-[10px] font-headline font-black transition-all cursor-pointer ${
+                  chatSpeedMode === 'smart' ? 'bg-primary text-on-primary shadow-xs' : 'text-on-surface-variant hover:text-inverse-surface'
+                }" title="Gemini 3.5 Flash for deep thinking & fun storytelling">
+                  ✨ Smart
+                </button>
+                <button id="rex-model-fast-btn" class="px-2.5 py-1 rounded-full text-[10px] font-headline font-black transition-all cursor-pointer ${
+                  chatSpeedMode === 'fast' ? 'bg-secondary text-on-secondary shadow-xs' : 'text-on-surface-variant hover:text-inverse-surface'
+                }" title="Gemini 3.1 Flash Lite for instant ultra-fast responses">
+                  ⚡ Fast
+                </button>
+              </div>
             </div>
-          </div>
 
-          <!-- Dialogue Transcript (Short & Sweet) -->
-          ${
-            liveRex.lastUserTranscript || liveRex.lastRexTranscript
-              ? `
-            <div class="flex flex-col gap-1.5 max-h-32 overflow-y-auto pr-1 hide-scrollbar">
-              ${
-                liveRex.lastUserTranscript
-                  ? `
-                <div class="bg-surface-container-high rounded-2xl rounded-tr-sm p-2 text-xs font-bold text-inverse-surface border border-surface-container-highest self-end max-w-[90%] shadow-sm">
-                  <span class="text-[9px] uppercase font-black text-secondary block">You:</span>
-                  "${liveRex.lastUserTranscript}"
-                </div>
-              `
-                  : ''
-              }
-              ${
-                liveRex.lastRexTranscript
-                  ? `
-                <div class="bg-primary/15 rounded-2xl rounded-tl-sm p-2 text-xs font-bold text-inverse-surface border border-primary/30 self-start max-w-[90%] shadow-sm">
-                  <span class="text-[9px] uppercase font-black text-primary block flex items-center gap-1">
-                    <span>🦖 Rex:</span>
-                  </span>
-                  "${liveRex.lastRexTranscript}"
-                </div>
-              `
-                  : ''
-              }
+            <!-- Quick Ask Chips for Kids -->
+            <div class="flex items-center gap-1.5 overflow-x-auto pb-1 hide-scrollbar">
+              <button data-chat-chip="Tell me a funny dinosaur joke!" class="rex-chat-chip whitespace-nowrap bg-surface-container-high hover:bg-surface-bright text-on-surface-variant hover:text-inverse-surface px-2.5 py-1 rounded-full text-[11px] font-headline font-bold border border-surface-container-highest active:scale-95 transition-all cursor-pointer">
+                🤣 Dino Joke
+              </button>
+              <button data-chat-chip="How do I brush my back teeth?" class="rex-chat-chip whitespace-nowrap bg-surface-container-high hover:bg-surface-bright text-on-surface-variant hover:text-inverse-surface px-2.5 py-1 rounded-full text-[11px] font-headline font-bold border border-surface-container-highest active:scale-95 transition-all cursor-pointer">
+                🪥 Brush Molars
+              </button>
+              <button data-chat-chip="Give me an encouraging hint for my learning quest!" class="rex-chat-chip whitespace-nowrap bg-surface-container-high hover:bg-surface-bright text-on-surface-variant hover:text-inverse-surface px-2.5 py-1 rounded-full text-[11px] font-headline font-bold border border-surface-container-highest active:scale-95 transition-all cursor-pointer">
+                🌟 Quest Hint
+              </button>
+              <button data-chat-chip="Tell me a calming bedtime adventure!" class="rex-chat-chip whitespace-nowrap bg-surface-container-high hover:bg-surface-bright text-on-surface-variant hover:text-inverse-surface px-2.5 py-1 rounded-full text-[11px] font-headline font-bold border border-surface-container-highest active:scale-95 transition-all cursor-pointer">
+                🌙 Bedtime Story
+              </button>
             </div>
-          `
-              : ''
-          }
 
-          <!-- PICTURE QUICK-ACTIONS (No Reading Required for Toddlers) -->
-          <div class="flex flex-col gap-1.5">
-            <span class="text-[10px] font-black uppercase text-on-surface-variant text-center tracking-wider">Quick Picture Actions</span>
-            <div class="grid grid-cols-3 gap-2">
-              
-              <!-- 1. ROAR -->
-              <button data-rex-prompt="Make your best dino roar!" class="rex-toddler-action-btn min-h-[56px] bg-gradient-to-b from-emerald-500/20 to-emerald-500/10 hover:from-emerald-500/30 hover:to-emerald-500/20 text-inverse-surface border-2 border-emerald-500/40 rounded-2xl p-2 flex flex-col items-center justify-center gap-1 chunky-btn active:scale-90 transition-all shadow-sm">
-                <span class="text-2xl sm:text-3xl">🦖</span>
-                <span class="font-headline text-[11px] font-black text-emerald-400">ROAR!</span>
-              </button>
-
-              <!-- 2. TEETH -->
-              <button data-rex-prompt="I brushed my teeth!" class="rex-toddler-action-btn min-h-[56px] bg-gradient-to-b from-sky-500/20 to-sky-500/10 hover:from-sky-500/30 hover:to-sky-500/20 text-inverse-surface border-2 border-sky-500/40 rounded-2xl p-2 flex flex-col items-center justify-center gap-1 chunky-btn active:scale-90 transition-all shadow-sm">
-                <span class="text-2xl sm:text-3xl">🪥</span>
-                <span class="font-headline text-[11px] font-black text-sky-400">Teeth!</span>
-              </button>
-
-              <!-- 3. YAY / HIGH FIVE -->
-              <button data-rex-prompt="High five Rex!" class="rex-toddler-action-btn min-h-[56px] bg-gradient-to-b from-amber-500/20 to-amber-500/10 hover:from-amber-500/30 hover:to-amber-500/20 text-inverse-surface border-2 border-amber-500/40 rounded-2xl p-2 flex flex-col items-center justify-center gap-1 chunky-btn active:scale-90 transition-all shadow-sm">
-                <span class="text-2xl sm:text-3xl">⭐</span>
-                <span class="font-headline text-[11px] font-black text-amber-400">Yay!</span>
-              </button>
-
-              <!-- 4. CLEAN TOYS -->
-              <button data-rex-prompt="I cleaned up all my toys!" class="rex-toddler-action-btn min-h-[56px] bg-gradient-to-b from-purple-500/20 to-purple-500/10 hover:from-purple-500/30 hover:to-purple-500/20 text-inverse-surface border-2 border-purple-500/40 rounded-2xl p-2 flex flex-col items-center justify-center gap-1 chunky-btn active:scale-90 transition-all shadow-sm">
-                <span class="text-2xl sm:text-3xl">🧸</span>
-                <span class="font-headline text-[11px] font-black text-purple-400">Toys!</span>
-              </button>
-
-              <!-- 5. HEALTHY SNACK -->
-              <button data-rex-prompt="I ate my healthy snack!" class="rex-toddler-action-btn min-h-[56px] bg-gradient-to-b from-rose-500/20 to-rose-500/10 hover:from-rose-500/30 hover:to-rose-500/20 text-inverse-surface border-2 border-rose-500/40 rounded-2xl p-2 flex flex-col items-center justify-center gap-1 chunky-btn active:scale-90 transition-all shadow-sm">
-                <span class="text-2xl sm:text-3xl">🍎</span>
-                <span class="font-headline text-[11px] font-black text-rose-400">Snack!</span>
-              </button>
-
-              <!-- 6. DRINK WATER -->
-              <button data-rex-prompt="I drank fresh water!" class="rex-toddler-action-btn min-h-[56px] bg-gradient-to-b from-blue-500/20 to-blue-500/10 hover:from-blue-500/30 hover:to-blue-500/20 text-inverse-surface border-2 border-blue-500/40 rounded-2xl p-2 flex flex-col items-center justify-center gap-1 chunky-btn active:scale-90 transition-all shadow-sm">
-                <span class="text-2xl sm:text-3xl">💧</span>
-                <span class="font-headline text-[11px] font-black text-blue-400">Water!</span>
-              </button>
-
+            <!-- Scrollable Message Bubble Thread -->
+            <div id="rex-chat-thread" class="flex flex-col gap-2 max-h-56 overflow-y-auto p-2 rounded-2xl bg-surface-container-lowest border border-surface-container-highest hide-scrollbar">
+              ${chatMessages.map(msg => renderChatMessage(msg, petName, petEmoji)).join('')}
             </div>
-          </div>
 
-          <!-- Bottom Toggle Microphone Bar -->
-          <div class="flex items-center gap-2 pt-1 border-t border-surface-container-highest">
-            <button id="live-rex-toggle-btn" class="flex-1 py-3 px-4 rounded-2xl font-headline text-xs font-black flex items-center justify-center gap-2 chunky-btn shadow-md active:scale-95 transition-all ${
-              isListening
-                ? 'bg-emerald-500 text-white border-emerald-600 animate-pulse'
-                : 'bg-primary text-on-primary border-primary-container'
-            }">
-              <span class="material-symbols-outlined text-base">${isListening ? 'mic' : 'mic_none'}</span>
-              <span>${isListening ? 'Listening (Tap to Stop)' : 'Start Microphone'}</span>
-            </button>
+            <!-- Input Bar -->
+            <form id="rex-chat-form" class="flex items-center gap-1.5 pt-1">
+              <input
+                type="text"
+                id="rex-chat-input"
+                placeholder="Ask ${petName} anything..."
+                class="flex-1 bg-surface-container-lowest border-2 border-surface-container-highest focus:border-primary rounded-2xl px-3.5 py-2.5 text-xs text-inverse-surface placeholder-on-surface-variant focus:outline-none transition-colors"
+                autocomplete="off"
+              />
+              <button type="submit" id="rex-chat-send-btn" class="w-10 h-10 min-w-[40px] min-h-[40px] rounded-2xl bg-primary text-on-primary flex items-center justify-center chunky-btn-sm active:scale-95 cursor-pointer" title="Send message">
+                <span class="material-symbols-outlined text-lg">send</span>
+              </button>
+            </form>
+
           </div>
 
         </div>
@@ -301,7 +419,7 @@ export function renderLiveRexWidget() {
       }
 
       <!-- Floating Mascot Icon Button -->
-      <button id="live-rex-floating-btn" class="pointer-events-auto relative group chunky-btn active:scale-90 focus:outline-none transition-transform" title="Tap to talk to ${petName}!">
+      <button id="live-rex-floating-btn" class="pointer-events-auto relative group chunky-btn active:scale-90 focus:outline-none transition-transform cursor-pointer" title="Tap to talk to ${petName}!">
         
         <!-- Ripple Effect Animations when Listening or Speaking -->
         ${
@@ -342,15 +460,92 @@ export function renderLiveRexWidget() {
   `;
 }
 
+function renderChatMessage(msg, petName, petEmoji) {
+  const isRex = msg.sender === 'rex';
+  return `
+    <div class="flex flex-col gap-1 ${isRex ? 'items-start' : 'items-end'}" data-message-id="${msg.id || ''}">
+      <div class="flex items-start gap-1.5 max-w-[88%] ${isRex ? 'flex-row' : 'flex-row-reverse'}">
+        ${isRex ? `<span class="text-sm pt-0.5 select-none">${petEmoji}</span>` : ''}
+        <div class="rounded-2xl p-2.5 text-xs font-bold ${
+          isRex
+            ? 'bg-primary/15 text-inverse-surface border border-primary/30 rounded-tl-sm'
+            : 'bg-secondary text-on-secondary rounded-tr-sm'
+        } shadow-xs">
+          <p class="leading-relaxed">${msg.text}</p>
+        </div>
+        ${
+          isRex
+            ? `
+          <button data-listen-text="${encodeURIComponent(msg.text)}" class="rex-listen-bubble-btn w-6 h-6 rounded-full bg-surface-container-high hover:bg-surface-bright text-primary flex items-center justify-center text-xs self-end mb-0.5 active:scale-90 transition-transform cursor-pointer" title="Listen in realistic dinosaur voice">
+            <span class="material-symbols-outlined text-xs">volume_up</span>
+          </button>
+        `
+            : ''
+        }
+      </div>
+    </div>
+  `;
+}
+
 export function attachLiveRexWidgetListeners() {
   const activePet = store?.getActivePet?.() || { id: 'rex', name: 'Rex the Dino' };
   const activePetId = String(activePet.id || 'rex').toLowerCase();
 
-  // 0. Initialize Skeletal Face Rigs for Floating Mascot and Modal Sheet
+  // 0. Initialize Skeletal Face Rigs
   initPetSkeletalFaceViewer('floating-mascot-skeletal-canvas', { petId: activePetId, isInteractive: false });
   initPetSkeletalFaceViewer('modal-mascot-skeletal-canvas', { petId: activePetId, isInteractive: true });
 
-  // Tactile micro-buttons inside modal
+  // Tab Switchers
+  const tabLiveBtn = document.getElementById('rex-tab-live-btn');
+  const tabChatBtn = document.getElementById('rex-tab-chat-btn');
+  const viewLive = document.getElementById('rex-view-live');
+  const viewChat = document.getElementById('rex-view-chat');
+
+  if (tabLiveBtn && tabChatBtn && viewLive && viewChat) {
+    tabLiveBtn.addEventListener('click', () => {
+      activeTab = 'live';
+      viewLive.classList.remove('hidden');
+      viewLive.classList.add('flex');
+      viewChat.classList.remove('flex');
+      viewChat.classList.add('hidden');
+      tabLiveBtn.className = 'px-3 py-1 rounded-full text-xs font-headline font-black transition-all flex items-center gap-1 cursor-pointer bg-primary text-on-primary shadow-sm';
+      tabChatBtn.className = 'px-3 py-1 rounded-full text-xs font-headline font-black transition-all flex items-center gap-1 cursor-pointer text-on-surface-variant hover:text-inverse-surface';
+      Sound.click();
+    });
+
+    tabChatBtn.addEventListener('click', () => {
+      activeTab = 'chat';
+      viewChat.classList.remove('hidden');
+      viewChat.classList.add('flex');
+      viewLive.classList.remove('flex');
+      viewLive.classList.add('hidden');
+      tabChatBtn.className = 'px-3 py-1 rounded-full text-xs font-headline font-black transition-all flex items-center gap-1 cursor-pointer bg-secondary text-on-secondary shadow-sm';
+      tabLiveBtn.className = 'px-3 py-1 rounded-full text-xs font-headline font-black transition-all flex items-center gap-1 cursor-pointer text-on-surface-variant hover:text-inverse-surface';
+      Sound.click();
+      scrollChatToBottom();
+    });
+  }
+
+  // Model speed toggles
+  const modelSmartBtn = document.getElementById('rex-model-smart-btn');
+  const modelFastBtn = document.getElementById('rex-model-fast-btn');
+  if (modelSmartBtn && modelFastBtn) {
+    modelSmartBtn.addEventListener('click', () => {
+      chatSpeedMode = 'smart';
+      modelSmartBtn.className = 'px-2.5 py-1 rounded-full text-[10px] font-headline font-black transition-all cursor-pointer bg-primary text-on-primary shadow-xs';
+      modelFastBtn.className = 'px-2.5 py-1 rounded-full text-[10px] font-headline font-black transition-all cursor-pointer text-on-surface-variant hover:text-inverse-surface';
+      Sound.click();
+    });
+
+    modelFastBtn.addEventListener('click', () => {
+      chatSpeedMode = 'fast';
+      modelFastBtn.className = 'px-2.5 py-1 rounded-full text-[10px] font-headline font-black transition-all cursor-pointer bg-secondary text-on-secondary shadow-xs';
+      modelSmartBtn.className = 'px-2.5 py-1 rounded-full text-[10px] font-headline font-black transition-all cursor-pointer text-on-surface-variant hover:text-inverse-surface';
+      Sound.click();
+    });
+  }
+
+  // Tactile micro-buttons
   const patBtn = document.getElementById('rex-pat-head-btn');
   if (patBtn) {
     patBtn.addEventListener('click', (e) => {
@@ -371,19 +566,29 @@ export function attachLiveRexWidgetListeners() {
     });
   }
 
-  // 1. Floating mascot button toggle
+  const roarBtn = document.getElementById('rex-cheer-roar-btn');
+  if (roarBtn) {
+    roarBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      Sound.roar();
+      speakCompanion("*Happy Roar!* RAWR! You are a super hero!", activePetId);
+    });
+  }
+
+  // Floating mascot toggle button
   const floatBtn = document.getElementById('live-rex-floating-btn');
   if (floatBtn) {
     floatBtn.addEventListener('click', () => {
       Sound.click();
       rexEngine.unlockAudio();
+      geminiLiveService.unlockAudio();
       const state = store.getState();
       const nextOpen = !state.liveRex?.isOpen;
       store.toggleLiveRexModal(nextOpen);
     });
   }
 
-  // Helper to toggle real-time bidirectional Gemini Live session with fallback
+  // Toggle Live Audio
   const handleToggleRexLive = async () => {
     geminiLiveService.unlockAudio();
     rexEngine.unlockAudio();
@@ -395,15 +600,14 @@ export function attachLiveRexWidgetListeners() {
     } else {
       Sound.pop();
       try {
-        await geminiLiveService.connect();
+        await geminiLiveService.connect(activePetId);
       } catch (liveErr) {
-        console.warn("Rex Live WebSocket fallback to local speech engine:", liveErr);
+        console.warn("Live connection notice, trying fallback:", liveErr);
         rexEngine.toggleListen();
       }
     }
   };
 
-  // 2. Giant Mascot Face Tap-to-Talk (Header/Hero)
   const giantAvatarBtn = document.getElementById('modal-rex-avatar-btn');
   if (giantAvatarBtn) {
     giantAvatarBtn.addEventListener('click', () => {
@@ -411,7 +615,6 @@ export function attachLiveRexWidgetListeners() {
     });
   }
 
-  // 3. Close modal button
   const closeBtn = document.getElementById('live-rex-close-btn');
   if (closeBtn) {
     closeBtn.addEventListener('click', () => {
@@ -422,11 +625,11 @@ export function attachLiveRexWidgetListeners() {
       if (rexEngine.isListening) {
         rexEngine.toggleListen();
       }
+      stopRex();
       store.toggleLiveRexModal(false);
     });
   }
 
-  // 4. Connect / Disconnect Toggle Button
   const toggleBtn = document.getElementById('live-rex-toggle-btn');
   if (toggleBtn) {
     toggleBtn.addEventListener('click', () => {
@@ -434,7 +637,7 @@ export function attachLiveRexWidgetListeners() {
     });
   }
 
-  // 5. Picture Quick-Action Buttons (Toddler Pictorial Chips)
+  // Toddler Pictorial Quick-Action Buttons
   document.querySelectorAll('.rex-toddler-action-btn').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const prompt = btn.getAttribute('data-rex-prompt');
@@ -442,83 +645,66 @@ export function attachLiveRexWidgetListeners() {
       Sound.click();
       rexEngine.unlockAudio();
       geminiLiveService.unlockAudio();
-      await rexEngine.sendToRex(prompt);
+
+      if (geminiLiveService.isActive) {
+        geminiLiveService.sendTextMessage(prompt);
+      } else {
+        await rexEngine.sendToRex(prompt);
+      }
     });
   });
 
-  // 6. Connect Gemini Live Session State & Volume Listeners for Visualizer
+  // Chat Quick Ask Chips
+  document.querySelectorAll('.rex-chat-chip').forEach((chip) => {
+    chip.addEventListener('click', async () => {
+      const prompt = chip.getAttribute('data-chat-chip');
+      if (!prompt) return;
+      Sound.click();
+      await handleSendChatMessage(prompt);
+    });
+  });
+
+  // Chat Form Submit
+  const chatForm = document.getElementById('rex-chat-form');
+  const chatInput = document.getElementById('rex-chat-input');
+  if (chatForm && chatInput) {
+    chatForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const text = chatInput.value.trim();
+      if (!text) return;
+      chatInput.value = '';
+      Sound.click();
+      await handleSendChatMessage(text);
+    });
+  }
+
+  // Chat Listen Buttons
+  attachListenButtons();
+
+  // Waveform Visualizer Listeners
   geminiLiveService.onStateChange = (state) => {
-    const bars = document.querySelectorAll('.rex-wave-bar');
-    if (bars && bars.length > 0) {
-      if (state === 'speaking' || state === 'talking') {
-        bars.forEach((bar, i) => {
-          bar.style.height = `${12 + (i % 3) * 8}px`;
-          bar.style.backgroundColor = '#10B981';
-        });
-      } else if (state === 'listening') {
-        bars.forEach((bar, i) => {
-          bar.style.height = `${8 + ((i + 1) % 4) * 6}px`;
-          bar.style.backgroundColor = '#34D399';
-        });
-      } else {
-        bars.forEach((bar) => {
-          bar.style.height = '4px';
-          bar.style.backgroundColor = '#6EE7B7';
-        });
-      }
-    }
+    updateWaveformVisualizer(state);
   };
 
   geminiLiveService.onVolumeCallback = (volume, type) => {
-    const bars = document.querySelectorAll('.rex-wave-bar');
-    if (bars && bars.length > 0) {
-      bars.forEach((bar, idx) => {
-        const factor = Math.sin((idx + 1) * 0.8) * 0.5 + 0.5;
-        const minHeight = 4;
-        const maxHeight = 30;
-        const height = Math.max(minHeight, Math.round(minHeight + volume * maxHeight * factor));
-        bar.style.height = `${height}px`;
-        bar.style.backgroundColor = type === 'output' ? '#10B981' : '#34D399';
-      });
-    }
+    updateWaveformVolume(volume, type);
   };
 
-  // 7. Connect Rex Engine State Change Listener for UI Updates (Fallback Engine)
-  rexEngine.onStateChange = (newState) => {
-    // Dynamic waveform animation
-    const bars = document.querySelectorAll('.rex-wave-bar');
-    if (bars && bars.length > 0) {
-      if (newState === 'talking') {
-        bars.forEach((bar, i) => {
-          bar.style.height = `${10 + (i % 3) * 8}px`;
-          bar.style.backgroundColor = '#10B981';
-        });
-      } else if (newState === 'listening') {
-        bars.forEach((bar, i) => {
-          bar.style.height = `${8 + ((i + 1) % 4) * 6}px`;
-          bar.style.backgroundColor = '#34D399';
-        });
-      } else {
-        bars.forEach((bar) => {
-          bar.style.height = '4px';
-          bar.style.backgroundColor = '#6EE7B7';
-        });
-      }
-    }
+  rexEngine.onStateChange = (state) => {
+    updateWaveformVisualizer(state);
   };
 
-  // 8. In-place reactive DOM updates for live-rex-state-update without whole-page DOM re-renders
+  // State update event handler
   window.addEventListener('live-rex-state-update', (event) => {
     const data = event.detail || {};
     const status = data.status || 'idle';
     const isListening = status === 'listening';
     const isThinking = status === 'thinking';
-    const isSpeaking = status === 'talking' || status === 'speaking';
+    const isSpeaking = status === 'talking' || status === 'speaking' || isRexSpeaking();
 
     const currentPet = store?.getActivePet?.() || { id: 'rex', name: 'Rex the Dino' };
     const pName = currentPet.name || 'Rex the Dino';
 
-    // A. Update Status Subtitle Text
     const statusTextEl = document.getElementById('rex-status-text');
     if (statusTextEl) {
       statusTextEl.textContent = isListening
@@ -530,19 +716,17 @@ export function attachLiveRexWidgetListeners() {
         : `Touch ${pName}'s face or pick a picture below!`;
     }
 
-    // B. Update Toggle Button Text & State
     const toggleBtnEl = document.getElementById('live-rex-toggle-btn');
     if (toggleBtnEl) {
       if (isListening) {
-        toggleBtnEl.className = 'flex-1 py-3 px-4 rounded-2xl font-headline text-xs font-black flex items-center justify-center gap-2 chunky-btn shadow-md active:scale-95 transition-all bg-emerald-500 text-white border-emerald-600 animate-pulse';
+        toggleBtnEl.className = 'flex-1 py-3 px-4 rounded-2xl font-headline text-xs font-black flex items-center justify-center gap-2 chunky-btn shadow-md active:scale-95 transition-all bg-emerald-500 text-white border-emerald-600 animate-pulse cursor-pointer';
         toggleBtnEl.innerHTML = '<span class="material-symbols-outlined text-base">mic</span><span>Listening (Tap to Stop)</span>';
       } else {
-        toggleBtnEl.className = 'flex-1 py-3 px-4 rounded-2xl font-headline text-xs font-black flex items-center justify-center gap-2 chunky-btn shadow-md active:scale-95 transition-all bg-primary text-on-primary border-primary-container';
-        toggleBtnEl.innerHTML = '<span class="material-symbols-outlined text-base">mic_none</span><span>Start Microphone</span>';
+        toggleBtnEl.className = 'flex-1 py-3 px-4 rounded-2xl font-headline text-xs font-black flex items-center justify-center gap-2 chunky-btn shadow-md active:scale-95 transition-all bg-primary text-on-primary border-primary-container cursor-pointer';
+        toggleBtnEl.innerHTML = '<span class="material-symbols-outlined text-base">mic_none</span><span>Start Live Conversation</span>';
       }
     }
 
-    // C. Update Floating Mascot Badge
     const floatBtn = document.getElementById('live-rex-floating-btn');
     if (floatBtn) {
       const badge = floatBtn.querySelector('div.absolute.-bottom-1.-right-1');
@@ -554,19 +738,119 @@ export function attachLiveRexWidgetListeners() {
       }
     }
   });
+}
 
-  // 7. Gemini Live Service audio volume visualizer hook (if active)
-  geminiLiveService.onVolumeCallback = (volume, type) => {
-    const bars = document.querySelectorAll('.rex-wave-bar');
-    if (bars && bars.length > 0) {
-      bars.forEach((bar, idx) => {
-        const factor = Math.sin((idx + 1) * 0.8) * 0.5 + 0.5;
-        const minHeight = 4;
-        const maxHeight = 30;
-        const height = Math.max(minHeight, Math.round(minHeight + volume * maxHeight * factor));
-        bar.style.height = `${height}px`;
-        bar.style.backgroundColor = type === 'output' ? '#10B981' : '#38BDF8';
+function attachListenButtons() {
+  document.querySelectorAll('.rex-listen-bubble-btn').forEach((btn) => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const rawText = btn.getAttribute('data-listen-text');
+      if (!rawText) return;
+      const text = decodeURIComponent(rawText);
+      const activePetId = store?.getActivePet?.()?.id || 'rex';
+      Sound.pop();
+      speakCompanion(text, activePetId);
+    };
+  });
+}
+
+async function handleSendChatMessage(text) {
+  const activePet = store?.getActivePet?.() || { id: 'rex', name: 'Rex the Dino' };
+  const petName = activePet.name || 'Rex the Dino';
+  const petEmoji = activePet.emoji || '🦖';
+  const thread = document.getElementById('rex-chat-thread');
+
+  // 1. Add user message
+  const userMsg = {
+    id: 'user_' + Date.now(),
+    sender: 'user',
+    text,
+    timestamp: Date.now()
+  };
+  chatMessages.push(userMsg);
+
+  if (thread) {
+    thread.insertAdjacentHTML('beforeend', renderChatMessage(userMsg, petName, petEmoji));
+    scrollChatToBottom();
+  }
+
+  // 2. Add placeholder thinking bubble
+  const thinkingId = 'thinking_' + Date.now();
+  if (thread) {
+    thread.insertAdjacentHTML('beforeend', `
+      <div id="${thinkingId}" class="flex items-center gap-1.5 text-xs text-on-surface-variant font-bold animate-pulse">
+        <span>${petEmoji}</span>
+        <span>${petName} is thinking...</span>
+      </div>
+    `);
+    scrollChatToBottom();
+  }
+
+  // 3. Request reply from server
+  try {
+    const reply = await geminiLiveService.askRexChat(text, chatSpeedMode);
+    const thinkEl = document.getElementById(thinkingId);
+    if (thinkEl) thinkEl.remove();
+
+    if (reply) {
+      const rexMsg = {
+        id: 'rex_' + Date.now(),
+        sender: 'rex',
+        text: reply,
+        timestamp: Date.now()
+      };
+      chatMessages.push(rexMsg);
+      if (thread) {
+        thread.insertAdjacentHTML('beforeend', renderChatMessage(rexMsg, petName, petEmoji));
+        scrollChatToBottom();
+        attachListenButtons();
+      }
+    }
+  } catch (err) {
+    const thinkEl = document.getElementById(thinkingId);
+    if (thinkEl) thinkEl.remove();
+  }
+}
+
+function scrollChatToBottom() {
+  const thread = document.getElementById('rex-chat-thread');
+  if (thread) {
+    thread.scrollTop = thread.scrollHeight;
+  }
+}
+
+function updateWaveformVisualizer(state) {
+  const bars = document.querySelectorAll('.rex-wave-bar');
+  if (bars && bars.length > 0) {
+    if (state === 'speaking' || state === 'talking') {
+      bars.forEach((bar, i) => {
+        bar.style.height = `${12 + (i % 3) * 8}px`;
+        bar.style.backgroundColor = '#10B981';
+      });
+    } else if (state === 'listening') {
+      bars.forEach((bar, i) => {
+        bar.style.height = `${8 + ((i + 1) % 4) * 6}px`;
+        bar.style.backgroundColor = '#34D399';
+      });
+    } else {
+      bars.forEach((bar) => {
+        bar.style.height = '4px';
+        bar.style.backgroundColor = '#6EE7B7';
       });
     }
-  };
+  }
+}
+
+function updateWaveformVolume(volume, type) {
+  const bars = document.querySelectorAll('.rex-wave-bar');
+  if (bars && bars.length > 0) {
+    bars.forEach((bar, idx) => {
+      const factor = Math.sin((idx + 1) * 0.8) * 0.5 + 0.5;
+      const minHeight = 4;
+      const maxHeight = 30;
+      const height = Math.max(minHeight, Math.round(minHeight + volume * maxHeight * factor));
+      bar.style.height = `${height}px`;
+      bar.style.backgroundColor = type === 'output' ? '#10B981' : '#38BDF8';
+    });
+  }
 }

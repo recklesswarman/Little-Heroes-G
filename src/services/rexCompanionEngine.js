@@ -343,49 +343,50 @@ class RexVoiceEngine {
     const activePet = store.getActivePet?.();
     const activePetId = activePet?.id || "rex";
     const activeHero = store.getState().selectedHero;
-    const heroId = activeHero?.name || activeHero?.id || "Little Hero";
-    const isToddler = store.isEasyMode?.() ?? true;
+    const heroName = activeHero?.name || "Little Hero";
 
     store.setLiveRexState({
       lastUserTranscript: message,
-      statusMessage: "Rex is thinking..."
+      statusMessage: `${activePet?.name || 'Rex'} is thinking...`
     }, true);
 
     try {
-      if (auth && !auth.currentUser) {
-        try {
-          await signInAnonymously(auth);
-        } catch {
-          // Continue gracefully
+      // 1. Primary: Server-Side Gemini Chatbot API
+      const response = await fetch('/api/gemini/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message,
+          petId: activePetId,
+          speedMode: 'smart',
+          childName: heroName
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.reply) {
+          store.setLiveRexState({ lastRexTranscript: data.reply }, true);
+
+          if (data.awardedHabit) {
+            store.toggleHabitIsland(data.awardedHabit);
+          }
+
+          this.speak(data.reply, activePetId);
+          return data.reply;
         }
       }
-
-      const chatFn = httpsCallable(functions, "chatWithPet");
-      const res = await chatFn({
-        heroId,
-        message,
-        petId: activePetId,
-        ageTier: isToddler ? "toddler" : "kid"
-      });
-
-      const reply = res.data?.reply || `*Happy cheer!* Great job, ${heroId}! Ready for adventure!`;
-      store.setLiveRexState({ lastRexTranscript: reply }, true);
-      this.speak(reply, activePetId);
+      throw new Error('Chat API returned invalid response');
     } catch (err) {
-      console.error("Rex Cloud Function chatWithPet error details:", {
-        code: err?.code,
-        message: err?.message,
-        details: err?.details,
-        customData: err?.customData,
-        region: "us-central1"
-      });
+      console.warn("Primary Gemini Chat notice, trying fallback:", err?.message || err);
 
-      const fallbackReply = `*Happy Roar!* High five, ${activeHero?.name || "Little Hero"}! Let's do our quests and play together!`;
+      const fallbackReply = `*Happy Roar!* High five, ${heroName}! Let's do our quests and play together!`;
       store.setLiveRexState({
         lastRexTranscript: fallbackReply,
-        statusMessage: "Rex is ready to play!"
+        statusMessage: `${activePet?.name || 'Rex'} is ready to play!`
       }, true);
       this.speak(fallbackReply, activePetId);
+      return fallbackReply;
     }
   }
 

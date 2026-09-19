@@ -1,13 +1,13 @@
 // Pet Companion & Rex the Dino Spoken Voice Guidance Service
-// Dual-Engine Architecture:
-// 1. Primary: ElevenLabs Audio via Cloudflare Worker Proxy
-// 2. Resilient Fallback: High-Fidelity Cartoon Speech Synthesis with device-native 'Daniel' voice
+// Architecture:
+// 1. Primary: Realistic Human Kid-Friendly Voice via Gemini 3.1 Flash TTS (/api/gemini/tts)
+// 2. Resilient Fallback: High-Fidelity Cartoon Speech Synthesis with device-native voice
 // 3. Multi-Pet Pitch & Persona Tuning (Rex the Dino, Aqua Drake, Bella, Barnaby, Pip)
 // 4. Browser Autoplay & Gesture Pre-Unlock Engine
 
 import { store } from '../state/store.js';
 
-const PROXY_URL = 'https://rex-voice-proxy.recklesswarman.workers.dev';
+const TTS_ENDPOINT = '/api/gemini/tts';
 
 export const COMPANION_VOICE_PROFILES = {
   rex: {
@@ -16,6 +16,7 @@ export const COMPANION_VOICE_PROFILES = {
     pitch: 1.30,
     rate: 0.95,
     volume: 1.0,
+    geminiVoice: 'Puck',
     preferredVoice: 'daniel'
   },
   aqua_drake: {
@@ -24,6 +25,7 @@ export const COMPANION_VOICE_PROFILES = {
     pitch: 1.05,
     rate: 0.92,
     volume: 1.0,
+    geminiVoice: 'Charon',
     preferredVoice: 'daniel'
   },
   aqua: {
@@ -32,6 +34,7 @@ export const COMPANION_VOICE_PROFILES = {
     pitch: 1.05,
     rate: 0.92,
     volume: 1.0,
+    geminiVoice: 'Charon',
     preferredVoice: 'daniel'
   },
   bella: {
@@ -40,6 +43,7 @@ export const COMPANION_VOICE_PROFILES = {
     pitch: 1.45,
     rate: 1.05,
     volume: 1.0,
+    geminiVoice: 'Aoede',
     preferredVoice: 'daniel'
   },
   barnaby: {
@@ -48,6 +52,7 @@ export const COMPANION_VOICE_PROFILES = {
     pitch: 0.85,
     rate: 0.90,
     volume: 1.0,
+    geminiVoice: 'Fenrir',
     preferredVoice: 'daniel'
   },
   pip: {
@@ -56,11 +61,14 @@ export const COMPANION_VOICE_PROFILES = {
     pitch: 1.35,
     rate: 1.00,
     volume: 1.0,
+    geminiVoice: 'Zephyr',
     preferredVoice: 'daniel'
   }
 };
 
 let currentAudio = null;
+let currentAudioSource = null;
+let currentSyllableInterval = null;
 let activeUtterance = null;
 let hasUserInteracted = false;
 let pendingUnlockSpeech = null;
@@ -161,24 +169,35 @@ export function unlockVoiceAudio() {
  * Stops all currently playing companion voice audio and speech synthesis
  */
 export const stopRex = () => {
-  // 1. Stop HTML5 audio element
+  // 1. Stop Web Audio buffer source
+  if (currentAudioSource) {
+    try {
+      currentAudioSource.stop();
+      currentAudioSource.disconnect();
+    } catch {}
+    currentAudioSource = null;
+  }
+
+  // 2. Clear syllable ticker interval
+  if (currentSyllableInterval) {
+    clearInterval(currentSyllableInterval);
+    currentSyllableInterval = null;
+  }
+
+  // 3. Stop HTML5 audio element if any
   if (currentAudio) {
     try {
       currentAudio.pause();
       currentAudio.currentTime = 0;
-    } catch {
-      // Ignore
-    }
+    } catch {}
     currentAudio = null;
   }
 
-  // 2. Stop browser speech synthesis
+  // 4. Stop browser speech synthesis
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
     try {
       window.speechSynthesis.cancel();
-    } catch {
-      // Ignore
-    }
+    } catch {}
   }
   activeUtterance = null;
   dispatchSpeechEvent('companion-speech-end');
@@ -190,6 +209,7 @@ export const stopCompanionAudio = stopRex;
  * Check if the companion is currently playing audio or speaking
  */
 export const isRexSpeaking = () => {
+  if (currentAudioSource) return true;
   if (currentAudio && !currentAudio.paused && !currentAudio.ended) {
     return true;
   }
@@ -320,11 +340,25 @@ function speakWithSpeechSynthesis(text, petId = 'rex', onEnded = null) {
   }
 }
 
+function base64ToFloat32Array(base64Data) {
+  const binaryString = atob(base64Data);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  const int16Array = new Int16Array(bytes.buffer);
+  const float32Array = new Float32Array(int16Array.length);
+  for (let i = 0; i < int16Array.length; i++) {
+    float32Array[i] = int16Array[i] / 32768.0;
+  }
+  return float32Array;
+}
+
 /**
  * Unified Spoken Voice Entrypoint for Pet Companions
  * 1. Prepares dialogue text by stripping asterisks/stage directions.
- * 2. Attempts Cloudflare Worker ElevenLabs Proxy with fast timeout (1.8s).
- * 3. Gracefully and seamlessly falls back to Daniel SpeechSynthesis if offline, rate limited, or errored.
+ * 2. Primary: Realistic kid-friendly voice via Gemini 3.1 Flash TTS (/api/gemini/tts).
+ * 3. Resilient Fallback: Cartoon Speech Synthesis if offline or network error.
  */
 export const speakCompanion = async (text, petIdOrOptions = 'rex', onEnded = null) => {
   if (!text || typeof text !== 'string' || !text.trim()) return;
@@ -360,13 +394,13 @@ export const speakCompanion = async (text, petIdOrOptions = 'rex', onEnded = nul
     pendingUnlockSpeech = { text: cleanSpoken, petId, onEnded: callback };
   }
 
-  // 1. Attempt Cloudflare Worker ElevenLabs Proxy (Fast 1.8s timeout)
-  let proxySucceeded = false;
+  // 1. Primary: Server-Side Realistic Gemini TTS Engine (/api/gemini/tts)
+  let ttsSucceeded = false;
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 1800);
+    const timeoutId = setTimeout(() => controller.abort(), 4500);
 
-    const response = await fetch(PROXY_URL, {
+    const response = await fetch(TTS_ENDPOINT, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -378,47 +412,60 @@ export const speakCompanion = async (text, petIdOrOptions = 'rex', onEnded = nul
     clearTimeout(timeoutId);
 
     if (response.ok) {
-      const audioBlob = await response.blob();
-      if (audioBlob && audioBlob.size > 0) {
-        const audioUrl = URL.createObjectURL(audioBlob);
-        currentAudio = new Audio(audioUrl);
-        dispatchSpeechEvent('companion-speech-start', { text: cleanSpoken, petId });
+      const data = await response.json();
+      if (data && data.audio) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!sharedAudioContext || sharedAudioContext.state === 'closed') {
+          sharedAudioContext = new AudioCtx({ sampleRate: 24000 });
+        }
+        if (sharedAudioContext.state === 'suspended') {
+          await sharedAudioContext.resume().catch(() => {});
+        }
 
-        let syllableInterval = setInterval(() => {
-          if (!currentAudio || currentAudio.paused || currentAudio.ended) {
-            clearInterval(syllableInterval);
+        const float32 = base64ToFloat32Array(data.audio);
+        const sampleRate = data.sampleRate || 24000;
+        const audioBuffer = sharedAudioContext.createBuffer(1, float32.length, sampleRate);
+        audioBuffer.copyToChannel(float32, 0);
+
+        const source = sharedAudioContext.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(sharedAudioContext.destination);
+        currentAudioSource = source;
+
+        dispatchSpeechEvent('companion-speech-start', { text: cleanSpoken, petId, voice: data.voice });
+
+        currentSyllableInterval = setInterval(() => {
+          if (!currentAudioSource) {
+            clearInterval(currentSyllableInterval);
+            currentSyllableInterval = null;
             return;
           }
           dispatchSpeechEvent('companion-speech-syllable', { text: cleanSpoken, petId });
-        }, 115);
+        }, 110);
 
-        currentAudio.onended = () => {
-          clearInterval(syllableInterval);
-          URL.revokeObjectURL(audioUrl);
-          currentAudio = null;
+        source.onended = () => {
+          if (currentAudioSource === source) {
+            currentAudioSource = null;
+          }
+          if (currentSyllableInterval) {
+            clearInterval(currentSyllableInterval);
+            currentSyllableInterval = null;
+          }
           dispatchSpeechEvent('companion-speech-end', { petId });
           if (typeof callback === 'function') callback();
         };
 
-        currentAudio.onerror = () => {
-          clearInterval(syllableInterval);
-          URL.revokeObjectURL(audioUrl);
-          currentAudio = null;
-          // Fallback to speech synthesis if audio playback errors
-          speakWithSpeechSynthesis(cleanSpoken, petId, callback);
-        };
-
-        await currentAudio.play();
-        proxySucceeded = true;
+        source.start(0);
+        ttsSucceeded = true;
       }
     }
-  } catch {
-    // Proxy failed (e.g. 402 payment required, network timeout, offline, or autoplay blocked)
-    proxySucceeded = false;
+  } catch (err) {
+    console.warn('Gemini TTS network/fetch note, switching to resilient fallback:', err?.message || err);
+    ttsSucceeded = false;
   }
 
   // 2. Resilient Client-Side Speech Synthesis Fallback (Daniel Voice)
-  if (!proxySucceeded) {
+  if (!ttsSucceeded) {
     speakWithSpeechSynthesis(cleanSpoken, petId, callback);
   }
 };
