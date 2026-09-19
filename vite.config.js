@@ -1,10 +1,19 @@
 import { defineConfig } from 'vite';
-import { handleTTSRequest, handleChatRequest, attachGeminiLiveWebSocket } from './server/geminiService.js';
 
 function geminiServerPlugin() {
   return {
     name: 'gemini-server-plugin',
-    configureServer(server) {
+    async configureServer(server) {
+      let geminiService = null;
+      try {
+        geminiService = await import('./server/geminiService.js');
+      } catch (err) {
+        console.warn('Gemini server middleware notice (dev mode):', err.message);
+      }
+      if (!geminiService) return;
+
+      const { handleTTSRequest, handleChatRequest, attachGeminiLiveWebSocket } = geminiService;
+
       const parseJsonBody = (req) => new Promise((resolve, reject) => {
         let body = '';
         req.on('data', chunk => { body += chunk; });

@@ -9,7 +9,9 @@ let isAuthLoading = false;
 
 export function renderLandingAuthModal() {
   const state = store.getState();
-  const step = state.householdSetupStep || 'auth'; // 'auth' | 'choice' | 'create' | 'join'
+  const step = (!state.isAuthenticated || !state.isHouseholdConfigured) && state.householdSetupStep === 'ready'
+    ? 'auth'
+    : (state.householdSetupStep || 'auth');
   const parentUser = state.household?.parentUser;
   const parentDisplayName = parentUser?.displayName || 'Parent';
 
@@ -37,6 +39,11 @@ export function renderLandingAuthModal() {
  * High-conversion, friendly Google 1-click login wall
  */
 function renderWelcomeAuthScreen() {
+  const state = store.getState();
+  const existingCode = (state.household?.syncCode || '').trim().toUpperCase();
+  const existingName = state.household?.name || 'My Family';
+  const hasExistingHousehold = Boolean(existingCode && existingCode.length >= 4);
+
   return `
     <!-- Top Mascot & Title -->
     <div class="flex flex-col items-center text-center gap-3">
@@ -100,8 +107,26 @@ function renderWelcomeAuthScreen() {
       </div>
     ` : ''}
 
+    ${hasExistingHousehold ? `
+      <!-- Active Household Detected: 1-Click Resume Button -->
+      <button 
+        id="auth-resume-household-btn" 
+        class="w-full bg-gradient-to-r from-emerald-500 via-teal-500 to-primary hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-headline text-base sm:text-lg font-black py-4 px-6 min-h-[56px] rounded-2xl shadow-xl flex items-center justify-center gap-2.5 border-b-4 border-emerald-700 active:translate-y-1 active:border-b-0 transition-all cursor-pointer ring-2 ring-emerald-400/40"
+      >
+        <span class="text-xl">🏠</span>
+        <span>Resume ${existingName} (${existingCode})</span>
+        <span class="text-xl">➔</span>
+      </button>
+
+      <div class="flex items-center gap-3 my-0.5">
+        <div class="h-px bg-surface-container-highest/80 flex-1"></div>
+        <span class="text-[10px] uppercase font-black tracking-wider text-slate-400">or sign in with google</span>
+        <div class="h-px bg-surface-container-highest/80 flex-1"></div>
+      </div>
+    ` : ''}
+
     <!-- 1-Click Google Sign-In Action Button (Minimum 56px touch target) -->
-    <div class="flex flex-col gap-3 pt-1">
+    <div class="flex flex-col gap-2.5 pt-1">
       <button 
         id="auth-google-signin-btn" 
         class="w-full bg-white hover:bg-slate-100 text-slate-900 font-headline text-base sm:text-lg font-black py-4 px-6 min-h-[56px] rounded-2xl shadow-xl flex items-center justify-center gap-3 border-b-4 border-slate-300 active:translate-y-1 active:border-b-0 transition-all cursor-pointer ${isAuthLoading ? 'opacity-60 pointer-events-none' : ''}"
@@ -120,6 +145,20 @@ function renderWelcomeAuthScreen() {
       <p class="text-[11px] text-slate-400 text-center font-medium">
         Secure 1-click parent login • No passwords required
       </p>
+
+      <div class="flex items-center gap-3 my-0.5">
+        <div class="h-px bg-surface-container-highest/80 flex-1"></div>
+        <span class="text-[10px] uppercase font-black tracking-wider text-slate-400">or</span>
+        <div class="h-px bg-surface-container-highest/80 flex-1"></div>
+      </div>
+
+      <!-- Quick Sync Code Link for Children's Tablets & Secondary Devices -->
+      <button 
+        id="auth-enter-code-direct-btn"
+        class="w-full bg-surface-container-high hover:bg-surface-bright text-secondary hover:text-white font-headline text-sm sm:text-base font-bold py-3.5 px-4 min-h-[48px] rounded-2xl border border-secondary/40 hover:border-secondary flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-98"
+      >
+        <span>🔗 I Have a Family Sync Code (HERO-XXXX)</span>
+      </button>
     </div>
   `;
 }
@@ -366,7 +405,30 @@ function renderJoinHouseholdScreen() {
  * Attach interactive event listeners for all screens
  */
 export function attachLandingAuthModalListeners() {
-  // 1. Google Sign-In Button
+  // 1. Resume Household Button (Instant 1-click restore)
+  const resumeBtn = document.getElementById('auth-resume-household-btn');
+  if (resumeBtn) {
+    resumeBtn.addEventListener('click', () => {
+      Sound.fanfare();
+      const state = store.getState();
+      state.isAuthenticated = true;
+      state.isHouseholdConfigured = true;
+      state.householdSetupStep = 'ready';
+      store.saveState(true);
+      store.notify();
+    });
+  }
+
+  // 2. Direct Enter Code Button from Screen 1
+  const enterCodeDirectBtn = document.getElementById('auth-enter-code-direct-btn');
+  if (enterCodeDirectBtn) {
+    enterCodeDirectBtn.addEventListener('click', () => {
+      Sound.click();
+      store.setHouseholdSetupStep('join');
+    });
+  }
+
+  // 3. Google Sign-In Button
   const googleBtn = document.getElementById('auth-google-signin-btn');
   if (googleBtn) {
     googleBtn.addEventListener('click', async () => {
@@ -387,7 +449,7 @@ export function attachLandingAuthModalListeners() {
     });
   }
 
-  // 2. Choice Buttons (Create vs Join)
+  // 4. Choice Buttons (Create vs Join)
   const choiceCreateBtn = document.getElementById('choice-create-new-btn');
   if (choiceCreateBtn) {
     choiceCreateBtn.addEventListener('click', () => {
@@ -404,12 +466,17 @@ export function attachLandingAuthModalListeners() {
     });
   }
 
-  // 3. Back Button
+  // 5. Back Button (Smart navigation: return to choice if parent logged in, otherwise return to auth)
   const backBtn = document.getElementById('auth-back-to-choice-btn');
   if (backBtn) {
     backBtn.addEventListener('click', () => {
       Sound.click();
-      store.setHouseholdSetupStep('choice');
+      const parentUser = store.getState().household?.parentUser;
+      if (parentUser && parentUser.uid) {
+        store.setHouseholdSetupStep('choice');
+      } else {
+        store.setHouseholdSetupStep('auth');
+      }
     });
   }
 

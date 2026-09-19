@@ -1,5 +1,27 @@
-import { GoogleGenAI, Modality } from '@google/genai';
-import { WebSocketServer } from 'ws';
+let WebSocketServer = null;
+let GoogleGenAI = null;
+let Modality = { AUDIO: 'AUDIO' };
+
+async function loadDependencies() {
+  if (!WebSocketServer) {
+    try {
+      const wsModule = await import('ws');
+      WebSocketServer = wsModule.WebSocketServer || wsModule.default?.WebSocketServer;
+    } catch (err) {
+      // Optional dev server dependency
+    }
+  }
+  if (!GoogleGenAI) {
+    try {
+      const genai = await import('@google/genai');
+      GoogleGenAI = genai.GoogleGenAI;
+      if (genai.Modality) Modality = genai.Modality;
+    } catch (err) {
+      // Optional dev server dependency
+    }
+  }
+}
+await loadDependencies().catch(() => {});
 
 // Voice mapping for pet champions: warm, expressive, kid-friendly
 export const PET_VOICE_MAP = {
@@ -61,6 +83,9 @@ export const PET_PERSONAS = {
 let cachedAiClient = null;
 
 export function getGeminiClient() {
+  if (!GoogleGenAI) {
+    return null;
+  }
   if (!cachedAiClient) {
     const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
     if (!apiKey) {
@@ -104,6 +129,9 @@ export async function handleTTSRequest(req, res) {
     const persona = PET_PERSONAS[normalizedPetId] || PET_PERSONAS.rex;
 
     const ai = getGeminiClient();
+    if (!ai) {
+      return res.status(503).json({ error: 'Gemini service is not initialized in server environment.' });
+    }
 
     const response = await ai.models.generateContent({
       model: 'gemini-3.1-flash-tts-preview',
@@ -175,6 +203,9 @@ Special Interactive Directives:
 4. Keep the text concise, joyful, and easy to read aloud.`;
 
     const ai = getGeminiClient();
+    if (!ai) {
+      return res.status(503).json({ error: 'Gemini service is not initialized in server environment.' });
+    }
 
     // Format previous history into Gemini SDK format
     const formattedHistory = Array.isArray(history)
@@ -228,6 +259,7 @@ Special Interactive Directives:
  * Bridges audio between browser client and gemini-3.8-live
  */
 export function attachGeminiLiveWebSocket(httpServer) {
+  if (!WebSocketServer) return;
   const wss = new WebSocketServer({ noServer: true });
 
   httpServer.on('upgrade', (request, socket, head) => {
@@ -252,6 +284,10 @@ export function attachGeminiLiveWebSocket(httpServer) {
 
     try {
       const ai = getGeminiClient();
+      if (!ai) {
+        clientWs.close(1011, 'Gemini service not initialized');
+        return;
+      }
 
       session = await ai.live.connect({
         model: 'gemini-3.8-live',

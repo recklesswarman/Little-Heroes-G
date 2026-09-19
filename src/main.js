@@ -47,6 +47,14 @@ function renderApp() {
   const state = store.getState();
   const activeView = state.activeView;
 
+  // Auto-heal active household devices if valid syncCode exists locally
+  const activeSyncCode = (state.household?.syncCode || '').trim().toUpperCase();
+  if ((!state.isAuthenticated || !state.isHouseholdConfigured) && activeSyncCode && activeSyncCode.length >= 4) {
+    state.isAuthenticated = true;
+    state.isHouseholdConfigured = true;
+    state.householdSetupStep = 'ready';
+  }
+
   // Strict Auth Wall Gate:
   // If user is unauthenticated OR household has not been configured/joined yet,
   // strictly render the Landing Auth Wall so that NO stranger's data is displayed!

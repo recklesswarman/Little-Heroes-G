@@ -817,24 +817,52 @@ class Store {
           parsed.household.parentEmails = [];
         }
 
-        // Strict Auth Gate Check: Validate whether a real household is configured
-        const hasAuthenticParent = Boolean(parsed.household?.parentUser?.uid || (parsed.household?.parents && parsed.household.parents.length > 0 && parsed.household.parents[0]?.uid !== 'parent_default_admin'));
-        const hasValidCustomCode = Boolean(parsed.household?.syncCode && parsed.household.syncCode !== 'HERO-1555' && parsed.household.syncCode !== 'HERO-8842' && parsed.household.syncCode.trim() !== '');
+        // Check if a persistent link session exists in localStorage
+        let persistentCode = null;
+        try {
+          if (typeof localStorage !== 'undefined') {
+            const rawSession = localStorage.getItem('stitch_persistent_link_session');
+            if (rawSession) {
+              const session = JSON.parse(rawSession);
+              if (session && session.householdCode && session.householdCode.trim().length >= 4) {
+                persistentCode = session.householdCode.trim().toUpperCase();
+              }
+            }
+          }
+        } catch {
+          // Ignore parse error
+        }
 
-        if (parsed.isHouseholdConfigured === true && (hasAuthenticParent || hasValidCustomCode)) {
+        if (persistentCode && (!parsed.household.syncCode || !parsed.household.syncCode.trim())) {
+          parsed.household.syncCode = persistentCode;
+        }
+
+        // Identify whether this device has an active household configured
+        const currentCode = (parsed.household?.syncCode || persistentCode || '').trim().toUpperCase();
+        const hasActiveSyncCode = Boolean(currentCode && currentCode.length >= 4);
+        const hasParent = Boolean(
+          parsed.household?.parentUser?.uid ||
+          (parsed.household?.parents && parsed.household.parents.length > 0) ||
+          (parsed.household?.parentEmails && parsed.household.parentEmails.length > 0)
+        );
+        const wasExplicitlyConfigured = parsed.isHouseholdConfigured === true;
+        const hasCustomHeroes = Array.isArray(parsed.heroes) && parsed.heroes.length > 0 && !isPureMock;
+
+        const isExistingActiveHousehold = wasExplicitlyConfigured || hasActiveSyncCode || (hasParent && currentCode) || (hasCustomHeroes && hasActiveSyncCode);
+
+        if (isExistingActiveHousehold) {
           parsed.isAuthenticated = true;
           parsed.isHouseholdConfigured = true;
           parsed.householdSetupStep = 'ready';
+          if (currentCode && !parsed.household.syncCode) {
+            parsed.household.syncCode = currentCode;
+          }
         } else {
-          // Unauthenticated or unconfigured visitor: strictly show Landing Auth Wall
+          // Unauthenticated or unconfigured visitor: show Landing Auth Wall
+          // Preserves existing data structure without clearing valid codes
           parsed.isAuthenticated = false;
           parsed.isHouseholdConfigured = false;
           parsed.householdSetupStep = 'auth';
-          parsed.household.syncCode = '';
-          parsed.household.name = '';
-          parsed.household.parents = [];
-          parsed.household.parentUids = [];
-          parsed.household.parentEmails = [];
         }
 
         if (!parsed.petSparkMap || typeof parsed.petSparkMap !== 'object') {
@@ -865,12 +893,20 @@ class Store {
           parsed.gameMasteryMap = {};
         }
 
-        return { ...defaultState, ...parsed };
+        const loaded = { ...defaultState, ...parsed };
+        this.state = loaded;
+        return loaded;
       }
     } catch (e) {
       console.warn('Failed to load store state', e);
     }
-    return JSON.parse(JSON.stringify(defaultState));
+    const fallback = JSON.parse(JSON.stringify(defaultState));
+    this.state = fallback;
+    return fallback;
+  }
+
+  reloadState() {
+    return this.loadState();
   }
 
   setSyncService(service) {

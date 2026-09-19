@@ -82,17 +82,21 @@ class FirebaseAuthService {
             householdCode: targetCode
           });
         } else {
-          // If the device already has a configured household code locally (not demo HERO-1555), bind to this user
-          if (state.isHouseholdConfigured && state.household?.syncCode && state.household.syncCode !== 'HERO-1555' && state.household.syncCode !== 'HERO-8842') {
+          // If the device already has a configured household code locally, bind to this user
+          const localCode = (state.household?.syncCode || (persistentLink.isLinked() ? persistentLink.getSession()?.householdCode : '')).trim().toUpperCase();
+          if (localCode && localCode.length >= 4) {
             await persistentLink.establishPersistentLink({
               userId: user.uid,
               email: user.email,
               displayName: user.displayName,
-              householdCode: state.household.syncCode
+              householdCode: localCode
             });
+            state.household.syncCode = localCode;
             state.isAuthenticated = true;
             state.isHouseholdConfigured = true;
             state.householdSetupStep = 'ready';
+            firestoreSync.startSync(localCode);
+            firestoreSync.pushStateToCloud(true);
           } else {
             // Brand-new Google user: route to 2-Card Choice Screen (Create vs Join)!
             state.isAuthenticated = true;
@@ -104,19 +108,34 @@ class FirebaseAuthService {
         console.warn("Error establishing persistent link on auth:", e.message);
       }
 
+      store.saveState(false);
       store.notify();
     } else {
-      console.log("Firebase Auth: Signed out or offline");
+      console.log("Firebase Auth: No active Google session (offline or child/household device)");
       
-      // Resilient transient offline check: check if persistent link is still within sliding window
-      if (persistentLink.isLinked()) {
-        const session = persistentLink.getSession();
-        console.log(`🛡️ Persistent link active within sliding window for Household ${session.householdCode}. Retaining link.`);
-        state.household.syncCode = session.householdCode;
-        state.household.lastSync = "Persistent Link Active";
+      const activeHouseholdCode = (state.household?.syncCode || (persistentLink.isLinked() ? persistentLink.getSession()?.householdCode : '')).trim().toUpperCase();
+      const hasConfiguredHousehold = state.isHouseholdConfigured || (activeHouseholdCode && activeHouseholdCode.length >= 4);
+
+      if (hasConfiguredHousehold) {
+        console.log(`🛡️ Active household device retained for Household ${activeHouseholdCode || state.household?.name || 'Active'}`);
+        if (activeHouseholdCode && !state.household.syncCode) {
+          state.household.syncCode = activeHouseholdCode;
+        }
         state.isAuthenticated = true;
         state.isHouseholdConfigured = true;
         state.householdSetupStep = 'ready';
+        if (!state.household.lastSync || state.household.lastSync === "Not connected") {
+          state.household.lastSync = persistentLink.isLinked() ? "Persistent Link Active" : "Household Active";
+        }
+        if (activeHouseholdCode && !persistentLink.isLinked()) {
+          persistentLink.establishPersistentLink({
+            householdCode: activeHouseholdCode,
+            displayName: state.household?.name || 'Household Device'
+          }).catch(() => {});
+        }
+        if (activeHouseholdCode) {
+          firestoreSync.startSync(activeHouseholdCode);
+        }
       } else {
         if (state.household?.parentUser) {
           delete state.household.parentUser;
