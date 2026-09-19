@@ -44,6 +44,8 @@ const defaultState = {
   isAuthReady: false,
   isHouseholdConfigured: false,
   householdSetupStep: 'auth', // 'auth' | 'choice' | 'create' | 'join' | 'ready'
+  isDeviceRevoked: false,
+  revokedDeviceIds: [],
   activeView: 'dashboard', // dashboard, quest_map, pet_pen, pet_roster, pet_detail, pet_bath, shop, ar_battle, evolution, dance_party, profile, parent_portal, adventures_map, adventure_game
   previousView: 'dashboard',
   selectedPetDetailId: 1,
@@ -883,31 +885,45 @@ class Store {
           parsed.household.name.trim() !== 'The Hero Family'
         );
 
+        const myDeviceId = typeof localStorage !== 'undefined' ? localStorage.getItem('stitch_device_id') : null;
+        const isDeviceRevoked = Boolean(
+          parsed.isDeviceRevoked === true ||
+          (myDeviceId && (
+            parsed.devices?.[myDeviceId]?.revoked === true ||
+            (Array.isArray(parsed.revokedDeviceIds) && parsed.revokedDeviceIds.includes(myDeviceId))
+          ))
+        );
+
         const isExistingActiveHousehold = Boolean(
-          wasExplicitlyConfigured ||
-          hasActiveSyncCode ||
-          hasParent ||
-          hasCustomHeroes ||
-          hasCustomProgress ||
-          hasCustomName
+          !isDeviceRevoked && (
+            wasExplicitlyConfigured ||
+            hasActiveSyncCode ||
+            hasParent ||
+            hasCustomHeroes ||
+            hasCustomProgress ||
+            hasCustomName
+          )
         );
 
         if (isExistingActiveHousehold) {
           parsed.isAuthenticated = true;
           parsed.isHouseholdConfigured = true;
           parsed.householdSetupStep = 'ready';
+          parsed.isDeviceRevoked = false;
           const resolvedCode = (currentCode || persistentCode || 'HERO-8842').trim().toUpperCase();
           parsed.household.syncCode = resolvedCode;
           if (!parsed.household.name || !parsed.household.name.trim()) {
             parsed.household.name = 'The Hero Family';
           }
         } else {
-          // Unauthenticated or unconfigured visitor: show Landing Auth Wall
-          // Preserves existing data structure without clearing valid codes
+          // Unauthenticated, unconfigured visitor, or revoked device: show Landing Auth Wall
           parsed.isAuthenticated = false;
           parsed.isHouseholdConfigured = false;
           parsed.householdSetupStep = 'auth';
           parsed.household.syncCode = '';
+          if (isDeviceRevoked) {
+            parsed.isDeviceRevoked = true;
+          }
         }
 
         if (!parsed.petSparkMap || typeof parsed.petSparkMap !== 'object') {
@@ -1014,6 +1030,9 @@ class Store {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
       }
       if (this.syncService) {
+        if (typeof this.syncService.broadcastState === 'function') {
+          this.syncService.broadcastState(this.state);
+        }
         this.syncService.pushStateToCloud(immediate);
       }
     } catch (e) {
@@ -1053,7 +1072,12 @@ class Store {
       if (params.petId) this.state.selectedPetDetailId = params.petId;
       if (params.gameId) this.state.selectedAdventureGameId = params.gameId;
       Sound.click();
-      this.saveState();
+      if (typeof localStorage !== 'undefined') {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+        } catch (e) {}
+      }
+      this.notify();
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
       // When kid selects the pet pen for the first time after profile creation:
@@ -5169,7 +5193,19 @@ class Store {
       return { success: false, error: 'Please enter a valid household sync code (e.g. HERO-XXXX).' };
     }
 
+    this.lastRejoinedTimestamp = Date.now();
     this.state.household.syncCode = cleanCode;
+    this.state.isDeviceRevoked = false;
+
+    const myDeviceId = this.syncService?.getDeviceId ? this.syncService.getDeviceId() : (typeof localStorage !== 'undefined' ? localStorage.getItem('stitch_device_id') : null);
+    if (myDeviceId) {
+      if (this.state.devices && this.state.devices[myDeviceId]) {
+        this.state.devices[myDeviceId].revoked = false;
+      }
+      if (Array.isArray(this.state.revokedDeviceIds)) {
+        this.state.revokedDeviceIds = this.state.revokedDeviceIds.filter(id => id !== myDeviceId);
+      }
+    }
 
     if (this.syncService) {
       const joinRes = await this.syncService.joinHousehold(cleanCode);
@@ -5181,6 +5217,7 @@ class Store {
     this.state.isAuthenticated = true;
     this.state.isHouseholdConfigured = true;
     this.state.householdSetupStep = 'ready';
+    this.state.isDeviceRevoked = false;
     this.state.activeView = 'dashboard';
 
     const parentUser = this.state.household.parentUser;
@@ -5200,6 +5237,99 @@ class Store {
     this.saveState(true);
     this.notify();
     return { success: true, householdName: this.state.household.name || cleanCode };
+  }
+
+  /**
+   * Handle device session revocation: resets household configuration and prompts for sync code
+   */
+  handleDeviceRevoked() {
+    if (this.persistentLinkService && this.persistentLinkService.clearSession) {
+      this.persistentLinkService.clearSession();
+    }
+
+    if (this.syncService && this.syncService.stopSync) {
+      this.syncService.stopSync();
+    }
+
+    if (this.authService && this.authService.signOut) {
+      this.authService.signOut().catch(() => {});
+    }
+
+    if (this.state.household) {
+      delete this.state.household.parentUser;
+      this.state.household.syncCode = '';
+      this.state.household.lastSync = 'Device Logged Out by Parent';
+    }
+
+    this.state.isAuthenticated = false;
+    this.state.isHouseholdConfigured = false;
+    this.state.householdSetupStep = 'auth';
+    this.state.isDeviceRevoked = true;
+    this.state.activeView = 'dashboard';
+
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+      }
+    } catch (e) {
+      console.warn('Could not save revoked state:', e);
+    }
+
+    this.notify();
+  }
+
+  /**
+   * Revoke a device from the household
+   */
+  async revokeDevice(targetDeviceId) {
+    if (!targetDeviceId) return { success: false, error: 'No device ID provided' };
+    if (this.syncService && typeof this.syncService.revokeDevice === 'function') {
+      return await this.syncService.revokeDevice(targetDeviceId);
+    }
+
+    const myDeviceId = typeof localStorage !== 'undefined' ? localStorage.getItem('stitch_device_id') : null;
+    if (!this.state.devices) this.state.devices = {};
+    if (this.state.devices[targetDeviceId]) {
+      this.state.devices[targetDeviceId].revoked = true;
+      this.state.devices[targetDeviceId].lastSeen = new Date().toISOString();
+    } else {
+      this.state.devices[targetDeviceId] = {
+        deviceId: targetDeviceId,
+        name: 'Hero Device',
+        revoked: true,
+        lastSeen: new Date().toISOString()
+      };
+    }
+    if (!this.state.revokedDeviceIds) this.state.revokedDeviceIds = [];
+    if (!this.state.revokedDeviceIds.includes(targetDeviceId)) {
+      this.state.revokedDeviceIds.push(targetDeviceId);
+    }
+    this.saveState(true);
+    if (targetDeviceId === myDeviceId) {
+      this.handleDeviceRevoked();
+    } else {
+      this.notify();
+    }
+    return { success: true };
+  }
+
+  /**
+   * Remove/delete an old device from household records
+   */
+  async removeDevice(targetDeviceId) {
+    if (!targetDeviceId) return { success: false, error: 'No device ID provided' };
+    if (this.syncService && typeof this.syncService.removeDevice === 'function') {
+      return await this.syncService.removeDevice(targetDeviceId);
+    }
+    if (this.state.devices && this.state.devices[targetDeviceId]) {
+      delete this.state.devices[targetDeviceId];
+    }
+    if (Array.isArray(this.state.revokedDeviceIds)) {
+      this.state.revokedDeviceIds = this.state.revokedDeviceIds.filter(id => id !== targetDeviceId);
+    }
+    this.saveState(true);
+    this.notify();
+    return { success: true };
   }
 
   /**
@@ -5251,26 +5381,63 @@ class Store {
   hydrateFromCloud(cloudData) {
     if (!cloudData) return;
 
+    // 0. Check if this device has been revoked by a parent
+    const myDeviceId = this.syncService?.getDeviceId ? this.syncService.getDeviceId() : (typeof localStorage !== 'undefined' ? localStorage.getItem('stitch_device_id') : null);
+    
+    // Grace window for device that just successfully re-authenticated with the household code
+    const isJustRejoined = Boolean(
+      this.lastRejoinedTimestamp && 
+      (Date.now() - this.lastRejoinedTimestamp < 15000)
+    );
+
+    const isRevoked = !isJustRejoined && Boolean(
+      this.state.isDeviceRevoked === true ||
+      (myDeviceId && (
+        cloudData.devices?.[myDeviceId]?.revoked === true ||
+        (Array.isArray(cloudData.revokedDeviceIds) && cloudData.revokedDeviceIds.includes(myDeviceId))
+      ))
+    );
+
+    if (isRevoked) {
+      console.warn(`🚫 Device ${myDeviceId} has been logged out of household by parent.`);
+      this.handleDeviceRevoked();
+      return;
+    }
+
+    if (isJustRejoined && myDeviceId) {
+      // Cleanse revoked status from hydrated data
+      if (cloudData.devices?.[myDeviceId]) {
+        cloudData.devices[myDeviceId].revoked = false;
+      }
+      if (Array.isArray(cloudData.revokedDeviceIds)) {
+        cloudData.revokedDeviceIds = cloudData.revokedDeviceIds.filter(id => id !== myDeviceId);
+      }
+    }
+
     this.state.isAuthenticated = true;
     this.state.isHouseholdConfigured = true;
     this.state.householdSetupStep = 'ready';
+    this.state.isDeviceRevoked = false;
 
     // 1. Household Details & Parent Administrators
-    if (cloudData.householdName) {
-      this.state.household.name = cloudData.householdName;
+    if (cloudData.householdName || cloudData.household?.name) {
+      this.state.household.name = cloudData.householdName || cloudData.household?.name;
     }
-    const incomingCode = (cloudData.syncCode || cloudData.householdCode);
+    const incomingCode = (cloudData.syncCode || cloudData.householdCode || cloudData.household?.syncCode);
     if (incomingCode) {
       this.state.household.syncCode = incomingCode.trim().toUpperCase();
     }
-    if (cloudData.parents && Array.isArray(cloudData.parents)) {
-      this.state.household.parents = cloudData.parents;
+    const incomingParents = cloudData.parents || cloudData.household?.parents;
+    if (incomingParents && Array.isArray(incomingParents)) {
+      this.state.household.parents = incomingParents;
     }
-    if (cloudData.parentUids && Array.isArray(cloudData.parentUids)) {
-      this.state.household.parentUids = cloudData.parentUids;
+    const incomingParentUids = cloudData.parentUids || cloudData.household?.parentUids;
+    if (incomingParentUids && Array.isArray(incomingParentUids)) {
+      this.state.household.parentUids = incomingParentUids;
     }
-    if (cloudData.parentEmails && Array.isArray(cloudData.parentEmails)) {
-      this.state.household.parentEmails = cloudData.parentEmails;
+    const incomingParentEmails = cloudData.parentEmails || cloudData.household?.parentEmails;
+    if (incomingParentEmails && Array.isArray(incomingParentEmails)) {
+      this.state.household.parentEmails = incomingParentEmails;
     }
     this.state.household.lastSync = 'Synced Just Now';
 
@@ -5343,6 +5510,16 @@ class Store {
           equippedProfileTheme: cloudH.equippedProfileTheme || localH?.equippedProfileTheme || 'theme_dragon_emerald',
           unlockedThemes: Array.from(new Set([...(cloudH.unlockedThemes || []), ...(localH?.unlockedThemes || ['theme_dragon_emerald'])])),
           equippedGear: { ...(localH?.equippedGear || {}), ...(cloudH.equippedGear || {}) },
+          equippedPetGearMap: cloudH.equippedPetGearMap || localH?.equippedPetGearMap || {},
+          customGearDyesMap: cloudH.customGearDyesMap || localH?.customGearDyesMap || {},
+          savedHeroCards: cloudH.savedHeroCards || localH?.savedHeroCards || [],
+          screenTimeMinutes: cloudH.screenTimeMinutes !== undefined ? Number(cloudH.screenTimeMinutes) : (localH?.screenTimeMinutes ?? 45),
+          screenTimeUsedToday: cloudH.screenTimeUsedToday !== undefined ? Number(cloudH.screenTimeUsedToday) : (localH?.screenTimeUsedToday ?? 15),
+          dailyMaxScreenTime: cloudH.dailyMaxScreenTime !== undefined ? Number(cloudH.dailyMaxScreenTime) : (localH?.dailyMaxScreenTime ?? 60),
+          bedtimeCurfew: cloudH.bedtimeCurfew || localH?.bedtimeCurfew || '20:00',
+          screenTimeRate: cloudH.screenTimeRate !== undefined ? Number(cloudH.screenTimeRate) : (localH?.screenTimeRate ?? 2),
+          isScreenTimePaused: cloudH.isScreenTimePaused !== undefined ? Boolean(cloudH.isScreenTimePaused) : (localH?.isScreenTimePaused ?? false),
+          screenTimeLockMessage: cloudH.screenTimeLockMessage || localH?.screenTimeLockMessage || 'Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙',
           inventory: Array.from(new Set([...(localH?.inventory || []), ...(cloudH.inventory || [])]))
         };
       });
@@ -5397,7 +5574,7 @@ class Store {
       }
     }
 
-    // 4. Pet Stats & Evolution Maps
+    // 4. Pet Stats, Evolution & Gear Maps
     if (cloudData.petStatsMap) {
       this.state.petStatsMap = { ...this.state.petStatsMap, ...cloudData.petStatsMap };
     }
@@ -5416,11 +5593,98 @@ class Store {
         this.state.selectedHero.equippedPetGear = cloudData.equippedPetGear;
       }
     }
+    if (cloudData.equippedPetGearSlots && typeof cloudData.equippedPetGearSlots === 'object') {
+      this.state.equippedPetGearSlots = { ...(this.state.equippedPetGearSlots || {}), ...cloudData.equippedPetGearSlots };
+    }
+    if (cloudData.equippedPetGearMap && typeof cloudData.equippedPetGearMap === 'object') {
+      this.state.equippedPetGearMap = { ...(this.state.equippedPetGearMap || {}), ...cloudData.equippedPetGearMap };
+      if (this.state.selectedHero) {
+        this.state.selectedHero.equippedPetGearMap = { ...(this.state.selectedHero.equippedPetGearMap || {}), ...cloudData.equippedPetGearMap };
+      }
+    }
+    if (cloudData.customGearDyesMap && typeof cloudData.customGearDyesMap === 'object') {
+      this.state.customGearDyesMap = { ...(this.state.customGearDyesMap || {}), ...cloudData.customGearDyesMap };
+      if (this.state.selectedHero) {
+        this.state.selectedHero.customGearDyesMap = { ...(this.state.selectedHero.customGearDyesMap || {}), ...cloudData.customGearDyesMap };
+      }
+    }
+    if (cloudData.savedHeroCards && Array.isArray(cloudData.savedHeroCards)) {
+      this.state.savedHeroCards = cloudData.savedHeroCards;
+      if (this.state.selectedHero) {
+        this.state.selectedHero.savedHeroCards = cloudData.savedHeroCards;
+      }
+    }
+    if (cloudData.petSparkMap && typeof cloudData.petSparkMap === 'object') {
+      this.state.petSparkMap = { ...(this.state.petSparkMap || {}), ...cloudData.petSparkMap };
+    }
+    if (cloudData.petStreakShield && typeof cloudData.petStreakShield === 'object') {
+      this.state.petStreakShield = { ...(this.state.petStreakShield || {}), ...cloudData.petStreakShield };
+    }
     if (cloudData.pets && Array.isArray(cloudData.pets)) {
       this.state.pets = cloudData.pets;
     }
 
-    // 5. Autonomous Micro-Quests (AI Spark) & Badges/Trophies
+    // 5. Living Pet Sanctuary, Hero HQ, and Hero Forge
+    if (cloudData.petSanctuary && typeof cloudData.petSanctuary === 'object') {
+      this.state.petSanctuary = {
+        ...(this.state.petSanctuary || {}),
+        ...cloudData.petSanctuary,
+        petBondMap: {
+          ...(this.state.petSanctuary?.petBondMap || {}),
+          ...(cloudData.petSanctuary.petBondMap || {})
+        },
+        petNeedsMap: {
+          ...(this.state.petSanctuary?.petNeedsMap || {}),
+          ...(cloudData.petSanctuary.petNeedsMap || {})
+        }
+      };
+    }
+    if (cloudData.heroHQ && typeof cloudData.heroHQ === 'object') {
+      this.state.heroHQ = {
+        ...(this.state.heroHQ || {}),
+        ...cloudData.heroHQ,
+        equippedFurniture: {
+          ...(this.state.heroHQ?.equippedFurniture || {}),
+          ...(cloudData.heroHQ.equippedFurniture || {})
+        },
+        unlockedFurnitureIds: Array.from(new Set([
+          ...(this.state.heroHQ?.unlockedFurnitureIds || []),
+          ...(cloudData.heroHQ.unlockedFurnitureIds || [])
+        ])),
+        featuredTrophyIds: Array.from(new Set([
+          ...(this.state.heroHQ?.featuredTrophyIds || []),
+          ...(cloudData.heroHQ.featuredTrophyIds || [])
+        ]))
+      };
+    }
+    if (cloudData.heroForge && typeof cloudData.heroForge === 'object') {
+      this.state.heroForge = {
+        ...(this.state.heroForge || {}),
+        ...cloudData.heroForge,
+        customDyes: {
+          ...(this.state.heroForge?.customDyes || {}),
+          ...(cloudData.heroForge.customDyes || {})
+        },
+        craftedHistory: Array.from(new Set([
+          ...(this.state.heroForge?.craftedHistory || []),
+          ...(cloudData.heroForge.craftedHistory || [])
+        ]))
+      };
+    }
+    if (cloudData.activeExpeditions && Array.isArray(cloudData.activeExpeditions)) {
+      this.state.activeExpeditions = cloudData.activeExpeditions;
+    }
+    if (cloudData.expeditionHistory && Array.isArray(cloudData.expeditionHistory)) {
+      this.state.expeditionHistory = cloudData.expeditionHistory;
+    }
+    if (cloudData.unlockedArtifacts && Array.isArray(cloudData.unlockedArtifacts)) {
+      this.state.unlockedArtifacts = Array.from(new Set([...(this.state.unlockedArtifacts || []), ...cloudData.unlockedArtifacts]));
+    }
+    if (cloudData.gameMasteryMap && typeof cloudData.gameMasteryMap === 'object') {
+      this.state.gameMasteryMap = { ...(this.state.gameMasteryMap || {}), ...cloudData.gameMasteryMap };
+    }
+
+    // 6. Autonomous Micro-Quests (AI Spark) & Badges/Trophies
     if (cloudData.aiQuests && Array.isArray(cloudData.aiQuests)) {
       this.state.aiQuests = cloudData.aiQuests;
     }
@@ -5428,7 +5692,7 @@ class Store {
       this.state.recentlyUnlocked = cloudData.recentlyUnlocked;
     }
 
-    // 6. Chores, Habits, Rewards, Inventory, Rex Guardrails & Progress
+    // 7. Chores, Habits, Rewards, Inventory, Rex Guardrails & Progress
     if (cloudData.taskForest && Array.isArray(cloudData.taskForest)) {
       this.state.taskForest = cloudData.taskForest;
     }
@@ -5468,7 +5732,7 @@ class Store {
       this.state.gameProgress = { ...(this.state.gameProgress || {}), ...cloudData.gameProgress };
     }
 
-    // 7. Smart Merge Completion & Ledger Logs (Prevents dropped concurrent logs across devices)
+    // 8. Smart Merge Completion & Ledger Logs (Prevents dropped concurrent logs across devices)
     if (cloudData.taskCompletionLogs && Array.isArray(cloudData.taskCompletionLogs)) {
       const logMap = new Map();
       (this.state.taskCompletionLogs || []).forEach((log) => {
@@ -5500,7 +5764,7 @@ class Store {
         .slice(0, 300);
     }
 
-    // 8. Approvals Queue (Authoritative Cloud with In-Flight Local Preservation)
+    // 9. Approvals Queue (Authoritative Cloud with In-Flight Local Preservation)
     if (cloudData.pendingApprovals !== undefined && Array.isArray(cloudData.pendingApprovals)) {
       const resolvedLogIds = new Set(
         (this.state.taskCompletionLogs || [])
@@ -5518,18 +5782,26 @@ class Store {
       this.state.pendingApprovals = [...cloudData.pendingApprovals, ...unconfirmedLocal];
     }
 
-    // 9. Linked Devices Presence Tracking
+    // 10. Linked Devices Presence Tracking & Revocations
     if (cloudData.devices && typeof cloudData.devices === 'object') {
       this.state.devices = { ...(this.state.devices || {}), ...cloudData.devices };
       const now = Date.now();
       const activeDevs = Object.entries(this.state.devices).filter(([, dev]) => {
-        if (!dev || !dev.lastSeen) return true;
-        return now - new Date(dev.lastSeen).getTime() < 86400000 * 3;
+        if (!dev) return false;
+        if (dev.revoked) return false;
+        if (!dev.lastSeen) return true;
+        return now - new Date(dev.lastSeen).getTime() < 86400000 * 7;
       });
       this.state.household.linkedDevices = Math.max(1, activeDevs.length);
     }
+    if (cloudData.revokedDeviceIds && Array.isArray(cloudData.revokedDeviceIds)) {
+      this.state.revokedDeviceIds = Array.from(new Set([
+        ...(this.state.revokedDeviceIds || []),
+        ...cloudData.revokedDeviceIds
+      ]));
+    }
 
-    // 6. Persist to actual localStorage key
+    // Persist to actual localStorage key
     try {
       if (typeof localStorage !== 'undefined') {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
@@ -5538,7 +5810,7 @@ class Store {
       console.warn('Could not save hydrated state to localStorage:', e);
     }
 
-    // 6. Notify subscribers and trigger immediate UI re-render
+    // Notify subscribers and trigger immediate UI re-render
     this.notify();
   }
 

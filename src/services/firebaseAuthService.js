@@ -65,6 +65,31 @@ class FirebaseAuthService {
 
     if (user) {
       console.log("Firebase Auth: User authenticated as", user.displayName || user.email || user.uid);
+
+      // REVOCATION BARRIER: If device is revoked, prohibit auto-healing into active household
+      const myDeviceId = firestoreSync.getDeviceId ? firestoreSync.getDeviceId() : (typeof localStorage !== 'undefined' ? localStorage.getItem('stitch_device_id') : null);
+      const isRevoked = Boolean(
+        state.isDeviceRevoked === true ||
+        (myDeviceId && (
+          state.devices?.[myDeviceId]?.revoked === true ||
+          (Array.isArray(state.revokedDeviceIds) && state.revokedDeviceIds.includes(myDeviceId))
+        ))
+      );
+
+      if (isRevoked) {
+        console.warn("Firebase Auth: Device is revoked by household parent. Keeping locked to Auth Wall.");
+        state.isAuthenticated = false;
+        state.isHouseholdConfigured = false;
+        state.householdSetupStep = 'auth';
+        state.isDeviceRevoked = true;
+        if (state.household) {
+          state.household.syncCode = '';
+        }
+        store.saveState(false);
+        store.notify();
+        return;
+      }
+
       state.household.parentUser = {
         uid: user.uid,
         email: user.email,

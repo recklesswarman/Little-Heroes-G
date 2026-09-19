@@ -3,7 +3,7 @@ import { Sound } from '../audio/sfx.js';
 import { processProfilePhoto } from '../utils/photoUploader.js';
 import { authenticateWithBiometrics } from '../utils/biometrics.js';
 import { getTaskVisualSvg } from '../utils/taskVisuals.js';
-import { firestoreSync } from '../services/firestoreSyncService.js';
+import { firestoreSync, getDeviceFriendlyName, getDeviceIcon } from '../services/firestoreSyncService.js';
 import { cloudFunctionsService } from '../services/cloudFunctionsService.js';
 import { aiDevelopmentalReportService } from '../services/aiDevelopmentalReportService.js';
 import { PetSkeletalBodyCanvas, RUNWAY_POSES } from '../services/petSkeletalBodyService.js';
@@ -831,6 +831,112 @@ export function renderParentPortalView() {
                   </div>
                 `;
               }).join('')}
+            </div>
+          </div>
+
+          <!-- Connected Household Devices & Session Management Card -->
+          <div class="bg-surface-container rounded-3xl p-5 sm:p-6 border-2 border-secondary-container card-shadow flex flex-col gap-4">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-surface-container-highest pb-3">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-primary/20 text-primary border border-primary/40 flex items-center justify-center text-xl shadow-sm flex-shrink-0">
+                  <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">devices</span>
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <h3 class="font-headline text-base sm:text-lg font-black text-inverse-surface">
+                      Connected Household Devices (${Object.values(state.devices || {}).filter(d => d && !d.revoked).length || 1})
+                    </h3>
+                    <span class="bg-primary/20 text-primary text-[10px] font-black uppercase px-2 py-0.5 rounded-md border border-primary/30">Live Sync</span>
+                  </div>
+                  <p class="text-xs text-on-surface-variant font-bold">Review phones and tablets currently logged into this household. Log out any device to require re-entering the household sync code.</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Devices Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              ${(() => {
+                const myDeviceId = firestoreSync.getDeviceId ? firestoreSync.getDeviceId() : (typeof localStorage !== 'undefined' ? localStorage.getItem('stitch_device_id') : 'this_device');
+                const allDevs = { ...(state.devices || {}) };
+                if (!allDevs[myDeviceId]) {
+                  allDevs[myDeviceId] = {
+                    deviceId: myDeviceId,
+                    name: 'Hero Device (This Device)',
+                    lastSeen: new Date().toISOString(),
+                    revoked: false
+                  };
+                }
+                const devEntries = Object.entries(allDevs);
+                return devEntries.map(([devId, dev]) => {
+                  const isThisDevice = devId === myDeviceId;
+                  const isRevoked = dev?.revoked === true;
+                  const friendlyFallback = isThisDevice ? `${getDeviceFriendlyName()} (This Device)` : getDeviceFriendlyName();
+                  const devName = dev?.name || friendlyFallback;
+                  const devIcon = dev?.icon || getDeviceIcon(devName);
+                  let lastSeenStr = 'Just now';
+                  if (dev?.lastSeen) {
+                    const diffMs = Date.now() - new Date(dev.lastSeen).getTime();
+                    if (!isNaN(diffMs) && diffMs > 0) {
+                      const diffSec = Math.floor(diffMs / 1000);
+                      if (diffSec < 60) lastSeenStr = 'Just now';
+                      else if (diffSec < 3600) lastSeenStr = `${Math.floor(diffSec / 60)}m ago`;
+                      else if (diffSec < 86400) lastSeenStr = `${Math.floor(diffSec / 3600)}h ago`;
+                      else lastSeenStr = `${Math.floor(diffSec / 86400)}d ago`;
+                    }
+                  }
+
+                  return `
+                    <div class="bg-surface-container-high rounded-2xl p-4 border-2 ${isThisDevice ? 'border-primary/60 shadow-sm ring-1 ring-primary/30' : 'border-surface-container-highest'} flex flex-col justify-between gap-3 shadow-inner">
+                      <div class="flex items-start justify-between gap-2 min-w-0">
+                        <div class="flex items-center gap-3 min-w-0">
+                          <div class="w-10 h-10 rounded-xl ${isThisDevice ? 'bg-primary text-slate-950' : 'bg-surface-container-highest text-on-surface'} flex items-center justify-center text-xl flex-shrink-0 shadow-sm">
+                            <span class="material-symbols-outlined">${devIcon}</span>
+                          </div>
+                          <div class="flex flex-col min-w-0">
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                              <span class="font-headline text-xs font-black text-inverse-surface truncate">${devName}</span>
+                              ${isThisDevice ? `<span class="bg-primary/20 text-primary text-[9px] font-black px-1.5 py-0.5 rounded border border-primary/40">This Device</span>` : ''}
+                            </div>
+                            <span class="text-[10px] text-on-surface-variant font-mono truncate" title="${devId}">ID: ${devId.length > 18 ? devId.substring(0, 16) + '…' : devId}</span>
+                            <span class="text-[9px] text-on-surface-variant font-bold">Last active: ${lastSeenStr}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="flex items-center justify-between pt-2 border-t border-surface-container-highest/60 gap-2">
+                        <span class="text-[10px] font-bold ${isRevoked ? 'text-error flex items-center gap-1' : 'text-primary flex items-center gap-1'}">
+                          <span class="w-1.5 h-1.5 rounded-full ${isRevoked ? 'bg-error' : 'bg-primary animate-pulse'}"></span>
+                          ${isRevoked ? 'Logged Out' : 'Active Session'}
+                        </span>
+
+                        <div class="flex items-center gap-1.5">
+                          ${!isRevoked ? `
+                            <button 
+                              data-revoke-device="${devId}" 
+                              data-device-name="${devName}"
+                              class="revoke-device-btn bg-error/15 hover:bg-error/25 text-error border border-error/30 font-headline text-[11px] font-black px-2.5 py-1.5 rounded-lg active:scale-95 transition-all flex items-center gap-1"
+                              title="Log this device out of the household"
+                            >
+                              <span class="material-symbols-outlined text-xs">logout</span>
+                              ${isThisDevice ? 'Log Out This Device' : 'Log Out'}
+                            </button>
+                          ` : `
+                            <button 
+                              data-remove-device="${devId}" 
+                              data-device-name="${devName}"
+                              class="remove-device-btn text-[10px] text-on-surface-variant hover:text-error font-bold flex items-center gap-1 border border-surface-container-highest px-2 py-1 rounded-lg hover:bg-surface-container-highest transition-all"
+                              title="Remove this device from the list"
+                            >
+                              <span class="material-symbols-outlined text-xs">delete</span>
+                              Remove
+                            </button>
+                          `}
+                        </div>
+                      </div>
+                    </div>
+                  `;
+                }).join('');
+              })()}
             </div>
           </div>
 
@@ -4455,6 +4561,40 @@ export function attachParentPortalListeners() {
       }
     });
   }
+
+  // LOG OUT / REVOKE DEVICE FROM HOUSEHOLD
+  document.querySelectorAll('.revoke-device-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const devId = btn.getAttribute('data-revoke-device');
+      const devName = btn.getAttribute('data-device-name') || 'Device';
+      const myDeviceId = firestoreSync.getDeviceId ? firestoreSync.getDeviceId() : localStorage.getItem('stitch_device_id');
+      const isSelf = devId === myDeviceId;
+
+      const confirmMsg = isSelf
+        ? `Are you sure you want to log THIS device out of your household?\n\nYou will be returned to the Welcome screen and will need to re-enter your family sync code (${store.getState().household?.syncCode || 'HERO-XXXX'}) to reconnect.`
+        : `Are you sure you want to log out device "${devName}" (${devId.length > 16 ? devId.substring(0, 14) + '…' : devId}) from this household?\n\nThis device will be immediately logged out and required to re-enter the family sync code to reconnect.`;
+
+      if (window.confirm(confirmMsg)) {
+        Sound.click();
+        await store.revokeDevice(devId);
+        if (!isSelf) {
+          store.notify();
+        }
+      }
+    });
+  });
+
+  // REMOVE / DISMISS OLD OR REVOKED DEVICE FROM HOUSEHOLD LIST
+  document.querySelectorAll('.remove-device-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const devId = btn.getAttribute('data-remove-device');
+      const devName = btn.getAttribute('data-device-name') || 'Device';
+      if (window.confirm(`Remove device "${devName}" from the household list?`)) {
+        Sound.click();
+        await store.removeDevice(devId);
+      }
+    });
+  });
 
   // KID DIFFICULTY SELECTION (Settings Tab)
   document.querySelectorAll('.kid-diff-btn').forEach((btn) => {

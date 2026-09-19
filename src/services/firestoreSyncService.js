@@ -1,4 +1,4 @@
-import { doc, setDoc, onSnapshot, updateDoc, deleteField } from "firebase/firestore";
+import { doc, setDoc, onSnapshot, updateDoc, deleteField, arrayRemove } from "firebase/firestore";
 import { db, isFirebaseAvailable } from "../config/firebase.js";
 import { store, STORAGE_KEY } from "../state/store.js";
 import { persistentLink } from "./persistentLinkService.js";
@@ -64,6 +64,43 @@ function getOrCreateDeviceId() {
   }
 }
 
+export function getDeviceFriendlyName() {
+  if (typeof navigator === 'undefined') return 'Hero Device';
+  const ua = navigator.userAgent || '';
+  if (/iPad/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
+    return 'Apple iPad';
+  }
+  if (/iPhone/i.test(ua)) {
+    return 'Apple iPhone';
+  }
+  if (/Android/i.test(ua)) {
+    if (/Tablet|Nexus 7|Nexus 10|SM-T/i.test(ua)) {
+      return 'Android Tablet';
+    }
+    return 'Android Phone';
+  }
+  if (/Macintosh|Mac OS X/i.test(ua)) {
+    return 'Mac';
+  }
+  if (/Windows NT/i.test(ua)) {
+    return 'Windows PC';
+  }
+  if (/CrOS/i.test(ua)) {
+    return 'Chromebook';
+  }
+  return 'Web Device';
+}
+
+export function getDeviceIcon(nameOrUa) {
+  const str = String(nameOrUa || '').toLowerCase();
+  if (str.includes('ipad') || str.includes('tablet')) return 'tablet_mac';
+  if (str.includes('iphone') || str.includes('phone') || str.includes('android')) return 'smartphone';
+  if (str.includes('mac') || str.includes('pc') || str.includes('windows') || str.includes('chromebook') || str.includes('computer')) return 'computer';
+  return 'devices';
+}
+
+const BROADCAST_CHANNEL_NAME = 'little_heroes_realtime_sync';
+
 class FirestoreSyncService {
   constructor() {
     this.unsubscribe = null;
@@ -77,7 +114,56 @@ class FirestoreSyncService {
     this.initialSyncCallbacks = [];
     this.presenceInterval = null;
 
+    // Same-origin multi-tab real-time instant sync
+    this.broadcastChannel = null;
+    if (typeof BroadcastChannel !== 'undefined') {
+      try {
+        this.broadcastChannel = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
+        this.broadcastChannel.onmessage = (event) => {
+          this.handleBroadcastMessage(event.data);
+        };
+      } catch (e) {
+        this.broadcastChannel = null;
+      }
+    }
+
     this.startPresenceHeartbeat();
+  }
+
+  getDeviceId() {
+    return this.deviceId;
+  }
+
+  getDeviceName() {
+    const custom = store.getState().devices?.[this.deviceId]?.name;
+    if (custom && custom !== 'Hero Device') return custom;
+    return getDeviceFriendlyName();
+  }
+
+  broadcastState(payload) {
+    if (!this.broadcastChannel) return;
+    try {
+      this.broadcastChannel.postMessage({
+        type: 'STATE_UPDATE',
+        senderSessionId: this.sessionId,
+        senderDeviceId: this.deviceId,
+        timestamp: Date.now(),
+        payload: payload
+      });
+    } catch (e) {
+      console.warn('BroadcastChannel postMessage warning:', e);
+    }
+  }
+
+  handleBroadcastMessage(data) {
+    if (!data || (data.type !== 'STATE_UPDATE' && data.type !== 'LITTLE_HERO_STATE_BROADCAST')) return;
+    if (data.senderSessionId === this.sessionId || data.sessionId === this.sessionId) return; // Ignore own broadcast
+
+    console.log(`⚡ Instant 0ms local tab sync received from session ${data.senderSessionId || data.sessionId || 'tab'}`);
+    const payload = data.payload || data.state;
+    if (payload) {
+      store.hydrateFromCloud(payload, { fromBroadcast: true });
+    }
   }
 
   isQuotaExhausted() {
@@ -85,17 +171,20 @@ class FirestoreSyncService {
   }
 
   markQuotaExhausted(error) {
-    markQuotaExhaustedGlobal();
+    // 60-second backoff for writes rather than locking out sync for 24h
+    markQuotaExhaustedGlobal(60 * 1000);
     if (this.presenceInterval) {
       clearInterval(this.presenceInterval);
       this.presenceInterval = null;
     }
-    this.stopSync();
+    // CRITICAL: We deliberately do NOT call this.stopSync().
+    // The Firestore onSnapshot read stream operates under a separate 50,000 daily read quota
+    // and must remain connected so all devices continue to receive live updates.
 
     try {
       const state = store.getState();
       if (state && state.household) {
-        state.household.lastSync = "Local Mode (Quota Safe)";
+        state.household.lastSync = "Local Mode (Writes Paused)";
         store.notify();
       }
     } catch {
@@ -109,7 +198,7 @@ class FirestoreSyncService {
       clearInterval(this.presenceInterval);
     }
 
-    // Ping device presence at relaxed 5-minute intervals (not rapid 20s) to conserve write quota
+    // Ping device presence at relaxed 5-minute intervals to conserve write quota
     this.presenceInterval = setInterval(() => {
       if (this.currentCode && this.unsubscribe && isFirebaseAvailable && db && !this.isQuotaExhausted()) {
         this.pingDevicePresence(this.currentCode);
@@ -119,17 +208,9 @@ class FirestoreSyncService {
 
   /**
    * Start listening to real-time changes for a household using onSnapshot
+   * Permanently decoupled from write errors.
    */
   startSync(householdCode, onInitialSync) {
-    if (this.isQuotaExhausted()) {
-      const state = store.getState();
-      if (state && state.household) {
-        state.household.lastSync = "Local Mode (Quota Safe)";
-      }
-      if (onInitialSync) onInitialSync(null);
-      return;
-    }
-
     if (!isFirebaseAvailable || !db) {
       console.log("Firestore running in resilient offline/local mode");
       if (onInitialSync) onInitialSync(null);
@@ -215,9 +296,9 @@ class FirestoreSyncService {
         }
       }, (error) => {
         if (isQuotaError(error)) {
-          this.markQuotaExhausted(error);
+          console.warn("Firestore snapshot listener quota warning (listener remains resilient):", error?.message || error);
         } else {
-          console.warn("Firestore snapshot listener error:", error.message);
+          console.warn("Firestore snapshot listener error:", error?.message || error);
         }
         if (isFirstSnapshot) {
           isFirstSnapshot = false;
@@ -250,10 +331,40 @@ class FirestoreSyncService {
 
     const state = store.getState();
     state.household.syncCode = cleanCode;
+    state.isDeviceRevoked = false;
+    this.lastRejoinedTimestamp = Date.now();
+    store.lastRejoinedTimestamp = Date.now();
+
+    // Reset revocation for this device if previously logged out
+    if (this.lastKnownDevices && this.lastKnownDevices[this.deviceId]) {
+      this.lastKnownDevices[this.deviceId].revoked = false;
+    }
+    if (state.devices && state.devices[this.deviceId]) {
+      state.devices[this.deviceId].revoked = false;
+      state.devices[this.deviceId].name = this.getDeviceName();
+    }
+    if (Array.isArray(state.revokedDeviceIds)) {
+      state.revokedDeviceIds = state.revokedDeviceIds.filter(id => id !== this.deviceId);
+    }
 
     if (!isFirebaseAvailable || !db || this.isQuotaExhausted()) {
       store.saveState(false);
       return { success: true, message: `Joined ${cleanCode} in local mode` };
+    }
+
+    // Proactively clear revocation in Firestore so immediate snapshots don't re-revoke
+    try {
+      const docRef = doc(db, "households", cleanCode);
+      const timestamp = new Date().toISOString();
+      await updateDoc(docRef, {
+        [`devices.${this.deviceId}.revoked`]: false,
+        [`devices.${this.deviceId}.lastSeen`]: timestamp,
+        [`devices.${this.deviceId}.name`]: this.getDeviceName(),
+        [`devices.${this.deviceId}.deviceId`]: this.deviceId,
+        revokedDeviceIds: arrayRemove(this.deviceId)
+      }).catch(() => {});
+    } catch {
+      // Ignore initial updateDoc error if doc doesn't exist yet
     }
 
     this.stopSync();
@@ -291,10 +402,11 @@ class FirestoreSyncService {
   }
 
   /**
-   * Push current state to Firestore with debouncing
+   * Push current state to Firestore with smart 800ms coalesced debouncing
    */
   pushStateToCloud(immediate = false) {
     if (!isFirebaseAvailable || !db || this.isQuotaExhausted()) return;
+    if (store.getState().isDeviceRevoked) return;
 
     if (this.debounceTimer) {
       clearTimeout(this.debounceTimer);
@@ -304,15 +416,16 @@ class FirestoreSyncService {
     if (immediate) {
       this._doPush();
     } else {
-      // 2-second debounce prevents rapid successive writes from depleting daily quota
+      // 800ms coalesced debounce prevents rapid successive writes from depleting daily quota
       this.debounceTimer = setTimeout(() => {
         this._doPush();
-      }, 2000);
+      }, 800);
     }
   }
 
   async _doPush() {
     if (!isFirebaseAvailable || !db || this.isQuotaExhausted()) return;
+    if (store.getState().isDeviceRevoked) return;
 
     // Ensure local hero state is thoroughly synchronized before pushing to cloud
     if (typeof store.syncSelectedHeroWithHeroes === 'function') {
@@ -356,6 +469,16 @@ class FirestoreSyncService {
             equippedProfileTheme: h.equippedProfileTheme || 'theme_dragon_emerald',
             unlockedThemes: h.unlockedThemes || ['theme_dragon_emerald'],
             equippedGear: h.equippedGear || {},
+            equippedPetGearMap: h.equippedPetGearMap || {},
+            customGearDyesMap: h.customGearDyesMap || {},
+            savedHeroCards: h.savedHeroCards || [],
+            screenTimeMinutes: h.screenTimeMinutes !== undefined ? Number(h.screenTimeMinutes) : 45,
+            screenTimeUsedToday: h.screenTimeUsedToday !== undefined ? Number(h.screenTimeUsedToday) : 15,
+            dailyMaxScreenTime: h.dailyMaxScreenTime !== undefined ? Number(h.dailyMaxScreenTime) : 60,
+            bedtimeCurfew: h.bedtimeCurfew || '20:00',
+            screenTimeRate: h.screenTimeRate !== undefined ? Number(h.screenTimeRate) : 2,
+            isScreenTimePaused: h.isScreenTimePaused !== undefined ? Boolean(h.isScreenTimePaused) : false,
+            screenTimeLockMessage: h.screenTimeLockMessage || 'Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙',
             inventory: h.inventory || [],
             updatedAt: timestamp
           };
@@ -373,6 +496,20 @@ class FirestoreSyncService {
         }
       });
 
+      // Register or update active device in local devices list
+      const currentDevices = {
+        ...(this.lastKnownDevices || {}),
+        ...(state.devices || {}),
+        [this.deviceId]: {
+          deviceId: this.deviceId,
+          lastSeen: timestamp,
+          name: state.devices?.[this.deviceId]?.name || this.getDeviceName(),
+          revoked: Boolean(state.devices?.[this.deviceId]?.revoked)
+        }
+      };
+      this.lastKnownDevices = currentDevices;
+      state.devices = currentDevices;
+
       await setDoc(docRef, {
         householdName: state.household?.name || 'The Hero Family',
         syncCode: householdCode,
@@ -387,7 +524,20 @@ class FirestoreSyncService {
         petStageMap: state.petStageMap || {},
         equippedGearMap: state.equippedGearMap || {},
         equippedPetGear: state.equippedPetGear || null,
+        equippedPetGearSlots: state.equippedPetGearSlots || {},
+        equippedPetGearMap: state.equippedPetGearMap || {},
+        customGearDyesMap: state.customGearDyesMap || {},
+        savedHeroCards: state.savedHeroCards || [],
         pets: state.pets || [],
+        petSanctuary: state.petSanctuary || {},
+        heroHQ: state.heroHQ || {},
+        heroForge: state.heroForge || {},
+        petSparkMap: state.petSparkMap || {},
+        petStreakShield: state.petStreakShield || {},
+        activeExpeditions: state.activeExpeditions || [],
+        expeditionHistory: state.expeditionHistory || [],
+        unlockedArtifacts: state.unlockedArtifacts || [],
+        gameMasteryMap: state.gameMasteryMap || {},
         taskForest: state.taskForest || [],
         habitIslands: state.habitIslands || [],
         aiQuests: state.aiQuests || [],
@@ -405,13 +555,8 @@ class FirestoreSyncService {
         updatedAt: timestamp,
         lastWriterSessionId: this.sessionId,
         lastWriterDeviceId: this.deviceId,
-        devices: {
-          ...(this.lastKnownDevices || {}),
-          [this.deviceId]: {
-            lastSeen: timestamp,
-            name: 'Hero Device'
-          }
-        }
+        devices: currentDevices,
+        revokedDeviceIds: state.revokedDeviceIds || []
       }, { merge: true });
 
       state.household.lastSync = "Synced Just Now";
@@ -427,6 +572,73 @@ class FirestoreSyncService {
     } finally {
       this.isPushing = false;
     }
+  }
+
+  /**
+   * Log a specific device out of the household requiring it to re-enter the sync code
+   */
+  async revokeDevice(targetDeviceId) {
+    if (!targetDeviceId) return { success: false, error: 'Target device ID is required' };
+
+    const state = store.getState();
+    const householdCode = (state.household?.syncCode || this.currentCode || '').trim().toUpperCase();
+    const timestamp = new Date().toISOString();
+
+    if (!state.devices) state.devices = {};
+    if (state.devices[targetDeviceId]) {
+      state.devices[targetDeviceId].revoked = true;
+      state.devices[targetDeviceId].lastSeen = timestamp;
+    } else {
+      state.devices[targetDeviceId] = {
+        deviceId: targetDeviceId,
+        name: 'Hero Device',
+        revoked: true,
+        lastSeen: timestamp
+      };
+    }
+
+    if (!state.revokedDeviceIds) state.revokedDeviceIds = [];
+    if (!state.revokedDeviceIds.includes(targetDeviceId)) {
+      state.revokedDeviceIds.push(targetDeviceId);
+    }
+
+    this.lastKnownDevices = { ...(this.lastKnownDevices || {}), ...state.devices };
+
+    // Broadcast update across local tabs in 0ms
+    this.broadcastState({
+      ...state,
+      devices: state.devices,
+      revokedDeviceIds: state.revokedDeviceIds
+    });
+
+    // Push revocation to cloud
+    if (isFirebaseAvailable && db && householdCode && !this.isQuotaExhausted()) {
+      try {
+        const docRef = doc(db, "households", householdCode);
+        await updateDoc(docRef, {
+          [`devices.${targetDeviceId}.revoked`]: true,
+          [`devices.${targetDeviceId}.lastSeen`]: timestamp,
+          revokedDeviceIds: state.revokedDeviceIds,
+          updatedAt: timestamp,
+          lastWriterSessionId: this.sessionId,
+          lastWriterDeviceId: this.deviceId
+        });
+      } catch (err) {
+        console.warn("Could not updateDoc for revoked device, doing full push:", err);
+        await this._doPush();
+      }
+    } else {
+      await this._doPush();
+    }
+
+    // If target device is this current device, logout locally immediately
+    if (targetDeviceId === this.deviceId) {
+      store.handleDeviceRevoked();
+    } else {
+      store.notify();
+    }
+
+    return { success: true };
   }
 
   /**
@@ -509,14 +721,15 @@ class FirestoreSyncService {
    */
   async pingDevicePresence(code) {
     if (!isFirebaseAvailable || !db || this.isQuotaExhausted() || !code) return;
+    if (store.getState().isDeviceRevoked) return; // Never ping presence while revoked
     try {
       const docRef = doc(db, "households", code);
       const timestamp = new Date().toISOString();
       await updateDoc(docRef, {
-        [`devices.${this.deviceId}`]: {
-          lastSeen: timestamp,
-          name: 'Hero Device'
-        }
+        [`devices.${this.deviceId}.lastSeen`]: timestamp,
+        [`devices.${this.deviceId}.name`]: this.getDeviceName(),
+        [`devices.${this.deviceId}.deviceId`]: this.deviceId,
+        [`devices.${this.deviceId}.revoked`]: false
       });
     } catch (err) {
       if (isQuotaError(err)) {
@@ -534,6 +747,40 @@ class FirestoreSyncService {
         }
       }
     }
+  }
+
+  /**
+   * Delete an old or revoked device from the household
+   */
+  async removeDevice(targetDeviceId) {
+    if (!targetDeviceId) return { success: false, error: 'Device ID required' };
+    const state = store.getState();
+    const householdCode = (state.household?.syncCode || this.currentCode || '').trim().toUpperCase();
+
+    if (state.devices && state.devices[targetDeviceId]) {
+      delete state.devices[targetDeviceId];
+    }
+    if (this.lastKnownDevices && this.lastKnownDevices[targetDeviceId]) {
+      delete this.lastKnownDevices[targetDeviceId];
+    }
+    if (Array.isArray(state.revokedDeviceIds)) {
+      state.revokedDeviceIds = state.revokedDeviceIds.filter(id => id !== targetDeviceId);
+    }
+
+    if (isFirebaseAvailable && db && householdCode && !this.isQuotaExhausted()) {
+      try {
+        const docRef = doc(db, "households", householdCode);
+        await updateDoc(docRef, {
+          [`devices.${targetDeviceId}`]: deleteField(),
+          revokedDeviceIds: state.revokedDeviceIds
+        });
+      } catch (err) {
+        console.warn("Could not remove device in Firestore:", err);
+      }
+    }
+
+    store.notify();
+    return { success: true };
   }
 
   stopSync() {
