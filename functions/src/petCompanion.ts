@@ -2,10 +2,11 @@
 
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { GoogleGenAI } from "@google/genai";
-import * as admin from "firebase-admin";
+import { getApps, initializeApp } from "firebase-admin/app";
+import { FieldValue, getFirestore, Timestamp } from "firebase-admin/firestore";
 
-if (!admin.apps.length) {
-  admin.initializeApp();
+if (!getApps().length) {
+  initializeApp();
 }
 
 export interface ChatWithPetData {
@@ -21,7 +22,7 @@ export const chatWithPet = onCall(
   async (request) => {
     // Initialize Gemini using the secret from process.env inside the request
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-    const db = admin.firestore();
+    const db = getFirestore();
 
     const { heroId = "Little Hero", message, currentHabit, petId, ageTier = "toddler" } = (request.data || {}) as ChatWithPetData;
     if (!message || !message.trim()) {
@@ -138,7 +139,7 @@ export const chatWithPet = onCall(
           .collection("heroes")
           .doc(heroId)
           .collection("chatHistory")
-          .where("createdAt", ">=", admin.firestore.Timestamp.fromDate(startOfDay))
+          .where("createdAt", ">=", Timestamp.fromDate(startOfDay))
           .get();
 
         const userTurnsToday = todayTurnsSnap.docs.filter((d) => d.data().role === "user").length;
@@ -224,14 +225,14 @@ You are ${pet.name}, a ${pet.personality} talking to ${childName} (ages 5–8).
         await chatColl.add({
           role: "user",
           text: message,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          createdAt: FieldValue.serverTimestamp(),
         });
         await chatColl.add({
           role: "model",
           text: replyText,
           petId: selectedPet,
           petName: pet.name,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          createdAt: FieldValue.serverTimestamp(),
         });
       }
     } catch (saveErr) {
@@ -241,5 +242,4 @@ You are ${pet.name}, a ${pet.personality} talking to ${childName} (ages 5–8).
     return { reply: replyText, petName: pet.name };
   }
 );
-
 

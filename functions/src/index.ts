@@ -1,7 +1,7 @@
 import { setGlobalOptions } from "firebase-functions/v2";
-import * as admin from "firebase-admin";
+import { initializeApp } from "firebase-admin/app";
 
-admin.initializeApp();
+initializeApp();
 
 // Ensure all Cloud Functions v2 deploy to us-central1
 setGlobalOptions({
@@ -12,4 +12,3 @@ setGlobalOptions({
 export { chatWithPet } from "./petCompanion";
 export { verifyChoreSubmission, generateDailyMicroQuests } from "./subagents";
 export { getParentInsights, updateCompanionSettings } from "./parentPortal";
-

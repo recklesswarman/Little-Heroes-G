@@ -5419,6 +5419,32 @@ class Store {
     this.state.householdSetupStep = 'ready';
     this.state.isDeviceRevoked = false;
 
+    // Apply the generic mutable snapshot first so newly added state fields
+    // participate in live sync without requiring a second hand-maintained list.
+    // Feature-specific merges below retain their conflict-safe behavior.
+    if (cloudData.stateSnapshot && typeof cloudData.stateSnapshot === 'object') {
+      const localOnlyKeys = new Set([
+        'isAuthenticated',
+        'isAuthReady',
+        'householdSetupStep',
+        'activeView',
+        'previousView',
+        'selectedPetDetailId',
+        'selectedAdventureGameId',
+        'petSelectionModal',
+        'rewardModal',
+        'mysterySurprise',
+        'activeUnboxingCrateId',
+        'activeDrawer',
+        'devices'
+      ]);
+      Object.entries(cloudData.stateSnapshot).forEach(([key, value]) => {
+        if (!localOnlyKeys.has(key) && value !== undefined) {
+          this.state[key] = value;
+        }
+      });
+    }
+
     // 1. Household Details & Parent Administrators
     if (cloudData.householdName || cloudData.household?.name) {
       this.state.household.name = cloudData.householdName || cloudData.household?.name;

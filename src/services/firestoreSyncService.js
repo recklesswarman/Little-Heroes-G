@@ -5,6 +5,38 @@ import { persistentLink } from "./persistentLinkService.js";
 
 const DEVICE_ID_KEY = 'stitch_device_id';
 const QUOTA_EXHAUSTED_KEY = 'firestore_quota_exhausted_until';
+const CLOUD_SYNC_DEBOUNCE_MS = 350;
+
+// These values describe the local UI/session and should never overwrite another
+// device's active screen or authentication state.
+const LOCAL_ONLY_STATE_KEYS = new Set([
+  'isAuthenticated',
+  'isAuthReady',
+  'householdSetupStep',
+  'activeView',
+  'previousView',
+  'selectedPetDetailId',
+  'selectedAdventureGameId',
+  'petSelectionModal',
+  'rewardModal',
+  'mysterySurprise',
+  'activeUnboxingCrateId',
+  'activeDrawer'
+]);
+
+function buildCloudStateSnapshot(state) {
+  const snapshot = {};
+  Object.entries(state || {}).forEach(([key, value]) => {
+    if (LOCAL_ONLY_STATE_KEYS.has(key) || key === 'devices') return;
+    if (key === 'household' && value && typeof value === 'object') {
+      snapshot.household = { ...value, lastSync: undefined };
+      delete snapshot.household.lastSync;
+      return;
+    }
+    snapshot[key] = value;
+  });
+  return snapshot;
+}
 
 export function isQuotaExhaustedGlobal() {
   try {
@@ -113,6 +145,8 @@ class FirestoreSyncService {
     this.lastKnownDevices = {};
     this.initialSyncCallbacks = [];
     this.presenceInterval = null;
+    this.pushInFlight = false;
+    this.pushPending = false;
 
     // Same-origin multi-tab real-time instant sync
     this.broadcastChannel = null;
@@ -184,7 +218,7 @@ class FirestoreSyncService {
     try {
       const state = store.getState();
       if (state && state.household) {
-        state.household.lastSync = "Local Mode (Writes Paused)";
+        state.household.lastSync = "Live Read-Only (Write Quota Paused)";
         store.notify();
       }
     } catch {
@@ -347,7 +381,7 @@ class FirestoreSyncService {
       state.revokedDeviceIds = state.revokedDeviceIds.filter(id => id !== this.deviceId);
     }
 
-    if (!isFirebaseAvailable || !db || this.isQuotaExhausted()) {
+    if (!isFirebaseAvailable || !db) {
       store.saveState(false);
       return { success: true, message: `Joined ${cleanCode} in local mode` };
     }
@@ -416,15 +450,19 @@ class FirestoreSyncService {
     if (immediate) {
       this._doPush();
     } else {
-      // 800ms coalesced debounce prevents rapid successive writes from depleting daily quota
+      // Coalesce render/action bursts without making cross-device updates feel delayed.
       this.debounceTimer = setTimeout(() => {
         this._doPush();
-      }, 800);
+      }, CLOUD_SYNC_DEBOUNCE_MS);
     }
   }
 
   async _doPush() {
     if (!isFirebaseAvailable || !db || this.isQuotaExhausted()) return;
+    if (this.pushInFlight) {
+      this.pushPending = true;
+      return;
+    }
     if (store.getState().isDeviceRevoked) return;
 
     // Ensure local hero state is thoroughly synchronized before pushing to cloud
@@ -440,6 +478,7 @@ class FirestoreSyncService {
 
     try {
       this.isPushing = true;
+      this.pushInFlight = true;
       const timestamp = new Date().toISOString();
       this.lastCloudTimestamp = timestamp;
 
@@ -511,6 +550,9 @@ class FirestoreSyncService {
       state.devices = currentDevices;
 
       await setDoc(docRef, {
+        // Generic snapshot keeps newly added mutable fields live across devices
+        // without requiring a fragile allowlist update for every feature.
+        stateSnapshot: buildCloudStateSnapshot(state),
         householdName: state.household?.name || 'The Hero Family',
         syncCode: householdCode,
         heroes: state.heroes || [],
@@ -571,6 +613,11 @@ class FirestoreSyncService {
       console.warn("Firestore push warning:", error.message);
     } finally {
       this.isPushing = false;
+      this.pushInFlight = false;
+      if (this.pushPending) {
+        this.pushPending = false;
+        this.pushStateToCloud();
+      }
     }
   }
 
@@ -646,13 +693,18 @@ class FirestoreSyncService {
    */
   async syncNow() {
     if (this.isQuotaExhausted()) {
-      store.getState().household.lastSync = "Local Mode (Quota Safe)";
+      const code = (store.getState().household?.syncCode || this.currentCode || '').trim().toUpperCase();
+      if (code && (!this.unsubscribe || this.currentCode !== code)) {
+        this.stopSync();
+        this.startSync(code);
+      }
+      store.getState().household.lastSync = "Live Read-Only (Write Quota Paused)";
       store.notify();
       return { 
         success: true, 
         verified: true, 
-        mode: 'local', 
-        message: "Your hero data is safely saved on this device. Cloud sync will automatically resume when quota resets." 
+        mode: 'read-only',
+        message: "Live cloud updates remain active. Writes are paused until Firestore quota resets."
       };
     }
 
