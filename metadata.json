@@ -1,0 +1,11 @@
+{
+  "name": "Little Hero Adventures",
+  "description": "Gamified habit and chore adventures for kids with 3D companions, quests, and rewards.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -188,15 +188,62 @@ function renderApp() {
   attachViewListeners();
 }
 
+let lastRenderedView = null;
+let activeTransition = null;
+
 function handleStateUpdate() {
-  // Modern Web Guidance: Native View Transitions API with progressive enhancement
-  if (!document.startViewTransition || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    renderApp();
-  } else {
-    document.startViewTransition(() => {
-      renderApp();
-    });
+  const currentView = store.getState().activeView;
+  const isViewChange = lastRenderedView !== null && lastRenderedView !== currentView;
+  lastRenderedView = currentView;
+
+  // Only animate top-level full-screen view transitions (e.g. Dashboard <-> Quests <-> Pet Sanctuary)
+  // For standard reactive state updates (coins, streak, ticks, modal toggles), render directly
+  if (
+    isViewChange &&
+    typeof document.startViewTransition === 'function' &&
+    !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  ) {
+    // If a previous view transition is still in progress, skip it safely
+    if (activeTransition && typeof activeTransition.skipTransition === 'function') {
+      try {
+        activeTransition.skipTransition();
+      } catch {
+        // Ignore skip errors
+      }
+    }
+
+    try {
+      const transition = document.startViewTransition(() => {
+        renderApp();
+      });
+      activeTransition = transition;
+
+      // Handle transition promises to catch "Transition was skipped" rejections gracefully
+      if (transition) {
+        if (transition.ready) {
+          transition.ready.catch(() => {
+            // Handled: Transition was skipped or aborted
+          });
+        }
+        if (transition.finished) {
+          transition.finished
+            .catch(() => {
+              // Handled: Transition was skipped or superseded by a newer transition
+            })
+            .finally(() => {
+              if (activeTransition === transition) {
+                activeTransition = null;
+              }
+            });
+        }
+      }
+      return;
+    } catch {
+      // Fallback to direct render if startViewTransition throws
+    }
   }
+
+  renderApp();
 }
 
 // Global Keyboard Escape handler for modals (Modern Web Baseline)
