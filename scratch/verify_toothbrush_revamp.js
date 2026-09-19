@@ -242,6 +242,43 @@ console.log('\n--- 6. Testing Battle View Victory Modal Display ---');
   assert(col.isVictoryModalOpen === false, 'closeColosseumVictoryModal closes modal');
 }
 
+console.log('\n--- 7. Testing Subsequent Battle State Reset & Hardware Reconnect ---');
+{
+  const { hanaBattle3DService } = await import('../src/services/hanaBattle3DService.js');
+  const { renderBattleView } = await import('../src/views/BattleView.js');
+
+  // Simulate end of previous battle
+  hanaBattle3DService.onCleanseVictory();
+  assert(hanaBattle3DService.isVictory === true, 'hanaBattle3DService marked as victory');
+  assert(hanaBattle3DService.bossHp === 0, 'hanaBattle3DService bossHp is 0 after cleanse');
+
+  // Clean destruction
+  hanaBattle3DService.destroy();
+  assert(hanaBattle3DService.isVictory === false, 'hanaBattle3DService: destroy resets isVictory to false');
+  assert(hanaBattle3DService.bossHp === 100, 'hanaBattle3DService: destroy resets bossHp to 100');
+  assert(hanaBattle3DService.armorPlates.q1.intact === true, 'hanaBattle3DService: destroy resets Q1 armor plate to intact');
+
+  // Simulate new battle init on a fresh canvas
+  const canvas2 = document.createElement('canvas');
+  hanaBattle3DService.init(canvas2);
+  assert(hanaBattle3DService.isVictory === false, 'hanaBattle3DService: subsequent battle starts with isVictory = false');
+  assert(hanaBattle3DService.bossHp === 100, 'hanaBattle3DService: subsequent battle starts with 100% HP');
+  assert(hanaBattle3DService.armorPlates.q1.intact === true, 'hanaBattle3DService: subsequent battle has intact armor plates');
+
+  // Verify video element is directly in Magic Mirror HTML
+  const battleHtml = renderBattleView();
+  assert(battleHtml.includes('id="ar-camera-feed"'), 'renderBattleView: includes ar-camera-feed video element');
+  assert(battleHtml.includes('id="pip-window"'), 'renderBattleView: includes pip-window Magic Mirror frame');
+  assert(battleHtml.includes('gem-arrow'), 'renderBattleView: includes gem-arrow pointer markers');
+
+  // Verify setBoss preserves cleaned quadrants when switching villains mid-battle
+  hanaBattle3DService.setBoss({ id: 'plaque_kraken', name: 'Plaque Kraken' }, { q1: 100, q2: 50 });
+  assert(hanaBattle3DService.armorPlates.q1.intact === false, 'hanaBattle3DService: setBoss preserves fractured Q1 plate when 100% clean');
+  assert(hanaBattle3DService.armorPlates.q2.intact === true, 'hanaBattle3DService: setBoss keeps incomplete Q2 plate intact');
+
+  hanaBattle3DService.destroy();
+}
+
 console.log(`\n=============================================`);
 console.log(`TEST RESULTS: ${passed} PASSED, ${failed} FAILED`);
 console.log(`=============================================\n`);

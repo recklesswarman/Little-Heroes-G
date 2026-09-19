@@ -113,10 +113,32 @@ class HanaBattle3DService {
 
     // Initialization guard
     this.isInitialized = false;
+    this.showCanvasHud = false;
 
     // Bind loop
     this.renderLoop = this.renderLoop.bind(this);
     this.handleResize = this.handleResize.bind(this);
+  }
+
+  /**
+   * Reset simulation state for a clean new battle
+   */
+  resetBattleState() {
+    this.isVictory = false;
+    this.bossHp = this.maxHp || 100;
+    this.isShieldActive = false;
+    this.isScrubbing = false;
+    this.isDeflectActive = false;
+    this.deflectTimer = 0;
+    this.caramelBombs = [];
+    this.candyShards = [];
+    this.foamParticles = [];
+    this.sparkles = [];
+    this.shockwaves = [];
+    Object.values(this.armorPlates).forEach(p => {
+      p.intact = true;
+      p.cracks = 0;
+    });
   }
 
   /**
@@ -129,15 +151,21 @@ class HanaBattle3DService {
     if (this.canvas === canvasElement && !this.isDestroyed && this.isInitialized) {
       if (options.videoElement) this.setVideoElement(options.videoElement);
       if (options.hasLaserEquipped !== undefined) this.hasLaserEquipped = Boolean(options.hasLaserEquipped);
+      if (options.bossData) this.setBoss(options.bossData, options.quadrantCleanliness);
       return true;
     }
 
     this.canvas = canvasElement;
     this.isDestroyed = false;
     this.isInitialized = true;
+    this.showCanvasHud = Boolean(options.showCanvasHud);
+
+    if (!options.preserveBattleState) {
+      this.resetBattleState();
+    }
 
     if (options.bossData) {
-      this.setBoss(options.bossData);
+      this.setBoss(options.bossData, options.quadrantCleanliness);
     }
     if (options.videoElement) {
       this.setVideoElement(options.videoElement);
@@ -239,15 +267,17 @@ class HanaBattle3DService {
     }
 
     this.lastTime = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-    if (this.animId) cancelAnimationFrame(this.animId);
-    this.animId = requestAnimationFrame(this.renderLoop);
+    const raf = (typeof requestAnimationFrame !== 'undefined') ? requestAnimationFrame : (cb => setTimeout(cb, 16));
+    const caf = (typeof cancelAnimationFrame !== 'undefined') ? cancelAnimationFrame : clearTimeout;
+    if (this.animId) caf(this.animId);
+    this.animId = raf(this.renderLoop);
   }
 
   setVideoElement(videoEl) {
     this.videoElement = videoEl;
   }
 
-  setBoss(bossData) {
+  setBoss(bossData, quadrantCleanliness = null) {
     if (!bossData) return;
     const bId = bossData.id || 'sugar_bandit';
     let bodyColor = '#d97706';
@@ -277,11 +307,17 @@ class HanaBattle3DService {
       bombColor
     };
 
-    // Set colors for armor plates based on boss
+    // Set colors for armor plates based on boss, preserving completed quadrants
     Object.values(this.armorPlates).forEach(p => {
       p.color = this.bossData.armorColor;
-      p.intact = true;
-      p.cracks = 0;
+      const isAlreadyClean = quadrantCleanliness && quadrantCleanliness[p.id] >= 100;
+      if (isAlreadyClean) {
+        p.intact = false;
+        p.cracks = 3;
+      } else if (!quadrantCleanliness) {
+        p.intact = true;
+        p.cracks = 0;
+      }
     });
   }
 
@@ -575,7 +611,8 @@ class HanaBattle3DService {
       this.renderProceduralScene(dt);
     }
 
-    this.animId = requestAnimationFrame(this.renderLoop);
+    const raf = (typeof requestAnimationFrame !== 'undefined') ? requestAnimationFrame : (cb => setTimeout(cb, 16));
+    this.animId = raf(this.renderLoop);
   }
 
   renderProceduralScene(dt) {
@@ -592,11 +629,11 @@ class HanaBattle3DService {
     // 3. Pearly Floating Tooth Platform
     this.renderFloatingToothPlatform(ctx, w, h);
 
-    // 4. Floating 3D Hero Mirror
-    this.renderFloatingHeroMirror(ctx, w, h);
-
-    // 5. Interactive 3D Mouth Hologram HUD
-    this.render3DMouthHologram(ctx, w, h);
+    // 4 & 5. Optional Canvas Mirror & Mouth HUD (used only if DOM HUD is not present)
+    if (this.showCanvasHud) {
+      this.renderFloatingHeroMirror(ctx, w, h);
+      this.render3DMouthHologram(ctx, w, h);
+    }
 
     // 6. 3D Boss & Breakable Candy Armor
     this.render3DBossAndArmor(ctx, w, h, dt);
@@ -1383,7 +1420,8 @@ class HanaBattle3DService {
     this.isDestroyed = true;
     this.isInitialized = false;
     if (this.animId) {
-      cancelAnimationFrame(this.animId);
+      const caf = (typeof cancelAnimationFrame !== 'undefined') ? cancelAnimationFrame : clearTimeout;
+      caf(this.animId);
       this.animId = null;
     }
     if (typeof window !== 'undefined') {
@@ -1393,11 +1431,7 @@ class HanaBattle3DService {
       try { this.splineApp.dispose(); } catch (e) {}
       this.splineApp = null;
     }
-    this.foamParticles = [];
-    this.candyShards = [];
-    this.caramelBombs = [];
-    this.sparkles = [];
-    this.shockwaves = [];
+    this.resetBattleState();
     this.videoElement = null;
     this.canvas = null;
     this.ctx = null;

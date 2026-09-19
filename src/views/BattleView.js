@@ -146,13 +146,12 @@ export function renderBattleView() {
       
       <!-- ================= 1. FULL VIEWPORT 3D WEBGL ARENA CANVAS ================= -->
       <canvas id="battle-webgl-canvas" class="absolute inset-0 w-full h-full z-0 block cursor-crosshair"></canvas>
-      <video id="ar-camera-feed" class="absolute pointer-events-none opacity-0 w-px h-px" autoplay playsinline muted></video>
 
       <!-- ================= 2. TOP FLOATING BUBBLE BAR ================= -->
       <div class="absolute top-2 sm:top-3 left-2 right-2 sm:left-4 sm:right-4 z-30 flex items-center justify-between gap-2 pointer-events-none">
         
         <!-- Left: Kid-friendly Map Exit Button -->
-        <button id="battle-quit-btn" class="pointer-events-auto bg-gradient-to-b from-amber-400 to-amber-500 hover:brightness-110 text-slate-950 font-black text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2.5 rounded-2xl border-2 sm:border-3 border-amber-200 shadow-[0_4px_0_0_#b45309] flex items-center gap-1 active:translate-y-1 active:shadow-none transition-all flex-shrink-0" title="Return to Quest Map">
+        <button id="battle-quit-btn" class="pointer-events-auto bg-gradient-to-b from-amber-400 to-amber-500 hover:brightness-110 text-slate-950 font-black text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2.5 rounded-2xl border-2 sm:border-3 border-amber-200 shadow-[0_4px_0_0_#b45309] flex items-center gap-1 active:translate-y-1 active:shadow-none transition-all flex-shrink-0" title="Return to Map">
           <span class="material-symbols-outlined text-lg sm:text-xl font-black">arrow_back</span>
           <span class="hidden xs:inline">Map</span>
         </button>
@@ -210,7 +209,7 @@ export function renderBattleView() {
             <span class="text-[8px] sm:text-[9px] font-black text-amber-300 tracking-tighter uppercase">MAGIC MIRROR ⭐</span>
           </div>
           <div class="w-full h-full bg-slate-900 rounded-2xl flex flex-col items-center justify-center relative overflow-hidden">
-            <canvas id="pip-mirror-canvas" class="w-full h-full object-cover transform -scale-x-100"></canvas>
+            <video id="ar-camera-feed" class="w-full h-full object-cover transform -scale-x-100 ${isCameraActive ? '' : 'hidden'}" autoplay playsinline muted></video>
             <div id="pip-placeholder" class="absolute inset-0 flex flex-col items-center justify-center ${isCameraActive ? 'hidden' : ''}">
               <span class="text-3xl">🧑‍🚀</span>
               <span class="text-[8px] font-bold text-cyan-300 mt-1">HERO CAM 🪥</span>
@@ -224,7 +223,7 @@ export function renderBattleView() {
         <span class="text-base">🪥</span>
         <span class="text-xs font-black text-cyan-300 uppercase tracking-wide">BRUSHING ZONE:</span>
         <span id="current-zone-status-text" class="text-xs font-black text-white">${activeQuad.name}</span>
-        <span class="text-[10px] font-bold text-amber-300 bg-amber-950/80 px-2 py-0.5 rounded-full border border-amber-500/40">${activeQuad.zone}/5</span>
+        <span id="current-zone-badge" class="text-[10px] font-bold text-amber-300 bg-amber-950/80 px-2 py-0.5 rounded-full border border-amber-500/40">${activeQuad.zone}/5</span>
       </div>
 
       <!-- ================= 5. 4 GLOWING TOOTH QUADRANT GEMS (MIRRORED BATHROOM PERSPECTIVE) ================= -->
@@ -232,23 +231,23 @@ export function renderBattleView() {
       <div id="gem-q1" class="absolute top-24 sm:top-28 right-3 sm:right-6 z-20 flex items-center gap-2 pointer-events-none transition-all duration-300">
         <div class="flex flex-col items-end">
           <span class="text-[10px] sm:text-xs font-black text-white drop-shadow">Upper Right</span>
-          <span class="text-[9px] font-bold ${quadrantCleanliness.q1 >= 100 ? 'text-emerald-400' : 'text-amber-300'}">${Math.round(quadrantCleanliness.q1)}%</span>
+          <span class="gem-pct text-[9px] font-bold ${quadrantCleanliness.q1 >= 100 ? 'text-emerald-400' : 'text-amber-300'}">${Math.round(quadrantCleanliness.q1)}%</span>
         </div>
-        <div class="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl ${activeQuad.id === 'q1' ? 'bg-cyan-500/30 border-3 border-cyan-400 ring-4 ring-cyan-400/50 animate-bounce' : quadrantCleanliness.q1 >= 100 ? 'bg-emerald-500/30 border-3 border-emerald-400' : 'bg-slate-900/80 border-2 border-slate-700'} flex items-center justify-center text-xl sm:text-2xl shadow-lg transition-all">
+        <div class="gem-box w-11 h-11 sm:w-13 sm:h-13 rounded-2xl ${activeQuad.id === 'q1' ? 'bg-cyan-500/30 border-3 border-cyan-400 ring-4 ring-cyan-400/50 animate-bounce' : quadrantCleanliness.q1 >= 100 ? 'bg-emerald-500/30 border-3 border-emerald-400' : 'bg-slate-900/80 border-2 border-slate-700'} flex items-center justify-center text-xl sm:text-2xl shadow-lg transition-all">
           ${quadrantCleanliness.q1 >= 100 ? '💎' : '🦷'}
         </div>
-        ${activeQuad.id === 'q1' ? '<span class="text-cyan-400 text-xl animate-pulse">👈</span>' : ''}
+        <span class="gem-arrow text-cyan-400 text-xl animate-pulse" style="display: ${activeQuad.id === 'q1' ? 'inline-block' : 'none'};">👈</span>
       </div>
 
       <!-- Q2: Upper Left (Screen Top-Left, <50% X, below mirror) -->
       <div id="gem-q2" class="absolute top-48 sm:top-56 left-3 sm:left-6 z-20 flex items-center gap-2 pointer-events-none transition-all duration-300">
-        ${activeQuad.id === 'q2' ? '<span class="text-cyan-400 text-xl animate-pulse">👉</span>' : ''}
-        <div class="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl ${activeQuad.id === 'q2' ? 'bg-cyan-500/30 border-3 border-cyan-400 ring-4 ring-cyan-400/50 animate-bounce' : quadrantCleanliness.q2 >= 100 ? 'bg-emerald-500/30 border-3 border-emerald-400' : 'bg-slate-900/80 border-2 border-slate-700'} flex items-center justify-center text-xl sm:text-2xl shadow-lg transition-all">
+        <span class="gem-arrow text-cyan-400 text-xl animate-pulse" style="display: ${activeQuad.id === 'q2' ? 'inline-block' : 'none'};">👉</span>
+        <div class="gem-box w-11 h-11 sm:w-13 sm:h-13 rounded-2xl ${activeQuad.id === 'q2' ? 'bg-cyan-500/30 border-3 border-cyan-400 ring-4 ring-cyan-400/50 animate-bounce' : quadrantCleanliness.q2 >= 100 ? 'bg-emerald-500/30 border-3 border-emerald-400' : 'bg-slate-900/80 border-2 border-slate-700'} flex items-center justify-center text-xl sm:text-2xl shadow-lg transition-all">
           ${quadrantCleanliness.q2 >= 100 ? '💎' : '🦷'}
         </div>
         <div class="flex flex-col items-start">
           <span class="text-[10px] sm:text-xs font-black text-white drop-shadow">Upper Left</span>
-          <span class="text-[9px] font-bold ${quadrantCleanliness.q2 >= 100 ? 'text-emerald-400' : 'text-amber-300'}">${Math.round(quadrantCleanliness.q2)}%</span>
+          <span class="gem-pct text-[9px] font-bold ${quadrantCleanliness.q2 >= 100 ? 'text-emerald-400' : 'text-amber-300'}">${Math.round(quadrantCleanliness.q2)}%</span>
         </div>
       </div>
 
@@ -256,23 +255,23 @@ export function renderBattleView() {
       <div id="gem-q3" class="absolute bottom-20 sm:bottom-24 right-3 sm:right-6 z-20 flex items-center gap-2 pointer-events-none transition-all duration-300">
         <div class="flex flex-col items-end">
           <span class="text-[10px] sm:text-xs font-black text-white drop-shadow">Lower Right</span>
-          <span class="text-[9px] font-bold ${quadrantCleanliness.q3 >= 100 ? 'text-emerald-400' : 'text-amber-300'}">${Math.round(quadrantCleanliness.q3)}%</span>
+          <span class="gem-pct text-[9px] font-bold ${quadrantCleanliness.q3 >= 100 ? 'text-emerald-400' : 'text-amber-300'}">${Math.round(quadrantCleanliness.q3)}%</span>
         </div>
-        <div class="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl ${activeQuad.id === 'q3' ? 'bg-cyan-500/30 border-3 border-cyan-400 ring-4 ring-cyan-400/50 animate-bounce' : quadrantCleanliness.q3 >= 100 ? 'bg-emerald-500/30 border-3 border-emerald-400' : 'bg-slate-900/80 border-2 border-slate-700'} flex items-center justify-center text-xl sm:text-2xl shadow-lg transition-all">
+        <div class="gem-box w-11 h-11 sm:w-13 sm:h-13 rounded-2xl ${activeQuad.id === 'q3' ? 'bg-cyan-500/30 border-3 border-cyan-400 ring-4 ring-cyan-400/50 animate-bounce' : quadrantCleanliness.q3 >= 100 ? 'bg-emerald-500/30 border-3 border-emerald-400' : 'bg-slate-900/80 border-2 border-slate-700'} flex items-center justify-center text-xl sm:text-2xl shadow-lg transition-all">
           ${quadrantCleanliness.q3 >= 100 ? '💎' : '🦷'}
         </div>
-        ${activeQuad.id === 'q3' ? '<span class="text-cyan-400 text-xl animate-pulse">👈</span>' : ''}
+        <span class="gem-arrow text-cyan-400 text-xl animate-pulse" style="display: ${activeQuad.id === 'q3' ? 'inline-block' : 'none'};">👈</span>
       </div>
 
       <!-- Q4: Lower Left (Screen Bottom-Left, <50% X) -->
       <div id="gem-q4" class="absolute bottom-20 sm:bottom-24 left-3 sm:left-6 z-20 flex items-center gap-2 pointer-events-none transition-all duration-300">
-        ${activeQuad.id === 'q4' ? '<span class="text-cyan-400 text-xl animate-pulse">👉</span>' : ''}
-        <div class="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl ${activeQuad.id === 'q4' ? 'bg-cyan-500/30 border-3 border-cyan-400 ring-4 ring-cyan-400/50 animate-bounce' : quadrantCleanliness.q4 >= 100 ? 'bg-emerald-500/30 border-3 border-emerald-400' : 'bg-slate-900/80 border-2 border-slate-700'} flex items-center justify-center text-xl sm:text-2xl shadow-lg transition-all">
+        <span class="gem-arrow text-cyan-400 text-xl animate-pulse" style="display: ${activeQuad.id === 'q4' ? 'inline-block' : 'none'};">👉</span>
+        <div class="gem-box w-11 h-11 sm:w-13 sm:h-13 rounded-2xl ${activeQuad.id === 'q4' ? 'bg-cyan-500/30 border-3 border-cyan-400 ring-4 ring-cyan-400/50 animate-bounce' : quadrantCleanliness.q4 >= 100 ? 'bg-emerald-500/30 border-3 border-emerald-400' : 'bg-slate-900/80 border-2 border-slate-700'} flex items-center justify-center text-xl sm:text-2xl shadow-lg transition-all">
           ${quadrantCleanliness.q4 >= 100 ? '💎' : '🦷'}
         </div>
         <div class="flex flex-col items-start">
           <span class="text-[10px] sm:text-xs font-black text-white drop-shadow">Lower Left</span>
-          <span class="text-[9px] font-bold ${quadrantCleanliness.q4 >= 100 ? 'text-emerald-400' : 'text-amber-300'}">${Math.round(quadrantCleanliness.q4)}%</span>
+          <span class="gem-pct text-[9px] font-bold ${quadrantCleanliness.q4 >= 100 ? 'text-emerald-400' : 'text-amber-300'}">${Math.round(quadrantCleanliness.q4)}%</span>
         </div>
       </div>
 
@@ -986,22 +985,49 @@ function syncCockpitHUD() {
   const hpBar = document.getElementById('boss-hp-bar');
   if (hpBar) hpBar.style.width = `${hpPercent}%`;
 
-  // Update quadrant gem progress
+  const activeQuad = getDentalQuadrant(secondsRemaining, totalDuration);
+
+  // Update quadrant gem progress & dynamic active pointer arrows
   ['q1', 'q2', 'q3', 'q4'].forEach(qid => {
     const gem = document.getElementById(`gem-${qid}`);
     if (gem) {
-      const pctSpan = gem.querySelector('span:last-child');
+      const isCurrent = activeQuad.id === qid;
+      const val = Math.round(quadrantCleanliness[qid] || 0);
+      const isDone = val >= 100;
+
+      const pctSpan = gem.querySelector('.gem-pct') || gem.querySelector('span:last-child');
       if (pctSpan) {
-        const val = Math.round(quadrantCleanliness[qid] || 0);
         pctSpan.textContent = `${val}%`;
-        if (val >= 100) {
-          pctSpan.className = 'text-[9px] font-bold text-emerald-400';
-          const iconDiv = gem.querySelector('div:nth-child(2)');
-          if (iconDiv) iconDiv.textContent = '💎';
+        pctSpan.className = `gem-pct text-[9px] font-bold ${isDone ? 'text-emerald-400' : isCurrent ? 'text-cyan-300' : 'text-amber-300'}`;
+      }
+
+      const box = gem.querySelector('.gem-box') || gem.querySelector('div:nth-child(2)');
+      if (box) {
+        if (isCurrent) {
+          box.className = 'gem-box w-11 h-11 sm:w-13 sm:h-13 rounded-2xl bg-cyan-500/30 border-3 border-cyan-400 ring-4 ring-cyan-400/50 animate-bounce flex items-center justify-center text-xl sm:text-2xl shadow-lg transition-all';
+        } else if (isDone) {
+          box.className = 'gem-box w-11 h-11 sm:w-13 sm:h-13 rounded-2xl bg-emerald-500/30 border-3 border-emerald-400 flex items-center justify-center text-xl sm:text-2xl shadow-lg transition-all';
+        } else {
+          box.className = 'gem-box w-11 h-11 sm:w-13 sm:h-13 rounded-2xl bg-slate-900/80 border-2 border-slate-700 flex items-center justify-center text-xl sm:text-2xl shadow-lg transition-all';
         }
+        box.textContent = isDone ? '💎' : '🦷';
+      }
+
+      const arrow = gem.querySelector('.gem-arrow');
+      if (arrow) {
+        arrow.style.display = isCurrent ? 'inline-block' : 'none';
       }
     }
   });
+
+  const zoneStatusText = document.getElementById('current-zone-status-text');
+  if (zoneStatusText) {
+    zoneStatusText.textContent = `${activeQuad.name}`;
+  }
+  const zoneBadge = document.getElementById('current-zone-badge');
+  if (zoneBadge) {
+    zoneBadge.textContent = `${activeQuad.zone}/5`;
+  }
 }
 
 function concludeVictory() {
@@ -1099,7 +1125,8 @@ export function quitBattle() {
 
   isBattleRunning = false;
   isBattlePaused = false;
-  store.navigate('dashboard');
+  const targetView = (store.state && store.state.previousView === 'quest_map') ? 'quest_map' : 'dashboard';
+  store.navigate(targetView);
 }
 
 function showComicHit(text) {
@@ -1127,6 +1154,17 @@ export function attachBattleListeners() {
   // Auto-launch battle immediately upon entering view if not running & not victory modal
   if (!isBattleRunning && !colState.isVictoryModalOpen) {
     startBattle();
+  }
+
+  // Seamlessly reconnect active video stream if view re-rendered
+  const video = document.getElementById('ar-camera-feed');
+  if (video && videoStream && videoStream.active) {
+    video.srcObject = videoStream;
+    video.play().catch(() => {});
+    hanaBattle3DService.setVideoElement(video);
+    const placeholder = document.getElementById('pip-placeholder');
+    if (placeholder) placeholder.classList.add('hidden');
+    video.classList.remove('hidden');
   }
 
   // 1. Map Quit Button
@@ -1166,7 +1204,7 @@ export function attachBattleListeners() {
         if (store.setSelectedBossId) store.setSelectedBossId(vId);
         Sound.tap();
         const boss = getBattleBoss(vId);
-        hanaBattle3DService.setBoss(boss);
+        hanaBattle3DService.setBoss(boss, quadrantCleanliness);
         store.notify();
       }
     });
@@ -1187,7 +1225,9 @@ export function attachBattleListeners() {
       bossData: currentBoss,
       splineUrl: currentBoss.splineUrl || null,
       hasLaserEquipped: checkLaserToothbrushEquipped(),
-      videoElement: document.getElementById('ar-camera-feed')
+      videoElement: document.getElementById('ar-camera-feed'),
+      preserveBattleState: isBattleRunning,
+      quadrantCleanliness: quadrantCleanliness
     });
   }
 
