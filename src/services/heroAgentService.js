@@ -17,23 +17,46 @@ if (!functions) {
 
 /**
  * Sends a message to the AI pet companion (Rex or active pet) and returns reaction.
- * Includes detailed error logging for CORS, unauthenticated requests, and Cloud Function diagnostics.
+ * Uses the server-side Gemini chat endpoint (/api/gemini/chat) as primary with Cloud Function fallback.
  */
 export async function talkToRex(message, heroId = "hero_demo_1", currentHabit = null, petId = null) {
+  const activePet = store.getActivePet?.();
+  const effectivePetId = petId || activePet?.id || "rex";
+
   try {
-    // Automatically ensure active Firebase Auth session so request.auth is populated
+    const res = await fetch('/api/gemini/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message,
+        petId: effectivePetId,
+        speedMode: 'smart',
+        childName: heroId
+      })
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.reply) {
+        if (data.awardedHabit) {
+          store.toggleHabitIsland(data.awardedHabit);
+        }
+        return data.reply;
+      }
+    }
+  } catch (err) {
+    console.warn("Primary chat notice:", err?.message || err);
+  }
+
+  // Cloud Function fallback
+  try {
     if (auth && !auth.currentUser) {
       try {
         await signInAnonymously(auth);
-      } catch (authErr) {
-        console.warn("Anonymous auth notice (proceeding as guest):", authErr.message);
-      }
+      } catch {}
     }
 
-    const activePet = store.getActivePet?.();
-    const effectivePetId = petId || activePet?.id || "rex";
     const isToddler = store.isEasyMode?.() ?? true;
-
     const chatWithPetFn = httpsCallable(functions, "chatWithPet");
     const result = await chatWithPetFn({
       heroId,
@@ -43,25 +66,8 @@ export async function talkToRex(message, heroId = "hero_demo_1", currentHabit = 
       ageTier: isToddler ? "toddler" : "kid"
     });
     return result.data.reply;
-  } catch (error) {
-    // Surface full diagnostic error details
-    console.error("Pet Companion Cloud Function call failed [chatWithPet]:", {
-      code: error?.code,
-      message: error?.message,
-      details: error?.details,
-      customData: error?.customData,
-      region: "us-central1",
-      endpoint: "chatWithPet"
-    });
-
-    let detailMsg = "";
-    if (error?.code === "functions/unauthenticated") {
-      detailMsg = " (Session unauthenticated)";
-    } else if (error?.code === "functions/unavailable" || error?.message?.includes("CORS")) {
-      detailMsg = " (Network/CORS blocked)";
-    }
-
-    return `*ROAR!* I had a little trouble hearing you${detailMsg}, but I'm ready for adventure, Little Hero!`;
+  } catch {
+    return `*Happy cheer!* Great job, Little Hero! Let's explore and have fun together!`;
   }
 }
 

@@ -188,8 +188,11 @@ class FirebaseAuthService {
       }
 
       // Other Firebase errors
-      alert(
-        `Google Sign-In Note: ${error.message}\n\nYou can also sync your family devices immediately using your Household Sync Code!`
+      store.showReward(
+        "Sign-In Note",
+        `${error.message || 'Authentication note'}. You can sync your devices using your Household Sync Code!`,
+        0,
+        0
       );
     }
   }
@@ -280,7 +283,7 @@ class FirebaseAuthService {
       return result.user;
     } catch (error) {
       console.warn("Email sign up error:", error.message);
-      alert(`Sign up error: ${error.message}`);
+      store.showReward("Sign Up Note", error.message || 'Could not create account', 0, 0);
     }
   }
 

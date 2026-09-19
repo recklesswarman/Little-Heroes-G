@@ -1,7 +1,7 @@
 import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import { firebaseAuth } from '../services/firebaseAuthService.js';
-import { firestoreSync } from '../services/firestoreSyncService.js';
+import { firestoreSync, isQuotaExhaustedGlobal } from '../services/firestoreSyncService.js';
 import { persistentLink } from '../services/persistentLinkService.js';
 
 let isHouseholdModalOpen = false;
@@ -121,6 +121,13 @@ export function renderHouseholdLinkModal() {
             <span class="text-[10px] text-on-surface-variant font-bold">Use on other family tablets or phones to sync this household</span>
           </div>
 
+          ${isQuotaExhaustedGlobal() ? `
+            <div class="w-full bg-amber-500/15 border border-amber-500/40 rounded-xl p-2.5 text-[11px] text-amber-200 flex items-start gap-2">
+              <span class="material-symbols-outlined text-sm text-amber-400 flex-shrink-0 mt-0.5">shield</span>
+              <span><strong>Local Mode Active:</strong> Cloud daily free write limit reached. All hero progress, coins, chores, and pets are safely preserved on this device.</span>
+            </div>
+          ` : ''}
+
           <!-- Connected Devices Status & Manual Sync Trigger -->
           <div class="w-full bg-surface-container-high p-3 rounded-xl border border-surface-container-highest flex items-center justify-between text-xs font-bold">
             <span class="text-on-surface-variant flex items-center gap-1.5">
@@ -133,9 +140,9 @@ export function renderHouseholdLinkModal() {
                 <span class="material-symbols-outlined text-xs">refresh</span>
                 Sync Now
               </button>
-              <span class="text-primary flex items-center gap-1 text-[11px]">
-                <span class="w-2 h-2 rounded-full bg-primary animate-ping"></span>
-                ${household.lastSync || 'Cloud Synced'}
+              <span class="${isQuotaExhaustedGlobal() ? 'text-amber-400' : 'text-primary'} flex items-center gap-1 text-[11px]">
+                <span class="w-2 h-2 rounded-full ${isQuotaExhaustedGlobal() ? 'bg-amber-400' : 'bg-primary animate-ping'}"></span>
+                ${isQuotaExhaustedGlobal() ? 'Local Mode (Quota Safe)' : (household.lastSync || 'Cloud Synced')}
               </span>
             </div>
           </div>
@@ -176,8 +183,6 @@ export function initHouseholdModal() {
     isHouseholdModalOpen = true;
     store.notify();
   });
-  const code = store.getState().household.syncCode || 'HERO-8842';
-  firestoreSync.startSync(code);
 }
 
 export function attachHouseholdLinkModalListeners() {
@@ -238,14 +243,14 @@ export function attachHouseholdLinkModalListeners() {
           <span class="material-symbols-outlined text-xs text-primary">check_circle</span>
           Verified & In Sync!
         `;
-        alert(`✅ Verified & In Sync!\n\nHousehold: ${res.householdName} (${res.code})\nActive Kids Synced: ${res.kids?.join(', ') || res.kidCount + ' kid(s)'}\nFamily Devices Connected: ${res.deviceCount}\n\nReal-time cloud synchronization is fully active and verified across all your household devices.`);
+        store.showReward("Verified In Sync!", res.message || "All family devices connected", 0, 0);
       } else {
         Sound.hit();
         forceSyncBtn.innerHTML = `
-          <span class="material-symbols-outlined text-xs text-error">error</span>
-          Sync Error
+          <span class="material-symbols-outlined text-xs text-amber-400">shield</span>
+          Local Mode Active
         `;
-        alert(`Cloud Sync Note: ${res?.error || 'Running in resilient offline mode.'}`);
+        store.showReward("Local Mode Active", res?.message || res?.error || "All hero progress is saved safely on this device", 0, 0);
       }
 
       setTimeout(() => {
@@ -295,15 +300,18 @@ export function attachHouseholdLinkModalListeners() {
 
         if (res.success) {
           Sound.fanfare();
-          alert(
+          store.showReward(
+            "Household Linked!",
             res.isNew
               ? `Created new Household Cloud Sync for code ${code}! Other devices can now join with this code.`
-              : `Successfully linked to Household ${code}! Synced all kids and family data in real time.`
+              : `Successfully linked to Household ${code}! Synced all kids and family data.`,
+            0,
+            0
           );
           isHouseholdModalOpen = false;
           store.notify();
         } else {
-          alert(`Could not link to household: ${res.error || 'Please check the code and try again.'}`);
+          store.showReward("Could Not Link", res.error || 'Please check the code and try again.', 0, 0);
         }
       }
     });

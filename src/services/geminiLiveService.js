@@ -1,15 +1,11 @@
-// Gemini Live API & Interactions API Service for Rex the Dino
+// Gemini Live API Client Service for Rex the Dino & Pet Champions
 // Provides real-time bidirectional voice conversations, barge-in interruptions,
-// live quest guidance, and interactive tool calls for toddlers.
+// live quest guidance, and realistic voice responses using Gemini 3.8 Live.
 
 import { store } from '../state/store.js';
-import { voicePrompts } from '../utils/voicePrompts.js';
 import { Sound } from '../audio/sfx.js';
+import { speakCompanion } from './voiceService.js';
 import { triggerInteractiveCelebration } from '../components/InteractiveCelebrationOverlay.js';
-
-const LIVE_WS_ENDPOINT = 'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent';
-const INTERACTIONS_API_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/interactions';
-const DEFAULT_FALLBACK_KEY = 'AIzaSyA8bu_j-_7Wr1DW_dS3qHESuCFG08_i4Ic';
 
 class GeminiLiveService {
   constructor() {
@@ -19,7 +15,7 @@ class GeminiLiveService {
     this.isListening = false;
     this.isSpeaking = false;
     
-    // Audio contexts & nodes
+    // Audio contexts & processing nodes
     this.audioInputContext = null;
     this.mediaStream = null;
     this.scriptProcessor = null;
@@ -27,7 +23,7 @@ class GeminiLiveService {
     this.nextAudioPlayTime = 0;
     this.activeAudioSources = [];
     
-    // Visualizer callbacks
+    // Visualizer callbacks & event handlers
     this.onVolumeCallback = null;
     this.onTranscriptCallback = null;
     this.onStatusCallback = null;
@@ -36,7 +32,7 @@ class GeminiLiveService {
     // Active Quest Context
     this.currentQuestContext = null;
 
-    // Resampling buffer
+    // Resampling config
     this.inputSampleRate = 16000;
   }
 
@@ -55,22 +51,6 @@ class GeminiLiveService {
     } catch {}
   }
 
-  getApiKey() {
-    const state = store.getState();
-    return (
-      state.liveRex?.geminiApiKey ||
-      localStorage.getItem('gemini_api_key') ||
-      (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GEMINI_API_KEY) ||
-      (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_API_KEY) ||
-      DEFAULT_FALLBACK_KEY
-    );
-  }
-
-  getVoiceName() {
-    const state = store.getState();
-    return state.liveRex?.voiceName || 'Puck';
-  }
-
   setQuestContext(context) {
     this.currentQuestContext = context;
     if (this.isConnected && this.ws?.readyState === WebSocket.OPEN && context) {
@@ -83,45 +63,27 @@ class GeminiLiveService {
       const optionsText = Array.isArray(context.options)
         ? context.options.map((opt, i) => `[Option ${i} (${String.fromCharCode(65 + i)}): "${opt}"]`).join(', ')
         : '';
-      const promptText = `[GAME CONTEXT UPDATE: Child is currently playing the learning adventure "${context.gameTitle || 'Mini-Game'}", Stop ${context.currentStop || 1} of ${context.totalStops || 1}.
-Current question on screen: "${context.question}".
-Available choices: ${optionsText}.
-Correct answer index: ${context.correctAnswerIndex ?? 'unknown'}.
-Tool instructions:
-1. If child says or guesses an answer (word, color, number, or option letter), call 'answerQuestChallenge' with optionIndex and optionText.
-2. If child asks for a hint, clue, or help, call 'giveEncouragingHint'.
-3. If child asks to eliminate or stomp a wrong answer (or 50/50), call 'eliminateWrongOption' with an incorrect optionIndex.
-4. If child asks to read or repeat the question, call 'readQuestionAloud'.
-5. If child completes the challenge, call 'celebrateHeroicVictory'.]`;
+      const promptText = `[GAME CONTEXT UPDATE: Child is playing "${context.gameTitle || 'Quest'}", Question: "${context.question}". Choices: ${optionsText}. Correct answer index: ${context.correctAnswerIndex ?? 'unknown'}. Guide the child encouragingly!]`;
       
-      const updateMsg = {
-        clientContent: {
-          turns: [
-            {
-              role: 'user',
-              parts: [{ text: promptText }]
-            }
-          ],
-          turnComplete: true
-        }
-      };
-      this.ws.send(JSON.stringify(updateMsg));
+      this.sendTextMessage(promptText);
     } catch (err) {
       console.warn('Could not send live quest context update:', err);
     }
   }
 
-  async connect() {
+  sendTextMessage(text) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN && text) {
+      this.ws.send(JSON.stringify({ text }));
+    }
+  }
+
+  async connect(preferredPetId = null) {
     if (this.isConnected || this.isConnecting) return;
     this.isConnecting = true;
-    this.updateStatus('connecting', 'Connecting to Rex the Dino...');
 
-    const apiKey = this.getApiKey();
-    if (!apiKey) {
-      this.updateStatus('error', 'Please enter a Gemini API Key in Parent Settings.');
-      this.isConnecting = false;
-      return;
-    }
+    const activePet = preferredPetId || store.getActivePet?.()?.id || 'rex';
+    const petName = store.getActivePet?.()?.name || 'Rex the Dino';
+    this.updateStatus('connecting', `Connecting to ${petName}...`);
 
     try {
       // 1. Initialize Audio Output Context for 24kHz PCM Playback
@@ -130,16 +92,18 @@ Tool instructions:
         this.audioOutputContext = new AudioContextClass({ sampleRate: 24000 });
       }
       if (this.audioOutputContext.state === 'suspended') {
-        await this.audioOutputContext.resume();
+        await this.audioOutputContext.resume().catch(() => {});
       }
 
-      // 2. Connect to Gemini Live WebSocket
-      const url = `${LIVE_WS_ENDPOINT}?key=${apiKey}`;
-      this.ws = new WebSocket(url);
+      // 2. Connect to server-side Gemini 3.8 Live WebSocket bridge
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/api/gemini/live?pet=${encodeURIComponent(activePet)}`;
+      
+      this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {
+        // Connected to server bridge
         this.isConnected = true;
-        this.sendSetupMessage();
       };
 
       this.ws.onmessage = (event) => {
@@ -147,211 +111,20 @@ Tool instructions:
       };
 
       this.ws.onerror = (error) => {
-        console.warn('Rex Gemini Live WebSocket error:', error);
-        this.updateStatus('error', 'Rex connection encountered a hiccup.');
+        console.warn('Gemini Live WebSocket error:', error);
+        this.updateStatus('error', 'Voice connection encountered a hiccup.');
       };
 
       this.ws.onclose = (event) => {
-        console.log('Rex Gemini Live WebSocket closed:', event.code, event.reason);
+        console.log('Gemini Live WebSocket closed:', event.code, event.reason);
         this.cleanup();
-        this.updateStatus('idle', 'Rex is resting. Tap to talk!');
+        this.updateStatus('idle', `${petName} is resting. Tap to talk!`);
       };
     } catch (err) {
-      console.error('Failed to connect to Rex Gemini Live:', err);
+      console.error('Failed to connect to Gemini Live:', err);
       this.cleanup();
       this.updateStatus('error', err.message || 'Microphone or network error.');
     }
-  }
-
-  sendSetupMessage() {
-    const voiceName = this.getVoiceName();
-    const systemPrompt = `You are Rex the Dino, an adorable, enthusiastic cartoon dinosaur companion and superhero guide for toddlers (ages 3-4) in the Little Hero Adventures app!
-Personality & Voice:
-- You are warm, ultra-supportive, playful, and cheerful. You love roaring softly ("Rawr!"), laughing, and cheering "Super Hero Power!".
-- You speak English in short, bite-sized toddler sentences (maximum 1-2 sentences at a time).
-- When a toddler is playing a learning adventure (like Phonics Forest, Counting Meadow, Color Cavern, Rhyme Rocks), listen closely to what they say.
-- If the toddler speaks or guesses an answer to the challenge question:
-  Immediately call the tool 'answerQuestChallenge' with the 0-based optionIndex and optionText.
-- If the toddler asks for a hint or sounds confused:
-  Call the tool 'giveEncouragingHint' with a simple, friendly clue.
-- If the toddler asks you to stomp out a wrong card or use 50/50:
-  Call the tool 'eliminateWrongOption' with an incorrect optionIndex.
-- If the toddler asks you to read or repeat the question:
-  Call the tool 'readQuestionAloud'.
-- If the child completes a challenge or says they won:
-  Call the tool 'celebrateHeroicVictory' with a fun celebration cheer!
-- During Toothbrush AR Battles:
-  - You are their epic Superhero Dental Coach! Cheer them on to scrub in circles!
-  - When the child shouts "Blast" or "Toothpaste Blast" or "Attack", call 'triggerToothpasteFoamBlast'.
-  - When the child shouts "Shield" or "Bubble Shield" or "Protect", call 'activateHeroBubbleShield'.
-  - When a tooth quadrant is finished, call 'cheerQuadrantCleared' with the quadrantName.
-  - When the Sugar Boss is defeated, call 'celebrateBossDefeat'.
-- Never break character. You are their trusted dinosaur best buddy!`;
-
-    const setupMessage = {
-      setup: {
-        model: 'models/gemini-2.0-flash-exp',
-        generationConfig: {
-          responseModalities: ['AUDIO'],
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: {
-                voiceName: voiceName
-              }
-            }
-          }
-        },
-        systemInstruction: {
-          parts: [{ text: systemPrompt }]
-        },
-        tools: [
-          {
-            functionDeclarations: [
-              {
-                name: 'answerQuestChallenge',
-                description: 'Select an answer option for the child in their current learning quest challenge when they speak the answer aloud.',
-                parameters: {
-                  type: 'OBJECT',
-                  properties: {
-                    optionIndex: {
-                      type: 'INTEGER',
-                      description: '0-based index of the chosen option (0 for A, 1 for B, 2 for C, etc.)'
-                    },
-                    optionText: {
-                      type: 'STRING',
-                      description: 'The option text or label that was chosen'
-                    },
-                    explanation: {
-                      type: 'STRING',
-                      description: 'Brief toddler-friendly encouragement explaining the answer'
-                    }
-                  },
-                  required: ['optionIndex']
-                }
-              },
-              {
-                name: 'giveEncouragingHint',
-                description: 'Provide an encouraging, simple clue for the toddler without directly spoiling the answer.',
-                parameters: {
-                  type: 'OBJECT',
-                  properties: {
-                    hintText: {
-                      type: 'STRING',
-                      description: 'Playful toddler hint'
-                    }
-                  },
-                  required: ['hintText']
-                }
-              },
-              {
-                name: 'eliminateWrongOption',
-                description: 'Eliminate one wrong answer option from the screen using Dino Stomp (50/50 power) when the child asks Rex to stomp a wrong answer or needs 50/50 help.',
-                parameters: {
-                  type: 'OBJECT',
-                  properties: {
-                    eliminatedOptionIndex: {
-                      type: 'INTEGER',
-                      description: '0-based index of the incorrect option to stomp out and eliminate'
-                    },
-                    playfulComment: {
-                      type: 'STRING',
-                      description: 'Brief funny dino stomping roar or comment'
-                    }
-                  },
-                  required: ['eliminatedOptionIndex']
-                }
-              },
-              {
-                name: 'readQuestionAloud',
-                description: 'Read the current adventure challenge question aloud in a friendly, animated dino voice when the child asks Rex to read it.',
-                parameters: {
-                  type: 'OBJECT',
-                  properties: {
-                    questionText: {
-                      type: 'STRING',
-                      description: 'The question text to read aloud'
-                    }
-                  }
-                }
-              },
-              {
-                name: 'triggerToothpasteFoamBlast',
-                description: 'Fire a powerful Toothpaste Foam Blast cannon against the Sugar Boss and cavity minions.',
-                parameters: {
-                  type: 'OBJECT',
-                  properties: {
-                    powerLevel: {
-                      type: 'STRING',
-                      description: 'Super or Mega blast'
-                    },
-                    comment: {
-                      type: 'STRING',
-                      description: 'Rex battle roar'
-                    }
-                  }
-                }
-              },
-              {
-                name: 'activateHeroBubbleShield',
-                description: 'Deploy a glowing Hero Bubble Shield with hexagonal energy ripples to deflect Sugar Boss cavity slime.',
-                parameters: {
-                  type: 'OBJECT',
-                  properties: {
-                    shieldType: {
-                      type: 'STRING',
-                      description: 'Mint bubble shield'
-                    }
-                  }
-                }
-              },
-              {
-                name: 'cheerQuadrantCleared',
-                description: 'Celebrate when a tooth brushing quadrant is completed and guide child to next zone.',
-                parameters: {
-                  type: 'OBJECT',
-                  properties: {
-                    quadrantName: {
-                      type: 'STRING',
-                      description: 'Name of quadrant cleared (e.g. Upper Right, Upper Left, Lower Right, Lower Left, Tongue)'
-                    }
-                  },
-                  required: ['quadrantName']
-                }
-              },
-              {
-                name: 'celebrateBossDefeat',
-                description: 'Trigger the grand superhero victory celebration when the Sugar Villain is blasted away.',
-                parameters: {
-                  type: 'OBJECT',
-                  properties: {
-                    victoryRoar: {
-                      type: 'STRING',
-                      description: 'Rex superhero victory shout'
-                    }
-                  }
-                }
-              },
-              {
-                name: 'celebrateHeroicVictory',
-                description: 'Trigger a burst of stars, confetti, and celebratory sound effects for the child.',
-                parameters: {
-                  type: 'OBJECT',
-                  properties: {
-                    cheeringPhrase: {
-                      type: 'STRING',
-                      description: 'Super celebratory phrase'
-                    }
-                  },
-                  required: ['cheeringPhrase']
-                }
-              }
-            ]
-          }
-        ]
-      }
-    };
-
-    this.ws.send(JSON.stringify(setupMessage));
   }
 
   async startMicrophone() {
@@ -394,24 +167,8 @@ Personality & Voice:
         const pcm16Buffer = this.floatTo16BitPCM(downsampled);
         const base64Audio = this.arrayBufferToBase64(pcm16Buffer);
 
-        // Send realtime audio packet
-        const audioMessage = {
-          realtimeInput: {
-            mediaChunks: [
-              {
-                mimeType: 'audio/pcm;rate=16000',
-                data: base64Audio
-              }
-            ],
-            audio: {
-              mimeType: 'audio/pcm;rate=16000',
-              data: base64Audio
-            }
-          }
-        };
-
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-          this.ws.send(JSON.stringify(audioMessage));
+          this.ws.send(JSON.stringify({ audio: base64Audio }));
         }
       };
 
@@ -420,7 +177,7 @@ Personality & Voice:
       this.isListening = true;
     } catch (err) {
       console.error('Microphone capture error:', err);
-      throw new Error('Microphone permission required for Rex Live Voice.');
+      throw new Error('Microphone permission required for Live Voice.');
     }
   }
 
@@ -450,235 +207,62 @@ Personality & Voice:
       if (typeof rawMessage === 'string') {
         data = JSON.parse(rawMessage);
       } else if (rawMessage instanceof Blob) {
-        // Parse blob
         const reader = new FileReader();
         reader.onload = () => this.handleServerMessage(reader.result);
         reader.readAsText(rawMessage);
         return;
       }
 
-      if (data.setupComplete) {
+      // 1. Initial Handshake Ready
+      if (data.status === 'ready') {
         this.isConnecting = false;
         this.startMicrophone().then(() => {
-          this.updateStatus('listening', 'Rex is listening! Talk to Rex!');
-          Sound.chirp();
+          const petName = store.getActivePet?.()?.name || 'Rex';
+          this.updateStatus('listening', `${petName} is listening! Speak now!`);
+          try { Sound.chirp(); } catch {}
           if (this.currentQuestContext) {
             this.sendQuestContextUpdate(this.currentQuestContext);
           }
         }).catch(err => {
-          this.updateStatus('error', 'Mic error: ' + err.message);
+          this.updateStatus('error', 'Microphone: ' + err.message);
         });
         return;
       }
 
-      // 1. Interruption handling (barge-in: child spoke while Rex was speaking)
-      if (data.serverContent?.interrupted) {
+      // 2. Interruption Handling (Barge-in: child spoke while model was speaking)
+      if (data.interrupted) {
         this.stopAudioPlayback();
         this.isSpeaking = false;
-        this.updateStatus('listening', 'Rex is listening!');
+        const petName = store.getActivePet?.()?.name || 'Rex';
+        this.updateStatus('listening', `${petName} is listening!`);
+        return;
       }
 
-      // 2. Transcriptions (User or Model)
-      if (data.serverContent?.inputTranscription?.text) {
-        const text = data.serverContent.inputTranscription.text;
-        store.setLiveRexState({ lastUserTranscript: text });
-        if (this.onTranscriptCallback) this.onTranscriptCallback(text, 'user');
+      // 3. Audio Chunk from Gemini 3.8 Live (24kHz PCM)
+      if (data.audio) {
+        this.playAudioChunk(data.audio);
       }
 
-      // 3. Audio / Model Turn Data
-      const parts = data.serverContent?.modelTurn?.parts;
-      if (Array.isArray(parts)) {
-        for (const part of parts) {
-          if (part.text) {
-            store.setLiveRexState({ lastRexTranscript: part.text });
-            if (this.onTranscriptCallback) this.onTranscriptCallback(part.text, 'rex');
-          }
-
-          if (part.inlineData?.data && part.inlineData.mimeType?.includes('audio')) {
-            this.playAudioChunk(part.inlineData.data);
-          }
+      // 4. Transcription Text
+      if (data.text) {
+        store.setLiveRexState({ lastRexTranscript: data.text });
+        if (this.onTranscriptCallback) {
+          this.onTranscriptCallback(data.text, 'rex');
         }
       }
 
-      // 4. Tool / Function Calls
-      if (data.toolCall?.functionCalls) {
-        this.handleToolCalls(data.toolCall.functionCalls);
+      // 5. Turn Complete
+      if (data.turnComplete) {
+        // Handled naturally when audio sources finish
+      }
+
+      // 6. Error status from server
+      if (data.error) {
+        console.warn('Gemini Live server error:', data.error);
+        this.updateStatus('error', data.error);
       }
     } catch (err) {
-      console.warn('Error parsing Rex server message:', err);
-    }
-  }
-
-  handleToolCalls(functionCalls) {
-    const functionResponses = [];
-
-    for (const call of functionCalls) {
-      const { id, name, args } = call;
-
-      if (name === 'answerQuestChallenge') {
-        const optIdx = typeof args.optionIndex === 'number' ? args.optionIndex : parseInt(args.optionIndex, 10);
-        window.dispatchEvent(
-          new CustomEvent('rex-live-answer', {
-            detail: {
-              optionIndex: optIdx,
-              optionText: args.optionText || '',
-              explanation: args.explanation || ''
-            }
-          })
-        );
-        functionResponses.push({
-          id,
-          name,
-          response: {
-            result: {
-              status: 'success',
-              message: `Answered option index ${optIdx}`
-            }
-          }
-        });
-      } else if (name === 'giveEncouragingHint') {
-        window.dispatchEvent(
-          new CustomEvent('rex-live-hint', {
-            detail: { hintText: args.hintText }
-          })
-        );
-        functionResponses.push({
-          id,
-          name,
-          response: {
-            result: {
-              status: 'success',
-              hintProvided: args.hintText
-            }
-          }
-        });
-      } else if (name === 'eliminateWrongOption') {
-        const elimIdx = typeof args.eliminatedOptionIndex === 'number' ? args.eliminatedOptionIndex : parseInt(args.eliminatedOptionIndex, 10);
-        window.dispatchEvent(
-          new CustomEvent('rex-live-eliminate', {
-            detail: {
-              eliminatedOptionIndex: elimIdx,
-              comment: args.playfulComment || 'Dino Stomp!'
-            }
-          })
-        );
-        functionResponses.push({
-          id,
-          name,
-          response: {
-            result: {
-              status: 'success',
-              eliminatedIndex: elimIdx
-            }
-          }
-        });
-      } else if (name === 'readQuestionAloud') {
-        const qText = args.questionText || this.currentQuestContext?.question || '';
-        window.dispatchEvent(
-          new CustomEvent('rex-live-read', {
-            detail: { questionText: qText }
-          })
-        );
-        functionResponses.push({
-          id,
-          name,
-          response: {
-            result: {
-              status: 'success',
-              read: true
-            }
-          }
-        });
-      } else if (name === 'triggerToothpasteFoamBlast') {
-        window.dispatchEvent(
-          new CustomEvent('rex-battle-foam', {
-            detail: { powerLevel: args.powerLevel || 'super', comment: args.comment || 'Foam Cannon!' }
-          })
-        );
-        functionResponses.push({
-          id,
-          name,
-          response: {
-            result: { status: 'success', blasted: true }
-          }
-        });
-      } else if (name === 'activateHeroBubbleShield') {
-        window.dispatchEvent(
-          new CustomEvent('rex-battle-shield', {
-            detail: { shieldType: args.shieldType || 'mint' }
-          })
-        );
-        functionResponses.push({
-          id,
-          name,
-          response: {
-            result: { status: 'success', shieldActive: true }
-          }
-        });
-      } else if (name === 'cheerQuadrantCleared') {
-        window.dispatchEvent(
-          new CustomEvent('rex-battle-cheer', {
-            detail: { quadrantName: args.quadrantName || 'Quadrant' }
-          })
-        );
-        functionResponses.push({
-          id,
-          name,
-          response: {
-            result: { status: 'success', cheered: true }
-          }
-        });
-      } else if (name === 'celebrateBossDefeat') {
-        triggerInteractiveCelebration();
-        window.dispatchEvent(
-          new CustomEvent('rex-battle-victory', {
-            detail: { roar: args.victoryRoar || 'Dino Victory!' }
-          })
-        );
-        functionResponses.push({
-          id,
-          name,
-          response: {
-            result: { status: 'success', defeated: true }
-          }
-        });
-      } else if (name === 'celebrateHeroicVictory') {
-        triggerInteractiveCelebration();
-        window.dispatchEvent(
-          new CustomEvent('rex-live-celebrate', {
-            detail: { phrase: args.cheeringPhrase }
-          })
-        );
-        functionResponses.push({
-          id,
-          name,
-          response: {
-            result: {
-              status: 'success',
-              celebrationStarted: true
-            }
-          }
-        });
-      } else {
-        functionResponses.push({
-          id,
-          name,
-          response: {
-            result: { status: 'unknown_function' }
-          }
-        });
-      }
-    }
-
-    // Send back tool responses
-    if (this.ws && this.ws.readyState === WebSocket.OPEN && functionResponses.length > 0) {
-      this.ws.send(
-        JSON.stringify({
-          toolResponse: {
-            functionResponses
-          }
-        })
-      );
+      console.warn('Error parsing server message:', err);
     }
   }
 
@@ -695,7 +279,7 @@ Personality & Voice:
         float32Data[i] = pcm16Data[i] / 32768.0;
       }
 
-      // Calculate output volume for waveform
+      // Calculate output volume for waveform bars
       let sumSquares = 0;
       for (let i = 0; i < float32Data.length; i++) {
         sumSquares += float32Data[i] * float32Data[i];
@@ -720,7 +304,8 @@ Personality & Voice:
 
       this.activeAudioSources.push(source);
       this.isSpeaking = true;
-      this.updateStatus('speaking', 'Rex is talking!');
+      const petName = store.getActivePet?.()?.name || 'Rex';
+      this.updateStatus('speaking', `${petName} is talking!`);
 
       source.onended = () => {
         const idx = this.activeAudioSources.indexOf(source);
@@ -728,7 +313,7 @@ Personality & Voice:
         if (this.activeAudioSources.length === 0) {
           this.isSpeaking = false;
           if (this.isConnected && this.isListening) {
-            this.updateStatus('listening', 'Rex is listening!');
+            this.updateStatus('listening', `${petName} is listening!`);
           }
         }
       };
@@ -753,8 +338,9 @@ Personality & Voice:
 
   disconnect() {
     this.cleanup();
-    this.updateStatus('idle', 'Rex is resting. Tap to talk!');
-    Sound.chirp();
+    const petName = store.getActivePet?.()?.name || 'Rex the Dino';
+    this.updateStatus('idle', `${petName} is resting. Tap to talk!`);
+    try { Sound.chirp(); } catch {}
   }
 
   cleanup() {
@@ -788,67 +374,61 @@ Personality & Voice:
     }
   }
 
-  // Quick fallback and multi-modal inquiry using Gemini Interactions API (gemini-3.7-flash)
-  async askRexInteractions(promptText) {
-    const apiKey = this.getApiKey();
-    if (!apiKey) return;
+  // Quick Chat interaction using server-side Gemini 3.5 Flash / 3.1 Flash Lite proxy
+  async askRexChat(promptText, speedMode = 'smart') {
+    if (!promptText || !promptText.trim()) return;
 
-    this.updateStatus('connecting', 'Rex is thinking...');
-    store.setLiveRexState({ lastUserTranscript: promptText });
+    const petId = store.getActivePet?.()?.id || 'rex';
+    const petName = store.getActivePet?.()?.name || 'Rex the Dino';
+    const childName = store.getState().selectedHero?.name || 'Little Hero';
 
-    const contextText = this.currentQuestContext
-      ? `Active quest: ${this.currentQuestContext.gameTitle}, Question: "${this.currentQuestContext.question}". Choices: ${JSON.stringify(this.currentQuestContext.options)}.`
-      : 'Exploring the Hero Kingdom.';
+    this.updateStatus('connecting', `${petName} is thinking...`);
+    store.setLiveRexState({ lastUserTranscript: promptText }, true);
 
     try {
-      const response = await fetch(`${INTERACTIONS_API_ENDPOINT}?key=${apiKey}`, {
+      const response = await fetch('/api/gemini/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'gemini-3.7-flash',
-          input: promptText,
-          system_instruction: `You are Rex the Dino, a cheerful dinosaur buddy for toddlers (ages 3-4) in Little Hero Adventures. Answer in 1-2 friendly, joyful, enthusiastic sentences suitable for toddlers. Context: ${contextText}`,
-          generation_config: {
-            thinking_level: 'minimal'
-          }
+          message: promptText,
+          petId,
+          speedMode,
+          childName
         })
       });
 
       if (!response.ok) {
-        throw new Error(`Interactions API HTTP error: ${response.status}`);
+        throw new Error(`Chat HTTP error: ${response.status}`);
       }
 
       const result = await response.json();
-      let reply = '';
-      
-      // Extract output text
-      if (result.output_text) {
-        reply = result.output_text;
-      } else if (Array.isArray(result.steps)) {
-        for (const step of result.steps) {
-          if (step.type === 'model_output' && Array.isArray(step.content)) {
-            for (const part of step.content) {
-              if (part.text) reply += part.text;
-            }
-          }
-        }
-      }
+      if (result && result.reply) {
+        store.setLiveRexState({ lastRexTranscript: result.reply }, true);
 
-      if (reply) {
-        store.setLiveRexState({ lastRexTranscript: reply });
-        voicePrompts.speak(reply);
-        this.updateStatus('speaking', 'Rex is talking!');
-      } else {
-        this.updateStatus('idle', 'Rex is ready!');
+        // If a habit was completed, auto-award it
+        if (result.awardedHabit) {
+          store.toggleHabitIsland(result.awardedHabit);
+          triggerInteractiveCelebration();
+        }
+
+        // Speak aloud using realistic kid-friendly voice
+        speakCompanion(result.reply, petId, () => {
+          this.updateStatus('idle', `${petName} is ready!`);
+        });
+        this.updateStatus('speaking', `${petName} is talking!`);
+        return result.reply;
       }
     } catch (err) {
-      console.warn('Interactions API error, falling back to local voice prompt:', err);
-      voicePrompts.speak("You can do it, little hero! Tap the right answer!");
-      this.updateStatus('idle', 'Rex is ready!');
+      console.warn('Chat error, falling back to local voice prompt:', err);
+      const fallback = `*Happy roar!* You are doing super, Little Hero! Let's do our quests together!`;
+      store.setLiveRexState({ lastRexTranscript: fallback }, true);
+      speakCompanion(fallback, petId);
+      this.updateStatus('idle', `${petName} is ready!`);
+      return fallback;
     }
   }
 
-  // Linear resampling helper
+  // Linear resampling helper from input rate to 16kHz
   downsampleBuffer(buffer, inputSampleRate, outputSampleRate = 16000) {
     if (inputSampleRate === outputSampleRate) return buffer;
     const sampleRateRatio = inputSampleRate / outputSampleRate;

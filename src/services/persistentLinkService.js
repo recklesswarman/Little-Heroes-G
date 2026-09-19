@@ -1,6 +1,7 @@
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { db, isFirebaseAvailable } from "../config/firebase.js";
 import { store } from "../state/store.js";
+import { isQuotaExhaustedGlobal, markQuotaExhaustedGlobal, isQuotaError } from "./firestoreSyncService.js";
 
 const LINK_SESSION_STORAGE_KEY = 'stitch_persistent_link_session';
 // 30 days sliding window duration (in milliseconds)
@@ -130,10 +131,11 @@ class PersistentLinkService {
    */
   async slideWindow() {
     if (!this.session || this.session.status !== 'linked') return;
+    if (isQuotaExhaustedGlobal()) return;
 
     const now = Date.now();
-    // Only slide if at least 10 minutes have elapsed since last slide, or if within 15 days of expiry
-    if (now - this.session.lastSlidAt < 10 * 60 * 1000) {
+    // Only slide if at least 30 minutes have elapsed since last slide to preserve write quota
+    if (now - this.session.lastSlidAt < 30 * 60 * 1000) {
       return;
     }
 
@@ -171,7 +173,7 @@ class PersistentLinkService {
    * Bind user account to household in Firestore
    */
   async syncPersistentLinkToCloud(session) {
-    if (!isFirebaseAvailable || !db || !session.userId) return;
+    if (!isFirebaseAvailable || !db || !session.userId || isQuotaExhaustedGlobal()) return;
 
     try {
       const payload = {
@@ -208,7 +210,11 @@ class PersistentLinkService {
           displayName: session.displayName,
           lastActive: new Date().toISOString()
         }
-      }).catch(async () => {
+      }).catch(async (updateErr) => {
+        if (isQuotaError(updateErr)) {
+          markQuotaExhaustedGlobal();
+          return;
+        }
         await setDoc(householdRef, {
           linkedAccounts: {
             [session.userId]: {
@@ -221,7 +227,10 @@ class PersistentLinkService {
       });
 
     } catch (e) {
-      // Network drop: this is expected during transient offline, local session remains valid
+      if (isQuotaError(e)) {
+        markQuotaExhaustedGlobal();
+        return;
+      }
       console.warn("Persistent link cloud ping note (transient offline):", e.message);
     }
   }
@@ -231,7 +240,7 @@ class PersistentLinkService {
    * Enables Device 2 to automatically sync with Device 1!
    */
   async lookupHouseholdForUser(userIdOrEmail) {
-    if (!isFirebaseAvailable || !db || !userIdOrEmail) return null;
+    if (!isFirebaseAvailable || !db || !userIdOrEmail || isQuotaExhaustedGlobal()) return null;
 
     try {
       // 1. Direct lookup by ID
@@ -256,7 +265,11 @@ class PersistentLinkService {
         }
       }
     } catch (e) {
-      console.warn("Could not lookup user household:", e.message);
+      if (isQuotaError(e)) {
+        markQuotaExhaustedGlobal();
+      } else {
+        console.warn("Could not lookup user household:", e.message);
+      }
     }
     return null;
   }

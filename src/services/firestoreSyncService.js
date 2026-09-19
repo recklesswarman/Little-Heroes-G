@@ -4,6 +4,52 @@ import { store, STORAGE_KEY } from "../state/store.js";
 import { persistentLink } from "./persistentLinkService.js";
 
 const DEVICE_ID_KEY = 'stitch_device_id';
+const QUOTA_EXHAUSTED_KEY = 'firestore_quota_exhausted_until';
+
+export function isQuotaExhaustedGlobal() {
+  try {
+    const raw = localStorage.getItem(QUOTA_EXHAUSTED_KEY);
+    if (raw) {
+      const until = Number(raw);
+      if (Date.now() < until) {
+        return true;
+      }
+      localStorage.removeItem(QUOTA_EXHAUSTED_KEY);
+    }
+  } catch {
+    // Ignore storage errors
+  }
+  return false;
+}
+
+export function markQuotaExhaustedGlobal(cooldownMs) {
+  try {
+    const now = new Date();
+    // Default cooldown: until tomorrow at 00:05 UTC (when Google Cloud daily free quota resets)
+    const tomorrowUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 5, 0));
+    const defaultMs = Math.max(30 * 60 * 1000, tomorrowUtc.getTime() - now.getTime());
+    const duration = typeof cooldownMs === 'number' && cooldownMs > 0 ? cooldownMs : defaultMs;
+    const until = Date.now() + duration;
+    localStorage.setItem(QUOTA_EXHAUSTED_KEY, String(until));
+    console.info(`🛡️ Firestore write quota protected until ${new Date(until).toLocaleTimeString()}. Using local-first storage.`);
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+export function isQuotaError(err) {
+  if (!err) return false;
+  const code = err.code || '';
+  const msg = err.message || (typeof err === 'string' ? err : '');
+  return (
+    code === 'resource-exhausted' ||
+    msg.includes('Quota limit exceeded') ||
+    msg.includes('resource-exhausted') ||
+    msg.includes('Free daily write units') ||
+    msg.includes('quota metric') ||
+    msg.includes('maximum backoff delay')
+  );
+}
 
 function getOrCreateDeviceId() {
   try {
@@ -29,20 +75,61 @@ class FirestoreSyncService {
     this.lastCloudTimestamp = null;
     this.lastKnownDevices = {};
     this.initialSyncCallbacks = [];
+    this.presenceInterval = null;
 
-    if (typeof window !== 'undefined') {
-      setInterval(() => {
-        if (this.currentCode && this.unsubscribe && isFirebaseAvailable && db) {
-          this.pingDevicePresence(this.currentCode);
-        }
-      }, 20000);
+    this.startPresenceHeartbeat();
+  }
+
+  isQuotaExhausted() {
+    return isQuotaExhaustedGlobal();
+  }
+
+  markQuotaExhausted(error) {
+    markQuotaExhaustedGlobal();
+    if (this.presenceInterval) {
+      clearInterval(this.presenceInterval);
+      this.presenceInterval = null;
     }
+    this.stopSync();
+
+    try {
+      const state = store.getState();
+      if (state && state.household) {
+        state.household.lastSync = "Local Mode (Quota Safe)";
+        store.notify();
+      }
+    } catch {
+      // store update fallback
+    }
+  }
+
+  startPresenceHeartbeat() {
+    if (typeof window === 'undefined') return;
+    if (this.presenceInterval) {
+      clearInterval(this.presenceInterval);
+    }
+
+    // Ping device presence at relaxed 5-minute intervals (not rapid 20s) to conserve write quota
+    this.presenceInterval = setInterval(() => {
+      if (this.currentCode && this.unsubscribe && isFirebaseAvailable && db && !this.isQuotaExhausted()) {
+        this.pingDevicePresence(this.currentCode);
+      }
+    }, 5 * 60 * 1000);
   }
 
   /**
    * Start listening to real-time changes for a household using onSnapshot
    */
   startSync(householdCode, onInitialSync) {
+    if (this.isQuotaExhausted()) {
+      const state = store.getState();
+      if (state && state.household) {
+        state.household.lastSync = "Local Mode (Quota Safe)";
+      }
+      if (onInitialSync) onInitialSync(null);
+      return;
+    }
+
     if (!isFirebaseAvailable || !db) {
       console.log("Firestore running in resilient offline/local mode");
       if (onInitialSync) onInitialSync(null);
@@ -50,7 +137,11 @@ class FirestoreSyncService {
     }
 
     const state = store.getState();
-    const code = (householdCode || state.household?.syncCode || 'HERO-1555').trim().toUpperCase();
+    const code = (householdCode || state.household?.syncCode || '').trim().toUpperCase();
+    if (!code) {
+      if (onInitialSync) onInitialSync(null);
+      return;
+    }
 
     if (onInitialSync) {
       this.initialSyncCallbacks.push(onInitialSync);
@@ -69,8 +160,7 @@ class FirestoreSyncService {
     try {
       this.unsubscribe = onSnapshot(docRef, (snapshot) => {
         if (!snapshot.exists()) {
-          console.log(`ℹ️ Household ${code} does not exist yet on cloud. Initializing via live onSnapshot stream...`);
-          this.pushStateToCloud(true);
+          console.log(`ℹ️ Household ${code} does not exist yet on cloud. Will push on next save.`);
           if (isFirstSnapshot) {
             isFirstSnapshot = false;
             const cbs = [...this.initialSyncCallbacks];
@@ -113,7 +203,9 @@ class FirestoreSyncService {
         store.hydrateFromCloud(cloudData);
 
         // Slide the persistent link window forward (RFC 6749 Section 6)
-        persistentLink.slideWindow();
+        if (!this.isQuotaExhausted()) {
+          persistentLink.slideWindow().catch(() => {});
+        }
 
         if (isFirstSnapshot) {
           isFirstSnapshot = false;
@@ -122,7 +214,11 @@ class FirestoreSyncService {
           cbs.forEach(cb => { try { cb(snapshot); } catch (e) { console.warn(e); } });
         }
       }, (error) => {
-        console.warn("Firestore snapshot listener error:", error.message);
+        if (isQuotaError(error)) {
+          this.markQuotaExhausted(error);
+        } else {
+          console.warn("Firestore snapshot listener error:", error.message);
+        }
         if (isFirstSnapshot) {
           isFirstSnapshot = false;
           const cbs = [...this.initialSyncCallbacks];
@@ -131,11 +227,17 @@ class FirestoreSyncService {
         }
       });
 
-      // Register this device's presence
-      this.pingDevicePresence(code);
+      // Register this device's presence if quota is healthy
+      if (!this.isQuotaExhausted()) {
+        this.pingDevicePresence(code);
+      }
 
     } catch (e) {
-      console.warn("Error starting Firestore sync:", e.message);
+      if (isQuotaError(e)) {
+        this.markQuotaExhausted(e);
+      } else {
+        console.warn("Error starting Firestore sync:", e.message);
+      }
     }
   }
 
@@ -149,7 +251,7 @@ class FirestoreSyncService {
     const state = store.getState();
     state.household.syncCode = cleanCode;
 
-    if (!isFirebaseAvailable || !db) {
+    if (!isFirebaseAvailable || !db || this.isQuotaExhausted()) {
       store.saveState(false);
       return { success: true, message: `Joined ${cleanCode} in local mode` };
     }
@@ -166,7 +268,7 @@ class FirestoreSyncService {
             isNew: false,
             kidCount: store.getState().heroes?.length || 1,
             householdName: store.getState().household?.name || 'The Hero Family',
-            message: `Subscribed to ${cleanCode} via live onSnapshot stream`
+            message: `Subscribed to ${cleanCode} in local mode`
           });
         }
       }, 3500);
@@ -192,7 +294,7 @@ class FirestoreSyncService {
    * Push current state to Firestore with debouncing
    */
   pushStateToCloud(immediate = false) {
-    if (!isFirebaseAvailable || !db) return;
+    if (!isFirebaseAvailable || !db || this.isQuotaExhausted()) return;
 
     if (this.debounceTimer) {
       clearTimeout(this.debounceTimer);
@@ -202,14 +304,15 @@ class FirestoreSyncService {
     if (immediate) {
       this._doPush();
     } else {
+      // 2-second debounce prevents rapid successive writes from depleting daily quota
       this.debounceTimer = setTimeout(() => {
         this._doPush();
-      }, 150);
+      }, 2000);
     }
   }
 
   async _doPush() {
-    if (!isFirebaseAvailable || !db) return;
+    if (!isFirebaseAvailable || !db || this.isQuotaExhausted()) return;
 
     // Ensure local hero state is thoroughly synchronized before pushing to cloud
     if (typeof store.syncSelectedHeroWithHeroes === 'function') {
@@ -217,7 +320,9 @@ class FirestoreSyncService {
     }
 
     const state = store.getState();
-    const householdCode = (state.household?.syncCode || this.currentCode || 'HERO-1555').trim().toUpperCase();
+    const householdCode = (state.household?.syncCode || this.currentCode || '').trim().toUpperCase();
+    if (!householdCode) return;
+
     const docRef = doc(db, "households", householdCode);
 
     try {
@@ -312,8 +417,12 @@ class FirestoreSyncService {
       state.household.lastSync = "Synced Just Now";
 
       // Slide persistent link window forward (RFC 6749 Section 6)
-      persistentLink.slideWindow();
+      persistentLink.slideWindow().catch(() => {});
     } catch (error) {
+      if (isQuotaError(error)) {
+        this.markQuotaExhausted(error);
+        return;
+      }
       console.warn("Firestore push warning:", error.message);
     } finally {
       this.isPushing = false;
@@ -324,6 +433,17 @@ class FirestoreSyncService {
    * Ensure active real-time subscription is healthy and verify device data is in sync
    */
   async syncNow() {
+    if (this.isQuotaExhausted()) {
+      store.getState().household.lastSync = "Local Mode (Quota Safe)";
+      store.notify();
+      return { 
+        success: true, 
+        verified: true, 
+        mode: 'local', 
+        message: "Your hero data is safely saved on this device. Cloud sync will automatically resume when quota resets." 
+      };
+    }
+
     if (!isFirebaseAvailable || !db) {
       store.getState().household.lastSync = "Local Mode Active";
       store.notify();
@@ -331,7 +451,10 @@ class FirestoreSyncService {
     }
 
     const state = store.getState();
-    const code = (state.household?.syncCode || this.currentCode || 'HERO-1555').trim().toUpperCase();
+    const code = (state.household?.syncCode || this.currentCode || '').trim().toUpperCase();
+    if (!code) {
+      return { success: true, verified: true, mode: 'local', message: "Household ready in local mode" };
+    }
 
     console.log(`🔄 Sync Now: Ensuring active real-time subscription for household ${code}...`);
 
@@ -367,6 +490,15 @@ class FirestoreSyncService {
       };
 
     } catch (e) {
+      if (isQuotaError(e)) {
+        this.markQuotaExhausted(e);
+        return { 
+          success: true, 
+          verified: true, 
+          mode: 'local', 
+          message: "Data preserved locally. Cloud sync temporarily paused due to free quota limits." 
+        };
+      }
       console.warn("Sync Now error:", e.message);
       return { success: false, verified: false, error: e.message };
     }
@@ -376,7 +508,7 @@ class FirestoreSyncService {
    * Ping this device's presence to track connected household devices
    */
   async pingDevicePresence(code) {
-    if (!isFirebaseAvailable || !db) return;
+    if (!isFirebaseAvailable || !db || this.isQuotaExhausted() || !code) return;
     try {
       const docRef = doc(db, "households", code);
       const timestamp = new Date().toISOString();
@@ -385,18 +517,32 @@ class FirestoreSyncService {
           lastSeen: timestamp,
           name: 'Hero Device'
         }
-      }).catch(async () => {
-        // If document doesn't exist yet, do full push
-        await this._doPush();
       });
-    } catch {
-      // Non-critical
+    } catch (err) {
+      if (isQuotaError(err)) {
+        this.markQuotaExhausted(err);
+        return;
+      }
+      // If doc simply doesn't exist yet, attempt full push only if not quota error
+      if (err?.code === 'not-found') {
+        try {
+          await this._doPush();
+        } catch (pushErr) {
+          if (isQuotaError(pushErr)) {
+            this.markQuotaExhausted(pushErr);
+          }
+        }
+      }
     }
   }
 
   stopSync() {
     if (this.unsubscribe) {
-      this.unsubscribe();
+      try {
+        this.unsubscribe();
+      } catch {
+        // Safe unsubscribe
+      }
       this.unsubscribe = null;
       this.currentCode = null;
     }
