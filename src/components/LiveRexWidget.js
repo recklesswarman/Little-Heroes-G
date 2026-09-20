@@ -173,7 +173,7 @@ export function renderLiveRexWidget() {
                 }
 
                 <!-- Giant Mascot Avatar Disc with Skeletal Face Mesh (128px) -->
-                <div class="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-surface-container-high p-1 shadow-2xl flex items-center justify-center transition-all overflow-hidden ${
+                <div id="rex-mascot-avatar-disc" role="button" tabindex="0" class="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-surface-container-high p-1 shadow-2xl flex items-center justify-center transition-all overflow-hidden cursor-pointer active:scale-95 ${
                   isListening
                     ? 'ring-4 ring-emerald-400 border-4 border-emerald-400 shadow-[0_0_30px_rgba(52,211,153,0.7)]'
                     : isThinking
@@ -181,7 +181,7 @@ export function renderLiveRexWidget() {
                     : isSpeaking
                     ? 'ring-4 ring-primary border-4 border-primary shadow-[0_0_25px_rgba(16,185,129,0.6)]'
                     : 'border-4 border-primary/40 hover:border-primary group-hover:scale-105'
-                }">
+                }" title="Tap ${petName}'s face to talk!">
                   ${renderPetSkeletalFaceViewer({
                     canvasId: 'modal-mascot-skeletal-canvas',
                     petId: activePetId,
@@ -250,38 +250,26 @@ export function renderLiveRexWidget() {
               </div>
             </div>
 
-            <!-- Live Dialogue Preview -->
-            ${
-              liveRex.lastUserTranscript || liveRex.lastRexTranscript
-                ? `
-              <div class="flex flex-col gap-1.5 max-h-28 overflow-y-auto pr-1 hide-scrollbar">
-                ${
-                  liveRex.lastUserTranscript
-                    ? `
-                  <div class="bg-surface-container-high rounded-2xl rounded-tr-sm p-2 text-xs font-bold text-inverse-surface border border-surface-container-highest self-end max-w-[90%] shadow-sm">
-                    <span class="text-[9px] uppercase font-black text-secondary block">You said:</span>
-                    "${liveRex.lastUserTranscript}"
-                  </div>
-                `
-                    : ''
-                }
-                ${
-                  liveRex.lastRexTranscript
-                    ? `
-                  <div class="bg-primary/15 rounded-2xl rounded-tl-sm p-2 text-xs font-bold text-inverse-surface border border-primary/30 self-start max-w-[90%] shadow-sm flex items-start gap-1.5">
-                    <span class="text-sm pt-0.5">${petEmoji}</span>
-                    <div>
-                      <span class="text-[9px] uppercase font-black text-primary block">${petName}:</span>
-                      <span>"${liveRex.lastRexTranscript}"</span>
-                    </div>
-                  </div>
-                `
-                    : ''
-                }
+            <!-- Live Dialogue Preview Container (dynamically updated in place) -->
+            <div id="rex-live-dialogue-container" class="flex flex-col gap-1.5 max-h-28 overflow-y-auto pr-1 hide-scrollbar transition-all ${
+              (liveRex.lastUserTranscript || liveRex.lastRexTranscript) ? '' : 'hidden'
+            }">
+              <div id="rex-live-dialogue-user" class="bg-surface-container-high rounded-2xl rounded-tr-sm p-2 text-xs font-bold text-inverse-surface border border-surface-container-highest self-end max-w-[90%] shadow-sm ${
+                liveRex.lastUserTranscript ? '' : 'hidden'
+              }">
+                <span class="text-[9px] uppercase font-black text-secondary block">You said:</span>
+                <span id="rex-live-user-text">"${liveRex.lastUserTranscript || ''}"</span>
               </div>
-            `
-                : ''
-            }
+              <div id="rex-live-dialogue-rex" class="bg-primary/15 rounded-2xl rounded-tl-sm p-2 text-xs font-bold text-inverse-surface border border-primary/30 self-start max-w-[90%] shadow-sm flex items-start gap-1.5 ${
+                liveRex.lastRexTranscript ? '' : 'hidden'
+              }">
+                <span class="text-sm pt-0.5">${petEmoji}</span>
+                <div>
+                  <span class="text-[9px] uppercase font-black text-primary block">${petName}:</span>
+                  <span id="rex-live-rex-text">"${liveRex.lastRexTranscript || ''}"</span>
+                </div>
+              </div>
+            </div>
 
             <!-- PICTURE QUICK-ACTIONS (No Reading Required for Toddlers) -->
             <div class="flex flex-col gap-1.5 pt-1">
@@ -289,49 +277,49 @@ export function renderLiveRexWidget() {
               <div class="grid grid-cols-4 gap-1.5 sm:gap-2">
                 
                 <!-- 1. ROAR -->
-                <button data-rex-prompt="Make your best dino roar!" class="rex-toddler-action-btn min-h-[52px] bg-gradient-to-b from-emerald-500/20 to-emerald-500/10 hover:from-emerald-500/30 text-inverse-surface border-2 border-emerald-500/40 rounded-2xl p-1.5 flex flex-col items-center justify-center gap-0.5 chunky-btn active:scale-90 transition-all shadow-sm cursor-pointer" title="Roar like a dinosaur!">
+                <button data-rex-action="roar" data-rex-prompt="Make your best dino roar!" class="rex-toddler-action-btn min-h-[52px] bg-gradient-to-b from-emerald-500/20 to-emerald-500/10 hover:from-emerald-500/30 text-inverse-surface border-2 border-emerald-500/40 rounded-2xl p-1.5 flex flex-col items-center justify-center gap-0.5 chunky-btn active:scale-90 transition-all shadow-sm cursor-pointer" title="Roar like a dinosaur!">
                   <span class="text-xl sm:text-2xl">🦖</span>
                   <span class="font-headline text-[10px] font-black text-emerald-400">ROAR!</span>
                 </button>
 
                 <!-- 2. TEETH -->
-                <button data-rex-prompt="I brushed my teeth clean!" class="rex-toddler-action-btn min-h-[52px] bg-gradient-to-b from-sky-500/20 to-sky-500/10 hover:from-sky-500/30 text-inverse-surface border-2 border-sky-500/40 rounded-2xl p-1.5 flex flex-col items-center justify-center gap-0.5 chunky-btn active:scale-90 transition-all shadow-sm cursor-pointer" title="Tell Rex you brushed teeth!">
+                <button data-rex-action="teeth" data-rex-prompt="I brushed my teeth clean!" class="rex-toddler-action-btn min-h-[52px] bg-gradient-to-b from-sky-500/20 to-sky-500/10 hover:from-sky-500/30 text-inverse-surface border-2 border-sky-500/40 rounded-2xl p-1.5 flex flex-col items-center justify-center gap-0.5 chunky-btn active:scale-90 transition-all shadow-sm cursor-pointer" title="Tell Rex you brushed teeth!">
                   <span class="text-xl sm:text-2xl">🪥</span>
                   <span class="font-headline text-[10px] font-black text-sky-400">Teeth!</span>
                 </button>
 
                 <!-- 3. YAY / HIGH FIVE -->
-                <button data-rex-prompt="High five Rex!" class="rex-toddler-action-btn min-h-[52px] bg-gradient-to-b from-amber-500/20 to-amber-500/10 hover:from-amber-500/30 text-inverse-surface border-2 border-amber-500/40 rounded-2xl p-1.5 flex flex-col items-center justify-center gap-0.5 chunky-btn active:scale-90 transition-all shadow-sm cursor-pointer" title="Give Rex a high five!">
+                <button data-rex-action="yay" data-rex-prompt="High five Rex!" class="rex-toddler-action-btn min-h-[52px] bg-gradient-to-b from-amber-500/20 to-amber-500/10 hover:from-amber-500/30 text-inverse-surface border-2 border-amber-500/40 rounded-2xl p-1.5 flex flex-col items-center justify-center gap-0.5 chunky-btn active:scale-90 transition-all shadow-sm cursor-pointer" title="Give Rex a high five!">
                   <span class="text-xl sm:text-2xl">⭐</span>
                   <span class="font-headline text-[10px] font-black text-amber-400">Yay!</span>
                 </button>
 
                 <!-- 4. CLEAN TOYS -->
-                <button data-rex-prompt="I cleaned up all my toys!" class="rex-toddler-action-btn min-h-[52px] bg-gradient-to-b from-purple-500/20 to-purple-500/10 hover:from-purple-500/30 text-inverse-surface border-2 border-purple-500/40 rounded-2xl p-1.5 flex flex-col items-center justify-center gap-0.5 chunky-btn active:scale-90 transition-all shadow-sm cursor-pointer" title="Tell Rex you cleaned toys!">
+                <button data-rex-action="toys" data-rex-prompt="I cleaned up all my toys!" class="rex-toddler-action-btn min-h-[52px] bg-gradient-to-b from-purple-500/20 to-purple-500/10 hover:from-purple-500/30 text-inverse-surface border-2 border-purple-500/40 rounded-2xl p-1.5 flex flex-col items-center justify-center gap-0.5 chunky-btn active:scale-90 transition-all shadow-sm cursor-pointer" title="Tell Rex you cleaned toys!">
                   <span class="text-xl sm:text-2xl">🧸</span>
                   <span class="font-headline text-[10px] font-black text-purple-400">Toys!</span>
                 </button>
 
                 <!-- 5. HEALTHY SNACK -->
-                <button data-rex-prompt="I ate my healthy fruit snack!" class="rex-toddler-action-btn min-h-[52px] bg-gradient-to-b from-rose-500/20 to-rose-500/10 hover:from-rose-500/30 text-inverse-surface border-2 border-rose-500/40 rounded-2xl p-1.5 flex flex-col items-center justify-center gap-0.5 chunky-btn active:scale-90 transition-all shadow-sm cursor-pointer" title="Tell Rex you ate healthy snacks!">
+                <button data-rex-action="snack" data-rex-prompt="I ate my healthy fruit snack!" class="rex-toddler-action-btn min-h-[52px] bg-gradient-to-b from-rose-500/20 to-rose-500/10 hover:from-rose-500/30 text-inverse-surface border-2 border-rose-500/40 rounded-2xl p-1.5 flex flex-col items-center justify-center gap-0.5 chunky-btn active:scale-90 transition-all shadow-sm cursor-pointer" title="Tell Rex you ate healthy snacks!">
                   <span class="text-xl sm:text-2xl">🍎</span>
                   <span class="font-headline text-[10px] font-black text-rose-400">Snack!</span>
                 </button>
 
                 <!-- 6. DRINK WATER -->
-                <button data-rex-prompt="I drank fresh cool water!" class="rex-toddler-action-btn min-h-[52px] bg-gradient-to-b from-blue-500/20 to-blue-500/10 hover:from-blue-500/30 text-inverse-surface border-2 border-blue-500/40 rounded-2xl p-1.5 flex flex-col items-center justify-center gap-0.5 chunky-btn active:scale-90 transition-all shadow-sm cursor-pointer" title="Tell Rex you drank water!">
+                <button data-rex-action="water" data-rex-prompt="I drank fresh cool water!" class="rex-toddler-action-btn min-h-[52px] bg-gradient-to-b from-blue-500/20 to-blue-500/10 hover:from-blue-500/30 text-inverse-surface border-2 border-blue-500/40 rounded-2xl p-1.5 flex flex-col items-center justify-center gap-0.5 chunky-btn active:scale-90 transition-all shadow-sm cursor-pointer" title="Tell Rex you drank water!">
                   <span class="text-xl sm:text-2xl">💧</span>
                   <span class="font-headline text-[10px] font-black text-blue-400">Water!</span>
                 </button>
 
                 <!-- 7. CALM DINO BREATHS -->
-                <button data-rex-prompt="Let's take 3 calm dinosaur breaths together!" class="rex-toddler-action-btn min-h-[52px] bg-gradient-to-b from-teal-500/20 to-teal-500/10 hover:from-teal-500/30 text-inverse-surface border-2 border-teal-500/40 rounded-2xl p-1.5 flex flex-col items-center justify-center gap-0.5 chunky-btn active:scale-90 transition-all shadow-sm cursor-pointer" title="Calm dinosaur breathing exercise">
+                <button data-rex-action="breathe" data-rex-prompt="Let's take 3 calm dinosaur breaths together!" class="rex-toddler-action-btn min-h-[52px] bg-gradient-to-b from-teal-500/20 to-teal-500/10 hover:from-teal-500/30 text-inverse-surface border-2 border-teal-500/40 rounded-2xl p-1.5 flex flex-col items-center justify-center gap-0.5 chunky-btn active:scale-90 transition-all shadow-sm cursor-pointer" title="Calm dinosaur breathing exercise">
                   <span class="text-xl sm:text-2xl">🌬️</span>
                   <span class="font-headline text-[10px] font-black text-teal-400">Breathe</span>
                 </button>
 
                 <!-- 8. FUNNY JOKE -->
-                <button data-rex-prompt="Tell me a funny dinosaur joke!" class="rex-toddler-action-btn min-h-[52px] bg-gradient-to-b from-yellow-500/20 to-yellow-500/10 hover:from-yellow-500/30 text-inverse-surface border-2 border-yellow-500/40 rounded-2xl p-1.5 flex flex-col items-center justify-center gap-0.5 chunky-btn active:scale-90 transition-all shadow-sm cursor-pointer" title="Ask Rex for a joke!">
+                <button data-rex-action="joke" data-rex-prompt="Tell me a funny dinosaur joke!" class="rex-toddler-action-btn min-h-[52px] bg-gradient-to-b from-yellow-500/20 to-yellow-500/10 hover:from-yellow-500/30 text-inverse-surface border-2 border-yellow-500/40 rounded-2xl p-1.5 flex flex-col items-center justify-center gap-0.5 chunky-btn active:scale-90 transition-all shadow-sm cursor-pointer" title="Ask Rex for a joke!">
                   <span class="text-xl sm:text-2xl">🤣</span>
                   <span class="font-headline text-[10px] font-black text-yellow-400">Joke!</span>
                 </button>
@@ -545,14 +533,65 @@ export function attachLiveRexWidgetListeners() {
     });
   }
 
+  // Helper to update live dialogue bubbles without tearing down DOM
+  function updateLiveDialogue(userText, rexText) {
+    const container = document.getElementById('rex-live-dialogue-container');
+    const userBox = document.getElementById('rex-live-dialogue-user');
+    const userSpan = document.getElementById('rex-live-user-text');
+    const rexBox = document.getElementById('rex-live-dialogue-rex');
+    const rexSpan = document.getElementById('rex-live-rex-text');
+
+    if (container) {
+      container.classList.remove('hidden');
+    }
+    if (userText && userBox && userSpan) {
+      userBox.classList.remove('hidden');
+      userSpan.textContent = `"${userText}"`;
+      store.setLiveRexState({ lastUserTranscript: userText }, true);
+    }
+    if (rexText && rexBox && rexSpan) {
+      rexBox.classList.remove('hidden');
+      rexSpan.textContent = `"${rexText}"`;
+      store.setLiveRexState({ lastRexTranscript: rexText }, true);
+    }
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+    }
+  }
+
+  // Core Gemini Live Activation Helper
+  async function activateLiveGeminiSession(petId) {
+    geminiLiveService.unlockAudio();
+    rexEngine.unlockAudio();
+    if (geminiLiveService.isActive) return;
+
+    try {
+      Sound.pop();
+      await geminiLiveService.connect(petId);
+      const pGreeting = `ROAR! I'm ${petName}! Ready for super hero adventures, Little Hero?`;
+      updateLiveDialogue(null, pGreeting);
+      speakCompanion(pGreeting, petId);
+    } catch (liveErr) {
+      console.warn("Gemini Live connection notice, activating speech recognition fallback:", liveErr);
+      rexEngine.toggleListen();
+      const pGreeting = `ROAR! I'm ${petName}! I'm listening! Tell me about your quests!`;
+      updateLiveDialogue(null, pGreeting);
+      speakCompanion(pGreeting, petId);
+    }
+  }
+
   // Tactile micro-buttons
   const patBtn = document.getElementById('rex-pat-head-btn');
   if (patBtn) {
     patBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      Sound.pop();
+      Sound.chirp();
       const inst = getActivePetSkeletalInstance('modal-mascot-skeletal-canvas');
       if (inst) inst.triggerForeheadPat();
+      const patSpeech = "*Giggle!* That tickles! I love head pats, Little Hero! ❤️";
+      updateLiveDialogue(null, patSpeech);
+      if (geminiLiveService.isActive) geminiLiveService.sendTextMessage("I patted your head!");
+      speakCompanion(patSpeech, activePetId);
     });
   }
 
@@ -560,9 +599,13 @@ export function attachLiveRexWidgetListeners() {
   if (pokeBtn) {
     pokeBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      Sound.chirp();
+      Sound.pop();
       const inst = getActivePetSkeletalInstance('modal-mascot-skeletal-canvas');
       if (inst) inst.triggerCheekPoke();
+      const pokeSpeech = "*Boing!* Squishy dinosaur cheeks! You're super silly! 🤭";
+      updateLiveDialogue(null, pokeSpeech);
+      if (geminiLiveService.isActive) geminiLiveService.sendTextMessage("I poked your cheek!");
+      speakCompanion(pokeSpeech, activePetId);
     });
   }
 
@@ -571,50 +614,97 @@ export function attachLiveRexWidgetListeners() {
     roarBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       Sound.roar();
-      speakCompanion("*Happy Roar!* RAWR! You are a super hero!", activePetId);
+      triggerInteractiveCelebration();
+      const inst = getActivePetSkeletalInstance('modal-mascot-skeletal-canvas');
+      if (inst) inst.triggerForeheadPat();
+      const roarSpeech = "*Happy Roar!* RAWR! Super Dinosaur Hero Power! 🦖⭐";
+      updateLiveDialogue(null, roarSpeech);
+      if (geminiLiveService.isActive) geminiLiveService.sendTextMessage("ROAR!");
+      speakCompanion(roarSpeech, activePetId);
     });
   }
 
-  // Floating mascot toggle button
+  // Floating mascot toggle button: Selecting companion activates Gemini Live API!
   const floatBtn = document.getElementById('live-rex-floating-btn');
   if (floatBtn) {
-    floatBtn.addEventListener('click', () => {
+    floatBtn.addEventListener('click', async () => {
       Sound.click();
       rexEngine.unlockAudio();
       geminiLiveService.unlockAudio();
       const state = store.getState();
-      const nextOpen = !state.liveRex?.isOpen;
-      store.toggleLiveRexModal(nextOpen);
+      const wasOpen = Boolean(state.liveRex?.isOpen);
+
+      if (!wasOpen) {
+        // Open modal
+        store.toggleLiveRexModal(true);
+        // AND ACTIVATE GEMINI LIVE API!
+        await activateLiveGeminiSession(activePetId);
+      } else {
+        // Close modal and cleanly disconnect
+        store.toggleLiveRexModal(false);
+        if (geminiLiveService.isActive) {
+          geminiLiveService.disconnect();
+        }
+        rexEngine.stop();
+        stopRex();
+      }
     });
   }
 
-  // Toggle Live Audio
+  // Toggle Live Audio function
   const handleToggleRexLive = async () => {
     geminiLiveService.unlockAudio();
     rexEngine.unlockAudio();
+    if (geminiLiveService.isSpeaking || isRexSpeaking()) {
+      Sound.chirp();
+      geminiLiveService.stopAudioPlayback();
+      stopRex();
+      geminiLiveService.updateStatus('listening', `${petName} is listening!`);
+      return;
+    }
     if (geminiLiveService.isActive) {
       Sound.chirp();
       geminiLiveService.disconnect();
+      stopRex();
     } else if (rexEngine.isListening) {
       rexEngine.toggleListen();
     } else {
-      Sound.pop();
-      try {
-        await geminiLiveService.connect(activePetId);
-      } catch (liveErr) {
-        console.warn("Live connection notice, trying fallback:", liveErr);
-        rexEngine.toggleListen();
-      }
+      await activateLiveGeminiSession(activePetId);
     }
   };
 
+  // Action pill button triggers live voice
   const giantAvatarBtn = document.getElementById('modal-rex-avatar-btn');
   if (giantAvatarBtn) {
-    giantAvatarBtn.addEventListener('click', () => {
+    giantAvatarBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
       handleToggleRexLive();
     });
   }
 
+  // Giant mascot avatar disc triggers loving pet interaction on tap (does NOT disconnect live mic!)
+  const mascotAvatarDisc = document.getElementById('rex-mascot-avatar-disc');
+  if (mascotAvatarDisc) {
+    mascotAvatarDisc.addEventListener('click', (e) => {
+      e.stopPropagation();
+      Sound.chirp();
+      const inst = getActivePetSkeletalInstance('modal-mascot-skeletal-canvas');
+      if (inst) inst.triggerForeheadPat();
+      const patSpeech = "*Happy dinosaur giggle!* You tickle Rex! ❤️🦖";
+      updateLiveDialogue(null, patSpeech);
+      speakCompanion(patSpeech, activePetId);
+    });
+    mascotAvatarDisc.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        Sound.chirp();
+        const inst = getActivePetSkeletalInstance('modal-mascot-skeletal-canvas');
+        if (inst) inst.triggerForeheadPat();
+      }
+    });
+  }
+
+  // Close Button
   const closeBtn = document.getElementById('live-rex-close-btn');
   if (closeBtn) {
     closeBtn.addEventListener('click', () => {
@@ -622,14 +712,13 @@ export function attachLiveRexWidgetListeners() {
       if (geminiLiveService.isActive) {
         geminiLiveService.disconnect();
       }
-      if (rexEngine.isListening) {
-        rexEngine.toggleListen();
-      }
+      rexEngine.stop();
       stopRex();
       store.toggleLiveRexModal(false);
     });
   }
 
+  // Bottom Live conversation toggle button
   const toggleBtn = document.getElementById('live-rex-toggle-btn');
   if (toggleBtn) {
     toggleBtn.addEventListener('click', () => {
@@ -637,20 +726,81 @@ export function attachLiveRexWidgetListeners() {
     });
   }
 
-  // Toddler Pictorial Quick-Action Buttons
+  // Toddler Pictorial Quick-Action Buttons (Auto-complete habits & cheerful responses)
   document.querySelectorAll('.rex-toddler-action-btn').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const prompt = btn.getAttribute('data-rex-prompt');
+      const action = btn.getAttribute('data-rex-action') || '';
       if (!prompt) return;
+
       Sound.click();
       rexEngine.unlockAudio();
       geminiLiveService.unlockAudio();
 
+      let rexReply = '';
+      switch (action) {
+        case 'roar':
+          Sound.roar();
+          rexReply = "*Happy Roar!* RAWR! Super Dinosaur Hero Power! 🦖⭐";
+          getActivePetSkeletalInstance('modal-mascot-skeletal-canvas')?.triggerForeheadPat?.();
+          triggerInteractiveCelebration();
+          break;
+        case 'teeth': {
+          const res = store.claimCompanionHabit('teeth');
+          triggerInteractiveCelebration();
+          rexReply = `*Sparkle smile!* +${res.coins} Coins 🪙! Look at those shiny clean teeth! Super hero smile power! 🪥✨`;
+          break;
+        }
+        case 'yay':
+          Sound.chirp();
+          triggerInteractiveCelebration();
+          rexReply = "*HIGH FIVE!* Up high, down low, you are an incredible superstar! ⭐🎉";
+          break;
+        case 'toys': {
+          const res = store.claimCompanionHabit('toys');
+          triggerInteractiveCelebration();
+          rexReply = `*Tidy Champion!* +${res.coins} Coins 🪙! All toys safely in their home! Great teamwork, Little Hero! 🧸⭐`;
+          break;
+        }
+        case 'snack': {
+          const res = store.claimCompanionHabit('snack');
+          triggerInteractiveCelebration();
+          rexReply = `*Crunch crunch!* +${res.coins} Coins 🪙! Yummy vitamins! Healthy snacks give you super dinosaur strength! 🍎🥦`;
+          break;
+        }
+        case 'water': {
+          const res = store.claimCompanionHabit('water');
+          triggerInteractiveCelebration();
+          rexReply = `*Gulp gulp!* +${res.coins} Coins 🪙! Super hero hydration! Cool fresh water powers up your brain and muscles! 💧🦖`;
+          break;
+        }
+        case 'breathe':
+          Sound.chirp();
+          rexReply = "Let's breathe together: In 1-2-3... and gentle dragon breath out 1-2-3! Ahhh, feel how calm you are! 🌬️";
+          break;
+        case 'joke': {
+          Sound.chirp();
+          const jokes = [
+            "What do you call a sleeping dinosaur? A dino-snore! *Hahaha!* 🦖💤",
+            "Why did the T-Rex cross the road? To catch the super hero bus! *Giggle!* 🚌🦖",
+            "What is a dinosaur's favorite school subject? His-tree-history! *Roar!* 📚🦕"
+          ];
+          rexReply = jokes[Math.floor(Math.random() * jokes.length)];
+          break;
+        }
+        default:
+          rexReply = `*Happy roar!* You're doing incredible, Little Hero!`;
+          break;
+      }
+
+      // Show user message & Rex reply in live dialogue immediately
+      updateLiveDialogue(prompt, rexReply);
+
+      // If Gemini Live is active, also forward text to live session so server session tracks conversation
       if (geminiLiveService.isActive) {
         geminiLiveService.sendTextMessage(prompt);
-      } else {
-        await rexEngine.sendToRex(prompt);
       }
+      speakCompanion(rexReply, activePetId);
     });
   });
 
@@ -694,50 +844,119 @@ export function attachLiveRexWidgetListeners() {
     updateWaveformVisualizer(state);
   };
 
-  // State update event handler
-  window.addEventListener('live-rex-state-update', (event) => {
-    const data = event.detail || {};
-    const status = data.status || 'idle';
-    const isListening = status === 'listening';
-    const isThinking = status === 'thinking';
-    const isSpeaking = status === 'talking' || status === 'speaking' || isRexSpeaking();
-
-    const currentPet = store?.getActivePet?.() || { id: 'rex', name: 'Rex the Dino' };
-    const pName = currentPet.name || 'Rex the Dino';
-
-    const statusTextEl = document.getElementById('rex-status-text');
-    if (statusTextEl) {
-      statusTextEl.textContent = isListening
-        ? `👂 Speak now! ${pName} is listening to you!`
-        : isThinking
-        ? `🤔 ${pName} is getting your answer ready...`
-        : isSpeaking
-        ? `🗣️ ${pName} is speaking!`
-        : `Touch ${pName}'s face or pick a picture below!`;
+  // Clean up any existing state update handler on window to prevent duplicate listeners
+  if (typeof window !== 'undefined') {
+    if (window._liveRexStateUpdateHandler) {
+      window.removeEventListener('live-rex-state-update', window._liveRexStateUpdateHandler);
     }
+    window._liveRexStateUpdateHandler = (event) => {
+      const data = event.detail || {};
+      const status = data.status || 'idle';
+      const isListening = status === 'listening';
+      const isThinking = status === 'thinking';
+      const isConnecting = status === 'connecting';
+      const isSpeaking = status === 'talking' || status === 'speaking' || isRexSpeaking();
 
-    const toggleBtnEl = document.getElementById('live-rex-toggle-btn');
-    if (toggleBtnEl) {
-      if (isListening) {
-        toggleBtnEl.className = 'flex-1 py-3 px-4 rounded-2xl font-headline text-xs font-black flex items-center justify-center gap-2 chunky-btn shadow-md active:scale-95 transition-all bg-emerald-500 text-white border-emerald-600 animate-pulse cursor-pointer';
-        toggleBtnEl.innerHTML = '<span class="material-symbols-outlined text-base">mic</span><span>Listening (Tap to Stop)</span>';
-      } else {
-        toggleBtnEl.className = 'flex-1 py-3 px-4 rounded-2xl font-headline text-xs font-black flex items-center justify-center gap-2 chunky-btn shadow-md active:scale-95 transition-all bg-primary text-on-primary border-primary-container cursor-pointer';
-        toggleBtnEl.innerHTML = '<span class="material-symbols-outlined text-base">mic_none</span><span>Start Live Conversation</span>';
+      const currentPet = store?.getActivePet?.() || { id: 'rex', name: 'Rex the Dino' };
+      const pName = currentPet.name || 'Rex the Dino';
+
+      // 1. Status Text
+      const statusTextEl = document.getElementById('rex-status-text');
+      if (statusTextEl) {
+        statusTextEl.textContent = isConnecting
+          ? `🔄 Connecting to ${pName}...`
+          : isListening
+          ? `👂 Speak now! ${pName} is listening to you!`
+          : isThinking
+          ? `🤔 ${pName} is getting your answer ready...`
+          : isSpeaking
+          ? `🗣️ ${pName} is speaking!`
+          : `Touch ${pName}'s face or pick a picture below!`;
       }
-    }
 
-    const floatBtn = document.getElementById('live-rex-floating-btn');
-    if (floatBtn) {
-      const badge = floatBtn.querySelector('div.absolute.-bottom-1.-right-1');
-      if (badge) {
-        badge.className = `absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center text-xs shadow-md border-2 border-surface ${
-          isSpeaking ? 'bg-primary text-on-primary animate-bounce' : isListening ? 'bg-emerald-500 text-white animate-pulse' : 'bg-primary text-on-primary'
+      // 2. Giant Mascot Disc Border & Glow
+      const discEl = document.getElementById('rex-mascot-avatar-disc');
+      if (discEl) {
+        discEl.className = `w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-surface-container-high p-1 shadow-2xl flex items-center justify-center transition-all overflow-hidden cursor-pointer active:scale-95 ${
+          isListening
+            ? 'ring-4 ring-emerald-400 border-4 border-emerald-400 shadow-[0_0_30px_rgba(52,211,153,0.7)]'
+            : isThinking
+            ? 'ring-4 ring-amber-400 border-4 border-amber-400 shadow-[0_0_25px_rgba(251,191,36,0.6)]'
+            : isConnecting
+            ? 'ring-4 ring-sky-400 border-4 border-sky-400 shadow-[0_0_25px_rgba(56,189,248,0.6)]'
+            : isSpeaking
+            ? 'ring-4 ring-primary border-4 border-primary shadow-[0_0_25px_rgba(16,185,129,0.6)]'
+            : 'border-4 border-primary/40 hover:border-primary group-hover:scale-105'
         }`;
-        badge.innerHTML = `<span class="material-symbols-outlined text-sm">${isSpeaking ? 'volume_up' : isListening ? 'mic' : 'smart_toy'}</span>`;
       }
-    }
-  });
+
+      // 3. Action Indicator Pill Button
+      const pillBtnEl = document.getElementById('modal-rex-avatar-btn');
+      if (pillBtnEl) {
+        pillBtnEl.className = `absolute -bottom-2.5 left-1/2 -translate-x-1/2 px-3 py-1 min-h-[32px] rounded-full text-[11px] font-headline font-black shadow-lg flex items-center gap-1.5 whitespace-nowrap cursor-pointer z-10 transition-transform active:scale-95 ${
+          isListening
+            ? 'bg-emerald-500 text-white animate-pulse'
+            : isThinking
+            ? 'bg-amber-500 text-white animate-bounce'
+            : isConnecting
+            ? 'bg-sky-500 text-white animate-pulse'
+            : isSpeaking
+            ? 'bg-primary text-on-primary'
+            : 'bg-secondary text-on-secondary hover:brightness-110'
+        }`;
+        const icon = isListening ? 'mic' : isThinking ? 'hourglass_top' : isConnecting ? 'sync' : isSpeaking ? 'volume_up' : 'touch_app';
+        const label = isListening ? 'Listening (Tap to Stop)' : isThinking ? 'Thinking...' : isConnecting ? 'Connecting...' : isSpeaking ? 'Talking! (Tap to Pause)' : 'Tap to Talk!';
+        pillBtnEl.innerHTML = `<span class="material-symbols-outlined text-xs ${isConnecting ? 'animate-spin' : ''}">${icon}</span><span>${label}</span>`;
+      }
+
+      // 4. Live Dialogue Preview update
+      if (data.lastUserTranscript || data.lastRexTranscript) {
+        updateLiveDialogue(data.lastUserTranscript, data.lastRexTranscript);
+      }
+
+      // 5. Toggle Button
+      const toggleBtnEl = document.getElementById('live-rex-toggle-btn');
+      if (toggleBtnEl) {
+        if (isListening) {
+          toggleBtnEl.className = 'flex-1 py-3 px-4 rounded-2xl font-headline text-xs font-black flex items-center justify-center gap-2 chunky-btn shadow-md active:scale-95 transition-all bg-emerald-500 text-white border-emerald-600 animate-pulse cursor-pointer';
+          toggleBtnEl.innerHTML = '<span class="material-symbols-outlined text-base">mic</span><span>Listening (Tap to Stop)</span>';
+        } else if (isConnecting) {
+          toggleBtnEl.className = 'flex-1 py-3 px-4 rounded-2xl font-headline text-xs font-black flex items-center justify-center gap-2 chunky-btn shadow-md active:scale-95 transition-all bg-sky-500 text-white border-sky-600 animate-pulse cursor-pointer';
+          toggleBtnEl.innerHTML = '<span class="material-symbols-outlined text-base animate-spin">sync</span><span>Connecting to Gemini Live...</span>';
+        } else if (isSpeaking) {
+          toggleBtnEl.className = 'flex-1 py-3 px-4 rounded-2xl font-headline text-xs font-black flex items-center justify-center gap-2 chunky-btn shadow-md active:scale-95 transition-all bg-primary text-on-primary border-primary-container animate-pulse cursor-pointer';
+          toggleBtnEl.innerHTML = '<span class="material-symbols-outlined text-base">volume_up</span><span>Rex is Talking! (Tap to Pause)</span>';
+        } else {
+          toggleBtnEl.className = 'flex-1 py-3 px-4 rounded-2xl font-headline text-xs font-black flex items-center justify-center gap-2 chunky-btn shadow-md active:scale-95 transition-all bg-primary text-on-primary border-primary-container cursor-pointer';
+          toggleBtnEl.innerHTML = '<span class="material-symbols-outlined text-base">mic_none</span><span>Start Live Conversation</span>';
+        }
+      }
+
+      // 6. Floating mascot badge & ripples
+      const floatBtn = document.getElementById('live-rex-floating-btn');
+      if (floatBtn) {
+        const badge = floatBtn.querySelector('div.absolute.-bottom-1.-right-1');
+        if (badge) {
+          badge.className = `absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center text-xs shadow-md border-2 border-surface ${
+            isSpeaking ? 'bg-primary text-on-primary animate-bounce' : isListening ? 'bg-emerald-500 text-white animate-pulse' : 'bg-primary text-on-primary'
+          }`;
+          badge.innerHTML = `<span class="material-symbols-outlined text-sm">${isSpeaking ? 'volume_up' : isListening ? 'mic' : 'smart_toy'}</span>`;
+        }
+      }
+
+      // 7. Skeletal Face Rig Speech Lip-Sync Animation
+      const modalRig = getActivePetSkeletalInstance('modal-mascot-skeletal-canvas');
+      const floatRig = getActivePetSkeletalInstance('floating-mascot-skeletal-canvas');
+      if (isSpeaking) {
+        modalRig?.startSpeaking?.();
+        floatRig?.startSpeaking?.();
+      } else {
+        modalRig?.stopSpeaking?.();
+        floatRig?.stopSpeaking?.();
+      }
+    };
+    window.addEventListener('live-rex-state-update', window._liveRexStateUpdateHandler);
+  }
 }
 
 function attachListenButtons() {
@@ -749,7 +968,10 @@ function attachListenButtons() {
       const text = decodeURIComponent(rawText);
       const activePetId = store?.getActivePet?.()?.id || 'rex';
       Sound.pop();
-      speakCompanion(text, activePetId);
+      geminiLiveService.updateStatus('speaking', 'Rex is reading aloud!');
+      speakCompanion(text, activePetId, () => {
+        geminiLiveService.updateStatus('idle', 'Rex is ready!');
+      });
     };
   });
 }

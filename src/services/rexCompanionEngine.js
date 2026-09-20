@@ -270,28 +270,28 @@ class RexVoiceEngine {
 
     // 4. DAILY HABITS & CHORE VOICE CLAIMS
     if (/water|drink/i.test(clean) && /drank|done|finished|cup|glass/i.test(clean)) {
-      store.toggleHabitIsland('drink_water');
-      this.speak("Gulp gulp! Super hero hydration power! You earned shiny coins!", activePetId);
+      const res = store.claimCompanionHabit('water');
+      this.speak(`Gulp gulp! +${res.coins} Coins! Super hero hydration power! You earned shiny coins!`, activePetId);
       return true;
     }
     if (/teeth|brush/i.test(clean) && /brushed|done|clean|finished/i.test(clean)) {
-      store.toggleHabitIsland('brush_teeth');
-      this.speak("Sparkle smile! Your teeth are super clean and strong!", activePetId);
+      const res = store.claimCompanionHabit('teeth');
+      this.speak(`Sparkle smile! +${res.coins} Coins! Your teeth are super clean and strong!`, activePetId);
       return true;
     }
     if (/bed/i.test(clean) && /made|tidy|clean/i.test(clean)) {
-      store.toggleTaskForest('morning_bed');
-      this.speak("Hero bed all made! Your room looks incredible!", activePetId);
+      const res = store.claimCompanionHabit('make_bed');
+      this.speak(`Hero bed all made! +${res.coins} Coins! Your room looks incredible!`, activePetId);
       return true;
     }
     if (/toy|toys|blocks/i.test(clean) && /clean|away|tidy|put/i.test(clean)) {
-      store.toggleTaskForest('clean_toys');
-      this.speak("Toys all put away! Great teamwork, Little Hero!", activePetId);
+      const res = store.claimCompanionHabit('toys');
+      this.speak(`Toys all put away! +${res.coins} Coins! Great teamwork, Little Hero!`, activePetId);
       return true;
     }
     if (/snack|fruit|apple|veggie/i.test(clean) && /ate|eat|healthy/i.test(clean)) {
-      store.toggleHabitIsland('eat_healthy_snack');
-      this.speak("Crunch crunch! Healthy fuel makes heroes super strong!", activePetId);
+      const res = store.claimCompanionHabit('snack');
+      this.speak(`Crunch crunch! +${res.coins} Coins! Healthy fuel makes heroes super strong!`, activePetId);
       return true;
     }
 
@@ -335,15 +335,33 @@ class RexVoiceEngine {
     }
   }
 
+  stop() {
+    this.shouldKeepListening = false;
+    this.isListening = false;
+    if (this.restartTimeout) clearTimeout(this.restartTimeout);
+    try {
+      this.recognition?.stop();
+    } catch {}
+    this.setState("idle");
+  }
+
   async sendToRex(message) {
     if (this.restartTimeout) clearTimeout(this.restartTimeout);
     this.shouldKeepListening = false;
+
+    // Check if message matches an in-game action or habit first
+    const handledInGame = this.tryHandleInGameSpeech(message);
+    if (handledInGame) {
+      return true;
+    }
+
     this.setState("thinking");
 
     const activePet = store.getActivePet?.();
     const activePetId = activePet?.id || "rex";
     const activeHero = store.getState().selectedHero;
     const heroName = activeHero?.name || "Little Hero";
+    const storedKey = store.getState()?.liveRex?.geminiApiKey || (typeof localStorage !== 'undefined' ? localStorage.getItem('gemini_api_key') : '') || '';
 
     store.setLiveRexState({
       lastUserTranscript: message,
@@ -359,7 +377,8 @@ class RexVoiceEngine {
           message,
           petId: activePetId,
           speedMode: 'smart',
-          childName: heroName
+          childName: heroName,
+          apiKey: storedKey
         })
       });
 
@@ -378,9 +397,35 @@ class RexVoiceEngine {
       }
       throw new Error('Chat API returned invalid response');
     } catch (err) {
-      console.warn("Primary Gemini Chat notice, trying fallback:", err?.message || err);
+      console.warn("Primary Gemini Chat notice, trying rich local fallback:", err?.message || err);
+      const clean = message.toLowerCase();
+      let fallbackReply = `*Happy Roar!* High five, ${heroName}! Let's do our quests and play together!`;
 
-      const fallbackReply = `*Happy Roar!* High five, ${heroName}! Let's do our quests and play together!`;
+      if (/joke/i.test(clean)) {
+        const jokes = [
+          "What do you call a sleeping dinosaur? A dino-snore! *Hahaha!* 🦖💤",
+          "Why did the T-Rex cross the road? To catch the super hero bus! *Giggle!* 🚌🦖",
+          "What is a dinosaur's favorite school subject? His-tree-history! *Roar!* 📚🦕"
+        ];
+        fallbackReply = jokes[Math.floor(Math.random() * jokes.length)];
+      } else if (/teeth|brush/i.test(clean)) {
+        const res = store.claimCompanionHabit('teeth');
+        fallbackReply = `*Sparkle smile!* +${res.coins} Coins! Scrub round and round, top and bottom! Clean teeth give you super hero strength! 🪥✨`;
+      } else if (/water|drink/i.test(clean)) {
+        const res = store.claimCompanionHabit('water');
+        fallbackReply = `*Gulp gulp!* +${res.coins} Coins! Super hero hydration! Cold fresh water powers up your brain and muscles! 💧🦖`;
+      } else if (/toy|clean/i.test(clean)) {
+        const res = store.claimCompanionHabit('toys');
+        fallbackReply = `*Tidy champion!* +${res.coins} Coins! All toys safely in their home! Great teamwork, Little Hero! 🧸⭐`;
+      } else if (/snack|fruit|eat/i.test(clean)) {
+        const res = store.claimCompanionHabit('snack');
+        fallbackReply = `*Crunch crunch!* +${res.coins} Coins! Yummy vitamins! Healthy snacks give you unstoppable dinosaur energy! 🍎🥦`;
+      } else if (/bedtime|story|sleep/i.test(clean)) {
+        fallbackReply = `Once upon a time, a brave little hero flew across the starry sky with their dinosaur buddy, dreaming happy dreams. Close your eyes, superhero! 🌙⭐`;
+      } else if (/hint|help|clue/i.test(clean)) {
+        fallbackReply = `*Dino clue!* Look carefully at the bright colors and shapes on your screen! You've got this! 🌟🦖`;
+      }
+
       store.setLiveRexState({
         lastRexTranscript: fallbackReply,
         statusMessage: `${activePet?.name || 'Rex'} is ready to play!`

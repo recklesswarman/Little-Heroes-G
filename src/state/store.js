@@ -1477,7 +1477,19 @@ class Store {
 
   // HABIT ISLANDS COMPLETION
   toggleHabitIsland(habitId) {
-    const habit = this.state.habitIslands.find((h) => h.id === habitId);
+    let habit = this.state.habitIslands.find((h) => h.id === habitId);
+    if (!habit) {
+      if (habitId === 'eat_healthy_snack' || habitId === 'snack') {
+        habit = this.state.habitIslands.find((h) => h.id === 'healthy_snack');
+      } else if (habitId === 'brush_teeth' || habitId === 'teeth') {
+        habit = this.state.habitIslands.find((h) => h.id === 'brush_teeth_am' || h.id === 'brush_teeth_pm' || h.id === 'brush_teeth');
+        if (!habit && this.state.taskForest) {
+          return this.toggleTaskForest('morning_brush');
+        }
+      } else if ((habitId === 'clean_toys' || habitId === 'toys') && this.state.taskForest) {
+        return this.toggleTaskForest('clean_toys');
+      }
+    }
     if (!habit) return;
 
     const currentHero = this.state.selectedHero;
@@ -1598,7 +1610,18 @@ class Store {
 
   // TASK FOREST CHORE COMPLETION
   toggleTaskForest(taskId) {
-    const task = this.state.taskForest.find((t) => t.id === taskId);
+    let task = this.state.taskForest.find((t) => t.id === taskId);
+    if (!task) {
+      if (taskId === 'morning_bed' || taskId === 'bed') {
+        task = this.state.taskForest.find((t) => t.id === 'make_bed');
+      } else if (taskId === 'brush_teeth' || taskId === 'teeth') {
+        task = this.state.taskForest.find((t) => t.id === 'morning_brush' || t.id === 'bedtime_brush');
+      } else if (taskId === 'drink_water' || taskId === 'water') {
+        return this.toggleHabitIsland('drink_water');
+      } else if (taskId === 'healthy_snack' || taskId === 'eat_healthy_snack' || taskId === 'snack') {
+        return this.toggleHabitIsland('healthy_snack');
+      }
+    }
     if (!task) return;
 
     const currentHero = this.state.selectedHero;
@@ -1711,6 +1734,138 @@ class Store {
     this.chargeStarlightFuel(25);
 
     this.saveState(true);
+  }
+
+  // TODDLER VOICE COMPANION HABIT & CHORE CLAIM
+  // Non-blocking, instant tactile celebration without full-screen modal interruption
+  claimCompanionHabit(habitKey) {
+    const currentHero = this.state.selectedHero;
+    const heroId = currentHero?.id || 'hero_1';
+    const cleanKey = String(habitKey || '').toLowerCase().trim();
+
+    let habit = null;
+    let task = null;
+    let zone = 'Habit Islands';
+    let defaultTitle = 'Good Habit Champion';
+    let baseCoins = 20;
+    let baseXP = 25;
+    let points = 5;
+
+    if (cleanKey.includes('teeth') || cleanKey.includes('brush')) {
+      const isMorning = new Date().getHours() < 14;
+      task = this.state.taskForest?.find((t) => t.id === (isMorning ? 'morning_brush' : 'bedtime_brush')) ||
+             this.state.taskForest?.find((t) => t.id === 'morning_brush');
+      habit = this.state.habitIslands?.find((h) => h.id === 'brush_teeth_am' || h.id === 'brush_teeth_pm' || h.id === 'brush_teeth');
+      zone = 'Task Forest';
+      defaultTitle = isMorning ? 'Morning Toothbrush Quest' : 'Nighttime Toothbrush Quest';
+      baseCoins = 30;
+      baseXP = 35;
+      points = 15;
+    } else if (cleanKey.includes('toy') || cleanKey.includes('clean')) {
+      task = this.state.taskForest?.find((t) => t.id === 'clean_toys');
+      habit = this.state.habitIslands?.find((h) => h.id === 'clean_toys');
+      zone = 'Task Forest';
+      defaultTitle = 'Clean Up Toys & Blocks';
+      baseCoins = 25;
+      baseXP = 30;
+      points = 10;
+    } else if (cleanKey.includes('water') || cleanKey.includes('drink')) {
+      habit = this.state.habitIslands?.find((h) => h.id === 'drink_water');
+      task = this.state.taskForest?.find((t) => t.id === 'drink_water');
+      zone = 'Habit Islands';
+      defaultTitle = 'Drink Fresh Water';
+      baseCoins = 15;
+      baseXP = 20;
+      points = 5;
+    } else if (cleanKey.includes('snack') || cleanKey.includes('fruit') || cleanKey.includes('eat')) {
+      habit = this.state.habitIslands?.find((h) => h.id === 'healthy_snack' || h.id === 'eat_healthy_snack');
+      task = this.state.taskForest?.find((t) => t.id === 'healthy_snack');
+      zone = 'Habit Islands';
+      defaultTitle = 'Eat Fruit or Veggie Snack';
+      baseCoins = 20;
+      baseXP = 25;
+      points = 5;
+    }
+
+    const item = habit || task;
+    const itemId = item?.id || ('companion_' + cleanKey);
+    const itemTitle = item?.title || defaultTitle;
+    const coinsToAward = item?.coins || baseCoins;
+    const xpToAward = item?.xp || baseXP;
+    const pointsToQueue = item?.points || points;
+
+    // Check if already completed today
+    const completionsToday = this.getTaskCompletionsToday(itemId, heroId);
+    const isAlreadyDone = completionsToday.length > 0;
+
+    // Factor in Pet Gear Stat Buffs
+    const petBuffs = this.getActivePetGearBuffs ? this.getActivePetGearBuffs(currentHero.activePetId) : { coin_boost: 0, xp_boost: 0 };
+    const bonusCoins = petBuffs.coin_boost > 0 ? Math.ceil(coinsToAward * (petBuffs.coin_boost / 100)) : 0;
+    const finalCoins = coinsToAward + bonusCoins;
+    const bonusXP = petBuffs.xp_boost > 0 ? Math.ceil(xpToAward * (petBuffs.xp_boost / 100)) : 0;
+    const finalXP = xpToAward + bonusXP;
+
+    // Award currency and XP directly
+    currentHero.coins = (currentHero.coins || 0) + finalCoins;
+    this.addXP(finalXP);
+    if (item) item.completed = true;
+
+    // Audit log for Parent Portal
+    const logId = 'compl_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+    const approvalReqId = 'task_comp_' + itemId + '_' + Date.now();
+    const nowIso = new Date().toISOString();
+
+    const completionLog = {
+      id: logId,
+      taskId: itemId,
+      taskTitle: itemTitle,
+      zone,
+      heroId: heroId,
+      heroName: currentHero.name,
+      completedAt: nowIso,
+      timestamp: Date.now(),
+      dateString: new Date().toLocaleDateString(),
+      timeString: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      coinsAwarded: finalCoins,
+      pointsAwarded: pointsToQueue,
+      xpAwarded: finalXP,
+      status: 'pending',
+      approvalRequestId: approvalReqId,
+      approvedAt: null,
+      rejectedAt: null
+    };
+
+    if (!this.state.taskCompletionLogs) this.state.taskCompletionLogs = [];
+    this.state.taskCompletionLogs.unshift(completionLog);
+    if (this.state.taskCompletionLogs.length > 200) this.state.taskCompletionLogs.pop();
+
+    if (!this.state.pendingApprovals) this.state.pendingApprovals = [];
+    this.state.pendingApprovals.push({
+      id: approvalReqId,
+      logId: logId,
+      kidId: currentHero.id,
+      kidName: currentHero.name,
+      type: 'task_point_approval',
+      taskId: itemId,
+      title: itemTitle,
+      zone,
+      pendingPoints: pointsToQueue,
+      tokensAwarded: finalCoins,
+      date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: nowIso,
+      status: 'pending'
+    });
+
+    try { Sound.coin(); } catch {}
+    try { Sound.fanfare(); } catch {}
+    this.saveState(true);
+
+    return {
+      title: itemTitle,
+      coins: finalCoins,
+      xp: finalXP,
+      isAlreadyDone
+    };
   }
 
   // SUBMIT CHORE WITH OPTIONAL PHOTO PROOF (+5 BONUS TOKENS & AI VISION CONFIRMATION)
