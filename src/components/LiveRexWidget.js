@@ -117,13 +117,13 @@ export function renderLiveRexWidget() {
 
   return `
     <!-- Floating Mascot Container -->
-    <div id="live-rex-container" class="fixed bottom-24 right-4 sm:bottom-28 sm:right-6 z-40 flex flex-col items-end pointer-events-none select-none">
+    <div id="live-rex-container" class="fixed bottom-24 right-4 sm:bottom-28 sm:right-6 z-50 flex flex-col items-end pointer-events-none select-none">
       
       <!-- Expanded Toddler Live Voice Sheet -->
       ${
         isOpen
           ? `
-        <div id="live-rex-modal-card" class="pointer-events-auto bg-surface-container rounded-4xl border-4 border-primary/50 shadow-2xl p-4 sm:p-5 mb-3 w-[94vw] max-w-sm sm:max-w-md flex flex-col gap-3 animate-scale-up backdrop-blur-xl max-h-[85vh] overflow-hidden">
+        <div id="live-rex-modal-card" class="pointer-events-auto bg-surface-container rounded-4xl border-4 border-primary/50 shadow-2xl p-4 sm:p-5 mb-3 w-[94vw] max-w-sm sm:max-w-md flex flex-col gap-3 animate-scale-up backdrop-blur-xl max-h-[min(580px,calc(100dvh-12.5rem))] overflow-hidden">
           
           <!-- Card Header with Pet Info, Tab Navigation, and Close Button -->
           <div class="flex items-center justify-between border-b-2 border-surface-container-highest pb-2.5">
@@ -648,7 +648,7 @@ export function attachLiveRexWidgetListeners() {
   }
 
   // Helper to update live dialogue bubbles without tearing down DOM
-  function updateLiveDialogue(userText, rexText) {
+  function updateLiveDialogue(userText, rexText, syncStore = true) {
     const container = document.getElementById('rex-live-dialogue-container');
     const userBox = document.getElementById('rex-live-dialogue-user');
     const userSpan = document.getElementById('rex-live-user-text');
@@ -661,17 +661,33 @@ export function attachLiveRexWidgetListeners() {
     if (userText && userBox && userSpan) {
       userBox.classList.remove('hidden');
       userSpan.textContent = `"${userText}"`;
-      store.setLiveRexState({ lastUserTranscript: userText }, true);
+      if (syncStore && store.getState().liveRex?.lastUserTranscript !== userText) {
+        store.setLiveRexState({ lastUserTranscript: userText }, true);
+      }
     }
     if (rexText && rexBox && rexSpan) {
       rexBox.classList.remove('hidden');
       rexSpan.textContent = `"${rexText}"`;
-      store.setLiveRexState({ lastRexTranscript: rexText }, true);
+      if (syncStore && store.getState().liveRex?.lastRexTranscript !== rexText) {
+        store.setLiveRexState({ lastRexTranscript: rexText }, true);
+      }
     }
     if (container) {
       container.scrollTop = container.scrollHeight;
     }
   }
+
+  // Helper to resume listening after companion finishes speaking
+  const restoreLiveListening = () => {
+    if (store.getState().liveRex?.isOpen) {
+      if (geminiLiveService.isActive) {
+        store.setLiveRexState({ isListening: true, status: 'listening' }, true);
+      } else if (!rexEngine.isWalkie) {
+        rexEngine.start();
+        store.setLiveRexState({ isListening: true, status: 'listening' }, true);
+      }
+    }
+  };
 
   // Core Gemini Live Activation Helper
   async function activateLiveGeminiSession(petId) {
@@ -682,15 +698,20 @@ export function attachLiveRexWidgetListeners() {
     try {
       Sound.pop();
       await geminiLiveService.connect(petId);
+      if (!store.getState().liveRex?.isOpen) {
+        geminiLiveService.disconnect();
+        return;
+      }
       const pGreeting = `ROAR! I'm ${petName}! Ready for super hero adventures, Little Hero?`;
       updateLiveDialogue(null, pGreeting);
-      speakCompanion(pGreeting, petId);
+      speakCompanion(pGreeting, petId, restoreLiveListening);
     } catch (liveErr) {
       console.warn("Gemini Live connection notice, activating speech recognition fallback:", liveErr);
-      rexEngine.toggleListen();
+      if (!store.getState().liveRex?.isOpen) return;
+      rexEngine.start();
       const pGreeting = `ROAR! I'm ${petName}! I'm listening! Tell me about your quests!`;
       updateLiveDialogue(null, pGreeting);
-      speakCompanion(pGreeting, petId);
+      speakCompanion(pGreeting, petId, restoreLiveListening);
     }
   }
 
@@ -705,7 +726,7 @@ export function attachLiveRexWidgetListeners() {
       const patSpeech = "*Giggle!* That tickles! I love head pats, Little Hero! ❤️";
       updateLiveDialogue(null, patSpeech);
       if (geminiLiveService.isActive) geminiLiveService.sendTextMessage("I patted your head!");
-      speakCompanion(patSpeech, activePetId);
+      speakCompanion(patSpeech, activePetId, restoreLiveListening);
     });
   }
 
@@ -719,7 +740,7 @@ export function attachLiveRexWidgetListeners() {
       const pokeSpeech = "*Boing!* Squishy dinosaur cheeks! You're super silly! 🤭";
       updateLiveDialogue(null, pokeSpeech);
       if (geminiLiveService.isActive) geminiLiveService.sendTextMessage("I poked your cheek!");
-      speakCompanion(pokeSpeech, activePetId);
+      speakCompanion(pokeSpeech, activePetId, restoreLiveListening);
     });
   }
 
@@ -734,7 +755,7 @@ export function attachLiveRexWidgetListeners() {
       const roarSpeech = "*Happy Roar!* RAWR! Super Dinosaur Hero Power! 🦖⭐";
       updateLiveDialogue(null, roarSpeech);
       if (geminiLiveService.isActive) geminiLiveService.sendTextMessage("ROAR!");
-      speakCompanion(roarSpeech, activePetId);
+      speakCompanion(roarSpeech, activePetId, restoreLiveListening);
     });
   }
 
@@ -781,15 +802,21 @@ export function attachLiveRexWidgetListeners() {
 
     // 2. WALKIE-TALKIE MODE: Tap-to-Start / Tap-to-Finish
     if (geminiLiveService.voiceMode === 'walkie') {
-      if (!geminiLiveService.isActive) {
-        await activateLiveGeminiSession(activePetId);
-      }
-      if (geminiLiveService.walkieState === 'recording') {
-        geminiLiveService.finishWalkieRecording();
+      const isCurrentlyRecording = geminiLiveService.walkieState === 'recording' || (rexEngine.isWalkie && rexEngine.isListening);
+      if (isCurrentlyRecording) {
+        if (geminiLiveService.isActive) {
+          geminiLiveService.finishWalkieRecording();
+        } else {
+          rexEngine.finishWalkieRecording();
+        }
         const inst = getActivePetSkeletalInstance('modal-mascot-skeletal-canvas');
         if (inst?.setTargetHeadPose) inst.setTargetHeadPose(0.1, 0.1, 0.05);
       } else {
-        geminiLiveService.startWalkieRecording();
+        if (geminiLiveService.isActive) {
+          geminiLiveService.startWalkieRecording();
+        } else {
+          rexEngine.startWalkieRecording();
+        }
         const inst = getActivePetSkeletalInstance('modal-mascot-skeletal-canvas');
         if (inst?.setTargetHeadPose) inst.setTargetHeadPose(0, -0.15, 0.08);
       }
@@ -836,7 +863,7 @@ export function attachLiveRexWidgetListeners() {
       if (inst) inst.triggerForeheadPat();
       const patSpeech = "*Happy dinosaur giggle!* You tickle Rex! ❤️🦖";
       updateLiveDialogue(null, patSpeech);
-      speakCompanion(patSpeech, activePetId);
+      speakCompanion(patSpeech, activePetId, restoreLiveListening);
     });
     mascotAvatarDisc.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
@@ -945,11 +972,11 @@ export function attachLiveRexWidgetListeners() {
       // Show user message & Rex reply in live dialogue immediately
       updateLiveDialogue(prompt, rexReply);
 
-      // If Gemini Live is active, also forward text to live session so server session tracks conversation
+      // If Gemini Live is active, forward text to live session with handleInGame: false so server session tracks context without duplicate local triggers
       if (geminiLiveService.isActive) {
-        geminiLiveService.sendTextMessage(prompt);
+        geminiLiveService.sendTextMessage(prompt, { handleInGame: false });
       }
-      speakCompanion(rexReply, activePetId);
+      speakCompanion(rexReply, activePetId, restoreLiveListening);
     });
   });
 
@@ -1104,9 +1131,9 @@ export function attachLiveRexWidgetListeners() {
         pillBtnEl.innerHTML = `<span class="material-symbols-outlined text-xs ${isConnecting ? 'animate-spin' : ''}">${icon}</span><span>${label}</span>`;
       }
 
-      // 4. Live Dialogue Preview update
+      // 4. Live Dialogue Preview update (syncStore = false to prevent event loop)
       if (data.lastUserTranscript || data.lastRexTranscript) {
-        updateLiveDialogue(data.lastUserTranscript, data.lastRexTranscript);
+        updateLiveDialogue(data.lastUserTranscript, data.lastRexTranscript, false);
       }
 
       // 5. Toggle Button
@@ -1157,6 +1184,25 @@ export function attachLiveRexWidgetListeners() {
       }
     };
     window.addEventListener('live-rex-state-update', window._liveRexStateUpdateHandler);
+
+    if (window._liveRexCompanionSpeechStart) {
+      window.removeEventListener('companion-speech-start', window._liveRexCompanionSpeechStart);
+      window.removeEventListener('companion-speech-end', window._liveRexCompanionSpeechEnd);
+    }
+    window._liveRexCompanionSpeechStart = () => {
+      const modalRig = getActivePetSkeletalInstance('modal-mascot-skeletal-canvas');
+      const floatRig = getActivePetSkeletalInstance('floating-mascot-skeletal-canvas');
+      modalRig?.startSpeaking?.();
+      floatRig?.startSpeaking?.();
+    };
+    window._liveRexCompanionSpeechEnd = () => {
+      const modalRig = getActivePetSkeletalInstance('modal-mascot-skeletal-canvas');
+      const floatRig = getActivePetSkeletalInstance('floating-mascot-skeletal-canvas');
+      modalRig?.stopSpeaking?.();
+      floatRig?.stopSpeaking?.();
+    };
+    window.addEventListener('companion-speech-start', window._liveRexCompanionSpeechStart);
+    window.addEventListener('companion-speech-end', window._liveRexCompanionSpeechEnd);
   }
 }
 

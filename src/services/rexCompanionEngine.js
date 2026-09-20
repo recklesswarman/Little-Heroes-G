@@ -9,7 +9,8 @@ import { Sound } from "../audio/sfx.js";
 import { auth, functions as existingFunctions } from "../config/firebase.js";
 import { signInAnonymously } from "firebase/auth";
 import { geminiLiveService } from "./geminiLiveService.js";
-import { speakCompanion, unlockVoiceAudio } from "./voiceService.js";
+import { speakCompanion, unlockVoiceAudio, isRexSpeaking } from "./voiceService.js";
+import { triggerInteractiveCelebration } from "../components/InteractiveCelebrationOverlay.js";
 
 let functions = existingFunctions;
 if (!functions) {
@@ -32,6 +33,8 @@ class RexVoiceEngine {
     this.currentState = "idle"; // 'idle' | 'listening' | 'thinking' | 'talking'
     this.onStateChange = null;
     this.restartTimeout = null;
+    this.isWalkie = false;
+    this.lastWalkieTranscript = "";
 
     if (this.recognition) {
       this.recognition.continuous = false;
@@ -49,10 +52,20 @@ class RexVoiceEngine {
       };
 
       this.recognition.onresult = async (event) => {
+        // Prevent Rex from hearing his own voice speaking through the device speakers
+        if (isRexSpeaking() || this.currentState === "talking") {
+          return;
+        }
+
         const transcript = event.results?.[0]?.[0]?.transcript;
         if (transcript && transcript.trim()) {
-          this.shouldKeepListening = false;
           const text = transcript.trim();
+          if (this.isWalkie) {
+            this.lastWalkieTranscript = text;
+            store.setLiveRexState({ lastUserTranscript: text }, true);
+            return;
+          }
+          this.shouldKeepListening = false;
           const handledInGame = this.tryHandleInGameSpeech(text);
           if (!handledInGame) {
             await this.sendToRex(text);
@@ -81,6 +94,19 @@ class RexVoiceEngine {
           this.setState("idle");
         }
       };
+    }
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("companion-speech-start", () => {
+        if (this.isListening) {
+          this.pauseListening();
+        }
+      });
+      window.addEventListener("companion-speech-end", () => {
+        if (!this.isWalkie && store.getState().liveRex?.isOpen && !geminiLiveService.isActive) {
+          this.start();
+        }
+      });
     }
   }
 
@@ -141,6 +167,11 @@ class RexVoiceEngine {
     // 1. AR TOOTHBRUSH BATTLE VOICE COMMANDS
     const activeView = store.getState().activeView || store.getState().currentView;
     if (activeView === 'battle' || activeView === 'ar_battle') {
+      if (/\b(two|twice|2)\b/i.test(clean)) {
+        this.speak("Critical learn hit! Two times a day! Enamel barrier shattered!", activePetId);
+        window.dispatchEvent(new CustomEvent('rex-battle-learn-answer', { detail: { answer: 'twice' } }));
+        return true;
+      }
       if (/blast|foam|toothpaste|attack|laser|fire/i.test(clean)) {
         this.speak("Toothpaste Foam Cannon! Super Blast!", activePetId);
         window.dispatchEvent(
@@ -335,9 +366,96 @@ class RexVoiceEngine {
     }
   }
 
+  start() {
+    this.unlockAudio();
+    if (this.isListening || this.shouldKeepListening) return;
+    if (!this.recognition) {
+      console.warn("SpeechRecognition not supported in this browser.");
+      const activePet = store.getActivePet?.();
+      this.speak("Roar! I hear you, Little Hero! Tap the pictures to play with me!", activePet?.id || "rex");
+      store.toggleLiveRexModal(true);
+      return;
+    }
+    try {
+      this.shouldKeepListening = true;
+      this.setState("listening");
+      this.recognition.start();
+    } catch (err) {
+      console.warn("Could not start recognition:", err);
+      try {
+        this.recognition.stop();
+        setTimeout(() => {
+          if (this.shouldKeepListening) this.recognition.start();
+        }, 200);
+      } catch {}
+    }
+  }
+
+  pauseListening() {
+    this.shouldKeepListening = false;
+    if (this.restartTimeout) clearTimeout(this.restartTimeout);
+    try {
+      this.recognition?.stop();
+    } catch {}
+    this.isListening = false;
+    if (this.currentState === "listening") {
+      this.setState("idle");
+    }
+  }
+
+  resumeListening() {
+    if (this.isWalkie) return;
+    this.start();
+  }
+
+  startWalkieRecording() {
+    this.unlockAudio();
+    this.isWalkie = true;
+    this.lastWalkieTranscript = "";
+    this.shouldKeepListening = true;
+    if (this.restartTimeout) clearTimeout(this.restartTimeout);
+    this.setState("listening");
+    if (!this.recognition) {
+      return;
+    }
+    try {
+      this.recognition.start();
+    } catch {
+      try {
+        this.recognition.stop();
+        setTimeout(() => {
+          if (this.isWalkie) this.recognition.start();
+        }, 150);
+      } catch {}
+    }
+  }
+
+  finishWalkieRecording() {
+    this.isWalkie = false;
+    this.shouldKeepListening = false;
+    if (this.restartTimeout) clearTimeout(this.restartTimeout);
+    try {
+      this.recognition?.stop();
+    } catch {}
+    this.isListening = false;
+    const text = (this.lastWalkieTranscript || "").trim();
+    this.lastWalkieTranscript = "";
+    if (text) {
+      const handled = this.tryHandleInGameSpeech(text);
+      if (!handled) {
+        this.sendToRex(text);
+      }
+    } else {
+      if (this.currentState === "listening") {
+        this.setState("idle");
+      }
+    }
+  }
+
   stop() {
     this.shouldKeepListening = false;
     this.isListening = false;
+    this.isWalkie = false;
     if (this.restartTimeout) clearTimeout(this.restartTimeout);
     try {
       this.recognition?.stop();
@@ -388,7 +506,15 @@ class RexVoiceEngine {
           store.setLiveRexState({ lastRexTranscript: data.reply }, true);
 
           if (data.awardedHabit) {
-            store.toggleHabitIsland(data.awardedHabit);
+            const res = store.claimCompanionHabit(data.awardedHabit);
+            if (res?.isNew) {
+              triggerInteractiveCelebration({
+                text: `+${res.coins} Coins! Habit Complete!`,
+                subtext: 'Awesome job!',
+                coins: res.coins,
+                emojis: ['⭐', '🦖', '✨']
+              });
+            }
           }
 
           this.speak(data.reply, activePetId);
@@ -397,7 +523,39 @@ class RexVoiceEngine {
       }
       throw new Error('Chat API returned invalid response');
     } catch (err) {
-      console.warn("Primary Gemini Chat notice, trying rich local fallback:", err?.message || err);
+      console.warn("Primary Gemini Chat notice, trying secondary cloud or local fallback:", err?.message || err);
+
+      // Try Firebase Cloud Functions if available
+      try {
+        if (functions) {
+          const chatCallable = httpsCallable(functions, 'chatWithPet');
+          const fnRes = await chatCallable({
+            message,
+            petId: activePetId,
+            speedMode: 'smart',
+            childName: heroName
+          });
+          const fnData = fnRes?.data;
+          if (fnData?.reply) {
+            store.setLiveRexState({ lastRexTranscript: fnData.reply }, true);
+            if (fnData.awardedHabit) {
+              const res = store.claimCompanionHabit(fnData.awardedHabit);
+              if (res?.isNew) {
+                triggerInteractiveCelebration({
+                  text: `+${res.coins} Coins! Habit Complete!`,
+                  subtext: 'Awesome job!',
+                  coins: res.coins,
+                  emojis: ['⭐', '🦖', '✨']
+                });
+              }
+            }
+            this.speak(fnData.reply, activePetId);
+            return fnData.reply;
+          }
+        }
+      } catch (fnErr) {
+        console.warn("Cloud Functions chat notice, switching to resilient local fallback:", fnErr?.message || fnErr);
+      }
       const clean = message.toLowerCase();
       let fallbackReply = `*Happy Roar!* High five, ${heroName}! Let's do our quests and play together!`;
 
@@ -439,7 +597,12 @@ class RexVoiceEngine {
     const activePetId = petId || store.getActivePet?.()?.id || "rex";
     this.setState("talking");
     speakCompanion(text, activePetId, () => {
-      this.setState("idle");
+      if (!this.isWalkie && store.getState().liveRex?.isOpen && !geminiLiveService.isActive) {
+        this.start();
+        this.setState("listening");
+      } else {
+        this.setState("idle");
+      }
     });
   }
 }

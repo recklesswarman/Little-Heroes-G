@@ -341,6 +341,196 @@ assert.ok(
 
 console.log('  ✅ PASS: Tap-to-Interrupt and Adaptive Noise Gate verified successfully!\n');
 
+// -----------------------------------------------------------------------------
+// TEST 8: Verify Non-Blocking Habit Claims (Kid Companion UX Guardrails)
+// -----------------------------------------------------------------------------
+console.log('▶️ Test 8: Verifying Non-Blocking Habit Claims (No Full-Screen Reward Modal)');
+store.closeReward();
+assert.strictEqual(store.getState().rewardModal, null, 'Reward modal should be closed initially');
+const initialCoins = store.getState().selectedHero.coins;
+const habitResult = store.claimCompanionHabit('teeth');
+assert.ok(habitResult.coins >= 0, 'claimCompanionHabit must return coin reward');
+assert.strictEqual(store.getState().rewardModal, null, 'Reward modal overlay must NEVER be opened by companion habit claim');
+assert.ok(store.getState().selectedHero.coins >= initialCoins, 'Hero coins must be updated cleanly');
+
+// Verify rexCompanionEngine does not call toggleHabitIsland
+const rexEngineCode = fs.readFileSync(path.resolve('src/services/rexCompanionEngine.js'), 'utf-8');
+assert.ok(
+  !rexEngineCode.includes('store.toggleHabitIsland'),
+  'rexCompanionEngine must never call toggleHabitIsland directly (must use claimCompanionHabit)'
+);
+console.log('  ✅ PASS: Non-blocking habit claims verified successfully!\n');
+
+// -----------------------------------------------------------------------------
+// TEST 9: Verify Infinite Event Loop Protection & Tactile Face Cleanup
+// -----------------------------------------------------------------------------
+console.log('▶️ Test 9: Verifying Infinite Event Loop Protection & Tactile Cleanup');
+const liveRexWidgetCode = fs.readFileSync(path.resolve('src/components/LiveRexWidget.js'), 'utf-8');
+assert.ok(
+  liveRexWidgetCode.includes('updateLiveDialogue(data.lastUserTranscript, data.lastRexTranscript, false)'),
+  'LiveRexWidget must pass syncStore=false to prevent state event recursion loops'
+);
+assert.ok(
+  liveRexWidgetCode.includes('handleInGame: false'),
+  'LiveRexWidget picture cards must pass handleInGame: false to prevent double speech & coin re-claims'
+);
+
+const petSkeletalCode = fs.readFileSync(path.resolve('src/components/PetSkeletalFaceViewer.js'), 'utf-8');
+assert.ok(
+  petSkeletalCode.includes('canvas._cleanupTactile'),
+  'PetSkeletalFaceViewer must clean up previous pointer/touch listeners on re-initialization'
+);
+console.log('  ✅ PASS: Infinite event loop protection and tactile cleanup verified!\n');
+
+// -----------------------------------------------------------------------------
+// TEST 10: In-Game Voice Reactions & Context Synchronization
+// -----------------------------------------------------------------------------
+console.log('▶️ Test 10: Verifying In-Game Voice Event Wiring & Quest Context');
+const battleViewCode = fs.readFileSync(path.resolve('src/views/BattleView.js'), 'utf-8');
+assert.ok(battleViewCode.includes('rex-battle-foam'), 'BattleView must listen to rex-battle-foam');
+assert.ok(battleViewCode.includes('rex-battle-shield'), 'BattleView must listen to rex-battle-shield');
+
+const danceViewCode = fs.readFileSync(path.resolve('src/views/DancePartyView.js'), 'utf-8');
+assert.ok(danceViewCode.includes('rex-dance-freeze'), 'DancePartyView must listen to rex-dance-freeze');
+assert.ok(danceViewCode.includes('rex-dance-jump'), 'DancePartyView must listen to rex-dance-jump');
+assert.ok(danceViewCode.includes('rex-dance-spin'), 'DancePartyView must listen to rex-dance-spin');
+assert.ok(danceViewCode.includes('rex-dance-fever'), 'DancePartyView must listen to rex-dance-fever');
+
+const advViewCode = fs.readFileSync(path.resolve('src/views/AdventuresMapView.js'), 'utf-8');
+assert.ok(advViewCode.includes('geminiLiveService.setQuestContext'), 'AdventuresMapView must sync quest context');
+assert.ok(advViewCode.includes('rex-live-hint'), 'AdventuresMapView must listen to rex-live-hint');
+assert.ok(advViewCode.includes('rex-live-eliminate'), 'AdventuresMapView must listen to rex-live-eliminate');
+
+// Test quest context setting
+geminiLiveService.setQuestContext({
+  question: 'Which dino has 3 horns?',
+  options: ['T-Rex', 'Triceratops', 'Brachiosaurus'],
+  correctAnswerIndex: 1,
+  hint: 'Look at the horns!'
+});
+assert.strictEqual(geminiLiveService.currentQuestContext.options.length, 3, 'Quest context must hold options');
+const hintHandled = rexEngine.tryHandleInGameSpeech('give me a hint please');
+assert.strictEqual(hintHandled, true, 'rexEngine must handle hint command when quest context is active');
+
+const eliminateHandled = rexEngine.tryHandleInGameSpeech('dino stomp');
+assert.strictEqual(eliminateHandled, true, 'rexEngine must handle stomp eliminate command');
+geminiLiveService.clearQuestContext();
+assert.strictEqual(geminiLiveService.currentQuestContext, null, 'clearQuestContext must reset context to null');
+console.log('  ✅ PASS: In-game voice event wiring and quest context verified!\n');
+
+// -----------------------------------------------------------------------------
+// TEST 11: Keyboard Escape Key & Audio Teardown
+// -----------------------------------------------------------------------------
+console.log('▶️ Test 11: Verifying Keyboard Escape Dismissal & Teardown');
+const mainCode = fs.readFileSync(path.resolve('src/main.js'), 'utf-8');
+assert.ok(mainCode.includes('store.toggleLiveRexModal(false)'), 'main.js Escape handler must close liveRex modal');
+assert.ok(mainCode.includes('geminiLiveService.disconnect()'), 'main.js Escape handler must disconnect Gemini Live');
+assert.ok(mainCode.includes('rexEngine.stop()'), 'main.js Escape handler must stop Rex voice engine');
+assert.ok(mainCode.includes('stopRex()'), 'main.js Escape handler must stop audio speech synthesis');
+console.log('  ✅ PASS: Keyboard Escape dismissal and audio teardown verified!\n');
+
+// -----------------------------------------------------------------------------
+// TEST 12: Route Normalization & Shortcut Navigation (/learn and /boost)
+// -----------------------------------------------------------------------------
+console.log('▶️ Test 12: Verifying Route Normalization & /learn, /boost Shortcuts');
+store.navigate('/learn');
+assert.strictEqual(store.getState().activeView, 'adventures_map', 'store.navigate("/learn") must map to adventures_map');
+store.navigate('/boost');
+assert.strictEqual(store.getState().activeView, 'battle', 'store.navigate("/boost") must map to battle');
+store.navigate('learn');
+assert.strictEqual(store.getState().activeView, 'adventures_map', 'store.navigate("learn") must map to adventures_map');
+store.navigate('boost');
+assert.strictEqual(store.getState().activeView, 'battle', 'store.navigate("boost") must map to battle');
+
+assert.ok(mainCode.includes("case '/learn':"), 'main.js switch statement must support /learn');
+assert.ok(mainCode.includes("case '/boost':"), 'main.js switch statement must support /boost');
+assert.ok(mainCode.includes("resolveRouteFromUrl"), 'main.js must resolve routes from URL pathname and hash');
+console.log('  ✅ PASS: Route normalization and shortcut navigation for /learn and /boost verified!\n');
+
+// -----------------------------------------------------------------------------
+// TEST 13: Battle Timer Non-Destruction (Default skipNotify = true)
+// -----------------------------------------------------------------------------
+console.log('▶️ Test 13: Verifying Battle Timer Non-Destruction (skipNotify = true)');
+let notifyCount = 0;
+const unsubscribe = store.subscribe(() => { notifyCount++; });
+store.updateColosseumTimer(119, 120); // Default skipNotify should be true
+assert.strictEqual(notifyCount, 0, 'updateColosseumTimer must NOT trigger store.notify() by default');
+store.updateColosseumTimer(118, 120, false); // Explicit skipNotify = false
+assert.strictEqual(notifyCount, 1, 'updateColosseumTimer with skipNotify=false must trigger store.notify()');
+unsubscribe();
+console.log('  ✅ PASS: Battle timer non-destruction (skipNotify = true) verified!\n');
+
+// -----------------------------------------------------------------------------
+// TEST 14: Mobile Viewport Height & Header Visibility
+// -----------------------------------------------------------------------------
+console.log('▶️ Test 14: Verifying Mobile Viewport Height & Header Visibility');
+const liveWidgetMarkup = renderLiveRexWidget();
+assert.ok(
+  liveWidgetMarkup.includes('max-h-[min(580px,calc(100dvh-12.5rem))]'),
+  'LiveRexWidget must constrain modal card height with 100dvh-12.5rem so header never overflows off-screen'
+);
+assert.ok(
+  liveWidgetMarkup.includes('z-50'),
+  'LiveRexWidget container must have z-50 to sit above all bottom navigation and canvases'
+);
+console.log('  ✅ PASS: Mobile viewport height and header visibility verified!\n');
+
+// -----------------------------------------------------------------------------
+// TEST 15: Walkie-Talkie Toggle Logic & Speech Completion Callback
+// -----------------------------------------------------------------------------
+console.log('▶️ Test 15: Verifying Walkie-Talkie Toggle & Listening Auto-Resumption');
+const widgetCode = fs.readFileSync(path.resolve('src/components/LiveRexWidget.js'), 'utf-8');
+assert.ok(
+  widgetCode.includes('restoreLiveListening'),
+  'LiveRexWidget must define restoreLiveListening callback'
+);
+assert.ok(
+  widgetCode.includes('speakCompanion(pGreeting, petId, restoreLiveListening)'),
+  'activateLiveGeminiSession must pass restoreLiveListening callback to speakCompanion'
+);
+assert.ok(
+  widgetCode.includes('geminiLiveService.walkieState === \'recording\' || (rexEngine.isWalkie && rexEngine.isListening)'),
+  'handleToggleRexLive must accurately check if recording is active before stopping'
+);
+console.log('  ✅ PASS: Walkie-Talkie toggle and listening auto-resumption verified!\n');
+
+// -----------------------------------------------------------------------------
+// TEST 16: Event Listener Deduplication in Map Views
+// -----------------------------------------------------------------------------
+console.log('▶️ Test 16: Verifying Event Listener Deduplication in Map Views');
+const questMapCode = fs.readFileSync(path.resolve('src/views/QuestMapView.js'), 'utf-8');
+assert.ok(
+  questMapCode.includes('window._questRexLiveAnswerHandler'),
+  'QuestMapView must store handlers on window to deduplicate event listeners'
+);
+assert.ok(
+  questMapCode.includes('window.removeEventListener(\'rex-live-answer\', window._questRexLiveAnswerHandler)'),
+  'QuestMapView must remove previous window listeners before re-attaching'
+);
+assert.ok(
+  advViewCode.includes('window._rexLiveHintHandler'),
+  'AdventuresMapView must store handlers on window to deduplicate event listeners'
+);
+console.log('  ✅ PASS: Event listener deduplication in map views verified!\n');
+
+// -----------------------------------------------------------------------------
+// TEST 17: Dance Party Routine Timer In-Place Updates
+// -----------------------------------------------------------------------------
+console.log('▶️ Test 17: Verifying Dance Party Routine Timer In-Place Updates');
+assert.ok(
+  danceViewCode.includes('id="pose-timer-val"'),
+  'DancePartyView must assign id="pose-timer-val" for in-place text updates'
+);
+assert.ok(
+  danceViewCode.includes('id="pose-timer-bar"'),
+  'DancePartyView must assign id="pose-timer-bar" for in-place bar updates'
+);
+assert.ok(
+  !danceViewCode.includes('poseTimeLeft--;\n      store.notify();'),
+  'DancePartyView routineTimer must NOT call store.notify() every second'
+);
+console.log('  ✅ PASS: Dance party routine timer in-place updates verified!\n');
+
 console.log('=============================================================');
 console.log('ALL REX THE DINO & GEMINI LIVE TESTS PASSED SUCCESSFULLY! 🎉');
 console.log('=============================================================');

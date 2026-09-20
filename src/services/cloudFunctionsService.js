@@ -247,3 +247,4 @@ class CloudFunctionsService {
 }
 
 export const cloudFunctionsService = new CloudFunctionsService();
+export const cloudFunctions = cloudFunctionsService;

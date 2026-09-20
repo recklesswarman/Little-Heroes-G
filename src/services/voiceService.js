@@ -200,6 +200,7 @@ export const stopRex = () => {
     } catch {}
   }
   activeUtterance = null;
+  store.setLiveRexState({ isSpeaking: false, status: 'idle' }, true);
   dispatchSpeechEvent('companion-speech-end');
 };
 
@@ -301,6 +302,7 @@ function speakWithSpeechSynthesis(text, petId = 'rex', onEnded = null) {
     activeUtterance = utterance;
 
     // Dispatch speech start for skeletal face lip-sync
+    store.setLiveRexState({ isSpeaking: true, status: 'speaking' }, true);
     dispatchSpeechEvent('companion-speech-start', { text: cleanSpokenText, petId });
 
     // Syllable boundary event for real-time phoneme mouth sync
@@ -310,12 +312,18 @@ function speakWithSpeechSynthesis(text, petId = 'rex', onEnded = null) {
 
     utterance.onend = () => {
       activeUtterance = null;
+      store.setLiveRexState({ isSpeaking: false }, true);
       dispatchSpeechEvent('companion-speech-end', { petId });
       if (typeof onEnded === 'function') {
         try {
           onEnded();
         } catch (e) {
           console.error('Error in voice onEnded callback:', e);
+        }
+      } else {
+        const liveRex = store.getState().liveRex;
+        if (!liveRex?.isListening && liveRex?.status !== 'listening') {
+          store.setLiveRexState({ status: 'idle' }, true);
         }
       }
     };
@@ -325,11 +333,17 @@ function speakWithSpeechSynthesis(text, petId = 'rex', onEnded = null) {
         console.debug('SpeechSynthesis notice:', e.error);
       }
       activeUtterance = null;
+      store.setLiveRexState({ isSpeaking: false }, true);
       dispatchSpeechEvent('companion-speech-end', { petId });
       if (typeof onEnded === 'function') {
         try {
           onEnded();
         } catch {}
+      } else {
+        const liveRex = store.getState().liveRex;
+        if (!liveRex?.isListening && liveRex?.status !== 'listening') {
+          store.setLiveRexState({ status: 'idle' }, true);
+        }
       }
     };
 
@@ -432,6 +446,7 @@ export const speakCompanion = async (text, petIdOrOptions = 'rex', onEnded = nul
         source.connect(sharedAudioContext.destination);
         currentAudioSource = source;
 
+        store.setLiveRexState({ isSpeaking: true, status: 'speaking' }, true);
         dispatchSpeechEvent('companion-speech-start', { text: cleanSpoken, petId, voice: data.voice });
 
         currentSyllableInterval = setInterval(() => {
@@ -451,8 +466,16 @@ export const speakCompanion = async (text, petIdOrOptions = 'rex', onEnded = nul
             clearInterval(currentSyllableInterval);
             currentSyllableInterval = null;
           }
+          store.setLiveRexState({ isSpeaking: false }, true);
           dispatchSpeechEvent('companion-speech-end', { petId });
-          if (typeof callback === 'function') callback();
+          if (typeof callback === 'function') {
+            callback();
+          } else {
+            const liveRex = store.getState().liveRex;
+            if (!liveRex?.isListening && liveRex?.status !== 'listening') {
+              store.setLiveRexState({ status: 'idle' }, true);
+            }
+          }
         };
 
         source.start(0);

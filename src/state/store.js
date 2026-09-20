@@ -1063,14 +1063,21 @@ class Store {
   }
 
   navigate(viewName, params = {}) {
-    if (viewName === 'parent_portal' && !this.isParentUnlocked()) {
+    let targetView = viewName;
+    if (targetView === 'learn' || targetView === '/learn') {
+      targetView = 'adventures_map';
+    } else if (targetView === 'boost' || targetView === '/boost') {
+      targetView = 'battle';
+    }
+
+    if (targetView === 'parent_portal' && !this.isParentUnlocked()) {
       window.dispatchEvent(new CustomEvent('open-parent-modal'));
       return;
     }
 
-    if (this.state.activeView !== viewName) {
+    if (this.state.activeView !== targetView) {
       this.state.previousView = this.state.activeView;
-      this.state.activeView = viewName;
+      this.state.activeView = targetView;
       if (params.petId) this.state.selectedPetDetailId = params.petId;
       if (params.gameId) this.state.selectedAdventureGameId = params.gameId;
       Sound.click();
@@ -1080,7 +1087,9 @@ class Store {
         } catch (e) {}
       }
       this.notify();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (typeof window?.scrollTo === 'function') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
 
       // When kid selects the pet pen for the first time after profile creation:
       if (viewName === 'hero_hq') {
@@ -6572,7 +6581,7 @@ class Store {
     return col;
   }
 
-  updateColosseumTimer(secondsRemaining, totalDuration = 120) {
+  updateColosseumTimer(secondsRemaining, totalDuration = 120, skipNotify = true) {
     const col = this.getBossColosseumState();
     col.secondsRemaining = secondsRemaining;
     col.totalDuration = totalDuration;
@@ -6598,7 +6607,9 @@ class Store {
         col.shieldHp = col.maxShieldHp;
       }
     }
-    this.notify();
+    if (!skipNotify) {
+      this.notify();
+    }
   }
 
   fireColosseumBlaster() {

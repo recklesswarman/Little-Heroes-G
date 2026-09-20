@@ -19,6 +19,9 @@ import { renderPetSelectionModal, attachPetSelectionModalListeners } from './com
 import { renderPetLockerModal, attachPetLockerModalListeners } from './components/PetLockerModal.js';
 import { renderMysterySurpriseModal, attachMysterySurpriseModalListeners } from './components/MysterySurpriseModal.js';
 import { renderLiveRexWidget, attachLiveRexWidgetListeners } from './components/LiveRexWidget.js';
+import { geminiLiveService } from './services/geminiLiveService.js';
+import { rexEngine } from './services/rexCompanionEngine.js';
+import { stopRex } from './services/voiceService.js';
 import { renderGiftCrateWidget, renderGiftCrateModal, attachGiftCrateListeners } from './components/GiftCrateModal.js';
 
 // Views
@@ -189,6 +192,8 @@ function renderApp() {
       attachViewListeners = attachPetLockerListeners;
       break;
     case 'adventures_map':
+    case 'learn':
+    case '/learn':
       mainContent = renderAdventuresMapView();
       attachViewListeners = attachAdventuresMapListeners;
       break;
@@ -198,6 +203,8 @@ function renderApp() {
       break;
     case 'battle':
     case 'ar_battle':
+    case 'boost':
+    case '/boost':
       mainContent = renderBattleView();
       attachViewListeners = attachBattleListeners;
       break;
@@ -336,6 +343,14 @@ window.addEventListener('keydown', (e) => {
     store.closeReward();
     window.dispatchEvent(new CustomEvent('close-parent-lock'));
     window.dispatchEvent(new CustomEvent('close-household-modal'));
+    if (store.getState().liveRex?.isOpen) {
+      store.toggleLiveRexModal(false);
+      if (geminiLiveService.isActive) {
+        geminiLiveService.disconnect();
+      }
+      rexEngine.stop();
+      stopRex();
+    }
   }
 });
 
@@ -370,6 +385,32 @@ window.addEventListener('online', () => {
   if (store.getState().isHouseholdConfigured && code) {
     firestoreSync.startSync(code);
     firestoreSync.syncNow().catch(() => {});
+  }
+});
+
+// Route Resolver for /learn and /boost shortcuts
+function resolveRouteFromUrl() {
+  if (typeof window === 'undefined') return null;
+  const path = (window.location.pathname || '').toLowerCase();
+  const hash = (window.location.hash || '').toLowerCase().replace(/^#\/?/, '');
+  if (path === '/learn' || path === 'learn' || hash === 'learn') {
+    return 'adventures_map';
+  }
+  if (path === '/boost' || path === 'boost' || hash === 'boost') {
+    return 'battle';
+  }
+  return null;
+}
+
+const initialRoute = resolveRouteFromUrl();
+if (initialRoute && store.getState().activeView !== initialRoute) {
+  store.navigate(initialRoute);
+}
+
+window.addEventListener('popstate', () => {
+  const route = resolveRouteFromUrl();
+  if (route && store.getState().activeView !== route) {
+    store.navigate(route);
   }
 });
 
