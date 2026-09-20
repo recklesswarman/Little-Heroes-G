@@ -34,6 +34,16 @@ class GeminiLiveService {
 
     // Resampling config
     this.inputSampleRate = 16000;
+
+    // Dual-Mode Voice: 'free' (Talk Freely hands-free) vs 'walkie' (Walkie-Talkie)
+    this.voiceMode = 'free';
+    this.walkieState = 'idle'; // 'idle' | 'recording'
+    this.tapToInterruptRequested = false;
+
+    // Adaptive RMS Noise Gate & Kid Buffer
+    this.ambientNoiseFloor = 0.015;
+    this.speechDetectedInTurn = false;
+    this.lastSpeechTime = 0;
   }
 
   get isActive() {
@@ -83,6 +93,46 @@ class GeminiLiveService {
         rexEngine.tryHandleInGameSpeech(text);
       }).catch(() => {});
     } catch {}
+  }
+
+  setVoiceMode(mode) {
+    this.voiceMode = mode === 'walkie' ? 'walkie' : 'free';
+    this.walkieState = 'idle';
+    store.setLiveRexState({ voiceMode: this.voiceMode, walkieState: this.walkieState }, true);
+    const petName = store.getActivePet?.()?.name || 'Rex';
+    if (this.voiceMode === 'walkie') {
+      this.updateStatus('idle', `Walkie-Talkie 📻 Tap button to speak to ${petName}!`);
+    } else {
+      this.updateStatus('listening', `Talk Freely 🗣️ Speak anytime, ${petName} is listening!`);
+    }
+    try { Sound.click(); } catch {}
+  }
+
+  startWalkieRecording() {
+    this.walkieState = 'recording';
+    this.speechDetectedInTurn = true;
+    store.setLiveRexState({ walkieState: 'recording' }, true);
+    const petName = store.getActivePet?.()?.name || 'Rex';
+    this.updateStatus('listening', `📻 Recording Walkie-Talkie! Speak to ${petName}...`);
+    try { Sound.pop(); } catch {}
+  }
+
+  finishWalkieRecording() {
+    if (this.walkieState !== 'recording') return;
+    this.walkieState = 'idle';
+    this.speechDetectedInTurn = false;
+    store.setLiveRexState({ walkieState: 'idle' }, true);
+    const petName = store.getActivePet?.()?.name || 'Rex';
+    this.updateStatus('thinking', `Over and out! 📻 ${petName} is thinking...`);
+    try { Sound.chirp(); } catch {}
+  }
+
+  interruptSpeech() {
+    this.tapToInterruptRequested = true;
+    this.stopAudioPlayback();
+    const petName = store.getActivePet?.()?.name || 'Rex';
+    this.updateStatus('listening', `Tap to talk! ${petName} is listening!`);
+    try { Sound.chirp(); } catch {}
   }
 
   async connect(preferredPetId = null) {
@@ -228,6 +278,40 @@ class GeminiLiveService {
           this.onVolumeCallback(volumeLevel, 'input');
         }
 
+        // Tap-to-Interrupt Safeguard:
+        // When Rex is actively speaking aloud, do NOT stream mic audio to avoid background noise/echo
+        // triggering premature barge-in interruption. Child must tap avatar/pause button to interrupt.
+        if (this.isSpeaking) {
+          return;
+        }
+
+        // Adaptive Noise Gate Logic:
+        // When quiet, dynamically adapt the ambient noise floor
+        if (rms < this.ambientNoiseFloor * 1.5) {
+          this.ambientNoiseFloor = this.ambientNoiseFloor * 0.95 + rms * 0.05;
+        }
+        const speechThreshold = Math.max(0.022, this.ambientNoiseFloor * 2.2);
+
+        // Mode-Specific Handling
+        if (this.voiceMode === 'walkie') {
+          // Walkie-talkie mode: only stream when explicitly in recording state
+          if (this.walkieState !== 'recording') {
+            return;
+          }
+        } else {
+          // 'free' mode: Talk Freely with adaptive VAD & 1.8-second kid silence buffer
+          if (rms >= speechThreshold) {
+            this.speechDetectedInTurn = true;
+            this.lastSpeechTime = Date.now();
+          } else if (this.speechDetectedInTurn) {
+            if (Date.now() - this.lastSpeechTime >= 1800) {
+              this.speechDetectedInTurn = false;
+              const petName = store.getActivePet?.()?.name || 'Rex';
+              this.updateStatus('thinking', `${petName} is thinking...`);
+            }
+          }
+        }
+
         // Downsample input from hardware sample rate to 16,000 Hz PCM
         const downsampled = this.downsampleBuffer(inputChannelData, this.inputSampleRate, 16000);
         const pcm16Buffer = this.floatTo16BitPCM(downsampled);
@@ -284,7 +368,10 @@ class GeminiLiveService {
         this.isConnecting = false;
         this.startMicrophone().then(() => {
           const petName = store.getActivePet?.()?.name || 'Rex';
-          this.updateStatus('listening', `${petName} is listening! Speak now!`);
+          const msg = this.voiceMode === 'walkie'
+            ? `Walkie-Talkie 📻 Tap button to speak to ${petName}!`
+            : `Talk Freely 🗣️ Speak anytime, ${petName} is listening!`;
+          this.updateStatus(this.voiceMode === 'walkie' ? 'idle' : 'listening', msg);
           try { Sound.chirp(); } catch {}
           if (this.currentQuestContext) {
             this.sendQuestContextUpdate(this.currentQuestContext);
@@ -295,15 +382,18 @@ class GeminiLiveService {
         return;
       }
 
-      // 2. Interruption Handling (Barge-in: child spoke while model was speaking)
+      // 2. Interruption Handling (Tap-to-Interrupt Only safeguard)
       if (data.interrupted) {
-        this.stopAudioPlayback();
-        this.isSpeaking = false;
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('companion-speech-end', { detail: { petId: store.getActivePet?.()?.id || 'rex' } }));
+        if (this.tapToInterruptRequested) {
+          this.tapToInterruptRequested = false;
+          this.stopAudioPlayback();
+          this.isSpeaking = false;
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('companion-speech-end', { detail: { petId: store.getActivePet?.()?.id || 'rex' } }));
+          }
+          const petName = store.getActivePet?.()?.name || 'Rex';
+          this.updateStatus('listening', `${petName} is listening!`);
         }
-        const petName = store.getActivePet?.()?.name || 'Rex';
-        this.updateStatus('listening', `${petName} is listening!`);
         return;
       }
 

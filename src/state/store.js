@@ -568,6 +568,8 @@ const defaultState = {
     isSpeaking: false,
     status: 'idle',
     statusMessage: '',
+    voiceMode: 'free',
+    walkieState: 'idle',
     lastUserTranscript: '',
     lastRexTranscript: '',
     geminiApiKey: '',

@@ -91,15 +91,22 @@ export function renderLiveRexWidget() {
     isConnected: false,
     isListening: false,
     isSpeaking: false,
+    voiceMode: 'free',
+    walkieState: 'idle',
     status: 'idle',
     statusMessage: '',
     lastUserTranscript: '',
     lastRexTranscript: ''
   };
 
+  const voiceMode = liveRex.voiceMode || geminiLiveService.voiceMode || 'free';
+  const walkieState = liveRex.walkieState || geminiLiveService.walkieState || 'idle';
+  const isWalkie = voiceMode === 'walkie';
+  const isWalkieRecording = isWalkie && walkieState === 'recording';
+
   const isSpeaking = liveRex.isSpeaking || rexEngine.currentState === 'talking' || isRexSpeaking();
-  const isListening = liveRex.isListening || rexEngine.currentState === 'listening';
-  const isThinking = rexEngine.currentState === 'thinking';
+  const isListening = (isWalkie ? isWalkieRecording : (liveRex.isListening || rexEngine.currentState === 'listening'));
+  const isThinking = liveRex.status === 'thinking' || rexEngine.currentState === 'thinking';
   const isOpen = liveRex.isOpen;
 
   const activePet = store?.getActivePet?.() || { id: 'rex', name: 'Rex the Dino' };
@@ -156,32 +163,68 @@ export function renderLiveRexWidget() {
           <!-- TAB 1: LIVE VOICE & TACTILE PET CHAMPION -->
           <div id="rex-view-live" class="${activeTab === 'live' ? 'flex' : 'hidden'} flex-col gap-3 overflow-y-auto pr-1 hide-scrollbar">
             
+            <!-- TWO GIANT KID-FRIENDLY TOGGLE BADGES: Talk Freely vs Walkie-Talkie -->
+            <div class="grid grid-cols-2 gap-2 w-full pt-0.5">
+              <button id="rex-mode-free-btn" class="py-2.5 px-3 rounded-2xl border-2 flex items-center justify-center gap-2 font-headline font-black text-xs transition-all cursor-pointer shadow-sm active:scale-95 ${
+                !isWalkie
+                  ? 'bg-gradient-to-r from-emerald-500/25 to-teal-500/20 border-emerald-400 text-emerald-300 ring-2 ring-emerald-400/40 shadow-[0_0_15px_rgba(52,211,153,0.3)]'
+                  : 'bg-surface-container-high border-surface-container-highest text-on-surface-variant hover:text-inverse-surface'
+              }" title="Talk Freely without holding buttons">
+                <span class="text-xl select-none">🗣️</span>
+                <span class="flex flex-col text-left leading-tight">
+                  <span class="text-[11px] font-black">Talk Freely</span>
+                  <span class="text-[9px] font-bold opacity-80">Hands-Free</span>
+                </span>
+              </button>
+
+              <button id="rex-mode-walkie-btn" class="py-2.5 px-3 rounded-2xl border-2 flex items-center justify-center gap-2 font-headline font-black text-xs transition-all cursor-pointer shadow-sm active:scale-95 ${
+                isWalkie
+                  ? 'bg-gradient-to-r from-amber-500/25 to-orange-500/20 border-amber-400 text-amber-300 ring-2 ring-amber-400/40 shadow-[0_0_15px_rgba(251,191,36,0.3)]'
+                  : 'bg-surface-container-high border-surface-container-highest text-on-surface-variant hover:text-inverse-surface'
+              }" title="Walkie-Talkie Tap to Speak">
+                <span class="text-xl select-none">📻</span>
+                <span class="flex flex-col text-left leading-tight">
+                  <span class="text-[11px] font-black">Walkie-Talkie</span>
+                  <span class="text-[9px] font-bold opacity-80">Tap to Talk</span>
+                </span>
+              </button>
+            </div>
+
             <!-- GIANT TAP-TO-TALK MASCOT HERO SECTION -->
             <div class="flex flex-col items-center justify-center pt-1 pb-1">
               <div class="group relative p-1.5 rounded-full transition-transform focus:outline-none" title="Pet or Talk to ${petName}!">
                 
                 <!-- Ambient Glow & Rings -->
                 ${
-                  isListening
+                  isWalkieRecording
+                    ? `<div class="absolute -inset-3 rounded-full bg-amber-400/40 animate-ping pointer-events-none"></div>
+                       <div class="absolute -inset-1.5 rounded-full bg-orange-400/30 animate-pulse pointer-events-none"></div>`
+                    : isListening
                     ? `<div class="absolute -inset-2.5 rounded-full bg-emerald-400/40 animate-ping pointer-events-none"></div>
                        <div class="absolute -inset-1 rounded-full bg-emerald-300/30 animate-pulse pointer-events-none"></div>`
                     : isThinking
                     ? `<div class="absolute -inset-2 rounded-full border-4 border-dashed border-amber-400 animate-spin pointer-events-none"></div>`
                     : isSpeaking
                     ? `<div class="absolute -inset-2.5 rounded-full bg-primary/30 animate-pulse pointer-events-none"></div>`
+                    : isWalkie
+                    ? `<div class="absolute -inset-1.5 rounded-full border-2 border-dashed border-amber-400/30 pointer-events-none"></div>`
                     : ''
                 }
 
                 <!-- Giant Mascot Avatar Disc with Skeletal Face Mesh (128px) -->
                 <div id="rex-mascot-avatar-disc" role="button" tabindex="0" class="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-surface-container-high p-1 shadow-2xl flex items-center justify-center transition-all overflow-hidden cursor-pointer active:scale-95 ${
-                  isListening
+                  isSpeaking
+                    ? 'ring-4 ring-primary border-4 border-primary shadow-[0_0_25px_rgba(16,185,129,0.6)] animate-pulse'
+                    : isWalkieRecording
+                    ? 'ring-4 ring-amber-400 border-4 border-amber-400 shadow-[0_0_30px_rgba(245,158,11,0.8)]'
+                    : isListening
                     ? 'ring-4 ring-emerald-400 border-4 border-emerald-400 shadow-[0_0_30px_rgba(52,211,153,0.7)]'
                     : isThinking
                     ? 'ring-4 ring-amber-400 border-4 border-amber-400 shadow-[0_0_25px_rgba(251,191,36,0.6)]'
-                    : isSpeaking
-                    ? 'ring-4 ring-primary border-4 border-primary shadow-[0_0_25px_rgba(16,185,129,0.6)]'
+                    : isWalkie
+                    ? 'ring-2 ring-amber-400/50 border-4 border-amber-400/40 hover:border-amber-400'
                     : 'border-4 border-primary/40 hover:border-primary group-hover:scale-105'
-                }" title="Tap ${petName}'s face to talk!">
+                }" title="${isSpeaking ? 'Tap Rex to pause talking!' : `Tap ${petName}'s face to pet or talk!`}">
                   ${renderPetSkeletalFaceViewer({
                     canvasId: 'modal-mascot-skeletal-canvas',
                     petId: activePetId,
@@ -192,20 +235,44 @@ export function renderLiveRexWidget() {
                 </div>
 
                 <!-- Action Indicator Pill -->
-                <button id="modal-rex-avatar-btn" class="absolute -bottom-2.5 left-1/2 -translate-x-1/2 px-3 py-1 min-h-[32px] rounded-full text-[11px] font-headline font-black shadow-lg flex items-center gap-1.5 whitespace-nowrap cursor-pointer z-10 transition-transform active:scale-95 ${
-                  isListening
+                <button id="modal-rex-avatar-btn" class="absolute -bottom-2.5 left-1/2 -translate-x-1/2 px-3.5 py-1 min-h-[32px] rounded-full text-[11px] font-headline font-black shadow-lg flex items-center gap-1.5 whitespace-nowrap cursor-pointer z-10 transition-transform active:scale-95 ${
+                  isSpeaking
+                    ? 'bg-primary text-on-primary ring-2 ring-primary-container animate-pulse'
+                    : isWalkieRecording
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black animate-pulse ring-2 ring-amber-300'
+                    : isWalkie
+                    ? 'bg-surface-container-highest text-amber-300 border border-amber-400/60 hover:brightness-110'
+                    : isListening
                     ? 'bg-emerald-500 text-white animate-pulse'
                     : isThinking
                     ? 'bg-amber-500 text-white animate-bounce'
-                    : isSpeaking
-                    ? 'bg-primary text-on-primary'
                     : 'bg-secondary text-on-secondary hover:brightness-110'
                 }">
                   <span class="material-symbols-outlined text-xs">${
-                    isListening ? 'mic' : isThinking ? 'hourglass_top' : isSpeaking ? 'volume_up' : 'touch_app'
+                    isSpeaking
+                      ? 'volume_up'
+                      : isWalkieRecording
+                      ? 'sensors'
+                      : isWalkie
+                      ? 'radio'
+                      : isListening
+                      ? 'mic'
+                      : isThinking
+                      ? 'hourglass_top'
+                      : 'touch_app'
                   }</span>
                   <span>${
-                    isListening ? 'Listening...' : isThinking ? 'Thinking...' : isSpeaking ? 'Talking!' : 'Tap to Talk!'
+                    isSpeaking
+                      ? 'Talking! (Tap to Pause)'
+                      : isWalkieRecording
+                      ? 'Tap when Done! 🚀'
+                      : isWalkie
+                      ? 'Tap to Talk 📻'
+                      : isListening
+                      ? 'Listening...'
+                      : isThinking
+                      ? 'Thinking...'
+                      : 'Tap to Talk!'
                   }</span>
                 </button>
               </div>
@@ -226,12 +293,16 @@ export function renderLiveRexWidget() {
               <!-- Status Subtitle -->
               <p id="rex-status-text" class="text-xs font-headline font-bold text-on-surface-variant mt-2 text-center">
                 ${
-                  isListening
+                  isSpeaking
+                    ? `🗣️ ${petName} is speaking! (Tap Rex to pause)`
+                    : isWalkieRecording
+                    ? `📻 Walkie-Talkie: Speaking to Rex! Tap button when done!`
+                    : isWalkie
+                    ? `📻 Walkie-Talkie: Tap button to speak to ${petName}!`
+                    : isListening
                     ? `👂 Speak now! ${petName} is listening to you!`
                     : isThinking
                     ? `🤔 ${petName} is getting your answer ready...`
-                    : isSpeaking
-                    ? `🗣️ ${petName} is speaking!`
                     : `Touch ${petName}'s face or pick a picture below!`
                 }
               </p>
@@ -330,12 +401,30 @@ export function renderLiveRexWidget() {
             <!-- Bottom Live Microphone Toggle Button -->
             <div class="flex items-center gap-2 pt-1 border-t border-surface-container-highest">
               <button id="live-rex-toggle-btn" class="flex-1 py-3 px-4 rounded-2xl font-headline text-xs font-black flex items-center justify-center gap-2 chunky-btn shadow-md active:scale-95 transition-all cursor-pointer ${
-                isListening
+                isSpeaking
+                  ? 'bg-primary text-on-primary border-primary-container animate-pulse ring-2 ring-primary/50'
+                  : isWalkieRecording
+                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 border-amber-600 animate-pulse ring-2 ring-amber-400'
+                  : isWalkie
+                  ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-300 border-2 border-amber-400/50 hover:bg-amber-500/30'
+                  : isListening
                   ? 'bg-emerald-500 text-white border-emerald-600 animate-pulse'
                   : 'bg-primary text-on-primary border-primary-container'
               }">
-                <span class="material-symbols-outlined text-base">${isListening ? 'mic' : 'mic_none'}</span>
-                <span>${isListening ? 'Listening (Tap to Stop)' : 'Start Live Conversation'}</span>
+                <span class="material-symbols-outlined text-base">${
+                  isSpeaking ? 'pause_circle' : isWalkieRecording ? 'sensors' : isWalkie ? 'radio' : isListening ? 'mic' : 'mic_none'
+                }</span>
+                <span>${
+                  isSpeaking
+                    ? `${petName} is Talking! (Tap to Pause)`
+                    : isWalkieRecording
+                    ? 'Recording... Tap to Send to Rex! 🚀'
+                    : isWalkie
+                    ? 'Start Talking (Walkie-Talkie 📻)'
+                    : isListening
+                    ? 'Listening (Tap to Pause)'
+                    : 'Start Live Conversation'
+                }</span>
               </button>
             </div>
 
@@ -533,6 +622,31 @@ export function attachLiveRexWidgetListeners() {
     });
   }
 
+  // Voice Mode Badges (Talk Freely 🗣️ vs Walkie-Talkie 📻)
+  const modeFreeBtn = document.getElementById('rex-mode-free-btn');
+  const modeWalkieBtn = document.getElementById('rex-mode-walkie-btn');
+  if (modeFreeBtn && modeWalkieBtn) {
+    modeFreeBtn.addEventListener('click', () => {
+      geminiLiveService.setVoiceMode('free');
+      modeFreeBtn.className = 'py-2.5 px-3 rounded-2xl border-2 flex items-center justify-center gap-2 font-headline font-black text-xs transition-all cursor-pointer shadow-sm active:scale-95 bg-gradient-to-r from-emerald-500/25 to-teal-500/20 border-emerald-400 text-emerald-300 ring-2 ring-emerald-400/40 shadow-[0_0_15px_rgba(52,211,153,0.3)]';
+      modeWalkieBtn.className = 'py-2.5 px-3 rounded-2xl border-2 flex items-center justify-center gap-2 font-headline font-black text-xs transition-all cursor-pointer shadow-sm active:scale-95 bg-surface-container-high border-surface-container-highest text-on-surface-variant hover:text-inverse-surface';
+      Sound.click();
+      if (!geminiLiveService.isActive) {
+        activateLiveGeminiSession(activePetId);
+      }
+    });
+
+    modeWalkieBtn.addEventListener('click', () => {
+      geminiLiveService.setVoiceMode('walkie');
+      modeWalkieBtn.className = 'py-2.5 px-3 rounded-2xl border-2 flex items-center justify-center gap-2 font-headline font-black text-xs transition-all cursor-pointer shadow-sm active:scale-95 bg-gradient-to-r from-amber-500/25 to-orange-500/20 border-amber-400 text-amber-300 ring-2 ring-amber-400/40 shadow-[0_0_15px_rgba(251,191,36,0.3)]';
+      modeFreeBtn.className = 'py-2.5 px-3 rounded-2xl border-2 flex items-center justify-center gap-2 font-headline font-black text-xs transition-all cursor-pointer shadow-sm active:scale-95 bg-surface-container-high border-surface-container-highest text-on-surface-variant hover:text-inverse-surface';
+      Sound.click();
+      if (!geminiLiveService.isActive) {
+        activateLiveGeminiSession(activePetId);
+      }
+    });
+  }
+
   // Helper to update live dialogue bubbles without tearing down DOM
   function updateLiveDialogue(userText, rexText) {
     const container = document.getElementById('rex-live-dialogue-container');
@@ -651,17 +765,38 @@ export function attachLiveRexWidgetListeners() {
     });
   }
 
-  // Toggle Live Audio function
+  // Toggle Live Audio function: Handles Tap-to-Interrupt, Walkie-Talkie, and Talk Freely modes
   const handleToggleRexLive = async () => {
     geminiLiveService.unlockAudio();
     rexEngine.unlockAudio();
+
+    // 1. TAP-TO-INTERRUPT: If Rex is actively speaking aloud, tap immediately pauses Rex!
     if (geminiLiveService.isSpeaking || isRexSpeaking()) {
       Sound.chirp();
-      geminiLiveService.stopAudioPlayback();
+      geminiLiveService.interruptSpeech();
       stopRex();
-      geminiLiveService.updateStatus('listening', `${petName} is listening!`);
+      updateLiveDialogue(null, "*Gently paused!* Tap or speak whenever you're ready, Little Hero! ❤️");
       return;
     }
+
+    // 2. WALKIE-TALKIE MODE: Tap-to-Start / Tap-to-Finish
+    if (geminiLiveService.voiceMode === 'walkie') {
+      if (!geminiLiveService.isActive) {
+        await activateLiveGeminiSession(activePetId);
+      }
+      if (geminiLiveService.walkieState === 'recording') {
+        geminiLiveService.finishWalkieRecording();
+        const inst = getActivePetSkeletalInstance('modal-mascot-skeletal-canvas');
+        if (inst?.setTargetHeadPose) inst.setTargetHeadPose(0.1, 0.1, 0.05);
+      } else {
+        geminiLiveService.startWalkieRecording();
+        const inst = getActivePetSkeletalInstance('modal-mascot-skeletal-canvas');
+        if (inst?.setTargetHeadPose) inst.setTargetHeadPose(0, -0.15, 0.08);
+      }
+      return;
+    }
+
+    // 3. TALK FREELY MODE (Hands-Free with adaptive VAD)
     if (geminiLiveService.isActive) {
       Sound.chirp();
       geminiLiveService.disconnect();
@@ -682,11 +817,20 @@ export function attachLiveRexWidgetListeners() {
     });
   }
 
-  // Giant mascot avatar disc triggers loving pet interaction on tap (does NOT disconnect live mic!)
+  // Giant mascot avatar disc:
+  // If Rex is speaking: Tap-to-Interrupt cleanly pauses speech!
+  // If Rex is quiet: loving pet interaction on tap (does NOT disconnect live mic!)
   const mascotAvatarDisc = document.getElementById('rex-mascot-avatar-disc');
   if (mascotAvatarDisc) {
     mascotAvatarDisc.addEventListener('click', (e) => {
       e.stopPropagation();
+      if (geminiLiveService.isSpeaking || isRexSpeaking()) {
+        Sound.chirp();
+        geminiLiveService.interruptSpeech();
+        stopRex();
+        updateLiveDialogue(null, "*Gently paused!* Tap or speak whenever you're ready, Little Hero! ❤️");
+        return;
+      }
       Sound.chirp();
       const inst = getActivePetSkeletalInstance('modal-mascot-skeletal-canvas');
       if (inst) inst.triggerForeheadPat();
@@ -697,6 +841,11 @@ export function attachLiveRexWidgetListeners() {
     mascotAvatarDisc.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
+        if (geminiLiveService.isSpeaking || isRexSpeaking()) {
+          geminiLiveService.interruptSpeech();
+          stopRex();
+          return;
+        }
         Sound.chirp();
         const inst = getActivePetSkeletalInstance('modal-mascot-skeletal-canvas');
         if (inst) inst.triggerForeheadPat();
@@ -838,6 +987,13 @@ export function attachLiveRexWidgetListeners() {
 
   geminiLiveService.onVolumeCallback = (volume, type) => {
     updateWaveformVolume(volume, type);
+    // Real-time lip-sync mouth animation on skeletal 3D mascot rigs
+    if (type === 'output' && volume > 0.02) {
+      const modalSkel = getActivePetSkeletalInstance('modal-mascot-skeletal-canvas');
+      const floatSkel = getActivePetSkeletalInstance('floating-mascot-skeletal-canvas');
+      if (modalSkel?.setMouthOpen) modalSkel.setMouthOpen(Math.min(1, volume * 2.2));
+      if (floatSkel?.setMouthOpen) floatSkel.setMouthOpen(Math.min(1, volume * 2.2));
+    }
   };
 
   rexEngine.onStateChange = (state) => {
@@ -852,10 +1008,13 @@ export function attachLiveRexWidgetListeners() {
     window._liveRexStateUpdateHandler = (event) => {
       const data = event.detail || {};
       const status = data.status || 'idle';
-      const isListening = status === 'listening';
-      const isThinking = status === 'thinking';
-      const isConnecting = status === 'connecting';
       const isSpeaking = status === 'talking' || status === 'speaking' || isRexSpeaking();
+      const isConnecting = status === 'connecting';
+      const isThinking = status === 'thinking';
+      
+      const isWalkie = geminiLiveService.voiceMode === 'walkie';
+      const isWalkieRecording = isWalkie && (geminiLiveService.walkieState === 'recording' || data.walkieState === 'recording');
+      const isListening = isWalkie ? isWalkieRecording : (status === 'listening');
 
       const currentPet = store?.getActivePet?.() || { id: 'rex', name: 'Rex the Dino' };
       const pName = currentPet.name || 'Rex the Dino';
@@ -863,14 +1022,18 @@ export function attachLiveRexWidgetListeners() {
       // 1. Status Text
       const statusTextEl = document.getElementById('rex-status-text');
       if (statusTextEl) {
-        statusTextEl.textContent = isConnecting
+        statusTextEl.textContent = isSpeaking
+          ? `🗣️ ${pName} is speaking! (Tap Rex to pause)`
+          : isConnecting
           ? `🔄 Connecting to ${pName}...`
+          : isWalkieRecording
+          ? `📻 Recording Walkie-Talkie! Tap when you are done!`
+          : isWalkie
+          ? `📻 Walkie-Talkie: Tap button to speak to ${pName}!`
           : isListening
           ? `👂 Speak now! ${pName} is listening to you!`
           : isThinking
           ? `🤔 ${pName} is getting your answer ready...`
-          : isSpeaking
-          ? `🗣️ ${pName} is speaking!`
           : `Touch ${pName}'s face or pick a picture below!`;
       }
 
@@ -878,14 +1041,18 @@ export function attachLiveRexWidgetListeners() {
       const discEl = document.getElementById('rex-mascot-avatar-disc');
       if (discEl) {
         discEl.className = `w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-surface-container-high p-1 shadow-2xl flex items-center justify-center transition-all overflow-hidden cursor-pointer active:scale-95 ${
-          isListening
+          isSpeaking
+            ? 'ring-4 ring-primary border-4 border-primary shadow-[0_0_25px_rgba(16,185,129,0.6)] animate-pulse'
+            : isWalkieRecording
+            ? 'ring-4 ring-amber-400 border-4 border-amber-400 shadow-[0_0_30px_rgba(245,158,11,0.8)]'
+            : isListening
             ? 'ring-4 ring-emerald-400 border-4 border-emerald-400 shadow-[0_0_30px_rgba(52,211,153,0.7)]'
             : isThinking
             ? 'ring-4 ring-amber-400 border-4 border-amber-400 shadow-[0_0_25px_rgba(251,191,36,0.6)]'
             : isConnecting
             ? 'ring-4 ring-sky-400 border-4 border-sky-400 shadow-[0_0_25px_rgba(56,189,248,0.6)]'
-            : isSpeaking
-            ? 'ring-4 ring-primary border-4 border-primary shadow-[0_0_25px_rgba(16,185,129,0.6)]'
+            : isWalkie
+            ? 'ring-2 ring-amber-400/50 border-4 border-amber-400/40 hover:border-amber-400'
             : 'border-4 border-primary/40 hover:border-primary group-hover:scale-105'
         }`;
       }
@@ -893,19 +1060,47 @@ export function attachLiveRexWidgetListeners() {
       // 3. Action Indicator Pill Button
       const pillBtnEl = document.getElementById('modal-rex-avatar-btn');
       if (pillBtnEl) {
-        pillBtnEl.className = `absolute -bottom-2.5 left-1/2 -translate-x-1/2 px-3 py-1 min-h-[32px] rounded-full text-[11px] font-headline font-black shadow-lg flex items-center gap-1.5 whitespace-nowrap cursor-pointer z-10 transition-transform active:scale-95 ${
-          isListening
+        pillBtnEl.className = `absolute -bottom-2.5 left-1/2 -translate-x-1/2 px-3.5 py-1 min-h-[32px] rounded-full text-[11px] font-headline font-black shadow-lg flex items-center gap-1.5 whitespace-nowrap cursor-pointer z-10 transition-transform active:scale-95 ${
+          isSpeaking
+            ? 'bg-primary text-on-primary ring-2 ring-primary-container animate-pulse'
+            : isWalkieRecording
+            ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black animate-pulse ring-2 ring-amber-300'
+            : isWalkie
+            ? 'bg-surface-container-highest text-amber-300 border border-amber-400/60 hover:brightness-110'
+            : isListening
             ? 'bg-emerald-500 text-white animate-pulse'
             : isThinking
             ? 'bg-amber-500 text-white animate-bounce'
             : isConnecting
             ? 'bg-sky-500 text-white animate-pulse'
-            : isSpeaking
-            ? 'bg-primary text-on-primary'
             : 'bg-secondary text-on-secondary hover:brightness-110'
         }`;
-        const icon = isListening ? 'mic' : isThinking ? 'hourglass_top' : isConnecting ? 'sync' : isSpeaking ? 'volume_up' : 'touch_app';
-        const label = isListening ? 'Listening (Tap to Stop)' : isThinking ? 'Thinking...' : isConnecting ? 'Connecting...' : isSpeaking ? 'Talking! (Tap to Pause)' : 'Tap to Talk!';
+        const icon = isSpeaking
+          ? 'volume_up'
+          : isWalkieRecording
+          ? 'sensors'
+          : isWalkie
+          ? 'radio'
+          : isListening
+          ? 'mic'
+          : isThinking
+          ? 'hourglass_top'
+          : isConnecting
+          ? 'sync'
+          : 'touch_app';
+        const label = isSpeaking
+          ? 'Talking! (Tap to Pause)'
+          : isWalkieRecording
+          ? 'Tap when Done! 🚀'
+          : isWalkie
+          ? 'Tap to Talk 📻'
+          : isListening
+          ? 'Listening...'
+          : isThinking
+          ? 'Thinking...'
+          : isConnecting
+          ? 'Connecting...'
+          : 'Tap to Talk!';
         pillBtnEl.innerHTML = `<span class="material-symbols-outlined text-xs ${isConnecting ? 'animate-spin' : ''}">${icon}</span><span>${label}</span>`;
       }
 
@@ -917,15 +1112,21 @@ export function attachLiveRexWidgetListeners() {
       // 5. Toggle Button
       const toggleBtnEl = document.getElementById('live-rex-toggle-btn');
       if (toggleBtnEl) {
-        if (isListening) {
-          toggleBtnEl.className = 'flex-1 py-3 px-4 rounded-2xl font-headline text-xs font-black flex items-center justify-center gap-2 chunky-btn shadow-md active:scale-95 transition-all bg-emerald-500 text-white border-emerald-600 animate-pulse cursor-pointer';
-          toggleBtnEl.innerHTML = '<span class="material-symbols-outlined text-base">mic</span><span>Listening (Tap to Stop)</span>';
+        if (isSpeaking) {
+          toggleBtnEl.className = 'flex-1 py-3 px-4 rounded-2xl font-headline text-xs font-black flex items-center justify-center gap-2 chunky-btn shadow-md active:scale-95 transition-all bg-primary text-on-primary border-primary-container animate-pulse ring-2 ring-primary/50 cursor-pointer';
+          toggleBtnEl.innerHTML = `<span class="material-symbols-outlined text-base">pause_circle</span><span>${pName} is Talking! (Tap to Pause)</span>`;
         } else if (isConnecting) {
           toggleBtnEl.className = 'flex-1 py-3 px-4 rounded-2xl font-headline text-xs font-black flex items-center justify-center gap-2 chunky-btn shadow-md active:scale-95 transition-all bg-sky-500 text-white border-sky-600 animate-pulse cursor-pointer';
           toggleBtnEl.innerHTML = '<span class="material-symbols-outlined text-base animate-spin">sync</span><span>Connecting to Gemini Live...</span>';
-        } else if (isSpeaking) {
-          toggleBtnEl.className = 'flex-1 py-3 px-4 rounded-2xl font-headline text-xs font-black flex items-center justify-center gap-2 chunky-btn shadow-md active:scale-95 transition-all bg-primary text-on-primary border-primary-container animate-pulse cursor-pointer';
-          toggleBtnEl.innerHTML = '<span class="material-symbols-outlined text-base">volume_up</span><span>Rex is Talking! (Tap to Pause)</span>';
+        } else if (isWalkieRecording) {
+          toggleBtnEl.className = 'flex-1 py-3 px-4 rounded-2xl font-headline text-xs font-black flex items-center justify-center gap-2 chunky-btn shadow-md active:scale-95 transition-all bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 border-amber-600 animate-pulse ring-2 ring-amber-400 cursor-pointer';
+          toggleBtnEl.innerHTML = '<span class="material-symbols-outlined text-base">sensors</span><span>Recording... Tap to Send to Rex! 🚀</span>';
+        } else if (isWalkie) {
+          toggleBtnEl.className = 'flex-1 py-3 px-4 rounded-2xl font-headline text-xs font-black flex items-center justify-center gap-2 chunky-btn shadow-md active:scale-95 transition-all bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-300 border-2 border-amber-400/50 hover:bg-amber-500/30 cursor-pointer';
+          toggleBtnEl.innerHTML = '<span class="material-symbols-outlined text-base">radio</span><span>Start Talking (Walkie-Talkie 📻)</span>';
+        } else if (isListening) {
+          toggleBtnEl.className = 'flex-1 py-3 px-4 rounded-2xl font-headline text-xs font-black flex items-center justify-center gap-2 chunky-btn shadow-md active:scale-95 transition-all bg-emerald-500 text-white border-emerald-600 animate-pulse cursor-pointer';
+          toggleBtnEl.innerHTML = '<span class="material-symbols-outlined text-base">mic</span><span>Listening (Tap to Pause)</span>';
         } else {
           toggleBtnEl.className = 'flex-1 py-3 px-4 rounded-2xl font-headline text-xs font-black flex items-center justify-center gap-2 chunky-btn shadow-md active:scale-95 transition-all bg-primary text-on-primary border-primary-container cursor-pointer';
           toggleBtnEl.innerHTML = '<span class="material-symbols-outlined text-base">mic_none</span><span>Start Live Conversation</span>';

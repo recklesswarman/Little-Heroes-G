@@ -272,6 +272,75 @@ assert.ok(
 
 console.log('  ✅ PASS: Selecting floating companion directly activates Gemini Live API, and all pet widget buttons perform their actions reliably!\n');
 
+// -----------------------------------------------------------------------------
+// TEST 6: Verify Dual Voice Modes ("Talk Freely 🗣️" vs "Walkie-Talkie 📻")
+// -----------------------------------------------------------------------------
+console.log('▶️ Test 6: Verifying Dual Voice Modes & Walkie-Talkie Interactions');
+
+// 1. Dual mode badges exist in rendered HTML
+assert.ok(
+  renderedHtml.includes('id="rex-mode-free-btn"'),
+  'Must render Talk Freely mode button'
+);
+assert.ok(
+  renderedHtml.includes('id="rex-mode-walkie-btn"'),
+  'Must render Walkie-Talkie mode button'
+);
+
+// 2. Default mode is 'free'
+assert.strictEqual(geminiLiveService.voiceMode, 'free', 'Default voiceMode must be free');
+
+// 3. Switch to walkie-talkie
+geminiLiveService.setVoiceMode('walkie');
+assert.strictEqual(geminiLiveService.voiceMode, 'walkie', 'setVoiceMode(walkie) must set voiceMode to walkie');
+assert.strictEqual(store.getState().liveRex.voiceMode, 'walkie', 'Store must reflect walkie voiceMode');
+
+// 4. Test Walkie-Talkie tap-to-start / tap-to-finish
+geminiLiveService.startWalkieRecording();
+assert.strictEqual(geminiLiveService.walkieState, 'recording', 'startWalkieRecording must set walkieState to recording');
+assert.strictEqual(store.getState().liveRex.walkieState, 'recording', 'Store must reflect recording walkieState');
+
+geminiLiveService.finishWalkieRecording();
+assert.strictEqual(geminiLiveService.walkieState, 'idle', 'finishWalkieRecording must set walkieState to idle');
+assert.strictEqual(store.getState().liveRex.walkieState, 'idle', 'Store must reflect idle walkieState');
+
+// 5. Switch back to free mode
+geminiLiveService.setVoiceMode('free');
+assert.strictEqual(geminiLiveService.voiceMode, 'free', 'setVoiceMode(free) must set voiceMode to free');
+
+console.log('  ✅ PASS: Dual Voice Modes and Walkie-Talkie state transitions verified successfully!\n');
+
+// -----------------------------------------------------------------------------
+// TEST 7: Verify Tap-to-Interrupt & Adaptive RMS Noise Gate
+// -----------------------------------------------------------------------------
+console.log('▶️ Test 7: Verifying Tap-to-Interrupt Safeguard & Adaptive Noise Gate');
+
+// 1. Tap-to-Interrupt method exists
+assert.ok(typeof geminiLiveService.interruptSpeech === 'function', 'geminiLiveService.interruptSpeech must exist');
+
+// 2. Adaptive noise floor properties exist
+assert.ok(typeof geminiLiveService.ambientNoiseFloor === 'number', 'ambientNoiseFloor must be a number');
+assert.ok(geminiLiveService.ambientNoiseFloor > 0, 'ambientNoiseFloor must be positive');
+
+// 3. Verify widget event listeners include tap-to-interrupt logic
+assert.ok(
+  widgetContent.includes('geminiLiveService.interruptSpeech()'),
+  'Widget must call interruptSpeech when tapping during playback'
+);
+
+// 4. Verify speech protection in onaudioprocess
+const liveServiceContent = fs.readFileSync(path.resolve('src/services/geminiLiveService.js'), 'utf-8');
+assert.ok(
+  liveServiceContent.includes('if (this.isSpeaking)'),
+  'geminiLiveService must guard against audio streaming during active speech playback'
+);
+assert.ok(
+  liveServiceContent.includes('1800'),
+  'geminiLiveService must enforce 1.8-second kid silence buffer threshold'
+);
+
+console.log('  ✅ PASS: Tap-to-Interrupt and Adaptive Noise Gate verified successfully!\n');
+
 console.log('=============================================================');
 console.log('ALL REX THE DINO & GEMINI LIVE TESTS PASSED SUCCESSFULLY! 🎉');
 console.log('=============================================================');
