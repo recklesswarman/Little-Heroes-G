@@ -80,18 +80,46 @@ export const PET_PERSONAS = {
   }
 };
 
+// --- Minimal in-memory per-IP rate limiter ---
+// These endpoints have no per-user authentication (kid devices in this app
+// are not required to sign in to Firebase Auth), so this is the main guard
+// against a caller spamming the paid Gemini API or using this server as an
+// open relay. Not a substitute for real auth/App Check, but bounds abuse
+// without breaking the app's unauthenticated-by-design device flow.
+const rateLimitHits = new Map();
+
+function isRateLimited(key, maxHits, windowMs) {
+  const now = Date.now();
+  const hits = (rateLimitHits.get(key) || []).filter((t) => now - t < windowMs);
+  if (hits.length >= maxHits) {
+    rateLimitHits.set(key, hits);
+    return true;
+  }
+  hits.push(now);
+  rateLimitHits.set(key, hits);
+  return false;
+}
+
+function getRequestIp(req) {
+  const forwarded = req.headers?.['x-forwarded-for'];
+  if (typeof forwarded === 'string' && forwarded.trim()) {
+    return forwarded.split(',')[0].trim();
+  }
+  return req.socket?.remoteAddress || req.ip || 'unknown';
+}
+
 let cachedAiClient = null;
 
-export function getGeminiClient() {
+export function getGeminiClient(overrideKey = null) {
   if (!GoogleGenAI) {
     return null;
   }
-  if (!cachedAiClient) {
-    const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+  const apiKey = overrideKey || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+  if (!cachedAiClient || (overrideKey && overrideKey !== cachedAiClient._apiKey)) {
     if (!apiKey) {
       console.warn('GEMINI_API_KEY is not configured in server environment.');
     }
-    cachedAiClient = new GoogleGenAI({
+    const client = new GoogleGenAI({
       apiKey: apiKey || '',
       httpOptions: {
         headers: {
@@ -99,6 +127,11 @@ export function getGeminiClient() {
         }
       }
     });
+    client._apiKey = apiKey;
+    if (!overrideKey) {
+      cachedAiClient = client;
+    }
+    return client;
   }
   return cachedAiClient;
 }
@@ -109,6 +142,10 @@ export function getGeminiClient() {
  */
 export async function handleTTSRequest(req, res) {
   try {
+    if (isRateLimited(`tts:${getRequestIp(req)}`, 30, 60_000)) {
+      return res.status(429).json({ error: 'Too many requests, please slow down.' });
+    }
+
     const { text, petId, voice } = req.body || {};
     if (!text || typeof text !== 'string' || !text.trim()) {
       return res.status(400).json({ error: 'Text prompt is required.' });
@@ -180,6 +217,10 @@ export async function handleTTSRequest(req, res) {
  */
 export async function handleChatRequest(req, res) {
   try {
+    if (isRateLimited(`chat:${getRequestIp(req)}`, 30, 60_000)) {
+      return res.status(429).json({ error: 'Too many requests, please slow down.' });
+    }
+
     const { message, history = [], petId = 'rex', speedMode = 'smart', childName = 'Little Hero' } = req.body || {};
 
     if (!message || typeof message !== 'string' || !message.trim()) {
@@ -191,8 +232,8 @@ export async function handleChatRequest(req, res) {
 
     // Select model according to guidelines:
     // Fast tasks: 'gemini-3.1-flash-lite'
-    // General tasks: 'gemini-3.5-flash'
-    const model = speedMode === 'fast' ? 'gemini-3.1-flash-lite' : 'gemini-3.5-flash';
+    // General tasks: 'gemini-3.7-flash'
+    const model = speedMode === 'fast' ? 'gemini-3.1-flash-lite' : 'gemini-3.7-flash';
 
     const systemInstruction = `${persona.prompt}
 Current Child User: "${childName}".
@@ -202,7 +243,7 @@ Special Interactive Directives:
 3. If the child feels scared or upset, offer a warm virtual hug and a calming 3-second breathing count ("Breathe in 1-2-3, blow like a gentle dragon 1-2-3").
 4. Keep the text concise, joyful, and easy to read aloud.`;
 
-    const ai = getGeminiClient();
+    const ai = getGeminiClient(req.body?.apiKey);
     if (!ai) {
       return res.status(503).json({ error: 'Gemini service is not initialized in server environment.' });
     }
@@ -265,6 +306,12 @@ export function attachGeminiLiveWebSocket(httpServer) {
   httpServer.on('upgrade', (request, socket, head) => {
     const url = new URL(request.url, `http://${request.headers.host || 'localhost'}`);
     if (url.pathname === '/api/gemini/live' || url.pathname === '/live') {
+      const ip = getRequestIp(request);
+      if (isRateLimited(`live:${ip}`, 10, 60_000)) {
+        socket.write('HTTP/1.1 429 Too Many Requests\r\n\r\n');
+        socket.destroy();
+        return;
+      }
       wss.handleUpgrade(request, socket, head, (ws) => {
         wss.emit('connection', ws, request);
       });
@@ -275,6 +322,7 @@ export function attachGeminiLiveWebSocket(httpServer) {
     console.log('Gemini Live client connected');
     const url = new URL(request.url, `http://${request.headers.host || 'localhost'}`);
     const petId = url.searchParams.get('pet') || 'rex';
+    const apiKeyParam = url.searchParams.get('apiKey');
     const normalizedPetId = String(petId).toLowerCase();
     const voiceName = PET_VOICE_MAP[normalizedPetId] || 'Puck';
     const persona = PET_PERSONAS[normalizedPetId] || PET_PERSONAS.rex;
@@ -283,50 +331,66 @@ export function attachGeminiLiveWebSocket(httpServer) {
     let isSessionAlive = true;
 
     try {
-      const ai = getGeminiClient();
+      const ai = getGeminiClient(apiKeyParam);
       if (!ai) {
         clientWs.close(1011, 'Gemini service not initialized');
         return;
       }
 
       session = await ai.live.connect({
-        model: 'gemini-3.8-live',
+        model: 'gemini-3.1-flash-live-preview',
         config: {
-          responseModalities: [Modality.AUDIO],
+          responseModalities: ['audio'],
           speechConfig: {
             voiceConfig: {
               prebuiltVoiceConfig: { voiceName }
             }
           },
-          systemInstruction: `${persona.prompt}
-You are actively listening and speaking with a child in real time via microphone and audio.
-Speak in short, punchy, joyful sentences.
-If the child is practicing toothbrushing, shout cheerful coaching like "Scrub circles! Top and bottom!".
-If the child shouts "Blast" or "Toothpaste foam", roar with excitement: "BOOM! Toothpaste Foam Cannon!".
-If the child guesses a quest answer, cheer them on warmly.`
+          systemInstruction: {
+            parts: [{
+              text: `${persona.prompt}
+You are Rex the Dino (or companion pet), actively listening and speaking with a toddler or young child in real time.
+Guidelines:
+1. Speak in very short, energetic, joyful kid-friendly sentences (1-2 sentences maximum).
+2. If the child mentions teeth brushing, celebrate with "Scrub circles! Top and bottom!".
+3. If the child says "Blast", "Foam", or "Laser", shout "Toothpaste Foam Cannon! Super Blast!".
+4. If the child completes a chore or habit, celebrate them enthusiastically.
+5. If the child asks for a hint, give a fun gentle clue.`
+            }]
+          }
         },
         callbacks: {
           onmessage: (message) => {
             if (!isSessionAlive || clientWs.readyState !== clientWs.OPEN) return;
 
-            // Model audio PCM chunk (24kHz little-endian)
-            const audioChunk = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
-            if (audioChunk) {
-              clientWs.send(JSON.stringify({ audio: audioChunk }));
+            const content = message.serverContent;
+            if (content?.modelTurn?.parts) {
+              for (const part of content.modelTurn.parts) {
+                if (part.inlineData?.data) {
+                  clientWs.send(JSON.stringify({ audio: part.inlineData.data }));
+                }
+                if (part.text) {
+                  clientWs.send(JSON.stringify({ text: part.text }));
+                }
+              }
+            }
+
+            // Output transcription
+            if (content?.outputTranscription?.text) {
+              clientWs.send(JSON.stringify({ text: content.outputTranscription.text }));
+            }
+
+            // Input user transcription
+            if (content?.inputTranscription?.text) {
+              clientWs.send(JSON.stringify({ userText: content.inputTranscription.text }));
             }
 
             // Barge-in interruption from user speech
-            if (message.serverContent?.interrupted) {
+            if (content?.interrupted) {
               clientWs.send(JSON.stringify({ interrupted: true }));
             }
 
-            // Transcript text if available
-            const textPart = message.serverContent?.modelTurn?.parts?.find(p => p.text);
-            if (textPart?.text) {
-              clientWs.send(JSON.stringify({ text: textPart.text }));
-            }
-
-            if (message.serverContent?.turnComplete) {
+            if (content?.turnComplete) {
               clientWs.send(JSON.stringify({ turnComplete: true }));
             }
           },
@@ -351,7 +415,7 @@ If the child guesses a quest answer, cheer them on warmly.`
         status: 'ready',
         petId: normalizedPetId,
         voice: voiceName,
-        model: 'gemini-3.8-live'
+        model: 'gemini-3.1-flash-live-preview'
       }));
 
       clientWs.on('message', (data) => {
@@ -371,6 +435,15 @@ If the child guesses a quest answer, cheer them on warmly.`
             session.sendRealtimeInput({
               text: msg.text
             });
+          } else if (msg.clientContent?.turns) {
+            // Support turns format if sent
+            const texts = msg.clientContent.turns
+              .flatMap(t => t.parts || [])
+              .map(p => p.text)
+              .filter(Boolean);
+            if (texts.length > 0) {
+              session.sendRealtimeInput({ text: texts.join(' ') });
+            }
           }
         } catch (msgErr) {
           console.warn('Error handling client message in Gemini Live:', msgErr);

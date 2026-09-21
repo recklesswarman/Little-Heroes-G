@@ -15,15 +15,11 @@
     "@google/genai": "^2.23.0",
     "@splinetool/runtime": "^2.0.55",
     "@types/express": "^5.0.6",
-    "@types/pg": "^8.23.1",
     "canvas-confetti": "^1.9.4",
     "dotenv": "^18.0.1",
-    "drizzle-kit": "^0.31.10",
-    "drizzle-orm": "^0.45.2",
     "express": "^5.2.1",
     "firebase": "^12.19.0",
     "firebase-admin": "^14.4.0",
-    "pg": "^8.23.0",
     "ws": "^8.21.3"
   },
   "devDependencies": {

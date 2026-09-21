@@ -97,7 +97,10 @@ class AIVisionChoreService {
       console.warn('Image compression skipped, using original:', e);
     }
 
-    // Try cloud function verification if online
+    // Try cloud function verification if online. Whatever it honestly reports
+    // (verified or not) is returned as-is -- it must never be silently
+    // overridden into a fabricated approval, since the Parent Portal shows
+    // this confidence score / recommendation as if it were a real AI check.
     if (typeof navigator !== 'undefined' && navigator.onLine) {
       try {
         const cloudResult = await cloudFunctionsService.verifyChoreSubmission({
@@ -109,60 +112,29 @@ class AIVisionChoreService {
           evidenceImageBase64: compressedUrl.split(',')[1] || compressedUrl
         });
 
-        if (cloudResult && cloudResult.verified) {
+        if (cloudResult) {
           return {
             ...cloudResult,
             photoUrl: compressedUrl
           };
         }
       } catch (err) {
-        console.warn('Cloud chore verification failed, using smart local engine:', err);
+        console.warn('Cloud chore verification failed:', err);
       }
     } else {
       // Offline: queue for background sync
       this.queueOfflineProof({ taskId, taskTitle, heroName, childAge, photoUrl: compressedUrl, timestamp: Date.now() });
     }
 
-    // Smart Local Heuristic Fallback based on task type
-    const lowerTitle = (taskTitle || '').toLowerCase();
-    let confidenceScore = 92;
-    let feedbackForKid = 'Woah ' + heroName + '! Rex sees your awesome effort on "' + taskTitle + '"! High five! 🦖⭐';
-    let parentRecommendation = 'Approve';
-    let badgeEarned = 'Photo Master';
-
-    if (lowerTitle.includes('bed')) {
-      confidenceScore = 94;
-      feedbackForKid = 'Super tidy bed, ' + heroName + '! The sheets look snug and cozy! Rex wants to take a dinosaur nap here! 🛏️🦖';
-      parentRecommendation = 'Bed appears neatly made with pillows straightened.';
-      badgeEarned = 'Bed Master';
-    } else if (lowerTitle.includes('teeth') || lowerTitle.includes('brush')) {
-      confidenceScore = 95;
-      feedbackForKid = 'Sparkly clean pearly whites, ' + heroName + '! Sugar Bug King does not stand a chance! ✨🦷';
-      parentRecommendation = 'Good brushing routine visible; verified sparkling smile.';
-      badgeEarned = 'Sparkle Knight';
-    } else if (lowerTitle.includes('toy') || lowerTitle.includes('clean') || lowerTitle.includes('room')) {
-      confidenceScore = 91;
-      feedbackForKid = 'Look at that clean floor! All toys tucked away safely! You are a superstar helper, ' + heroName + '! 🧸🚀';
-      parentRecommendation = 'Floor clear of clutter; toys neatly put in baskets.';
-      badgeEarned = 'Tidy Titan';
-    } else if (lowerTitle.includes('pet') || lowerTitle.includes('feed')) {
-      confidenceScore = 93;
-      feedbackForKid = 'Your pet looks so happy and well-cared for! You are the best pet guardian ever! 🐾💖';
-      parentRecommendation = 'Pet food/water bowls attended to properly.';
-      badgeEarned = 'Pet Hero';
-    } else if (lowerTitle.includes('book') || lowerTitle.includes('read') || lowerTitle.includes('homework')) {
-      confidenceScore = 96;
-      feedbackForKid = 'Look at your big brain growing! Reading adventures unlock the whole universe! 📚🌟';
-      parentRecommendation = 'Active reading / learning materials open and completed.';
-      badgeEarned = 'Scholar Spark';
-    }
-
+    // Verification could not be performed (offline, or the cloud call
+    // failed above) -- report that honestly instead of guessing "Approve"
+    // with a fabricated confidence score.
     return {
-      verified: true,
-      confidenceScore,
-      feedbackForKid,
-      parentRecommendation,
-      badgeEarned,
+      verified: false,
+      confidenceScore: 0,
+      feedbackForKid: 'Nice job, ' + heroName + '! Rex will check your photo with a grown-up soon! 🦖',
+      parentRecommendation: 'AI verification unavailable -- please review this photo manually.',
+      badgeEarned: undefined,
       photoUrl: compressedUrl
     };
   }

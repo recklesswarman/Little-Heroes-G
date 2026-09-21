@@ -6,7 +6,7 @@
 //   3. Progression & Reward Subagent
 //   4. Autonomous Micro-Quest Generator Subagent
 
-import { onCall } from "firebase-functions/v2/https";
+import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { GoogleGenAI, Type } from "@google/genai";
 import { getApps, initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
@@ -14,6 +14,13 @@ import { FieldValue, getFirestore } from "firebase-admin/firestore";
 if (!getApps().length) {
   initializeApp();
 }
+
+// Kid devices in this app are not required to sign in to Firebase Auth, so
+// this endpoint cannot require request.auth without breaking the core chore
+// flow. Instead, cap how often a single hero can trigger a paid Gemini call
+// and a reward grant, to prevent unlimited-currency farming or API-quota
+// abuse via repeated calls.
+const CHORE_SUBMISSION_COOLDOWN_MS = 60_000;
 
 export interface VerifyChoreData {
   heroId?: string;
@@ -247,6 +254,12 @@ export const verifyChoreSubmission = onCall(
         const heroRef = db.collection("heroes").doc(hero);
         await db.runTransaction(async (t) => {
           const heroDoc = await t.get(heroRef);
+
+          const lastSubmissionMs = heroDoc.exists ? heroDoc.data()?.lastChoreSubmissionAt?.toMillis?.() : null;
+          if (lastSubmissionMs && Date.now() - lastSubmissionMs < CHORE_SUBMISSION_COOLDOWN_MS) {
+            throw new HttpsError("resource-exhausted", "Please wait a moment before submitting another chore.");
+          }
+
           if (!heroDoc.exists) {
             t.set(
               heroRef,
@@ -254,6 +267,7 @@ export const verifyChoreSubmission = onCall(
                 xp: rewards.xpEarned,
                 coins: rewards.coinsEarned,
                 streak: 1,
+                lastChoreSubmissionAt: FieldValue.serverTimestamp(),
                 createdAt: FieldValue.serverTimestamp()
               },
               { merge: true }
@@ -262,7 +276,8 @@ export const verifyChoreSubmission = onCall(
             t.update(heroRef, {
               xp: FieldValue.increment(rewards.xpEarned),
               coins: FieldValue.increment(rewards.coinsEarned),
-              streak: FieldValue.increment(1)
+              streak: FieldValue.increment(1),
+              lastChoreSubmissionAt: FieldValue.serverTimestamp()
             });
           }
 
@@ -278,6 +293,9 @@ export const verifyChoreSubmission = onCall(
           });
         });
       } catch (txErr) {
+        if (txErr instanceof HttpsError) {
+          throw txErr;
+        }
         console.warn("Chore submission Firestore transaction notice:", txErr);
       }
     }

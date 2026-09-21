@@ -106,6 +106,10 @@ export function initPetSkeletalFaceViewer(canvasId, options = {}) {
  * Wire tactile pointer & touch listeners (forehead pat, cheek poke, drag tilt).
  */
 function setupTactileInteractions(canvas, instance) {
+  if (canvas._cleanupTactile) {
+    canvas._cleanupTactile();
+  }
+
   let isPointerDown = false;
   let startX = 0;
   let startY = 0;
@@ -162,4 +166,11 @@ function setupTactileInteractions(canvas, instance) {
   window.addEventListener('pointermove', handlePointerMove);
   window.addEventListener('pointerup', handlePointerUp);
   window.addEventListener('pointercancel', handlePointerUp);
+
+  canvas._cleanupTactile = () => {
+    canvas.removeEventListener('pointerdown', handlePointerDown);
+    window.removeEventListener('pointermove', handlePointerMove);
+    window.removeEventListener('pointerup', handlePointerUp);
+    window.removeEventListener('pointercancel', handlePointerUp);
+  };
 }

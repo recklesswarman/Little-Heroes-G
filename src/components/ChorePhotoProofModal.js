@@ -179,14 +179,14 @@ class ChorePhotoProofModal {
       this.close();
     } catch (err) {
       console.error('Error submitting chore proof:', err);
-      // Fallback submit
+      // Fallback submit -- verification could not run, so report that honestly
       store.submitChoreWithPhoto({
         task: this.task,
         photoUrl: this.photoDataUrl,
-        aiConfidence: 90,
-        aiFeedback: 'Photo proof submitted by ' + hero.name,
+        aiConfidence: 0,
+        aiFeedback: 'AI verification unavailable -- please review this photo manually.',
         kidFeedback: 'Great job snapping proof! Rex is super happy! 🦖⭐',
-        badgeEarned: 'Photo Hero'
+        badgeEarned: undefined
       });
       this.close();
     }

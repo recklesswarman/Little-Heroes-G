@@ -29,13 +29,10 @@ export async function submitDailyQuest(heroId, questTitle, childNotes = "", phot
       details: err?.details,
       region: "us-central1"
     });
-    return {
-      approved: true,
-      reasoning: `Great job on ${questTitle}! Your effort has been verified.`,
-      xpEarned: 25,
-      coinsEarned: 10,
-      petReaction: "*ROAR!* Fantastic work, Little Hero! Rex is super proud of you!"
-    };
+    // Do NOT fabricate a fake "verified" result here -- let the caller
+    // fall back to the quest's own defined reward instead of inventing an
+    // AI approval that never happened.
+    throw err;
   }
 }
 

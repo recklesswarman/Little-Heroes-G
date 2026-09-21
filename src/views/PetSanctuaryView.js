@@ -11,6 +11,7 @@ import { store } from '../state/store.js';
 import { PETS_DATABASE, SANCTUARY_TREATS, getPetArchetype, getPetBondBonus, getPetById } from '../data/petsData.js';
 import { PetSanctuaryCanvas } from '../components/PetSanctuaryCanvas.js';
 import { Sound } from '../audio/sfx.js';
+import { registerActiveCanvas } from '../utils/activeViewCanvasRegistry.js';
 
 let activeCanvasInstance = null;
 let eggCrackTaps = {}; // { [eggId]: tapCount }
@@ -749,6 +750,7 @@ export function attachPetSanctuaryListeners() {
       petId: activePet.id,
       gear: equippedGear
     });
+    registerActiveCanvas(activeCanvasInstance);
   }
 
   // Back Button

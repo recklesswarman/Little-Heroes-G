@@ -1251,4 +1251,40 @@ export function attachBattleListeners() {
       startBattle();
     });
   }
+
+  // 7. Live Rex Battle Voice Commands
+  if (typeof window !== 'undefined') {
+    if (window._rexBattleFoamHandler) {
+      window.removeEventListener('rex-battle-foam', window._rexBattleFoamHandler);
+    }
+    if (window._rexBattleShieldHandler) {
+      window.removeEventListener('rex-battle-shield', window._rexBattleShieldHandler);
+    }
+
+    window._rexBattleFoamHandler = (e) => {
+      if (isBattleRunning && !isBattlePaused) {
+        const activeQuad = getDentalQuadrant(secondsRemaining, totalDuration);
+        handleScrubHit(activeQuad, 'voice');
+        showComicHit('DINO FOAM CANNON! 🫧🦖');
+        if (typeof hanaBattle3DService.triggerLaserBurst === 'function') {
+          hanaBattle3DService.triggerLaserBurst();
+        }
+      }
+    };
+
+    window._rexBattleShieldHandler = (e) => {
+      if (isBattleRunning && !isBattlePaused) {
+        if (isDeflectFlurryActive) {
+          triggerDeflectSuccess();
+        } else {
+          showComicHit('HERO BUBBLE SHIELD! 🛡️✨');
+          hanaBattle3DService.onDeflectRicochet();
+          store.triggerColosseumDeflect();
+        }
+      }
+    };
+
+    window.addEventListener('rex-battle-foam', window._rexBattleFoamHandler);
+    window.addEventListener('rex-battle-shield', window._rexBattleShieldHandler);
+  }
 }

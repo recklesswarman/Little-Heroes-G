@@ -6,7 +6,8 @@ console.log('🚀 Running Full Little Hero Adventures Test Suite...\n');
 const testFiles = [
   'scratch/verify_toothbrush_revamp.js',
   'scratch/verify_auth_household_restoration.js',
-  'scratch/verify_realtime_sync_and_device_revocation.js'
+  'scratch/verify_realtime_sync_and_device_revocation.js',
+  'scratch/verify_live_rex_companion.js'
 ];
 
 let allPassed = true;

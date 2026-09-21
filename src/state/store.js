@@ -27,6 +27,7 @@ import {
 } from '../data/heroHQData.js';
 import { PET_GEAR_CATALOG, calculateActiveGearBuffs, formatStatBonusName } from '../data/petGearStudioData.js';
 import { speakCompanion } from '../services/voiceService.js';
+import { isExistingActiveHousehold } from '../utils/householdHeuristics.js';
 import { FORGE_BLUEPRINTS, getBlueprintById, isBlueprintUnlocked } from '../data/heroForgeData.js';
 import { firebaseAI } from '../services/firebaseAILogicService.js';
 
@@ -568,6 +569,8 @@ const defaultState = {
     isSpeaking: false,
     status: 'idle',
     statusMessage: '',
+    voiceMode: 'free',
+    walkieState: 'idle',
     lastUserTranscript: '',
     lastRexTranscript: '',
     geminiApiKey: '',
@@ -841,49 +844,6 @@ class Store {
 
         // Identify whether this device has an active household configured
         const currentCode = (parsed.household?.syncCode || persistentCode || '').trim().toUpperCase();
-        const hasActiveSyncCode = Boolean(currentCode && currentCode.length >= 4);
-        const hasParent = Boolean(
-          parsed.household?.parentUser?.uid ||
-          parsed.household?.parentUser?.email ||
-          (parsed.household?.parents && parsed.household.parents.length > 0) ||
-          (parsed.household?.parentEmails && parsed.household.parentEmails.length > 0)
-        );
-        const wasExplicitlyConfigured = parsed.isHouseholdConfigured === true;
-        const hasCustomHeroes = Array.isArray(parsed.heroes) && (
-          parsed.heroes.length > 1 ||
-          parsed.heroes.some(h => (
-            (h.name && h.name !== 'Little Hero') ||
-            (h.points && Number(h.points) > 0) ||
-            (h.coins && Number(h.coins) > 0) ||
-            (h.tokens && Number(h.tokens) > 0) ||
-            (h.xp && Number(h.xp) > 0) ||
-            (h.level && Number(h.level) > 1) ||
-            (h.streak && Number(h.streak) > 1) ||
-            (Array.isArray(h.unlockedPetIds) && h.unlockedPetIds.length > 0) ||
-            h.hasChosenStarterPet === true ||
-            (h.activePetId !== null && h.activePetId !== undefined)
-          ))
-        );
-        const hasCustomProgress = Boolean(
-          (parsed.taskCompletionLogs && parsed.taskCompletionLogs.length > 0) ||
-          (parsed.taskLedgerLogs && parsed.taskLedgerLogs.length > 0) ||
-          (parsed.movementSessionHistory && parsed.movementSessionHistory.length > 0) ||
-          (parsed.dentalBattleHistory && parsed.dentalBattleHistory.length > 0) ||
-          (parsed.selectedHero && (
-            (parsed.selectedHero.name && parsed.selectedHero.name !== 'Little Hero') ||
-            (parsed.selectedHero.points && Number(parsed.selectedHero.points) > 0) ||
-            (parsed.selectedHero.coins && Number(parsed.selectedHero.coins) > 0) ||
-            (parsed.selectedHero.xp && Number(parsed.selectedHero.xp) > 0) ||
-            (parsed.selectedHero.level && Number(parsed.selectedHero.level) > 1) ||
-            (Array.isArray(parsed.selectedHero.unlockedPetIds) && parsed.selectedHero.unlockedPetIds.length > 0) ||
-            parsed.selectedHero.hasChosenStarterPet === true
-          ))
-        );
-        const hasCustomName = Boolean(
-          parsed.household?.name &&
-          parsed.household.name.trim() !== '' &&
-          parsed.household.name.trim() !== 'The Hero Family'
-        );
 
         const myDeviceId = typeof localStorage !== 'undefined' ? localStorage.getItem('stitch_device_id') : null;
         const isDeviceRevoked = Boolean(
@@ -894,18 +854,9 @@ class Store {
           ))
         );
 
-        const isExistingActiveHousehold = Boolean(
-          !isDeviceRevoked && (
-            wasExplicitlyConfigured ||
-            hasActiveSyncCode ||
-            hasParent ||
-            hasCustomHeroes ||
-            hasCustomProgress ||
-            hasCustomName
-          )
-        );
+        const isExistingHousehold = !isDeviceRevoked && isExistingActiveHousehold(parsed);
 
-        if (isExistingActiveHousehold) {
+        if (isExistingHousehold) {
           parsed.isAuthenticated = true;
           parsed.isHouseholdConfigured = true;
           parsed.householdSetupStep = 'ready';
@@ -968,10 +919,6 @@ class Store {
 
   reloadState() {
     return this.loadState();
-  }
-
-  setSyncService(service) {
-    this.syncService = service;
   }
 
   /**
@@ -1061,14 +1008,21 @@ class Store {
   }
 
   navigate(viewName, params = {}) {
-    if (viewName === 'parent_portal' && !this.isParentUnlocked()) {
+    let targetView = viewName;
+    if (targetView === 'learn' || targetView === '/learn') {
+      targetView = 'adventures_map';
+    } else if (targetView === 'boost' || targetView === '/boost') {
+      targetView = 'battle';
+    }
+
+    if (targetView === 'parent_portal' && !this.isParentUnlocked()) {
       window.dispatchEvent(new CustomEvent('open-parent-modal'));
       return;
     }
 
-    if (this.state.activeView !== viewName) {
+    if (this.state.activeView !== targetView) {
       this.state.previousView = this.state.activeView;
-      this.state.activeView = viewName;
+      this.state.activeView = targetView;
       if (params.petId) this.state.selectedPetDetailId = params.petId;
       if (params.gameId) this.state.selectedAdventureGameId = params.gameId;
       Sound.click();
@@ -1078,7 +1032,9 @@ class Store {
         } catch (e) {}
       }
       this.notify();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (typeof window?.scrollTo === 'function') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
 
       // When kid selects the pet pen for the first time after profile creation:
       if (viewName === 'hero_hq') {
@@ -1477,7 +1433,19 @@ class Store {
 
   // HABIT ISLANDS COMPLETION
   toggleHabitIsland(habitId) {
-    const habit = this.state.habitIslands.find((h) => h.id === habitId);
+    let habit = this.state.habitIslands.find((h) => h.id === habitId);
+    if (!habit) {
+      if (habitId === 'eat_healthy_snack' || habitId === 'snack') {
+        habit = this.state.habitIslands.find((h) => h.id === 'healthy_snack');
+      } else if (habitId === 'brush_teeth' || habitId === 'teeth') {
+        habit = this.state.habitIslands.find((h) => h.id === 'brush_teeth_am' || h.id === 'brush_teeth_pm' || h.id === 'brush_teeth');
+        if (!habit && this.state.taskForest) {
+          return this.toggleTaskForest('morning_brush');
+        }
+      } else if ((habitId === 'clean_toys' || habitId === 'toys') && this.state.taskForest) {
+        return this.toggleTaskForest('clean_toys');
+      }
+    }
     if (!habit) return;
 
     const currentHero = this.state.selectedHero;
@@ -1598,7 +1566,18 @@ class Store {
 
   // TASK FOREST CHORE COMPLETION
   toggleTaskForest(taskId) {
-    const task = this.state.taskForest.find((t) => t.id === taskId);
+    let task = this.state.taskForest.find((t) => t.id === taskId);
+    if (!task) {
+      if (taskId === 'morning_bed' || taskId === 'bed') {
+        task = this.state.taskForest.find((t) => t.id === 'make_bed');
+      } else if (taskId === 'brush_teeth' || taskId === 'teeth') {
+        task = this.state.taskForest.find((t) => t.id === 'morning_brush' || t.id === 'bedtime_brush');
+      } else if (taskId === 'drink_water' || taskId === 'water') {
+        return this.toggleHabitIsland('drink_water');
+      } else if (taskId === 'healthy_snack' || taskId === 'eat_healthy_snack' || taskId === 'snack') {
+        return this.toggleHabitIsland('healthy_snack');
+      }
+    }
     if (!task) return;
 
     const currentHero = this.state.selectedHero;
@@ -1711,6 +1690,138 @@ class Store {
     this.chargeStarlightFuel(25);
 
     this.saveState(true);
+  }
+
+  // TODDLER VOICE COMPANION HABIT & CHORE CLAIM
+  // Non-blocking, instant tactile celebration without full-screen modal interruption
+  claimCompanionHabit(habitKey) {
+    const currentHero = this.state.selectedHero;
+    const heroId = currentHero?.id || 'hero_1';
+    const cleanKey = String(habitKey || '').toLowerCase().trim();
+
+    let habit = null;
+    let task = null;
+    let zone = 'Habit Islands';
+    let defaultTitle = 'Good Habit Champion';
+    let baseCoins = 20;
+    let baseXP = 25;
+    let points = 5;
+
+    if (cleanKey.includes('teeth') || cleanKey.includes('brush')) {
+      const isMorning = new Date().getHours() < 14;
+      task = this.state.taskForest?.find((t) => t.id === (isMorning ? 'morning_brush' : 'bedtime_brush')) ||
+             this.state.taskForest?.find((t) => t.id === 'morning_brush');
+      habit = this.state.habitIslands?.find((h) => h.id === 'brush_teeth_am' || h.id === 'brush_teeth_pm' || h.id === 'brush_teeth');
+      zone = 'Task Forest';
+      defaultTitle = isMorning ? 'Morning Toothbrush Quest' : 'Nighttime Toothbrush Quest';
+      baseCoins = 30;
+      baseXP = 35;
+      points = 15;
+    } else if (cleanKey.includes('toy') || cleanKey.includes('clean')) {
+      task = this.state.taskForest?.find((t) => t.id === 'clean_toys');
+      habit = this.state.habitIslands?.find((h) => h.id === 'clean_toys');
+      zone = 'Task Forest';
+      defaultTitle = 'Clean Up Toys & Blocks';
+      baseCoins = 25;
+      baseXP = 30;
+      points = 10;
+    } else if (cleanKey.includes('water') || cleanKey.includes('drink')) {
+      habit = this.state.habitIslands?.find((h) => h.id === 'drink_water');
+      task = this.state.taskForest?.find((t) => t.id === 'drink_water');
+      zone = 'Habit Islands';
+      defaultTitle = 'Drink Fresh Water';
+      baseCoins = 15;
+      baseXP = 20;
+      points = 5;
+    } else if (cleanKey.includes('snack') || cleanKey.includes('fruit') || cleanKey.includes('eat')) {
+      habit = this.state.habitIslands?.find((h) => h.id === 'healthy_snack' || h.id === 'eat_healthy_snack');
+      task = this.state.taskForest?.find((t) => t.id === 'healthy_snack');
+      zone = 'Habit Islands';
+      defaultTitle = 'Eat Fruit or Veggie Snack';
+      baseCoins = 20;
+      baseXP = 25;
+      points = 5;
+    }
+
+    const item = habit || task;
+    const itemId = item?.id || ('companion_' + cleanKey);
+    const itemTitle = item?.title || defaultTitle;
+    const coinsToAward = item?.coins || baseCoins;
+    const xpToAward = item?.xp || baseXP;
+    const pointsToQueue = item?.points || points;
+
+    // Check if already completed today
+    const completionsToday = this.getTaskCompletionsToday(itemId, heroId);
+    const isAlreadyDone = completionsToday.length > 0;
+
+    // Factor in Pet Gear Stat Buffs
+    const petBuffs = this.getActivePetGearBuffs ? this.getActivePetGearBuffs(currentHero.activePetId) : { coin_boost: 0, xp_boost: 0 };
+    const bonusCoins = petBuffs.coin_boost > 0 ? Math.ceil(coinsToAward * (petBuffs.coin_boost / 100)) : 0;
+    const finalCoins = coinsToAward + bonusCoins;
+    const bonusXP = petBuffs.xp_boost > 0 ? Math.ceil(xpToAward * (petBuffs.xp_boost / 100)) : 0;
+    const finalXP = xpToAward + bonusXP;
+
+    // Award currency and XP directly
+    currentHero.coins = (currentHero.coins || 0) + finalCoins;
+    this.addXP(finalXP);
+    if (item) item.completed = true;
+
+    // Audit log for Parent Portal
+    const logId = 'compl_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+    const approvalReqId = 'task_comp_' + itemId + '_' + Date.now();
+    const nowIso = new Date().toISOString();
+
+    const completionLog = {
+      id: logId,
+      taskId: itemId,
+      taskTitle: itemTitle,
+      zone,
+      heroId: heroId,
+      heroName: currentHero.name,
+      completedAt: nowIso,
+      timestamp: Date.now(),
+      dateString: new Date().toLocaleDateString(),
+      timeString: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      coinsAwarded: finalCoins,
+      pointsAwarded: pointsToQueue,
+      xpAwarded: finalXP,
+      status: 'pending',
+      approvalRequestId: approvalReqId,
+      approvedAt: null,
+      rejectedAt: null
+    };
+
+    if (!this.state.taskCompletionLogs) this.state.taskCompletionLogs = [];
+    this.state.taskCompletionLogs.unshift(completionLog);
+    if (this.state.taskCompletionLogs.length > 200) this.state.taskCompletionLogs.pop();
+
+    if (!this.state.pendingApprovals) this.state.pendingApprovals = [];
+    this.state.pendingApprovals.push({
+      id: approvalReqId,
+      logId: logId,
+      kidId: currentHero.id,
+      kidName: currentHero.name,
+      type: 'task_point_approval',
+      taskId: itemId,
+      title: itemTitle,
+      zone,
+      pendingPoints: pointsToQueue,
+      tokensAwarded: finalCoins,
+      date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: nowIso,
+      status: 'pending'
+    });
+
+    try { Sound.coin(); } catch {}
+    try { Sound.fanfare(); } catch {}
+    this.saveState(true);
+
+    return {
+      title: itemTitle,
+      coins: finalCoins,
+      xp: finalXP,
+      isAlreadyDone
+    };
   }
 
   // SUBMIT CHORE WITH OPTIONAL PHOTO PROOF (+5 BONUS TOKENS & AI VISION CONFIRMATION)
@@ -2534,11 +2645,18 @@ class Store {
   addXP(amount) {
     const hero = this.state.selectedHero;
     hero.xp += amount;
-    if (hero.xp >= hero.xpNext) {
+    let levelsGained = 0;
+    let bonusCoinsEarned = 0;
+    while (hero.xp >= hero.xpNext) {
       hero.level += 1;
       hero.xp = hero.xp - hero.xpNext;
       hero.xpNext = Math.round(hero.xpNext * 1.35);
       hero.coins += 50;
+      levelsGained += 1;
+      bonusCoinsEarned += 50;
+    }
+
+    if (levelsGained > 0) {
       Sound.levelUp();
       Sound.sparkle();
       Sound.coin();
@@ -2556,8 +2674,10 @@ class Store {
 
       this.showReward(
         `LEVEL UP! Hero Level ${hero.level}!`,
-        'You unlocked new equipment and earned +50 Bonus Tokens!',
-        50,
+        levelsGained > 1
+          ? `You unlocked new equipment and earned +${bonusCoinsEarned} Bonus Tokens across ${levelsGained} levels!`
+          : 'You unlocked new equipment and earned +50 Bonus Tokens!',
+        bonusCoinsEarned,
         0,
         hero.avatar,
         'military_tech'
@@ -4068,30 +4188,6 @@ class Store {
           task.pointsApproved = false;
           taskItem = task;
         }
-
-        // Also release on all heroes copies
-        if (this.state.heroes) {
-          this.state.heroes.forEach((h) => {
-            if (h.habitIslands) {
-              const hh = h.habitIslands.find(x => x.id === req.taskId);
-              if (hh) { hh.completed = false; hh.pointsApproved = false; }
-            }
-            if (h.taskForest) {
-              const tt = h.taskForest.find(x => x.id === req.taskId);
-              if (tt) { tt.completed = false; tt.pointsApproved = false; }
-            }
-          });
-        }
-        if (this.state.selectedHero) {
-          if (this.state.selectedHero.habitIslands) {
-            const hh = this.state.selectedHero.habitIslands.find(x => x.id === req.taskId);
-            if (hh) { hh.completed = false; hh.pointsApproved = false; }
-          }
-          if (this.state.selectedHero.taskForest) {
-            const tt = this.state.selectedHero.taskForest.find(x => x.id === req.taskId);
-            if (tt) { tt.completed = false; tt.pointsApproved = false; }
-          }
-        }
       }
 
       this.logAction(
@@ -4141,28 +4237,6 @@ class Store {
           task.completed = false;
           task.pointsApproved = false;
         }
-        if (this.state.heroes) {
-          this.state.heroes.forEach((h) => {
-            if (h.habitIslands) {
-              const hh = h.habitIslands.find(x => x.id === req.taskId);
-              if (hh) { hh.completed = false; hh.pointsApproved = false; }
-            }
-            if (h.taskForest) {
-              const tt = h.taskForest.find(x => x.id === req.taskId);
-              if (tt) { tt.completed = false; tt.pointsApproved = false; }
-            }
-          });
-        }
-        if (this.state.selectedHero) {
-          if (this.state.selectedHero.habitIslands) {
-            const hh = this.state.selectedHero.habitIslands.find(x => x.id === req.taskId);
-            if (hh) { hh.completed = false; hh.pointsApproved = false; }
-          }
-          if (this.state.selectedHero.taskForest) {
-            const tt = this.state.selectedHero.taskForest.find(x => x.id === req.taskId);
-            if (tt) { tt.completed = false; tt.pointsApproved = false; }
-          }
-        }
       }
       this.logAction(`Parent rejected Point Approval for '${req.title}' (${req.kidName})`, `0 Points ⭐ Issued`);
     } else if (req.type === 'reward') {
@@ -4204,38 +4278,6 @@ class Store {
         t.completed = false;
         t.pointsApproved = false;
       });
-    }
-
-    // 4. Also reset on all heroes in this.state.heroes and selectedHero
-    if (this.state.heroes) {
-      this.state.heroes.forEach((hero) => {
-        if (hero.habitIslands) {
-          hero.habitIslands.forEach((h) => {
-            h.completed = false;
-            h.pointsApproved = false;
-          });
-        }
-        if (hero.taskForest) {
-          hero.taskForest.forEach((t) => {
-            t.completed = false;
-            t.pointsApproved = false;
-          });
-        }
-      });
-    }
-    if (this.state.selectedHero) {
-      if (this.state.selectedHero.habitIslands) {
-        this.state.selectedHero.habitIslands.forEach((h) => {
-          h.completed = false;
-          h.pointsApproved = false;
-        });
-      }
-      if (this.state.selectedHero.taskForest) {
-        this.state.selectedHero.taskForest.forEach((t) => {
-          t.completed = false;
-          t.pointsApproved = false;
-        });
-      }
     }
 
     this.logAction('Parent Cleared All Pending Approvals', 'All pending approval notifications and button states were reset to ready.');
@@ -6441,7 +6483,7 @@ class Store {
     return col;
   }
 
-  updateColosseumTimer(secondsRemaining, totalDuration = 120) {
+  updateColosseumTimer(secondsRemaining, totalDuration = 120, skipNotify = true) {
     const col = this.getBossColosseumState();
     col.secondsRemaining = secondsRemaining;
     col.totalDuration = totalDuration;
@@ -6467,7 +6509,9 @@ class Store {
         col.shieldHp = col.maxShieldHp;
       }
     }
-    this.notify();
+    if (!skipNotify) {
+      this.notify();
+    }
   }
 
   fireColosseumBlaster() {

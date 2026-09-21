@@ -366,7 +366,7 @@ export function attachParentLockListeners() {
     const handlePinCheck = () => {
       const val = pinInput.value.trim();
       const currentPin = store.getState().parentSettings?.pin || '1234';
-      if (val === currentPin || val === '1234' || val === '56') {
+      if (val === currentPin) {
         Sound.fanfare();
         isOpen = false;
         store.unlockParentSession();

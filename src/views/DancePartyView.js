@@ -434,9 +434,9 @@ function renderMovementSession(hero, activePet, petAvatarUrl, petName) {
           
           <!-- Pose Countdown Bar -->
           <div class="w-full bg-surface-container-lowest h-2.5 rounded-full overflow-hidden mt-3 border border-surface-container-highest">
-            <div class="bg-gradient-to-r from-amber-400 to-orange-500 h-full transition-all duration-300 rounded-full" style="width: ${Math.max(5, (poseTimeLeft / (currentPose.duration || 20)) * 100)}%;"></div>
+            <div id="pose-timer-bar" class="bg-gradient-to-r from-amber-400 to-orange-500 h-full transition-all duration-300 rounded-full" style="width: ${Math.max(5, (poseTimeLeft / (currentPose.duration || 20)) * 100)}%;"></div>
           </div>
-          <span class="text-[10px] font-black text-amber-400 uppercase tracking-wider block mt-1">Pose Timer: ${poseTimeLeft}s</span>
+          <span id="pose-timer-val" class="text-[10px] font-black text-amber-400 uppercase tracking-wider block mt-1">Pose Timer: ${poseTimeLeft}s</span>
         </div>
 
         <!-- DUAL DANCING AVATARS STAGE -->
@@ -1036,6 +1036,70 @@ export function attachDancePartyEvents() {
       }
     });
   });
+
+  // --- REX DANCE VOICE LISTENERS ---
+  if (typeof window !== 'undefined') {
+    if (window._rexDanceFreezeHandler) {
+      window.removeEventListener('rex-dance-freeze', window._rexDanceFreezeHandler);
+      window.removeEventListener('rex-dance-jump', window._rexDanceJumpHandler);
+      window.removeEventListener('rex-dance-spin', window._rexDanceSpinHandler);
+      window.removeEventListener('rex-dance-fever', window._rexDanceFeverHandler);
+    }
+
+    window._rexDanceFreezeHandler = () => {
+      if (arcadeMode === 'movement_session' && activeRoutine) {
+        if (!isFreezeActive) {
+          isFreezeActive = true;
+          movementSynth.freezeMusic();
+          if (typeof Sound.recordScratch === 'function') Sound.recordScratch();
+          const danceCoach = getActiveDance3DInstance('dance-coach-3d-canvas');
+          if (danceCoach) danceCoach.triggerFreeze(true);
+          voicePrompts.speakDanceFreezeCountdown();
+          store.notify();
+        } else {
+          isFreezeActive = false;
+          movementSynth.unfreezeMusic();
+          if (typeof Sound.shieldShatter === 'function') Sound.shieldShatter();
+          const danceCoach = getActiveDance3DInstance('dance-coach-3d-canvas');
+          if (danceCoach) danceCoach.triggerFreeze(false);
+          voicePrompts.speakDanceUnfreeze();
+          advanceNextPose();
+        }
+      }
+    };
+
+    window._rexDanceJumpHandler = () => {
+      if (arcadeMode === 'movement_session') {
+        handleRhythmPadPress('bounce');
+      } else {
+        const warmupStretchBtn = document.getElementById('pet-warmup-stretch-btn');
+        if (warmupStretchBtn) warmupStretchBtn.click();
+      }
+    };
+
+    window._rexDanceSpinHandler = () => {
+      if (arcadeMode === 'movement_session') {
+        handleRhythmPadPress('spin');
+      } else {
+        const danceSpinBtn = document.getElementById('pet-dance-spin-btn');
+        if (danceSpinBtn) danceSpinBtn.click();
+      }
+    };
+
+    window._rexDanceFeverHandler = () => {
+      if (arcadeMode === 'movement_session' && !isFeverActive) {
+        triggerFeverBurst();
+        const danceCoach = getActiveDance3DInstance('dance-coach-3d-canvas');
+        if (danceCoach) danceCoach.setFeverMode(true);
+        voicePrompts.speakDanceFeverMode();
+      }
+    };
+
+    window.addEventListener('rex-dance-freeze', window._rexDanceFreezeHandler);
+    window.addEventListener('rex-dance-jump', window._rexDanceJumpHandler);
+    window.addEventListener('rex-dance-spin', window._rexDanceSpinHandler);
+    window.addEventListener('rex-dance-fever', window._rexDanceFeverHandler);
+  }
 }
 
 export const attachDancePartyListeners = attachDancePartyEvents;
@@ -1091,7 +1155,13 @@ function startMovementRoutine(routineId) {
 
     if (poseTimeLeft > 1) {
       poseTimeLeft--;
-      store.notify();
+      const poseVal = document.getElementById('pose-timer-val');
+      if (poseVal) poseVal.textContent = `Pose Timer: ${poseTimeLeft}s`;
+      const poseBar = document.getElementById('pose-timer-bar');
+      const curPose = activeRoutine?.poses?.[currentPoseIdx];
+      if (poseBar && curPose) {
+        poseBar.style.width = `${Math.max(5, (poseTimeLeft / (curPose.duration || 20)) * 100)}%`;
+      }
     } else {
       advanceNextPose();
     }

@@ -4,7 +4,7 @@
 
 import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
-import { speakCompanion } from './voiceService.js';
+import { speakCompanion, isRexSpeaking } from './voiceService.js';
 import { triggerInteractiveCelebration } from '../components/InteractiveCelebrationOverlay.js';
 
 class GeminiLiveService {
@@ -34,6 +34,29 @@ class GeminiLiveService {
 
     // Resampling config
     this.inputSampleRate = 16000;
+
+    // Dual-Mode Voice: 'free' (Talk Freely hands-free) vs 'walkie' (Walkie-Talkie)
+    this.voiceMode = 'free';
+    this.walkieState = 'idle'; // 'idle' | 'recording'
+    this.tapToInterruptRequested = false;
+
+    // Adaptive RMS Noise Gate & Kid Buffer
+    this.ambientNoiseFloor = 0.015;
+    this.speechDetectedInTurn = false;
+    this.lastSpeechTime = 0;
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('companion-speech-start', () => {
+        this.isSpeaking = true;
+      });
+      window.addEventListener('companion-speech-end', () => {
+        this.isSpeaking = false;
+        if (this.isConnected && this.isListening) {
+          const petName = store.getActivePet?.()?.name || 'Rex';
+          this.updateStatus(this.voiceMode === 'walkie' ? 'idle' : 'listening', this.voiceMode === 'walkie' ? `Walkie-Talkie 📻 Tap to speak` : `${petName} is listening!`);
+        }
+      });
+    }
   }
 
   get isActive() {
@@ -58,6 +81,10 @@ class GeminiLiveService {
     }
   }
 
+  clearQuestContext() {
+    this.currentQuestContext = null;
+  }
+
   sendQuestContextUpdate(context) {
     try {
       const optionsText = Array.isArray(context.options)
@@ -71,60 +98,211 @@ class GeminiLiveService {
     }
   }
 
-  sendTextMessage(text) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN && text) {
+  sendTextMessage(text, options = { handleInGame: true }) {
+    if (!text || typeof text !== 'string') return;
+    store.setLiveRexState({ lastUserTranscript: text }, true);
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify({ text }));
+    }
+    // Also trigger in-game reactions for habit claims or voice actions if allowed
+    if (options.handleInGame !== false) {
+      try {
+        import('./rexCompanionEngine.js').then(({ rexEngine }) => {
+          rexEngine.tryHandleInGameSpeech(text);
+        }).catch(() => {});
+      } catch {}
     }
   }
 
+  setVoiceMode(mode) {
+    this.voiceMode = mode === 'walkie' ? 'walkie' : 'free';
+    this.walkieState = 'idle';
+    store.setLiveRexState({ voiceMode: this.voiceMode, walkieState: this.walkieState }, true);
+    const petName = store.getActivePet?.()?.name || 'Rex';
+    if (this.voiceMode === 'walkie') {
+      this.updateStatus('idle', `Walkie-Talkie 📻 Tap button to speak to ${petName}!`);
+    } else {
+      this.updateStatus('listening', `Talk Freely 🗣️ Speak anytime, ${petName} is listening!`);
+    }
+    try { Sound.click(); } catch {}
+  }
+
+  startWalkieRecording() {
+    this.walkieState = 'recording';
+    this.speechDetectedInTurn = true;
+    store.setLiveRexState({ walkieState: 'recording' }, true);
+    const petName = store.getActivePet?.()?.name || 'Rex';
+    this.updateStatus('listening', `📻 Recording Walkie-Talkie! Speak to ${petName}...`);
+    try { Sound.pop(); } catch {}
+
+    // In speech recognition fallback mode, start listening
+    if (!this.isConnected) {
+      try {
+        import('./rexCompanionEngine.js').then(({ rexEngine }) => {
+          rexEngine.startWalkieRecording?.();
+        }).catch(() => {});
+      } catch {}
+    }
+  }
+
+  finishWalkieRecording() {
+    if (this.walkieState !== 'recording') return;
+    this.walkieState = 'idle';
+    this.speechDetectedInTurn = false;
+    store.setLiveRexState({ walkieState: 'idle' }, true);
+    const petName = store.getActivePet?.()?.name || 'Rex';
+    this.updateStatus('thinking', `Over and out! 📻 ${petName} is thinking...`);
+    try { Sound.chirp(); } catch {}
+
+    // If connected via Gemini Live WebSocket, tell model turn is complete
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      try {
+        this.ws.send(JSON.stringify({ clientContent: { turnComplete: true } }));
+      } catch {}
+    } else {
+      // In speech recognition fallback mode, finish recording and process
+      try {
+        import('./rexCompanionEngine.js').then(({ rexEngine }) => {
+          rexEngine.finishWalkieRecording?.();
+        }).catch(() => {});
+      } catch {}
+    }
+  }
+
+  interruptSpeech() {
+    this.tapToInterruptRequested = true;
+    this.stopAudioPlayback();
+    const petName = store.getActivePet?.()?.name || 'Rex';
+    this.updateStatus('listening', `Tap to talk! ${petName} is listening!`);
+    try { Sound.chirp(); } catch {}
+  }
+
   async connect(preferredPetId = null) {
-    if (this.isConnected || this.isConnecting) return;
+    if (this.isConnected) return true;
+    if (this.isConnecting) return false;
     this.isConnecting = true;
 
     const activePet = preferredPetId || store.getActivePet?.()?.id || 'rex';
     const petName = store.getActivePet?.()?.name || 'Rex the Dino';
     this.updateStatus('connecting', `Connecting to ${petName}...`);
 
-    try {
-      // 1. Initialize Audio Output Context for 24kHz PCM Playback
-      if (!this.audioOutputContext || this.audioOutputContext.state === 'closed') {
-        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-        this.audioOutputContext = new AudioContextClass({ sampleRate: 24000 });
-      }
-      if (this.audioOutputContext.state === 'suspended') {
-        await this.audioOutputContext.resume().catch(() => {});
-      }
+    return new Promise((resolve, reject) => {
+      let resolved = false;
 
-      // 2. Connect to server-side Gemini 3.8 Live WebSocket bridge
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/api/gemini/live?pet=${encodeURIComponent(activePet)}`;
-      
-      this.ws = new WebSocket(wsUrl);
+      const timer = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          this.cleanup();
+          this.updateStatus('error', `Connection timed out. Tap to retry!`);
+          reject(new Error('Connection timed out'));
+        }
+      }, 3000);
 
-      this.ws.onopen = () => {
-        // Connected to server bridge
-        this.isConnected = true;
-      };
+      try {
+        // 1. Initialize Audio Output Context for 24kHz PCM Playback
+        if (!this.audioOutputContext || this.audioOutputContext.state === 'closed') {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (AudioContextClass) {
+            this.audioOutputContext = new AudioContextClass({ sampleRate: 24000 });
+          }
+        }
+        if (this.audioOutputContext && this.audioOutputContext.state === 'suspended') {
+          this.audioOutputContext.resume().catch(() => {});
+        }
 
-      this.ws.onmessage = (event) => {
-        this.handleServerMessage(event.data);
-      };
+        // 2. Connect to server-side Gemini 3.1 Live WebSocket bridge
+        if (typeof WebSocket === 'undefined') {
+          clearTimeout(timer);
+          this.cleanup();
+          this.updateStatus('idle', `${petName} is ready! Tap to talk.`);
+          return reject(new Error('WebSocket is not supported in this environment'));
+        }
 
-      this.ws.onerror = (error) => {
-        console.warn('Gemini Live WebSocket error:', error);
-        this.updateStatus('error', 'Voice connection encountered a hiccup.');
-      };
+        const isStaticFirebaseHost = typeof window !== 'undefined' && 
+          (window.location.hostname.includes('web.app') || window.location.hostname.includes('firebaseapp.com'));
+        const customWsUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GEMINI_WS_URL) || 
+          (typeof localStorage !== 'undefined' ? localStorage.getItem('gemini_ws_url') : '');
 
-      this.ws.onclose = (event) => {
-        console.log('Gemini Live WebSocket closed:', event.code, event.reason);
+        if (isStaticFirebaseHost && !customWsUrl) {
+          clearTimeout(timer);
+          this.cleanup();
+          this.updateStatus('idle', `${petName} is ready!`);
+          return reject(new Error('Firebase Hosting is a static host without a persistent WebSocket bridge. Using speech recognition & Cloud Functions fallback.'));
+        }
+
+        const protocol = (typeof window !== 'undefined' && window.location.protocol === 'https:') ? 'wss:' : 'ws:';
+        const host = (typeof window !== 'undefined' && window.location.host) ? window.location.host : 'localhost:3000';
+        const envKey = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GEMINI_API_KEY) ? import.meta.env.VITE_GEMINI_API_KEY : '';
+        const storedKey = store.getState()?.liveRex?.geminiApiKey || (typeof localStorage !== 'undefined' ? localStorage.getItem('gemini_api_key') : '') || envKey;
+        const keyParam = storedKey ? `&apiKey=${encodeURIComponent(storedKey)}` : '';
+        const wsUrl = customWsUrl || `${protocol}//${host}/api/gemini/live?pet=${encodeURIComponent(activePet)}${keyParam}`;
+        
+        this.ws = new WebSocket(wsUrl);
+
+        this.ws.onopen = () => {
+          // Connected to server bridge, waiting for handshake
+        };
+
+        this.ws.onmessage = (event) => {
+          try {
+            let data = event.data;
+            if (typeof data === 'string') data = JSON.parse(data);
+            if (data && data.status === 'ready') {
+              clearTimeout(timer);
+              if (!resolved) {
+                resolved = true;
+                this.isConnected = true;
+                this.isConnecting = false;
+                this.startMicrophone().then(() => {
+                  this.updateStatus('listening', `${petName} is listening! Speak now!`);
+                  try { Sound.chirp(); } catch {}
+                  if (this.currentQuestContext) {
+                    this.sendQuestContextUpdate(this.currentQuestContext);
+                  }
+                  resolve(true);
+                }).catch(err => {
+                  console.warn('Microphone permission notice:', err);
+                  this.updateStatus('idle', `${petName} is ready! Tap to talk.`);
+                  resolve(true);
+                });
+              }
+              return;
+            }
+          } catch {}
+          this.handleServerMessage(event.data);
+        };
+
+        this.ws.onerror = (error) => {
+          console.warn('Gemini Live WebSocket error:', error);
+          clearTimeout(timer);
+          if (!resolved) {
+            resolved = true;
+            this.cleanup();
+            this.updateStatus('error', 'Voice connection encountered a hiccup.');
+            reject(new Error('WebSocket connection error'));
+          }
+        };
+
+        this.ws.onclose = (event) => {
+          console.log('Gemini Live WebSocket closed:', event.code, event.reason);
+          clearTimeout(timer);
+          this.cleanup();
+          this.updateStatus('idle', `${petName} is resting. Tap to talk!`);
+          if (!resolved) {
+            resolved = true;
+            reject(new Error('WebSocket closed before ready'));
+          }
+        };
+      } catch (err) {
+        clearTimeout(timer);
         this.cleanup();
-        this.updateStatus('idle', `${petName} is resting. Tap to talk!`);
-      };
-    } catch (err) {
-      console.error('Failed to connect to Gemini Live:', err);
-      this.cleanup();
-      this.updateStatus('error', err.message || 'Microphone or network error.');
-    }
+        this.updateStatus('error', err.message || 'Microphone or network error.');
+        if (!resolved) {
+          resolved = true;
+          reject(err);
+        }
+      }
+    });
   }
 
   async startMicrophone() {
@@ -160,6 +338,43 @@ class GeminiLiveService {
         const volumeLevel = Math.min(1, rms * 5);
         if (this.onVolumeCallback) {
           this.onVolumeCallback(volumeLevel, 'input');
+        }
+
+        // Tap-to-Interrupt Safeguard:
+        // When Rex is actively speaking aloud, do NOT stream mic audio to avoid background noise/echo
+        // triggering premature barge-in interruption. Child must tap avatar/pause button to interrupt.
+        if (this.isSpeaking) {
+          return;
+        }
+        if (isRexSpeaking()) {
+          return;
+        }
+
+        // Adaptive Noise Gate Logic:
+        // When quiet, dynamically adapt the ambient noise floor
+        if (rms < this.ambientNoiseFloor * 1.5) {
+          this.ambientNoiseFloor = this.ambientNoiseFloor * 0.95 + rms * 0.05;
+        }
+        const speechThreshold = Math.max(0.022, this.ambientNoiseFloor * 2.2);
+
+        // Mode-Specific Handling
+        if (this.voiceMode === 'walkie') {
+          // Walkie-talkie mode: only stream when explicitly in recording state
+          if (this.walkieState !== 'recording') {
+            return;
+          }
+        } else {
+          // 'free' mode: Talk Freely with adaptive VAD & 1.8-second kid silence buffer
+          if (rms >= speechThreshold) {
+            this.speechDetectedInTurn = true;
+            this.lastSpeechTime = Date.now();
+          } else if (this.speechDetectedInTurn) {
+            if (Date.now() - this.lastSpeechTime >= 1800) {
+              this.speechDetectedInTurn = false;
+              const petName = store.getActivePet?.()?.name || 'Rex';
+              this.updateStatus('thinking', `${petName} is thinking...`);
+            }
+          }
         }
 
         // Downsample input from hardware sample rate to 16,000 Hz PCM
@@ -218,7 +433,10 @@ class GeminiLiveService {
         this.isConnecting = false;
         this.startMicrophone().then(() => {
           const petName = store.getActivePet?.()?.name || 'Rex';
-          this.updateStatus('listening', `${petName} is listening! Speak now!`);
+          const msg = this.voiceMode === 'walkie'
+            ? `Walkie-Talkie 📻 Tap button to speak to ${petName}!`
+            : `Talk Freely 🗣️ Speak anytime, ${petName} is listening!`;
+          this.updateStatus(this.voiceMode === 'walkie' ? 'idle' : 'listening', msg);
           try { Sound.chirp(); } catch {}
           if (this.currentQuestContext) {
             this.sendQuestContextUpdate(this.currentQuestContext);
@@ -229,34 +447,54 @@ class GeminiLiveService {
         return;
       }
 
-      // 2. Interruption Handling (Barge-in: child spoke while model was speaking)
+      // 2. Interruption Handling (Tap-to-Interrupt Only safeguard)
       if (data.interrupted) {
-        this.stopAudioPlayback();
-        this.isSpeaking = false;
-        const petName = store.getActivePet?.()?.name || 'Rex';
-        this.updateStatus('listening', `${petName} is listening!`);
+        if (this.tapToInterruptRequested) {
+          this.tapToInterruptRequested = false;
+          this.stopAudioPlayback();
+          this.isSpeaking = false;
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('companion-speech-end', { detail: { petId: store.getActivePet?.()?.id || 'rex' } }));
+          }
+          const petName = store.getActivePet?.()?.name || 'Rex';
+          this.updateStatus('listening', `${petName} is listening!`);
+        }
         return;
       }
 
-      // 3. Audio Chunk from Gemini 3.8 Live (24kHz PCM)
+      // 3. Audio Chunk from Gemini Live (24kHz PCM)
       if (data.audio) {
         this.playAudioChunk(data.audio);
       }
 
-      // 4. Transcription Text
+      // 4. Transcription Text from Rex
       if (data.text) {
-        store.setLiveRexState({ lastRexTranscript: data.text });
+        store.setLiveRexState({ lastRexTranscript: data.text }, true);
         if (this.onTranscriptCallback) {
           this.onTranscriptCallback(data.text, 'rex');
         }
       }
 
-      // 5. Turn Complete
+      // 5. User spoken text from Gemini Live
+      if (data.userText) {
+        store.setLiveRexState({ lastUserTranscript: data.userText }, true);
+        if (this.onTranscriptCallback) {
+          this.onTranscriptCallback(data.userText, 'user');
+        }
+        // In-game actions (e.g. Toothbrush battle commands, dance party moves, habit completion)
+        try {
+          import('./rexCompanionEngine.js').then(({ rexEngine }) => {
+            rexEngine.tryHandleInGameSpeech(data.userText);
+          }).catch(() => {});
+        } catch {}
+      }
+
+      // 6. Turn Complete
       if (data.turnComplete) {
         // Handled naturally when audio sources finish
       }
 
-      // 6. Error status from server
+      // 7. Error status from server
       if (data.error) {
         console.warn('Gemini Live server error:', data.error);
         this.updateStatus('error', data.error);
@@ -268,6 +506,9 @@ class GeminiLiveService {
 
   playAudioChunk(base64Data) {
     try {
+      if (isRexSpeaking()) {
+        return;
+      }
       if (!this.audioOutputContext || this.audioOutputContext.state === 'closed') {
         const AudioContextClass = window.AudioContext || window.webkitAudioContext;
         this.audioOutputContext = new AudioContextClass({ sampleRate: 24000 });
@@ -302,16 +543,28 @@ class GeminiLiveService {
       source.start(startTime);
       this.nextAudioPlayTime = startTime + audioBuffer.duration;
 
+      const wasEmpty = this.activeAudioSources.length === 0;
       this.activeAudioSources.push(source);
       this.isSpeaking = true;
       const petName = store.getActivePet?.()?.name || 'Rex';
       this.updateStatus('speaking', `${petName} is talking!`);
+
+      if (wasEmpty && typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('companion-speech-start', {
+          detail: { petId: store.getActivePet?.()?.id || 'rex' }
+        }));
+      }
 
       source.onended = () => {
         const idx = this.activeAudioSources.indexOf(source);
         if (idx !== -1) this.activeAudioSources.splice(idx, 1);
         if (this.activeAudioSources.length === 0) {
           this.isSpeaking = false;
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('companion-speech-end', {
+              detail: { petId: store.getActivePet?.()?.id || 'rex' }
+            }));
+          }
           if (this.isConnected && this.isListening) {
             this.updateStatus('listening', `${petName} is listening!`);
           }
@@ -334,6 +587,11 @@ class GeminiLiveService {
       this.nextAudioPlayTime = this.audioOutputContext.currentTime;
     }
     this.isSpeaking = false;
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('companion-speech-end', {
+        detail: { petId: store.getActivePet?.()?.id || 'rex' }
+      }));
+    }
   }
 
   disconnect() {
@@ -374,13 +632,18 @@ class GeminiLiveService {
     }
   }
 
-  // Quick Chat interaction using server-side Gemini 3.5 Flash / 3.1 Flash Lite proxy
+  async askRexInteractions(promptText) {
+    return this.askRexChat(promptText, 'smart');
+  }
+
+  // Quick Chat interaction using server-side Gemini 3.7 Flash / 3.1 Flash Lite proxy
   async askRexChat(promptText, speedMode = 'smart') {
     if (!promptText || !promptText.trim()) return;
 
     const petId = store.getActivePet?.()?.id || 'rex';
     const petName = store.getActivePet?.()?.name || 'Rex the Dino';
     const childName = store.getState().selectedHero?.name || 'Little Hero';
+    const storedKey = store.getState()?.liveRex?.geminiApiKey || (typeof localStorage !== 'undefined' ? localStorage.getItem('gemini_api_key') : '') || '';
 
     this.updateStatus('connecting', `${petName} is thinking...`);
     store.setLiveRexState({ lastUserTranscript: promptText }, true);
@@ -393,7 +656,8 @@ class GeminiLiveService {
           message: promptText,
           petId,
           speedMode,
-          childName
+          childName,
+          apiKey: storedKey
         })
       });
 
@@ -407,7 +671,7 @@ class GeminiLiveService {
 
         // If a habit was completed, auto-award it
         if (result.awardedHabit) {
-          store.toggleHabitIsland(result.awardedHabit);
+          store.claimCompanionHabit(result.awardedHabit);
           triggerInteractiveCelebration();
         }
 
@@ -419,8 +683,63 @@ class GeminiLiveService {
         return result.reply;
       }
     } catch (err) {
-      console.warn('Chat error, falling back to local voice prompt:', err);
-      const fallback = `*Happy roar!* You are doing super, Little Hero! Let's do our quests together!`;
+      console.warn('Chat error, attempting Cloud Functions fallback:', err);
+      try {
+        const { cloudFunctions, cloudFunctionsService } = await import('./cloudFunctionsService.js');
+        const cf = cloudFunctions || cloudFunctionsService;
+        if (cf) {
+          const cfRes = await cf.chatWithPet({
+            petId,
+            petName,
+            message: promptText
+          });
+          if (cfRes && cfRes.reply && !cfRes.reply.includes('Offline mode')) {
+            store.setLiveRexState({ lastRexTranscript: cfRes.reply }, true);
+            speakCompanion(cfRes.reply, petId, () => {
+              if (this.isConnected && this.isListening) {
+                this.updateStatus(this.voiceMode === 'walkie' ? 'idle' : 'listening', this.voiceMode === 'walkie' ? 'Walkie-Talkie 📻' : `${petName} is listening!`);
+              } else {
+                this.updateStatus('idle', `${petName} is ready!`);
+              }
+            });
+            this.updateStatus('speaking', `${petName} is talking!`);
+            return cfRes.reply;
+          }
+        }
+      } catch {}
+
+      const clean = promptText.toLowerCase();
+      let fallback = `*Happy roar!* You are doing super, Little Hero! Let's do our quests together!`;
+
+      if (/joke/i.test(clean)) {
+        const jokes = [
+          "What do you call a sleeping dinosaur? A dino-snore! *Hahaha!* 🦖💤",
+          "Why did the T-Rex cross the road? To catch the super hero bus! *Giggle!* 🚌🦖",
+          "What is a dinosaur's favorite school subject? His-tree-history! *Roar!* 📚🦕"
+        ];
+        fallback = jokes[Math.floor(Math.random() * jokes.length)];
+      } else if (/teeth|brush/i.test(clean)) {
+        const res = store.claimCompanionHabit('teeth');
+        fallback = `*Sparkle smile!* +${res.coins} Coins! Scrub round and round, top and bottom! Clean teeth give you super hero strength! 🪥✨`;
+        triggerInteractiveCelebration();
+      } else if (/water|drink/i.test(clean)) {
+        const res = store.claimCompanionHabit('water');
+        fallback = `*Gulp gulp!* +${res.coins} Coins! Super hero hydration! Cold fresh water powers up your brain and muscles! 💧🦖`;
+        triggerInteractiveCelebration();
+      } else if (/toy|clean/i.test(clean)) {
+        const res = store.claimCompanionHabit('toys');
+        fallback = `*Tidy champion!* +${res.coins} Coins! All toys safely in their home! Great teamwork, Little Hero! 🧸⭐`;
+        triggerInteractiveCelebration();
+      } else if (/snack|fruit|eat/i.test(clean)) {
+        const res = store.claimCompanionHabit('snack');
+        fallback = `*Crunch crunch!* +${res.coins} Coins! Yummy vitamins! Healthy snacks give you unstoppable dinosaur energy! 🍎🥦`;
+        triggerInteractiveCelebration();
+      } else if (/bedtime|story|sleep/i.test(clean)) {
+        fallback = `Once upon a time, a brave little hero flew across the starry sky with their dinosaur buddy, dreaming happy dreams. Close your eyes, superhero! 🌙⭐`;
+      } else if (/hint|help|clue/i.test(clean)) {
+        fallback = `*Dino clue!* Look carefully at the bright colors and shapes on your screen! You've got this! 🌟🦖`;
+      }
+
       store.setLiveRexState({ lastRexTranscript: fallback }, true);
       speakCompanion(fallback, petId);
       this.updateStatus('idle', `${petName} is ready!`);

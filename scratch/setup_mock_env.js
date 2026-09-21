@@ -1,10 +1,20 @@
 // setup_mock_env.js
 // Polyfills headless environment for Node.js test execution
 
+if (typeof globalThis.CustomEvent === 'undefined') {
+  globalThis.CustomEvent = class CustomEvent {
+    constructor(type, params = {}) {
+      this.type = type;
+      this.detail = params.detail || {};
+    }
+  };
+}
+
 if (typeof globalThis.window === 'undefined') {
   globalThis.window = {
     addEventListener: () => {},
     removeEventListener: () => {},
+    dispatchEvent: () => true,
     devicePixelRatio: 1,
     location: { href: 'http://localhost/' },
     navigator: {
@@ -12,11 +22,16 @@ if (typeof globalThis.window === 'undefined') {
       platform: 'Win32'
     }
   };
-} else if (!globalThis.window.navigator) {
-  globalThis.window.navigator = {
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-    platform: 'Win32'
-  };
+} else {
+  if (!globalThis.window.dispatchEvent) {
+    globalThis.window.dispatchEvent = () => true;
+  }
+  if (!globalThis.window.navigator) {
+    globalThis.window.navigator = {
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+      platform: 'Win32'
+    };
+  }
 }
 
 if (typeof globalThis.document === 'undefined') {
@@ -53,6 +68,9 @@ if (typeof globalThis.document === 'undefined') {
     }),
     addEventListener: () => {},
     removeEventListener: () => {},
+    getElementById: () => null,
+    querySelector: () => null,
+    querySelectorAll: () => [],
     documentElement: { clientWidth: 1024, clientHeight: 768 },
     body: {
       appendChild: () => {},

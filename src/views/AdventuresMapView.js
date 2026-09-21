@@ -329,6 +329,26 @@ export function attachAdventuresMapListeners() {
     voicePrompts.speak(`Welcome to the Quest Map! Pick an adventure stop to explore with ${activePet?.name || 'your companion'}!`);
   }
 
+  function syncQuestContext() {
+    if (!activeGame) {
+      geminiLiveService.clearQuestContext();
+      return;
+    }
+    const challenges = getGameChallenges(activeGame, store.getState().selectedHero?.gameDifficulty || 'medium');
+    const challenge = challenges[currentChallengeIdx] || challenges[0];
+    if (challenge) {
+      geminiLiveService.setQuestContext({
+        question: challenge.question,
+        options: challenge.options,
+        correctAnswerIndex: challenge.answer,
+        hint: challenge.hint || 'Look closely at the pictures and colors!'
+      });
+    }
+  }
+
+  // Sync quest context on view attach
+  syncQuestContext();
+
   // Victory continue button
   const victoryBtn = document.getElementById('adv-victory-continue-btn');
   if (victoryBtn) {
@@ -336,6 +356,7 @@ export function attachAdventuresMapListeners() {
       Sound.click();
       victoryResults = null;
       activeGame = null;
+      syncQuestContext();
       store.notify();
     });
   }
@@ -349,6 +370,7 @@ export function attachAdventuresMapListeners() {
       currentChallengeIdx = 0;
       correctCount = 0;
       superMoveUsedForCurrentChallenge = false;
+      syncQuestContext();
       store.notify();
     });
   }
@@ -361,6 +383,7 @@ export function attachAdventuresMapListeners() {
       currentChallengeIdx = 0;
       correctCount = 0;
       superMoveUsedForCurrentChallenge = false;
+      syncQuestContext();
       store.notify();
     });
   });
@@ -445,6 +468,7 @@ export function attachAdventuresMapListeners() {
         currentChallengeIdx = 0;
         correctCount = 0;
         superMoveUsedForCurrentChallenge = false;
+        syncQuestContext();
         Sound.click();
         store.notify();
 
@@ -480,6 +504,7 @@ export function attachAdventuresMapListeners() {
           if (currentChallengeIdx + 1 < challenges.length) {
             currentChallengeIdx++;
             superMoveUsedForCurrentChallenge = false;
+            syncQuestContext();
             store.notify();
 
             if (isToddler) {
@@ -501,6 +526,7 @@ export function attachAdventuresMapListeners() {
             currentChallengeIdx = 0;
             correctCount = 0;
             superMoveUsedForCurrentChallenge = false;
+            syncQuestContext();
             store.notify();
             speakRex(`Incredible job! You mastered ${g.realm || g.title}!`);
           }
@@ -517,4 +543,42 @@ export function attachAdventuresMapListeners() {
       }
     });
   });
+
+  // Live Rex Voice Command Listeners for Quests
+  if (typeof window !== 'undefined') {
+    if (window._rexLiveHintHandler) {
+      window.removeEventListener('rex-live-hint', window._rexLiveHintHandler);
+      window.removeEventListener('rex-live-eliminate', window._rexLiveEliminateHandler);
+      window.removeEventListener('rex-live-read', window._rexLiveReadHandler);
+      window.removeEventListener('rex-live-answer', window._rexLiveAnswerHandler);
+    }
+
+    window._rexLiveHintHandler = () => {
+      const hintBtn = document.getElementById('adv-rex-hint-btn');
+      if (hintBtn) hintBtn.click();
+    };
+
+    window._rexLiveEliminateHandler = () => {
+      const superMoveBtn = document.getElementById('companion-super-move-btn');
+      if (superMoveBtn) superMoveBtn.click();
+    };
+
+    window._rexLiveReadHandler = () => {
+      const readBtn = document.getElementById('adv-speak-question-btn');
+      if (readBtn) readBtn.click();
+    };
+
+    window._rexLiveAnswerHandler = (e) => {
+      const idx = e.detail?.optionIndex;
+      if (typeof idx === 'number') {
+        const optBtn = document.querySelector(`.game-opt-btn[data-opt-idx="${idx}"]`);
+        if (optBtn) optBtn.click();
+      }
+    };
+
+    window.addEventListener('rex-live-hint', window._rexLiveHintHandler);
+    window.addEventListener('rex-live-eliminate', window._rexLiveEliminateHandler);
+    window.addEventListener('rex-live-read', window._rexLiveReadHandler);
+    window.addEventListener('rex-live-answer', window._rexLiveAnswerHandler);
+  }
 }

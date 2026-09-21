@@ -28,6 +28,9 @@ export const chatWithPet = onCall(
     if (!message || !message.trim()) {
       throw new HttpsError("invalid-argument", "Missing message.");
     }
+    if (message.length > 500) {
+      throw new HttpsError("invalid-argument", "Message is too long.");
+    }
 
     const childName = heroId || "Little Hero";
     const selectedPet = (petId || "rex").toLowerCase();

@@ -9,6 +9,7 @@ let ctx = null;
 let isOverlayActive = false;
 let poppedStarsCount = 0;
 let lastPointerPos = null;
+let resizeHandler = null;
 
 class InteractiveParticle {
   constructor(w, h) {
@@ -316,12 +317,16 @@ function attachParticleInteractionListeners() {
     }
   });
 
-  window.addEventListener('resize', () => {
+  if (resizeHandler) {
+    window.removeEventListener('resize', resizeHandler);
+  }
+  resizeHandler = () => {
     if (canvas && isOverlayActive) {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
     }
-  });
+  };
+  window.addEventListener('resize', resizeHandler);
 }
 
 function popParticle(particle, clickX, clickY) {
@@ -393,6 +398,10 @@ export function closeInteractiveCelebration() {
   if (animFrameId) {
     cancelAnimationFrame(animFrameId);
     animFrameId = null;
+  }
+  if (resizeHandler) {
+    window.removeEventListener('resize', resizeHandler);
+    resizeHandler = null;
   }
   const overlay = document.getElementById('interactive-celebration-container');
   if (overlay) {

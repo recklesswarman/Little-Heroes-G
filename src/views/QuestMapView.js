@@ -665,86 +665,97 @@ export function attachQuestMapListeners() {
   }
 
   // 4. Rex Live Custom Event Handlers
-  const handleRexLiveAnswer = (e) => {
-    const { optionIndex } = e.detail;
-    const btn = document.querySelector(`.map-game-opt-btn[data-map-opt-idx="${optionIndex}"]`);
-    if (btn && !btn.classList.contains('pointer-events-none')) {
+  if (typeof window !== 'undefined') {
+    if (window._questRexLiveAnswerHandler) {
+      window.removeEventListener('rex-live-answer', window._questRexLiveAnswerHandler);
+      window.removeEventListener('rex-live-eliminate', window._questRexLiveEliminateHandler);
+      window.removeEventListener('rex-live-hint', window._questRexLiveHintHandler);
+      window.removeEventListener('rex-live-read', window._questRexLiveReadHandler);
+      window.removeEventListener('rex-live-celebrate', window._questRexLiveCelebrateHandler);
+    }
+
+    window._questRexLiveAnswerHandler = (e) => {
+      const { optionIndex } = e.detail;
+      const btn = document.querySelector(`.map-game-opt-btn[data-map-opt-idx="${optionIndex}"]`);
+      if (btn && !btn.classList.contains('pointer-events-none')) {
+        Sound.pop();
+        btn.classList.add('ring-4', 'ring-emerald-400', 'bg-emerald-500/20', 'scale-102');
+        const bubble = document.getElementById('rex-arena-speech-bubble');
+        const text = document.getElementById('rex-arena-speech-text');
+        if (bubble && text) {
+          text.innerText = `Rex selected: "${btn.querySelector('.opt-label-text')?.innerText || 'Answer'}"!`;
+          bubble.classList.remove('hidden');
+        }
+        setTimeout(() => {
+          btn.classList.remove('ring-4', 'ring-emerald-400', 'bg-emerald-500/20', 'scale-102');
+          btn.click();
+        }, 400);
+      }
+    };
+
+    window._questRexLiveEliminateHandler = (e) => {
+      const { eliminatedOptionIndex } = e.detail;
+      const btn = document.querySelector(`.map-game-opt-btn[data-map-opt-idx="${eliminatedOptionIndex}"]`);
+      if (btn && !btn.classList.contains('pointer-events-none')) {
+        Sound.hit();
+        btn.classList.add('opacity-40', 'line-through', 'pointer-events-none', 'relative');
+        const stamp = document.createElement('div');
+        stamp.className = 'absolute inset-0 bg-red-500/15 rounded-2xl flex items-center justify-center gap-2 border-2 border-red-500/50 animate-bounce pointer-events-none z-10';
+        stamp.innerHTML = `<span class="text-3xl">🦶</span><span class="font-headline font-black text-xs uppercase text-red-400 bg-surface-container/90 px-2.5 py-1 rounded-lg shadow">STOMPED!</span>`;
+        btn.appendChild(stamp);
+
+        const bubble = document.getElementById('rex-arena-speech-bubble');
+        const text = document.getElementById('rex-arena-speech-text');
+        if (bubble && text) {
+          text.innerText = "Dino Stomp! That choice is outta here! 🦖🦶";
+          bubble.classList.remove('hidden');
+        }
+      }
+    };
+
+    window._questRexLiveHintHandler = (e) => {
+      const { hintText } = e.detail;
+      Sound.chirp();
+      const bubble = document.getElementById('rex-arena-speech-bubble');
+      const text = document.getElementById('rex-arena-speech-text');
+      if (bubble && text) {
+        text.innerText = `Rex Hint: ${hintText || 'Look closely at the shapes and colors!'}`;
+        bubble.classList.remove('hidden');
+        bubble.classList.add('animate-pulse');
+        setTimeout(() => bubble.classList.remove('animate-pulse'), 1000);
+      }
+    };
+
+    window._questRexLiveReadHandler = (e) => {
+      const { questionText } = e.detail;
       Sound.pop();
-      btn.classList.add('ring-4', 'ring-emerald-400', 'bg-emerald-500/20', 'scale-102');
+      voicePrompts.speak(questionText);
       const bubble = document.getElementById('rex-arena-speech-bubble');
       const text = document.getElementById('rex-arena-speech-text');
       if (bubble && text) {
-        text.innerText = `Rex selected: "${btn.querySelector('.opt-label-text')?.innerText || 'Answer'}"!`;
+        text.innerText = `Rex: "${questionText}"`;
         bubble.classList.remove('hidden');
       }
-      setTimeout(() => {
-        btn.classList.remove('ring-4', 'ring-emerald-400', 'bg-emerald-500/20', 'scale-102');
-        btn.click();
-      }, 400);
-    }
-  };
-  window.addEventListener('rex-live-answer', handleRexLiveAnswer);
+    };
 
-  const handleRexLiveEliminate = (e) => {
-    const { eliminatedOptionIndex } = e.detail;
-    const btn = document.querySelector(`.map-game-opt-btn[data-map-opt-idx="${eliminatedOptionIndex}"]`);
-    if (btn && !btn.classList.contains('pointer-events-none')) {
-      Sound.hit();
-      btn.classList.add('opacity-40', 'line-through', 'pointer-events-none', 'relative');
-      const stamp = document.createElement('div');
-      stamp.className = 'absolute inset-0 bg-red-500/15 rounded-2xl flex items-center justify-center gap-2 border-2 border-red-500/50 animate-bounce pointer-events-none z-10';
-      stamp.innerHTML = `<span class="text-3xl">🦶</span><span class="font-headline font-black text-xs uppercase text-red-400 bg-surface-container/90 px-2.5 py-1 rounded-lg shadow">STOMPED!</span>`;
-      btn.appendChild(stamp);
-
+    window._questRexLiveCelebrateHandler = (e) => {
+      const { phrase } = e.detail;
+      Sound.fanfare();
+      confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
       const bubble = document.getElementById('rex-arena-speech-bubble');
       const text = document.getElementById('rex-arena-speech-text');
       if (bubble && text) {
-        text.innerText = "Dino Stomp! That choice is outta here! 🦖🦶";
+        text.innerText = `🎉 ${phrase || 'Super Hero Victory! ROAR!'}`;
         bubble.classList.remove('hidden');
       }
-    }
-  };
-  window.addEventListener('rex-live-eliminate', handleRexLiveEliminate);
+    };
 
-  const handleRexLiveHint = (e) => {
-    const { hintText } = e.detail;
-    Sound.chirp();
-    const bubble = document.getElementById('rex-arena-speech-bubble');
-    const text = document.getElementById('rex-arena-speech-text');
-    if (bubble && text) {
-      text.innerText = `Rex Hint: ${hintText || 'Look closely at the shapes and colors!'}`;
-      bubble.classList.remove('hidden');
-      bubble.classList.add('animate-pulse');
-      setTimeout(() => bubble.classList.remove('animate-pulse'), 1000);
-    }
-  };
-  window.addEventListener('rex-live-hint', handleRexLiveHint);
-
-  const handleRexLiveRead = (e) => {
-    const { questionText } = e.detail;
-    Sound.pop();
-    voicePrompts.speak(questionText);
-    const bubble = document.getElementById('rex-arena-speech-bubble');
-    const text = document.getElementById('rex-arena-speech-text');
-    if (bubble && text) {
-      text.innerText = `Rex: "${questionText}"`;
-      bubble.classList.remove('hidden');
-    }
-  };
-  window.addEventListener('rex-live-read', handleRexLiveRead);
-
-  const handleRexLiveCelebrate = (e) => {
-    const { phrase } = e.detail;
-    Sound.fanfare();
-    confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
-    const bubble = document.getElementById('rex-arena-speech-bubble');
-    const text = document.getElementById('rex-arena-speech-text');
-    if (bubble && text) {
-      text.innerText = `🎉 ${phrase || 'Super Hero Victory! ROAR!'}`;
-      bubble.classList.remove('hidden');
-    }
-  };
-  window.addEventListener('rex-live-celebrate', handleRexLiveCelebrate);
+    window.addEventListener('rex-live-answer', window._questRexLiveAnswerHandler);
+    window.addEventListener('rex-live-eliminate', window._questRexLiveEliminateHandler);
+    window.addEventListener('rex-live-hint', window._questRexLiveHintHandler);
+    window.addEventListener('rex-live-read', window._questRexLiveReadHandler);
+    window.addEventListener('rex-live-celebrate', window._questRexLiveCelebrateHandler);
+  }
 
   const toPenBtn = document.getElementById('map-to-pet-pen-btn');
   if (toPenBtn) {
