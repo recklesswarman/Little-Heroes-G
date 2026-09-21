@@ -8,10 +8,11 @@
 
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { GoogleGenAI, Type } from "@google/genai";
-import * as admin from "firebase-admin";
+import { getApps, initializeApp } from "firebase-admin/app";
+import { FieldValue, getFirestore } from "firebase-admin/firestore";
 
-if (!admin.apps.length) {
-  admin.initializeApp();
+if (!getApps().length) {
+  initializeApp();
 }
 
 // Kid devices in this app are not required to sign in to Firebase Auth, so
@@ -215,7 +216,7 @@ export const verifyChoreSubmission = onCall(
   { secrets: ["GEMINI_API_KEY"], cors: true },
   async (request) => {
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-    const db = admin.firestore();
+    const db = getFirestore();
 
     const data = (request.data || {}) as VerifyChoreData;
     const title = data.questTitle || data.taskTitle || "Daily Hero Quest";
@@ -266,17 +267,17 @@ export const verifyChoreSubmission = onCall(
                 xp: rewards.xpEarned,
                 coins: rewards.coinsEarned,
                 streak: 1,
-                lastChoreSubmissionAt: admin.firestore.FieldValue.serverTimestamp(),
-                createdAt: admin.firestore.FieldValue.serverTimestamp()
+                lastChoreSubmissionAt: FieldValue.serverTimestamp(),
+                createdAt: FieldValue.serverTimestamp()
               },
               { merge: true }
             );
           } else {
             t.update(heroRef, {
-              xp: admin.firestore.FieldValue.increment(rewards.xpEarned),
-              coins: admin.firestore.FieldValue.increment(rewards.coinsEarned),
-              streak: admin.firestore.FieldValue.increment(1),
-              lastChoreSubmissionAt: admin.firestore.FieldValue.serverTimestamp()
+              xp: FieldValue.increment(rewards.xpEarned),
+              coins: FieldValue.increment(rewards.coinsEarned),
+              streak: FieldValue.increment(1),
+              lastChoreSubmissionAt: FieldValue.serverTimestamp()
             });
           }
 
@@ -288,7 +289,7 @@ export const verifyChoreSubmission = onCall(
             confidenceScore: verification.confidenceScore,
             xpEarned: rewards.xpEarned,
             coinsEarned: rewards.coinsEarned,
-            completedAt: admin.firestore.FieldValue.serverTimestamp()
+            completedAt: FieldValue.serverTimestamp()
           });
         });
       } catch (txErr) {

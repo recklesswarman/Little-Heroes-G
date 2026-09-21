@@ -2,13 +2,14 @@
 
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { GoogleGenAI, Type } from "@google/genai";
-import * as admin from "firebase-admin";
+import { getApps, initializeApp } from "firebase-admin/app";
+import { FieldValue, getFirestore } from "firebase-admin/firestore";
 
-if (!admin.apps.length) {
-  admin.initializeApp();
+if (!getApps().length) {
+  initializeApp();
 }
 
-const db = admin.firestore();
+const db = getFirestore();
 
 export interface ParentSettings {
   companionEnabled: boolean;
@@ -34,7 +35,7 @@ export const updateCompanionSettings = onCall({ cors: true }, async (request) =>
   const heroSnap = await heroRef.get();
 
   if (!heroSnap.exists) {
-    await heroRef.set({ parentUid: request.auth.uid, createdAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+    await heroRef.set({ parentUid: request.auth.uid, createdAt: FieldValue.serverTimestamp() }, { merge: true });
   } else if (heroSnap.data()?.parentUid && heroSnap.data()?.parentUid !== request.auth.uid) {
     throw new HttpsError("permission-denied", "Unauthorized parent account.");
   } else if (!heroSnap.data()?.parentUid) {
