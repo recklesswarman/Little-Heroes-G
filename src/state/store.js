@@ -5509,9 +5509,18 @@ class Store {
       // Filter out any hero that was deleted
       incomingHeroes = incomingHeroes.filter((h) => h && h.id && !deletedHeroIdsSet.has(h.id));
 
+      // If this device has a local push queued or in flight, an inbound
+      // snapshot may predate that local edit (e.g. another device just
+      // overwrote the cloud doc with its own stale cache in the narrow
+      // window before our push lands). Prefer our own local reward values
+      // over the cloud's until our pending push confirms, instead of
+      // letting a stale snapshot silently erase progress a kid just earned.
+      const trustLocalRewards = Boolean(this.syncService?.hasPendingLocalChanges?.());
+
       // Merge with local heroes so no kids or progress are dropped
       const mergedHeroes = incomingHeroes.map((cloudH) => {
         const localH = (this.state.heroes || []).find((h) => h.id === cloudH.id);
+        const preferLocalRewards = trustLocalRewards && Boolean(localH);
         const unlockedPetIds = Array.from(new Set([
           ...(cloudH.unlockedPetIds || []),
           ...(localH?.unlockedPetIds || [])
@@ -5532,11 +5541,11 @@ class Store {
           ...defaultState.selectedHero,
           ...localH,
           ...cloudH,
-          coins: cloudH.coins !== undefined ? Number(cloudH.coins) : (localH?.coins ?? 0),
-          points: cloudH.points !== undefined ? Number(cloudH.points) : (localH?.points ?? 0),
-          tokens: cloudH.tokens !== undefined ? Number(cloudH.tokens) : (localH?.tokens ?? (cloudH.coins !== undefined ? Number(cloudH.coins) : 0)),
+          coins: preferLocalRewards ? (localH.coins ?? 0) : (cloudH.coins !== undefined ? Number(cloudH.coins) : (localH?.coins ?? 0)),
+          points: preferLocalRewards ? (localH.points ?? 0) : (cloudH.points !== undefined ? Number(cloudH.points) : (localH?.points ?? 0)),
+          tokens: preferLocalRewards ? (localH.tokens ?? localH.coins ?? 0) : (cloudH.tokens !== undefined ? Number(cloudH.tokens) : (localH?.tokens ?? (cloudH.coins !== undefined ? Number(cloudH.coins) : 0))),
           level: Math.max(cloudH.level || 1, localH?.level || 1),
-          xp: cloudH.xp !== undefined ? Number(cloudH.xp) : (localH?.xp ?? 0),
+          xp: preferLocalRewards ? (localH.xp ?? 0) : (cloudH.xp !== undefined ? Number(cloudH.xp) : (localH?.xp ?? 0)),
           xpNext: cloudH.xpNext || localH?.xpNext || 100,
           unlockedPetIds,
           petStageMap,
