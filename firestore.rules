@@ -19,10 +19,20 @@ service cloud.firestore {
     function isParent(householdData) {
       return isAuthenticated() && (
         ('parentUids' in householdData && householdData.parentUids is list && request.auth.uid in householdData.parentUids) ||
-        ('parentEmails' in householdData && householdData.parentEmails is list && request.auth.token.email != null && request.auth.token.email in householdData.parentEmails) ||
-        // Bootstrap exception: household without parents yet can have first authenticated parent claim ownership
-        (!('parentUids' in householdData) || householdData.parentUids.size() == 0)
+        ('parentEmails' in householdData && householdData.parentEmails is list && request.auth.token.email != null && request.auth.token.email in householdData.parentEmails)
       );
+    }
+
+    // One-time bootstrap: a household created without parents yet can have the
+    // first authenticated caller claim ownership, but ONLY via an update that
+    // itself sets parentUids to include their own uid. This closes the
+    // loophole immediately after the first claim instead of treating every
+    // authenticated user as a parent forever whenever parentUids is empty.
+    function isBootstrapParentClaim(householdData) {
+      return isAuthenticated()
+        && (!('parentUids' in householdData) || !(householdData.parentUids is list) || householdData.parentUids.size() == 0)
+        && request.resource.data.parentUids is list
+        && request.auth.uid in request.resource.data.parentUids;
     }
 
     // Validates household payload structure and limits resource exhaustion
@@ -48,6 +58,32 @@ service cloud.firestore {
         && (!('parentSettings' in data) || (data.parentSettings is map && data.parentSettings.size() <= 30));
     }
 
+    // Kids CANNOT change a hero's reward balances directly through heroesMap.
+    // Existing hero entries must keep identical reward-bearing fields; a
+    // newly-added hero entry must start at zero.
+    function heroRewardFieldsLocked(existingData, newData) {
+      let oldMap = ('heroesMap' in existingData && existingData.heroesMap is map) ? existingData.heroesMap : {};
+      let newMap = ('heroesMap' in newData && newData.heroesMap is map) ? newData.heroesMap : {};
+      return newMap.keys().all(id,
+        !(id in oldMap)
+          ? (
+              (!('points' in newMap[id]) || newMap[id].points == 0) &&
+              (!('coins' in newMap[id]) || newMap[id].coins == 0) &&
+              (!('tokens' in newMap[id]) || newMap[id].tokens == 0) &&
+              (!('xp' in newMap[id]) || newMap[id].xp == 0)
+            )
+          : (
+              (!('points' in oldMap[id]) || !('points' in newMap[id]) || newMap[id].points == oldMap[id].points) &&
+              (!('coins' in oldMap[id]) || !('coins' in newMap[id]) || newMap[id].coins == oldMap[id].coins) &&
+              (!('tokens' in oldMap[id]) || !('tokens' in newMap[id]) || newMap[id].tokens == oldMap[id].tokens) &&
+              (!('xp' in oldMap[id]) || !('xp' in newMap[id]) || newMap[id].xp == oldMap[id].xp) &&
+              (!('level' in oldMap[id]) || !('level' in newMap[id]) || newMap[id].level == oldMap[id].level) &&
+              (!('streak' in oldMap[id]) || !('streak' in newMap[id]) || newMap[id].streak == oldMap[id].streak) &&
+              (!('stars' in oldMap[id]) || !('stars' in newMap[id]) || newMap[id].stars == oldMap[id].stars)
+            )
+      );
+    }
+
     // Strict validation for kid/non-parent updates:
     // Kids CANNOT touch parentSettings, parent admin lists, delete kid profiles, approve tasks, or manipulate point balances
     function isAllowedKidChoreUpdate(existingData, newData) {
@@ -55,10 +91,15 @@ service cloud.firestore {
       return isValidHouseholdPayload()
         // 1. Kids CANNOT modify parental controls, parent admin user lists, or delete profiles
         && !affected.hasAny(['parentSettings', 'parents', 'parentUids', 'parentEmails', 'deletedHeroIds'])
-        // 2. Kids CANNOT dismiss, delete, or mark pending approvals as approved
-        && (!('pendingApprovals' in existingData) || !('pendingApprovals' in newData) || newData.pendingApprovals.size() >= existingData.pendingApprovals.size())
-        // 3. Kids CANNOT delete completion logs or mark logs as approved
-        && (!('taskCompletionLogs' in existingData) || !('taskCompletionLogs' in newData) || newData.taskCompletionLogs.size() >= existingData.taskCompletionLogs.size());
+        // 2. Kids CANNOT dismiss, delete, edit, or mark existing pending approvals as approved --
+        //    every existing entry must still be present, byte-for-byte, in the new list
+        && (!('pendingApprovals' in existingData) || existingData.pendingApprovals.all(item,
+              ('pendingApprovals' in newData) && (item in newData.pendingApprovals)))
+        // 3. Kids CANNOT delete or rewrite completion logs, only append new ones
+        && (!('taskCompletionLogs' in existingData) || existingData.taskCompletionLogs.all(item,
+              ('taskCompletionLogs' in newData) && (item in newData.taskCompletionLogs)))
+        // 4. Kids CANNOT self-award points/coins/xp/level/streak via the heroesMap
+        && heroRewardFieldsLocked(existingData, newData);
     }
 
     // --- Households Collection ---
@@ -76,6 +117,7 @@ service cloud.firestore {
       // Kids can only submit chores with isAllowedKidChoreUpdate().
       allow update: if isValidHouseholdCode(householdCode) && (
         isParent(resource.data) ||
+        isBootstrapParentClaim(resource.data) ||
         isAllowedKidChoreUpdate(resource.data, request.resource.data)
       );
 
@@ -83,43 +125,30 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // --- Users / Hero Profiles Collection ---
-    // Individual kid profiles and progression
+    // --- Users / Hero Profiles Collection (unused by the client app) ---
+    // No code in this app reads or writes /users/{heroId} -- it is legacy
+    // surface with no ownership model. Deny client access entirely rather
+    // than leave a reachable, unscoped collection open to any authenticated
+    // (including anonymous) Firebase client on this project.
     match /users/{heroId} {
-      // Any authenticated user or household member can read hero profiles
-      allow read: if true;
+      allow read, write: if false;
 
-      // Create new profile with basic validation
-      allow create: if isAuthenticated() || (
-        request.resource.data.keys().hasAll(['id', 'name', 'level'])
-        && request.resource.data.name is string
-        && request.resource.data.name.size() <= 50
-      );
-
-      // Update:
-      // Kids can update equipment, pet stats, energy, and stickers,
-      // but CANNOT modify Gold Points (⭐) directly. Points must remain strictly unchanged.
-      allow update: if (
-        (!('points' in resource.data) || !('points' in request.resource.data) || request.resource.data.points == resource.data.points)
-      );
-
-      allow delete: if false;
-
-      // Subcollections (settings, chatHistory, questHistory)
       match /{allChildren=**} {
-        allow read: if true;
-        allow write: if isAuthenticated();
+        allow read, write: if false;
       }
     }
 
-    // --- Heroes Collection & Companion Settings ---
+    // --- Heroes Collection & Companion Settings (server-only) ---
+    // Written exclusively by Cloud Functions via the Admin SDK, which
+    // bypasses these rules. No client code reads or writes this collection
+    // directly, so client access is denied entirely to prevent a malicious
+    // client from hijacking a hero's parentUid or corrupting reward data
+    // (xp/coins/streak) that verifyChoreSubmission increments server-side.
     match /heroes/{heroId} {
-      allow read: if true;
-      allow write: if isAuthenticated();
+      allow read, write: if false;
 
       match /{allChildren=**} {
-        allow read: if true;
-        allow write: if isAuthenticated();
+        allow read, write: if false;
       }
     }
 

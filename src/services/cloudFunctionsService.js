@@ -56,11 +56,11 @@ class CloudFunctionsService {
   async verifyChoreSubmission(params) {
     if (!this.functionsInstance) {
       return {
-        verified: true,
-        confidenceScore: 92,
-        feedbackForKid: `Awesome job completing "${params.taskTitle}", ${params.heroName || "Little Hero"}!`,
-        parentRecommendation: "Approve",
-        badgeEarned: "Hero Star"
+        verified: false,
+        confidenceScore: 0,
+        feedbackForKid: `Nice work on "${params.taskTitle}", ${params.heroName || "Little Hero"}! Rex will check with a grown-up!`,
+        parentRecommendation: "AI verification unavailable (offline mode) -- please review manually.",
+        badgeEarned: undefined
       };
     }
 
@@ -71,11 +71,11 @@ class CloudFunctionsService {
     } catch (err) {
       console.warn("Cloud function verifyChoreSubmission error, falling back:", err);
       return {
-        verified: true,
-        confidenceScore: 88,
-        feedbackForKid: `Great work on "${params.taskTitle}"! Keep shining bright!`,
-        parentRecommendation: "Approve",
-        badgeEarned: "Hero Star"
+        verified: false,
+        confidenceScore: 0,
+        feedbackForKid: `Great work on "${params.taskTitle}"! Rex will check with a grown-up!`,
+        parentRecommendation: "AI verification unavailable (connection error) -- please review manually.",
+        badgeEarned: undefined
       };
     }
   }

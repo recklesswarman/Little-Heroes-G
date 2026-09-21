@@ -80,6 +80,34 @@ export const PET_PERSONAS = {
   }
 };
 
+// --- Minimal in-memory per-IP rate limiter ---
+// These endpoints have no per-user authentication (kid devices in this app
+// are not required to sign in to Firebase Auth), so this is the main guard
+// against a caller spamming the paid Gemini API or using this server as an
+// open relay. Not a substitute for real auth/App Check, but bounds abuse
+// without breaking the app's unauthenticated-by-design device flow.
+const rateLimitHits = new Map();
+
+function isRateLimited(key, maxHits, windowMs) {
+  const now = Date.now();
+  const hits = (rateLimitHits.get(key) || []).filter((t) => now - t < windowMs);
+  if (hits.length >= maxHits) {
+    rateLimitHits.set(key, hits);
+    return true;
+  }
+  hits.push(now);
+  rateLimitHits.set(key, hits);
+  return false;
+}
+
+function getRequestIp(req) {
+  const forwarded = req.headers?.['x-forwarded-for'];
+  if (typeof forwarded === 'string' && forwarded.trim()) {
+    return forwarded.split(',')[0].trim();
+  }
+  return req.socket?.remoteAddress || req.ip || 'unknown';
+}
+
 let cachedAiClient = null;
 
 export function getGeminiClient(overrideKey = null) {
@@ -114,6 +142,10 @@ export function getGeminiClient(overrideKey = null) {
  */
 export async function handleTTSRequest(req, res) {
   try {
+    if (isRateLimited(`tts:${getRequestIp(req)}`, 30, 60_000)) {
+      return res.status(429).json({ error: 'Too many requests, please slow down.' });
+    }
+
     const { text, petId, voice } = req.body || {};
     if (!text || typeof text !== 'string' || !text.trim()) {
       return res.status(400).json({ error: 'Text prompt is required.' });
@@ -185,6 +217,10 @@ export async function handleTTSRequest(req, res) {
  */
 export async function handleChatRequest(req, res) {
   try {
+    if (isRateLimited(`chat:${getRequestIp(req)}`, 30, 60_000)) {
+      return res.status(429).json({ error: 'Too many requests, please slow down.' });
+    }
+
     const { message, history = [], petId = 'rex', speedMode = 'smart', childName = 'Little Hero' } = req.body || {};
 
     if (!message || typeof message !== 'string' || !message.trim()) {
@@ -270,6 +306,12 @@ export function attachGeminiLiveWebSocket(httpServer) {
   httpServer.on('upgrade', (request, socket, head) => {
     const url = new URL(request.url, `http://${request.headers.host || 'localhost'}`);
     if (url.pathname === '/api/gemini/live' || url.pathname === '/live') {
+      const ip = getRequestIp(request);
+      if (isRateLimited(`live:${ip}`, 10, 60_000)) {
+        socket.write('HTTP/1.1 429 Too Many Requests\r\n\r\n');
+        socket.destroy();
+        return;
+      }
       wss.handleUpgrade(request, socket, head, (ws) => {
         wss.emit('connection', ws, request);
       });

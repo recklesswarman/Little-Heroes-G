@@ -32,9 +32,6 @@
       ]
     }
   ],
-  "dataconnect": {
-    "source": "dataconnect"
-  },
   "apphosting": {
     "backendId": "little-heroes-adventures",
     "rootDir": "/",

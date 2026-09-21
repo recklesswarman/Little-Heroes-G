@@ -12,6 +12,7 @@ import { HeroForgeCanvas } from '../components/HeroForgeCanvas.js';
 import { speakCompanion } from '../services/voiceService.js';
 import { Sound } from '../audio/sfx.js';
 import confetti from 'canvas-confetti';
+import { registerActiveCanvas } from '../utils/activeViewCanvasRegistry.js';
 
 let activeCanvasInstance = null;
 
@@ -505,6 +506,7 @@ export function attachHeroForgeListeners() {
       dyes: forge.customDyes || currentBp?.defaultDyes,
       testingMode: forge.forgeMode === 'testing'
     });
+    registerActiveCanvas(activeCanvasInstance);
   }
 
   // 3. Category Tabs
