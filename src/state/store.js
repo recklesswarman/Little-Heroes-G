@@ -2099,6 +2099,27 @@ class Store {
       this.state.taskCompletionLogs.pop();
     }
 
+    // Queue Gold Points for Parent Approval (Tokens/XP/Sparks above are auto-issued instantly,
+    // but Points — and the Screen Time Bank minutes they convert into — require parent sign-off,
+    // same as every other habit/task completion. Without this entry the battle never surfaces
+    // in the Parent Portal and completionLog.pointsAwarded above is never actually credited.)
+    if (!this.state.pendingApprovals) this.state.pendingApprovals = [];
+    this.state.pendingApprovals.push({
+      id: approvalReqId,
+      logId: logId,
+      kidId: currentHero.id,
+      kidName: currentHero.name,
+      type: 'task_point_approval',
+      taskId: completionLog.taskId,
+      title: completionLog.taskTitle,
+      zone: 'Hygiene AR Battle',
+      pendingPoints: completionLog.pointsAwarded,
+      tokensAwarded: finalCoinsEarned,
+      date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: nowIso,
+      status: 'pending'
+    });
+
     // 7. Unlock 3D Trophy Relic in HQ
     // 7. Unlock 3D Trophy Relic in HQ
     const trophyRelic = boss.trophyRelicId || 'trophy_sugar_bandit';
