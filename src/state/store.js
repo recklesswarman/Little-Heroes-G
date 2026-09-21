@@ -27,6 +27,7 @@ import {
 } from '../data/heroHQData.js';
 import { PET_GEAR_CATALOG, calculateActiveGearBuffs, formatStatBonusName } from '../data/petGearStudioData.js';
 import { speakCompanion } from '../services/voiceService.js';
+import { isExistingActiveHousehold } from '../utils/householdHeuristics.js';
 import { FORGE_BLUEPRINTS, getBlueprintById, isBlueprintUnlocked } from '../data/heroForgeData.js';
 import { firebaseAI } from '../services/firebaseAILogicService.js';
 
@@ -843,49 +844,6 @@ class Store {
 
         // Identify whether this device has an active household configured
         const currentCode = (parsed.household?.syncCode || persistentCode || '').trim().toUpperCase();
-        const hasActiveSyncCode = Boolean(currentCode && currentCode.length >= 4);
-        const hasParent = Boolean(
-          parsed.household?.parentUser?.uid ||
-          parsed.household?.parentUser?.email ||
-          (parsed.household?.parents && parsed.household.parents.length > 0) ||
-          (parsed.household?.parentEmails && parsed.household.parentEmails.length > 0)
-        );
-        const wasExplicitlyConfigured = parsed.isHouseholdConfigured === true;
-        const hasCustomHeroes = Array.isArray(parsed.heroes) && (
-          parsed.heroes.length > 1 ||
-          parsed.heroes.some(h => (
-            (h.name && h.name !== 'Little Hero') ||
-            (h.points && Number(h.points) > 0) ||
-            (h.coins && Number(h.coins) > 0) ||
-            (h.tokens && Number(h.tokens) > 0) ||
-            (h.xp && Number(h.xp) > 0) ||
-            (h.level && Number(h.level) > 1) ||
-            (h.streak && Number(h.streak) > 1) ||
-            (Array.isArray(h.unlockedPetIds) && h.unlockedPetIds.length > 0) ||
-            h.hasChosenStarterPet === true ||
-            (h.activePetId !== null && h.activePetId !== undefined)
-          ))
-        );
-        const hasCustomProgress = Boolean(
-          (parsed.taskCompletionLogs && parsed.taskCompletionLogs.length > 0) ||
-          (parsed.taskLedgerLogs && parsed.taskLedgerLogs.length > 0) ||
-          (parsed.movementSessionHistory && parsed.movementSessionHistory.length > 0) ||
-          (parsed.dentalBattleHistory && parsed.dentalBattleHistory.length > 0) ||
-          (parsed.selectedHero && (
-            (parsed.selectedHero.name && parsed.selectedHero.name !== 'Little Hero') ||
-            (parsed.selectedHero.points && Number(parsed.selectedHero.points) > 0) ||
-            (parsed.selectedHero.coins && Number(parsed.selectedHero.coins) > 0) ||
-            (parsed.selectedHero.xp && Number(parsed.selectedHero.xp) > 0) ||
-            (parsed.selectedHero.level && Number(parsed.selectedHero.level) > 1) ||
-            (Array.isArray(parsed.selectedHero.unlockedPetIds) && parsed.selectedHero.unlockedPetIds.length > 0) ||
-            parsed.selectedHero.hasChosenStarterPet === true
-          ))
-        );
-        const hasCustomName = Boolean(
-          parsed.household?.name &&
-          parsed.household.name.trim() !== '' &&
-          parsed.household.name.trim() !== 'The Hero Family'
-        );
 
         const myDeviceId = typeof localStorage !== 'undefined' ? localStorage.getItem('stitch_device_id') : null;
         const isDeviceRevoked = Boolean(
@@ -896,18 +854,9 @@ class Store {
           ))
         );
 
-        const isExistingActiveHousehold = Boolean(
-          !isDeviceRevoked && (
-            wasExplicitlyConfigured ||
-            hasActiveSyncCode ||
-            hasParent ||
-            hasCustomHeroes ||
-            hasCustomProgress ||
-            hasCustomName
-          )
-        );
+        const isExistingHousehold = !isDeviceRevoked && isExistingActiveHousehold(parsed);
 
-        if (isExistingActiveHousehold) {
+        if (isExistingHousehold) {
           parsed.isAuthenticated = true;
           parsed.isHouseholdConfigured = true;
           parsed.householdSetupStep = 'ready';
@@ -970,10 +919,6 @@ class Store {
 
   reloadState() {
     return this.loadState();
-  }
-
-  setSyncService(service) {
-    this.syncService = service;
   }
 
   /**
@@ -4243,30 +4188,6 @@ class Store {
           task.pointsApproved = false;
           taskItem = task;
         }
-
-        // Also release on all heroes copies
-        if (this.state.heroes) {
-          this.state.heroes.forEach((h) => {
-            if (h.habitIslands) {
-              const hh = h.habitIslands.find(x => x.id === req.taskId);
-              if (hh) { hh.completed = false; hh.pointsApproved = false; }
-            }
-            if (h.taskForest) {
-              const tt = h.taskForest.find(x => x.id === req.taskId);
-              if (tt) { tt.completed = false; tt.pointsApproved = false; }
-            }
-          });
-        }
-        if (this.state.selectedHero) {
-          if (this.state.selectedHero.habitIslands) {
-            const hh = this.state.selectedHero.habitIslands.find(x => x.id === req.taskId);
-            if (hh) { hh.completed = false; hh.pointsApproved = false; }
-          }
-          if (this.state.selectedHero.taskForest) {
-            const tt = this.state.selectedHero.taskForest.find(x => x.id === req.taskId);
-            if (tt) { tt.completed = false; tt.pointsApproved = false; }
-          }
-        }
       }
 
       this.logAction(
@@ -4316,28 +4237,6 @@ class Store {
           task.completed = false;
           task.pointsApproved = false;
         }
-        if (this.state.heroes) {
-          this.state.heroes.forEach((h) => {
-            if (h.habitIslands) {
-              const hh = h.habitIslands.find(x => x.id === req.taskId);
-              if (hh) { hh.completed = false; hh.pointsApproved = false; }
-            }
-            if (h.taskForest) {
-              const tt = h.taskForest.find(x => x.id === req.taskId);
-              if (tt) { tt.completed = false; tt.pointsApproved = false; }
-            }
-          });
-        }
-        if (this.state.selectedHero) {
-          if (this.state.selectedHero.habitIslands) {
-            const hh = this.state.selectedHero.habitIslands.find(x => x.id === req.taskId);
-            if (hh) { hh.completed = false; hh.pointsApproved = false; }
-          }
-          if (this.state.selectedHero.taskForest) {
-            const tt = this.state.selectedHero.taskForest.find(x => x.id === req.taskId);
-            if (tt) { tt.completed = false; tt.pointsApproved = false; }
-          }
-        }
       }
       this.logAction(`Parent rejected Point Approval for '${req.title}' (${req.kidName})`, `0 Points ⭐ Issued`);
     } else if (req.type === 'reward') {
@@ -4379,38 +4278,6 @@ class Store {
         t.completed = false;
         t.pointsApproved = false;
       });
-    }
-
-    // 4. Also reset on all heroes in this.state.heroes and selectedHero
-    if (this.state.heroes) {
-      this.state.heroes.forEach((hero) => {
-        if (hero.habitIslands) {
-          hero.habitIslands.forEach((h) => {
-            h.completed = false;
-            h.pointsApproved = false;
-          });
-        }
-        if (hero.taskForest) {
-          hero.taskForest.forEach((t) => {
-            t.completed = false;
-            t.pointsApproved = false;
-          });
-        }
-      });
-    }
-    if (this.state.selectedHero) {
-      if (this.state.selectedHero.habitIslands) {
-        this.state.selectedHero.habitIslands.forEach((h) => {
-          h.completed = false;
-          h.pointsApproved = false;
-        });
-      }
-      if (this.state.selectedHero.taskForest) {
-        this.state.selectedHero.taskForest.forEach((t) => {
-          t.completed = false;
-          t.pointsApproved = false;
-        });
-      }
     }
 
     this.logAction('Parent Cleared All Pending Approvals', 'All pending approval notifications and button states were reset to ready.');
