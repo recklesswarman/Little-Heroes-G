@@ -5499,7 +5499,11 @@ class Store {
         'mysterySurprise',
         'activeUnboxingCrateId',
         'activeDrawer',
-        'devices'
+        'devices',
+        // A live AR Toothbrush Battle is single-device and second-to-second (HP,
+        // countdown, victory modal); a wholesale overwrite here would reset or
+        // clobber an in-progress battle from a stale/foreign snapshot.
+        'bossColosseum'
       ]);
       Object.entries(cloudData.stateSnapshot).forEach(([key, value]) => {
         if (!localOnlyKeys.has(key) && value !== undefined) {
