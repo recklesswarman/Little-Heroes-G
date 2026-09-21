@@ -21,7 +21,8 @@ const LOCAL_ONLY_STATE_KEYS = new Set([
   'rewardModal',
   'mysterySurprise',
   'activeUnboxingCrateId',
-  'activeDrawer'
+  'activeDrawer',
+  'bossColosseum'
 ]);
 
 function buildCloudStateSnapshot(state) {
