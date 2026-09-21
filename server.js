@@ -11,7 +11,7 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json());
+app.use(express.json({ limit: '2mb' }));
 
 // Health check endpoint for Cloud Run / App Hosting
 app.get('/healthz', (req, res) => {
