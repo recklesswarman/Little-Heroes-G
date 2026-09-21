@@ -575,6 +575,19 @@ class FirestoreSyncService {
   }
 
   /**
+   * True when this device has a local state change queued (debounced) or
+   * currently being written to Firestore that hasn't been confirmed yet.
+   * Used by Store.hydrateFromCloud() to avoid letting an inbound snapshot
+   * that predates this device's own pending push silently overwrite
+   * reward-bearing fields (coins/points/xp/tokens) with stale values --
+   * e.g. another device reconnecting and pushing its own stale cached
+   * state in the narrow window before this device's push lands.
+   */
+  hasPendingLocalChanges() {
+    return Boolean(this.debounceTimer) || Boolean(this.isPushing);
+  }
+
+  /**
    * Log a specific device out of the household requiring it to re-enter the sync code
    */
   async revokeDevice(targetDeviceId) {

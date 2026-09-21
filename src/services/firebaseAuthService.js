@@ -13,6 +13,7 @@ import { store } from "../state/store.js";
 import { Sound } from "../audio/sfx.js";
 import { persistentLink } from "./persistentLinkService.js";
 import { firestoreSync } from "./firestoreSyncService.js";
+import { isExistingActiveHousehold } from "../utils/householdHeuristics.js";
 
 class FirebaseAuthService {
   constructor() {
@@ -122,15 +123,10 @@ class FirebaseAuthService {
         } else {
           // Check if this device already has an active household locally
           const localCode = (state.household?.syncCode || (persistentLink.isLinked() ? persistentLink.getSession()?.householdCode : '')).trim().toUpperCase();
-          const hasParent = Boolean(
-            (state.household?.parents && state.household.parents.length > 0) ||
-            (state.household?.parentEmails && state.household.parentEmails.length > 0)
-          );
-          const hasCustomHeroes = Array.isArray(state.heroes) && (
-            state.heroes.length > 1 ||
-            state.heroes.some(h => h.name !== 'Little Hero' || (h.points && Number(h.points) > 0))
-          );
-          const isExistingLocalHousehold = state.isHouseholdConfigured || (localCode && localCode.length >= 4) || hasParent || hasCustomHeroes;
+          const isExistingLocalHousehold = isExistingActiveHousehold({
+            ...state,
+            household: { ...state.household, syncCode: localCode }
+          });
 
           if (isExistingLocalHousehold) {
             const targetCode = (localCode && localCode.length >= 4) ? localCode : 'HERO-8842';
@@ -165,24 +161,10 @@ class FirebaseAuthService {
       console.log("Firebase Auth: No active Google session (offline or child/household device)");
       
       const activeHouseholdCode = (state.household?.syncCode || (persistentLink.isLinked() ? persistentLink.getSession()?.householdCode : '')).trim().toUpperCase();
-      const hasParent = Boolean(
-        state.household?.parentUser?.uid ||
-        state.household?.parentUser?.email ||
-        (state.household?.parents && state.household.parents.length > 0) ||
-        (state.household?.parentEmails && state.household.parentEmails.length > 0)
-      );
-      const hasCustomHeroes = Array.isArray(state.heroes) && (
-        state.heroes.length > 1 ||
-        state.heroes.some(h => (
-          (h.name && h.name !== 'Little Hero') ||
-          (h.points && Number(h.points) > 0) ||
-          (h.coins && Number(h.coins) > 0) ||
-          (h.xp && Number(h.xp) > 0) ||
-          (h.level && Number(h.level) > 1) ||
-          (Array.isArray(h.unlockedPetIds) && h.unlockedPetIds.length > 0)
-        ))
-      );
-      const hasConfiguredHousehold = state.isHouseholdConfigured || (activeHouseholdCode && activeHouseholdCode.length >= 4) || hasParent || hasCustomHeroes;
+      const hasConfiguredHousehold = isExistingActiveHousehold({
+        ...state,
+        household: { ...state.household, syncCode: activeHouseholdCode }
+      });
 
       if (hasConfiguredHousehold) {
         const resolvedCode = (activeHouseholdCode && activeHouseholdCode.length >= 4) ? activeHouseholdCode : 'HERO-8842';
