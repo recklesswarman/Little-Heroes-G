@@ -283,16 +283,23 @@ export function renderParentPortalView() {
 
                           <div class="flex flex-col gap-1">
                             <div class="flex items-center gap-2 flex-wrap">
-                              <span class="inline-flex items-center gap-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-black px-2.5 py-0.5 rounded-full shadow-sm">
-                                <span class="material-symbols-outlined text-xs">auto_awesome</span>
-                                ✨ AI Check: ${req.aiConfidence || 92}% Confidence
-                              </span>
+                              ${
+                                req.aiConfidence
+                                  ? `<span class="inline-flex items-center gap-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-black px-2.5 py-0.5 rounded-full shadow-sm">
+                                      <span class="material-symbols-outlined text-xs">auto_awesome</span>
+                                      ✨ AI Check: ${req.aiConfidence}% Confidence
+                                    </span>`
+                                  : `<span class="inline-flex items-center gap-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-black px-2.5 py-0.5 rounded-full shadow-sm">
+                                      <span class="material-symbols-outlined text-xs">visibility</span>
+                                      👀 Manual Review Needed
+                                    </span>`
+                              }
                               <span class="text-[10px] text-amber-300 font-bold bg-amber-400/15 px-2 py-0.5 rounded-full border border-amber-400/30">
                                 +5 Extra 🪙 Photo Bonus
                               </span>
                             </div>
                             <p class="text-xs text-on-surface-variant font-medium leading-tight mt-0.5">
-                              <span class="font-bold text-inverse-surface">AI Assessment:</span> <em>"${req.aiFeedback || 'Chore evidence verified with high confidence.'}"</em>
+                              <span class="font-bold text-inverse-surface">AI Assessment:</span> <em>"${req.aiFeedback || 'Photo submitted for review.'}"</em>
                             </p>
                           </div>
                         </div>
