@@ -10,6 +10,7 @@ import { PetExpeditionCanvas, EXPEDITION_BIOMES } from '../components/PetExpedit
 import { speakCompanion } from '../services/voiceService.js';
 import { Sound } from '../audio/sfx.js';
 import confetti from 'canvas-confetti';
+import { registerActiveCanvas } from '../utils/activeViewCanvasRegistry.js';
 
 let activeCanvasInstance = null;
 let currentSpeechTimeout = null;
@@ -325,6 +326,7 @@ export function attachPetExpeditionListeners() {
         }
       }
     );
+    registerActiveCanvas(activeCanvasInstance);
   }
 
   // Dual View Toggle Buttons

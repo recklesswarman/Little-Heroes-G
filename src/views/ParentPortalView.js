@@ -10,6 +10,7 @@ import { PetSkeletalBodyCanvas, RUNWAY_POSES } from '../services/petSkeletalBody
 import { firebaseAI, SPLINE_3D_PRESETS } from '../services/firebaseAILogicService.js';
 import { COLOR_DYES, formatStatBonusName } from '../data/petGearStudioData.js';
 import { THREE_D_ASSETS, getThreeDAssetsByCategory, matchBestThreeDAsset } from '../data/threeDAssetCatalog.js';
+import { registerActiveCanvas } from '../utils/activeViewCanvasRegistry.js';
 
 let activeAdminTab = 'approvals'; // approvals, screentime, reports, kids, tasks, rewards, pricing, studio, analytics, settings
 export function setActiveAdminTab(tab) {
@@ -4666,6 +4667,7 @@ export function attachParentPortalListeners() {
             pose: RUNWAY_POSES.HERO_LANDING
           });
           activeStudioCanvasInstance.setWind(2.0, -2.5);
+          registerActiveCanvas(activeStudioCanvasInstance);
         } catch (err) {
           console.warn('Parent studio canvas initialization fallback:', err);
         }
@@ -4774,6 +4776,14 @@ export function attachParentPortalListeners() {
           };
 
           drawIsometricStage();
+          registerActiveCanvas({
+            destroy: () => {
+              if (activeStudioAnimFrame) {
+                cancelAnimationFrame(activeStudioAnimFrame);
+                activeStudioAnimFrame = null;
+              }
+            }
+          });
         }
       }
     }

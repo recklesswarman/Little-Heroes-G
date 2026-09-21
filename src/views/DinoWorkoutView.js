@@ -3,6 +3,7 @@ import { getPetById } from '../data/petsData.js';
 import { PetSanctuaryCanvas } from '../components/PetSanctuaryCanvas.js';
 import { speakCompanion } from '../services/voiceService.js';
 import confetti from 'canvas-confetti';
+import { registerActiveCanvas } from '../utils/activeViewCanvasRegistry.js';
 
 let activeCanvasInstance = null;
 let timerInterval = null;
@@ -78,6 +79,7 @@ export function attachDinoWorkoutListeners() {
     if (activeCanvasInstance.setWorkoutMode) {
       activeCanvasInstance.setWorkoutMode(workoutId);
     }
+    registerActiveCanvas(activeCanvasInstance);
   }
 
   const btnClose = document.getElementById('btn-close-workout');

@@ -2700,11 +2700,18 @@ class Store {
   addXP(amount) {
     const hero = this.state.selectedHero;
     hero.xp += amount;
-    if (hero.xp >= hero.xpNext) {
+    let levelsGained = 0;
+    let bonusCoinsEarned = 0;
+    while (hero.xp >= hero.xpNext) {
       hero.level += 1;
       hero.xp = hero.xp - hero.xpNext;
       hero.xpNext = Math.round(hero.xpNext * 1.35);
       hero.coins += 50;
+      levelsGained += 1;
+      bonusCoinsEarned += 50;
+    }
+
+    if (levelsGained > 0) {
       Sound.levelUp();
       Sound.sparkle();
       Sound.coin();
@@ -2722,8 +2729,10 @@ class Store {
 
       this.showReward(
         `LEVEL UP! Hero Level ${hero.level}!`,
-        'You unlocked new equipment and earned +50 Bonus Tokens!',
-        50,
+        levelsGained > 1
+          ? `You unlocked new equipment and earned +${bonusCoinsEarned} Bonus Tokens across ${levelsGained} levels!`
+          : 'You unlocked new equipment and earned +50 Bonus Tokens!',
+        bonusCoinsEarned,
         0,
         hero.avatar,
         'military_tech'

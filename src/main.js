@@ -44,10 +44,16 @@ import { renderHeroHQView, attachHeroHQListeners } from './views/HeroHQView.js';
 import { renderPetExpeditionView, attachPetExpeditionListeners } from './views/PetExpeditionView.js';
 import { renderHeroForgeView, attachHeroForgeListeners } from './views/HeroForgeView.js';
 import { renderDinoWorkoutView, attachDinoWorkoutListeners } from './views/DinoWorkoutView.js';
+import { destroyActiveCanvas } from './utils/activeViewCanvasRegistry.js';
 
 const app = document.getElementById('app');
 
 function renderApp() {
+  // Stop any canvas-backed view's requestAnimationFrame loop from the
+  // previous render before tearing down/rebuilding app.innerHTML below --
+  // innerHTML alone removes the DOM node but not the running RAF loop.
+  destroyActiveCanvas();
+
   const state = store.getState();
   const activeView = state.activeView;
 
