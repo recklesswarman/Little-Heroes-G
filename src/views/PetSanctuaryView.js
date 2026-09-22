@@ -8,7 +8,8 @@
  */
 
 import { store } from '../state/store.js';
-import { PETS_DATABASE, SANCTUARY_TREATS, getPetArchetype, getPetBondBonus, getPetById } from '../data/petsData.js';
+import { PETS_DATABASE, SANCTUARY_TREATS, getPetArchetype, getPetBondBonus, getPetById, getPetLevelData, calculatePetStatBonus, getDailyRotatingPetCoach } from '../data/petsData.js';
+import { PET_GEAR_CATALOG, getGearHaloStyle, normalizeGearSlot, getGearItem, calculateActiveGearBuffs } from '../data/petGearStudioData.js';
 import { PetSanctuaryCanvas } from '../components/PetSanctuaryCanvas.js';
 import { Sound } from '../audio/sfx.js';
 import { registerActiveCanvas } from '../utils/activeViewCanvasRegistry.js';
@@ -16,20 +17,25 @@ import { registerActiveCanvas } from '../utils/activeViewCanvasRegistry.js';
 let activeCanvasInstance = null;
 let eggCrackTaps = {}; // { [eggId]: tapCount }
 let expeditionInterval = null;
+let selectedRosterFilter = 'all';
+let selectedWardrobeCategory = 'masks';
 
 export function renderPetSanctuaryView() {
   const state = store.getState();
   const hero = state.selectedHero || {};
-  const activePetId = hero.activePetId || '2';
-  const activePet = getPetById(activePetId) || PETS_DATABASE[0] || { id: '2', name: 'Sparky', archetype: 'dragon', color: '#2ecc71', stage: 1 };
+  const activePet = store.getActivePet();
   const archetype = getPetArchetype(activePet);
+  const petLevel = store.getPetLevel(activePet.id);
+  const petLevelData = getPetLevelData(petLevel);
+  const petStatBonus = calculatePetStatBonus(activePet, petLevel);
+  const petXp = store.getPetXp(activePet.id);
+  const xpNeeded = petLevelData.xpNeededForNext || 100;
 
   const sanctuaryState = store.getPetSanctuaryState();
   const bondState = store.getPetBondState(activePet.id);
   const isPearly = store.getPearlyGleamStatus(activePet.id);
-  const activeDrawer = sanctuaryState.activeDrawer; // null | 'feed' | 'bath' | 'wardrobe' | 'evolution' | 'roster'
+  const activeDrawer = sanctuaryState.activeDrawer; // null | 'feed' | 'bath' | 'wardrobe' | 'roster' | 'workout'
   const unhatchedEggs = sanctuaryState.unhatchedEggs || [];
-  const sparks = hero.sparks || hero.evolutionSparks || 45;
 
   // Active Pet Needs
   const needs = (sanctuaryState.petNeedsMap && sanctuaryState.petNeedsMap[activePet.id]) || {
@@ -38,10 +44,6 @@ export function renderPetSanctuaryView() {
     joy: 85,
     energy: 90
   };
-
-  const currentStage = activePet.stage || 1;
-  const stageNames = ['Baby Hatchling', 'Heroic Scout', 'Champion Guardian', 'Cosmic Titan'];
-  const stageName = stageNames[currentStage - 1] || 'Cosmic Legend';
 
   // Equipped Forged Gear for this pet
   const equippedGear = (state.petGear && state.petGear[activePet.id]) || {};
@@ -65,8 +67,8 @@ export function renderPetSanctuaryView() {
           </button>
 
           <div class="flex items-center gap-2">
-            <div class="w-10 h-10 rounded-2xl bg-surface-container-high border-2 border-primary/50 flex items-center justify-center text-xl shadow-inner">
-              ${activePet.emoji || '🐾'}
+            <div class="w-11 h-11 rounded-2xl bg-surface-container-high border-2 border-primary/50 flex items-center justify-center overflow-hidden shadow-inner p-1">
+              <img src="${activePet.avatar || `/assets/pets/${activePet.key || 'rex'}.png`}" alt="${activePet.name}" class="w-full h-full object-contain">
             </div>
             <div class="flex flex-col">
               <div class="flex items-center gap-1.5">
@@ -75,34 +77,38 @@ export function renderPetSanctuaryView() {
                   ${archetype.name}
                 </span>
               </div>
-              <span class="text-[11px] font-bold text-secondary">Stage ${currentStage}: ${stageName}</span>
+              <span class="text-[11px] font-bold text-secondary">Level ${petLevel}: ${petLevelData.title} • ${petStatBonus.label}</span>
             </div>
           </div>
         </div>
 
-        <!-- Center: Pet Bond Level Heart Meter (Lv 1-10) -->
+        <!-- Center: Pet Training XP Meter (Level 1-25) -->
         <div class="hidden sm:flex items-center gap-3 bg-surface-container-lowest/80 px-4 py-1.5 rounded-2xl border border-surface-container-highest shadow-inner">
-          <div class="flex items-center gap-1.5 text-secondary">
-            <span class="material-symbols-outlined text-xl animate-pulse text-secondary">favorite</span>
-            <span class="font-headline font-black text-sm">Bond Lv.${bondState.level}</span>
+          <div class="flex items-center gap-1.5 text-cyan-300">
+            <span class="material-symbols-outlined text-xl animate-pulse text-cyan-400">bolt</span>
+            <span class="font-headline font-black text-sm">XP Lvl.${petLevel}</span>
           </div>
           <div class="w-28 h-3.5 bg-surface-container-high rounded-full overflow-hidden p-0.5 border border-surface-container-highest flex">
             <div 
-              class="h-full bg-gradient-to-r from-secondary to-secondary-fixed rounded-full transition-all duration-500 shadow-sm"
-              style="width: ${Math.min(100, (bondState.xp % 100))}%"
+              class="h-full bg-gradient-to-r from-cyan-400 to-emerald-400 rounded-full transition-all duration-500 shadow-sm"
+              style="width: ${Math.min(100, Math.floor((petXp / xpNeeded) * 100))}%"
             ></div>
           </div>
-          <span class="text-[10px] font-black text-on-surface-variant">${bondState.xp % 100}/100 XP</span>
+          <span class="text-[10px] font-black text-on-surface-variant">${petXp}/${xpNeeded} XP</span>
         </div>
 
-        <!-- Right: Evolution Sparks + Switch Companion Roster Button -->
+        <!-- Right: Daily Workout & Switch Companion Roster Button -->
         <div class="flex items-center gap-2">
           
-          <!-- Starlight Spark Capsule -->
-          <div class="flex items-center gap-1.5 bg-surface-container-lowest px-3 py-1.5 rounded-2xl border border-tertiary/40 shadow-inner">
-            <span class="material-symbols-outlined text-base text-tertiary">bolt</span>
-            <span class="font-headline font-black text-xs text-tertiary-fixed">${sparks}/100</span>
-          </div>
+          <!-- Daily Workout Capsule -->
+          <button 
+            id="sanctuary-workout-btn"
+            class="flex items-center gap-1.5 bg-surface-container-lowest hover:bg-surface-container px-3 py-1.5 rounded-2xl border border-amber-400/40 shadow-inner text-amber-300 text-xs font-headline font-black active:scale-95"
+            title="Daily Rotating Pet Workout"
+          >
+            <span class="material-symbols-outlined text-base text-amber-400">fitness_center</span>
+            <span class="hidden md:inline">TRAIN</span>
+          </button>
 
           <!-- Switch Companion Button -->
           <button 
@@ -110,7 +116,7 @@ export function renderPetSanctuaryView() {
             class="px-3.5 py-2 rounded-2xl bg-secondary hover:bg-secondary-fixed text-slate-950 font-headline font-black text-xs flex items-center gap-1.5 border-b-4 border-[#b26a00] active:translate-y-1 active:border-b-0 transition-all shadow-md"
           >
             <span class="material-symbols-outlined text-sm">pets</span>
-            <span class="hidden md:inline">ROSTER</span>
+            <span class="hidden md:inline">24 ROSTER</span>
           </button>
         </div>
       </header>
@@ -267,18 +273,18 @@ export function renderPetSanctuaryView() {
             <span class="mt-0.5 sm:mt-1 text-[9px] sm:text-xs">GEAR</span>
           </button>
 
-          <!-- 4. STARLIGHT EVOLUTION -->
+          <!-- 4. 24 PET COMPANIONS ROSTER -->
           <button 
-            id="action-evolution-btn" 
+            id="action-roster-dock-btn" 
             class="sanctuary-dock-btn min-h-[48px] flex flex-col items-center justify-center p-1.5 sm:p-2.5 rounded-2xl font-headline font-black text-xs transition-all active:translate-y-1 active:border-b-0 border-b-4 ${
-              activeDrawer === 'evolution'
+              activeDrawer === 'roster'
                 ? 'bg-gradient-to-r from-secondary to-primary text-slate-950 border-[#1b7a43] shadow-md ring-2 ring-primary/60'
                 : 'bg-surface-container-high hover:bg-surface-bright text-on-surface border-surface-container-highest'
             }"
-            aria-label="Starlight pet evolution altar"
+            aria-label="24 Pet Companions Roster"
           >
-            <span class="text-xl sm:text-3xl leading-none">⚡</span>
-            <span class="mt-0.5 sm:mt-1 text-[9px] sm:text-xs">EVOLVE</span>
+            <span class="text-xl sm:text-3xl leading-none">🐾</span>
+            <span class="mt-0.5 sm:mt-1 text-[9px] sm:text-xs">ROSTER</span>
           </button>
 
           <!-- 5. EXPEDITION -->
@@ -303,7 +309,7 @@ export function renderPetSanctuaryView() {
                 ? 'bg-rose-400 text-slate-950 border-[#9b2c2c] shadow-md ring-2 ring-rose-400/60'
                 : 'bg-surface-container-high hover:bg-surface-bright text-on-surface border-surface-container-highest'
             }"
-            aria-label="Dino Workout"
+            aria-label="Companion Workout"
           >
             <span class="text-xl sm:text-3xl leading-none">💪</span>
             <span class="mt-0.5 sm:mt-1 text-[9px] sm:text-xs">WORKOUT</span>
@@ -315,12 +321,12 @@ export function renderPetSanctuaryView() {
       <!-- ===================================================================== -->
       <!-- SLIDE-OUT TACTILE DRAWER PANELS                                       -->
       <!-- ===================================================================== -->
-      ${renderActiveDrawer(activeDrawer, activePet, archetype, needs, sparks, bondState, equippedGear)}
+      ${renderActiveDrawer(activeDrawer, activePet, archetype, needs, petLevel, petLevelData, petStatBonus, bondState, equippedGear)}
     </div>
   `;
 }
 
-function renderActiveDrawer(drawer, activePet, archetype, needs, sparks, bondState, equippedGear) {
+function renderActiveDrawer(drawer, activePet, archetype, needs, petLevel, petLevelData, petStatBonus, bondState, equippedGear) {
   if (!drawer) return '';
 
   return `
@@ -338,10 +344,10 @@ function renderActiveDrawer(drawer, activePet, archetype, needs, sparks, bondSta
         
         <div class="flex items-center gap-2 mt-1">
           <span class="text-xl">
-            ${drawer === 'feed' ? '🍎' : drawer === 'expedition' ? '🏕️' : drawer === 'workout' ? '💪'  : drawer === 'bath' ? '🫧' : drawer === 'wardrobe' ? '🪞' : drawer === 'evolution' ? '⚡' : '🐾'}
+            ${drawer === 'feed' ? '🍎' : drawer === 'expedition' ? '🏕️' : drawer === 'workout' ? '💪' : drawer === 'bath' ? '🫧' : drawer === 'wardrobe' ? '🪞' : '🐾'}
           </span>
           <h3 class="font-headline font-black text-base text-on-surface uppercase tracking-wide">
-            ${drawer === 'feed' ? 'Snack Shelf' : drawer === 'expedition' ? 'Adventure Expedition' : drawer === 'workout' ? 'Dino Workout'  : drawer === 'bath' ? 'Bubble Spa Lagoon' : drawer === 'wardrobe' ? '3D Hero Wardrobe' : drawer === 'evolution' ? 'Starlight Evolution Altar' : '24 Pet Companion Roster'}
+            ${drawer === 'feed' ? 'Snack Shelf' : drawer === 'expedition' ? 'Adventure Expedition' : drawer === 'workout' ? 'Companion Hero Workout' : drawer === 'bath' ? 'Bubble Spa Lagoon' : drawer === 'wardrobe' ? 'Hero Gear Wardrobe' : '24 Pet Companion Roster'}
           </h3>
         </div>
 
@@ -362,7 +368,6 @@ function renderActiveDrawer(drawer, activePet, archetype, needs, sparks, bondSta
           drawer === 'workout' ? renderWorkoutDrawer(activePet) :
           drawer === 'bath' ? renderBathDrawer(activePet, needs) :
           drawer === 'wardrobe' ? renderWardrobeDrawer(activePet, equippedGear) :
-          drawer === 'evolution' ? renderEvolutionDrawer(activePet, sparks, currentStage(activePet)) :
           renderRosterDrawer(activePet)
         }
       </div>
@@ -462,164 +467,171 @@ function renderBathDrawer(pet, needs) {
 }
 
 // -----------------------------------------------------------------------------
-// DRAWER 3: HERO WARDROBE DRAWER
+// DRAWER 3: HERO WARDROBE DRAWER (4 CATEGORIES: MASKS, CAPES, ARMOR, BOOTS)
 // -----------------------------------------------------------------------------
 function renderWardrobeDrawer(pet, equippedGear) {
-  // Available 3D Forged Gear Catalog
-  const gearSlots = [
-    { slot: 'head', name: 'Helmet / Crown', icon: '👑', items: [
-      { id: 'titan_helm', name: 'Titan Horn Helm', slot: 'head', emoji: '🪖', stat: '+15% Armor' },
-      { id: 'cyber_visor', name: 'Cyber Visor', slot: 'head', emoji: '👓', stat: '+20% Aim' },
-      { id: 'sun_crown', name: 'Regal Sun Crown', slot: 'head', emoji: '👑', stat: '+30% Coins' }
-    ]},
-    { slot: 'wings', name: 'Wings / Cape', icon: '🦸', items: [
-      { id: 'aero_wings', name: 'Aero Glider Wings', slot: 'wings', emoji: '🪽', stat: '+25% Speed' },
-      { id: 'phoenix_wings', name: 'Phoenix Flame Wings', slot: 'wings', emoji: '🔥', stat: '+30% Boost' },
-      { id: 'star_cape', name: 'Starlight Cloak', slot: 'wings', emoji: '✨', stat: '+15% Shield' }
-    ]},
-    { slot: 'boots', name: 'Hero Greaves', icon: '⚡', items: [
-      { id: 'iron_greaves', name: 'Iron Forged Greaves', slot: 'boots', emoji: '🛡️', stat: '+20% Defense' },
-      { id: 'spring_runners', name: 'Spring Jump Boots', slot: 'boots', emoji: '👟', stat: '+25% Flip' }
-    ]}
+  const categories = [
+    { id: 'masks', name: 'Masks', icon: 'masks', legacyKey: 'head' },
+    { id: 'capes', name: 'Capes', icon: 'blind', legacyKey: 'back' },
+    { id: 'armor', name: 'Armor', icon: 'shield', legacyKey: 'chest' },
+    { id: 'boots', name: 'Boots', icon: 'footprint', legacyKey: 'feet' }
   ];
 
-  return `
-    <div class="flex flex-col gap-5">
-      <p class="text-xs text-on-surface-variant font-bold">
-        Snap forged 3D helmets, wings, and boots directly onto ${pet.name}'s bone joints in real time!
-      </p>
-
-      <div class="flex flex-col gap-4">
-        ${gearSlots.map(group => `
-          <div>
-            <span class="text-xs font-black uppercase text-on-surface tracking-wider block mb-2 flex items-center gap-1.5">
-              <span>${group.icon}</span>
-              <span>${group.name}</span>
-            </span>
-            <div class="grid grid-cols-3 gap-2.5">
-              ${group.items.map(item => {
-                const isEquipped = equippedGear[group.slot]?.id === item.id;
-                return `
-                  <button 
-                    class="equip-gear-btn p-3 rounded-2xl border-2 flex flex-col items-center text-center transition-all active:scale-95 ${
-                      isEquipped
-                        ? 'bg-secondary/20 border-secondary text-secondary-fixed ring-2 ring-secondary/50 shadow-md'
-                        : 'bg-surface-container-high hover:bg-surface-bright border-surface-container-highest text-on-surface'
-                    }"
-                    data-slot="${item.slot}"
-                    data-gear-id="${item.id}"
-                    data-gear-name="${item.name}"
-                  >
-                    <span class="text-2xl mb-1">${item.emoji}</span>
-                    <span class="font-headline font-black text-[11px] leading-tight line-clamp-1">${item.name}</span>
-                    <span class="text-[10px] font-bold text-primary mt-1">${item.stat}</span>
-                    <span class="mt-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${isEquipped ? 'bg-secondary text-slate-950' : 'bg-surface-container text-on-surface-variant'}">
-                      ${isEquipped ? 'EQUIPPED' : 'EQUIP'}
-                    </span>
-                  </button>
-                `;
-              }).join('')}
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    </div>
-  `;
-}
-
-// -----------------------------------------------------------------------------
-// DRAWER 4: STARLIGHT EVOLUTION ALTAR DRAWER
-// -----------------------------------------------------------------------------
-function renderEvolutionDrawer(pet, sparks, stage) {
-  const canEvolve = sparks >= 100 && stage < 4;
-  const isMaxStage = stage >= 4;
-
-  const stages = [
-    { num: 1, name: 'Baby Hatchling', desc: 'Cute, playful companion starting out' },
-    { num: 2, name: 'Heroic Scout', desc: 'Bigger stature, small protective armor' },
-    { num: 3, name: 'Champion Guardian', desc: 'Powerful elemental aura & wings' },
-    { num: 4, name: 'Cosmic Titan', desc: 'Full starlight majesty & maximum buffs' }
-  ];
+  const activeCategory = selectedWardrobeCategory || 'masks';
+  const availableItems = PET_GEAR_CATALOG[activeCategory] || [];
+  const buffs = calculateActiveGearBuffs(equippedGear);
 
   return `
-    <div class="flex flex-col gap-6 text-center">
-      <!-- Sparks Tube Counter -->
-      <div class="bg-surface-container-lowest p-4 rounded-2xl border border-surface-container-highest">
-        <div class="flex items-center justify-between text-xs font-black text-on-surface mb-1.5">
-          <span class="flex items-center gap-1 text-tertiary">
-            <span class="material-symbols-outlined text-sm">bolt</span>
-            <span>Starlight Evolution Fuel</span>
-          </span>
-          <span class="text-tertiary-fixed font-black">${sparks}/100 Sparks</span>
+    <div class="flex flex-col gap-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h4 class="font-headline font-black text-sm text-on-surface">Tactile Hero Gear Slots</h4>
+          <p class="text-[11px] text-on-surface-variant font-bold">1 piece per category • Halos reflect gear forged level</p>
         </div>
-        <div class="w-full h-4 bg-surface-container-high rounded-full overflow-hidden p-0.5 border border-surface-container-highest">
-          <div 
-            class="h-full bg-gradient-to-r from-tertiary to-primary rounded-full transition-all duration-500 shadow-sm"
-            style="width: ${Math.min(100, (sparks / 100) * 100)}%"
-          ></div>
-        </div>
+        <span class="px-2.5 py-1 rounded-xl bg-primary/20 text-primary border border-primary/40 font-black text-xs">
+          4 Categories
+        </span>
       </div>
 
-      <!-- 4-Stage Metamorphosis Roadmap -->
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-        ${stages.map(st => {
-          const isCurrent = st.num === stage;
-          const isPassed = st.num < stage;
+      <!-- 4 Squircle Gear Spotlight Pedestals (Masks, Capes, Armor, Boots) -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        ${categories.map(cat => {
+          const equipped = equippedGear[cat.id] || equippedGear[cat.legacyKey];
+          const hasItem = Boolean(equipped);
+          const itemData = hasItem ? ((typeof equipped === 'object' && equipped.level) ? equipped : (getGearItem(cat.id, equipped.id || equipped) || { name: equipped.name || equipped, level: 1 })) : null;
+          const halo = hasItem ? getGearHaloStyle(itemData.level || 1) : null;
+
           return `
-            <div class="p-3 rounded-2xl border-2 flex flex-col items-center text-center ${
-              isCurrent
-                ? 'bg-primary/20 border-primary text-primary-fixed shadow-md ring-2 ring-primary/40'
-                : isPassed
-                ? 'bg-surface-container-lowest border-surface-container-highest opacity-70 text-on-surface'
-                : 'bg-surface-container-high border-surface-container-highest/40 opacity-40 text-on-surface-variant'
-            }">
-              <div class="w-7 h-7 rounded-full flex items-center justify-center font-black text-xs mb-1.5 ${
-                isCurrent ? 'bg-primary text-slate-950' : isPassed ? 'bg-surface-container-highest text-on-surface' : 'bg-surface-container text-on-surface-variant'
+            <div class="relative flex flex-col items-center p-3 rounded-2xl bg-surface-container-lowest border-2 ${
+              hasItem ? `${halo.border} ${halo.haloShadow}` : 'border-dashed border-surface-container-highest'
+            } transition-all">
+              <span class="text-[10px] font-black uppercase tracking-wider text-on-surface-variant mb-1 flex items-center gap-1">
+                <span class="material-symbols-outlined text-xs">${cat.icon}</span>
+                <span>${cat.name}</span>
+              </span>
+
+              <div class="w-14 h-14 rounded-2xl flex items-center justify-center my-1 relative ${
+                hasItem ? `${halo.bg} border-2 ${halo.border}` : 'bg-surface-container border border-surface-container-highest/60'
               }">
-                ${isPassed ? '✓' : st.num}
+                ${hasItem ? `
+                  <span class="material-symbols-outlined text-2xl ${halo.text}">${cat.icon}</span>
+                  <span class="absolute -top-1.5 -right-1.5 px-1.5 py-0.2 rounded-full text-[9px] font-black uppercase ${halo.text} bg-slate-950 border ${halo.border}">
+                    L${itemData.level || 1}
+                  </span>
+                ` : `
+                  <span class="material-symbols-outlined text-xl text-on-surface-variant/40">add</span>
+                `}
               </div>
-              <span class="font-headline font-black text-xs">${st.name}</span>
-              <span class="text-[10px] text-on-surface-variant mt-1 leading-tight">${st.desc}</span>
+
+              <div class="text-center min-h-[32px] flex flex-col items-center justify-center mt-1">
+                <span class="font-headline font-black text-xs text-on-surface truncate max-w-[100px]">
+                  ${hasItem ? (itemData.name || 'Equipped') : 'Empty Slot'}
+                </span>
+                ${hasItem && itemData.statBonusLabel ? `
+                  <span class="text-[9px] font-bold text-emerald-400 truncate max-w-[110px]">${itemData.statBonusLabel}</span>
+                ` : ''}
+              </div>
+
+              ${hasItem ? `
+                <button 
+                  class="wardrobe-unequip-btn mt-2 px-2.5 py-1 rounded-xl bg-surface-container hover:bg-rose-500/20 text-rose-300 border border-surface-container-highest hover:border-rose-400/60 font-black text-[10px] active:scale-95 transition-all"
+                  data-category="${cat.id}"
+                >
+                  Unequip
+                </button>
+              ` : `
+                <button 
+                  class="wardrobe-category-tab mt-2 px-2.5 py-1 rounded-xl bg-surface-container-high hover:bg-surface-bright text-on-surface-variant font-black text-[10px] active:scale-95 transition-all"
+                  data-category="${cat.id}"
+                >
+                  Browse
+                </button>
+              `}
             </div>
           `;
         }).join('')}
       </div>
 
-      <!-- Evolution Action Button -->
-      <div class="flex flex-col items-center gap-3">
-        ${isMaxStage ? `
-          <div class="px-6 py-3 rounded-2xl bg-surface-container-high border border-primary/40 text-primary font-black text-xs">
-            🌟 Maximum Cosmic Titan Evolution Reached!
+      <!-- Active Gear Buffs Banner -->
+      ${buffs.activeBuffLabels.length > 0 ? `
+        <div class="p-3 rounded-2xl bg-surface-container-lowest border border-primary/40 flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary text-base">hotel_class</span>
+          <span class="text-xs font-black text-on-surface">Active Set Bonus:</span>
+          <div class="flex flex-wrap gap-1.5">
+            ${buffs.activeBuffLabels.map(l => `
+              <span class="px-2 py-0.5 rounded-lg bg-primary/20 text-primary-fixed border border-primary/40 text-[10px] font-black">${l}</span>
+            `).join('')}
           </div>
-        ` : `
-          <button 
-            id="awaken-evolution-btn"
-            class="w-full sm:w-80 py-4 px-6 rounded-2xl font-headline font-black text-sm flex items-center justify-center gap-2 border-b-4 transition-all shadow-xl ${
-              canEvolve
-                ? 'bg-gradient-to-r from-primary to-secondary text-slate-950 border-[#1b7a43] active:translate-y-1 active:border-b-0 animate-pulse cursor-pointer'
-                : 'bg-surface-container-high text-on-surface-variant border-surface-container-highest opacity-50 cursor-not-allowed'
-            }"
-            ${!canEvolve ? 'disabled' : ''}
-          >
-            <span class="text-2xl">⚡</span>
-            <span>AWAKEN METAMORPHOSIS (100 SPARKS)</span>
-          </button>
+        </div>
+      ` : ''}
 
-          ${!canEvolve ? `
-            <p class="text-xs text-secondary font-bold">
-              Complete toothbrushing and chore quests to gather 100 Starlight Sparks!
-            </p>
-          ` : ''}
-        `}
+      <!-- Category Filter Tabs -->
+      <div class="flex flex-col gap-3">
+        <div class="flex items-center gap-1.5 p-1 bg-surface-container-lowest rounded-2xl border border-surface-container-highest">
+          ${categories.map(cat => `
+            <button 
+              class="wardrobe-category-tab flex-1 py-2 px-2 rounded-xl font-headline font-black text-xs flex items-center justify-center gap-1 transition-all ${
+                activeCategory === cat.id
+                  ? 'bg-secondary text-slate-950 shadow-md'
+                  : 'text-on-surface-variant hover:text-on-surface'
+              }"
+              data-category="${cat.id}"
+            >
+              <span class="material-symbols-outlined text-sm">${cat.icon}</span>
+              <span>${cat.name}</span>
+            </button>
+          `).join('')}
+        </div>
+
+        <!-- Available Gear Items Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[36vh] overflow-y-auto pr-1">
+          ${availableItems.map(item => {
+            const currentlyEquipped = equippedGear[activeCategory] || equippedGear[categories.find(c => c.id === activeCategory)?.legacyKey];
+            const isEquipped = currentlyEquipped && (currentlyEquipped.id === item.id || currentlyEquipped === item.id);
+            const halo = getGearHaloStyle(item.level || 1);
+
+            return `
+              <div class="p-3.5 rounded-2xl bg-surface-container-high border-2 flex items-center justify-between gap-3 transition-all ${
+                isEquipped ? `${halo.border} ${halo.bg} shadow-md` : 'border-surface-container-highest hover:border-primary/50'
+              }">
+                <div class="flex items-center gap-3 min-w-0">
+                  <div class="w-12 h-12 rounded-2xl flex-shrink-0 flex items-center justify-center ${halo.bg} border-2 ${halo.border} ${halo.haloShadow}">
+                    <span class="material-symbols-outlined text-xl ${halo.text}">${item.icon || 'shield'}</span>
+                  </div>
+                  <div class="flex flex-col min-w-0">
+                    <div class="flex items-center gap-1.5">
+                      <span class="font-headline font-black text-xs text-on-surface truncate">${item.name}</span>
+                      <span class="px-1.5 py-0.2 rounded-md text-[9px] font-black uppercase ${halo.text} bg-slate-950 border ${halo.border}">
+                        ${item.levelLabel || `Lv.${item.level}`}
+                      </span>
+                    </div>
+                    <span class="text-[10px] text-on-surface-variant truncate">${item.desc}</span>
+                    <span class="text-[10px] font-black text-emerald-400 mt-0.5">${item.statBonusLabel}</span>
+                  </div>
+                </div>
+
+                <button 
+                  class="${isEquipped ? 'wardrobe-unequip-btn' : 'wardrobe-equip-btn'} px-3 py-2 rounded-xl font-headline font-black text-xs flex-shrink-0 active:scale-95 transition-all ${
+                    isEquipped
+                      ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30'
+                      : 'bg-primary text-slate-950 border-b-2 border-[#1b7a43] hover:bg-emerald-400 shadow-sm'
+                  }"
+                  data-category="${activeCategory}"
+                  data-gear-id="${item.id}"
+                >
+                  ${isEquipped ? 'UNEQUIP' : 'EQUIP'}
+                </button>
+              </div>
+            `;
+          }).join('')}
+        </div>
       </div>
     </div>
   `;
 }
 
 // -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// DRAWER: EXPEDITION
+// DRAWER: EXPEDITION (ADVENTURE)
 // -----------------------------------------------------------------------------
 function renderExpeditionDrawer(pet) {
   const sanct = store.getPetSanctuaryState();
@@ -634,8 +646,9 @@ function renderExpeditionDrawer(pet) {
         <div class="flex flex-col items-center gap-4 text-center">
           <span class="text-5xl">🏆</span>
           <h4 class="font-bold text-xl text-emerald-400">Expedition Complete!</h4>
-          <button id="claim-expedition-btn" class="bg-emerald-500 hover:bg-emerald-400 text-white font-bold py-3 px-6 rounded-full text-lg shadow-lg">
-            Claim Rewards (100 Coins, 20 Sparks)
+          <p class="text-xs text-on-surface-variant">${pet.name} brought back shiny rewards from the adventure!</p>
+          <button id="claim-expedition-btn" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-3 px-8 rounded-2xl text-sm shadow-xl active:scale-95">
+            Claim Rewards (100 Coins 🪙, 50 Pet Training XP ⚡)
           </button>
         </div>
       `;
@@ -653,8 +666,11 @@ function renderExpeditionDrawer(pet) {
   } else {
     content = `
       <div class="flex flex-col items-center gap-4 text-center">
-        <p class="text-sm text-slate-300">Send ${pet.name} on a 15-minute adventure to find treasures!</p>
-        <button id="start-expedition-btn" class="bg-amber-500 hover:bg-amber-400 text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg">
+        <p class="text-sm text-slate-300">Send ${pet.name} on a 15-minute adventure to explore uncharted trails and discover rewards!</p>
+        <div class="p-3 bg-surface-container-lowest rounded-2xl border border-surface-container-highest text-xs text-secondary font-bold">
+          Rewards: 100 Hero Coins 🪙 + 50 Pet Training XP ⚡
+        </div>
+        <button id="start-expedition-btn" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-3 px-8 rounded-2xl text-sm shadow-lg active:scale-95">
           Send on Adventure
         </button>
       </div>
@@ -665,64 +681,182 @@ function renderExpeditionDrawer(pet) {
 }
 
 // -----------------------------------------------------------------------------
-// DRAWER: WORKOUT
+// DRAWER: WORKOUT (DAILY ROTATING PET COACH & GROSS-MOTOR TRAINING)
 // -----------------------------------------------------------------------------
 function renderWorkoutDrawer(pet) {
-  const workouts = [
-    { id: 'velociraptor_run', name: 'Velociraptor Run' },
-    { id: 'stegosaurus_walks', name: 'Stegosaurus Walks' },
-    { id: 'pterodactyl_takeoff', name: 'Pterodactyl Take Off' },
-    { id: 'trex_run', name: 'T-Rex Run' },
-    { id: 'compsognathus_prance', name: 'Compsognathus Prance' },
-    { id: 'brachiosaurus_stretch', name: 'Brachiosaurus Stretch' },
-    { id: 'diplodocus', name: 'The Diplodocus' },
-    { id: 'spinosaurus_stretch', name: 'Spinosaurus Stretch' }
-  ];
+  const dailyCoach = getDailyRotatingPetCoach();
 
   return `
-    <div class="flex flex-col gap-4 text-center">
-      <p class="text-sm text-slate-300">Train with the Dino Coaches!</p>
-      <div class="grid grid-cols-2 gap-3">
-        ${workouts.map(w => {
-          const isHighlighted = pet.workoutId === w.id;
-          return `
-            <button class="start-workout-btn p-3 rounded-xl border-2 transition-all active:scale-95 ${isHighlighted ? 'bg-emerald-500 border-emerald-400 text-white font-bold' : 'bg-slate-700 hover:bg-slate-600 border-slate-600 text-slate-200'}" data-workout-id="${w.id}">
-              ${w.name}
-            </button>
-          `;
-        }).join('')}
+    <div class="flex flex-col gap-5">
+      <!-- Daily Coach Hero Spotlight Card -->
+      <div class="p-4 rounded-3xl bg-gradient-to-br from-surface-container-high to-surface-container-lowest border-2 border-amber-400/50 shadow-xl flex items-center gap-4">
+        <div class="w-20 h-20 rounded-2xl bg-surface-container-lowest border-2 border-amber-400/60 flex items-center justify-center p-1.5 shadow-md flex-shrink-0">
+          <img src="${dailyCoach.avatar || `/assets/pets/${dailyCoach.key || 'rex'}.png`}" alt="${dailyCoach.name}" class="w-full h-full object-contain filter drop-shadow">
+        </div>
+        <div class="flex flex-col min-w-0">
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-400/20 text-amber-300 border border-amber-400/40">
+              Daily Coach
+            </span>
+            <span class="text-xs font-bold text-on-surface-variant">${dailyCoach.archetypeName}</span>
+          </div>
+          <h4 class="font-headline font-black text-lg text-on-surface truncate">Coach ${dailyCoach.name}</h4>
+          <span class="text-xs font-black text-secondary mt-0.5">${dailyCoach.signatureMove}</span>
+          <span class="text-[11px] text-on-surface-variant font-medium mt-1 leading-tight line-clamp-2">${dailyCoach.workoutDesc}</span>
+        </div>
       </div>
+
+      <!-- Training Rewards Banner -->
+      <div class="flex items-center justify-between p-3 rounded-2xl bg-surface-container-lowest border border-emerald-400/40">
+        <div class="flex items-center gap-2 text-emerald-400 font-black text-xs">
+          <span class="material-symbols-outlined text-base">military_tech</span>
+          <span>Workout Completion Bonus:</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="px-2.5 py-0.5 rounded-xl bg-cyan-400/20 text-cyan-300 border border-cyan-400/40 text-xs font-black">+50 Pet XP ⚡</span>
+          <span class="px-2.5 py-0.5 rounded-xl bg-amber-400/20 text-amber-300 border border-amber-400/40 text-xs font-black">+100 Coins 🪙</span>
+        </div>
+      </div>
+
+      <!-- Signature Gross Motor Exercise Steps -->
+      <div class="flex flex-col gap-2.5">
+        <span class="text-xs font-black uppercase text-on-surface-variant tracking-wider">Coach Routine:</span>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div class="p-3 rounded-2xl bg-surface-container-high border border-surface-container-highest flex flex-col">
+            <span class="text-xs font-black text-primary mb-1">1. High Knees Stomp</span>
+            <span class="text-[11px] text-on-surface-variant font-medium">Warm up big leg muscles with rhythm stomps!</span>
+          </div>
+          <div class="p-3 rounded-2xl bg-surface-container-high border border-surface-container-highest flex flex-col">
+            <span class="text-xs font-black text-secondary mb-1">2. ${dailyCoach.signatureMove}</span>
+            <span class="text-[11px] text-on-surface-variant font-medium">Follow Coach ${dailyCoach.name}'s signature motion!</span>
+          </div>
+          <div class="p-3 rounded-2xl bg-surface-container-high border border-surface-container-highest flex flex-col">
+            <span class="text-xs font-black text-tertiary mb-1">3. Victory Hero Pose</span>
+            <span class="text-[11px] text-on-surface-variant font-medium">Hold a balanced hero stance for maximum bond!</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Start Workout Action Button -->
+      <button 
+        id="start-coach-workout-btn"
+        class="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-amber-400 via-emerald-400 to-cyan-400 hover:opacity-95 text-slate-950 font-headline font-black text-sm flex items-center justify-center gap-2 border-b-4 border-amber-600 active:translate-y-1 active:border-b-0 transition-all shadow-xl"
+      >
+        <span class="material-symbols-outlined text-xl">fitness_center</span>
+        <span>TRAIN WITH COACH ${dailyCoach.name.toUpperCase()} (+50 PET XP)</span>
+      </button>
     </div>
   `;
 }
 
-// DRAWER 5: 24 PET COMPANION ROSTER DRAWER
+// -----------------------------------------------------------------------------
+// DRAWER 4: 24 PET COMPANIONS ROSTER DRAWER (ALL 24 FIGURINES & ARCHETYPES)
 // -----------------------------------------------------------------------------
 function renderRosterDrawer(activePet) {
+  const filter = selectedRosterFilter || 'all';
+
+  const filterTabs = [
+    { id: 'all', label: 'All (24)', icon: 'apps' },
+    { id: 'dino', label: 'Dinos (6)', icon: 'cruelty_free' },
+    { id: 'mystic', label: 'Mystics (5)', icon: 'auto_awesome' },
+    { id: 'beast', label: 'Beasts (5)', icon: 'pets' },
+    { id: 'aquatic', label: 'Aquatic (4)', icon: 'water' },
+    { id: 'mech', label: 'Mechs (4)', icon: 'smart_toy' }
+  ];
+
+  const filteredPets = PETS_DATABASE.filter(p => {
+    if (filter === 'all') return true;
+    return (p.archetype || 'dino') === filter;
+  });
+
   return `
     <div class="flex flex-col gap-4">
-      <span class="text-xs font-black uppercase text-on-surface-variant tracking-wider block">Choose your active adventure companion:</span>
-      
-      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[50vh] overflow-y-auto pr-1">
-        ${PETS_DATABASE.map(pet => {
+      <div class="flex items-center justify-between">
+        <div>
+          <h4 class="font-headline font-black text-sm text-on-surface">24 Companion Heroes</h4>
+          <p class="text-[11px] text-on-surface-variant font-bold">Tactile 3D toy figurines • Level 1-25 mastery</p>
+        </div>
+        <span class="px-2.5 py-1 rounded-xl bg-secondary/20 text-secondary border border-secondary/40 font-black text-xs">
+          ${filteredPets.length} Companions
+        </span>
+      </div>
+
+      <!-- Archetype Filter Pills -->
+      <div class="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+        ${filterTabs.map(tab => `
+          <button 
+            class="roster-filter-btn flex-shrink-0 px-3 py-1.5 rounded-xl font-headline font-black text-xs flex items-center gap-1.5 transition-all ${
+              filter === tab.id
+                ? 'bg-primary text-slate-950 shadow-md'
+                : 'bg-surface-container-high hover:bg-surface-bright text-on-surface-variant border border-surface-container-highest'
+            }"
+            data-filter="${tab.id}"
+          >
+            <span class="material-symbols-outlined text-sm">${tab.icon}</span>
+            <span>${tab.label}</span>
+          </button>
+        `).join('')}
+      </div>
+
+      <!-- 24 Pet Cards Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-[50vh] overflow-y-auto pr-1">
+        ${filteredPets.map(pet => {
           const isActive = pet.id === activePet.id;
           const archetype = getPetArchetype(pet);
+          const level = store.getPetLevel(pet.id);
+          const levelData = getPetLevelData(level);
+          const statBonus = calculatePetStatBonus(pet, level);
+
           return `
-            <button 
-              class="switch-pet-btn p-3 rounded-2xl border-2 flex items-center gap-3 text-left transition-all active:scale-95 ${
+            <div 
+              class="p-3.5 rounded-2xl border-2 flex flex-col justify-between transition-all ${
                 isActive
-                  ? 'bg-primary/20 border-primary text-primary-fixed ring-2 ring-primary/40 shadow-md'
-                  : 'bg-surface-container-high hover:bg-surface-bright border-surface-container-highest text-on-surface'
+                  ? 'bg-primary/15 border-primary shadow-lg ring-2 ring-primary/40'
+                  : 'bg-surface-container-high hover:bg-surface-bright border-surface-container-highest'
               }"
-              data-pet-id="${pet.id}"
             >
-              <span class="text-3xl flex-shrink-0">${pet.emoji || '🐾'}</span>
-              <div class="flex flex-col min-w-0">
-                <span class="font-headline font-black text-xs truncate">${pet.name}</span>
-                <span class="text-[10px] font-bold text-secondary truncate">${archetype.name}</span>
-                <span class="text-[9px] font-medium text-on-surface-variant truncate">${pet.element || 'Normal'}</span>
+              <div class="flex items-center gap-3">
+                <div class="w-16 h-16 rounded-2xl bg-surface-container-lowest border-2 ${
+                  isActive ? 'border-primary' : 'border-surface-container-highest'
+                } flex items-center justify-center p-1 shadow-inner flex-shrink-0">
+                  <img 
+                    src="${pet.avatar || `/assets/pets/${pet.key || 'rex'}.png`}" 
+                    alt="${pet.name}" 
+                    class="w-full h-full object-contain filter drop-shadow hover:scale-105 transition-transform"
+                    loading="lazy"
+                  >
+                </div>
+                <div class="flex flex-col min-w-0">
+                  <div class="flex items-center gap-1.5">
+                    <span class="font-headline font-black text-sm text-on-surface truncate">${pet.name}</span>
+                    <span class="px-1.5 py-0.2 rounded-md text-[9px] font-black uppercase tracking-wider bg-secondary/20 text-secondary border border-secondary/40">
+                      ${archetype.name}
+                    </span>
+                  </div>
+                  <span class="text-[11px] font-bold text-cyan-300 mt-0.5">Lvl ${level}: ${levelData.title}</span>
+                  <span class="text-[10px] font-black text-emerald-400 mt-0.5">${statBonus.label}</span>
+                </div>
               </div>
-            </button>
+
+              <div class="mt-3 pt-2.5 border-t border-surface-container-highest/60 flex items-center justify-between">
+                <span class="text-[10px] text-on-surface-variant font-medium truncate max-w-[130px]">
+                  ${pet.signatureMove || 'Hero Stomp'}
+                </span>
+                ${isActive ? `
+                  <span class="px-3 py-1 rounded-xl bg-primary text-slate-950 font-black text-[11px] uppercase tracking-wider flex items-center gap-1 shadow-sm">
+                    <span class="material-symbols-outlined text-xs">check_circle</span>
+                    <span>ACTIVE</span>
+                  </span>
+                ` : `
+                  <button 
+                    class="switch-pet-btn px-3 py-1 rounded-xl bg-surface-container hover:bg-primary hover:text-slate-950 text-on-surface font-black text-[11px] uppercase tracking-wider border border-surface-container-highest active:scale-95 transition-all"
+                    data-pet-id="${pet.id}"
+                  >
+                    SELECT
+                  </button>
+                `}
+              </div>
+            </div>
           `;
         }).join('')}
       </div>
@@ -804,14 +938,13 @@ export function attachPetSanctuaryListeners() {
     });
   }
 
-  const evoBtn = document.getElementById('action-evolution-btn');
-  if (evoBtn) {
-    evoBtn.addEventListener('click', () => {
+  const rosterDockBtn = document.getElementById('action-roster-dock-btn');
+  if (rosterDockBtn) {
+    rosterDockBtn.addEventListener('click', () => {
       Sound.bloop();
-      store.openSanctuaryDrawer('evolution');
+      store.openSanctuaryDrawer('roster');
     });
   }
-
   
   const expBtn = document.getElementById('action-expedition-btn');
   if (expBtn) {
@@ -821,6 +954,11 @@ export function attachPetSanctuaryListeners() {
   const workBtn = document.getElementById('action-workout-btn');
   if (workBtn) {
     workBtn.addEventListener('click', () => { Sound.bloop(); store.openSanctuaryDrawer('workout'); });
+  }
+
+  const topWorkoutBtn = document.getElementById('sanctuary-workout-btn');
+  if (topWorkoutBtn) {
+    topWorkoutBtn.addEventListener('click', () => { Sound.bloop(); store.openSanctuaryDrawer('workout'); });
   }
 
   if (expeditionInterval) {
@@ -875,10 +1013,20 @@ export function attachPetSanctuaryListeners() {
         expeditionInterval = null;
       }
       Sound.fanfare();
-      const rewards = store.claimExpeditionRewards();
+      store.claimExpeditionRewards();
       const activePet = store.getActivePet();
-      store.showReward('Expedition Complete! 🏆', `${activePet?.name || 'Your companion'} brought back 100 Coins 🪙 and 20 Evolution Sparks ⚡!`, 100, 0, null, 'explore');
+      store.addPetTrainingXp(activePet.id, 50);
+      store.showReward('Expedition Complete! 🏆', `${activePet?.name || 'Your companion'} brought back 100 Coins 🪙 and 50 Pet Training XP ⚡!`, 100, 0, null, 'explore');
       store.closeSanctuaryDrawer();
+    });
+  }
+
+  const coachWorkoutBtn = document.getElementById('start-coach-workout-btn');
+  if (coachWorkoutBtn) {
+    coachWorkoutBtn.addEventListener('click', () => {
+      Sound.fanfare();
+      store.closeSanctuaryDrawer();
+      store.navigate('dino_workout');
     });
   }
 
@@ -901,76 +1049,49 @@ export function attachPetSanctuaryListeners() {
     });
   }
 
-  // Drawer Close Button & Backdrop
-  const closeBtn = document.getElementById('drawer-close-btn');
-  const backdrop = document.getElementById('drawer-backdrop');
-  const closeDrawer = () => {
-    if (expeditionInterval) {
-      clearInterval(expeditionInterval);
-      expeditionInterval = null;
-    }
-    Sound.bloop();
-    store.closeSanctuaryDrawer();
-  };
-  if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
-  if (backdrop) backdrop.addEventListener('click', closeDrawer);
-
-  // Feeding Snack Buttons
-  document.querySelectorAll('.feed-treat-btn').forEach(btn => {
+  // Roster Archetype Filter Pills
+  document.querySelectorAll('.roster-filter-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      const treatId = btn.getAttribute('data-treat-id');
-      const activePet = store.getActivePet();
-      const treat = SANCTUARY_TREATS.find(t => t.id === treatId);
-      if (activePet && treat) {
-        store.feedPetTreat(activePet.id, treatId);
-        if (activeCanvasInstance) activeCanvasInstance.triggerFeedTreat(treat);
-      }
+      Sound.bloop();
+      selectedRosterFilter = btn.getAttribute('data-filter') || 'all';
+      store.notify();
     });
   });
 
-  // Bath Scrub Button
-  const spongeBtn = document.getElementById('scrub-sponge-btn');
-  if (spongeBtn) {
-    spongeBtn.addEventListener('click', () => {
-      const activePet = store.getActivePet();
-      if (activePet) {
-        store.bathPetScrub(activePet.id, 25);
-        if (activeCanvasInstance) activeCanvasInstance.triggerBathLagoon();
-      }
+  // Wardrobe Category Tabs
+  document.querySelectorAll('.wardrobe-category-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      Sound.bloop();
+      selectedWardrobeCategory = btn.getAttribute('data-category') || 'masks';
+      store.notify();
     });
-  }
+  });
 
   // Wardrobe Equip Buttons
-  document.querySelectorAll('.equip-gear-btn').forEach(btn => {
+  document.querySelectorAll('.wardrobe-equip-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      const slot = btn.getAttribute('data-slot');
+      const cat = btn.getAttribute('data-category');
       const gearId = btn.getAttribute('data-gear-id');
-      const gearName = btn.getAttribute('data-gear-name');
       const activePet = store.getActivePet();
-      if (activePet && slot) {
+      if (activePet && cat && gearId) {
         Sound.sparkle();
-        store.equipPetForgeGear(activePet.id, slot, { id: gearId, name: gearName });
+        const item = getGearItem(cat, gearId);
+        store.equipPetStudioGear(activePet.id, cat, item || gearId);
       }
     });
   });
 
-  // Starlight Evolution Awaken Button
-  const evoAwakenBtn = document.getElementById('awaken-evolution-btn');
-  if (evoAwakenBtn) {
-    evoAwakenBtn.addEventListener('click', () => {
+  // Wardrobe Unequip Buttons
+  document.querySelectorAll('.wardrobe-unequip-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const cat = btn.getAttribute('data-category');
       const activePet = store.getActivePet();
-      if (activePet) {
-        const res = store.evolvePetStarlight(activePet.id);
-        if (res && res.success) {
-          Sound.fanfare();
-          if (typeof window !== 'undefined' && typeof window.confetti === 'function') {
-            window.confetti({ particleCount: 75, spread: 80, origin: { y: 0.6 } });
-          }
-          if (activeCanvasInstance) activeCanvasInstance.triggerCheer();
-        }
+      if (activePet && cat) {
+        Sound.bloop();
+        store.equipPetStudioGear(activePet.id, cat, null);
       }
     });
-  }
+  });
 
   // Roster Switch Pet Buttons
   document.querySelectorAll('.switch-pet-btn').forEach(btn => {

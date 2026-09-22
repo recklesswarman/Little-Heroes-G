@@ -35,7 +35,6 @@ import { renderPetBathView, attachPetBathListeners } from './views/PetBathView.j
 import { renderAdventuresMapView, attachAdventuresMapListeners } from './views/AdventuresMapView.js';
 import { renderShopView, attachShopListeners } from './views/ShopView.js';
 import { renderBattleView, attachBattleListeners } from './views/BattleView.js';
-import { renderEvolutionView, attachEvolutionListeners } from './views/EvolutionView.js';
 import { renderDancePartyView, attachDancePartyListeners } from './views/DancePartyView.js';
 import { renderProfileView, attachProfileListeners } from './views/ProfileView.js';
 import { renderParentPortalView, attachParentPortalListeners } from './views/ParentPortalView.js';
@@ -192,8 +191,8 @@ function renderApp() {
       attachViewListeners = attachBattleListeners;
       break;
     case 'evolution':
-      mainContent = renderEvolutionView();
-      attachViewListeners = attachEvolutionListeners;
+      mainContent = renderPetSanctuaryView();
+      attachViewListeners = attachPetSanctuaryListeners;
       break;
     case 'dance_party':
       mainContent = renderDancePartyView();

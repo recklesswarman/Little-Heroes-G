@@ -26,7 +26,7 @@ export function renderBottomNav() {
             const isTabActive =
               activeView === item.id ||
               (item.id === 'quest_map' && ['quest_map', 'pet-expedition', 'pet_expedition'].includes(activeView)) ||
-              (['pet_sanctuary', 'pet_pen'].includes(item.id) && ['pet_sanctuary', 'pet_pen', 'pet_roster', 'pet_detail', 'pet_bath', 'pet_locker', 'evolution', 'adventures_map'].includes(activeView)) ||
+              (['pet_sanctuary', 'pet_pen'].includes(item.id) && ['pet_sanctuary', 'pet_pen', 'pet_roster', 'pet_detail', 'pet_bath', 'pet_locker', 'dino_workout', 'adventures_map'].includes(activeView)) ||
               (item.id === 'dashboard' && ['profile', 'ar_battle', 'hero_hq', 'hero_forge', 'hero-forge'].includes(activeView));
 
             return `

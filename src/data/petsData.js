@@ -1,611 +1,836 @@
+// 24 Pets Universe & Tactile Toy Architecture Data Catalog
+// Fully complies with DESIGN.md and Adventurous Explorer guidelines:
+// Zero pink/purple palette, Level 1-25 progression, 5 archetypes, chunky 3D toy figurines.
+
 export function makePetSvg(emoji, bgGradient, glowColor) {
+  const cleanGlow = (glowColor || '#2ecc71').replace('#', '');
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
     <defs>
-      <radialGradient id="bg-${glowColor.replace('#','')}" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stop-color="${glowColor}" stop-opacity="0.4"/>
-        <stop offset="100%" stop-color="#0f172a" stop-opacity="0.95"/>
+      <radialGradient id="bg-${cleanGlow}" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#${cleanGlow}" stop-opacity="0.4"/>
+        <stop offset="100%" stop-color="#09141e" stop-opacity="0.95"/>
       </radialGradient>
-      <filter id="glow-${glowColor.replace('#','')}">
-        <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="${glowColor}" flood-opacity="0.6"/>
+      <filter id="glow-${cleanGlow}">
+        <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#${cleanGlow}" flood-opacity="0.6"/>
       </filter>
     </defs>
-    <circle cx="60" cy="60" r="54" fill="url(#bg-${glowColor.replace('#','')})" stroke="${glowColor}" stroke-width="3"/>
-    <circle cx="60" cy="60" r="44" fill="#1e293b" stroke="#334155" stroke-width="2"/>
-    <text x="60" y="74" font-size="48" text-anchor="middle" filter="url(#glow-${glowColor.replace('#','')})">${emoji}</text>
+    <circle cx="60" cy="60" r="54" fill="url(#bg-${cleanGlow})" stroke="#${cleanGlow}" stroke-width="3"/>
+    <circle cx="60" cy="60" r="44" fill="#16212b" stroke="#202b35" stroke-width="2"/>
+    <text x="60" y="74" font-size="48" text-anchor="middle" filter="url(#glow-${cleanGlow})">${emoji}</text>
   </svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
+export const PET_ARCHETYPES = {
+  dino: { id: 'dino', name: 'Prehistoric Dino', emoji: '🦖', badgeBg: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40', count: 8 },
+  mystic: { id: 'mystic', name: 'Dragons & Mystics', emoji: '🐉', badgeBg: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40', count: 5 },
+  beast: { id: 'beast', name: 'Wild Beasts', emoji: '🦁', badgeBg: 'bg-amber-500/20 text-amber-400 border-amber-500/40', count: 6 },
+  aquatic: { id: 'aquatic', name: 'Aquatic Guardians', emoji: '🦈', badgeBg: 'bg-blue-500/20 text-blue-400 border-blue-500/40', count: 3 },
+  mech: { id: 'mech', name: 'Tech Mechs', emoji: '🤖', badgeBg: 'bg-teal-500/20 text-teal-300 border-teal-500/40', count: 2 }
+};
+
 export const PETS_DATABASE = [
+  // 1. Rex the T-Rex (Prehistoric Dino)
   {
     id: '1',
+    key: 'rex',
     name: 'Rex the T-Rex',
+    shortName: 'Rex',
     title: 'The Apex Stomper',
+    archetype: 'dino',
     element: 'Earth & Thunder',
     color: '#2ecc71',
     accentColor: '#f1c40f',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDnxgEa6LgbgAkDctHBACUsubrRh0U8vMmbJxq4ACCWYwyxf7800JbNv-noivBha5t7iGBEgs-YsbsGmoo1xKaGtP49xpYLBxuV_-5Xeem4_4CfYg8RwvbaFbrHewRdEcY_Kqgh2Ep9mGvfKL3wxqEK9KBXuBiBTkrgdgQeIzjdJY4AMhn6WLNE-9UrpirWUPIn35lB_Z8hsegZ5dYgugCCqy5JsNgkzB8tu-dvmgFCDFLsddPsW8GwUA',
-    evolvedAvatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDnxgEa6LgbgAkDctHBACUsubrRh0U8vMmbJxq4ACCWYwyxf7800JbNv-noivBha5t7iGBEgs-YsbsGmoo1xKaGtP49xpYLBxuV_-5Xeem4_4CfYg8RwvbaFbrHewRdEcY_Kqgh2Ep9mGvfKL3wxqEK9KBXuBiBTkrgdgQeIzjdJY4AMhn6WLNE-9UrpirWUPIn35lB_Z8hsegZ5dYgugCCqy5JsNgkzB8tu-dvmgFCDFLsddPsW8GwUA',
-    backstory: 'Rex burst out of the Prehistoric Jungle with the most thunderous roar ever heard! He stomps so hard the ground shakes, and he loves coaching little heroes to run faster and lift their knees higher than any dino in the land!',
-    habitBonus: 'Knee Lifter: +20 Coins for every physical activity task completed',
+    darkColor: '#1b7a43',
+    cardContainer: '#142820',
+    cardOutline: '#27ae60',
+    avatar: '/assets/pets/rex.png',
+    image: '/assets/pets/rex.png',
+    emoji: '🦖',
+    backstory: 'Rex burst out of the Primeval Jungle with thunderous stomps! He loves high-knees running, sports, and cheering heroes on during active play.',
     assignedHabit: 'Active Play / Sports',
-    baseStats: { hunger: 90, hygiene: 60, energy: 100, joy: 90 },
-    evolutionStages: ['Tiny Hatchling', 'Jungle Crusher', 'Armored Titan', 'Apex Cyber T-Rex'],
+    habitBonus: 'Knee Lifter: +20 Coins on physical activity and sports tasks',
+    statBonusType: 'coin_boost',
+    baseBonusPercent: 20,
+    maxLevel: 25,
+    workoutId: 'trex_run',
+    workoutName: "Rex's Knee-Lifter Stomp",
+    workoutInstructions: 'Put elbows in armpits, run in place, and lift knees high as the ground shakes!',
     exclusiveGear: [
-      { name: 'Titanium Spiked Collar', desc: '+30 Strength on all physical tasks', icon: 'military_tech' },
-      { name: 'Stomper Dino Boots', desc: 'Doubles running speed in workouts', icon: 'directions_run' },
-      { name: 'Roar Megaphone', desc: '+15% XP on all active play quests', icon: 'campaign' }
-    ],
-    archetype: 'dino',
-    workoutId: 'trex_run'
+      { name: 'Titanium Dino Boots', desc: '+25% Running Speed in workouts', icon: 'directions_run', category: 'boots', level: 3 },
+      { name: 'Thunder Roar Crest', desc: '+20% Coins on physical quests', icon: 'campaign', category: 'masks', level: 2 }
+    ]
   },
+  // 2. Raptor the Velociraptor (Prehistoric Dino)
   {
     id: '2',
+    key: 'raptor',
     name: 'Raptor the Velociraptor',
+    shortName: 'Raptor',
     title: 'The Lightning Sprinter',
-    element: 'Wind & Speed',
-    color: '#e74c3c',
-    accentColor: '#f1c40f',
-    avatar: makePetSvg('🦎', 'Raptor', '#e74c3c'),
-    evolvedAvatar: makePetSvg('🦎', 'Raptor', '#e74c3c'),
-    backstory: 'Raptor dashes so fast that lightning bolts trail behind her claws! She is the first one up every morning and dares little heroes to run in place as fast as their legs can go — she will always run faster!',
-    habitBonus: 'Speedy Start: +15 Coins if morning chores are done before 8 AM',
-    assignedHabit: 'Morning Routine',
-    baseStats: { hunger: 75, hygiene: 70, energy: 100, joy: 95 },
-    evolutionStages: ['Claw Hatchling', 'Jungle Scout', 'Storm Runner', 'Galactic Apex Raptor'],
-    exclusiveGear: [
-      { name: 'Speed Shades', desc: 'Reduces daily task cooldowns by 20%', icon: 'speed' },
-      { name: 'Raptor Claws', desc: '+25% Coins on morning routine completions', icon: 'back_hand' },
-      { name: 'Sunrise Bell', desc: 'Bonus sparkle notification at 7 AM', icon: 'notifications_active' }
-    ],
     archetype: 'dino',
-    workoutId: 'velociraptor_run'
+    element: 'Volcanic Magma & Sunrise Bolt',
+    color: '#e74c3c',
+    accentColor: '#f39c12',
+    darkColor: '#96281b',
+    cardContainer: '#261614',
+    cardOutline: '#c0392b',
+    avatar: '/assets/pets/raptor.png',
+    image: '/assets/pets/raptor.png',
+    emoji: '🦎',
+    backstory: 'Raptor dashes so fast that volcanic sparks trail her claws. She is up before dawn and challenges heroes to complete morning routines in record time!',
+    assignedHabit: 'Morning Routine',
+    habitBonus: 'Speedy Start: +15 Coins for morning chores finished before 8 AM',
+    statBonusType: 'coin_boost',
+    baseBonusPercent: 15,
+    maxLevel: 25,
+    workoutId: 'velociraptor_run',
+    workoutName: "Raptor's Lightning Sprint",
+    workoutInstructions: 'Sprint in place on your toes as fast as humanly possible!',
+    exclusiveGear: [
+      { name: 'Sunrise Speed Mask', desc: '+20% Speed on morning tasks', icon: 'speed', category: 'masks', level: 2 }
+    ]
   },
+  // 3. Stego the Stegosaurus (Prehistoric Dino)
   {
     id: '3',
+    key: 'stego',
     name: 'Stego the Stegosaurus',
+    shortName: 'Stego',
     title: 'The Solar Stomper',
-    element: 'Earth & Sun',
+    archetype: 'dino',
+    element: 'Radiant Sun-Plate & Forest Moss',
     color: '#f1c40f',
     accentColor: '#2ecc71',
-    avatar: makePetSvg('🦕', 'Stego', '#f1c40f'),
-    evolvedAvatar: makePetSvg('🦕', 'Stego', '#f1c40f'),
-    backstory: 'Stego has magnificent solar plates on his back that soak up sunshine energy while he plays outside! He loves showing little heroes how to stomp loudly on their hands and feet just like a real stegosaurus charging through the meadow.',
-    habitBonus: 'Stomper Power: +25 Coins on outdoor play and exercise tasks',
+    darkColor: '#9b7b02',
+    cardContainer: '#232111',
+    cardOutline: '#d4ac0d',
+    avatar: '/assets/pets/stego.png',
+    image: '/assets/pets/stego.png',
+    emoji: '🦕',
+    backstory: 'Stego has glorious solar plates that absorb sunlight during outdoor play. Stomp loudly on hands and feet across the meadow!',
     assignedHabit: 'Outdoor Play',
-    baseStats: { hunger: 85, hygiene: 65, energy: 90, joy: 85 },
-    evolutionStages: ['Plate Egg', 'Sunray Hatchling', 'Solar Guardian', 'Radiant Titan Stego'],
+    habitBonus: 'Stomper Power: +25 Coins on outdoor play and exercise tasks',
+    statBonusType: 'coin_boost',
+    baseBonusPercent: 25,
+    maxLevel: 25,
+    workoutId: 'stegosaurus_walks',
+    workoutName: "Stego's Heavy Four-Foot Stomp",
+    workoutInstructions: 'Hands and feet on the ground, hips high, stomp forward and backward loudly!',
     exclusiveGear: [
-      { name: 'Sun Absorption Hat', desc: '+20 Energy on sunny-day tasks', icon: 'light_mode' },
-      { name: 'Golden Tail Spikes', desc: 'Doubles outdoor play coin rewards', icon: 'change_history' },
-      { name: 'Stomp Pad', desc: '+15 Joy during movement exercises', icon: 'nature_people' }
-    ],
-    archetype: 'dino',
-    workoutId: 'stegosaurus_walks'
+      { name: 'Sunplate Solar Armor', desc: '+25% Outdoor Play Rewards', icon: 'shield', category: 'armor', level: 3 }
+    ]
   },
+  // 4. Pterry the Pterodactyl (Prehistoric Dino)
   {
     id: '4',
+    key: 'pterry',
     name: 'Pterry the Pterodactyl',
+    shortName: 'Pterry',
     title: 'The Sky Launcher',
-    element: 'Air & Storm',
-    color: '#9b59b6',
-    accentColor: '#3498db',
-    avatar: makePetSvg('🦇', 'Pterry', '#9b59b6'),
-    evolvedAvatar: makePetSvg('🦇', 'Pterry', '#9b59b6'),
-    backstory: 'Pterry soars above the clouds with wings spread wide, diving through storm clouds and popping back up higher than ever! She challenges little heroes to spread their arms like wings and jump as high as they can reach into the sky.',
-    habitBonus: 'Sky Launcher: 2x XP on all jumping and stretching exercises',
-    assignedHabit: 'Stretch & Exercise',
-    baseStats: { hunger: 70, hygiene: 80, energy: 95, joy: 90 },
-    evolutionStages: ['Wind Egg', 'Sky Hatchling', 'Storm Wing', 'Cosmic Apex Pterodactyl'],
-    exclusiveGear: [
-      { name: 'Aero Goggles', desc: '+15% XP on all stretch tasks', icon: 'flight' },
-      { name: 'Thundercloud Wing Bands', desc: 'Doubles jumping exercise rewards', icon: 'fitness_center' },
-      { name: 'Altitude Cape', desc: 'Soars through challenge quests faster', icon: 'cloud' }
-    ],
     archetype: 'dino',
-    workoutId: 'pterodactyl_takeoff'
+    element: 'High-Altitude Aero Jetstream',
+    color: '#00d2ff',
+    accentColor: '#3a7bd5',
+    darkColor: '#0084a3',
+    cardContainer: '#0d202b',
+    cardOutline: '#00b4d8',
+    avatar: '/assets/pets/pterry.png',
+    image: '/assets/pets/pterry.png',
+    emoji: '🦇',
+    backstory: 'Pterry catches updrafts with massive cyan wings! She challenges little heroes to spread their arms wide and launch as high as they can jump.',
+    assignedHabit: 'Stretch & Exercise',
+    habitBonus: 'Sky Launcher: 2x XP on all jumping and stretching exercises',
+    statBonusType: 'xp_boost',
+    baseBonusPercent: 30,
+    maxLevel: 25,
+    workoutId: 'pterodactyl_takeoff',
+    workoutName: "Pterry's Sky Launcher Take-Off",
+    workoutInstructions: 'Spread arms wide, flap in giant circles, and jump up high into the clouds!',
+    exclusiveGear: [
+      { name: 'Aero Glider Cape', desc: 'Springy jumping cape physics', icon: 'flight', category: 'capes', level: 3 }
+    ]
   },
+  // 5. Chomper the Compsognathus (Prehistoric Dino)
   {
     id: '5',
+    key: 'chomper',
     name: 'Chomper the Compsognathus',
+    shortName: 'Chomper',
     title: 'The Tiny Dancer',
-    element: 'Fire & Rhythm',
+    archetype: 'dino',
+    element: 'Kinetic Teal Cyclone',
     color: '#1abc9c',
     accentColor: '#f39c12',
-    avatar: makePetSvg('🦖', 'Chomper', '#1abc9c'),
-    evolvedAvatar: makePetSvg('🦖', 'Chomper', '#1abc9c'),
-    backstory: 'Chomper may be the smallest dino in the sanctuary, but he has the biggest dance moves! He bounces left and right crossing his little legs so fast they blur. No hero can out-prance this tiny teal tornado of energy!',
-    habitBonus: 'Prancer Bonus: +30 Coins for completing dance or movement tasks',
+    darkColor: '#116957',
+    cardContainer: '#0d2420',
+    cardOutline: '#16a085',
+    avatar: '/assets/pets/chomper.png',
+    image: '/assets/pets/chomper.png',
+    emoji: '🦖',
+    backstory: 'Tiny, energetic, and completely rhythm-obsessed! Chomper dances across rocks and logs, inspiring heroes to groove to every beat.',
     assignedHabit: 'Dance & Movement',
-    baseStats: { hunger: 80, hygiene: 75, energy: 95, joy: 100 },
-    evolutionStages: ['Tiny Egg', 'Bounce Hatchling', 'Rhythm Scout', 'Electric Apex Chomper'],
+    habitBonus: 'Prancer Bonus: +30 Coins for completing dance or movement routines',
+    statBonusType: 'coin_boost',
+    baseBonusPercent: 30,
+    maxLevel: 25,
+    workoutId: 'compsognathus_prance',
+    workoutName: "Chomper's Beat Prance",
+    workoutInstructions: 'Jump left and right, crossing one leg behind the other to the beat!',
     exclusiveGear: [
-      { name: 'Glow Dance Shoes', desc: '+25% Joy from all dance activities', icon: 'music_note' },
-      { name: 'Sparkle Bowtie', desc: 'Doubles Dance Party coin rewards', icon: 'stars' },
-      { name: 'Rhythm Wristband', desc: '+20 XP on movement milestone tasks', icon: 'headphones' }
-    ],
-    archetype: 'dino',
-    workoutId: 'compsognathus_prance'
+      { name: 'Neon Rhythm Boots', desc: '+25% Arcade Dance Scores', icon: 'music_note', category: 'boots', level: 2 }
+    ]
   },
+  // 6. Brachio the Brachiosaurus (Prehistoric Dino)
   {
     id: '6',
+    key: 'brachio',
     name: 'Brachio the Brachiosaurus',
+    shortName: 'Brachio',
     title: 'The Great Stretcher',
-    element: 'Earth & Nature',
+    archetype: 'dino',
+    element: 'Ancient Treetop Canopy & Granite',
     color: '#34495e',
     accentColor: '#2ecc71',
-    avatar: makePetSvg('🦕', 'Brachio', '#34495e'),
-    evolvedAvatar: makePetSvg('🦕', 'Brachio', '#34495e'),
-    backstory: 'Brachio reaches the very tops of the tallest trees with his incredibly long neck! He shows little heroes that stretching tall on tip toes and reaching for the stars is how you grow strong. How high can YOU reach, little hero?',
-    habitBonus: 'Tall Stretch: +20 XP every time you reach for the stars in exercise',
+    darkColor: '#1e2b37',
+    cardContainer: '#151f28',
+    cardOutline: '#4a627a',
+    avatar: '/assets/pets/brachio.png',
+    image: '/assets/pets/brachio.png',
+    emoji: '🦕',
+    backstory: 'Gentle, towering, and patient. Brachio reaches for the sweetest leaves atop the tallest canopy trees and guides calm, tall stretches.',
     assignedHabit: 'Yoga & Stretching',
-    baseStats: { hunger: 90, hygiene: 70, energy: 75, joy: 85 },
-    evolutionStages: ['Long-Neck Egg', 'Sapling Hatchling', 'Canopy Grazer', 'Ancient Titan Brachio'],
+    habitBonus: 'Tall Stretch: +20 XP every time you reach for the stars in exercise',
+    statBonusType: 'xp_boost',
+    baseBonusPercent: 20,
+    maxLevel: 25,
+    workoutId: 'brachiosaurus_stretch',
+    workoutName: "Brachio's Star Reach",
+    workoutInstructions: 'Stand tall, reach both arms up to the ceiling, and stretch high on your tiptoes!',
     exclusiveGear: [
-      { name: 'Yoga Mat Saddle', desc: '+30% XP on all stretching routines', icon: 'self_improvement' },
-      { name: 'Treetop Leaf Crown', desc: '+20 Coins on daily calm-down tasks', icon: 'eco' },
-      { name: 'Giant Stretchy Scarf', desc: 'Unlocks bonus flexibility challenges', icon: 'straighten' }
-    ],
-    archetype: 'dino',
-    workoutId: 'brachiosaurus_stretch'
+      { name: 'Canopy Moss Cloak', desc: '+20% Calm Meditation XP', icon: 'spa', category: 'capes', level: 2 }
+    ]
   },
+  // 7. Dippy the Diplodocus (Prehistoric Dino)
   {
     id: '7',
+    key: 'dippy',
     name: 'Dippy the Diplodocus',
+    shortName: 'Dippy',
     title: 'The Balance Master',
-    element: 'Earth & Water',
-    color: '#e67e22',
-    accentColor: '#2ecc71',
-    avatar: makePetSvg('🦕', 'Dippy', '#e67e22'),
-    evolvedAvatar: makePetSvg('🦕', 'Dippy', '#e67e22'),
-    backstory: 'Dippy balances perfectly on floating logs using his incredible long tail as a counterweight! He coaches little heroes through the ancient Diplodocus move: on hands and knees, reach one arm and opposite leg out, and feel the balance power!',
-    habitBonus: 'Balance Master: +25 Coins on balance and coordination tasks',
-    assignedHabit: 'Balance & Flexibility',
-    baseStats: { hunger: 85, hygiene: 75, energy: 80, joy: 85 },
-    evolutionStages: ['Wobble Egg', 'Log Hatchling', 'River Balancer', 'Majestic Diplodocus Champion'],
-    exclusiveGear: [
-      { name: 'Balance Beam Bridge', desc: 'Doubles coordination task rewards', icon: 'line_weight' },
-      { name: 'Golden Tail Ring', desc: '+20 XP on all balance exercises', icon: 'toll' },
-      { name: 'Grip Boosters', desc: 'No slipping during workout moves!', icon: 'pan_tool' }
-    ],
     archetype: 'dino',
-    workoutId: 'diplodocus'
+    element: 'River Terraces & Sunset Bark',
+    color: '#e67e22',
+    accentColor: '#27ae60',
+    darkColor: '#944c0c',
+    cardContainer: '#261c14',
+    cardOutline: '#d35400',
+    avatar: '/assets/pets/dippy.png',
+    image: '/assets/pets/dippy.png',
+    emoji: '🦕',
+    backstory: 'With an impossibly long neck and whip-like balancing tail, Dippy crosses rushing river stepping-stones without ever wobbling.',
+    assignedHabit: 'Balance & Flexibility',
+    habitBonus: 'Balance Master: +25 Coins on balance and coordination tasks',
+    statBonusType: 'coin_boost',
+    baseBonusPercent: 25,
+    maxLevel: 25,
+    workoutId: 'diplodocus_balance',
+    workoutName: "Dippy's Bird-Dog Balance",
+    workoutInstructions: 'On hands and knees, stretch right arm forward and left leg backward! Hold and switch!',
+    exclusiveGear: [
+      { name: 'River Stone Boots', desc: '+20% Balance Stability', icon: 'hiking', category: 'boots', level: 2 }
+    ]
   },
+  // 8. Spino the Spinosaurus (Prehistoric Dino)
   {
     id: '8',
+    key: 'spino',
     name: 'Spino the Spinosaurus',
+    shortName: 'Spino',
     title: 'The Cool-Down King',
-    element: 'Water & Wind',
+    archetype: 'dino',
+    element: 'Aquatic Fin & Coral Chill',
     color: '#c0392b',
     accentColor: '#3498db',
-    avatar: makePetSvg('🦖', 'Spino', '#c0392b'),
-    evolvedAvatar: makePetSvg('🦖', 'Spino', '#c0392b'),
-    backstory: 'Spino has a magnificent sail fin on his back that fans the air to cool him down after mighty adventures. He teaches little heroes the most important dino move of all: the Spinosaurus Stretch, arching your back to the sky like a real sail!',
-    habitBonus: 'Spine Arch: +15 XP on all cool-down and stretching routines',
+    darkColor: '#782117',
+    cardContainer: '#241818',
+    cardOutline: '#e74c3c',
+    avatar: '/assets/pets/spino.png',
+    image: '/assets/pets/spino.png',
+    emoji: '🐊',
+    backstory: 'Spino cools down by gliding through river lagoons, using his tall sail-fin like a breeze catcher to relax tired muscles after big adventures.',
     assignedHabit: 'Cool Down & Recovery',
-    baseStats: { hunger: 85, hygiene: 80, energy: 80, joy: 85 },
-    evolutionStages: ['Sail Egg', 'River Hatchling', 'Fin Guardian', 'Legendary Spinosaurus Apex'],
+    habitBonus: 'Spine Arch: +15 XP on all cool-down and stretching routines',
+    statBonusType: 'xp_boost',
+    baseBonusPercent: 15,
+    maxLevel: 25,
+    workoutId: 'spinosaurus_stretch',
+    workoutName: "Spino's Spine-Arch Cool Down",
+    workoutInstructions: 'On all fours, tuck your chin, round your back up like a dino sail, and breathe slow!',
     exclusiveGear: [
-      { name: 'Cooling Fin Towel', desc: '+20 Hygiene after every workout', icon: 'water_drop' },
-      { name: 'Aerodynamic Spine Fin', desc: '+25 XP on recovery activities', icon: 'air' },
-      { name: 'Hero Water Bottle', desc: 'Stay hydrated, +10 Energy daily', icon: 'local_drink' }
-    ],
-    archetype: 'dino',
-    workoutId: 'spinosaurus_stretch'
+      { name: 'Hydro Fin Armor', desc: '+15% Recovery XP after battles', icon: 'water', category: 'armor', level: 2 }
+    ]
   },
+  // 9. Sparky the Dragon (Dragons & Mystics)
   {
     id: '9',
+    key: 'sparky',
     name: 'Sparky the Dragon',
+    shortName: 'Sparky',
     title: 'The Azure Ember',
-    element: 'Fire & Wind',
+    archetype: 'mystic',
+    element: 'Glacial Blueflame & Mint Crystals',
     color: '#3498db',
     accentColor: '#2ecc71',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB-tO1SdRfRGAdffGZiLQxMfvzeWK75gnu-8V_g3uY_1zZSyW7V1gBj5eL8EaKNQ0bEYLoIJX8_MrJKE_FTNyJjWhMiDyFXcs11Vql8nzDOSXfGFkzBKSaEB6DiOvappqJJhiqFEEvVhDhFMqzCkZED1YDgAFVWcQOc0dn4cWiyd34yVJc9c7aF6_UYRrB4Ml5we64YPZuC17yjouHWXCGyOnqDbruj8B6sXSWQEcYhnNXJ0t-S4k1JPw',
-    evolvedAvatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDAvmAOJ-g5TCJ7D4hM4PwtYHzTqQIYXOXhyWWDLDwhFMsBsPo7n1ZGFO7zgvDn8HsRTM1JluNg3gfIf-eDB6hqJ99SjsMCUHu-38PB79ADYgi0JrOC9cBOFyISVmxDFfso5KGTDn5nvPC2czsyoxTzdGH06Q-BHf5MQ97JziKb9qhzHgaYK8E0NyHUrFPTwQwa25aDebL2R2Dv_YyQ0X5GB1nmv7j9Lj51M97tF_RyxtbuZk08SRx7rg',
-    backstory: 'Sparky was found atop Ember Mountain snoring softly in a bed of glowing crystals. He loves practicing tiny fire sneezes that blast away cavity germs, and his flame-fresh breath is always minty clean after every brushing session!',
-    habitBonus: 'Dragon Breath: 2x Coins on every toothbrushing session',
+    darkColor: '#1c5f8a',
+    cardContainer: '#101e2b',
+    cardOutline: '#2980b9',
+    avatar: '/assets/pets/sparky.png',
+    image: '/assets/pets/sparky.png',
+    emoji: '🐉',
+    backstory: 'Sparky breathes cool minty dragon sparks! His pearly teeth shine bright, and he coaches heroes to brush every tooth until it gleams.',
     assignedHabit: 'Brush Teeth',
-    baseStats: { hunger: 80, hygiene: 85, energy: 90, joy: 95 },
-    evolutionStages: ['Mystic Egg', 'Azure Hatchling', 'Armored Teen Dragon', 'Golden Titan Dragon'],
+    habitBonus: 'Dragon Breath: 2x Coins on every toothbrushing session',
+    statBonusType: 'coin_boost',
+    baseBonusPercent: 30,
+    maxLevel: 25,
+    workoutId: 'dragon_flame_reach',
+    workoutName: "Sparky's Azure Flame Stretch",
+    workoutInstructions: 'Take a deep breath, puff up your chest, and reach both arms wide with dragon power!',
     exclusiveGear: [
-      { name: 'Mint Flame Shield', desc: 'Defends against sugar cavity germs', icon: 'shield' },
-      { name: 'Sparkle Floss Lance', desc: '+30% Boss damage in Toothbrush Battles', icon: 'flare' },
-      { name: 'Dragon Toothbrush', desc: '+25 Coins on 2-minute streak completions', icon: 'clean_hands' }
-    ],
-    archetype: 'dragon',
-    workoutId: null
+      { name: 'Azure Flame Mask', desc: '+25% Toothbrush Boss Deflect', icon: 'masks', category: 'masks', level: 3 }
+    ]
   },
+  // 10. Aero the Griffin (Dragons & Mystics)
   {
     id: '10',
+    key: 'aero',
     name: 'Aero the Griffin',
+    shortName: 'Aero',
     title: 'The Solar Sentinel',
-    element: 'Light & Air',
+    archetype: 'mystic',
+    element: 'Golden Citadel Sunbeam & High Wind',
     color: '#f1c40f',
     accentColor: '#3498db',
-    avatar: makePetSvg('🦅', 'Aero', '#f1c40f'),
-    evolvedAvatar: makePetSvg('🦅', 'Aero', '#f1c40f'),
-    backstory: 'Aero guards the golden constellations all night, soaring between star clusters with eagle-sharp eyes that can spot a homework assignment from three kingdoms away. He believes every little hero who studies gets a little more magical each day!',
-    habitBonus: 'Eagle Eye: +25% XP on all homework and reading tasks',
+    darkColor: '#9b7b02',
+    cardContainer: '#242214',
+    cardOutline: '#f39c12',
+    avatar: '/assets/pets/aero.png',
+    image: '/assets/pets/aero.png',
+    emoji: '🦅',
+    backstory: 'With the keen eyesight of an eagle and the heart of a lion, Aero guards study spires and boosts concentration during homework and reading.',
     assignedHabit: 'Homework & Reading',
-    baseStats: { hunger: 65, hygiene: 85, energy: 85, joy: 90 },
-    evolutionStages: ['Star Chick', 'Griffin Guard', 'Solar Monarch', 'Apex Cosmic Griffin'],
+    habitBonus: 'Eagle Eye: +25% XP on all homework and reading tasks',
+    statBonusType: 'xp_boost',
+    baseBonusPercent: 25,
+    maxLevel: 25,
+    workoutId: 'griffin_wing_glide',
+    workoutName: "Aero's Citadel Wing Glide",
+    workoutInstructions: 'Extend arms horizontally like wings, balance on one foot for 5 seconds, then switch!',
     exclusiveGear: [
-      { name: 'Mystic Reading Specs', desc: 'Reveals hidden bonus stars in books', icon: 'menu_book' },
-      { name: 'Starlight Feather Pen', desc: '+30 Hero XP per study hour logged', icon: 'edit' },
-      { name: 'Ancient Scroll Case', desc: 'Unlocks bonus Phonics learning adventures', icon: 'inventory' }
-    ],
-    archetype: 'mystic',
-    workoutId: null
+      { name: 'Sunbeam Feather Cape', desc: '+25% Focus and XP Bonus', icon: 'auto_awesome', category: 'capes', level: 3 }
+    ]
   },
+  // 11. Blaze the Phoenix (Dragons & Mystics)
   {
     id: '11',
+    key: 'blaze',
     name: 'Blaze the Phoenix',
+    shortName: 'Blaze',
     title: 'The Midnight Flame',
-    element: 'Fire & Stars',
+    archetype: 'mystic',
+    element: 'Sunset Embers & Nightfall Hearth',
     color: '#e74c3c',
     accentColor: '#f39c12',
-    avatar: makePetSvg('🔥', 'Blaze', '#e74c3c'),
-    evolvedAvatar: makePetSvg('🔥', 'Blaze', '#e74c3c'),
-    backstory: 'Blaze rises from golden ashes each morning, brighter than ever before! Each evening she dims her flames to a warm cozy glow, wrapping little heroes in a soft ember light that makes falling asleep feel like drifting through a warm sunset sky.',
-    habitBonus: 'Cozy Embers: +20 Coins for completing your bedtime routine on time',
+    darkColor: '#96281b',
+    cardContainer: '#261715',
+    cardOutline: '#d35400',
+    avatar: '/assets/pets/blaze.png',
+    image: '/assets/pets/blaze.png',
+    emoji: '🦚',
+    backstory: 'Blaze glows with gentle campfire warmth that lulls the sanctuary to rest. Completing evening bedtime routines fills her tailfeathers with stardust.',
     assignedHabit: 'Bedtime Routine',
-    baseStats: { hunger: 70, hygiene: 80, energy: 75, joy: 95 },
-    evolutionStages: ['Ember Egg', 'Flame Chick', 'Phoenix Blazer', 'Immortal Radiant Phoenix'],
+    habitBonus: 'Cozy Embers: +20 Coins for completing bedtime routine on time',
+    statBonusType: 'coin_boost',
+    baseBonusPercent: 20,
+    maxLevel: 25,
+    workoutId: 'phoenix_hearth_sway',
+    workoutName: "Blaze's Cozy Slumber Sway",
+    workoutInstructions: 'Gently sway arms from side to side like warm flickering candle flames, breathing deeply.',
     exclusiveGear: [
-      { name: 'Starlight Nightcap', desc: 'Guarantees sweet dreams each night', icon: 'bedtime' },
-      { name: 'Ash-Soft Blanket', desc: '+25 Joy from completing bedtime routine', icon: 'bed' },
-      { name: 'Dream Catcher Ring', desc: '+10 Energy every morning after full routine', icon: 'filter_drama' }
-    ],
-    archetype: 'mystic',
-    workoutId: null
+      { name: 'Starlight Hearth Cape', desc: '+20% Bedtime Habit Rewards', icon: 'bedtime', category: 'capes', level: 3 }
+    ]
   },
+  // 12. Hydra the Sea Serpent (Aquatic Guardians)
   {
     id: '12',
+    key: 'hydra',
     name: 'Hydra the Sea Serpent',
+    shortName: 'Hydra',
     title: 'The Tidal Guardian',
-    element: 'Water & Ice',
+    archetype: 'aquatic',
+    element: 'Abyssal Trench & Pure Spring Ice',
     color: '#2980b9',
     accentColor: '#1abc9c',
-    avatar: makePetSvg('🐍', 'Hydra', '#2980b9'),
-    evolvedAvatar: makePetSvg('🐍', 'Hydra', '#2980b9'),
-    backstory: 'Hydra glides through crystal rivers carrying pure spring water to all the little heroes in the sanctuary! She knows the ancient secret: drinking water is the most powerful magic of all, making every adventure easier and every hero stronger!',
-    habitBonus: 'Wave Rider: +15 XP every time you drink a cup of water',
+    darkColor: '#174a6b',
+    cardContainer: '#0f1e29',
+    cardOutline: '#3498db',
+    avatar: '/assets/pets/hydra.png',
+    image: '/assets/pets/hydra.png',
+    emoji: '🐍',
+    backstory: 'A friendly aquatic serpent who glides through coral reefs. Hydra reminds little heroes that staying hydrated with cool water fuels superpowers!',
     assignedHabit: 'Drink Water',
-    baseStats: { hunger: 70, hygiene: 95, energy: 80, joy: 85 },
-    evolutionStages: ['River Pearl', 'Tide Hatchling', 'Sea Guardian', 'Leviathan Ocean Hydra'],
+    habitBonus: 'Wave Rider: +15 XP every time you drink a cup of fresh water',
+    statBonusType: 'xp_boost',
+    baseBonusPercent: 15,
+    maxLevel: 25,
+    workoutId: 'sea_serpent_tide_flow',
+    workoutName: "Hydra's Ocean Wave Flow",
+    workoutInstructions: 'Roll shoulders back and undulate arms like shimmering ocean waves across the tide!',
     exclusiveGear: [
-      { name: 'Crystal Coral Cup', desc: 'Each water log gives +5 bonus XP', icon: 'local_cafe' },
-      { name: 'Scale Polish Kit', desc: 'Hygiene drains 30% slower', icon: 'water' },
-      { name: 'Deep Ocean Gem', desc: '+20 Coins on completing hydration goals', icon: 'diamond' }
-    ],
-    archetype: 'aquatic',
-    workoutId: null
+      { name: 'Aquifer Scale Armor', desc: '+20% Water Logging XP', icon: 'water_drop', category: 'armor', level: 3 }
+    ]
   },
+  // 13. Luna the Unicorn (Dragons & Mystics)
   {
     id: '13',
+    key: 'luna',
     name: 'Luna the Unicorn',
+    shortName: 'Luna',
     title: 'The Rainbow Weaver',
-    element: 'Light & Magic',
-    color: '#9b59b6',
-    accentColor: '#f1c40f',
-    avatar: makePetSvg('🦄', 'Luna', '#9b59b6'),
-    evolvedAvatar: makePetSvg('🦄', 'Luna', '#9b59b6'),
-    backstory: 'Luna gallops across rainbow bridges leaving trails of sparkling stardust! She loves building magical block towers and painting every color in the sky. Luna believes that creativity makes you a true hero, and she wants to see what amazing things YOU will create today!',
-    habitBonus: 'Magic Spark: +25% Coins on all creative play and art tasks',
-    assignedHabit: 'Creative Play',
-    baseStats: { hunger: 65, hygiene: 90, energy: 85, joy: 100 },
-    evolutionStages: ['Moonbeam Egg', 'Rainbow Foal', 'Star Unicorn', 'Celestial Cosmos Luna'],
-    exclusiveGear: [
-      { name: 'Rainbow Paintbrush', desc: 'Paints with every color, +30% Art XP', icon: 'brush' },
-      { name: 'Glitter Horn Crown', desc: 'Doubles creative challenge rewards', icon: 'star' },
-      { name: 'Stardust Palette', desc: 'Unlocks bonus craft mini-games', icon: 'palette' }
-    ],
     archetype: 'mystic',
-    workoutId: null
+    element: 'Aurora Electric Cyan & Prismatic Solar Beam',
+    color: '#00e5ff',
+    accentColor: '#ffb300',
+    darkColor: '#008ea0',
+    cardContainer: '#0d2229',
+    cardOutline: '#00b0ff',
+    avatar: '/assets/pets/luna.png',
+    image: '/assets/pets/luna.png',
+    emoji: '🦄',
+    backstory: 'Luna leaves sparkling aurora trails with every playful prance. She loves drawing, building blocks, and all kinds of colorful creative play!',
+    assignedHabit: 'Creative Play',
+    habitBonus: 'Magic Spark: +25% Coins on all creative play and craft tasks',
+    statBonusType: 'coin_boost',
+    baseBonusPercent: 25,
+    maxLevel: 25,
+    workoutId: 'unicorn_starlight_spin',
+    workoutName: "Luna's Aurora Starlight Spin",
+    workoutInstructions: 'Twirl slowly with arms out, hop lightly on one foot, and strike a heroic magic pose!',
+    exclusiveGear: [
+      { name: 'Prismatic Horn Mask', desc: '+25% Crafting & Creative Tokens', icon: 'auto_fix_high', category: 'masks', level: 4 }
+    ]
   },
+  // 14. Kira the Kirin (Wild Beasts)
   {
     id: '14',
+    key: 'kira',
     name: 'Kira the Kirin',
+    shortName: 'Kira',
     title: 'The Order Keeper',
-    element: 'Wind & Nature',
+    archetype: 'beast',
+    element: 'Bamboo Jade & Golden Sun-Hoof',
     color: '#f39c12',
     accentColor: '#2ecc71',
-    avatar: makePetSvg('🦌', 'Kira', '#f39c12'),
-    evolvedAvatar: makePetSvg('🦌', 'Kira', '#f39c12'),
-    backstory: 'Kira trots through her enchanted forest clearing, making sure every leaf is in the perfect spot and every pinecone is exactly where it belongs. She believes a tidy space is a magical space, and she will inspire YOU to feel the same!',
-    habitBonus: 'Tidy Hooves: +30 XP when you clean your room completely',
+    darkColor: '#945d04',
+    cardContainer: '#221c11',
+    cardOutline: '#e67e22',
+    avatar: '/assets/pets/kira.png',
+    image: '/assets/pets/kira.png',
+    emoji: '🦌',
+    backstory: 'Kira walks so lightly that not even a blade of grass bends. She brings harmony, order, and spotless tidiness to messy bedrooms and play spaces.',
     assignedHabit: 'Clean Room',
-    baseStats: { hunger: 75, hygiene: 90, energy: 80, joy: 85 },
-    evolutionStages: ['Forest Seed', 'Bamboo Fawn', 'Kirin Knight', 'Golden Celestial Kira'],
+    habitBonus: 'Tidy Hooves: +30 XP when you clean and organize your room',
+    statBonusType: 'xp_boost',
+    baseBonusPercent: 30,
+    maxLevel: 25,
+    workoutId: 'kirin_bamboo_leap',
+    workoutName: "Kira's Bamboo High-Step",
+    workoutInstructions: 'Step high over pretend bamboo logs, lifting each knee gently to tap with hands!',
     exclusiveGear: [
-      { name: 'Enchanted Dust Sweeper', desc: '+25 Coins on room cleaning tasks', icon: 'cleaning_services' },
-      { name: 'Magical Toy Basket', desc: 'Auto-sorts items for +15 XP bonus', icon: 'shopping_basket' },
-      { name: 'Golden Clean Bell', desc: 'Chimes when room is spotless, +20 Joy', icon: 'notifications' }
-    ],
-    archetype: 'mystic',
-    workoutId: null
+      { name: 'Golden Antler Mask', desc: '+25% Room Cleanup XP', icon: 'cleaning_services', category: 'masks', level: 3 }
+    ]
   },
+  // 15. Boulder the Crystal Golem (Wild Beasts)
   {
     id: '15',
+    key: 'boulder',
     name: 'Boulder the Crystal Golem',
+    shortName: 'Boulder',
     title: 'The Iron Fortress',
-    element: 'Stone & Earth',
-    color: '#95a5a6',
-    accentColor: '#2ecc71',
-    avatar: makePetSvg('🪨', 'Boulder', '#95a5a6'),
-    evolvedAvatar: makePetSvg('🪨', 'Boulder', '#95a5a6'),
-    backstory: 'Boulder is built from pure ancient crystal and grows stronger with every vegetable he crunches! He proves that eating healthy food is what makes you truly unbreakable. Spinach gives him diamond-hard knuckles and carrots light up his glowing crystal eyes!',
-    habitBonus: 'Rock Solid: +20 Coins for every healthy meal or snack logged',
-    assignedHabit: 'Healthy Eating',
-    baseStats: { hunger: 95, hygiene: 65, energy: 85, joy: 75 },
-    evolutionStages: ['Pebble Golem', 'Quartz Scout', 'Crystal Titan', 'Diamond Apex Boulder'],
-    exclusiveGear: [
-      { name: 'Crystal Spoon', desc: '+25% XP on healthy eating tasks', icon: 'restaurant' },
-      { name: 'Veggie Shield', desc: 'Prevents energy drain from junk food', icon: 'spa' },
-      { name: 'Geode Power Bowl', desc: 'Doubles nutrition habit coin rewards', icon: 'fastfood' }
-    ],
     archetype: 'beast',
-    workoutId: null
-  },
-  {
-    id: '16',
-    name: 'Cosmo the Cyber Mech',
-    title: 'The Quantum Hound',
-    element: 'Tech & Cosmic',
-    color: '#8e44ad',
-    accentColor: '#3498db',
-    avatar: makePetSvg('🤖', 'Cosmo', '#8e44ad'),
-    evolvedAvatar: makePetSvg('🤖', 'Cosmo', '#8e44ad'),
-    backstory: 'Cosmo travels across digital galaxies downloading knowledge at the speed of light! His holographic visor projects math puzzles and reading challenges in mid-air. He believes that every learning game is a secret upgrade to your brain mega-processor!',
-    habitBonus: 'Data Download: 2x XP on all learning games and educational quests',
-    assignedHabit: 'Learning Games',
-    baseStats: { hunger: 70, hygiene: 85, energy: 95, joy: 90 },
-    evolutionStages: ['Nano Pup', 'Cyber Hound', 'Quantum Vanguard', 'Galactic Apex Cosmo'],
-    exclusiveGear: [
-      { name: 'Logic Chip Collar', desc: '+30% Coins on learning game streaks', icon: 'memory' },
-      { name: 'Holo Puzzle Screen', desc: 'Reveals hidden bonus stages in games', icon: 'tv' },
-      { name: 'Infinite Smart Battery', desc: '+20 Energy daily for learning tasks', icon: 'battery_full' }
-    ],
-    archetype: 'robot',
-    workoutId: null
-  },
-  {
-    id: '17',
-    name: 'Leo the Lion',
-    title: 'The Pride Leader',
-    element: 'Fire & Heart',
-    color: '#f1c40f',
-    accentColor: '#e67e22',
-    avatar: makePetSvg('🦁', 'Leo', '#f1c40f'),
-    evolvedAvatar: makePetSvg('🦁', 'Leo', '#f1c40f'),
-    backstory: 'Leo leads his pride across the golden savannah and never leaves anyone behind! He teaches little heroes that real strength comes from working together as a team. Whether it is chores, homework, or adventures, the pride always finishes stronger together!',
-    habitBonus: 'Pride Leader: +20 XP on all teamwork and cooperative tasks',
-    assignedHabit: 'Teamwork',
-    baseStats: { hunger: 90, hygiene: 70, energy: 90, joy: 90 },
-    evolutionStages: ['Cub Scout', 'Mane Apprentice', 'Savannah King', 'Legendary Solar Leo'],
-    exclusiveGear: [
-      { name: 'Golden King Crown', desc: '+25% Coins on teamwork completions', icon: 'crown' },
-      { name: 'Pride Friendship Crest', desc: 'Boosts sibling and group task rewards', icon: 'group' },
-      { name: 'Roar Champion Medal', desc: '+30 XP on quest milestone completions', icon: 'emoji_events' }
-    ],
-    archetype: 'beast',
-    workoutId: null
-  },
-  {
-    id: '18',
-    name: 'Stripe the Tiger',
-    title: 'The Clean Paws',
-    element: 'Water & Nature',
-    color: '#e67e22',
-    accentColor: '#2ecc71',
-    avatar: makePetSvg('🐅', 'Stripe', '#e67e22'),
-    evolvedAvatar: makePetSvg('🐅', 'Stripe', '#e67e22'),
-    backstory: 'Stripe glowing orange stripes get brighter every time she scrubs her paws clean before a meal! She loves the soapy bubbles and warm water, and she roars with delight every single time, making handwashing the most exciting moment of her jungle day!',
-    habitBonus: 'Clean Paws: +15 Coins every time you wash your hands before meals',
-    assignedHabit: 'Wash Hands',
-    baseStats: { hunger: 85, hygiene: 95, energy: 85, joy: 85 },
-    evolutionStages: ['Stripe Cub', 'Jungle Scout', 'Tiger Champion', 'Radiant Apex Stripe'],
-    exclusiveGear: [
-      { name: 'Jungle Fruit Soap Bar', desc: '+20% Hygiene boost on each handwash', icon: 'soap' },
-      { name: 'Hero Towel Cape', desc: 'Instant hygiene restore after bath', icon: 'dry' },
-      { name: 'Splash Paw Guards', desc: 'Doubles hygiene task coin rewards', icon: 'water_drop' }
-    ],
-    archetype: 'beast',
-    workoutId: null
-  },
-  {
-    id: '19',
-    name: 'Fang the Wolf',
-    title: 'The Moonlight Scout',
-    element: 'Shadow & Wind',
+    element: 'Raw Obsidian, Titanium & Emerald Core',
     color: '#7f8c8d',
     accentColor: '#2ecc71',
-    avatar: makePetSvg('🐺', 'Fang', '#7f8c8d'),
-    evolvedAvatar: makePetSvg('🐺', 'Fang', '#7f8c8d'),
-    backstory: 'Fang howls at the moon every night, but only AFTER brushing those magnificent fangs until they sparkle like silver in the moonlight! He hears every toothbrush being picked up from miles away and howls with pride when little heroes keep their streak going!',
-    habitBonus: 'Moonlight Shine: +20 XP for each completed toothbrushing session',
-    assignedHabit: 'Brush Teeth',
-    baseStats: { hunger: 80, hygiene: 85, energy: 90, joy: 85 },
-    evolutionStages: ['Shadow Pup', 'Timber Wolf', 'Moon Hunter', 'Fenrir Alpha Wolf'],
+    darkColor: '#485253',
+    cardContainer: '#192022',
+    cardOutline: '#95a5a6',
+    avatar: '/assets/pets/boulder.png',
+    image: '/assets/pets/boulder.png',
+    emoji: '💎',
+    backstory: 'Carved from ancient crystal stone, Boulder gets unbreakable strength from nutrient-rich vegetables and wholesome healthy meals.',
+    assignedHabit: 'Healthy Eating',
+    habitBonus: 'Rock Solid: +20 Coins for every healthy meal or veggie snack logged',
+    statBonusType: 'coin_boost',
+    baseBonusPercent: 20,
+    maxLevel: 25,
+    workoutId: 'golem_iron_power',
+    workoutName: "Boulder's Iron Squat Stomp",
+    workoutInstructions: 'Lower into a deep sturdy squat with chest up, hold for 3 seconds, then stand tall!',
     exclusiveGear: [
-      { name: 'Silver Moon Crest', desc: 'Nighttime hygiene bonus +25%', icon: 'nightlight' },
-      { name: 'Fang Guard Shield', desc: 'Prevents cavity boss attacks', icon: 'health_and_safety' },
-      { name: 'Pack Howl Horn', desc: 'Group brushing rewards doubled', icon: 'campaign' }
-    ],
-    archetype: 'beast',
-    workoutId: null
+      { name: 'Titanium Chestplate Armor', desc: '+20% Healthy Meal Tokens', icon: 'restaurant', category: 'armor', level: 3 }
+    ]
   },
+  // 16. Cosmo the Cyber Mech (Tech Mechs)
+  {
+    id: '16',
+    key: 'cosmo',
+    name: 'Cosmo the Cyber Mech',
+    shortName: 'Cosmo',
+    title: 'The Quantum Hound',
+    archetype: 'mech',
+    element: 'Quantum Laser Cyan & Plasma Amber',
+    color: '#00f5d4',
+    accentColor: '#ffbe0b',
+    darkColor: '#009682',
+    cardContainer: '#0a1f22',
+    cardOutline: '#00bbf9',
+    avatar: '/assets/pets/cosmo.png',
+    image: '/assets/pets/cosmo.png',
+    emoji: '🤖',
+    backstory: 'Powered by quantum circuit boards, Cosmo loves math puzzles, memory challenges, and high-tech educational quest games.',
+    assignedHabit: 'Learning Games',
+    habitBonus: 'Data Download: 2x XP on all learning games and memory quests',
+    statBonusType: 'xp_boost',
+    baseBonusPercent: 35,
+    maxLevel: 25,
+    workoutId: 'cyber_quantum_dash',
+    workoutName: "Cosmo's Circuit Quantum Dash",
+    workoutInstructions: 'Quick-feet tap in place! Tap left, tap right, jump high to hit the laser target!',
+    exclusiveGear: [
+      { name: 'Quantum Visor Mask', desc: '+30% Learning Game Accuracy', icon: 'smart_toy', category: 'masks', level: 4 }
+    ]
+  },
+  // 17. Leo the Lion (Wild Beasts)
+  {
+    id: '17',
+    key: 'leo',
+    name: 'Leo the Lion',
+    shortName: 'Leo',
+    title: 'The Pride Leader',
+    archetype: 'beast',
+    element: 'Savannah Sunburst & Royal Amber',
+    color: '#f1c40f',
+    accentColor: '#e67e22',
+    darkColor: '#9b7b02',
+    cardContainer: '#262112',
+    cardOutline: '#f39c12',
+    avatar: '/assets/pets/leo.png',
+    image: '/assets/pets/leo.png',
+    emoji: '🦁',
+    backstory: 'Noble, loyal, and brave. Leo unites all sanctuary companions, encouraging teamwork and kind cooperation between siblings and friends.',
+    assignedHabit: 'Teamwork',
+    habitBonus: 'Pride Leader: +20 XP on all teamwork and cooperative family tasks',
+    statBonusType: 'xp_boost',
+    baseBonusPercent: 20,
+    maxLevel: 25,
+    workoutId: 'lion_pride_roar_march',
+    workoutName: "Leo's Royal Pride March",
+    workoutInstructions: 'March proudly with your head held high, puffing your chest and striking a proud lion pose!',
+    exclusiveGear: [
+      { name: 'Savannah Royal Cape', desc: '+20% Teamwork Bonus', icon: 'group', category: 'capes', level: 3 }
+    ]
+  },
+  // 18. Stripe the Tiger (Wild Beasts)
+  {
+    id: '18',
+    key: 'stripe',
+    name: 'Stripe the Tiger',
+    shortName: 'Stripe',
+    title: 'The Clean Paws',
+    archetype: 'beast',
+    element: 'Jungle Blaze Orange & Soapy Mint',
+    color: '#e67e22',
+    accentColor: '#2ecc71',
+    darkColor: '#8f4a0c',
+    cardContainer: '#241b12',
+    cardOutline: '#d35400',
+    avatar: '/assets/pets/stripe.png',
+    image: '/assets/pets/stripe.png',
+    emoji: '🐯',
+    backstory: 'Stripe never eats without scrubbing his paws spotless first! He loves warm bubbles and makes handwashing feel like a splashing jungle game.',
+    assignedHabit: 'Wash Hands',
+    habitBonus: 'Clean Paws: +15 Coins every time you wash your hands before meals',
+    statBonusType: 'coin_boost',
+    baseBonusPercent: 15,
+    maxLevel: 25,
+    workoutId: 'tiger_clean_paws_scrub',
+    workoutName: "Stripe's Soapy Scrub Splash",
+    workoutInstructions: 'Rub hands together in rapid circles, washing between fingers, then flick water away!',
+    exclusiveGear: [
+      { name: 'Soapy Foam Boots', desc: '+15% Hygiene Streak Tokens', icon: 'soap', category: 'boots', level: 2 }
+    ]
+  },
+  // 19. Fang the Wolf (Wild Beasts)
+  {
+    id: '19',
+    key: 'fang',
+    name: 'Fang the Wolf',
+    shortName: 'Fang',
+    title: 'The Moonlight Scout',
+    archetype: 'beast',
+    element: 'Arctic Moon Timber & Glacier Silver',
+    color: '#95a5a6',
+    accentColor: '#2ecc71',
+    darkColor: '#546364',
+    cardContainer: '#171f22',
+    cardOutline: '#7f8c8d',
+    avatar: '/assets/pets/fang.png',
+    image: '/assets/pets/fang.png',
+    emoji: '🐺',
+    backstory: 'Fang guards the arctic forest beneath the full moon. His white fangs gleam brightly, and he keeps watch over morning and night brushing.',
+    assignedHabit: 'Brush Teeth',
+    habitBonus: 'Moonlight Shine: +20 XP for each completed 2-minute brushing session',
+    statBonusType: 'xp_boost',
+    baseBonusPercent: 20,
+    maxLevel: 25,
+    workoutId: 'wolf_moon_brush_patrol',
+    workoutName: "Fang's Arctic Moon Prowl",
+    workoutInstructions: 'Creep low on silent paws across the carpet, then jump up and howl with joy!',
+    exclusiveGear: [
+      { name: 'Glacier Fang Mask', desc: '+20% Toothbrushing XP', icon: 'pets', category: 'masks', level: 3 }
+    ]
+  },
+  // 20. Scout the Eagle (Tech Mechs / Aviators)
   {
     id: '20',
+    key: 'scout',
     name: 'Scout the Eagle',
+    shortName: 'Scout',
     title: 'The Sky Sentinel',
-    element: 'Air & Light',
+    archetype: 'mech',
+    element: 'High Air Glider & Solar Beacon',
     color: '#3498db',
     accentColor: '#f1c40f',
-    avatar: makePetSvg('🦅', 'Scout', '#3498db'),
-    evolvedAvatar: makePetSvg('🦅', 'Scout', '#3498db'),
-    backstory: 'Scout soars above the clouds spotting the best books from a mile high and diving to rescue lost homework scrolls before the wind carries them away! He has read every book in every library across all five kingdoms and is always hungry for more knowledge!',
-    habitBonus: 'Sky Reader: +15 Coins on every homework and reading task completed',
+    darkColor: '#1d5a83',
+    cardContainer: '#121e29',
+    cardOutline: '#2980b9',
+    avatar: '/assets/pets/scout.png',
+    image: '/assets/pets/scout.png',
+    emoji: '🦅',
+    backstory: 'Equipped with holographic navigational scopes, Scout spots open books and homework quests from miles above the clouds.',
     assignedHabit: 'Homework & Reading',
-    baseStats: { hunger: 65, hygiene: 80, energy: 90, joy: 85 },
-    evolutionStages: ['Sky Eaglet', 'Cloud Glider', 'Storm Talon Eagle', 'Solar Phoenix Lord'],
+    habitBonus: 'Sky Reader: +15 Coins on every homework and reading task completed',
+    statBonusType: 'coin_boost',
+    baseBonusPercent: 15,
+    maxLevel: 25,
+    workoutId: 'eagle_sky_focus_dive',
+    workoutName: "Scout's Precision Focus Glide",
+    workoutInstructions: 'Stand on one leg, arms stretched forward, look straight ahead without blinking for 8 seconds!',
     exclusiveGear: [
-      { name: 'Talon Bookmark', desc: '+20% XP on reading quests', icon: 'bookmark' },
-      { name: 'Aviator Cap', desc: '+15 Speed on all quest map tasks', icon: 'flight' },
-      { name: 'Golden Library Card', desc: 'Unlocks bonus Phonics adventures', icon: 'library_books' }
-    ],
-    archetype: 'mystic',
-    workoutId: null
+      { name: 'Aero Scope Mask', desc: '+20% Study Reading Coins', icon: 'menu_book', category: 'masks', level: 3 }
+    ]
   },
+  // 21. Gnasher the Shark (Aquatic Guardians)
   {
     id: '21',
+    key: 'gnasher',
     name: 'Gnasher the Shark',
+    shortName: 'Gnasher',
     title: 'The Deep Diver',
-    element: 'Water & Steel',
-    color: '#3498db',
-    accentColor: '#f1c40f',
-    avatar: makePetSvg('🦈', 'Gnasher', '#3498db'),
-    evolvedAvatar: makePetSvg('🦈', 'Gnasher', '#3498db'),
-    backstory: 'Gnasher slices through the deepest ocean trenches with effortless grace, then surfaces at sundown for his most important ritual: a full bedtime routine before the ocean tucks him in under the waves. He never misses a single night, no matter how epic the swim!',
-    habitBonus: 'Deep Rest: +25% XP for completing the full bedtime routine',
-    assignedHabit: 'Bedtime Routine',
-    baseStats: { hunger: 85, hygiene: 85, energy: 70, joy: 80 },
-    evolutionStages: ['Reef Pup', 'Deep Diver', 'Steel Fin Shark', 'Megalodon Apex Gnasher'],
-    exclusiveGear: [
-      { name: 'Kelp Sleep Mask', desc: '+15 Energy every morning after full bedtime', icon: 'visibility_off' },
-      { name: 'Buoyant Dream Fin', desc: '+20 Joy from bedtime routine completion', icon: 'sailing' },
-      { name: 'Ocean Lullaby Shell', desc: 'Plays calming sounds, +10 XP at night', icon: 'music_note' }
-    ],
     archetype: 'aquatic',
-    workoutId: null
+    element: 'Midnight Submersible & Bioluminescent Gold',
+    color: '#1f618d',
+    accentColor: '#f1c40f',
+    darkColor: '#123c58',
+    cardContainer: '#0d1924',
+    cardOutline: '#2980b9',
+    avatar: '/assets/pets/gnasher.png',
+    image: '/assets/pets/gnasher.png',
+    emoji: '🦈',
+    backstory: 'In the calm, silent waters of the deep abyss, Gnasher swims in slow, rhythmic circles to help little heroes transition peacefully into dreamland.',
+    assignedHabit: 'Bedtime Routine',
+    habitBonus: 'Deep Rest: +25% XP for completing the full bedtime routine',
+    statBonusType: 'xp_boost',
+    baseBonusPercent: 25,
+    maxLevel: 25,
+    workoutId: 'shark_deep_rest_drift',
+    workoutName: "Gnasher's Abyssal Drift",
+    workoutInstructions: 'Lie back flat or sit comfortably, breathe in for 4 seconds, breathe out for 4 seconds.',
+    exclusiveGear: [
+      { name: 'Bioluminescent Fin Armor', desc: '+25% Sleep Routine Bonus', icon: 'nightlight', category: 'armor', level: 3 }
+    ]
   },
+  // 22. Shadow the Panther (Wild Beasts)
   {
     id: '22',
+    key: 'shadow',
     name: 'Shadow the Panther',
+    shortName: 'Shadow',
     title: 'The Silent Sweeper',
-    element: 'Shadow & Earth',
-    color: '#2c3e50',
-    accentColor: '#9b59b6',
-    avatar: makePetSvg('🐆', 'Shadow', '#2c3e50'),
-    evolvedAvatar: makePetSvg('🐆', 'Shadow', '#2c3e50'),
-    backstory: 'Shadow moves in pure silence, pouncing on scattered toys and chaos before anyone even notices! By the time you blink, every toy is where it belongs and the room is spotless. She makes tidying up look like the coolest ninja skill in the world!',
-    habitBonus: 'Stealth Sweeper: +20 Coins for cleaning your room without being asked',
-    assignedHabit: 'Clean Room',
-    baseStats: { hunger: 80, hygiene: 85, energy: 90, joy: 85 },
-    evolutionStages: ['Shadow Kitten', 'Jungle Prowler', 'Midnight Panther', 'Phantom Apex Shadow'],
-    exclusiveGear: [
-      { name: 'Ninja Silent Paws', desc: 'Speed-cleans rooms, +25% XP', icon: 'pets' },
-      { name: 'Stealth Dark Cloak', desc: 'Room stays clean 20% longer', icon: 'dark_mode' },
-      { name: 'Champion Toy Bag', desc: 'Holds 2x more items for +15 bonus Coins', icon: 'backpack' }
-    ],
     archetype: 'beast',
-    workoutId: null
+    element: 'Stealth Carbon & Night-Vision Emerald',
+    color: '#2c3e50',
+    accentColor: '#00e676',
+    darkColor: '#17212b',
+    cardContainer: '#111a22',
+    cardOutline: '#00c853',
+    avatar: '/assets/pets/shadow.png',
+    image: '/assets/pets/shadow.png',
+    emoji: '🐆',
+    backstory: 'Shadow moves completely undetected. Toys, clothes, and clutter vanish into their bins before anyone even notices he has arrived!',
+    assignedHabit: 'Clean Room',
+    habitBonus: 'Stealth Sweeper: +20 Coins for cleaning your room without being asked',
+    statBonusType: 'coin_boost',
+    baseBonusPercent: 20,
+    maxLevel: 25,
+    workoutId: 'panther_stealth_step',
+    workoutName: "Shadow's Silent Stealth Steps",
+    workoutInstructions: 'Step across the floor as silently as a ninja panther — make ZERO sound for 20 seconds!',
+    exclusiveGear: [
+      { name: 'Night-Vision Visor Mask', desc: '+20% Stealth Cleaning Coins', icon: 'visibility', category: 'masks', level: 3 }
+    ]
   },
+  // 23. Barnaby the Bear (Wild Beasts)
   {
     id: '23',
+    key: 'barnaby',
     name: 'Barnaby the Bear',
+    shortName: 'Barnaby',
     title: 'The Honey Woodsman',
-    element: 'Nature & Heart',
+    archetype: 'beast',
+    element: 'Woodland Cedar & Wildflower Honey',
     color: '#d35400',
     accentColor: '#f1c40f',
-    avatar: makePetSvg('🐻', 'Barnaby', '#d35400'),
-    evolvedAvatar: makePetSvg('🐻', 'Barnaby', '#d35400'),
-    backstory: 'Barnaby wandered out of the Whispering Woods with a pot of golden honey and the biggest appetite for healthy snacks! He gives the coziest bear hugs and always makes sure little heroes eat their fruits and veggies before the adventure can begin!',
-    habitBonus: 'Bear Hug Boost: +15 XP for every healthy meal or snack logged',
+    darkColor: '#7f3100',
+    cardContainer: '#241810',
+    cardOutline: '#e67e22',
+    avatar: '/assets/pets/barnaby.png',
+    image: '/assets/pets/barnaby.png',
+    emoji: '🐻',
+    backstory: 'Barnaby loves crunchy berries, fresh apples, and warm wholesome meals. He gives big bear hugs to heroes who finish their veggies!',
     assignedHabit: 'Healthy Eating',
-    baseStats: { hunger: 95, hygiene: 70, energy: 75, joy: 95 },
-    evolutionStages: ['Woodland Cub', 'Forest Ranger', 'Grizzly Knight', 'Ursine Forest Lord'],
+    habitBonus: 'Bear Hug Boost: +15 XP for every healthy meal or snack logged',
+    statBonusType: 'xp_boost',
+    baseBonusPercent: 15,
+    maxLevel: 25,
+    workoutId: 'bear_honey_hug_reach',
+    workoutName: "Barnaby's Big Bear Reach",
+    workoutInstructions: 'Reach both arms wide for a gigantic bear hug, squeeze tight, and breathe in deeply!',
     exclusiveGear: [
-      { name: 'Golden Honey Pot', desc: '+25 Joy on healthy eating tasks', icon: 'hive' },
-      { name: 'Wild Berry Basket', desc: '+20% Coins on nutrition habit completions', icon: 'shopping_basket' },
-      { name: 'Forest Lumberjack Hat', desc: '+10 Energy after every healthy meal', icon: 'park' }
-    ],
-    archetype: 'beast',
-    workoutId: null
+      { name: 'Honeycomb Woodsman Boots', desc: '+15% Nutrition Quest XP', icon: 'forest', category: 'boots', level: 2 }
+    ]
   },
+  // 24. Ollie the Otter (Aquatic Guardians)
   {
     id: '24',
+    key: 'ollie',
     name: 'Ollie the Otter',
+    shortName: 'Ollie',
     title: 'The River Craftmaster',
-    element: 'Water & Tech',
+    archetype: 'aquatic',
+    element: 'River Pebble & Rapid Foam Emerald',
     color: '#2980b9',
     accentColor: '#2ecc71',
-    avatar: makePetSvg('🦦', 'Ollie', '#2980b9'),
-    evolvedAvatar: makePetSvg('🦦', 'Ollie', '#2980b9'),
-    backstory: 'Ollie floats on his back in crystal brooks, using his clever paws to craft the most amazing river dams and tiny otter inventions! He believes that building something with your own hands, whether a Lego tower or a crayon masterpiece, is the greatest superpower of all!',
-    habitBonus: 'River Builder: 2x Coins on all creative play and craft tasks',
+    darkColor: '#154868',
+    cardContainer: '#101e29',
+    cardOutline: '#1abc9c',
+    avatar: '/assets/pets/ollie.png',
+    image: '/assets/pets/ollie.png',
+    emoji: '🦦',
+    backstory: 'Ollie floats happily on his back while assembling pebble castles and wooden stick rafts. Crafting and building are his favorite superpowers!',
     assignedHabit: 'Creative Play',
-    baseStats: { hunger: 80, hygiene: 95, energy: 85, joy: 95 },
-    evolutionStages: ['Pebble Pup', 'River Scout', 'Hydro Otter', 'Poseidon Craft Champion'],
+    habitBonus: 'River Builder: 2x Coins on all creative play and craft tasks',
+    statBonusType: 'coin_boost',
+    baseBonusPercent: 25,
+    maxLevel: 25,
+    workoutId: 'otter_river_paddle_tap',
+    workoutName: "Ollie's River Paddle Tap",
+    workoutInstructions: 'Sit with feet out, tap feet quickly like otter flippers, and pat your belly in rhythm!',
     exclusiveGear: [
-      { name: 'Master Building Blocks', desc: '+30% XP on creative challenges', icon: 'view_in_ar' },
-      { name: 'Treasure Otter Pouch', desc: 'Holds bonus craft rewards', icon: 'cases' },
-      { name: 'River Crafting Toolkit', desc: 'Unlocks secret art mini-games', icon: 'handyman' }
-    ],
-    archetype: 'aquatic',
-    workoutId: null
+      { name: 'River Pebble Armor', desc: '+25% Crafting & Building Tokens', icon: 'handyman', category: 'armor', level: 3 }
+    ]
   }
 ];
 
-export const PET_EMOJIS = {
-  '1': '🦖', '2': '🦎', '3': '🦕', '4': '🦇', '5': '🦖', '6': '🦕', '7': '🦕', '8': '🐊',
-  '9': '🐉', '10': '🦅', '11': '🦚', '12': '🐍', '13': '🦄', '14': '🦌', '15': '💎', '16': '🤖',
-  '17': '🦁', '18': '🐯', '19': '🐺', '20': '🦅', '21': '🦈', '22': '🐆', '23': '🐻', '24': '🦦'
-};
-
+export const PET_EMOJIS = {};
 PETS_DATABASE.forEach(p => {
-  if (!p.emoji) {
-    p.emoji = PET_EMOJIS[p.id] || '🐾';
-  }
+  PET_EMOJIS[p.id] = p.emoji;
+  PET_EMOJIS[p.key] = p.emoji;
 });
 
-export const PET_ARCHETYPES = {
-  dino: { id: 'dino', name: 'Prehistoric Dino', emoji: '🦖' },
-  dragon: { id: 'dragon', name: 'Dragon', emoji: '🐉' },
-  beast: { id: 'beast', name: 'Beast', emoji: '🐻' },
-  aquatic: { id: 'aquatic', name: 'Aquatic', emoji: '🦈' },
-  robot: { id: 'robot', name: 'Robot', emoji: '🤖' },
-  mystic: { id: 'mystic', name: 'Mystic', emoji: '✨' }
-};
-
 export const SANCTUARY_TREATS = [
-  { id: 'crunchy_apple', name: 'Crunchy Orchard Apple', emoji: '🍎', color: '#e74c3c', hunger: 25, hungerFill: 25, energyFill: 15, joyBoost: 10, bondXp: 20, costCoins: 0, unlockedByDefault: true, lore: 'Crisp sweet apple picked from the Sanctuary Meadow trees.' },
-  { id: 'star_berry', name: 'Cosmic Starberry', emoji: '🍓', color: '#ffb961', hunger: 35, hungerFill: 35, energyFill: 25, joyBoost: 20, bondXp: 35, costCoins: 10, unlockedByDefault: true, lore: 'Bursting with sparkling stardust juice that fills companions with joyful energy!' },
-  { id: 'honey_crunch', name: 'Golden Honey Crunch', emoji: '🍯', color: '#f39c12', hunger: 45, hungerFill: 45, energyFill: 30, joyBoost: 25, bondXp: 45, costCoins: 15, unlockedByDefault: true, lore: 'Sweet honeycomb cluster with golden sun crunch.' },
-  { id: 'super_carrot', name: 'Heroic Mega Carrot', emoji: '🥕', color: '#e67e22', hunger: 50, hungerFill: 50, energyFill: 40, joyBoost: 30, bondXp: 55, costCoins: 20, unlockedByDefault: true, lore: 'Super-charged with vibrant vitamin power for giant high leaps!' }
+  { id: 'crunchy_apple', name: 'Crunchy Orchard Apple', emoji: '🍎', color: '#e74c3c', hunger: 25, hungerFill: 25, energyFill: 15, joyBoost: 10, xpBoost: 20, costCoins: 0, unlockedByDefault: true, lore: 'Crisp sweet apple picked from the Sanctuary Meadow trees.' },
+  { id: 'star_berry', name: 'Cosmic Starberry', emoji: '🍓', color: '#ffb961', hunger: 35, hungerFill: 35, energyFill: 25, joyBoost: 20, xpBoost: 35, costCoins: 10, unlockedByDefault: true, lore: 'Bursting with sparkling stardust juice that fills companions with joyful energy!' },
+  { id: 'honey_crunch', name: 'Golden Honey Crunch', emoji: '🍯', color: '#f39c12', hunger: 45, hungerFill: 45, energyFill: 30, joyBoost: 25, xpBoost: 45, costCoins: 15, unlockedByDefault: true, lore: 'Sweet honeycomb cluster with golden sun crunch.' },
+  { id: 'super_carrot', name: 'Heroic Mega Carrot', emoji: '🥕', color: '#e67e22', hunger: 50, hungerFill: 50, energyFill: 40, joyBoost: 30, xpBoost: 55, costCoins: 20, unlockedByDefault: true, lore: 'Super-charged with vibrant vitamin power for giant high leaps!' }
 ];
 
 export function getPetArchetype(pet) {
   if (!pet) return PET_ARCHETYPES.dino;
-  const key = typeof pet === 'string' ? pet : pet.archetype;
-  return (key && PET_ARCHETYPES[key]) ? PET_ARCHETYPES[key] : PET_ARCHETYPES.dino;
+  const key = typeof pet === 'string' ? pet : (pet.archetype || 'dino');
+  return PET_ARCHETYPES[key] || PET_ARCHETYPES.dino;
 }
 
-export function getPetBondBonus(level = 1) {
-  const lvl = Math.max(1, Math.min(10, Math.floor(level || 1)));
-  const titles = [
-    'New Companion',
-    'Playful Buddy',
-    'Trusted Friend',
-    'Heroic Partner',
-    'Loyal Guardian',
-    'Adventure Champion',
-    'Starlight Ally',
-    'Invincible Bond',
-    'Mythic Duo',
-    'Inseparable Soulmate'
-  ];
+export function getPetLevelData(level = 1) {
+  const lvl = Math.max(1, Math.min(25, Math.floor(level || 1)));
+  
+  let milestoneTitle = 'Rookie Companion';
+  let badgeIcon = 'pets';
+  let badgeColor = 'text-cyan-400 bg-cyan-950/60 border-cyan-400/40';
+
+  if (lvl >= 25) {
+    milestoneTitle = 'Apex Titan';
+    badgeIcon = 'military_tech';
+    badgeColor = 'text-amber-300 bg-amber-950/60 border-amber-400/50';
+  } else if (lvl >= 20) {
+    milestoneTitle = 'Mythic Vanguard';
+    badgeIcon = 'auto_awesome';
+    badgeColor = 'text-teal-300 bg-teal-950/60 border-teal-400/50';
+  } else if (lvl >= 15) {
+    milestoneTitle = 'Master Hero';
+    badgeIcon = 'verified';
+    badgeColor = 'text-emerald-400 bg-emerald-950/60 border-emerald-400/40';
+  } else if (lvl >= 10) {
+    milestoneTitle = 'Champion Guardian';
+    badgeIcon = 'shield';
+    badgeColor = 'text-blue-400 bg-blue-950/60 border-blue-400/40';
+  } else if (lvl >= 5) {
+    milestoneTitle = 'Apprentice Scout';
+    badgeIcon = 'stars';
+    badgeColor = 'text-yellow-300 bg-yellow-950/60 border-yellow-400/40';
+  }
+
+  // +2% stat bonus per level above 1, up to +48% bonus at Level 25
+  const incrementalBonusPercent = (lvl - 1) * 2;
+  const xpNeededForNext = lvl < 25 ? lvl * 100 : 0;
 
   return {
     level: lvl,
-    title: titles[lvl - 1] || 'Loyal Guardian',
-    coinBoostPercent: lvl * 5, // +5% to +50%
-    bossDeflectAssistDamage: 10 + (lvl * 3),
-    expeditionFuelBonus: lvl >= 5 ? 25 : 0,
-    pearlyGleam: lvl >= 5,
-    pearlyGleamPerk: lvl >= 5,
-    xpToNext: lvl < 10 ? lvl * 100 : 0
+    maxLevel: 25,
+    title: milestoneTitle,
+    badgeIcon,
+    badgeColor,
+    bonusPercent: incrementalBonusPercent,
+    xpNeededForNext
   };
+}
+
+export function calculatePetStatBonus(pet, level = 1) {
+  if (!pet) return { bonusPercent: 0, label: '+0%' };
+  const lvlData = getPetLevelData(level);
+  const base = pet.baseBonusPercent || 15;
+  const totalPercent = base + lvlData.bonusPercent;
+  return {
+    bonusPercent: totalPercent,
+    label: `+${totalPercent}%`,
+    statType: pet.statBonusType || 'coin_boost',
+    milestoneTitle: lvlData.title
+  };
+}
+
+export function getPetBondBonus(level = 1) {
+  return getPetLevelData(level);
 }
 
 export function getPetById(id) {
@@ -613,7 +838,14 @@ export function getPetById(id) {
   const idStr = String(id).toLowerCase().trim();
   return PETS_DATABASE.find(p => 
     String(p.id).toLowerCase() === idStr ||
+    (p.key && p.key.toLowerCase() === idStr) ||
     p.name.toLowerCase().includes(idStr) ||
     p.name.toLowerCase().replace(/[^a-z0-9]/g, '').includes(idStr.replace(/[^a-z0-9]/g, ''))
   ) || PETS_DATABASE[0];
+}
+
+export function getDailyRotatingPetCoach() {
+  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
+  const petIdx = dayOfYear % PETS_DATABASE.length;
+  return PETS_DATABASE[petIdx] || PETS_DATABASE[0];
 }

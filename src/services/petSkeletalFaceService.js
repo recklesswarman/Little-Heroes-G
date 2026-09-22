@@ -436,6 +436,23 @@ export class PetSkeletalFaceCanvas {
     const p = this.profile;
     const radius = Math.min(this.width, this.height) * 0.44;
 
+    const petImgSrc = `/assets/pets/${this.petId || 'rex'}.png`;
+    if (!this.petImg || this.petImgSrc !== petImgSrc) {
+      this.petImgSrc = petImgSrc;
+      this.petImg = new Image();
+      this.petImg.src = petImgSrc;
+      this.petImgLoaded = false;
+      this.petImg.onload = () => { this.petImgLoaded = true; };
+    }
+
+    if (this.petImgLoaded && this.petImg.complete && this.petImg.naturalWidth > 0) {
+      const size = Math.min(this.width, this.height) * 0.92;
+      ctx.drawImage(this.petImg, -size / 2, -size / 2, size, size);
+      this.renderHearts(ctx);
+      ctx.restore();
+      return;
+    }
+
     // 1. Ears / Crest Spring Bones (Drawn behind head)
     this.renderEars(ctx, p, radius);
 

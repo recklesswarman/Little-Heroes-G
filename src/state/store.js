@@ -1,6 +1,6 @@
 import { Sound } from '../audio/sfx.js';
 import confetti from 'canvas-confetti';
-import { PETS_DATABASE, getPetArchetype, getPetBondBonus, SANCTUARY_TREATS, makePetSvg } from '../data/petsData.js';
+import { PETS_DATABASE, getPetArchetype, getPetBondBonus, SANCTUARY_TREATS, makePetSvg, getPetLevelData, calculatePetStatBonus, getDailyRotatingPetCoach } from '../data/petsData.js';
 import { ADVENTURE_GAMES } from '../data/learningGamesData.js';
 import { MOVEMENT_ROUTINES, getMovementRoutine } from '../data/movementRoutinesData.js';
 import { PROFILE_THEMES } from '../data/profileThemesData.js';
@@ -25,7 +25,7 @@ import {
   getFurnitureItem,
   getTrophiesForDisplay
 } from '../data/heroHQData.js';
-import { PET_GEAR_CATALOG, calculateActiveGearBuffs, formatStatBonusName } from '../data/petGearStudioData.js';
+import { PET_GEAR_CATALOG, calculateActiveGearBuffs, formatStatBonusName, normalizeGearSlot, getGearHaloStyle } from '../data/petGearStudioData.js';
 import { speakCompanion } from '../services/voiceService.js';
 import { isExistingActiveHousehold } from '../utils/householdHeuristics.js';
 import { FORGE_BLUEPRINTS, getBlueprintById, isBlueprintUnlocked } from '../data/heroForgeData.js';
@@ -157,14 +157,16 @@ const defaultState = {
     hasChosenStarterPet: false,
     habitatSlots: 1,
     petStageMap: {},
+    petLevelMap: { 1: 1 },
+    petXpMap: { 1: 0 },
     gameDifficulty: 'medium', // 'easy' (Toddler 3-4), 'medium' (Kids 5-6), 'hard' (Kids 7-9)
     equippedProfileTheme: 'theme_dragon_emerald',
     unlockedThemes: ['theme_dragon_emerald'],
     equippedPetGearMap: {
-      1: { head: 'crown_golden_horn', back: 'cape_classic', chest: 'collar_titan', feet: 'boots_speed_neon' }
+      1: { masks: 'crown_golden_horn', capes: 'cape_classic', armor: 'collar_titan', boots: 'boots_speed_neon', head: 'crown_golden_horn', back: 'cape_classic', chest: 'collar_titan', feet: 'boots_speed_neon' }
     },
     customGearDyesMap: {
-      1: { head: '#f59e0b', back: '#ef4444', chest: '#475569', feet: '#10b981' }
+      1: { masks: '#f59e0b', capes: '#ef4444', armor: '#475569', boots: '#10b981', head: '#f59e0b', back: '#ef4444', chest: '#475569', feet: '#10b981' }
     },
     savedHeroCards: [],
     screenTimeMinutes: 45,
@@ -190,16 +192,18 @@ const defaultState = {
       hasChosenStarterPet: false,
       habitatSlots: 1,
       petStageMap: {},
+      petLevelMap: { 1: 1 },
+      petXpMap: { 1: 0 },
       streak: 1,
       completionRate: 100,
       gameDifficulty: 'medium',
       equippedProfileTheme: 'theme_dragon_emerald',
       unlockedThemes: ['theme_dragon_emerald'],
       equippedPetGearMap: {
-        1: { head: 'hero_cowl', back: 'fluttering_cape', chest: 'titan_collar', feet: 'neon_speed_boots' }
+        1: { masks: 'cowl_hero', capes: 'cape_classic', armor: 'collar_titan', boots: 'boots_speed_neon', head: 'cowl_hero', back: 'cape_classic', chest: 'collar_titan', feet: 'boots_speed_neon' }
       },
       customGearDyesMap: {
-        1: { head: '#E74C3C', back: '#3498DB', chest: '#F1C40F', feet: '#2ECC71' }
+        1: { masks: '#E74C3C', capes: '#3498DB', armor: '#F1C40F', boots: '#2ECC71', head: '#E74C3C', back: '#3498DB', chest: '#F1C40F', feet: '#2ECC71' }
       },
       savedHeroCards: [],
       screenTimeMinutes: 45,
@@ -227,6 +231,8 @@ const defaultState = {
   // 24 Pets Universe & Active Pet State
   pets: PETS_DATABASE,
   petStageMap: {},
+  petLevelMap: { 1: 1 },
+  petXpMap: { 1: 0 },
   petSelectionModal: { isOpen: false, type: 'starter' },
   petStatsMap: {
     1: { hunger: 75, hygiene: 90, energy: 65, joy: 85 }
@@ -1070,23 +1076,108 @@ class Store {
     if (id === undefined || id === null) return this.getActivePet();
     const idStr = String(id).toLowerCase().trim();
     const allPets = this.state.pets || PETS_DATABASE;
-    const petData = allPets.find(p => String(p.id).toLowerCase() === idStr || p.name.toLowerCase().includes(idStr)) || PETS_DATABASE[0];
+    const petData = allPets.find(p => 
+      String(p.id).toLowerCase() === idStr || 
+      (p.key && p.key.toLowerCase() === idStr) || 
+      p.name.toLowerCase().includes(idStr)
+    ) || PETS_DATABASE[0];
     const hero = this.state.selectedHero;
-    const stage = this.state.petStageMap?.[petData.id] || hero?.petStageMap?.[petData.id] || 1;
+    const level = this.getPetLevel(petData.id);
+    const xp = this.getPetXp(petData.id);
+    const levelData = getPetLevelData(level);
+    const statBonus = calculatePetStatBonus(petData, level);
+    const stage = Math.min(4, Math.max(1, Math.ceil(level / 6.25)));
     const stats = this.state.petStatsMap?.[petData.id] || { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
-    const currentAvatar = (stage >= 3 && petData.evolvedAvatar) ? petData.evolvedAvatar : (petData.avatar || PETS_DATABASE[0].avatar);
-    return { ...petData, stage, ...stats, image: currentAvatar, avatar: currentAvatar };
+    const avatar = petData.avatar || `/assets/pets/${petData.key || 'rex'}.png`;
+    return { ...petData, level, xp, levelData, statBonus, stage, ...stats, image: avatar, avatar };
   }
 
   getActivePet() {
     const hero = this.state.selectedHero;
     const petId = hero?.activePetId || (hero?.unlockedPetIds?.[0] || '1');
     const allPets = this.state.pets || PETS_DATABASE;
-    const petData = allPets.find((p) => String(p.id) === String(petId)) || PETS_DATABASE.find((p) => String(p.id) === String(petId)) || allPets[0] || PETS_DATABASE[0];
-    const stage = this.state.petStageMap?.[petId] || hero?.petStageMap?.[petId] || 1;
-    const stats = this.state.petStatsMap?.[petId] || { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
-    const currentAvatar = (stage >= 3 && petData?.evolvedAvatar) ? petData.evolvedAvatar : (petData?.avatar || PETS_DATABASE[0].avatar);
-    return { ...petData, stage, ...stats, image: currentAvatar, avatar: currentAvatar };
+    const petData = allPets.find((p) => String(p.id) === String(petId) || (p.key && p.key === String(petId))) || PETS_DATABASE.find((p) => String(p.id) === String(petId)) || allPets[0] || PETS_DATABASE[0];
+    const level = this.getPetLevel(petData.id);
+    const xp = this.getPetXp(petData.id);
+    const levelData = getPetLevelData(level);
+    const statBonus = calculatePetStatBonus(petData, level);
+    const stage = Math.min(4, Math.max(1, Math.ceil(level / 6.25)));
+    const stats = this.state.petStatsMap?.[petData.id] || { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
+    const avatar = petData.avatar || `/assets/pets/${petData.key || 'rex'}.png`;
+    return { ...petData, level, xp, levelData, statBonus, stage, ...stats, image: avatar, avatar };
+  }
+
+  getPetLevel(petId) {
+    const id = petId !== undefined && petId !== null ? String(petId) : (this.state.selectedHero?.activePetId || '1');
+    const hero = this.state.selectedHero;
+    const rawLvl = this.state.petLevelMap?.[id] || hero?.petLevelMap?.[id] || 1;
+    return Math.max(1, Math.min(25, Math.floor(rawLvl)));
+  }
+
+  getPetXp(petId) {
+    const id = petId !== undefined && petId !== null ? String(petId) : (this.state.selectedHero?.activePetId || '1');
+    const hero = this.state.selectedHero;
+    return this.state.petXpMap?.[id] || hero?.petXpMap?.[id] || 0;
+  }
+
+  addPetTrainingXp(petId, amount = 25) {
+    const id = petId !== undefined && petId !== null ? String(petId) : (this.state.selectedHero?.activePetId || '1');
+    if (!this.state.petLevelMap) this.state.petLevelMap = {};
+    if (!this.state.petXpMap) this.state.petXpMap = {};
+    const hero = this.state.selectedHero;
+    if (hero) {
+      if (!hero.petLevelMap) hero.petLevelMap = {};
+      if (!hero.petXpMap) hero.petXpMap = {};
+    }
+
+    let currentLvl = this.getPetLevel(id);
+    let currentXp = this.getPetXp(id) + amount;
+    const pet = this.getPet(id);
+    let leveledUp = false;
+
+    while (currentLvl < 25) {
+      const needed = currentLvl * 100;
+      if (currentXp >= needed) {
+        currentXp -= needed;
+        currentLvl += 1;
+        leveledUp = true;
+      } else {
+        break;
+      }
+    }
+
+    this.state.petLevelMap[id] = currentLvl;
+    this.state.petXpMap[id] = currentXp;
+    if (hero) {
+      hero.petLevelMap[id] = currentLvl;
+      hero.petXpMap[id] = currentXp;
+    }
+
+    if (leveledUp) {
+      Sound.fanfare();
+      Sound.sparkle();
+      try {
+        confetti({ particleCount: 90, spread: 80, origin: { y: 0.6 } });
+      } catch (e) {}
+
+      const lvlData = getPetLevelData(currentLvl);
+      this.showReward(
+        `Companion Level Up! 🌟`,
+        `${pet.name} reached Level ${currentLvl} (${lvlData.title})! +${lvlData.bonusPercent}% Stat Perk Bonus!`,
+        50,
+        currentLvl * 10,
+        pet.avatar,
+        'military_tech'
+      );
+    }
+
+    this.saveState(true);
+    this.notify();
+    return { level: currentLvl, xp: currentXp, leveledUp };
+  }
+
+  getDailyCoach() {
+    return getDailyRotatingPetCoach();
   }
 
   setActivePet(petId) {
@@ -1094,8 +1185,8 @@ class Store {
     if (!this.state.selectedHero) this.state.selectedHero = {};
     this.state.selectedHero.activePetId = pId;
     const allPets = this.state.pets || PETS_DATABASE;
-    const pet = allPets.find(p => String(p.id) === pId) || PETS_DATABASE.find(p => String(p.id) === pId) || PETS_DATABASE[0];
-    const petImg = pet?.avatar || pet?.evolvedAvatar;
+    const pet = allPets.find(p => String(p.id) === pId || (p.key && p.key === pId)) || PETS_DATABASE.find(p => String(p.id) === pId) || PETS_DATABASE[0];
+    const petImg = pet?.avatar || `/assets/pets/${pet?.key || 'rex'}.png`;
     
     Sound.fanfare();
     confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
@@ -2885,31 +2976,55 @@ class Store {
   // --- PET GEAR STUDIO & SKELETAL RIG METHODS ---
 
   getEquippedPetStudioGear(petId) {
-    const id = petId || this.state.selectedHero?.activePetId || 1;
+    const id = petId || this.state.selectedHero?.activePetId || '1';
     if (!this.state.equippedPetGearMap) {
       this.state.equippedPetGearMap = {};
     }
     if (!this.state.equippedPetGearMap[id]) {
-      this.state.equippedPetGearMap[id] = { head: 'crown_golden_horn', back: 'cape_classic', chest: 'collar_titan', feet: 'boots_speed_neon' };
+      this.state.equippedPetGearMap[id] = {
+        masks: 'crown_golden_horn',
+        capes: 'cape_classic',
+        armor: 'collar_titan',
+        boots: 'boots_speed_neon',
+        head: 'crown_golden_horn',
+        back: 'cape_classic',
+        chest: 'collar_titan',
+        feet: 'boots_speed_neon'
+      };
     }
-    return { head: null, back: null, chest: null, feet: null, ...this.state.equippedPetGearMap[id] };
+    const current = this.state.equippedPetGearMap[id];
+    return {
+      masks: current.masks || current.head || null,
+      capes: current.capes || current.back || null,
+      armor: current.armor || current.chest || null,
+      boots: current.boots || current.feet || null,
+      head: current.masks || current.head || null,
+      back: current.capes || current.back || null,
+      chest: current.armor || current.chest || null,
+      feet: current.boots || current.feet || null
+    };
   }
 
   equipPetStudioGear(petId, slot, gearId) {
-    const id = petId || this.state.selectedHero?.activePetId || 1;
+    const id = petId || this.state.selectedHero?.activePetId || '1';
+    const norm = normalizeGearSlot(slot);
     if (!this.state.equippedPetGearMap) {
       this.state.equippedPetGearMap = {};
     }
     if (!this.state.equippedPetGearMap[id]) {
-      this.state.equippedPetGearMap[id] = { head: null, back: null, chest: null, feet: null };
+      this.state.equippedPetGearMap[id] = { masks: null, capes: null, armor: null, boots: null };
     }
 
     // Toggle off if already equipped
-    if (this.state.equippedPetGearMap[id][slot] === gearId) {
-      this.state.equippedPetGearMap[id][slot] = null;
-    } else {
-      this.state.equippedPetGearMap[id][slot] = gearId;
-    }
+    const isEquipped = this.state.equippedPetGearMap[id][norm] === gearId;
+    const nextVal = isEquipped ? null : gearId;
+    this.state.equippedPetGearMap[id][norm] = nextVal;
+
+    // Keep legacy socket keys in sync
+    if (norm === 'masks') this.state.equippedPetGearMap[id].head = nextVal;
+    if (norm === 'capes') this.state.equippedPetGearMap[id].back = nextVal;
+    if (norm === 'armor') this.state.equippedPetGearMap[id].chest = nextVal;
+    if (norm === 'boots') this.state.equippedPetGearMap[id].feet = nextVal;
 
     if (this.state.selectedHero) {
       if (!this.state.selectedHero.equippedPetGearMap) this.state.selectedHero.equippedPetGearMap = {};
@@ -3561,6 +3676,8 @@ class Store {
 
   addEvolutionSparks(petId, amount = 15) {
     const id = petId || this.state.selectedHero?.activePetId || '1';
+    // Forward directly to Level 1-25 Pet Training XP progression
+    this.addPetTrainingXp(id, amount * 2);
     if (!this.state.petSparkMap) {
       this.state.petSparkMap = {};
     }

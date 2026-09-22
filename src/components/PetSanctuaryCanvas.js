@@ -730,6 +730,23 @@ export class PetSanctuaryCanvas {
   }
 
   renderCreatureMesh(ctx, pet, archetype) {
+    const petImgSrc = pet.avatar || `/assets/pets/${pet.key || 'rex'}.png`;
+    if (!this.petImg || this.petImgSrc !== petImgSrc) {
+      this.petImgSrc = petImgSrc;
+      this.petImg = new Image();
+      this.petImg.src = petImgSrc;
+      this.petImgLoaded = false;
+      this.petImg.onload = () => { this.petImgLoaded = true; };
+    }
+
+    if (this.petImgLoaded && this.petImg.complete && this.petImg.naturalWidth > 0) {
+      const imgSize = 135;
+      ctx.save();
+      ctx.drawImage(this.petImg, -imgSize / 2, -imgSize + 25, imgSize, imgSize);
+      ctx.restore();
+      return;
+    }
+
     const primary = pet.color || archetype.baseBodyColor || '#2ecc71';
     const accent = pet.accentColor || '#f39c12';
     const belly = archetype.bellyColor || '#6bfe9c';

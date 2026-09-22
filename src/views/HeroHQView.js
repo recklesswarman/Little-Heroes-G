@@ -12,10 +12,19 @@ import {
   getFurnitureForSlot,
   getTrophiesForDisplay
 } from '../data/heroHQData.js';
+import {
+  getGearItem,
+  getAllGearForSocket,
+  getGearHaloStyle,
+  normalizeGearSlot,
+  calculateActiveGearBuffs
+} from '../data/petGearStudioData.js';
+import { getPetLevelData, calculatePetStatBonus } from '../data/petsData.js';
 
 // Local UI state for live previewing and interactive widgets
 let activePreviewItem = null;
 let selectedTrophyForModal = null;
+let activeGearSlotForModal = null; // 'masks' | 'capes' | 'armor' | 'boots' | null
 let isHologramActive = false;
 let isNapping = false;
 let isBouncing = false;
@@ -51,7 +60,22 @@ export function renderHeroHQView() {
   const currentTheme = getHQTheme(heroHQ.themeId);
   const isNight = Boolean(heroHQ.isNightMode);
   const coins = hero.coins || 0;
-  const activePet = store.getActivePet ? store.getActivePet() : { name: 'Rex', avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZfP7_Cwlp4sz41asI8ymuapAKvjmqHtvI4zcMAF_XwUmibj8IheGrS5cA5QD5gmXgVxEkZM9FlWJPRZnct3x6-9SQB7zJKqkEDjJ3m95tAy3zRqS-PbmcQ4kv_9pmIfm2Py4mh3Fw083hkDookz1w4_r50SBA1jc9igDaAPFLYBFgSP2aQBz7Q4jVE-DwhMOyUEHlxDkQk6Gwc2EAFCSKs1c0QuhUOi3tkrk5MXRARKqZcYVzyJe6gA' };
+  const activePet = store.getActivePet ? store.getActivePet() : { id: '1', key: 'rex', name: 'Rex the T-Rex', shortName: 'Rex', avatar: '/assets/pets/rex.png', emoji: '🦖' };
+  const petLevel = store.getPetLevel ? store.getPetLevel(activePet.id) : 1;
+  const petLevelData = getPetLevelData(petLevel);
+  const petStatBonus = calculatePetStatBonus(activePet, petLevel);
+  const equippedGear = store.getEquippedPetStudioGear ? store.getEquippedPetStudioGear(activePet.id) : {};
+
+  const gearSlotDefinitions = [
+    { category: 'masks', label: 'Mask', icon: 'masks', gearId: equippedGear.masks || equippedGear.head },
+    { category: 'capes', label: 'Cape', icon: 'shield', gearId: equippedGear.capes || equippedGear.back },
+    { category: 'armor', label: 'Armor', icon: 'fitness_center', gearId: equippedGear.armor || equippedGear.chest },
+    { category: 'boots', label: 'Boots', icon: 'sprint', gearId: equippedGear.boots || equippedGear.feet }
+  ].map(slot => {
+    const item = slot.gearId ? getGearItem(slot.category, slot.gearId) : null;
+    const halo = getGearHaloStyle(item?.level || 1);
+    return { ...slot, item, halo };
+  });
 
   // Resolve equipped items (applying live preview if active)
   const equipped = { ...(heroHQ.equippedFurniture || {}) };
@@ -206,43 +230,71 @@ export function renderHeroHQView() {
       </div>
 
       <!-- Isometric 2.5D Floor Stage Area -->
-      <div class="relative w-full flex-1 flex flex-col justify-end min-h-[340px] sm:min-h-[380px] px-4 pb-6">
+      <div class="relative w-full flex-1 flex flex-col justify-end min-h-[460px] sm:min-h-[500px] px-4 pb-6">
 
         <!-- Wall Shadows & Floor Perspective Gradient -->
-        <div class="absolute inset-x-0 bottom-0 h-4/5 bg-gradient-to-t from-black/40 via-black/10 to-transparent pointer-events-none"></div>
+        <div class="absolute inset-x-0 bottom-0 h-4/5 bg-gradient-to-t from-black/50 via-black/20 to-transparent pointer-events-none"></div>
 
-        <!-- Center Floor Rug (Positioned flat beneath roaming pets) -->
-        <div id="hq-slot-rug" class="absolute bottom-10 left-1/2 -translate-x-1/2 w-64 sm:w-80 h-32 sm:h-40 rounded-[50px] bg-gradient-to-r from-amber-500/20 via-emerald-500/20 to-cyan-500/20 border-2 border-white/20 shadow-inner flex flex-col items-center justify-center transition-all cursor-pointer hover:scale-102 hover:border-amber-300" title="${rugItem.name} - Tap to play!">
-          <div class="text-3xl sm:text-4xl opacity-80 animate-pulse">${rugItem.icon || rugItem.emoji}</div>
-          <span class="text-[10px] font-headline font-black text-white/70 bg-black/30 px-2.5 py-0.5 rounded-full border border-white/10 mt-1">
+        <!-- Center Floor Rug (Positioned underneath elevated companion stage) -->
+        <div id="hq-slot-rug" class="absolute bottom-36 sm:bottom-40 left-1/2 -translate-x-1/2 w-80 sm:w-96 h-36 sm:h-44 rounded-[60px] bg-gradient-to-r from-amber-500/20 via-emerald-500/20 to-cyan-500/20 border-2 border-white/20 shadow-inner flex flex-col items-center justify-end pb-3 transition-all cursor-pointer hover:scale-102 hover:border-amber-300" title="${rugItem.name} - Tap to play!">
+          <span class="text-[10px] font-headline font-black text-white/70 bg-black/40 px-3 py-0.5 rounded-full border border-white/10">
             ${rugItem.name}
           </span>
         </div>
 
-        <!-- Free-Roaming Companion Pets on Room Floor -->
-        <div id="hq-roaming-pet" class="absolute bottom-16 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center cursor-pointer transition-transform hover:scale-110 group" title="${activePet.name} is chilling in your HQ!">
-          <!-- Speech Bubble -->
-          <div class="mb-1 bg-white text-slate-900 text-[10px] sm:text-xs font-black px-3 py-1 rounded-full shadow-lg border-2 border-emerald-400 animate-bounce flex items-center gap-1">
-            <span>🐾</span>
-            <span>${isNight ? 'Nighty night, Hero! 🌙' : 'I love our secret base! 🦖'}</span>
+        <!-- Elevated Companion Pet Stage & Flanking 4-Category Gear Spotlights -->
+        <div class="absolute bottom-38 sm:bottom-42 left-1/2 -translate-x-1/2 z-20 flex items-center justify-center gap-3 sm:gap-6 pointer-events-auto">
+          
+          <!-- Left Gear Flank: Masks (top) & Capes (bottom) -->
+          <div class="flex flex-col gap-2.5 sm:gap-3.5 items-center">
+            ${renderGearSlotTile(gearSlotDefinitions[0])}
+            ${renderGearSlotTile(gearSlotDefinitions[1])}
           </div>
-          <!-- 3D Roaming Companion Pet Model -->
-          <div class="w-28 h-28 sm:w-32 sm:h-32 flex items-center justify-center pointer-events-auto">
-            ${renderPet3DViewer({
-              canvasId: 'hq-roaming-pet-3d',
-              petId: activePet.id || 'rex',
-              stage: store.getState().selectedHero?.petStageMap?.[activePet.id || 'rex'] || 1,
-              mode: 'hq',
-              avatarFallback: activePet.avatar,
-              petName: activePet.name,
-              width: 130,
-              height: 130,
-              showControls: false
-            })}
+
+          <!-- Center: Elevated 3D Figurine Companion Pedestal -->
+          <div id="hq-roaming-pet" class="flex flex-col items-center cursor-pointer transition-transform hover:scale-105 group select-none" title="${activePet.name} - Tap to cuddle!">
+            <!-- Speech Bubble -->
+            <div class="mb-1.5 bg-surface-container-highest/95 backdrop-blur-md text-on-surface text-[10px] sm:text-xs font-black px-3 py-1 rounded-full shadow-lg border-2 border-emerald-400 animate-bounce flex items-center gap-1.5 z-10">
+              <span>🐾</span>
+              <span>${isNight ? 'Nighty night, Hero! 🌙' : `${activePet.shortName || activePet.name} is ready for action! ⚡`}</span>
+            </div>
+
+            <!-- Figurine & Pedestal Glow -->
+            <div class="relative w-32 h-32 sm:w-40 sm:h-40 flex items-center justify-center">
+              <!-- Radial Pedestal Beam Aura -->
+              <div class="absolute inset-0 bg-radial from-emerald-400/30 via-cyan-400/10 to-transparent rounded-full blur-md animate-pulse"></div>
+              
+              <!-- 3D Chunky Figurine Image -->
+              <img 
+                src="${activePet.avatar || `/assets/pets/${activePet.key || 'rex'}.png`}" 
+                alt="${activePet.name}" 
+                class="w-28 h-28 sm:w-36 sm:h-36 object-contain drop-shadow-[0_12px_24px_rgba(0,0,0,0.7)] animate-float-gentle transition-transform group-hover:scale-110"
+              />
+
+              <!-- Pedestal Ring Base -->
+              <div class="absolute -bottom-2 w-28 sm:w-32 h-6 rounded-full bg-surface-container-highest/80 border-t-2 border-emerald-400/60 shadow-[0_0_15px_rgba(46,204,113,0.5)] flex items-center justify-center pointer-events-none">
+                <div class="w-20 sm:w-24 h-3 rounded-full bg-surface-container-high/60"></div>
+              </div>
+            </div>
+
+            <!-- Pet Name & Level Pill -->
+            <div class="mt-2 flex items-center gap-1.5 bg-surface-container-lowest/90 border border-white/20 px-3 py-1 rounded-full shadow-md">
+              <span class="text-xs">${activePet.emoji || '🐾'}</span>
+              <span class="font-headline text-xs font-black text-white">${activePet.name}</span>
+              <span class="text-[10px] font-black px-2 py-0.5 rounded-full ${petLevelData.badgeColor}">
+                Lv.${petLevel}
+              </span>
+            </div>
+            <span class="text-[9px] font-bold text-amber-300 mt-0.5 drop-shadow">
+              ${petStatBonus.label} ${activePet.habitBonus ? `• ${activePet.habitBonus.split(':')[0]}` : ''}
+            </span>
           </div>
-          <span class="mt-1 px-2 py-0.5 rounded-full bg-black/60 text-white font-headline text-[10px] font-black border border-white/20">
-            ${activePet.name}
-          </span>
+
+          <!-- Right Gear Flank: Armor (top) & Boots (bottom) -->
+          <div class="flex flex-col gap-2.5 sm:gap-3.5 items-center">
+            ${renderGearSlotTile(gearSlotDefinitions[2])}
+            ${renderGearSlotTile(gearSlotDefinitions[3])}
+          </div>
         </div>
 
         <!-- Hologram Quest HUD Overlay (If desk is clicked) -->
@@ -400,6 +452,9 @@ export function renderHeroHQView() {
 
     <!-- Trophy Inspect Modal -->
     ${selectedTrophyForModal ? renderTrophyModal(selectedTrophyForModal, state) : ''}
+
+    <!-- Quick Gear Wardrobe Modal -->
+    ${activeGearSlotForModal ? renderQuickGearModal(activeGearSlotForModal, activePet, state) : ''}
 
   </div>
   `;
@@ -645,6 +700,101 @@ function renderTrophyModal(trophy, state) {
 
     </div>
   </div>
+  `;
+}
+
+function renderGearSlotTile(slot) {
+  const item = slot.item;
+  const halo = slot.halo;
+
+  return `
+    <div class="relative flex flex-col items-center cursor-pointer hq-gear-spotlight-slot transition-transform hover:scale-108 active:scale-95 group" data-gear-category="${slot.category}" title="${item ? `${item.name} (${halo.badge}) - Tap to swap` : `Equip ${slot.label}`}">
+      <!-- Overhead Spotlight Beam -->
+      <div class="absolute -top-3 w-10 h-14 bg-gradient-to-b ${item ? halo.beam : 'from-white/10 to-transparent'} blur-[2px] pointer-events-none rounded-full"></div>
+      
+      <!-- Squircle Rounded-Corner Gear Tile -->
+      <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl ${item ? `${halo.bg} border-2 ${halo.border} ${halo.haloShadow}` : 'bg-surface-container/70 border-2 border-dashed border-white/25 hover:border-cyan-400/80'} flex flex-col items-center justify-center relative overflow-hidden transition-all">
+        ${item ? `
+          <span class="material-symbols-outlined text-2xl sm:text-3xl ${halo.text} drop-shadow">${item.icon || slot.icon}</span>
+          <span class="absolute bottom-0.5 text-[8px] font-black px-1 rounded bg-black/80 ${halo.text}">L${item.level || 1}</span>
+        ` : `
+          <span class="material-symbols-outlined text-xl sm:text-2xl text-white/40 group-hover:text-cyan-300 transition-colors">${slot.icon}</span>
+          <span class="text-[7px] font-black uppercase tracking-wider text-white/40 group-hover:text-cyan-200 mt-0.5">${slot.label}</span>
+        `}
+      </div>
+
+      <!-- Mini Plaque Name Pill -->
+      <div class="mt-1 px-1.5 py-0.5 rounded-md bg-black/70 border border-white/10 text-[8px] sm:text-[9px] font-black ${item ? halo.text : 'text-white/60'} text-center truncate max-w-[68px]">
+        ${item ? item.name : `+ ${slot.label}`}
+      </div>
+    </div>
+  `;
+}
+
+function renderQuickGearModal(category, activePet, state) {
+  const categoryGear = getAllGearForSocket(category);
+  const equippedGear = store.getEquippedPetStudioGear(activePet.id);
+  const currentEquippedId = equippedGear[category];
+  const catNames = { masks: 'Masks & Headwear', capes: 'Capes & Wings', armor: 'Armor & Collars', boots: 'Boots & Greaves' };
+
+  return `
+    <div id="hq-gear-modal-backdrop" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
+      <div class="bg-surface-container-high border-4 border-cyan-400/50 rounded-3xl p-5 max-w-md w-full shadow-[0_0_40px_rgba(0,210,255,0.3)] flex flex-col gap-4 animate-scale-up text-on-surface">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between border-b border-white/10 pb-3">
+          <div class="flex items-center gap-2">
+            <div class="w-10 h-10 rounded-2xl bg-cyan-950/80 border-2 border-cyan-400 flex items-center justify-center text-cyan-300">
+              <span class="material-symbols-outlined text-2xl">checkroom</span>
+            </div>
+            <div>
+              <span class="text-[10px] font-black uppercase tracking-wider text-cyan-400 font-headline">${activePet.name}'s Wardrobe</span>
+              <h3 class="font-headline text-lg font-black text-white">${catNames[category] || 'Pet Gear'}</h3>
+            </div>
+          </div>
+          <button id="hq-close-gear-modal-btn" class="w-9 h-9 rounded-xl bg-surface-container hover:bg-surface-bright flex items-center justify-center text-white/70 hover:text-white border border-white/20">
+            <span class="material-symbols-outlined text-lg">close</span>
+          </button>
+        </div>
+
+        <!-- Gear Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[340px] overflow-y-auto pr-1">
+          ${categoryGear.map(item => {
+            const isEquipped = currentEquippedId === item.id;
+            const halo = getGearHaloStyle(item.level || 1);
+            return `
+              <div class="p-3 rounded-2xl border-2 ${isEquipped ? `${halo.border} ${halo.bg} ${halo.haloShadow}` : 'border-white/10 bg-surface-container/80 hover:border-white/30'} flex flex-col justify-between gap-2.5 transition-all">
+                <div class="flex items-start gap-2.5">
+                  <div class="w-11 h-11 rounded-xl ${halo.bg} border ${halo.border} flex items-center justify-center shrink-0">
+                    <span class="material-symbols-outlined text-2xl ${halo.text}">${item.icon}</span>
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-1">
+                      <h4 class="font-headline text-xs font-black text-white truncate">${item.name}</h4>
+                    </div>
+                    <span class="text-[9px] font-black ${halo.text} block">${halo.badge}</span>
+                    <span class="text-[10px] text-emerald-300 font-bold block mt-0.5">${item.statBonusLabel || ''}</span>
+                  </div>
+                </div>
+
+                <div class="pt-1.5 border-t border-white/10 flex items-center justify-between">
+                  ${isEquipped ? `
+                    <button class="hq-unequip-gear-slot-btn bg-surface-container text-amber-300 hover:text-amber-200 text-[10px] font-black px-3 py-1.5 rounded-xl border border-amber-400/40 w-full active:scale-95" data-category="${category}">
+                      Unequip ✕
+                    </button>
+                  ` : `
+                    <button class="hq-equip-gear-piece-btn bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-[10px] font-black px-3 py-1.5 rounded-xl shadow w-full active:scale-95 flex items-center justify-center gap-1" data-category="${category}" data-gear-id="${item.id}">
+                      <span>Equip</span>
+                      <span class="material-symbols-outlined text-xs">arrow_forward</span>
+                    </button>
+                  `}
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    </div>
   `;
 }
 
@@ -961,4 +1111,66 @@ export function attachHeroHQListeners() {
       }
     });
   }
+
+  // 16. Gear Spotlight Slots Click -> Open Quick Wardrobe Modal
+  document.querySelectorAll('.hq-gear-spotlight-slot').forEach(slotEl => {
+    slotEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const cat = slotEl.getAttribute('data-gear-category');
+      activeGearSlotForModal = cat;
+      Sound.bloop();
+      store.notify();
+    });
+  });
+
+  // 17. Close Gear Modal
+  const closeGearModalBtn = document.getElementById('hq-close-gear-modal-btn');
+  if (closeGearModalBtn) {
+    closeGearModalBtn.addEventListener('click', () => {
+      activeGearSlotForModal = null;
+      Sound.pop();
+      store.notify();
+    });
+  }
+
+  const gearModalBackdrop = document.getElementById('hq-gear-modal-backdrop');
+  if (gearModalBackdrop) {
+    gearModalBackdrop.addEventListener('click', (e) => {
+      if (e.target === gearModalBackdrop) {
+        activeGearSlotForModal = null;
+        Sound.pop();
+        store.notify();
+      }
+    });
+  }
+
+  // 18. Equip Gear Piece
+  document.querySelectorAll('.hq-equip-gear-piece-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const cat = btn.getAttribute('data-category');
+      const gearId = btn.getAttribute('data-gear-id');
+      const activePet = store.getActivePet();
+      store.equipPetStudioGear(activePet.id, cat, gearId);
+      Sound.gearSnap();
+      try {
+        confetti({ particleCount: 35, spread: 50, origin: { y: 0.6 } });
+      } catch (err) {}
+      activeGearSlotForModal = null;
+      store.notify();
+    });
+  });
+
+  // 19. Unequip Gear Slot
+  document.querySelectorAll('.hq-unequip-gear-slot-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const cat = btn.getAttribute('data-category');
+      const activePet = store.getActivePet();
+      store.equipPetStudioGear(activePet.id, cat, null);
+      Sound.click();
+      activeGearSlotForModal = null;
+      store.notify();
+    });
+  });
 }

@@ -496,6 +496,26 @@ export class PetSkeletalBodyCanvas {
     // 1. Draw Runway Floor Shockwaves & Pedestal
     this.renderFloorPedestal(ctx);
 
+    const petImgSrc = `/assets/pets/${this.petId || 'rex'}.png`;
+    if (!this.petImg || this.petImgSrc !== petImgSrc) {
+      this.petImgSrc = petImgSrc;
+      this.petImg = new Image();
+      this.petImg.src = petImgSrc;
+      this.petImgLoaded = false;
+      this.petImg.onload = () => { this.petImgLoaded = true; };
+    }
+
+    if (this.petImgLoaded && this.petImg.complete && this.petImg.naturalWidth > 0) {
+      ctx.save();
+      ctx.translate(this.bones.root.x, this.bones.root.y);
+      ctx.scale(this.bones.root.scale, this.bones.root.scale);
+      const imgSize = 160;
+      ctx.drawImage(this.petImg, -imgSize / 2, -imgSize + 20, imgSize, imgSize);
+      ctx.restore();
+      this.renderParticles(ctx);
+      return;
+    }
+
     ctx.save();
     ctx.translate(this.bones.root.x, this.bones.root.y);
     ctx.scale(this.bones.root.scale, this.bones.root.scale);

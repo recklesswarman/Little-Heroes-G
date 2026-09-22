@@ -22,11 +22,10 @@ import { Sound } from '../audio/sfx.js';
 import confetti from 'canvas-confetti';
 import { voicePrompts } from '../utils/voicePrompts.js';
 
-// Helper to reliably get the pet's graphic
+// Helper to reliably get the pet's 3D figurine graphic
 export function getPetDisplayAvatar(pet) {
-  if (!pet) return PETS_DATABASE[0].avatar;
-  if (pet.stage >= 3 && pet.evolvedAvatar) return pet.evolvedAvatar;
-  return pet.avatar || pet.image || PETS_DATABASE[0].avatar;
+  if (!pet) return '/assets/pets/rex.png';
+  return pet.avatar || (pet.key ? `/assets/pets/${pet.key}.png` : null) || PETS_DATABASE[0].avatar || '/assets/pets/rex.png';
 }
 
 // -------------------------------------------------------------
@@ -620,17 +619,24 @@ function renderMemoryMatchGame(hero, activePet, petAvatarUrl, petName) {
       <div class="bg-gradient-to-b from-[#131b26] to-[#0a111a] rounded-3xl p-6 border-3 border-primary/40 card-shadow flex flex-col items-center gap-4">
         
         <div class="w-full text-center text-xs font-black text-primary bg-surface-container-highest/80 px-4 py-2 rounded-xl">
-          ${memoryWon ? '🎉 All Pairs Matched! +25 Tokens Awarded!' : 'Find all 4 matching pairs of companion heroes!'}
+          ${memoryWon ? '🎉 All Companion Pairs Matched! +25 Coins & +25 Pet XP Awarded!' : 'Find all 4 matching pairs of 3D companion figurines!'}
         </div>
 
         <div class="grid grid-cols-4 gap-3 w-full max-w-md my-2">
           ${memoryCards.map((card, idx) => {
             const isFlipped = flippedCardIdxs.includes(idx) || matchedCardIds.includes(card.id);
             return `
-              <button data-memory-card-idx="${idx}" class="memory-card-btn h-20 sm:h-24 rounded-2xl border-3 ${
-                isFlipped ? 'bg-surface-container-high border-secondary text-3xl sm:text-4xl' : 'bg-surface-container border-surface-container-highest text-xl text-primary font-black'
-              } flex items-center justify-center shadow-md active:scale-95 transition-transform">
-                ${isFlipped ? card.icon : '❓'}
+              <button data-memory-card-idx="${idx}" class="memory-card-btn h-24 sm:h-28 rounded-2xl border-3 ${
+                isFlipped 
+                  ? 'bg-surface-container-high border-secondary shadow-lg' 
+                  : 'bg-surface-container border-surface-container-highest text-2xl text-primary font-black hover:border-primary/50'
+              } flex flex-col items-center justify-center p-1.5 shadow-md active:scale-95 transition-all overflow-hidden">
+                ${isFlipped ? `
+                  <img src="${card.img}" alt="${card.name}" class="w-12 h-12 sm:w-14 sm:h-14 object-contain filter drop-shadow animate-fade-in" loading="lazy">
+                  <span class="text-[10px] font-black text-on-surface truncate mt-1 max-w-[70px]">${card.name}</span>
+                ` : `
+                  <span class="text-2xl opacity-70">🐾</span>
+                `}
               </button>
             `;
           }).join('')}
@@ -1309,11 +1315,21 @@ function cleanupTimers() {
 }
 
 function generateTreatItems() {
-  const icons = ['🍎', '🍓', '🥩', '⭐', '🪙', '🍇', '🧁'];
+  const archetypeTreats = [
+    { icon: '⭐', name: 'Starberry' },
+    { icon: '🍈', name: 'Solar Melon' },
+    { icon: '🍖', name: 'Power Crunch' },
+    { icon: '💎', name: 'Starlight Shard' },
+    { icon: '🌿', name: 'Aqua Kelp' },
+    { icon: '🔋', name: 'Power Cell' },
+    { icon: '🪙', name: 'Hero Coin' }
+  ];
   treatItems = [];
   for (let i = 0; i < 5; i++) {
+    const treat = archetypeTreats[Math.floor(Math.random() * archetypeTreats.length)];
     treatItems.push({
-      icon: icons[Math.floor(Math.random() * icons.length)],
+      icon: treat.icon,
+      name: treat.name,
       x: 10 + Math.random() * 75,
       y: 10 + Math.random() * 65
     });
@@ -1335,6 +1351,10 @@ function startTreatTimer() {
       confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
       const coinsWon = Math.max(10, Math.floor(treatScore / 2));
       store.getState().selectedHero.coins += coinsWon;
+      const currentPet = store.getActivePet();
+      if (currentPet) {
+        store.addPetTrainingXp(currentPet.id, 25);
+      }
       store.saveState(true);
       store.notify();
     }
@@ -1342,12 +1362,19 @@ function startTreatTimer() {
 }
 
 function initMemoryGame() {
-  const icons = ['🐉', '🦖', '🐢', '🦄', '⭐', '🛡️', '⚡', '👑'];
+  // Select 4 companion figurines from the 24 PETS_DATABASE companions
+  const shuffledPets = [...PETS_DATABASE].sort(() => Math.random() - 0.5).slice(0, 4);
   const deck = [];
-  for (let i = 0; i < 4; i++) {
-    deck.push({ id: i, icon: icons[i] });
-    deck.push({ id: i, icon: icons[i] });
-  }
+  shuffledPets.forEach((pet) => {
+    const cardData = {
+      id: pet.id,
+      name: pet.name,
+      img: pet.avatar || `/assets/pets/${pet.key || 'rex'}.png`,
+      emoji: pet.emoji || '🐾'
+    };
+    deck.push(cardData);
+    deck.push({ ...cardData });
+  });
   memoryCards = deck.sort(() => Math.random() - 0.5);
   flippedCardIdxs = [];
   matchedCardIds = [];
@@ -1375,6 +1402,10 @@ function handleMemoryCardClick(idx) {
         Sound.fanfare();
         confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
         store.getState().selectedHero.coins += 25;
+        const currentPet = store.getActivePet();
+        if (currentPet) {
+          store.addPetTrainingXp(currentPet.id, 25);
+        }
         store.saveState(true);
       }
     } else {
