@@ -5,15 +5,18 @@ import { getFunctions } from "firebase/functions";
 
 // Official Real Firebase Applet Project Configuration for Little Heroes Adventures
 const firebaseConfig = {
-  apiKey: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_API_KEY) || "AIzaSyA8bu_j-_7Wr1DW_dS3qHESuCFG08_i4Ic",
-  authDomain: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_AUTH_DOMAIN) || "ceremonial-bongo-p9brs.firebaseapp.com",
-  projectId: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_PROJECT_ID) || "ceremonial-bongo-p9brs",
-  storageBucket: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_STORAGE_BUCKET) || "ceremonial-bongo-p9brs.firebasestorage.app",
-  messagingSenderId: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_MESSAGING_SENDER_ID) || "449361020927",
-  appId: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_APP_ID) || "1:449361020927:web:04eb7a3f4d1934239a89ca"
+  apiKey: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_API_KEY) || "AIzaSyAb2UiONr8NUwM0loMFNvbAI9pgWXGvXfg",
+  authDomain: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_AUTH_DOMAIN) || "little-heroes-quest-8842.firebaseapp.com",
+  projectId: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_PROJECT_ID) || "little-heroes-quest-8842",
+  storageBucket: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_STORAGE_BUCKET) || "little-heroes-quest-8842.firebasestorage.app",
+  messagingSenderId: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_MESSAGING_SENDER_ID) || "592754457115",
+  appId: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_APP_ID) || "1:592754457115:web:ba8b65d9f22a6ab78e16be"
 };
 
-const firestoreDatabaseId = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_DATABASE_ID) || "ai-studio-littleheroesques-26318934-4fd1-408f-876b-52847e8f80ec";
+// little-heroes-quest-8842 uses the (default) Firestore database, not a
+// named one -- leave this unset so getFirestore(app) below picks the
+// default database instead of pointing at a named database ID.
+const firestoreDatabaseId = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_DATABASE_ID) || "";
 
 let app = null;
 let auth = null;
