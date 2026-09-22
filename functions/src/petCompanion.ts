@@ -148,7 +148,7 @@ export const chatWithPet = onCall(
         const userTurnsToday = todayTurnsSnap.docs.filter((d) => d.data().role === "user").length;
         if (userTurnsToday >= (parentRules.maxDailyTurns ?? 30)) {
           return {
-            reply: `*Happy wave!* We had so much fun chatting today! Let's rest our screens now and go play in the real world, Little Hero!`
+            reply: "*Happy wave!* We had so much fun chatting today! Let's rest our screens now and go play in the real world, Little Hero!"
           };
         }
       } catch (turnsErr) {
