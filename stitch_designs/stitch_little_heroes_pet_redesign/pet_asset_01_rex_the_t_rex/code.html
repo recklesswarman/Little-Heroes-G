@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+  <defs>
+    <radialGradient id="rexBg" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#2ecc71" stop-opacity="0.35"/>
+      <stop offset="70%" stop-color="#142820" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#09141e" stop-opacity="1"/>
+    </radialGradient>
+    <filter id="rexGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#2ecc71" flood-opacity="0.5"/>
+    </filter>
+    <linearGradient id="rexBorder" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#54e98a"/>
+      <stop offset="100%" stop-color="#1b7a43"/>
+    </linearGradient>
+  </defs>
+  <!-- Outer Bevel Base -->
+  <rect x="12" y="12" width="216" height="216" rx="44" fill="#050b10"/>
+  <!-- Main Toy Badge Plate -->
+  <rect x="12" y="10" width="216" height="212" rx="44" fill="url(#rexBg)" stroke="url(#rexBorder)" stroke-width="4" filter="url(#rexGlow)"/>
+  <!-- Inner Ring Notch -->
+  <circle cx="120" cy="110" r="70" fill="#0d1f18" stroke="#27ae60" stroke-width="2.5" stroke-dasharray="6 4"/>
+  <!-- Dino Silhouette / Stylized Rex Icon -->
+  <path d="M90 148 C85 130, 88 100, 102 85 C112 74, 138 72, 155 76 C165 79, 172 88, 172 98 C172 106, 164 112, 150 114 C158 120, 160 128, 152 134 C140 138, 130 135, 126 142 C120 152, 105 155, 90 148 Z" fill="#2ecc71"/>
+  <!-- Rex Eye & Teeth Accents -->
+  <circle cx="145" cy="88" r="5" fill="#f1c40f"/>
+  <circle cx="146" cy="88" r="2.5" fill="#09141e"/>
+  <polygon points="152,112 156,118 160,112" fill="#ffffff"/>
+  <polygon points="144,112 147,117 150,112" fill="#ffffff"/>
+  <!-- Habit Banner Badge -->
+  <rect x="36" y="174" width="168" height="34" rx="17" fill="#1b7a43" stroke="#54e98a" stroke-width="2"/>
+  <text x="120" y="196" font-family="'Plus Jakarta Sans', sans-serif" font-weight="800" font-size="13" fill="#ffffff" text-anchor="middle" letter-spacing="1">REX • ACTIVE PLAY</text>
+</svg>

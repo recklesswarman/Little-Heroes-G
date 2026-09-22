@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+    }
+  </style>
+</head>
+<body>
+<!-- STITCH_THREEJS_START:ANIMATION_151 class="fixed inset-0 w-full h-full bg-transparent" -->
+<div class="fixed inset-0 w-full h-full bg-transparent" style="display:block;">
+<script src="https://ajax.googleapis.com/ajax/libs/threejs/r125/three.min.js"></script>
+<div id="threejs-container-ANIMATION_151" style="width:100%;height:100%"></div>
+<script>
+(function() {
+  const container = document.getElementById('threejs-container-ANIMATION_151');
+  const devicePixelRatio = window.devicePixelRatio || 1;
+  /**
+ * Little-Heroes-G: Pet Sanctuary & Companion System
+ * Updated petsData.js (DESIGN.md Compliant - Zero Purple/Pink, Linear Leveling System)
+ * 
+ * - Evolutions removed: Companions scale infinitely via Level Progression (Lv 1 - 50+)
+ * - All 24 companions mapped to bespoke 3D Tactile Toy Art assets
+ * - Strict Color Remap: Purple/Pink remapped to Electric Cyan, Solar Amber & Quantum Mint
+ */
+
+export const PET_ARCHETYPES = {
+  dino: { id: 'dino', name: 'Prehistoric Dino', emoji: '🦖', color: '#2ecc71' },
+  dragon: { id: 'dragon', name: 'Dragon', emoji: '🐉', color: '#3498db' },
+  beast: { id: 'beast', name: 'Beast Vanguard', emoji: '🐻', color: '#e67e22' },
+  aquatic: { id: 'aquatic', name: 'Aquatic Guardian', emoji: '🦈', color: '#2980b9' },
+  robot: { id: 'robot', name: 'Quantum Mech', emoji: '🤖', color: '#00f5d4' },
+  mystic: { id: 'mystic', name: 'Mystic Sentinel', emoji: '✨', color: '#f1c40f' }
+};
+
+export const SANCTUARY_TREATS = [
+  { id: 'crunchy_apple', name: 'Crunchy Orchard Apple', emoji: '🍎', color: '#e74c3c', hungerFill: 25, energyFill: 15, joyBoost: 10, bondXp: 20, costCoins: 0, unlockedByDefault: true, lore: 'Crisp sweet apple picked from the Sanctuary Meadow trees.' },
+  { id: 'star_berry', name: 'Cosmic Starberry', emoji: '🍓', color: '#ffb961', hungerFill: 35, energyFill: 25, joyBoost: 20, bondXp: 35, costCoins: 10, unlockedByDefault: true, lore: 'Bursting with sparkling stardust juice that fills companions with joyful energy!' },
+  { id: 'honey_crunch', name: 'Golden Honey Crunch', emoji: '🍯', color: '#f39c12', hungerFill: 45, energyFill: 30, joyBoost: 25, bondXp: 45, costCoins: 15, unlockedByDefault: true, lore: 'Sweet honeycomb cluster with golden sun crunch.' },
+  { id: 'super_carrot', name: 'Heroic Mega Carrot', emoji: '🥕', color: '#e67e22', hungerFill: 50, energyFill: 40, joyBoost: 30, bondXp: 55, costCoins: 20, unlockedByDefault: true, lore: 'Super-charged with vibrant vitamin power for giant high leaps!' }
+];
+
+export const PETS_DATABASE = [
+  {
+    id: '1',
+    name: 'Rex the T-Rex',
+    title: 'The Apex Stomper',
+    element: 'Earth & Thunder',
+    color: '#2ecc71',
+    accentColor: '#f1c40f',
+    avatarAsset: '{{DATA:IMAGE:IMAGE_24}}',
+    archetype: 'dino',
+    assignedHabit: 'Active Play / Sports',
+    habitBonus: 'Knee Lifter: +20 Coins for every physical activity task completed',
+    baseStats: { hunger: 90, hygiene: 60, energy: 100, joy: 90 },
+    masteryTrack: {
+      tier1Unlock: 'Knee Lifter +20 Coins',
+      tier2Unlock: 'Boss Assist Deflect +35%',
+      tier3Unlock: 'Sprint Cooldown -20%',
+      tier4Unlock: 'Daily Stomp Multiplier 2.5x'
+    },
+    exclusiveGear: [
+      { name: 'Titanium Spiked Collar', desc: '+30 Strength on all physical tasks', icon: 'military_tech' },
+      { name: 'Stomper Runner Sneakers', desc: 'Doubles running speed in workouts', icon: 'directions_run' },
+      { name: 'Roar Megaphone', desc: '+15% XP on all active play quests', icon: 'campaign' }
+    ],
+    workoutId: 'trex_run',
+    backstory: 'Rex burst out of the Prehistoric Jungle with thunderous energy! He stomps with child-safe rubber-tread sneaker boots, coaching little heroes to lift their knees higher and run faster.'
+  },
+  {
+    id: '2',
+    name: 'Raptor the Velociraptor',
+    title: 'The Lightning Sprinter',
+    element: 'Solar & Wind',
+    color: '#e74c3c',
+    accentColor: '#f39c12',
+    avatarAsset: '{{DATA:IMAGE:IMAGE_21}}',
+    archetype: 'dino',
+    assignedHabit: 'Morning Routine',
+    habitBonus: 'Speedy Start: +15 Coins if morning chores are done before 8 AM',
+    baseStats: { hunger: 75, hygiene: 70, energy: 100, joy: 95 },
+    masteryTrack: {
+      tier1Unlock: 'Early Bird +15 Coins',
+      tier2Unlock: 'Morning Streak Shield',
+      tier3Unlock: 'Speed Run Boost +25% XP',
+      tier4Unlock: 'Sunrise Champion 2.2x'
+    },
+    exclusiveGear: [
+      { name: 'Speed Streak Shades', desc: 'Reduces morning task timers by 20%', icon: 'speed' },
+      { name: 'Raptor Sprint Runners', desc: '+25% Coins on morning routine completions', icon: 'directions_run' },
+      { name: 'Sunrise Alarm Bell', desc: 'Bonus golden sparkle alert at 7 AM', icon: 'notifications_active' }
+    ],
+    workoutId: 'velociraptor_run',
+    backstory: 'Raptor dashes so fast that solar amber streaks trail in her wake! She inspires little heroes to jump out of bed and race into morning routines.'
+  },
+  {
+    id: '3',
+    name: 'Stego the Stegosaurus',
+    title: 'The Solar Stomper',
+    element: 'Earth & Sun',
+    color: '#f1c40f',
+    accentColor: '#2ecc71',
+    avatarAsset: '{{DATA:IMAGE:IMAGE_22}}',
+    archetype: 'dino',
+    assignedHabit: 'Outdoor Play',
+    habitBonus: 'Stomper Power: +25 Coins on outdoor play and exercise tasks',
+    baseStats: { hunger: 85, hygiene: 65, energy: 90, joy: 85 },
+    masteryTrack: {
+      tier1Unlock: 'Solar Charge +25 Coins',
+      tier2Unlock: 'Fresh Air Energy Recovery +30%',
+      tier3Unlock: 'Outdoor Playground Master Badge',
+      tier4Unlock: 'Sun Titan Stamina 2.4x'
+    },
+    exclusiveGear: [
+      { name: 'Sun Absorption Back Plates', desc: '+20 Energy on sunny day quests', icon: 'light_mode' },
+      { name: 'Golden Stomp Boots', desc: 'Doubles outdoor play coin rewards', icon: 'change_history' },
+      { name: 'Meadow Stomp Mat', desc: '+15 Joy during outdoor games', icon: 'nature_people' }
+    ],
+    workoutId: 'stegosaurus_walks',
+    backstory: 'Stego has beveled solar plates that gleam in the daylight! He loves guiding young adventurers through outdoor play quests and sunshine stomps.'
+  },
+  {
+    id: '4',
+    name: 'Pterry the Pterodactyl',
+    title: 'The Sky Launcher',
+    element: 'Aero & Lightning',
+    color: '#00d2ff', // Strictly remapped from purple to Electric Aero Cyan
+    accentColor: '#3a7bd5',
+    avatarAsset: '{{DATA:IMAGE:IMAGE_20}}',
+    archetype: 'dino',
+    assignedHabit: 'Stretch & Exercise',
+    habitBonus: 'Sky Launcher: 2x XP on all jumping and stretching exercises',
+    baseStats: { hunger: 70, hygiene: 80, energy: 95, joy: 90 },
+    masteryTrack: {
+      tier1Unlock: 'Sky Leap 2x XP',
+      tier2Unlock: 'Aero Jump Height Assist',
+      tier3Unlock: 'High Altitude Coin Boost +30%',
+      tier4Unlock: 'Cloud Buster Flight 2.0x'
+    },
+    exclusiveGear: [
+      { name: 'Electric Aviator Goggles', desc: '+15% XP on all stretch tasks', icon: 'flight' },
+      { name: 'Aero Wing Bands', desc: 'Doubles jumping workout coin payouts', icon: 'fitness_center' },
+      { name: 'Altitude Glider Cape', desc: 'Soars through challenge maps faster', icon: 'cloud' }
+    ],
+    workoutId: 'pterodactyl_takeoff',
+    backstory: 'Pterry soars with aerodynamic electric cyan wings! She challenges little heroes to reach for the ceiling and jump like they are launching into flight.'
+  },
+  {
+    id: '5',
+    name: 'Chomper the Compsognathus',
+    title: 'The Tiny Dancer',
+    element: 'Rhythm & Kinetic',
+    color: '#1abc9c',
+    accentColor: '#f39c12',
+    avatarAsset: '{{DATA:IMAGE:IMAGE_19}}',
+    archetype: 'dino',
+    assignedHabit: 'Dance & Movement',
+    habitBonus: 'Prancer Bonus: +30 Coins for completing dance or movement tasks',
+    baseStats: { hunger: 80, hygiene: 75, energy: 95, joy: 100 },
+    masteryTrack: {
+      tier1Unlock: 'Dance Party +30 Coins',
+      tier2Unlock: 'Rhythm Combo Multiplier +25%',
+      tier3Unlock: 'Beat Matcher Stamina Boost',
+      tier4Unlock: 'Kinetic Groove Champion 1.9x'
+    },
+    exclusiveGear: [
+      { name: 'Glow Beat Headphones', desc: '+25% Joy from all dance tasks', icon: 'music_note' },
+      { name: 'Sparkle Rhythm Collar', desc: 'Doubles Dance Party coin rewards', icon: 'stars' },
+      { name: 'Spring Action Anklets', desc: '+20 XP on dance routine completions', icon: 'headphones' }
+    ],
+    workoutId: 'compsognathus_prance',
+    backstory: 'Smallest dino with the greatest rhythm! Chomper grooves in kinetic turquoise with gold headphones, making every movement session feel like a party.'
+  },
+  {
+    id: '6',
+    name: 'Brachio the Brachiosaurus',
+    title: 'The Great Stretcher',
+    element: 'Canopy & Earth',
+    color: '#34495e',
+    accentColor: '#2ecc71',
+    avatarAsset: '{{DATA:IMAGE:IMAGE_18}}',
+    archetype: 'dino',
+    assignedHabit: 'Yoga & Stretching',
+    habitBonus: 'Tall Stretch: +20 XP every time you reach for the stars in exercise',
+    baseStats: { hunger: 90, hygiene: 70, energy: 75, joy: 85 },
+    masteryTrack: {
+      tier1Unlock: 'Sky Reach +20 XP',
+      tier2Unlock: 'Flexibility Calming Aura',
+      tier3Unlock: 'Canopy Height Coin Multiplier',
+      tier4Unlock: 'Ancient Titan Serenity 2.3x'
+    },
+    exclusiveGear: [
+      { name: 'Canopy Yoga Saddle', desc: '+30% XP on all stretching routines', icon: 'self_improvement' },
+      { name: 'Treetop Leaf Crest', desc: '+20 Coins on daily calm-down routines', icon: 'eco' },
+      { name: 'Extended Reach Band', desc: 'Unlocks advanced flexibility bonus quests', icon: 'straighten' }
+    ],
+    workoutId: 'brachiosaurus_stretch',
+    backstory: 'Brachio reaches the treetops with a gentle, elongated neck! He teaches little heroes that stretching tall on tiptoes builds strong, resilient muscles.'
+  },
+  {
+    id: '7',
+    name: 'Dippy the Diplodocus',
+    title: 'The Balance Master',
+    element: 'River & Terra',
+    color: '#e67e22',
+    accentColor: '#27ae60',
+    avatarAsset: '{{DATA:IMAGE:IMAGE_16}}',
+    archetype: 'dino',
+    assignedHabit: 'Balance & Flexibility',
+    habitBonus: 'Balance Master: +25 Coins on balance and coordination tasks',
+    baseStats: { hunger: 85, hygiene: 75, energy: 80, joy: 85 },
+    masteryTrack: {
+      tier1Unlock: 'Stable Stance +25 Coins',
+      tier2Unlock: 'Coordination Shield',
+      tier3Unlock: 'River Log Agility +30% XP',
+      tier4Unlock: 'Diplodocus Equilibrium 2.1x'
+    },
+    exclusiveGear: [
+      { name: 'River Pebble Fulcrum', desc: 'Doubles balance task rewards', icon: 'line_weight' },
+      { name: 'Tail Counterweight Ring', desc: '+20 XP on all balance exercises', icon: 'toll' },
+      { name: 'Grip Pod Soles', desc: 'Zero slips during workout exercises', icon: 'pan_tool' }
+    ],
+    workoutId: 'diplodocus',
+    backstory: 'Dippy balances along riverbanks using his curled tail as a counterweight! He coaches heroes through fun single-leg balance and reach challenges.'
+  },
+  {
+    id: '8',
+    name: 'Spino the Spinosaurus',
+    title: 'The Cool-Down King',
+    element: 'Hydro & Solar',
+    color: '#c0392b',
+    accentColor: '#3498db',
+    avatarAsset: '{{DATA:IMAGE:IMAGE_17}}',
+    archetype: 'dino',
+    assignedHabit: 'Cool Down & Recovery',
+    habitBonus: 'Spine Arch: +15 XP on all cool-down and stretching routines',
+    baseStats: { hunger: 85, hygiene: 80, energy: 80, joy: 85 },
+    masteryTrack: {
+      tier1Unlock: 'Fin Chill +15 XP',
+      tier2Unlock: 'Post-Workout Heart Recovery Boost',
+      tier3Unlock: 'Deep Breathing Bonus Coins',
+      tier4Unlock: 'Hydro Fan Calm 2.2x'
+    },
+    exclusiveGear: [
+      { name: 'Hydro Cooling Towel', desc: '+20 Hygiene after workout cooldowns', icon: 'water_drop' },
+      { name: 'Aerodynamic Spine Sail', desc: '+25 XP on recovery routines', icon: 'air' },
+      { name: 'Coral Hydration Flask', desc: 'Replenishes +15 Energy daily', icon: 'local_drink' }
+    ],
+    workoutId: 'spinosaurus_stretch',
+    backstory: 'Spino arches his cobalt sun-sail fin to catch the breeze after high-energy workouts, teaching young athletes the superpower of breathing and cooling down.'
+  },
+  {
+    id: '9',
+    name: 'Sparky the Dragon',
+    title: 'The Azure Ember',
+    element: 'Flame & Water',
+    color: '#3498db',
+    accentColor: '#2ecc71',
+    avatarAsset: '{{DATA:IMAGE:IMAGE_15}}',
+    archetype: 'dragon',
+    assignedHabit: 'Brush Teeth',
+    habitBonus: 'Dragon Breath: 2x Coins on every toothbrushing session',
+    baseStats: { hunger: 80, hygiene: 85, energy: 90, joy: 95 },
+    masteryTrack: {
+      tier1Unlock: 'Mint Sparkle 2x Coins',
+      tier2Unlock: 'Cavity Boss Deflect Shield',
+      tier3Unlock: '2-Minute Timer Streak Multiplier',
+      tier4Unlock: 'Azure Ember Titan 2.8x'
+    },
+    exclusiveGear: [
+      { name: 'Glowing Mint Shield', desc: 'Defends against sugar cavity germs', icon: 'shield' },
+      { name: 'Sparkle Floss Lance', desc: '+30% Boss damage in hygiene battles', icon: 'flare' },
+      { name: 'Azure Toothbrush Staff', desc: '+25 Coins on 2-min streak completions', icon: 'clean_hands' }
+    ],
+    workoutId: null,
+    backstory: 'Sparky wields an azure tooth-shield and mint-frost breath, proving that keeping your teeth clean is the most heroic routine in the realm!'
+  },
+  {
+    id: '10',
+    name: 'Aero the Griffin',
+    title: 'The Solar Sentinel',
+    element: 'Sun & Sky',
+    color: '#f1c40f',
+    accentColor: '#3498db',
+    avatarAsset: '{{DATA:IMAGE:IMAGE_11}}',
+    archetype: 'mystic',
+    assignedHabit: 'Homework & Reading',
+    habitBonus: 'Eagle Eye: +25% XP on all homework and reading tasks',
+    baseStats: { hunger: 65, hygiene: 85, energy: 85, joy: 90 },
+    masteryTrack: {
+      tier1Unlock: 'Scholar Focus +25% XP',
+      tier2Unlock: 'Study Streak Coin Booster',
+      tier3Unlock: 'Reading Stamina Focus Field',
+      tier4Unlock: 'Solar Lore Guardian 2.4x'
+    },
+    exclusiveGear: [
+      { name: 'Aviator Study Goggles', desc: 'Reveals bonus stars in learning tasks', icon: 'menu_book' },
+      { name: 'Solar Feather Quill', desc: '+30 Hero XP per study hour logged', icon: 'edit' },
+      { name: 'Ancient Lore Codex', desc: 'Unlocks bonus reading challenges', icon: 'inventory' }
+    ],
+    workoutId: null,
+    backstory: 'Aero perches atop sunlit towers with golden wings and reading goggles, proving that reading every day unlocks the greatest adventures.'
+  },
+  {
+    id: '11',
+    name: 'Blaze the Phoenix',
+    title: 'The Midnight Flame',
+    element: 'Hearth & Solar',
+    color: '#e74c3c',
+    accentColor: '#f39c12',
+    avatarAsset: '{{DATA:IMAGE:IMAGE_14}}',
+    archetype: 'mystic',
+    assignedHabit: 'Bedtime Routine',
+    habitBonus: 'Cozy Embers: +20 Coins for completing your bedtime routine on time',
+    baseStats: { hunger: 70, hygiene: 80, energy: 75, joy: 95 },
+    masteryTrack: {
+      tier1Unlock: 'Cozy Glow +20 Coins',
+      tier2Unlock: 'Sweet Dreams Sleep Aura',
+      tier3Unlock: 'Restful Night Morning Energy Bonus',
+      tier4Unlock: 'Radiant Dawn Restorer 2.6x'
+    },
+    exclusiveGear: [
+      { name: 'Starlight Nightcap', desc: 'Guarantees sweet dreams and peaceful rest', icon: 'bedtime' },
+      { name: 'Ember-Soft Blanket', desc: '+25 Joy from completing evening tasks', icon: 'bed' },
+      { name: 'Midnight Cinder Lamp', desc: '+15 Energy next morning on 9 PM bedtimes', icon: 'filter_drama' }
+    ],
+    workoutId: null,
+    backstory: 'Blaze nestles into warm ember feathers at dusk, teaching heroes that getting a great night of sleep powers tomorrow’s mighty quests.'
+  },
+  {
+    id: '12',
+    name: 'Hydra the Sea Serpent',
+    title: 'The Tidal Guardian',
+    element: 'Aquifer & Deep',
+    color: '#2980b9',
+    accentColor: '#1abc9c',
+    avatarAsset: '{{DATA:IMAGE:IMAGE_10}}',
+    archetype: 'aquatic',
+    assignedHabit: 'Drink Water',
+    habitBonus: 'Wave Rider: +15 XP every time you drink a cup of water',
+    baseStats: { hunger: 70, hygiene: 95, energy: 80, joy: 85 },
+    masteryTrack: {
+      tier1Unlock: 'Pure Spring +15 XP',
+      tier2Unlock: 'Daily Water Tracker Boost',
+      tier3Unlock: 'Aquifer Hydration Streak Multiplier',
+      tier4Unlock: 'Tidal Wave Champion 2.3x'
+    },
+    exclusiveGear: [
+      { name: 'Crystal Water Flask', desc: 'Each water log yields +5 bonus XP', icon: 'local_cafe' },
+      { name: 'Glistening Scale Shield', desc: 'Hygiene gauge drains 30% slower', icon: 'water' },
+      { name: 'Tidal Pearl Medallion', desc: '+20 Coins upon completing daily water goals', icon: 'diamond' }
+    ],
+    workoutId: null,
+    backstory: 'Hydra glides with three smiling crests holding a crisp crystal water bottle, reminding everyone that hydration is real superhero fuel.'
+  },
+  {
+    id: '13',
+    name: 'Luna the Unicorn',
+    title: 'The Rainbow Weaver',
+    element: 'Electric Cyan & Solar',
+    color: '#00e5ff', // Remapped from purple strictly adhering to DESIGN.md
+    accentColor: '#ffb300',
+    avatarAsset: '{{DATA:IMAGE:IMAGE_25}}',
+    archetype: 'mystic',
+    assignedHabit: 'Creative Play',
+    habitBonus: 'Magic Spark: +25% Coins on all creative play and art tasks',
+    baseStats: { hunger: 65, hygiene: 90, energy: 85, joy: 100 },
+    masteryTrack: {
+      tier1Unlock: 'Prism Spark +25% Coins',
+      tier2Unlock: 'Creativity Star Shower',
+      tier3Unlock: 'Art & Building Double Drops',
+      tier4Unlock: 'Cosmic Aurora Weaver 2.5x'
+    },
+    exclusiveGear: [
+      { name: 'Star-Shaped Holographic Specs', desc: 'Reveals vibrant colors in all drawings', icon: 'brush' },
+      { name: 'Solar Spiral Horn Core', desc: 'Doubles creative challenge coin rewards', icon: 'star' },
+      { name: 'Cyan Stardust Palette', desc: 'Unlocks custom sandbox craft badges', icon: 'palette' }
+    ],
+    workoutId: null,
+    backstory: 'Luna gallops with electric cyan mane and a golden spiral horn! She inspires heroes to paint, build block towers, and imagine bold new worlds.'
+  },
+  {
+    id: '14',
+    name: 'Kira the Kirin',
+    title: 'The Order Keeper',
+    element: 'Bamboo & Amber',
+    color: '#f39c12',
+    accentColor: '#2ecc71',
+    avatarAsset: '{{DATA:IMAGE:IMAGE_13}}',
+    archetype: 'mystic',
+    assignedHabit: 'Clean Room',
+    habitBonus: 'Tidy Hooves: +30 XP when you clean your room completely',
+    baseStats: { hunger: 75, hygiene: 90, energy: 80, joy: 85 },
+    masteryTrack: {
+      tier1Unlock: 'Tidy Space +30 XP',
+      tier2Unlock: 'Toy Organization Speedster',
+      tier3Unlock: 'Spotless Room Streak Multiplier',
+      tier4Unlock: 'Golden Order Sovereign 2.2x'
+    },
+    exclusiveGear: [
+      { name: 'Bamboo Dust Wand', desc: '+25 Coins on room cleanup milestones', icon: 'cleaning_services' },
+      { name: 'Golden Toy Organizer Pouch', desc: 'Sorts toys for +15 XP bonus', icon: 'shopping_basket' },
+      { name: 'Spotless Chime Bell', desc: 'Chimes when room is tidy, +20 Joy', icon: 'notifications' }
+    ],
+    workoutId: null,
+    backstory: 'Kira trots with golden antlers and bamboo jade scales, showing that an organized and clean room creates a peaceful sanctuary for big ideas.'
+  },
+  {
+    id: '15',
+    name: 'Boulder the Crystal Golem',
+    title: 'The Iron Fortress',
+    element: 'Granite & Geode',
+    color: '#7f8c8d',
+    accentColor: '#2ecc71',
+    avatarAsset: '{{DATA:IMAGE:IMAGE_7}}',
+    archetype: 'beast',
+    assignedHabit: 'Healthy Eating',
+    habitBonus: 'Rock Solid: +20 Coins for every healthy meal or snack logged',
+    baseStats: { hunger: 95, hygiene: 65, energy: 85, joy: 75 },
+    masteryTrack: {
+      tier1Unlock: 'Veggie Power +20 Coins',
+      tier2Unlock: 'Nutrient Core Shield',
+      tier3Unlock: 'Healthy Snack Multiplier 1.8x',
+      tier4Unlock: 'Diamond Titan Wall 2.6x'
+    },
+    exclusiveGear: [
+      { name: 'Nutrient Emerald Power-Shield', desc: '+25% XP on vegetable & fruit tasks', icon: 'spa' },
+      { name: 'Granite Crunch Spoon', desc: 'Doubles nutrition habit coin payouts', icon: 'restaurant' },
+      { name: 'Crystal Geode Core', desc: 'Guards energy against sugary crashes', icon: 'fastfood' }
+    ],
+    workoutId: null,
+    backstory: 'Carved of solid titanium granite with glowing broccoli-carved emerald shields, Boulder proves that eating vegetables gives you rock-solid strength!'
+  },
+  {
+    id: '16',
+    name: 'Cosmo the Cyber Mech',
+    title: 'The Quantum Hound',
+    element: 'Quantum & Circuit',
+    color: '#00f5d4', // Strictly remapped from violet to Quantum Laser Cyan
+    accentColor: '#ffbe0b',
+    avatarAsset: '{{DATA:IMAGE:IMAGE_23}}',
+    archetype: 'robot',
+    assignedHabit: 'Learning Games',
+    habitBonus: 'Data Download: 2x XP on all learning games and educational quests',
+    baseStats: { hunger: 70, hygiene: 85, energy: 95, joy: 90 },
+    masteryTrack: {
+      tier1Unlock: 'Cyber Quiz 2x XP',
+      tier2Unlock: 'Puzzle Solver Logic Shield',
+      tier3Unlock: 'Code Streak Coin Boost +35%',
+      tier4Unlock: 'Galactic Quantum Hound 3.0x'
+    },
+    exclusiveGear: [
+      { name: 'Quantum Cyan Visor', desc: 'Highlights hidden puzzle clues', icon: 'memory' },
+      { name: 'Circuit Board Solder Collar', desc: '+30% Coins on learning game streaks', icon: 'tv' },
+      { name: 'Infinite Power Cell Joint', desc: '+20 Energy daily for study quests', icon: 'battery_full' }
+    ],
+    workoutId: null,
+    backstory: 'Cosmo patrols in dark carbon slate with laser cyan circuits! He downloads math and reading challenges directly to his digital visor.'
+  },
+  {
+    id: '17',
+    name: 'Leo the Lion',
+    title: 'The Pride Leader',
+    element: 'Solar & Savannah',
+    color: '#f1c40f',
+    accentColor: '#e67e22',
+    avatarAsset: '{{DATA:IMAGE:IMAGE_9}}',
+    archetype: 'beast',
+    assignedHabit: 'Teamwork',
+    habitBonus: 'Pride Leader: +20 XP on all teamwork and cooperative tasks',
+    baseStats: { hunger: 90, hygiene: 70, energy: 90, joy: 90 },
+    masteryTrack: {
+      tier1Unlock: 'Pride Unity +20 XP',
+      tier2Unlock: 'Family Chore Bonus Multiplier',
+      tier3Unlock: 'Cooperative Quest Leader Medal',
+      tier4Unlock: 'Savannah Solar King 2.4x'
+    },
+    exclusiveGear: [
+      { name: 'Golden Sun Crown', desc: '+25% Coins on teamwork completions', icon: 'crown' },
+      { name: 'Pride Teamwork Medallion', desc: 'Boosts group chore rewards by 30%', icon: 'group' },
+      { name: 'Roar Champion Collar', desc: '+30 XP on quest milestones', icon: 'emoji_events' }
+    ],
+    workoutId: null,
+    backstory: 'Wearing a beveled golden crown and teamwork medal, Leo leads his companions forward, proving we achieve great things when working together.'
+  },
+  {
+    id: '18',
+    name: 'Stripe the Tiger',
+    title: 'The Clean Paws',
+    element: 'Blaze & Aqua Bubbles',
+    color: '#e67e22',
+    accentColor: '#2ecc71',
+    avatarAsset: '{{DATA:IMAGE:IMAGE_8}}',
+    archetype: 'beast',
+    assignedHabit: 'Wash Hands',
+    habitBonus: 'Clean Paws: +15 Coins every time you wash your hands before meals',
+    baseStats: { hunger: 85, hygiene: 95, energy: 85, joy: 85 },
+    masteryTrack: {
+      tier1Unlock: 'Bubble Scrub +15 Coins',
+      tier2Unlock: 'Pre-Meal Handwash Streak Tracker',
+      tier3Unlock: 'Germ Deflector Bubble Armor',
+      tier4Unlock: 'Apex Clean Paws 2.0x'
+    },
+    exclusiveGear: [
+      { name: 'Translucent Aqua Bubble Orb', desc: '+20% Hygiene boost on handwashing', icon: 'soap' },
+      { name: 'Mint Paw Cushion Bands', desc: 'Doubles handwash coin rewards', icon: 'water_drop' },
+      { name: 'Jungle Splash Towel', desc: 'Instant hygiene restore after baths', icon: 'dry' }
+    ],
+    workoutId: null,
+    backstory: 'Stripe sits with sparkling soapy paws and translucent bubble spheres, turning 20 seconds of handwashing into a joyous jungle celebration.'
+  },
+  {
+    id: '19',
+    name: 'Fang the Wolf',
+    title: 'The Moonlight Scout',
+    element: 'Silver & Mint',
+    color: '#95a5a6',
+    accentColor: '#2ecc71',
+    avatarAsset: '{{DATA:IMAGE:IMAGE_6}}',
+    archetype: 'beast',
+    assignedHabit: 'Brush Teeth',
+    habitBonus: 'Moonlight Shine: +20 XP for each completed toothbrushing session',
+    baseStats: { hunger: 80, hygiene: 85, energy: 90, joy: 85 },
+    masteryTrack: {
+      tier1Unlock: 'Silver Fang +20 XP',
+      tier2Unlock: 'Nighttime Toothbrush Streak Guard',
+      tier3Unlock: 'Fresh Mint Breath Boss Deflect',
+      tier4Unlock: 'Moonlight Alpha 2.2x'
+    },
+    exclusiveGear: [
+      { name: 'Glowing Toothbrush Shield', desc: 'Prevents bedtime cavity boss attacks', icon: 'health_and_safety' },
+      { name: 'Scout Band of Focus', desc: '+25% Coins on 2-min streak sessions', icon: 'nightlight' },
+      { name: 'Arctic Howl Whistle', desc: 'Doubles group family brushing rewards', icon: 'campaign' }
+    ],
+    workoutId: null,
+    backstory: 'Fang howls under the moonlight only after his fangs are polished to a brilliant silver gleam with his mint toothbrush shield!'
+  },
+  {
+    id: '20',
+    name: 'Scout the Eagle',
+    title: 'The Sky Sentinel',
+    element: 'Cobalt & Solar',
+    color: '#3498db',
+    accentColor: '#f1c40f',
+    avatarAsset: '{{DATA:IMAGE:IMAGE_12}}',
+    archetype: 'mystic',
+    assignedHabit: 'Homework & Reading',
+    habitBonus: 'Sky Reader: +15 Coins on every homework and reading task completed',
+    baseStats: { hunger: 65, hygiene: 80, energy: 90, joy: 85 },
+    masteryTrack: {
+      tier1Unlock: 'Sky Study +15 Coins',
+      tier2Unlock: 'Focus Headset Homework Boost',
+      tier3Unlock: 'Library Quest Explorer Unlock',
+      tier4Unlock: 'Sentinel Knowledge Lord 2.3x'
+    },
+    exclusiveGear: [
+      { name: 'Aviator Flight Headset', desc: '+15 Speed on task map completions', icon: 'flight' },
+      { name: 'Golden Page Bookmark', desc: '+20% XP on daily reading quests', icon: 'bookmark' },
+      { name: 'Sanctuary Scholar Pass', desc: 'Unlocks advanced phonics missions', icon: 'library_books' }
+    ],
+    workoutId: null,
+    backstory: 'Scout wears an aviator flight helmet and studies open books, teaching young heroes to dive deep into exciting stories and school tasks.'
+  },
+  {
+    id: '21',
+    name: 'Gnasher the Shark',
+    title: 'The Deep Diver',
+    element: 'Abyss & Amber Light',
+    color: '#1f618d',
+    accentColor: '#f1c40f',
+    avatarAsset: '{{DATA:IMAGE:IMAGE_5}}',
+    archetype: 'aquatic',
+    assignedHabit: 'Bedtime Routine',
+    habitBonus: 'Deep Rest: +25% XP for completing the full bedtime routine',
+    baseStats: { hunger: 85, hygiene: 85, energy: 70, joy: 80 },
+    masteryTrack: {
+      tier1Unlock: 'Deep Sleep +25% XP',
+      tier2Unlock: 'Warm Bath & Storytime Tracker',
+      tier3Unlock: 'Nightlight Glow Anti-Fret Shield',
+      tier4Unlock: 'Deep Trench Serenity 2.3x'
+    },
+    exclusiveGear: [
+      { name: 'Glowing Starfish Nightlight', desc: 'Illuminates pleasant dreams every night', icon: 'bedtime' },
+      { name: 'Cozy Deep-Sea Nightcap', desc: '+20 Joy from finishing nighttime routine', icon: 'sailing' },
+      { name: 'Abyss Porthole Shell', desc: 'Plays ocean lullaby white noise, +10 XP', icon: 'music_note' }
+    ],
+    workoutId: null,
+    backstory: 'Gnasher pulls on his knitted nightcap and hugs his glowing amber starfish, ready to tuck into sleep after big ocean adventures.'
+  },
+  {
+    id: '22',
+    name: 'Shadow the Panther',
+    title: 'The Silent Sweeper',
+    element: 'Cyber Emerald & Carbon',
+    color: '#2c3e50', // Remapped from violet/purple strictly adhering to DESIGN.md
+    accentColor: '#00e676',
+    avatarAsset: '{{DATA:IMAGE:IMAGE_4}}',
+    archetype: 'beast',
+    assignedHabit: 'Clean Room',
+    habitBonus: 'Stealth Sweeper: +20 Coins for cleaning your room without being asked',
+    baseStats: { hunger: 80, hygiene: 85, energy: 90, joy: 85 },
+    masteryTrack: {
+      tier1Unlock: 'Ninja Cleanup +20 Coins',
+      tier2Unlock: 'Instant Tidy Sweep Timer Bonus',
+      tier3Unlock: 'Clutter-Free Sanctuary Shield',
+      tier4Unlock: 'Shadow Master of Clean 2.7x'
+    },
+    exclusiveGear: [
+      { name: 'Miniature Organized Toy Kit', desc: 'Holds 2x items for +15 bonus coins', icon: 'backpack' },
+      { name: 'Night-Vision Cyber Collar', desc: 'Room stays organized 20% longer', icon: 'dark_mode' },
+      { name: 'Silent Paws Grip Pads', desc: 'Speed-cleans rooms quietly, +25% XP', icon: 'pets' }
+    ],
+    workoutId: null,
+    backstory: 'Shadow moves silently in stealth carbon slate with cyber emerald glowing paw pads, organizing toys and clutter in record time!'
+  },
+  {
+    id: '23',
+    name: 'Barnaby the Bear',
+    title: 'The Honey Woodsman',
+    element: 'Timber & Forest Leaf',
+    color: '#d35400',
+    accentColor: '#f1c40f',
+    avatarAsset: '{{DATA:IMAGE:IMAGE_3}}',
+    archetype: 'beast',
+    assignedHabit: 'Healthy Eating',
+    habitBonus: 'Bear Hug Boost: +15 XP for every healthy meal or snack logged',
+    baseStats: { hunger: 95, hygiene: 70, energy: 75, joy: 95 },
+    masteryTrack: {
+      tier1Unlock: 'Honey Crunch +15 XP',
+      tier2Unlock: 'Fruit Basket Snack Streak Multiplier',
+      tier3Unlock: 'Woodland Energy Meal Restorer',
+      tier4Unlock: 'Great Ursine Nourisher 2.4x'
+    },
+    exclusiveGear: [
+      { name: 'Carved Honey Dipper', desc: '+25 Joy on healthy eating logs', icon: 'hive' },
+      { name: 'Crisp Orchard Red Apple', desc: '+20% Coins on fruit habit logs', icon: 'shopping_basket' },
+      { name: 'Explorer Bandana Collar', desc: '+10 Energy after every nutritious meal', icon: 'park' }
+    ],
+    workoutId: null,
+    backstory: 'Barnaby holds a honey dipper and crisp red apple with a warm smile, showing that healthy meals power up your inner explorer!'
+  },
+  {
+    id: '24',
+    name: 'Ollie the Otter',
+    title: 'The River Craftmaster',
+    element: 'Torrent & Moss',
+    color: '#2980b9',
+    accentColor: '#2ecc71',
+    avatarAsset: '{{DATA:IMAGE:IMAGE_2}}',
+    archetype: 'aquatic',
+    assignedHabit: 'Creative Play',
+    habitBonus: 'River Builder: 2x Coins on all creative play and craft tasks',
+    baseStats: { hunger: 80, hygiene: 95, energy: 85, joy: 95 },
+    masteryTrack: {
+      tier1Unlock: 'Brick Master 2x Coins',
+      tier2Unlock: 'Craft Challenge Bonus Multiplier',
+      tier3Unlock: 'Invention Blueprint Generator',
+      tier4Unlock: 'Grand River Architect 2.1x'
+    },
+    exclusiveGear: [
+      { name: 'Interlocking Gold Toy Brick', desc: '+30% XP on creative building challenges', icon: 'view_in_ar' },
+      { name: 'River Tool Belt & Wrench', desc: 'Unlocks secret craft mini-game blueprints', icon: 'handyman' },
+      { name: 'Torrent Crafting Pouch', desc: 'Stores bonus craft rewards safely', icon: 'cases' }
+    ],
+    workoutId: null,
+    backstory: 'Ollie wears a green toolbelt and clutches a yellow interlocking building brick, celebrating creative hands-on building and crafts!'
+  }
+];
+
+export function getPetById(id) {
+  if (id === undefined || id === null) return PETS_DATABASE[0];
+  const idStr = String(id).toLowerCase().trim();
+  return PETS_DATABASE.find(p =>
+    String(p.id).toLowerCase() === idStr ||
+    p.name.toLowerCase().includes(idStr) ||
+    p.name.toLowerCase().replace(/[^a-z0-9]/g, '').includes(idStr.replace(/[^a-z0-9]/g, ''))
+  ) || PETS_DATABASE[0];
+}
+
+export function getPetArchetype(pet) {
+  if (!pet) return PET_ARCHETYPES.dino;
+  const key = typeof pet === 'string' ? pet : pet.archetype;
+  return (key && PET_ARCHETYPES[key]) ? PET_ARCHETYPES[key] : PET_ARCHETYPES.dino;
+}
+
+export function getPetLevelStats(level = 1) {
+  const lvl = Math.max(1, Math.min(50, Math.floor(level || 1)));
+  const tierIndex = Math.min(4, Math.floor((lvl - 1) / 10) + 1);
+  const tierTitles = [
+    'Rookie Companion (Lv 1-10)',
+    'Playful Buddy (Lv 11-20)',
+    'Heroic Partner (Lv 21-30)',
+    'Invincible Guardian (Lv 31-40)',
+    'Sanctuary Apex Legend (Lv 41-50+)'
+  ];
+
+  return {
+    level: lvl,
+    tier: tierIndex,
+    title: tierTitles[tierIndex - 1] || 'Heroic Partner',
+    coinMultiplier: 1.0 + (lvl * 0.05), // Scales up to +250% at Lv 50
+    bossAssistPower: 15 + (lvl * 3),
+    xpToNextLevel: lvl * 150
+  };
+}
+
+})();
+</script>
+</div>
+<!-- STITCH_THREEJS_END:ANIMATION_151 -->
+</body>
+</html>

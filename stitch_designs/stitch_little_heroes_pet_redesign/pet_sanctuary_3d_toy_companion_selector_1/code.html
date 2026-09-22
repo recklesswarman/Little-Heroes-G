@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_standard" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&amp;family=Quicksand:wght@600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script><script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+          "on-primary-fixed-variant": "#005228",
+          "on-secondary-container": "#ffdab2",
+          "secondary-container": "#e89300",
+          "tertiary-fixed": "#cce5ff",
+          "on-error-container": "#ffdad6",
+          "primary": "#a3ffb8",
+          "on-surface": "#d8e4f1",
+          "on-tertiary": "#003351",
+          "outline": "#869486",
+          "surface-variant": "#2b3641",
+          "surface-container-highest": "#2b3640",
+          "on-tertiary-fixed": "#001d31",
+          "on-tertiary-fixed-variant": "#104a70",
+          "tertiary": "#ddedff",
+          "on-surface-variant": "#bbcbbb",
+          "tertiary-container": "#5fbaff",
+          "primary-fixed": "#6bfe9c",
+          "on-tertiary-container": "#285c82",
+          "surface-container-lowest": "#050f18",
+          "primary-container": "#2ecc71",
+          "on-primary-container": "#006632",
+          "surface-dim": "#09141e",
+          "secondary-fixed": "#ffddb8",
+          "on-secondary-fixed-variant": "#663e00",
+          "on-error": "#690005",
+          "outline-variant": "#3d4a3e",
+          "surface-container": "#16212b",
+          "inverse-primary": "#006d37",
+          "surface-bright": "#303a45",
+          "error-container": "#93000a",
+          "inverse-surface": "#d8e4f1",
+          "on-primary": "#003919",
+          "tertiary-fixed-dim": "#92ccff",
+          "on-secondary": "#472a00",
+          "surface-tint": "#4ae183",
+          "error": "#ffb4ab",
+          "secondary-fixed-dim": "#ffb961",
+          "surface": "#09141e",
+          "inverse-on-surface": "#27313c",
+          "primary-fixed-dim": "#4ae183",
+          "on-background": "#d8e4f2",
+          "on-primary-fixed": "#00210c",
+          "surface-container-low": "#121d26",
+          "on-secondary-fixed": "#2b1700",
+          "background": "#09141e",
+          "surface-container-high": "#202b35",
+          "secondary": "#ffb961"
+        },
+        "borderRadius": {
+          "DEFAULT": "0.25rem",
+          "lg": "0.5rem",
+          "xl": "0.75rem",
+          "full": "9999px"
+        },
+        "spacing": {
+          "base": "8px",
+          "space-xl": "64px",
+          "space-md": "24px",
+          "lg": "40px",
+          "xl": "64px",
+          "margin": "24px",
+          "md": "24px",
+          "sm": "12px",
+          "space-xs": "4px",
+          "space-lg": "40px",
+          "space-sm": "12px",
+          "margin-mobile": "20px",
+          "xs": "4px",
+          "gutter": "16px"
+        },
+        "fontFamily": {
+          "headline-lg": ["Plus Jakarta Sans"],
+          "body-lg": ["Quicksand"],
+          "body-sm": ["Quicksand"],
+          "headline-sm": ["Plus Jakarta Sans"],
+          "label-md": ["Quicksand"],
+          "label-sm": ["Quicksand"],
+          "headline-lg-mobile": ["Plus Jakarta Sans"],
+          "headline-md": ["Plus Jakarta Sans"],
+          "display-lg": ["Plus Jakarta Sans"],
+          "display-md": ["Plus Jakarta Sans"],
+          "label-xl": ["Quicksand"],
+          "body-md": ["Quicksand"]
+        }
+      },
+    },
+  }
+</script></head><body class="bg-background font-body-md text-on-background selection:bg-primary-container selection:text-on-primary-container antialiased min-h-screen"><header class="fixed top-0 left-0 right-0 z-50 bg-surface-container-low/95 backdrop-blur-xl shadow-[0_8px_24px_rgba(5,15,24,0.7)] border-b border-surface-container-high/40"><div class="h-20 w-full px-margin-mobile md:px-margin lg:px-lg flex items-center justify-between gap-base"><div class="flex items-center gap-space-md"><div class="flex items-center gap-xs"><div class="h-11 w-11 rounded-xl bg-surface-container-highest flex items-center justify-center shadow-[inset_0_2px_4px_rgba(255,255,255,0.08),0_4px_12px_rgba(5,15,25,0.8)]"><span class="material-symbols-outlined text-primary text-[26px]">pets</span></div><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-on-surface tracking-tight leading-none">LITTLE HEROES</span><span class="font-label-sm text-label-sm text-primary tracking-widest uppercase">Companion Sanctuary</span></div></div><div class="hidden xl:flex items-center gap-sm bg-surface-container-lowest py-xs px-sm rounded-full border border-surface-container-high/50"><div class="flex items-center gap-xs px-sm py-xs bg-surface-container-high rounded-full"><span class="material-symbols-outlined text-secondary text-[20px]">monetization_on</span><span class="font-label-md text-label-md text-secondary">2,150 Coins</span></div><div class="flex items-center gap-xs px-sm py-xs bg-surface-container-high rounded-full"><span class="material-symbols-outlined text-primary text-[18px]">military_tech</span><span class="font-label-sm text-label-sm text-on-surface">Lv. 14 Master Keeper</span><span class="h-1.5 w-1.5 rounded-full bg-secondary"></span><span class="font-label-sm text-label-sm text-secondary">12 Day Streak</span></div><div class="flex items-center gap-xs px-sm py-xs bg-surface-container-high rounded-full"><span class="h-2.5 w-2.5 rounded-full bg-primary animate-pulse"></span><span class="font-label-sm text-label-sm text-on-surface-variant">Active:</span><span class="font-label-sm text-label-sm text-primary font-bold" id="topbar-active-name">Rex the T-Rex</span></div></div></div><nav class="hidden lg:flex items-center gap-xs p-xs bg-surface-container-lowest rounded-xl border border-surface-container-high/40"><a aria-current="page" class="px-space-md py-xs rounded-lg transition-all bg-primary text-on-primary font-label-md text-label-md shadow-[0_4px_10px_rgba(46,204,113,0.35)]" data-path="pet-sanctuary-roster" href="#">Companion Roster</a><a class="px-space-md py-xs rounded-lg font-label-md text-label-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-all" data-path="mastery-track" href="#">Mastery &amp; Training</a><a class="px-space-md py-xs rounded-lg font-label-md text-label-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-all" data-path="sanctuary-treats" href="#">Sanctuary Treats</a><a class="px-space-md py-xs rounded-lg font-label-md text-label-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-all" data-path="hero-hq" href="#">Hero HQ</a></nav><div class="flex items-center gap-sm"><button aria-label="Toggle Audio Effects" class="h-10 w-10 rounded-xl bg-surface-container-high hover:bg-surface-container-highest flex items-center justify-center text-on-surface transition-colors shadow-[0_3px_0_#050f18] active:translate-y-0.5 active:shadow-none" type="button"><span class="material-symbols-outlined text-[20px]">volume_up</span></button><div class="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-on-primary shadow-md"><span class="material-symbols-outlined text-[20px]">person</span></div></div></div></header><main class="w-full pt-20 bg-background min-h-screen"><div class="flex flex-col w-full"><div class="relative w-full max-w-[1360px] mx-auto px-margin-mobile md:px-margin lg:px-lg pb-space-xl"><div class="flex flex-col gap-base mt-space-md mb-space-md"><div class="flex flex-wrap items-center justify-between gap-base"><div class="flex flex-col"><div class="flex items-center gap-xs mb-xs"><span class="inline-flex items-center gap-xs px-sm py-xs rounded-full bg-surface-container-high text-primary font-label-sm text-label-sm shadow-inner border border-primary/20"><span class="h-2 w-2 rounded-full bg-primary-fixed animate-ping"></span>3D TOY SANCTUARY ROSTER</span><span class="font-label-sm text-label-sm text-secondary px-sm py-xs rounded-full bg-surface-container-lowest border border-secondary/30">LINEAR LEVEL SYSTEM (Lv 1 - 50+)</span></div><h1 class="font-display-lg text-display-lg text-on-surface tracking-tight">Tactile Companion Selector</h1><p class="font-body-md text-body-md text-on-surface-variant max-w-2xl">
+            24 Collector Toy Companions ready for action! Choose your Habit Battle Partner, train through 50+ linear levels, and unlock daily coin and mastery boosts.
+          </p></div><div class="flex items-center gap-sm bg-surface-container-low p-sm rounded-xl shadow-lg border border-surface-container-high/60"><div class="flex flex-col px-sm py-xs rounded-lg bg-surface-container"><span class="font-label-sm text-label-sm text-on-surface-variant">CURRENT PARTNER</span><span class="font-headline-sm text-headline-sm text-primary flex items-center gap-xs" id="header-active-name"><span class="material-symbols-outlined text-[20px]">shield_check</span> Rex the T-Rex</span></div><div class="h-10 w-0.5 bg-surface-container-high"></div><div class="flex flex-col px-sm py-xs rounded-lg bg-surface-container"><span class="font-label-sm text-label-sm text-on-surface-variant">ACTIVE PERK</span><span class="font-headline-sm text-headline-sm text-secondary">+25% Daily Coins</span></div></div></div><!-- Archetype Filter Tabs & Search Controls --><div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-sm pt-sm border-t border-surface-container-high/40"><div class="flex items-center gap-xs overflow-x-auto pb-xs scrollbar-none" id="archetype-tabs"><button class="archetype-btn active flex items-center gap-xs px-sm py-xs rounded-lg font-label-md text-label-md bg-primary text-on-primary shadow-[0_5px_0_#005228] active:translate-y-1 active:shadow-none transition-all cursor-pointer" data-filter="all" type="button"><span>All Companions</span><span class="px-xs py-0.5 rounded-full bg-surface-container-lowest text-primary font-label-sm text-label-sm">24</span></button><button class="archetype-btn flex items-center gap-xs px-sm py-xs rounded-lg font-label-md text-label-md bg-surface-container text-on-surface-variant hover:text-on-surface shadow-[0_5px_0_#050f18] active:translate-y-1 active:shadow-none transition-all cursor-pointer" data-filter="dino" type="button"><span>🦖 Prehistoric Dinos</span><span class="px-xs py-0.5 rounded-full bg-surface-container-high text-on-surface font-label-sm text-label-sm">8</span></button><button class="archetype-btn flex items-center gap-xs px-sm py-xs rounded-lg font-label-md text-label-md bg-surface-container text-on-surface-variant hover:text-on-surface shadow-[0_5px_0_#050f18] active:translate-y-1 active:shadow-none transition-all cursor-pointer" data-filter="mystic" type="button"><span>🐉 Mystics &amp; Dragons</span><span class="px-xs py-0.5 rounded-full bg-surface-container-high text-on-surface font-label-sm text-label-sm">6</span></button><button class="archetype-btn flex items-center gap-xs px-sm py-xs rounded-lg font-label-md text-label-md bg-surface-container text-on-surface-variant hover:text-on-surface shadow-[0_5px_0_#050f18] active:translate-y-1 active:shadow-none transition-all cursor-pointer" data-filter="beast_aquatic" type="button"><span>🦁 Beasts &amp; Aquatics</span><span class="px-xs py-0.5 rounded-full bg-surface-container-high text-on-surface font-label-sm text-label-sm">9</span></button><button class="archetype-btn flex items-center gap-xs px-sm py-xs rounded-lg font-label-md text-label-md bg-surface-container text-on-surface-variant hover:text-on-surface shadow-[0_5px_0_#050f18] active:translate-y-1 active:shadow-none transition-all cursor-pointer" data-filter="mech" type="button"><span>🤖 Tech Mechs</span><span class="px-xs py-0.5 rounded-full bg-surface-container-high text-on-surface font-label-sm text-label-sm">1</span></button></div><div class="flex items-center gap-sm"><div class="relative flex-1 sm:w-64"><span class="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span><input class="w-full pl-9 pr-sm py-xs rounded-lg bg-surface-container-lowest border border-surface-container-high text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:border-primary transition-all font-body-sm text-body-sm" id="pet-search" placeholder="Search companion or habit..." type="text"/></div><select class="px-sm py-xs rounded-lg bg-surface-container-high border border-surface-container-highest text-on-surface font-label-sm text-label-sm focus:outline-none cursor-pointer" id="pet-sort"><option value="power">Sort: Power (High-Low)</option><option value="level">Sort: Level (High-Low)</option><option value="name">Sort: Companion Name</option><option value="habit">Sort: Habit Category</option></select></div></div></div><!-- MAIN TWO-COLUMN WORKBENCH --><div class="grid grid-cols-1 lg:grid-cols-12 gap-space-md items-start"><!-- LEFT COLUMN: 24 PETS CAROUSEL GRID (7 cols on desktop) --><div class="lg:col-span-7 flex flex-col gap-sm"><div class="flex items-center justify-between px-xs"><span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider flex items-center gap-xs"><span class="material-symbols-outlined text-primary text-[18px]">grid_view</span> Sanctuary Enclosure (<span class="text-primary font-bold" id="visible-pet-count">24</span> Ready)
+          </span><span class="font-label-sm text-label-sm text-primary flex items-center gap-xs"><span class="material-symbols-outlined text-[16px]">touch_app</span> Tap card to spotlight &amp; inspect</span></div><!-- Pet Grid Container --><div class="grid grid-cols-1 sm:grid-cols-2 gap-sm" id="pets-grid"><!-- Populated by JS --></div></div><!-- RIGHT COLUMN: FOCUSED PET INSPECTOR COCKPIT (5 cols on desktop) --><div class="lg:col-span-5 flex flex-col gap-sm sticky top-24"><div class="bg-surface-container rounded-xl p-space-md shadow-[0_16px_36px_rgba(5,15,25,0.85)] border border-surface-container-high/70 relative overflow-hidden flex flex-col gap-base"><div class="flex items-center justify-between"><div class="flex items-center gap-xs"><span class="material-symbols-outlined text-secondary text-[24px]">verified</span><div class="flex flex-col"><span class="font-headline-md text-headline-md text-on-surface leading-tight" id="inspector-name">Rex the T-Rex</span><span class="font-label-sm text-label-sm text-primary" id="inspector-title">The Apex Stomper</span></div></div><div class="flex items-center gap-xs px-sm py-xs rounded-full bg-secondary-container/30 text-secondary border border-secondary/40 font-label-sm text-label-sm shadow-[0_2px_0_#472a00]"><span class="material-symbols-outlined text-[16px]">bolt</span><span class="font-bold" id="inspector-level-badge">Lv. 14 Heroic Partner</span></div></div><!-- Hero Stage Pedestal with 3D Vinyl Toy Render --><div class="relative w-full h-64 rounded-xl bg-surface-container-lowest overflow-hidden flex items-center justify-center group shadow-inner border border-surface-container-high/40"><div class="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(46,204,113,0.3)_0%,transparent_75%)] animate-pulse" id="inspector-pedestal-aura"></div><!-- Pedestal Ring Graphic --><div class="absolute bottom-3 w-56 h-12 rounded-full bg-surface-container-high/80 border-t-2 border-primary/50 shadow-[0_0_24px_rgba(46,204,113,0.35)] flex items-center justify-center"><div class="w-44 h-8 rounded-full bg-surface-container-highest/60 border border-primary/20"></div></div><!-- Inspect Image --><div class="relative z-10 w-48 h-48 rounded-2xl overflow-hidden drop-shadow-[0_12px_24px_rgba(0,0,0,0.7)] transition-transform duration-300 group-hover:scale-105" id="inspector-image-container"><img alt="Hero companion 3D toy render" class="w-full h-full object-contain" id="inspector-img" src="https://lh3.googleusercontent.com/aida/AEtjO1ViXy_KHpO5deQUwvO871vRE9_EQXFMcdjy2urKRulL1VZbfI2GDHhjCsLWenDSczP8r9uG759hZ9oy7C6QxnyyPTgRzf-YHrEFMDsMAsoco05FeM8I12QgSLHhgZlpFG7sNcQcEGyanbLucTuopHXFvwf7UtMoscqioYeSElThuXY-6KlxqJGdoNcaT1y78TDBVYs5tBd3xDsVLk1TsnUkZTqsV49GHozOpP7InQRSpQ"/></div><!-- Elemental Aura Tag --><div class="absolute top-3 left-3 bg-surface-container/90 backdrop-blur-md px-sm py-xs rounded-lg shadow border border-surface-container-high flex items-center gap-xs"><span class="h-2.5 w-2.5 rounded-full bg-primary" id="inspector-affinity-dot"></span><span class="font-label-sm text-label-sm text-on-surface" id="inspector-affinity">Earth &amp; Thunder</span></div><!-- Habit Synergy Tag --><div class="absolute top-3 right-3 bg-surface-container/90 backdrop-blur-md px-sm py-xs rounded-lg shadow border border-surface-container-high flex items-center gap-xs text-secondary"><span class="material-symbols-outlined text-[16px]" id="inspector-habit-icon">fitness_center</span><span class="font-label-sm text-label-sm text-on-surface" id="inspector-habit">Active Play</span></div></div><!-- Skeuomorphic Tube Stat Bars --><div class="grid grid-cols-4 gap-xs p-xs rounded-lg bg-surface-container-lowest border border-surface-container-high/40"><div class="flex flex-col gap-0.5"><div class="flex justify-between items-center"><span class="font-label-sm text-[10px] text-on-surface-variant">HUNGER</span><span class="font-label-sm text-[10px] text-primary" id="stat-val-hunger">90%</span></div><div class="h-2.5 w-full bg-surface-container-high rounded-full overflow-hidden p-0.5"><div class="h-full rounded-full bg-primary transition-all duration-300 shadow-[0_0_8px_rgba(46,204,113,0.6)]" id="stat-bar-hunger" style="width: 90%"></div></div></div><div class="flex flex-col gap-0.5"><div class="flex justify-between items-center"><span class="font-label-sm text-[10px] text-on-surface-variant">ENERGY</span><span class="font-label-sm text-[10px] text-secondary" id="stat-val-energy">85%</span></div><div class="h-2.5 w-full bg-surface-container-high rounded-full overflow-hidden p-0.5"><div class="h-full rounded-full bg-secondary transition-all duration-300 shadow-[0_0_8px_rgba(255,185,97,0.6)]" id="stat-bar-energy" style="width: 85%"></div></div></div><div class="flex flex-col gap-0.5"><div class="flex justify-between items-center"><span class="font-label-sm text-[10px] text-on-surface-variant">JOY</span><span class="font-label-sm text-[10px] text-tertiary-container" id="stat-val-joy">95%</span></div><div class="h-2.5 w-full bg-surface-container-high rounded-full overflow-hidden p-0.5"><div class="h-full rounded-full bg-tertiary-container transition-all duration-300 shadow-[0_0_8px_rgba(95,186,255,0.6)]" id="stat-bar-joy" style="width: 95%"></div></div></div><div class="flex flex-col gap-0.5"><div class="flex justify-between items-center"><span class="font-label-sm text-[10px] text-on-surface-variant">HYGIENE</span><span class="font-label-sm text-[10px] text-primary-fixed" id="stat-val-hygiene">75%</span></div><div class="h-2.5 w-full bg-surface-container-high rounded-full overflow-hidden p-0.5"><div class="h-full rounded-full bg-primary-fixed transition-all duration-300 shadow-[0_0_8px_rgba(107,254,156,0.6)]" id="stat-bar-hygiene" style="width: 75%"></div></div></div></div><!-- REPLACED: LINEAR LEVEL & MASTERY PROGRESSION MODULE (EVOLUTIONS REMOVED) --><div class="bg-surface-container-low rounded-xl p-sm border border-surface-container-high flex flex-col gap-xs shadow-md"><div class="flex items-center justify-between"><div class="flex items-center gap-xs"><span class="material-symbols-outlined text-primary text-[20px]">military_tech</span><span class="font-label-md text-label-md text-on-surface font-bold">Linear Level &amp; Mastery Track</span></div><span class="font-label-sm text-label-sm text-secondary font-bold" id="inspector-level-rank">Tier 3 (Lv. 14 / 50+)</span></div><div class="flex flex-col gap-1"><div class="flex justify-between items-center font-label-sm text-[11px]"><span class="text-on-surface-variant">Mastery XP to Next Level</span><span class="text-primary font-mono" id="inspector-xp-text">840 / 1200 XP (70%)</span></div><div class="w-full h-3 bg-surface-container-lowest rounded-full overflow-hidden p-0.5 border border-surface-container-high"><div class="h-full bg-gradient-to-r from-primary to-primary-container rounded-full shadow-[0_0_10px_rgba(46,204,113,0.5)] transition-all duration-500" id="inspector-xp-bar" style="width: 70%"></div></div></div><!-- Next Tier Milestones --><div class="grid grid-cols-2 gap-xs pt-xs"><div class="bg-surface-container-lowest p-xs rounded-lg border border-surface-container-high/50 flex items-center gap-xs"><span class="material-symbols-outlined text-secondary text-[18px]">lock_open</span><div class="flex flex-col min-w-0"><span class="font-label-sm text-[10px] text-on-surface-variant">Lv. 15 Unlock</span><span class="font-label-sm text-[11px] text-secondary font-bold truncate">Boss Assist +40%</span></div></div><div class="bg-surface-container-lowest p-xs rounded-lg border border-surface-container-high/50 flex items-center gap-xs"><span class="material-symbols-outlined text-primary text-[18px]">savings</span><div class="flex flex-col min-w-0"><span class="font-label-sm text-[10px] text-on-surface-variant">Lv. 20 Mastery</span><span class="font-label-sm text-[11px] text-primary font-bold truncate">Daily Gold +25%</span></div></div></div></div><!-- Backstory & Lore --><div class="flex flex-col gap-xs"><span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Sanctuary Log &amp; Temperament</span><p class="font-body-sm text-body-sm text-on-surface bg-surface-container-low p-sm rounded-lg border border-surface-container-high/40 leading-relaxed" id="inspector-lore">
+              Discovered deep in the Emerald Cretaceous Valley. Rex channels volcanic stamina into playground sprints and active outdoor quests, inspiring young adventurers to run 3,000 steps daily.
+            </p></div><!-- Habit Super-Power Bonus Card --><div class="bg-surface-container-high rounded-xl p-sm flex items-center justify-between shadow-md border border-surface-container-highest"><div class="flex items-center gap-sm"><div class="h-11 w-11 rounded-xl bg-secondary flex items-center justify-center shadow-[0_4px_0_#8c5800] shrink-0"><span class="material-symbols-outlined text-on-secondary text-[24px]">toll</span></div><div class="flex flex-col"><span class="font-label-md text-label-md text-secondary font-bold" id="inspector-bonus-title">+25 Habit Victory Coins</span><span class="font-body-sm text-[13px] text-on-surface-variant" id="inspector-bonus-desc">Awarded on every verified 20m physical activity</span></div></div><div class="font-headline-sm text-headline-sm text-secondary-fixed font-bold pl-xs" id="inspector-multiplier">2.5x</div></div><!-- Exclusive Guardian Gear Loadout --><div class="flex flex-col gap-xs"><span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Equipped Guardian Relics</span><div class="grid grid-cols-3 gap-xs"><div class="flex items-center gap-xs p-xs rounded-lg bg-surface-container-lowest border border-surface-container-high/40"><div class="h-8 w-8 rounded-lg bg-surface-container-high flex items-center justify-center text-primary"><span class="material-symbols-outlined text-[18px]">sports_martial_arts</span></div><div class="flex flex-col min-w-0"><span class="font-label-sm text-[11px] text-on-surface truncate">Spike Claws</span><span class="font-label-sm text-[10px] text-primary">+12 Power</span></div></div><div class="flex items-center gap-xs p-xs rounded-lg bg-surface-container-lowest border border-surface-container-high/40"><div class="h-8 w-8 rounded-lg bg-surface-container-high flex items-center justify-center text-secondary"><span class="material-symbols-outlined text-[18px]">shield_moon</span></div><div class="flex flex-col min-w-0"><span class="font-label-sm text-[11px] text-on-surface truncate">Aegis Collar</span><span class="font-label-sm text-[10px] text-secondary">+18 Guard</span></div></div><div class="flex items-center gap-xs p-xs rounded-lg bg-surface-container-lowest border border-surface-container-high/40"><div class="h-8 w-8 rounded-lg bg-surface-container-high flex items-center justify-center text-tertiary-fixed-dim"><span class="material-symbols-outlined text-[18px]">speed</span></div><div class="flex flex-col min-w-0"><span class="font-label-sm text-[11px] text-on-surface truncate">Solar Ring</span><span class="font-label-sm text-[10px] text-tertiary-fixed-dim">+8 Haste</span></div></div></div></div><!-- Action Buttons with 6px-8px Chunky Bottom Sinks --><div class="flex flex-col gap-sm pt-xs"><button class="w-full h-12 rounded-xl bg-primary text-on-primary font-label-xl text-label-xl shadow-[0_6px_0_#005228] active:translate-y-1.5 active:shadow-[0_0_0_#005228] transition-all flex items-center justify-center gap-xs cursor-pointer font-bold" id="btn-set-active" type="button"><span class="material-symbols-outlined text-[24px]">check_circle</span><span>SET AS ACTIVE COMPANION</span></button><div class="grid grid-cols-2 gap-sm"><button class="h-11 rounded-xl bg-surface-container-highest text-tertiary-fixed font-label-md text-label-md shadow-[0_5px_0_#050f18] active:translate-y-1 active:shadow-none transition-all flex items-center justify-center gap-xs hover:bg-surface-bright cursor-pointer" id="btn-feed-treat" type="button"><span class="material-symbols-outlined text-[20px] text-tertiary-fixed-dim">cookie</span><span>FEED HERO TREAT</span></button><button class="h-11 rounded-xl bg-secondary text-on-secondary font-label-md text-label-md shadow-[0_5px_0_#8c5800] active:translate-y-1 active:shadow-none transition-all flex items-center justify-center gap-xs cursor-pointer font-bold" id="btn-train-levelup" type="button"><span class="material-symbols-outlined text-[20px]">fitness_center</span><span>LEVEL UP / TRAIN</span></button></div></div><!-- Design System Compliant Palette Strip --><div class="pt-sm border-t border-surface-container-high/40 flex flex-col gap-xs"><span class="font-label-sm text-[11px] text-on-surface-variant flex items-center justify-between"><span>DESIGN SYSTEM COMPLIANT PALETTE</span><span class="text-primary font-mono text-[10px]">Strictly Zero Purple/Pink</span></span><div class="grid grid-cols-4 gap-xs text-center"><div class="p-xs rounded-lg bg-surface-container-lowest flex flex-col items-center gap-1 border border-surface-container-high/30"><div class="h-3.5 w-3.5 rounded-full bg-[#2ecc71]"></div><span class="font-label-sm text-[9px] text-on-surface-variant uppercase">Jungle Green</span><span class="font-mono text-[9px] text-on-surface">#2ECC71</span></div><div class="p-xs rounded-lg bg-surface-container-lowest flex flex-col items-center gap-1 border border-surface-container-high/30"><div class="h-3.5 w-3.5 rounded-full bg-[#f39c12]"></div><span class="font-label-sm text-[9px] text-on-surface-variant uppercase">Solar Amber</span><span class="font-mono text-[9px] text-on-surface">#F39C12</span></div><div class="p-xs rounded-lg bg-surface-container-lowest flex flex-col items-center gap-1 border border-surface-container-high/30"><div class="h-3.5 w-3.5 rounded-full bg-[#00d2ff]"></div><span class="font-label-sm text-[9px] text-on-surface-variant uppercase">Electric Cyan</span><span class="font-mono text-[9px] text-on-surface">#00D2FF</span></div><div class="p-xs rounded-lg bg-surface-container-lowest flex flex-col items-center gap-1 border border-surface-container-high/30"><div class="h-3.5 w-3.5 rounded-full bg-[#3498db]"></div><span class="font-label-sm text-[9px] text-on-surface-variant uppercase">Cobalt Blue</span><span class="font-mono text-[9px] text-on-surface">#3498DB</span></div></div></div></div></div></div></div></div><script>
+  // 24 Redesigned Tactile 3D Toy Companions with DataStore Image References and Linear Level Progression
+  const PETS_DATA = [
+    {
+      id: "rex",
+      name: "Rex the T-Rex",
+      title: "The Apex Stomper",
+      archetype: "dino",
+      affinity: "Earth & Thunder",
+      habit: "Active Play",
+      habitIcon: "fitness_center",
+      level: 14,
+      power: 890,
+      xp: 840,
+      maxXp: 1200,
+      hunger: 90,
+      energy: 85,
+      joy: 95,
+      hygiene: 75,
+      lore: "Discovered deep in the Emerald Cretaceous Valley. Rex channels volcanic stamina into playground sprints and active outdoor quests, inspiring young adventurers to run 3,000 steps daily.",
+      bonusTitle: "+25 Habit Victory Coins",
+      bonusDesc: "Awarded on every verified 20m physical activity",
+      multiplier: "2.5x",
+      levelBadge: "Lv. 14 Heroic Partner",
+      imgSrc: "https://lh3.googleusercontent.com/aida/AEtjO1ViXy_KHpO5deQUwvO871vRE9_EQXFMcdjy2urKRulL1VZbfI2GDHhjCsLWenDSczP8r9uG759hZ9oy7C6QxnyyPTgRzf-YHrEFMDsMAsoco05FeM8I12QgSLHhgZlpFG7sNcQcEGyanbLucTuopHXFvwf7UtMoscqioYeSElThuXY-6KlxqJGdoNcaT1y78TDBVYs5tBd3xDsVLk1TsnUkZTqsV49GHozOpP7InQRSpQ"
+    },
+    {
+      id: "raptor",
+      name: "Raptor the Velociraptor",
+      title: "Lightning Sprinter",
+      archetype: "dino",
+      affinity: "Solar & Wind",
+      habit: "Morning Routine",
+      habitIcon: "wb_sunny",
+      level: 11,
+      power: 840,
+      xp: 520,
+      maxXp: 950,
+      hunger: 80,
+      energy: 95,
+      joy: 90,
+      hygiene: 80,
+      lore: "Equipped with molten crimson armor and athletic sneakers, Raptor transforms morning alarms into supersonic morning wakeups and bed-making dashes.",
+      bonusTitle: "+20 Dawn Speed Coins",
+      bonusDesc: "Earned for completing morning habits before 8:00 AM",
+      multiplier: "2.2x",
+      levelBadge: "Lv. 11 Sprinter",
+      imgSrc: "https://lh3.googleusercontent.com/aida/AEtjO1Uh9z7MDLGhkgT6jzD7Z6te1tCFml6yfFVl69pyYcc_qrpfZULVyuAvTPE06YJcU1gg--0-v-kyrVZci7Dcx_agL9pti3vQ1yZ74SlNaJvAgepNTcV-s0aSWHWnc5C8qhjYFCUHp5LRMtEkGnASuI-8DWTTT6k0n0DZ106fuPI7C5amKS-ayoWzwGVzmY97dJv5hBhKEMSv80T_c-H_OFrGSNtBHW_LzkhKWXyBSl2dFw"
+    },
+    {
+      id: "stego",
+      name: "Stego the Stegosaurus",
+      title: "Solar Stomper",
+      archetype: "dino",
+      affinity: "Earth & Sun",
+      habit: "Outdoor Play",
+      habitIcon: "park",
+      level: 12,
+      power: 860,
+      xp: 710,
+      maxXp: 1050,
+      hunger: 92,
+      energy: 88,
+      joy: 85,
+      hygiene: 70,
+      lore: "Carrying radiant solar gold dorsal plates, Stego charges up with natural sunlight and inspires fearless backyard playground expeditions.",
+      bonusTitle: "+25 Sunbeam Coins",
+      bonusDesc: "Granted for 30 minutes of energetic outdoor park play",
+      multiplier: "2.4x",
+      levelBadge: "Lv. 12 Solar Tank",
+      imgSrc: "https://lh3.googleusercontent.com/aida/AEtjO1UfC1XHQvLpmR3XlYkF0ynY1uvF8C5krSGq4fsE3RK2OLKgdE2UFQS49ePv1aB0U9J-weDm_VniUP_moGNlmctpZ2SzzGA4gyg5LEoc460NSvKeh7pT-CmPXb7leGqgNtFxtiubA7HV5D7xHLlemguEqDjmyeHNawiIUklyXYMmq2-hKVSH0x5DsJt4WslgLf1DGf_2aH0ntUl8DYpQF3vxfc3JrLqm_3IEfPxtMssx"
+    },
+    {
+      id: "pterry",
+      name: "Pterry Pterodactyl",
+      title: "Sky Launcher",
+      archetype: "dino",
+      affinity: "Aero & Lightning",
+      habit: "Stretch & Exercise",
+      habitIcon: "sports_gymnastics",
+      level: 9,
+      power: 760,
+      xp: 380,
+      maxXp: 800,
+      hunger: 78,
+      energy: 94,
+      joy: 90,
+      hygiene: 85,
+      lore: "Clad in electric aero cyan wings with gold lightning bolts, Pterry glides into high-energy calisthenics, jumping jacks, and morning wing-stretches.",
+      bonusTitle: "+15 High Flight Coins",
+      bonusDesc: "Rewards complete 10-minute flexibility routines",
+      multiplier: "2.0x",
+      levelBadge: "Lv. 9 Sky Scout",
+      imgSrc: "https://lh3.googleusercontent.com/aida/AEtjO1WGyCVLfwLVZrQK4Az5VJ6r5yrt0MwbF9JZEIMad3JPbASAkYKqj7VPnH5811Vgfdh7J-xfRd_5fEzz8gnuBCZN3VF1VAvP9pwNPjM-kxVBIm4cddF5ghMLrnauP6O4lplF1njmVxVngm16_Y7GAeM3JajDVXxojmEJBdWfADU2ntBuIVHZ3ONbdssnRPZWLu0DfEQdtzBEjQvzcPU-628GFujGcFYgMh31KN2Sf5DSgg"
+    },
+    {
+      id: "chomper",
+      name: "Chomper Compsognathus",
+      title: "Tiny Dancer",
+      archetype: "dino",
+      affinity: "Rhythm & Kinetic",
+      habit: "Dance & Movement",
+      habitIcon: "music_note",
+      level: 8,
+      power: 720,
+      xp: 410,
+      maxXp: 700,
+      hunger: 85,
+      energy: 98,
+      joy: 99,
+      hygiene: 80,
+      lore: "Vibrant kinetic turquoise with rhythm amber headphones, Chomper never stands still! He guides kids through playful dance-alongs and fun music breaks.",
+      bonusTitle: "+18 Rhythm Coins",
+      bonusDesc: "Earned per dance track or active freeze-dance game",
+      multiplier: "1.9x",
+      levelBadge: "Lv. 8 Groover",
+      imgSrc: "https://lh3.googleusercontent.com/aida/AEtjO1W6QqpEMNw8gxme84CnBk4B95JA8rh5acQc_bpbTmtuKBMyHugk8Y_6zpLGmcwhtNs36adjwYGTsJXmRWnl_Ki5ARUMlHrl2CY5xP2QqzjPOX0ow_oZP2HsVraB2DSHhAh4ImdW6WkNsKQ8EiHZVzs_G-NYVgaL6BQw47JN38_kdxgjERdp99j2ekxyycCs36-VSTKIP8Zt7siBwt7TBEpU2CHcd5aRor_Teka2a7N6Vw"
+    },
+    {
+      id: "brachio",
+      name: "Brachio Brachiosaurus",
+      title: "Great Stretcher",
+      archetype: "dino",
+      affinity: "Canopy & Earth",
+      habit: "Yoga & Stretching",
+      habitIcon: "self_improvement",
+      level: 13,
+      power: 875,
+      xp: 920,
+      maxXp: 1100,
+      hunger: 95,
+      energy: 78,
+      joy: 92,
+      hygiene: 88,
+      lore: "With a long graceful neck reaching canopy leaves, Brachio teaches calm, deep breathing and spine stretches to improve posture while reading and studying.",
+      bonusTitle: "+20 Canopy Serenity",
+      bonusDesc: "Awarded after 5 minutes of mindful cool-down stretches",
+      multiplier: "2.3x",
+      levelBadge: "Lv. 13 Colossus",
+      imgSrc: "https://lh3.googleusercontent.com/aida/AEtjO1XC8gJa1Cuvc61NO3WNrahLX2yp4Mj0bwVI5t5Yg28w_ST_atsn8NC7tBQgYCTkUQbSCli1NQ1IpBvr58P3prrPJFatmUCBTeYbEFD6yzqMaznPF23-ErWtP-tfy9pv2iYmrL4whyWXf7Tyqe3Kl9XbvgXLoTnf3vcYsWO2NXHyE5nAW4LKZrweRcYtHgKUxdymecX0fWFnGoOEBR1c7xMKADsfjP2BGIWWyRKXALy-Wg"
+    },
+    {
+      id: "dippy",
+      name: "Dippy Diplodocus",
+      title: "Balance Master",
+      archetype: "dino",
+      affinity: "River & Terra",
+      habit: "Balance & Flexibility",
+      habitIcon: "accessibility_new",
+      level: 10,
+      power: 790,
+      xp: 600,
+      maxXp: 900,
+      hunger: 88,
+      energy: 82,
+      joy: 89,
+      hygiene: 75,
+      lore: "Featuring an iconic curved balancing tail and warm terracotta plating, Dippy encourages physical coordination and agile playground balance beam trials.",
+      bonusTitle: "+16 Steady Step Coins",
+      bonusDesc: "Awarded during agility obstacle courses",
+      multiplier: "2.1x",
+      levelBadge: "Lv. 10 Balancer",
+      imgSrc: "https://lh3.googleusercontent.com/aida/AEtjO1UFD3YJLTrEekdUC7NvLRBU9Tc3Q8vmdfGu3fagWqOfpUdmIvQu4l75D9SA1i0P1my1Cue3G5ilF4UjvRiDmK5klRD5Yq5zKZVd3UzisdyH2FeMKKMrKz6dSeUGOfrtiBEeYpgHN8gLm4cId92nOgXufGTsGQnHwUgTIfCNLmaOfzQOfW_1OFWiRzcVD5CLUKdAhFW8SAlglajBZndlYkUvzYAqkU3R_R4cXwOfDocMkg"
+    },
+    {
+      id: "spino",
+      name: "Spino the Spinosaurus",
+      title: "Cool-Down King",
+      archetype: "dino",
+      affinity: "Hydro & Solar",
+      habit: "Cool Down",
+      habitIcon: "ac_unit",
+      level: 11,
+      power: 830,
+      xp: 750,
+      maxXp: 950,
+      hunger: 82,
+      energy: 80,
+      joy: 86,
+      hygiene: 90,
+      lore: "Boasts a sun-sail fin in radiant aquatic cobalt and crimson. Spino assists energetic adventurers in winding down smoothly after soccer practice or recess sprints.",
+      bonusTitle: "+22 Oasis Winddown",
+      bonusDesc: "Earned for post-workout hydration and calm breathing",
+      multiplier: "2.2x",
+      levelBadge: "Lv. 11 Fin-Rider",
+      imgSrc: "https://lh3.googleusercontent.com/aida/AEtjO1XAQaH5w1yTIh18_jxLAdGmsAnUx9sFH-GdeQx-2sgF1QgGDBfD4_ibZM2XRMd1gkaB9ENi_87GpSZAaSPgXUObwyu90KFRWJYnMnO1-x1z-u7hw9kJpqnOydFWatiYhuVziJg3PHcSDKOCj1IFzpyWxi_VHKR25K13y87IiZSkr0k9ND71eScGFB3K_zhLI7kj2jBYSQvReRcDaaYpHHT_Fh8Pr1KJFmRahr5_pBjP6w"
+    },
+    {
+      id: "sparky",
+      name: "Sparky the Dragon",
+      title: "Azure Ember",
+      archetype: "mystic",
+      affinity: "Flame & Water",
+      habit: "Brush Teeth",
+      habitIcon: "dentistry",
+      level: 15,
+      power: 910,
+      xp: 1100,
+      maxXp: 1300,
+      hunger: 86,
+      energy: 92,
+      joy: 95,
+      hygiene: 100,
+      lore: "Friendly azure blue dragon wielding an illuminated mint tooth-shield. Sparky turns brushing teeth into a 2-minute heroic quest against sugar bugs.",
+      bonusTitle: "2x Pearl Gleam Coins",
+      bonusDesc: "Doubles morning & evening brushing session earnings",
+      multiplier: "2.8x",
+      levelBadge: "Lv. 15 Dragon Paladin",
+      imgSrc: "https://lh3.googleusercontent.com/aida/AEtjO1V9bo-bmmnIh_rYdKIjfSj2UShuVsgu9Qp1M5Q8W36obw7Z0ayGXv0-UZpCkNCW_I_iBM4IlPcjfcgXzTWLknx3NJjsAcXu8znHckjvW10k7qmJpp5QTplU26ttzU_BA2IAEVozBa-mNYuN6KQKraJHfst3U0Ji6XP9GuiDPesZb2ebsK5rjhwV5JrbgJtUt-MG3k3UxAv2EHg5s3C4cH3KzkcmPaPSBXEls7fDyY-tBg"
+    },
+    {
+      id: "aero",
+      name: "Aero the Griffin",
+      title: "Solar Sentinel",
+      archetype: "mystic",
+      affinity: "Sun & Sky",
+      habit: "Homework & Reading",
+      habitIcon: "auto_stories",
+      level: 12,
+      power: 850,
+      xp: 800,
+      maxXp: 1050,
+      hunger: 84,
+      energy: 90,
+      joy: 88,
+      hygiene: 92,
+      lore: "Sculpted in sunray gold with aviator study goggles and an ancient book, Aero unlocks deep focus for math worksheets and thrilling reading chapters.",
+      bonusTitle: "+25 Scholar Focus Coins",
+      bonusDesc: "Granted for 20 continuous minutes of quiet homework",
+      multiplier: "2.4x",
+      levelBadge: "Lv. 12 Scholar",
+      imgSrc: "https://lh3.googleusercontent.com/aida/AEtjO1ViCOTbkElNqPqX07qEnsMa3dnU8JIs36q34HuwZPuCqnLKrHjJqtjZNl0Lj5mCDJYPkbsG06TWTlKW65YxKOHGc8jScOjoxj8tretbBKg4QeA-PKqhH_FIvKLIsUD4KhjpWVAa9z2a6AsXIrmW9LbU5NobKi8sjb8-cJ2IOz1t-FyQwOfrq0jcObtD0xx04XWqDcc_rbQyq-EmJbFoLf_3nsgunitOzOmCLWl3uRT25Q"
+    },
+    {
+      id: "blaze",
+      name: "Blaze the Phoenix",
+      title: "Midnight Flame",
+      archetype: "mystic",
+      affinity: "Hearth & Solar",
+      habit: "Bedtime Routine",
+      habitIcon: "bedtime",
+      level: 14,
+      power: 895,
+      xp: 990,
+      maxXp: 1200,
+      hunger: 75,
+      energy: 70,
+      joy: 94,
+      hygiene: 95,
+      lore: "Nestled softly with glowing hearth ember feathers and sleepy eyelids. Blaze signals warm pyjamas, lights out, and a cozy restorative night's rest.",
+      bonusTitle: "+30 Cozy Embers Bonus",
+      bonusDesc: "Rewarded when lights go out by 8:30 PM bedtime goal",
+      multiplier: "2.6x",
+      levelBadge: "Lv. 14 Slumber Warden",
+      imgSrc: "https://lh3.googleusercontent.com/aida/AEtjO1XiJnTvNkttW02g1uwkcjeCnM9AP5NlrfY-RawXO3NJLzMlK4-43ObM7fNx5kOL5uB6wqDrAvPZyer3agafAJ52XLaIhA2cNwr62ONXbsyb3OYIv7QRa-8ZsT2bN4p9jgSlGE4ydO2CeOuF3RnPBzvSpZB6dt8uN0Hw1ro8ixJvYXK-OtnOO23rrp58RaGLf4tQUu6MXs1I8Ka0mlZbdtN4qMv9ueGLbss9eE_az7XQ"
+    },
+    {
+      id: "hydra",
+      name: "Hydra the Sea Serpent",
+      title: "Tidal Guardian",
+      archetype: "mystic",
+      affinity: "Aquifer & Deep",
+      habit: "Drink Water",
+      habitIcon: "water_drop",
+      level: 11,
+      power: 825,
+      xp: 630,
+      maxXp: 950,
+      hunger: 80,
+      energy: 88,
+      joy: 91,
+      hygiene: 100,
+      lore: "A triple-crested sapphire sea guardian holding an icy crystal flask. Hydra prompts guardians to drink 6 tall glasses of pure water every sun cycle.",
+      bonusTitle: "+20 Tidal Splash Drops",
+      bonusDesc: "Awarded per tracked water bottle refilled and finished",
+      multiplier: "2.3x",
+      levelBadge: "Lv. 11 Aquifer Guard",
+      imgSrc: "https://lh3.googleusercontent.com/aida/AEtjO1WNSv0laUHhVkGcJgbKWT4LnkaDNmhPD6ih0ltbFkoaCd5Lgc4eVWhlC3rECgV00x0Nqz7GttyWNHAJx0ZifJ8nW2r7-U4KKeOPIpGzlPpcaWTSDmX5okJBv1vzw4zgLQe2xaxgWLoYyHPGBZVPLlb9YrS6Evj4TBr7LxYYyCCvSrP3YXeOKIhzsGy_bHyibLvJcxGsUVtFPbQHg-7uGpM4mQbI6k9g-24w4mLe21mRFQ"
+    },
+    {
+      id: "luna",
+      name: "Luna the Unicorn",
+      title: "Rainbow Weaver",
+      archetype: "mystic",
+      affinity: "Electric Cyan & Solar",
+      habit: "Creative Play",
+      habitIcon: "palette",
+      level: 13,
+      power: 880,
+      xp: 880,
+      maxXp: 1100,
+      hunger: 82,
+      energy: 94,
+      joy: 100,
+      hygiene: 95,
+      lore: "Crafted in starlight cream with an electric cyan mane and solar gold horn. Luna inspires imagination, drawing, clay modeling, and artistic projects.",
+      bonusTitle: "+25 Prism Spark Coins",
+      bonusDesc: "Granted upon logging creative art and storytelling time",
+      multiplier: "2.5x",
+      levelBadge: "Lv. 13 Prism Master",
+      imgSrc: "https://lh3.googleusercontent.com/aida/AEtjO1UMIIZ3os2hCrOlnU_eGB1Y-aLxWQf3LcCC4Po5d0tzP9N8Z-s6rY02niIF_oSsAJK05WHVibSYN_WqxatFmkb_8j0sVhj7Xy3Vcn9NkOvH_yNFi6r1Ab8dyowE_lOpX0nV4MIa5p-4ub3KWyaLxHvX1lkhmHpHlYVNZMW-IyqTMWtdjIEP86I3jejFSWQZ-Jq7pceiBAl-gQZ_ghkDe-_UTBuNK-xfwRrXutJrgisZBQ"
+    },
+    {
+      id: "kira",
+      name: "Kira the Kirin",
+      title: "Order Keeper",
+      archetype: "mystic",
+      affinity: "Bamboo & Amber",
+      habit: "Clean Room",
+      habitIcon: "cleaning_services",
+      level: 10,
+      power: 810,
+      xp: 590,
+      maxXp: 900,
+      hunger: 80,
+      energy: 85,
+      joy: 87,
+      hygiene: 98,
+      lore: "Noble equine-dragon hybrid with golden antlers and jade scale saddle. Kira turns toy tidying, desk sorting, and closet organizing into royal ceremony.",
+      bonusTitle: "+20 Royal Order Bounty",
+      bonusDesc: "Earned when toys are safely stowed away in bins",
+      multiplier: "2.2x",
+      levelBadge: "Lv. 10 Order Marshal",
+      imgSrc: "https://lh3.googleusercontent.com/aida/AEtjO1WZBnzA4MR_lQuQ9LfymB6ov1PUV5eWjQ81bS0WSAEP3swDNJppWiMGYm3dkoqJ8Tje8MngOCd-T1CBUQ_y9dgCCcBnKt-wnBh62oM_UmQvAskFpG0Kd5s2LueqWiSvOKjzjfzwiaj3dnSJbkKEPDBGQsePO4b4LEzOf9kOn8WWLfTgmhn2zmPQbJlRKMD0-rvC2qKP-D4fRszW9fpEg2U2URVS1INHvpxhZ0QHmvcz"
+    },
+    {
+      id: "boulder",
+      name: "Boulder Crystal Golem",
+      title: "Iron Fortress",
+      archetype: "beast_aquatic",
+      affinity: "Granite & Geode",
+      habit: "Healthy Eating",
+      habitIcon: "restaurant",
+      level: 14,
+      power: 905,
+      xp: 960,
+      maxXp: 1200,
+      hunger: 98,
+      energy: 86,
+      joy: 84,
+      hygiene: 78,
+      lore: "Granite slate golem with glowing emerald veggie-shields and shoulder crystals. Boulder fortifies immune power through broccoli, carrots, and green greens.",
+      bonusTitle: "+25 Veggie Shield Boost",
+      bonusDesc: "Awarded when finishing healthy lunch vegetables",
+      multiplier: "2.6x",
+      levelBadge: "Lv. 14 Fortress",
+      imgSrc: "https://lh3.googleusercontent.com/aida/AEtjO1WkeNu0IABEaA2DH61WVqOKkPpDIIaqMlh8cPm8pPJM98DyhHWkrCn_gqlsQTtSnqUEEtJFMm0X9E990JXVJD_160xfLY4enk5k2BthexNSUYeMmPvU5VWV09s9-e8mayKTgGF7-ws4IdQS7UZlHyPzn3OjmKDnHaagtcYJnpujpiCAQWlBwq1g1-6d6HBAz-MPW81fOL4hRdb7GXt9RdvptjhmIClgsWrLzNZoD2gPcg"
+    },
+    {
+      id: "cosmo",
+      name: "Cosmo Cyber Mech",
+      title: "Quantum Hound",
+      archetype: "mech",
+      affinity: "Quantum & Circuit",
+      habit: "Learning Games",
+      habitIcon: "videogame_asset",
+      level: 16,
+      power: 940,
+      xp: 1350,
+      maxXp: 1450,
+      hunger: 92,
+      energy: 100,
+      joy: 96,
+      hygiene: 88,
+      lore: "Built with slate carbon plates, glowing cyan laser circuits, and amber joints. Cosmo turns educational logic games and coding puzzles into thrilling galactic levels.",
+      bonusTitle: "2.5x Multiplier on Logic Puzzles",
+      bonusDesc: "Massive bonus on STEM challenges and puzzle quests",
+      multiplier: "3.0x",
+      levelBadge: "Lv. 16 Quantum Ace",
+      imgSrc: "https://lh3.googleusercontent.com/aida/AEtjO1WC8BrdnOblEpeQK1eril7rFRHjb2GHByO_XS559QYb3Fh8tPoqyTaTmDsGsLEcMLlrR-d-4HD3SX43BmtogfCU4cDXfGWGJkJl9bA9mjUedSj5MHvmKyv-ivq3TolT17HZA67QAlh1Tx2HdiNPQjzxmThiiBm3fcIkyut_lv9YSHVMIwgpRBTqjS6sRdhvtuQO-lv_tbkubnoWEDyqG6oOpMY4__OaXUjMDCBpJM10xw"
+    },
+    {
+      id: "leo",
+      name: "Leo the Lion",
+      title: "Pride Leader",
+      archetype: "beast_aquatic",
+      affinity: "Solar & Savannah",
+      habit: "Teamwork",
+      habitIcon: "groups",
+      level: 13,
+      power: 870,
+      xp: 850,
+      maxXp: 1100,
+      hunger: 90,
+      energy: 92,
+      joy: 93,
+      hygiene: 82,
+      lore: "Proud lion companion with a golden crown and teamwork medal. Leo instills kindness, cooperative play, and team spirit in classroom chores and sibling games.",
+      bonusTitle: "+25 Camaraderie Coins",
+      bonusDesc: "Granted for verified family teamwork and helping others",
+      multiplier: "2.4x",
+      levelBadge: "Lv. 13 Pride Captain",
+      imgSrc: "https://lh3.googleusercontent.com/aida/AEtjO1XXv04jxGxFf9blUxRNL-_5AG10AnBMChG5N1YZiur1HOhBrpcnkT_PbVcI0Pz5vNNHWBEg23CVBoln9aVlnOjCNppJkj4nznMNuQjatRplHHMmL4LM1Nc-fwHGaboiP13knCb8UPeS7dDc3qCHxs-5AlpJ6LoO8H8WuzbYQDap4q-R18ZQX40r7xLmzdWwoH5tdXvUaOpkPHDU1K5UQa96MoscXOLiQJk6vx6txLC5sA"
+    },
+    {
+      id: "stripe",
+      name: "Stripe the Tiger",
+      title: "Clean Paws",
+      archetype: "beast_aquatic",
+      affinity: "Blaze & Aqua Bubbles",
+      habit: "Wash Hands",
+      habitIcon: "soap",
+      level: 9,
+      power: 780,
+      xp: 490,
+      maxXp: 800,
+      hunger: 88,
+      energy: 90,
+      joy: 95,
+      hygiene: 100,
+      lore: "Energetic orange tiger cub covered in sparkling soap suds. Stripe ensures little heroes lather paws with warm water and soap for a full 20 seconds.",
+      bonusTitle: "+15 Sparkling Paws",
+      bonusDesc: "Awarded for washing hands before meals and after play",
+      multiplier: "2.0x",
+      levelBadge: "Lv. 9 Clean Scout",
+      imgSrc: "https://lh3.googleusercontent.com/aida/AEtjO1XOwpsdvw5r9uGQuPo4n1qPnRJvBq573oLeMQiIQBaZCPbAN49wa7VSgSz3eE6RyG_H4SWFKGAyOiCt9uIV828N8GXhnT4MUTmdk7DTHD_FDJTdhZseuKEdFLi4_hZevMdXYvd7EWHWppBj2p4wQ0ePl4dZMXCAydqC-QIux4fArFR6o7C8mY9-sVRXNpPkqhP8rllrg7yPCM2M8DdJ-qrk49_wugbVP0p7D5KG2O8KGQ"
+    },
+    {
+      id: "fang",
+      name: "Fang the Wolf",
+      title: "Moonlight Scout",
+      archetype: "beast_aquatic",
+      affinity: "Silver & Mint",
+      habit: "Brush Teeth",
+      habitIcon: "dentistry",
+      level: 11,
+      power: 820,
+      xp: 680,
+      maxXp: 950,
+      hunger: 84,
+      energy: 87,
+      joy: 89,
+      hygiene: 100,
+      lore: "Titanium silver arctic wolf with sparkling clean smile fangs and a mint toothbrush shield. Never lets bedtime tooth hygiene slip past schedule.",
+      bonusTitle: "+20 Moonfang Polish",
+      bonusDesc: "Granted for nighttime brushing streak of 5+ days",
+      multiplier: "2.2x",
+      levelBadge: "Lv. 11 Pack Guardian",
+      imgSrc: "https://lh3.googleusercontent.com/aida/AEtjO1WiT3ElCQc0suUWr0AuPXfMcp0SWJzZjzPhkbGsVpk35HtBZTDKI_0Gmtpg23UH9F2otv6EqrGJCRYkjvBr9ru97TgqlSHtToy9v2__aL-x6bu7kGfvKT31V3tY5rYKLLMhKrWgqUqDR_umwJalvsxPhLL0EezxGU6UBU2DlalT_qfeauKyxSpCnDZz5BW0VTKFV3VoLMgO1Brl-Y8ZcpCR2rDIRzYQ-xfnZ1zvoTWZ"
+    },
+    {
+      id: "scout",
+      name: "Scout the Eagle",
+      title: "Sky Sentinel",
+      archetype: "beast_aquatic",
+      affinity: "Cobalt & Solar",
+      habit: "Homework & Reading",
+      habitIcon: "menu_book",
+      level: 12,
+      power: 845,
+      xp: 790,
+      maxXp: 1050,
+      hunger: 80,
+      energy: 92,
+      joy: 86,
+      hygiene: 90,
+      lore: "Smart aviator blue eagle wearing a flight study helmet and holding a textbook. Scout scans text passages quickly and inspires deep literary wonder.",
+      bonusTitle: "+22 High-Altitude Focus",
+      bonusDesc: "Earned for reading a complete book chapter",
+      multiplier: "2.3x",
+      levelBadge: "Lv. 12 Sky Scholar",
+      imgSrc: "https://lh3.googleusercontent.com/aida/AEtjO1X5mhNPYXfq60ZZy-uzgXNOCibBnIWOP6OXlVWZ9JAHjRPF45mEmJR47aNvV37W8QC6lpIbrdFICsujH1XM0g47_wDZ9TR4BWbvcs9bMumeNgRIDILAqw_4Ty9SYAKQRIcFgeSVLErJ3BeqtcLGjv6hB6nApKno0X7R85PS143aeJFjyj84INlNBi-ucspJR2FkBnifzzngMmrZ70wQRxcB_QtnsaE1NEUMOe19ZnUj6w"
+    },
+    {
+      id: "gnasher",
+      name: "Gnasher the Shark",
+      title: "Deep Diver",
+      archetype: "beast_aquatic",
+      affinity: "Abyss & Amber Light",
+      habit: "Bedtime Routine",
+      habitIcon: "bedtime",
+      level: 12,
+      power: 855,
+      xp: 810,
+      maxXp: 1050,
+      hunger: 90,
+      energy: 72,
+      joy: 91,
+      hygiene: 95,
+      lore: "Cozy deep-sea shark wearing a knit sleeping cap and cuddling a glowing starfish nightlight. Banishes bedtime fears with gentle deep ocean reassurance.",
+      bonusTitle: "+24 Starfish Dream Bonus",
+      bonusDesc: "Rewards going to sleep right after storytime",
+      multiplier: "2.3x",
+      levelBadge: "Lv. 12 Slumber Diver",
+      imgSrc: "https://lh3.googleusercontent.com/aida/AEtjO1VKN6hexvA7-KhgFuiQ7CF0hl-nED0ehhCm7Kh-E2gIBBPWLs0w5AyI6tvZIIeZDO7JfBB3Ibq7yaeTMYmkPnb6C5j6_D5E25Tv2J1gGQtrxkosAlRMJpU2xlGbYUamzW3Vy9FaHoxkmfOOtDyGlL1k8m5aai0TXUd7nnnr8ThTwccul8tPYLg_njZyGHQw6Uu6VFVWf_RGi9bMEdA5ayYGlw1pMC7EbBH-OsT6K8L7Jg"
+    },
+    {
+      id: "shadow",
+      name: "Shadow the Panther",
+      title: "Silent Sweeper",
+      archetype: "beast_aquatic",
+      affinity: "Cyber Emerald & Carbon",
+      habit: "Clean Room",
+      habitIcon: "cleaning_services",
+      level: 15,
+      power: 915,
+      xp: 1210,
+      maxXp: 1300,
+      hunger: 85,
+      energy: 96,
+      joy: 88,
+      hygiene: 94,
+      lore: "Sleek carbon black panther with glowing night-vision emerald accents and miniature storage locker. Cleans toys quietly like an elite stealth ninja.",
+      bonusTitle: "+30 Silent Sweep Bounty",
+      bonusDesc: "Awarded for 100% clean floor inspection at evening",
+      multiplier: "2.7x",
+      levelBadge: "Lv. 15 Stealth Marshal",
+      imgSrc: "https://lh3.googleusercontent.com/aida/AEtjO1WFPKifezeiU4DDHzSLvMybfsg1hH8xbEkL-Z9Dz8jYQBulel-gRUJx9vMtXHMNWInxUh-rbQpVaT-Gnx6pOtLiuGDbZtvgCiFnQuHDLpH1AifscDKfaTBqS7LnY5rnYqVi5enYTjHx6jBqXtgCnAddAOHTVDqKqyo6toTXQCKxsv9ZxkRt5BaueyzqOW6GzI33FKCUsXf4H6MaTPP0i0T_MkgOl9I8dobuU_2l9Uy4jA"
+    },
+    {
+      id: "barnaby",
+      name: "Barnaby the Bear",
+      title: "Honey Woodsman",
+      archetype: "beast_aquatic",
+      affinity: "Timber & Forest Leaf",
+      habit: "Healthy Eating",
+      habitIcon: "nutrition",
+      level: 13,
+      power: 865,
+      xp: 890,
+      maxXp: 1100,
+      hunger: 98,
+      energy: 80,
+      joy: 94,
+      hygiene: 82,
+      lore: "Friendly lumberjack bear holding a wooden honey dipper and fresh crisp apple. Champions whole fruit snacks over candy and processed sweets.",
+      bonusTitle: "+25 Orchard Harvest Bonus",
+      bonusDesc: "Earned when packing fruit slices for school snack",
+      multiplier: "2.4x",
+      levelBadge: "Lv. 13 Woodsman",
+      imgSrc: "https://lh3.googleusercontent.com/aida/AEtjO1W8VciaaoFNeHHdEQfPlfGPTfMGsrjbp_vHC4N9UFr4BI1xB48qEZI0cWZ4DcI2x9X_xGHRU_fagnRXqSt9Cv7FV3OVH5PwY5RSfNtJ_pc_Vnc9MMIcW-3PqHbpkgyA1GKnAQoVpRXX_-WT21_kQa7Wt_rh82ekHCQpxNBhRVab9u306tZ_KiQtjIVZtrukxMhXOrZECN86Fu9FHmBdKrWR17fVzP7SrMHd3fcWV_bhTQ"
+    },
+    {
+      id: "ollie",
+      name: "Ollie the Otter",
+      title: "River Craftmaster",
+      archetype: "beast_aquatic",
+      affinity: "Torrent & Moss",
+      habit: "Creative Play",
+      habitIcon: "extension",
+      level: 10,
+      power: 800,
+      xp: 570,
+      maxXp: 900,
+      hunger: 86,
+      energy: 94,
+      joy: 98,
+      hygiene: 95,
+      lore: "Equipped with a craft toolbelt and interlocking building blocks. Ollie encourages spatial creativity, drawing blueprints, and imaginative Lego crafts.",
+      bonusTitle: "+20 Master Builder Coins",
+      bonusDesc: "Claimed after building and tidying an imaginative toy structure",
+      multiplier: "2.1x",
+      levelBadge: "Lv. 10 Craft Artisan",
+      imgSrc: "https://lh3.googleusercontent.com/aida/AEtjO1VhxMlVsCn3F6FNShq6QkwwXSVkiEwGXrfpksFS79qaChXpHcJH-prGKsmutQncFK3APf6RQOmoNLqIfN-A0ZkD5-AvTMj2Tl5wsoa6IasSBWhxRJRWOyn7YaC5EZbRiwZqnZh18XRiTKEh0bFecAD_LJq7AFx95D-lewtQZOd51iss0PPi1mIFSAsXSl7bjH7O_cfscMayHDF7tdElPMs5_KXa6HYmR4J-18grhpkX7A"
+    }
+  ];
+
+  let selectedPetId = "rex";
+  let activeHeroId = "rex";
+  let currentFilter = "all";
+  let searchQuery = "";
+
+  function renderGrid() {
+    const grid = document.getElementById("pets-grid");
+    grid.innerHTML = "";
+
+    const filtered = PETS_DATA.filter(pet => {
+      const matchArchetype = (currentFilter === "all") || (pet.archetype === currentFilter);
+      const matchSearch = pet.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          pet.habit.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          pet.affinity.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          pet.title.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchArchetype && matchSearch;
+    });
+
+    document.getElementById("visible-pet-count").textContent = filtered.length;
+
+    filtered.forEach(pet => {
+      const isSelected = pet.id === selectedPetId;
+      const isActiveHero = pet.id === activeHeroId;
+
+      const card = document.createElement("div");
+      card.className = `p-sm rounded-xl cursor-pointer transition-all flex flex-col gap-xs select-none relative ${
+        isSelected 
+          ? "bg-surface-container-high ring-2 ring-primary shadow-[0_8px_20px_rgba(46,204,113,0.35)] translate-y-[-2px] border border-primary/40" 
+          : "bg-surface-container hover:bg-surface-bright shadow-[0_5px_0_#050f18] active:translate-y-1 active:shadow-none border border-surface-container-high/40"
+      }`;
+
+      card.onclick = () => selectPet(pet.id);
+
+      card.innerHTML = `
+        <div class="flex items-center justify-between gap-xs">
+          <div class="flex items-center gap-sm">
+            <div class="relative w-14 h-14 rounded-xl overflow-hidden bg-surface-container-lowest border border-surface-container-high shrink-0 shadow-inner flex items-center justify-center">
+              <img src="${pet.imgSrc}" alt="${pet.name}" class="w-full h-full object-cover"/>
+            </div>
+            <div class="flex flex-col min-w-0">
+              <span class="font-label-md text-label-md text-on-surface font-bold truncate">${pet.name}</span>
+              <span class="font-label-sm text-[11px] text-on-surface-variant truncate">${pet.title}</span>
+              <span class="font-mono text-[10px] text-primary">${pet.power} PWR • Lv. ${pet.level}</span>
+            </div>
+          </div>
+          <div class="flex flex-col items-end shrink-0">
+            <span class="px-xs py-0.5 rounded-full bg-secondary/15 text-secondary font-label-sm text-[11px] font-bold border border-secondary/30">Lv ${pet.level}</span>
+            <span class="font-label-sm text-[10px] text-on-surface-variant mt-1">${pet.multiplier}</span>
+          </div>
+        </div>
+
+        <!-- Badges row -->
+        <div class="flex items-center gap-xs flex-wrap pt-xs">
+          <span class="px-xs py-0.5 rounded-md bg-surface-container-lowest font-label-sm text-[10px] text-primary flex items-center gap-1 border border-surface-container-high/40">
+            <span class="h-1.5 w-1.5 rounded-full bg-primary"></span> ${pet.affinity}
+          </span>
+          <span class="px-xs py-0.5 rounded-md bg-surface-container-lowest font-label-sm text-[10px] text-secondary flex items-center gap-1 border border-surface-container-high/40">
+            <span class="material-symbols-outlined text-[13px] text-secondary">${pet.habitIcon}</span> ${pet.habit}
+          </span>
+        </div>
+
+        <!-- Chunky Segmented Linear Level Progress Bar -->
+        <div class="flex flex-col gap-0.5 pt-xs">
+          <div class="flex justify-between items-center text-[10px] font-label-sm text-on-surface-variant">
+            <span>Level Mastery</span>
+            <span class="text-primary font-mono">${pet.xp}/${pet.maxXp} XP</span>
+          </div>
+          <div class="h-2 w-full bg-surface-container-lowest rounded-full overflow-hidden p-0.5 border border-surface-container-high/40">
+            <div class="h-full rounded-full bg-primary" style="width: ${Math.round((pet.xp / pet.maxXp) * 100)}%"></div>
+          </div>
+        </div>
+
+        ${isActiveHero ? `
+          <div class="mt-xs py-1 px-sm rounded-md bg-primary text-on-primary font-label-sm text-[11px] font-bold flex items-center justify-center gap-xs shadow-[0_2px_6px_rgba(46,204,113,0.4)]">
+            <span class="material-symbols-outlined text-[15px]">verified</span> ACTIVE PARTNER
+          </div>
+        ` : isSelected ? `
+          <div class="mt-xs py-0.5 px-sm rounded-md bg-surface-container-highest text-primary font-label-sm text-[10px] flex items-center justify-center gap-xs border border-primary/30">
+            <span class="material-symbols-outlined text-[14px]">visibility</span> SPOTLIGHTED
+          </div>
+        ` : ''}
+      `;
+
+      grid.appendChild(card);
+    });
+  }
+
+  function selectPet(id) {
+    selectedPetId = id;
+    const pet = PETS_DATA.find(p => p.id === id);
+    if (!pet) return;
+
+    // Update inspector cockpit details
+    document.getElementById("inspector-name").textContent = pet.name;
+    document.getElementById("inspector-title").textContent = pet.title;
+    document.getElementById("inspector-level-badge").textContent = pet.levelBadge;
+    document.getElementById("inspector-affinity").textContent = pet.affinity;
+    document.getElementById("inspector-habit").textContent = pet.habit;
+    document.getElementById("inspector-habit-icon").textContent = pet.habitIcon;
+    document.getElementById("inspector-lore").textContent = pet.lore;
+    document.getElementById("inspector-bonus-title").textContent = pet.bonusTitle;
+    document.getElementById("inspector-bonus-desc").textContent = pet.bonusDesc;
+    document.getElementById("inspector-multiplier").textContent = pet.multiplier;
+
+    // Image source
+    document.getElementById("inspector-img").src = pet.imgSrc;
+    document.getElementById("inspector-img").alt = `${pet.name} 3D tactile designer toy`;
+
+    // Linear level track
+    const pct = Math.round((pet.xp / pet.maxXp) * 100);
+    document.getElementById("inspector-level-rank").textContent = `Tier ${Math.floor(pet.level / 5) + 1} (Lv. ${pet.level} / 50+)`;
+    document.getElementById("inspector-xp-text").textContent = `${pet.xp} / ${pet.maxXp} XP (${pct}%)`;
+    document.getElementById("inspector-xp-bar").style.width = `${pct}%`;
+
+    // Stat bars
+    document.getElementById("stat-val-hunger").textContent = `${pet.hunger}%`;
+    document.getElementById("stat-bar-hunger").style.width = `${pet.hunger}%`;
+
+    document.getElementById("stat-val-energy").textContent = `${pet.energy}%`;
+    document.getElementById("stat-bar-energy").style.width = `${pet.energy}%`;
+
+    document.getElementById("stat-val-joy").textContent = `${pet.joy}%`;
+    document.getElementById("stat-bar-joy").style.width = `${pet.joy}%`;
+
+    document.getElementById("stat-val-hygiene").textContent = `${pet.hygiene}%`;
+    document.getElementById("stat-bar-hygiene").style.width = `${pet.hygiene}%`;
+
+    renderGrid();
+  }
+
+  // Filter tabs
+  document.querySelectorAll(".archetype-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".archetype-btn").forEach(b => {
+        b.className = "archetype-btn flex items-center gap-xs px-sm py-xs rounded-lg font-label-md text-label-md bg-surface-container text-on-surface-variant hover:text-on-surface shadow-[0_5px_0_#050f18] active:translate-y-1 active:shadow-none transition-all cursor-pointer";
+      });
+      btn.className = "archetype-btn active flex items-center gap-xs px-sm py-xs rounded-lg font-label-md text-label-md bg-primary text-on-primary shadow-[0_5px_0_#005228] active:translate-y-1 active:shadow-none transition-all cursor-pointer font-bold";
+      currentFilter = btn.dataset.filter;
+      renderGrid();
+    });
+  });
+
+  // Search input
+  document.getElementById("pet-search").addEventListener("input", (e) => {
+    searchQuery = e.target.value;
+    renderGrid();
+  });
+
+  // Sort dropdown
+  document.getElementById("pet-sort").addEventListener("change", (e) => {
+    const val = e.target.value;
+    if (val === "power") {
+      PETS_DATA.sort((a, b) => b.power - a.power);
+    } else if (val === "level") {
+      PETS_DATA.sort((a, b) => b.level - a.level);
+    } else if (val === "name") {
+      PETS_DATA.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (val === "habit") {
+      PETS_DATA.sort((a, b) => a.habit.localeCompare(b.habit));
+    }
+    renderGrid();
+  });
+
+  // Button actions
+  document.getElementById("btn-set-active").addEventListener("click", () => {
+    activeHeroId = selectedPetId;
+    const pet = PETS_DATA.find(p => p.id === selectedPetId);
+    if (pet) {
+      document.getElementById("header-active-name").innerHTML = `<span class="material-symbols-outlined text-[20px]">shield_check</span> ${pet.name}`;
+      document.getElementById("topbar-active-name").textContent = pet.name;
+      const btn = document.getElementById("btn-set-active");
+      const orig = btn.innerHTML;
+      btn.innerHTML = `<span class="material-symbols-outlined text-[24px]">verified</span><span>HERO DEPLOYED!</span>`;
+      btn.classList.remove("bg-primary", "text-on-primary");
+      btn.classList.add("bg-secondary", "text-on-secondary");
+      setTimeout(() => {
+        btn.innerHTML = orig;
+        btn.classList.remove("bg-secondary", "text-on-secondary");
+        btn.classList.add("bg-primary", "text-on-primary");
+      }, 1400);
+    }
+    renderGrid();
+  });
+
+  document.getElementById("btn-feed-treat").addEventListener("click", () => {
+    const pet = PETS_DATA.find(p => p.id === selectedPetId);
+    if (pet) {
+      pet.hunger = Math.min(100, pet.hunger + 10);
+      pet.joy = Math.min(100, pet.joy + 5);
+      pet.xp = Math.min(pet.maxXp, pet.xp + 30);
+      selectPet(pet.id);
+      const btn = document.getElementById("btn-feed-treat");
+      btn.classList.add("scale-95");
+      setTimeout(() => btn.classList.remove("scale-95"), 150);
+    }
+  });
+
+  document.getElementById("btn-train-levelup").addEventListener("click", () => {
+    const pet = PETS_DATA.find(p => p.id === selectedPetId);
+    if (pet) {
+      pet.xp += 150;
+      if (pet.xp >= pet.maxXp) {
+        pet.level += 1;
+        pet.xp = pet.xp - pet.maxXp;
+        pet.maxXp += 100;
+        pet.power += 25;
+        pet.levelBadge = `Lv. ${pet.level} Guardian`;
+      }
+      selectPet(pet.id);
+      const btn = document.getElementById("btn-train-levelup");
+      const orig = btn.innerHTML;
+      btn.innerHTML = `<span class="material-symbols-outlined text-[20px]">check</span><span>+150 XP TRAINED!</span>`;
+      setTimeout(() => btn.innerHTML = orig, 1000);
+    }
+  });
+
+  // Initial load
+  selectPet("rex");
+</script></main><footer class="w-full bg-surface-container-lowest py-space-lg mt-space-xl border-t border-surface-container-high/50"><div class="w-full max-w-[1360px] mx-auto px-margin-mobile md:px-margin lg:px-lg flex flex-col md:flex-row items-center justify-between gap-space-md"><div class="flex items-center gap-xs"><div class="h-7 w-7 rounded-lg bg-surface-container-high flex items-center justify-center border border-primary/30"><span class="material-symbols-outlined text-primary text-[16px]">shield</span></div><span class="font-label-sm text-label-sm text-on-surface-variant">© 2024 Little Heroes Pet Sanctuary Guardian Corps. All 24 Designer 3D Toy Figures Active.</span></div><div class="flex items-center gap-space-md"><a class="font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Sanctuary Safety Code</a><a class="font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-colors" data-path="mastery-track" href="#">Mastery Track System</a><a class="font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Guardian Support</a></div></div></footer></body></html>

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+  <defs>
+    <radialGradient id="stegoBg" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#f1c40f" stop-opacity="0.35"/>
+      <stop offset="70%" stop-color="#232111" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#09141e" stop-opacity="1"/>
+    </radialGradient>
+    <filter id="stegoGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#f1c40f" flood-opacity="0.5"/>
+    </filter>
+    <linearGradient id="stegoBorder" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffeaa7"/>
+      <stop offset="100%" stop-color="#9b7b02"/>
+    </linearGradient>
+  </defs>
+  <rect x="12" y="12" width="216" height="216" rx="44" fill="#050b10"/>
+  <rect x="12" y="10" width="216" height="212" rx="44" fill="url(#stegoBg)" stroke="url(#stegoBorder)" stroke-width="4" filter="url(#stegoGlow)"/>
+  <circle cx="120" cy="110" r="70" fill="#18160a" stroke="#d4ac0d" stroke-width="2.5" stroke-dasharray="6 4"/>
+  <!-- Stego Back Plates (Solar Gold) -->
+  <polygon points="85,92 94,70 105,94" fill="#f1c40f"/>
+  <polygon points="106,86 118,60 132,88" fill="#f39c12"/>
+  <polygon points="133,88 146,65 158,92" fill="#f1c40f"/>
+  <!-- Stego Body -->
+  <path d="M72 135 C74 110, 95 95, 120 95 C145 95, 166 110, 172 135 C165 148, 145 152, 120 152 C95 152, 75 148, 72 135 Z" fill="#2ecc71"/>
+  <!-- Outdoor Play Banner -->
+  <rect x="36" y="174" width="168" height="34" rx="17" fill="#9b7b02" stroke="#ffeaa7" stroke-width="2"/>
+  <text x="120" y="196" font-family="'Plus Jakarta Sans', sans-serif" font-weight="800" font-size="13" fill="#ffffff" text-anchor="middle" letter-spacing="1">STEGO • OUTDOOR PLAY</text>
+</svg>

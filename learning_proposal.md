@@ -1,46 +1,56 @@
-# Learning Proposal: Multi-Device Real-Time Sync & Household Device Session Revocation (/learn /boost)
+# Learning Proposal: 24 Pets Universe & Tactile Toy Architecture Guidelines (/learn)
 
-## Root Cause Analysis
-1. **Quota Cutoff Collateral Damage**: When Firestore free-tier write quotas were exceeded, `firestoreSyncService.markQuotaExhausted` previously called `this.stopSync()`, which tore down the `onSnapshot` read listener and locked the device out of real-time sync for 24 hours. Because read listeners do not consume write quota, destroying read streams crippled multi-device synchronization unnecessarily.
-2. **Uncoalesced Rapid Writes**: Dozens of state mutations across `store.js` called `saveState(true)` immediately, and even simple navigation view switches (`navigate()`) called `saveState()`. This burned through daily free write quotas in minutes during ordinary usage.
-3. **Incomplete State Serialization**: Critical child and pet systems (`petSanctuary`, `heroHQ`, `heroForge`, `equippedPetGearSlots`, `equippedPetGearMap`, `customGearDyesMap`, `savedHeroCards`, `activeExpeditions`, `expeditionHistory`, `unlockedArtifacts`, `gameMasteryMap`, `petSparkMap`, and kid screen time settings) were stored only in localStorage or omitted from cloud push and hydration, causing data to desync or disappear when switching devices.
-4. **Lack of Device Session Control**: Parents had no visibility into what phones or tablets were currently connected to the household, nor any mechanism to remotely revoke a compromised, lost, or decommissioned device.
+## 1. Context & Motivation
+Following the comprehensive overhaul of the Little Heroes companion system from legacy evolutions and skeletal animation rigs to the **Adventurous Explorer 24-Pet Chunky Tactile Toy System**, this rule captures and enforces the foundational domain invariants across all future code additions.
 
 ---
 
-## Proposed Rules & Best Practices to Persist
+## 2. Classification: Workspace Rule
+**Target Path:** `.agents/rules/pet_companion_architecture_guidelines.md`  
+**Rationale:** Universal architectural guardrails, palette constraints, and component invariants that apply to any file touching pets, hero HQ, gear studio, workouts, and arcade mini-games.
 
-### 1. Multi-Device Live Sync Architecture (Instant 0ms BroadcastChannel + 800ms Coalesced Writes)
-- Multi-tab and same-origin browser sessions communicate instantly with 0ms latency using a dedicated `BroadcastChannel('little_heroes_realtime_sync')`.
-- Outbound cloud writes to Firestore are coalesced using an 800ms debounce timer rather than firing unthrottled on every granular state mutation or UI view navigation.
-- 100% of household game systems must be serialized in cloud payloads: heroes, points, coins, tokens, pet sanctuary, hero HQ, hero forge, pet gear & dyes, expeditions, artifacts, game mastery, kid screen time limits, and device presence.
+---
 
-### 2. Decoupled Listener Resilience (Never Cancel Read Streams on Write Errors)
-- A Firestore write error (such as `RESOURCE_EXHAUSTED` / quota exceeded) must NEVER invoke `stopSync()` or unsubscribe the live `onSnapshot` read listener.
-- Outbound cloud writes back off gracefully with local-first persistence, but incoming real-time updates from other family members' devices continue to stream without interruption.
+## 3. Proposed Rule Invariants
 
-### 3. Household Device Session Revocation & Re-Authentication Lifecycle
-- Parents have the authority in the Parent Portal under Household Management to review all logged-in devices and explicitly revoke/log out any device.
-- Revocation updates `state.devices[deviceId].revoked = true` and records the ID in `state.revokedDeviceIds`.
-- When a revoked device receives this update (or reloads):
-  * It immediately unlinks its session, calls `authService.signOut()` to clear cached OAuth tokens, sets `isAuthenticated = false`, `isHouseholdConfigured = false`, `householdSetupStep = 'auth'`, `isDeviceRevoked = true`, and wipes the household syncCode.
-  * The auto-healing barrier strictly prohibits revoked devices from re-entering the dashboard automatically.
-  * The Landing Auth Modal suppresses 1-click household resumption and displays an explicit notice informing the user that the device was logged out by a parent and requires entering the sync code to rejoin.
-  * Re-entering the sync code via `joinExistingHousehold` cleanly lifts the revocation and restores active session state.
+### A. Strict Color Palette Policy (Zero Purple/Pink)
+- In accordance with `24_pets_design_systems_architecture.md`, strictly omit HEX values in the purple/pink range (`#800080`–`#ff00ff`, `#9b59b6`, `#8e44ad`).
+- Replace with:
+  - High-Energy Aero Cyan (`#00d2ff`, `#00e5ff`)
+  - Quantum Mint / Bioluminescent Emerald (`#00f5d4`, `#2ecc71`)
+  - Solar Amber / Thunder Gold (`#f39c12`, `#ffb300`, `#f1c40f`)
+  - Deep Oceanic Cobalt (`#2980b9`, `#1f618d`)
 
-### 4. Stale Snapshot Grace Window on Reconnection (Prevent Circular Re-Revocation)
-- When a previously revoked device reconnects by entering the valid household sync code, the initial `onSnapshot` emission from Firestore may still contain the pre-rejoin document where `devices[myDeviceId].revoked = true` before the server has processed the un-revoke write.
-- To prevent an immediate circular re-revocation loop where the device logs itself out right after the user types the code:
-  * Maintain a `lastRejoinedTimestamp` grace window (15 seconds) during which stale cloud revocation flags are ignored and sanitized.
-  * Proactively dispatch an `updateDoc` payload upon joining to clear `revoked = false` and remove the device ID from `revokedDeviceIds` in Firestore before the read listener triggers state hydration.
+### B. Pet Progression: Level 1–25 (No Evolutions)
+- Pet evolution stages, evolution sparks, and evolution views are permanently removed.
+- All 24 pets progress from **Level 1 to 25** via Pet Training XP.
+- XP is gained through:
+  1. Linked daily habits and chores matching the pet's assigned habit archetype.
+  2. Daily rotating Pet Workouts.
+  3. Living Sanctuary interactions (feeding, bath, play).
+  4. Arcade mini-games.
+- Stat perks scale incrementally (+1% to +2% per level up to +25%/+50% at Max Level 25).
+- Mastery Milestones at Levels 5 (Apprentice), 10 (Champion), 15 (Master), 20 (Mythic), and 25 (Apex Titan).
 
-### 5. Cached Auth Provider Revocation Barrier (Google OAuth Session Lockout)
-- Firebase Auth maintains indexedDB session tokens that trigger `onAuthStateChanged` asynchronously upon application boot.
-- If an admin parent account was signed into a revoked device, `handleAuthUser` must evaluate `state.isDeviceRevoked` before auto-linking or configuring the household.
-- If revoked, `handleAuthUser` must abort auto-healing and maintain the strict Auth Wall lock until the household sync code is explicitly supplied.
+### C. 4-Category Gear & Spotlight Slots
+- Every pet features 4 distinct equipment categories:
+  1. **Masks** (Head)
+  2. **Capes** (Back)
+  3. **Armor** (Chest)
+  4. **Boots** (Feet)
+- Unlocked gear lives in a shared Hero Wardrobe; each pet maintains its individual equipped slot configuration.
+- Slot UI must use **squircle** icons (`rounded-2xl`) with trophy-style halo spotlight glow effects colored by gear level / rarity:
+  - Level 1 / Common: Slate / Ice Cyan (`rgba(0, 210, 255, 0.45)`)
+  - Level 2 / Uncommon: Emerald Green (`rgba(46, 204, 113, 0.5)`)
+  - Level 3 / Rare: Aero Cobalt (`rgba(52, 152, 219, 0.6)`)
+  - Level 4 / Epic: Solar Amber (`rgba(241, 196, 15, 0.7)`)
+  - Level 5 / Legendary: Prismatic Aurora Gold (`rgba(245, 190, 11, 0.85)`)
 
-### 6. Device Presence Integrity & Tidy Decommissioning
-- Revoked devices must never send heartbeat pings (`pingDevicePresence`) or push state to Firestore (`pushStateToCloud`).
-- Presence updates must write to dotted field paths (`devices.${deviceId}.lastSeen`, `devices.${deviceId}.name`) rather than overwriting the entire device object, preventing accidental erasure of other status attributes.
-- Meaningful client platform heuristics (`getDeviceFriendlyName` / `getDeviceIcon`) must be utilized so parents can identify specific hardware (e.g. iPad, iPhone, Chromebook) rather than seeing identical generic labels.
-- Parents must be provided a removal action (`removeDevice`) to delete retired or permanently logged-out devices from the household roster.
+### D. Tactile Skeuomorphism & Deprecated Skeletons
+- 2D/3D skeletal rigging services (`petSkeletalBodyService`, `petSkeletalFaceService`) are replaced by chunky tactile 3D designer toy figurine artwork, canvas renderers, and interactive skeuomorphic cards.
+- Interactive touch targets must maintain minimum `54px` tap areas with 3D bottom bevels (`border-b-[6px]` or `border-b-[8px]`).
+
+### E. Hero HQ Spatial Layout Integrity
+- The companion pet in Hero HQ must be positioned at the room's vertical center (`bottom-32` or higher) on the central rug/pedestal.
+- Pets must never overlap or crowd the bottom row of interactive furniture buttons (`hq-slot-bed`, `hq-slot-petLounge`, `hq-slot-desk`, `hq-slot-decor`).
+- Flank the elevated pet stage with the 4 gear spotlight squircle slots.
