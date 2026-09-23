@@ -61,7 +61,7 @@ export function renderDinoWorkoutView() {
         <!-- Daily Coach Header Banner -->
         <div class="flex items-center gap-3 bg-surface-container-lowest/80 px-4 py-2.5 rounded-2xl border border-amber-400/40 w-full mb-3 shadow-inner">
           <div class="w-12 h-12 rounded-xl bg-surface-container border border-amber-400/60 flex items-center justify-center p-1 flex-shrink-0">
-            <img src="${coach.avatar || `/assets/pets/${coach.key || 'rex'}.png`}" alt="${coach.name}" class="w-full h-full object-contain filter drop-shadow">
+            <img src="${coach.avatar || `assets/pets/${coach.key || 'rex'}.png`}" alt="${coach.name}" class="w-full h-full object-contain filter drop-shadow">
           </div>
           <div class="flex flex-col text-left min-w-0">
             <div class="flex items-center gap-1.5">

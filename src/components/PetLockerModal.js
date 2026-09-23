@@ -123,7 +123,7 @@ export function renderPetLockerModal() {
 
   const petId = modal.petId || hero?.activePetId || unlockedIds[0] || '1';
   const pet = getPetById(petId);
-  const petImg = pet.avatar || `/assets/pets/${pet.key || 'rex'}.png`;
+  const petImg = pet.avatar || `assets/pets/${pet.key || 'rex'}.png`;
   const petLevel = store.getPetLevel ? store.getPetLevel(petId) : 1;
 
   const equipped = store.getEquippedPetGearSlots(petId);

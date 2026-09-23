@@ -86,7 +86,7 @@ export function renderPetRosterView() {
             const level = store.getPetLevel(pet.id);
             const levelData = getPetLevelData(level);
             const statBonus = calculatePetStatBonus(pet, level);
-            const petImg = pet.avatar || `/assets/pets/${pet.key || 'rex'}.png`;
+            const petImg = pet.avatar || `assets/pets/${pet.key || 'rex'}.png`;
 
             return `
             <div data-pet-card-id="${pet.id}" class="pet-roster-card bg-surface-container rounded-3xl p-4 border-2 ${
@@ -112,7 +112,7 @@ export function renderPetRosterView() {
                   src="${petImg}" 
                   alt="${pet.name}"
                   loading="lazy"
-                  onerror="this.onerror=null; this.src='/assets/pets/${pet.key || 'rex'}.png';"
+                  onerror="this.onerror=null; this.src='assets/pets/${pet.key || 'rex'}.png';"
                 />
               </div>
 

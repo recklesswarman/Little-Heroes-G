@@ -60,7 +60,7 @@ export function renderHeroHQView() {
   const currentTheme = getHQTheme(heroHQ.themeId);
   const isNight = Boolean(heroHQ.isNightMode);
   const coins = hero.coins || 0;
-  const activePet = store.getActivePet ? store.getActivePet() : { id: '1', key: 'rex', name: 'Rex the T-Rex', shortName: 'Rex', avatar: '/assets/pets/rex.png', emoji: '🦖' };
+  const activePet = store.getActivePet ? store.getActivePet() : { id: '1', key: 'rex', name: 'Rex the T-Rex', shortName: 'Rex', avatar: 'assets/pets/rex.png', emoji: '🦖' };
   const petLevel = store.getPetLevel ? store.getPetLevel(activePet.id) : 1;
   const petLevelData = getPetLevelData(petLevel);
   const petStatBonus = calculatePetStatBonus(activePet, petLevel);
@@ -271,7 +271,7 @@ export function renderHeroHQView() {
                 
                 <!-- 3D Chunky Figurine Image -->
                 <img 
-                  src="${activePet.avatar || `/assets/pets/${activePet.key || 'rex'}.png`}" 
+                  src="${activePet.avatar || `assets/pets/${activePet.key || 'rex'}.png`}" 
                   alt="${activePet.name}" 
                   class="w-28 h-28 sm:w-36 sm:h-36 object-contain drop-shadow-[0_12px_24px_rgba(0,0,0,0.7)] animate-float-gentle transition-transform group-hover:scale-110"
                 />

@@ -24,7 +24,7 @@ const PET_SPRITE_CACHE = new Map();
 function preloadPetSprites() {
   if (typeof window === 'undefined') return;
   PETS_DATABASE.forEach(pet => {
-    const src = pet.avatar || `/assets/pets/${pet.key || 'rex'}.png`;
+    const src = pet.avatar || `assets/pets/${pet.key || 'rex'}.png`;
     if (!PET_SPRITE_CACHE.has(src)) {
       const img = new Image();
       img.src = src;
@@ -747,7 +747,7 @@ export class PetSanctuaryCanvas {
   }
 
   renderCreatureMesh(ctx, pet, archetype) {
-    const petImgSrc = pet.avatar || `/assets/pets/${pet.key || 'rex'}.png`;
+    const petImgSrc = pet.avatar || `assets/pets/${pet.key || 'rex'}.png`;
     let img = PET_SPRITE_CACHE.get(petImgSrc);
     if (!img) {
       img = new Image();

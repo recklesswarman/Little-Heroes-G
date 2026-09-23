@@ -1074,7 +1074,7 @@ class Store {
     const levelData = getPetLevelData(level);
     const statBonus = calculatePetStatBonus(petData, level);
     const stats = this.state.petStatsMap?.[petData.id] || { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
-    const avatar = petData.avatar || `/assets/pets/${petData.key || 'rex'}.png`;
+    const avatar = petData.avatar || `assets/pets/${petData.key || 'rex'}.png`;
     return { ...petData, level, xp, levelData, statBonus, ...stats, image: avatar, avatar };
   }
 
@@ -1087,7 +1087,7 @@ class Store {
     const levelData = getPetLevelData(level);
     const statBonus = calculatePetStatBonus(petData, level);
     const stats = this.state.petStatsMap?.[petData.id] || { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
-    const avatar = petData.avatar || `/assets/pets/${petData.key || 'rex'}.png`;
+    const avatar = petData.avatar || `assets/pets/${petData.key || 'rex'}.png`;
     return { ...petData, level, xp, levelData, statBonus, ...stats, image: avatar, avatar };
   }
 
@@ -1170,7 +1170,7 @@ class Store {
     this.state.selectedHero.activePetId = pId;
     const allPets = this.state.pets || PETS_DATABASE;
     const pet = allPets.find(p => String(p.id) === pId || (p.key && p.key === pId)) || PETS_DATABASE.find(p => String(p.id) === pId) || PETS_DATABASE[0];
-    const petImg = pet?.avatar || `/assets/pets/${pet?.key || 'rex'}.png`;
+    const petImg = pet?.avatar || `assets/pets/${pet?.key || 'rex'}.png`;
     
     Sound.fanfare();
     confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
