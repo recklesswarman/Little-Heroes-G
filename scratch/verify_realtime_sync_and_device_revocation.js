@@ -150,7 +150,8 @@ const comprehensiveCloudPayload = {
     unlockedBlueprints: ['flame_sword'],
     customDyes: { armor_1: '#FF5500' }
   },
-  petSparkMap: { 'pet_1': 10 },
+  petLevelMap: { 'pet_1': 5 },
+  petXpMap: { 'pet_1': 250 },
   petStreakShield: { 'pet_1': 3 },
   equippedPetGearSlots: { 'pet_1': { hat: 'pirate_hat' } },
   equippedPetGearMap: { 'pet_1': 'pirate_hat' },
@@ -175,7 +176,8 @@ assert.strictEqual(state.heroes[0].isScreenTimePaused, true);
 assert.deepStrictEqual(state.petSanctuary.unlockedZones, ['meadow', 'crystal_caves']);
 assert.strictEqual(state.heroHQ.hqTheme, 'space_station');
 assert.strictEqual(state.heroForge.customDyes.armor_1, '#FF5500');
-assert.strictEqual(state.petSparkMap['pet_1'], 10);
+assert.strictEqual(state.petLevelMap['pet_1'], 5);
+assert.strictEqual(state.petXpMap['pet_1'], 250);
 assert.strictEqual(state.equippedPetGearMap['pet_1'], 'pirate_hat');
 assert.strictEqual(state.customGearDyesMap['gear_1'], '#00FFAA');
 assert.strictEqual(state.savedHeroCards[0].title, 'Dragon Slayer');

@@ -23,7 +23,7 @@ export function renderAdventuresMapView() {
   // 1. VICTORY RESULTS OVERLAY
   if (victoryResults) {
     const { game, stars, coins, xp, sparks } = victoryResults;
-    const stageAvatar = activePet.stage >= 3 && activePet.evolvedAvatar ? activePet.evolvedAvatar : activePet.avatar;
+    const stageAvatar = activePet.avatar;
 
     return `
       <div class="max-w-md mx-auto px-4 pt-8 pb-28 flex flex-col items-center text-center gap-5 animate-fade-in select-none">
@@ -61,8 +61,8 @@ export function renderAdventuresMapView() {
               <span class="text-xs font-black text-primary">+ ${xp} ⭐</span>
             </div>
             <div class="bg-surface-container-high p-2 rounded-xl border border-surface-container-highest flex flex-col items-center">
-              <span class="text-[9px] font-black text-on-surface-variant uppercase">Sparks</span>
-              <span class="text-xs font-black text-amber-400">+ ${sparks} ⚡</span>
+              <span class="text-[9px] font-black text-on-surface-variant uppercase">Pet XP</span>
+              <span class="text-xs font-black text-amber-400">+ ${sparks * 2} ⚡</span>
             </div>
           </div>
 
@@ -82,7 +82,7 @@ export function renderAdventuresMapView() {
   if (activeGame) {
     const challenges = getGameChallenges(activeGame, currentDiff);
     const challenge = challenges[currentChallengeIdx] || challenges[0];
-    const companionAvatar = activePet.stage >= 3 && activePet.evolvedAvatar ? activePet.evolvedAvatar : activePet.avatar;
+    const companionAvatar = activePet.avatar;
     const isToddler = currentDiff === 'easy';
 
     // Determine companion super move based on element
@@ -250,7 +250,7 @@ export function renderAdventuresMapView() {
         <span class="text-[10px] font-black uppercase tracking-widest text-primary">Interactive Learning World</span>
         <h1 class="font-headline text-2xl sm:text-3xl font-black text-inverse-surface text-shadow">Pet Adventures Map</h1>
         <p class="text-xs font-bold text-on-surface-variant">
-          5 Core Learning Realms • Earn Habit Tokens 🪙, Hero XP ⭐, and Evolution Sparks ⚡!
+          5 Core Learning Realms • Earn Habit Tokens 🪙, Hero XP ⭐, and Companion Training XP ⚡!
         </p>
       </div>
 

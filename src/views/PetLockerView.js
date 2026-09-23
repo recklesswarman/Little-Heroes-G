@@ -102,7 +102,7 @@ export function renderPetLockerView() {
           <div class="relative w-32 h-32 sm:w-36 sm:h-36 rounded-2xl bg-gradient-to-b from-surface-container-high to-surface-container-lowest p-2 border-3 border-amber-500/50 flex items-center justify-center shadow-lg">
             <img class="w-full h-full object-contain animate-float drop-shadow-md" src="${activePet.avatar || activePet.image}" alt="${activePet.name}" />
             <div class="absolute -bottom-2 -right-2 bg-amber-500 text-on-primary text-[10px] font-black uppercase px-2 py-0.5 rounded-md shadow">
-              Stage ${activePet.stage}
+              Lv ${store.getPetLevel(activePet.id)}
             </div>
           </div>
 

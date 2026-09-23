@@ -71,7 +71,7 @@ let discoStep = 0;
 
 // 6. Pet Companion Interaction State
 let petMood = 'Happy';
-let petSpeech = 'Hi Hero! Pick a movement routine to stretch, dance, and earn Evolution Sparks together! ⚡';
+let petSpeech = 'Hi Hero! Pick a movement routine to stretch, dance, and earn Training XP together! ⚡';
 let petAnimation = 'animate-bounce-slow';
 let petHearts = false;
 
@@ -197,7 +197,7 @@ export function renderDancePartyView() {
             <span class="material-symbols-outlined text-secondary text-2xl" style="font-variation-settings: 'FILL' 1;">directions_run</span>
             <h2 class="font-headline text-xl font-black text-inverse-surface">Guided Movement Quests</h2>
           </div>
-          <span class="text-xs font-bold text-secondary">+10 Evolution Sparks ⚡ per Routine</span>
+          <span class="text-xs font-bold text-secondary">+20 Training XP ⚡ per Routine</span>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -337,8 +337,8 @@ function renderMovementSession(hero, activePet, petAvatarUrl, petName) {
             </div>
             <div class="bg-surface-container-high p-3 rounded-2xl border border-amber-500/50 flex flex-col items-center bg-amber-500/10">
               <span class="text-2xl animate-pulse">⚡</span>
-              <span class="font-headline text-base font-black text-amber-400 mt-1">+10 Sparks</span>
-              <span class="text-[10px] text-amber-300">Evolution Sparks</span>
+              <span class="font-headline text-base font-black text-amber-400 mt-1">+20 XP</span>
+              <span class="text-[10px] text-amber-300">Training XP</span>
             </div>
           </div>
 
@@ -460,7 +460,7 @@ function renderMovementSession(hero, activePet, petAvatarUrl, petName) {
             ${renderDance3DViewer({
               canvasId: 'dance-coach-3d-canvas',
               petId: activePet?.id || 'rex',
-              stage: activePet?.stage || 1,
+              stage: 1,
               width: 220,
               height: 220,
               currentMove: getMoveForPose(currentPose),
@@ -761,7 +761,7 @@ export function attachDancePartyEvents() {
   if (arcadeMode === 'movement_session') {
     initDance3DViewer('dance-coach-3d-canvas', {
       petId: store.getActivePet()?.id || 'rex',
-      stage: store.getActivePet()?.stage || 1,
+      stage: 1,
       currentMove: getMoveForPose(activeRoutine?.poses?.[currentPoseIdx]),
       bpm: activeRoutine?.bpm || 118
     });

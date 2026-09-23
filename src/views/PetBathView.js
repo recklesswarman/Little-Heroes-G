@@ -180,7 +180,7 @@ export function renderPetBathView() {
             ${renderPet3DViewer({
               canvasId: 'bath-tub-3d-canvas',
               petId: activePet.id,
-              stage: activePet.stage || 1,
+              stage: 1,
               mode: 'bath',
               avatarFallback: activePet.avatar || activePet.image,
               petName: activePet.name,
@@ -349,7 +349,7 @@ export function attachPetBathListeners() {
   // Initialize 3D Pet in Bath Tub
   initPet3DViewer('bath-tub-3d-canvas', {
     petId: store.getActivePet()?.id || 'rex',
-    stage: store.getActivePet()?.stage || 1,
+    stage: 1,
     mode: 'bath'
   });
 
