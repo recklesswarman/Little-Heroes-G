@@ -1,4 +1,4 @@
-import { store } from '../state/store.js';
+import { store, ALL_24_PET_IDS } from '../state/store.js';
 import { PETS_DATABASE, getPetById } from '../data/petsData.js';
 import { Sound } from '../audio/sfx.js';
 import { speakRex } from '../services/voiceService.js';
@@ -119,11 +119,12 @@ export function renderPetLockerModal() {
   const hero = state.selectedHero;
   const unlockedIds = hero?.unlockedPetIds && hero.unlockedPetIds.length > 0
     ? hero.unlockedPetIds
-    : [hero?.activePetId || 1];
+    : ALL_24_PET_IDS;
 
   const petId = modal.petId || hero?.activePetId || unlockedIds[0] || '1';
   const pet = getPetById(petId);
   const petImg = pet.avatar || `/assets/pets/${pet.key || 'rex'}.png`;
+  const petLevel = store.getPetLevel ? store.getPetLevel(petId) : 1;
 
   const equipped = store.getEquippedPetGearSlots(petId);
   const itemsInTab = PET_GEAR_CATALOG[activeTab] || [];
@@ -189,7 +190,7 @@ export function renderPetLockerModal() {
 
             <div class="w-full flex justify-between items-center z-10 text-[10px] font-black uppercase">
               <span class="text-amber-400 font-bold">${pet.name}</span>
-              <span class="text-secondary">Stage ${stage}</span>
+              <span class="text-secondary">Level ${petLevel}</span>
             </div>
 
             <!-- Pet Character & Gear Badges Overlay -->

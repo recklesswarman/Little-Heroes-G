@@ -17,6 +17,11 @@ export function isExistingActiveHousehold(state) {
 
   const wasExplicitlyConfigured = state.isHouseholdConfigured === true;
 
+  // Note: unlockedPetIds/hasChosenStarterPet/activePetId are deliberately NOT
+  // checked here -- store.js's pet-progression migration now unconditionally
+  // unlocks all 24 pets and sets a default activePetId for every hero on
+  // every load, so those fields are always populated even for a brand-new
+  // stranger device and can no longer signal real customization.
   const hasCustomHeroes = Array.isArray(state.heroes) && (
     state.heroes.length > 1 ||
     state.heroes.some(h => (
@@ -26,10 +31,7 @@ export function isExistingActiveHousehold(state) {
       (h.tokens && Number(h.tokens) > 0) ||
       (h.xp && Number(h.xp) > 0) ||
       (h.level && Number(h.level) > 1) ||
-      (h.streak && Number(h.streak) > 1) ||
-      (Array.isArray(h.unlockedPetIds) && h.unlockedPetIds.length > 0) ||
-      h.hasChosenStarterPet === true ||
-      (h.activePetId !== null && h.activePetId !== undefined)
+      (h.streak && Number(h.streak) > 1)
     ))
   );
 
@@ -43,9 +45,7 @@ export function isExistingActiveHousehold(state) {
       (state.selectedHero.points && Number(state.selectedHero.points) > 0) ||
       (state.selectedHero.coins && Number(state.selectedHero.coins) > 0) ||
       (state.selectedHero.xp && Number(state.selectedHero.xp) > 0) ||
-      (state.selectedHero.level && Number(state.selectedHero.level) > 1) ||
-      (Array.isArray(state.selectedHero.unlockedPetIds) && state.selectedHero.unlockedPetIds.length > 0) ||
-      state.selectedHero.hasChosenStarterPet === true
+      (state.selectedHero.level && Number(state.selectedHero.level) > 1)
     ))
   );
 

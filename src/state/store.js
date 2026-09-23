@@ -1,6 +1,6 @@
 import { Sound } from '../audio/sfx.js';
 import confetti from 'canvas-confetti';
-import { PETS_DATABASE, getPetArchetype, getPetBondBonus, SANCTUARY_TREATS, makePetSvg, getPetLevelData, calculatePetStatBonus, getDailyRotatingPetCoach } from '../data/petsData.js';
+import { PETS_DATABASE, getPetArchetype, getPetBondBonus, getPetById, SANCTUARY_TREATS, makePetSvg, getPetLevelData, calculatePetStatBonus, getDailyRotatingPetCoach } from '../data/petsData.js';
 import { ADVENTURE_GAMES } from '../data/learningGamesData.js';
 import { MOVEMENT_ROUTINES, getMovementRoutine } from '../data/movementRoutinesData.js';
 import { PROFILE_THEMES } from '../data/profileThemesData.js';

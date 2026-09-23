@@ -812,7 +812,7 @@ export function attachHeroHQListeners() {
   // Initialize 3D Roaming Companion Pet in Hero HQ
   const hqPetController = initPet3DViewer('hq-roaming-pet-3d', {
     petId: store.getActivePet()?.id || 'rex',
-    stage: store.getState().selectedHero?.petStageMap?.[store.getActivePet()?.id || 'rex'] || 1,
+    stage: 1,
     mode: 'hq'
   });
 
