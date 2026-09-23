@@ -1116,6 +1116,28 @@ export function attachPetSanctuaryListeners() {
     });
   });
 
+  // Feed Drawer: Treat Shelf Buttons
+  document.querySelectorAll('.feed-treat-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const treatId = btn.getAttribute('data-treat-id');
+      const activePet = store.getActivePet();
+      const result = store.feedPetTreat(activePet?.id, treatId);
+      if (result?.success) {
+        Sound.snackMunch();
+      }
+    });
+  });
+
+  // Bath Drawer: Scrub Sponge Button
+  const scrubBtn = document.getElementById('scrub-sponge-btn');
+  if (scrubBtn) {
+    scrubBtn.addEventListener('click', () => {
+      const activePet = store.getActivePet();
+      Sound.sparkle();
+      store.bathPetProgress(25, activePet?.id);
+    });
+  }
+
   // Magic Egg Hatching Taps
   const eggEl = document.getElementById('magic-egg-pedestal');
   if (eggEl) {

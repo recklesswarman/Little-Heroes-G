@@ -894,6 +894,15 @@ export function attachHeroHQListeners() {
       store.setHQRedecorateDrawer(false);
     });
   }
+  const redecorateBackdrop = document.getElementById('hq-redecorate-backdrop');
+  if (redecorateBackdrop) {
+    redecorateBackdrop.addEventListener('click', (e) => {
+      if (e.target === redecorateBackdrop) {
+        activePreviewItem = null;
+        store.setHQRedecorateDrawer(false);
+      }
+    });
+  }
 
   // 5. Category Tabs in Redecorate Drawer
   document.querySelectorAll('.hq-cat-tab').forEach(tab => {
@@ -1083,6 +1092,15 @@ export function attachHeroHQListeners() {
       selectedTrophyForModal = null;
       Sound.pop();
       store.notify();
+    });
+  }
+  const trophyModalBackdrop = document.getElementById('hq-trophy-modal-backdrop');
+  if (trophyModalBackdrop) {
+    trophyModalBackdrop.addEventListener('click', (e) => {
+      if (e.target === trophyModalBackdrop) {
+        selectedTrophyForModal = null;
+        store.notify();
+      }
     });
   }
 
