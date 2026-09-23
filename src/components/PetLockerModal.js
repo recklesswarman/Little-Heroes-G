@@ -161,7 +161,7 @@ export function renderPetLockerModal() {
             <span class="text-xs font-black text-on-surface-variant uppercase tracking-wider whitespace-nowrap">Companion:</span>
             ${unlockedIds.map(uId => {
               const uPet = state.pets?.find(p => p.id === uId) || PETS_DATABASE.find(p => p.id === uId);
-              const isCurrent = uId === petId;
+              const isCurrent = String(uId) === String(petId);
               return `
                 <button data-switch-pet="${uId}" class="px-3 py-1.5 rounded-xl font-headline text-xs font-black flex items-center gap-1.5 transition-all ${
                   isCurrent
@@ -347,7 +347,7 @@ export function attachPetLockerModalListeners() {
   const switchBtns = document.querySelectorAll('[data-switch-pet]');
   switchBtns.forEach((btn) => {
     btn.addEventListener('click', () => {
-      const newPetId = parseInt(btn.getAttribute('data-switch-pet'));
+      const newPetId = btn.getAttribute('data-switch-pet');
       Sound.click();
       store.openPetLockerModal(newPetId);
     });

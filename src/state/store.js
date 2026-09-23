@@ -5534,7 +5534,7 @@ class Store {
           unlockedPetIds,
           habitatSlots: Math.max(cloudH.habitatSlots || 1, localH?.habitatSlots || 1, unlockedPetIds.length || 1),
           hasChosenStarterPet: cloudH.hasChosenStarterPet ?? (unlockedPetIds.length > 0),
-          activePetId: cloudH.activePetId || localH?.activePetId || (unlockedPetIds[0] || null),
+          activePetId: preferLocalRewards ? (localH.activePetId || (unlockedPetIds[0] || null)) : (cloudH.activePetId || localH?.activePetId || (unlockedPetIds[0] || null)),
           streak: Math.max(cloudH.streak || 1, localH?.streak || 1),
           stars: Math.max(cloudH.stars || 0, localH?.stars || 0),
           role: cloudH.role || localH?.role || cloudH.title || 'Brave Adventurer',

@@ -814,7 +814,7 @@ export function attachPetPenListeners() {
   const petCards = document.querySelectorAll('[data-open-radial-pet]');
   petCards.forEach((card) => {
     card.addEventListener('click', () => {
-      const petId = parseInt(card.getAttribute('data-open-radial-pet'));
+      const petId = card.getAttribute('data-open-radial-pet');
       Sound.click();
       selectedRadialPetId = petId;
       store.notify();
