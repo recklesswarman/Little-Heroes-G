@@ -1,5 +1,5 @@
 import { store } from '../state/store.js';
-import { PETS_DATABASE } from '../data/petsData.js';
+import { PETS_DATABASE, getPetById } from '../data/petsData.js';
 import { Sound } from '../audio/sfx.js';
 import { speakRex } from '../services/voiceService.js';
 
@@ -121,10 +121,9 @@ export function renderPetLockerModal() {
     ? hero.unlockedPetIds
     : [hero?.activePetId || 1];
 
-  const petId = modal.petId || hero?.activePetId || unlockedIds[0] || 1;
-  const pet = state.pets?.find((p) => p.id === petId) || PETS_DATABASE.find((p) => p.id === petId) || PETS_DATABASE[0];
-  const stage = state.petStageMap?.[petId] || 1;
-  const petImg = stage >= 3 && pet.evolvedAvatar ? pet.evolvedAvatar : pet.avatar;
+  const petId = modal.petId || hero?.activePetId || unlockedIds[0] || '1';
+  const pet = getPetById(petId);
+  const petImg = pet.avatar || `/assets/pets/${pet.key || 'rex'}.png`;
 
   const equipped = store.getEquippedPetGearSlots(petId);
   const itemsInTab = PET_GEAR_CATALOG[activeTab] || [];

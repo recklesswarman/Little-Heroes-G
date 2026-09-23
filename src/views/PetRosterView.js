@@ -1,23 +1,26 @@
 import { store } from '../state/store.js';
-import { PETS_DATABASE } from '../data/petsData.js';
+import { PETS_DATABASE, getPetArchetype, getPetLevelData, calculatePetStatBonus } from '../data/petsData.js';
 import { Sound } from '../audio/sfx.js';
 
-let activeElementFilter = 'All';
+let activeArchetypeFilter = 'all';
 
 export function renderPetRosterView() {
-  const state = store.getState();
-  const hero = state.selectedHero;
-  const activePetId = hero.activePetId || (hero.unlockedPetIds?.[0] || 1);
-  const unlockedIds = hero.unlockedPetIds || [];
-  const habitatSlots = hero.habitatSlots || Math.max(1, unlockedIds.length);
-  const hasOpenSlot = unlockedIds.length < habitatSlots;
+  const activePet = store.getActivePet();
+  const activePetId = activePet ? String(activePet.id) : '1';
 
-  const elements = ['All', 'Fire', 'Water', 'Earth', 'Air', 'Nature'];
+  const filterTabs = [
+    { id: 'all', label: 'All (24)', icon: 'apps' },
+    { id: 'dino', label: 'Dinos (8)', icon: 'cruelty_free' },
+    { id: 'mystic', label: 'Mystics (5)', icon: 'auto_awesome' },
+    { id: 'beast', label: 'Beasts (6)', icon: 'pets' },
+    { id: 'aquatic', label: 'Aquatic (3)', icon: 'water' },
+    { id: 'mech', label: 'Mechs (2)', icon: 'smart_toy' }
+  ];
 
   const filteredPets =
-    activeElementFilter === 'All'
+    activeArchetypeFilter === 'all'
       ? PETS_DATABASE
-      : PETS_DATABASE.filter((p) => p.element.toLowerCase().includes(activeElementFilter.toLowerCase()));
+      : PETS_DATABASE.filter((p) => (p.archetype || 'dino') === activeArchetypeFilter);
 
   return `
     <div class="max-w-5xl mx-auto px-4 pt-4 pb-28 flex flex-col gap-5 animate-fade-in">
@@ -29,11 +32,11 @@ export function renderPetRosterView() {
         </button>
         <div class="flex flex-col items-end">
           <h1 class="font-headline text-2xl font-black text-inverse-surface text-shadow">The 24 Pet Roster</h1>
-          <span class="text-xs font-bold text-primary">${unlockedIds.length} of 24 Companions Unlocked</span>
+          <span class="text-xs font-bold text-primary">All 24 Tactile Companions Ready</span>
         </div>
       </div>
 
-      <!-- Habitat Slots Management Card -->
+      <!-- Habitat Overview Banner -->
       <div class="bg-surface-container rounded-3xl p-4 sm:p-5 border-2 border-primary/40 card-shadow flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div class="flex items-center gap-3">
           <div class="w-12 h-12 rounded-2xl bg-secondary/20 text-secondary border border-secondary/40 flex items-center justify-center text-2xl shadow-sm flex-shrink-0">
@@ -42,44 +45,32 @@ export function renderPetRosterView() {
           <div>
             <div class="flex items-center gap-2 flex-wrap">
               <h2 class="font-headline text-base sm:text-lg font-black text-inverse-surface">
-                Companion Habitat: ${unlockedIds.length} / ${habitatSlots} Slots Occupied
+                Companion Sanctuary: 24 Hero Toys Available
               </h2>
-              ${
-                hasOpenSlot
-                  ? `<span class="bg-primary/20 text-primary text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border border-primary/40 animate-pulse">✨ ${
-                      habitatSlots - unlockedIds.length
-                    } Open Slot Available</span>`
-                  : `<span class="bg-surface-container-highest text-on-surface-variant text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full">All Slots Occupied</span>`
-              }
+              <span class="bg-primary/20 text-primary text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border border-primary/40">
+                ✨ Level 1-25 Mastery
+              </span>
             </div>
             <p class="text-xs text-on-surface-variant mt-0.5">
-              ${
-                unlockedIds.length < 3
-                  ? 'Evolve your pets to Stage 2 and Stage 4 to earn your 3 free companions! Extra slots cost Habit Coins.'
-                  : 'Unlock additional Habitat Slots for 250 Habit Coins (🪙) each to expand your sanctuary.'
-              }
+              Train each companion with daily healthy habits and active play to boost your hero coin and XP bonuses!
             </p>
           </div>
         </div>
-
-        <button id="buy-habitat-slot-btn" class="bg-gradient-to-r from-secondary to-primary text-on-secondary font-headline text-xs font-black px-4 py-3 rounded-2xl chunky-btn border-secondary-container shadow-sm flex items-center gap-1.5 active:scale-95 flex-shrink-0 min-h-[48px]">
-          <span class="material-symbols-outlined text-base">add_home</span>
-          <span>+ Habitat Slot (🪙 250)</span>
-        </button>
       </div>
 
-      <!-- Element Filter Badges -->
-      <div class="flex gap-2 overflow-x-auto pb-1">
-        ${elements
-          .map((elem) => {
-            const isActive = activeElementFilter === elem;
+      <!-- Archetype Filter Pills -->
+      <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+        ${filterTabs
+          .map((tab) => {
+            const isActive = activeArchetypeFilter === tab.id;
             return `
-            <button data-elem="${elem}" class="elem-filter-btn px-4 py-2 rounded-2xl font-headline text-xs font-black whitespace-nowrap transition-all min-h-[44px] inline-flex items-center justify-center ${
+            <button data-archetype="${tab.id}" class="archetype-filter-btn px-4 py-2 rounded-2xl font-headline text-xs font-black whitespace-nowrap transition-all min-h-[44px] inline-flex items-center justify-center gap-1.5 ${
               isActive
-                ? 'bg-primary text-on-primary chunky-btn-sm border-primary-container shadow-sm'
+                ? 'bg-primary text-slate-950 font-black shadow-md'
                 : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border border-surface-container-highest'
             }">
-              ${elem}
+              <span class="material-symbols-outlined text-sm">${tab.icon}</span>
+              <span>${tab.label}</span>
             </button>
           `;
           })
@@ -87,44 +78,49 @@ export function renderPetRosterView() {
       </div>
 
       <!-- 24 Pets Grid -->
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         ${filteredPets
           .map((pet) => {
-            const isUnlocked = unlockedIds.includes(pet.id);
-            const isEquipped = activePetId === pet.id;
-            const stage = state.petStageMap[pet.id] || hero.petStageMap?.[pet.id] || 1;
+            const isEquipped = String(activePetId) === String(pet.id);
+            const archetype = getPetArchetype(pet);
+            const level = store.getPetLevel(pet.id);
+            const levelData = getPetLevelData(level);
+            const statBonus = calculatePetStatBonus(pet, level);
+            const petImg = pet.avatar || `/assets/pets/${pet.key || 'rex'}.png`;
 
             return `
-            <div data-pet-card-id="${pet.id}" class="pet-roster-card bg-surface-container rounded-3xl p-4 border-3 ${
+            <div data-pet-card-id="${pet.id}" class="pet-roster-card bg-surface-container rounded-3xl p-4 border-2 ${
               isEquipped
-                ? 'border-primary bg-surface-container-high shadow-[0_0_20px_rgba(84,233,138,0.3)]'
-                : isUnlocked
-                ? 'border-surface-container-highest hover:border-primary/50'
-                : 'border-surface-container-highest/60 opacity-85 hover:opacity-100'
+                ? 'border-primary bg-surface-container-high shadow-[0_0_20px_rgba(84,233,138,0.3)] ring-2 ring-primary/40'
+                : 'border-surface-container-highest hover:border-primary/50'
             } card-shadow flex flex-col items-center justify-between gap-3 cursor-pointer group relative overflow-hidden text-center transition-transform active:scale-95">
               
-              <!-- Stage / Status Ribbon -->
+              <!-- Level & Archetype Status Ribbon -->
               <div class="w-full flex justify-between items-center text-[10px] font-black uppercase">
-                ${
-                  isUnlocked
-                    ? `<span class="text-primary bg-primary/15 px-2 py-0.5 rounded-full border border-primary/30">Stage ${stage}/4</span>`
-                    : `<span class="text-on-surface-variant bg-surface-container-lowest px-2 py-0.5 rounded-full border border-surface-container-highest">🔒 Locked</span>`
-                }
-                ${isEquipped ? `<span class="text-secondary bg-secondary/20 px-2 py-0.5 rounded-full font-black border border-secondary/40">Active</span>` : ''}
+                <span class="text-cyan-300 bg-cyan-950/60 px-2 py-0.5 rounded-full border border-cyan-400/30">
+                  Lv.${level} • ${levelData.title}
+                </span>
+                ${isEquipped ? `<span class="text-slate-950 bg-primary px-2.5 py-0.5 rounded-full font-black shadow-sm">ACTIVE</span>` : `<span class="text-secondary bg-secondary/20 px-2 py-0.5 rounded-full border border-secondary/40">${archetype.name}</span>`}
               </div>
 
-              <!-- Avatar Stage -->
-              <div class="w-24 h-24 rounded-full bg-gradient-to-tr from-surface-container-low to-surface-container-highest flex items-center justify-center p-2 shadow-inner border-2 ${
-                isUnlocked ? 'border-primary/40' : 'border-surface-container-highest grayscale contrast-75'
+              <!-- Avatar 3D Toy Figurine Stage -->
+              <div class="w-28 h-28 rounded-2xl bg-surface-container-lowest flex items-center justify-center p-2 shadow-inner border-2 ${
+                isEquipped ? 'border-primary' : 'border-surface-container-highest'
               } relative">
-                <img class="w-full h-full object-contain group-hover:scale-110 transition-transform duration-300 drop-shadow-md" src="${pet.avatar}" alt="${pet.name}" />
+                <img 
+                  class="w-full h-full object-contain group-hover:scale-110 transition-transform duration-300 drop-shadow-md" 
+                  src="${petImg}" 
+                  alt="${pet.name}"
+                  loading="lazy"
+                  onerror="this.onerror=null; this.src='/assets/pets/${pet.key || 'rex'}.png';"
+                />
               </div>
 
               <!-- Pet Info -->
-              <div class="flex flex-col items-center">
-                <h3 class="font-headline text-base font-black text-inverse-surface leading-tight">${pet.name}</h3>
-                <span class="text-[11px] font-bold text-on-surface-variant mt-0.5">${pet.title}</span>
-                <span class="text-[10px] font-black uppercase tracking-wider text-secondary mt-1">${pet.element}</span>
+              <div class="flex flex-col items-center w-full">
+                <h3 class="font-headline text-base font-black text-inverse-surface leading-tight truncate max-w-full">${pet.name}</h3>
+                <span class="text-[11px] font-bold text-on-surface-variant mt-0.5 truncate max-w-full">${pet.title}</span>
+                <span class="text-[10px] font-black text-emerald-400 mt-1">${statBonus.label} ${pet.habitBonus ? `• ${pet.habitBonus.split(':')[0]}` : ''}</span>
               </div>
 
               <!-- Action Buttons -->
@@ -132,31 +128,19 @@ export function renderPetRosterView() {
                 ${
                   isEquipped
                     ? `
-                  <div class="w-full bg-primary/20 text-primary font-headline text-[10px] font-black py-2 rounded-xl border border-primary/40 min-h-[44px] flex items-center justify-center">
-                    ✓ Active Companion
+                  <div class="w-full bg-primary/20 text-primary font-headline text-[11px] font-black py-2.5 rounded-xl border border-primary/40 min-h-[44px] flex items-center justify-center gap-1">
+                    <span class="material-symbols-outlined text-sm">check_circle</span> Active Companion
                   </div>
                 `
-                    : isUnlocked
-                    ? `
-                  <button data-equip-pet-id="${pet.id}" class="equip-roster-pet-btn w-full bg-primary text-on-primary font-headline text-[11px] font-black py-2 rounded-xl chunky-btn-sm border-primary-container shadow-sm hover:brightness-110 active:scale-95 min-h-[44px] flex items-center justify-center">
-                    Equip Companion
-                  </button>
-                `
-                    : hasOpenSlot
-                    ? `
-                  <button data-adopt-pet-id="${pet.id}" class="adopt-roster-pet-btn w-full bg-gradient-to-r from-primary to-secondary text-on-primary font-headline text-[11px] font-black py-2 rounded-xl chunky-btn-sm border-primary-container shadow-sm hover:brightness-110 active:scale-95 flex items-center justify-center gap-1 min-h-[44px]">
-                    <span class="material-symbols-outlined text-sm">pets</span> Adopt (Slot Open!)
-                  </button>
-                `
                     : `
-                  <button data-buy-adopt-pet-id="${pet.id}" class="buy-adopt-roster-pet-btn w-full bg-surface-container-high hover:bg-secondary text-secondary hover:text-on-secondary font-headline text-[11px] font-black py-2 rounded-xl border border-secondary/40 transition-colors flex items-center justify-center gap-1 min-h-[44px]">
-                    <span class="material-symbols-outlined text-sm">add_home</span> Unlock Slot (🪙 250)
+                  <button data-equip-pet-id="${pet.id}" class="equip-roster-pet-btn w-full bg-primary text-slate-950 font-headline text-[11px] font-black py-2.5 rounded-xl chunky-btn-sm border-b-2 border-[#1b7a43] shadow-sm hover:brightness-110 active:scale-95 min-h-[44px] flex items-center justify-center gap-1">
+                    <span class="material-symbols-outlined text-sm">pets</span> Equip Companion
                   </button>
                 `
                 }
 
-                <button data-inspect-pet-id="${pet.id}" class="inspect-roster-pet-btn w-full bg-surface-container-high hover:bg-surface-bright text-on-surface-variant font-headline text-[10px] font-bold py-1.5 rounded-xl border border-surface-container-lowest transition-colors min-h-[44px] flex items-center justify-center">
-                  View Lore & Stats
+                <button data-inspect-pet-id="${pet.id}" class="inspect-roster-pet-btn w-full bg-surface-container-high hover:bg-surface-bright text-on-surface-variant font-headline text-[10px] font-bold py-1.5 rounded-xl border border-surface-container-lowest transition-colors min-h-[38px] flex items-center justify-center">
+                  View Lore & Moves
                 </button>
               </div>
 
@@ -175,55 +159,28 @@ export function attachPetRosterListeners() {
     backBtn.addEventListener('click', () => store.navigate('pet_sanctuary'));
   }
 
-  // Buy Habitat Slot Button
-  const buySlotBtn = document.getElementById('buy-habitat-slot-btn');
-  if (buySlotBtn) {
-    buySlotBtn.addEventListener('click', () => {
-      Sound.click();
-      store.buyHabitatSlot();
-    });
-  }
-
-  // Element Filters
-  document.querySelectorAll('.elem-filter-btn').forEach((btn) => {
+  // Archetype Filters
+  document.querySelectorAll('.archetype-filter-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
-      activeElementFilter = btn.getAttribute('data-elem') || 'All';
+      activeArchetypeFilter = btn.getAttribute('data-archetype') || 'all';
       Sound.click();
       store.notify();
     });
   });
 
-  // Equip Unlocked Pet
+  // Equip Pet
   document.querySelectorAll('.equip-roster-pet-btn').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const petId = Number(btn.getAttribute('data-equip-pet-id'));
+      const petId = btn.getAttribute('data-equip-pet-id');
       if (petId) store.setActivePet(petId);
-    });
-  });
-
-  // Adopt Pet into Open Slot
-  document.querySelectorAll('.adopt-roster-pet-btn').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const petId = Number(btn.getAttribute('data-adopt-pet-id'));
-      if (petId) store.adoptPetIntoSlot(petId);
-    });
-  });
-
-  // Buy Slot & Adopt Pet
-  document.querySelectorAll('.buy-adopt-roster-pet-btn').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const petId = Number(btn.getAttribute('data-buy-adopt-pet-id'));
-      if (petId) store.adoptPetIntoSlot(petId);
     });
   });
 
   // Card or Inspect Button Click -> Navigate to Pet Detail
   document.querySelectorAll('.pet-roster-card, .inspect-roster-pet-btn').forEach((el) => {
     el.addEventListener('click', () => {
-      const petId = Number(el.getAttribute('data-pet-card-id') || el.getAttribute('data-inspect-pet-id'));
+      const petId = el.getAttribute('data-pet-card-id') || el.getAttribute('data-inspect-pet-id');
       if (petId) {
         Sound.click();
         store.navigate('pet_detail', { petId });
@@ -231,3 +188,4 @@ export function attachPetRosterListeners() {
     });
   });
 }
+

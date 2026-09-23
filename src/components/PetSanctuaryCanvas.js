@@ -15,14 +15,31 @@
  */
 
 import { store } from '../state/store.js';
-import { getPetArchetype, getPetBondBonus, PETS_DATABASE } from '../data/petsData.js';
+import { getPetArchetype, getPetBondBonus, PETS_DATABASE, getPetById } from '../data/petsData.js';
 import { Sound } from '../audio/sfx.js';
+
+// Preload all 24 pet 3D designer toy figurine images into a static memory cache
+const PET_SPRITE_CACHE = new Map();
+
+function preloadPetSprites() {
+  if (typeof window === 'undefined') return;
+  PETS_DATABASE.forEach(pet => {
+    const src = pet.avatar || `/assets/pets/${pet.key || 'rex'}.png`;
+    if (!PET_SPRITE_CACHE.has(src)) {
+      const img = new Image();
+      img.src = src;
+      PET_SPRITE_CACHE.set(src, img);
+    }
+  });
+}
+preloadPetSprites();
 
 export class PetSanctuaryCanvas {
   constructor(container, options = {}) {
     this.container = container;
     this.options = options;
-    this.petId = options.petId || store.getActivePet()?.id || '2';
+    const activePet = store.getActivePet();
+    this.petId = String(options.petId || (activePet ? activePet.id : '1'));
     
     // Engine Dimensions
     this.width = 600;
@@ -731,164 +748,37 @@ export class PetSanctuaryCanvas {
 
   renderCreatureMesh(ctx, pet, archetype) {
     const petImgSrc = pet.avatar || `/assets/pets/${pet.key || 'rex'}.png`;
-    if (!this.petImg || this.petImgSrc !== petImgSrc) {
-      this.petImgSrc = petImgSrc;
-      this.petImg = new Image();
-      this.petImg.src = petImgSrc;
-      this.petImgLoaded = false;
-      this.petImg.onload = () => { this.petImgLoaded = true; };
+    let img = PET_SPRITE_CACHE.get(petImgSrc);
+    if (!img) {
+      img = new Image();
+      img.src = petImgSrc;
+      PET_SPRITE_CACHE.set(petImgSrc, img);
     }
 
-    if (this.petImgLoaded && this.petImg.complete && this.petImg.naturalWidth > 0) {
-      const imgSize = 135;
+    if (img.complete && img.naturalWidth > 0) {
+      const imgSize = 160;
       ctx.save();
-      ctx.drawImage(this.petImg, -imgSize / 2, -imgSize + 25, imgSize, imgSize);
+      // Apply subtle procedural head/torso tilt from touch & workout physics
+      ctx.rotate(this.petHeadRot * 0.4);
+      // Center image right on top of the drop-shadow
+      ctx.drawImage(img, -imgSize / 2, -imgSize + 28, imgSize, imgSize);
       ctx.restore();
       return;
     }
 
-    const primary = pet.color || archetype.baseBodyColor || '#2ecc71';
-    const accent = pet.accentColor || '#f39c12';
-    const belly = archetype.bellyColor || '#6bfe9c';
-    const type = archetype.id || 'dino';
-
-    // 1. Tail wag
+    // Modern glowing starlight placeholder if loading on 1st frame (NEVER old procedural body parts!)
     ctx.save();
-    ctx.translate(-24, 0);
-    ctx.rotate(this.petTailAngle);
-    ctx.fillStyle = primary;
-    ctx.strokeStyle = '#050f18';
-    ctx.lineWidth = 3;
+    ctx.fillStyle = pet.color || '#2ecc71';
+    ctx.shadowColor = '#00d2d3';
+    ctx.shadowBlur = 15;
     ctx.beginPath();
-    ctx.ellipse(-18, 4, 22, 10, -0.2, 0, Math.PI * 2);
+    ctx.arc(0, -48, 48, 0, Math.PI * 2);
     ctx.fill();
-    ctx.stroke();
-
-    if (type === 'dino') {
-      // Spiked tail club
-      ctx.fillStyle = accent;
-      ctx.beginPath();
-      ctx.arc(-34, 3, 6, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '36px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(pet.emoji || '🐾', 0, -35);
     ctx.restore();
-
-    // 2. Main Body Sphere
-    ctx.fillStyle = primary;
-    ctx.strokeStyle = '#050f18';
-    ctx.lineWidth = 3.5;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 48, 42, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    // Belly Soft Patch
-    ctx.fillStyle = belly;
-    ctx.beginPath();
-    ctx.ellipse(4, 4, 32, 26, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 3. Archetype Features (Wings, Shell, Ears, Fins, Antennas)
-    if (type === 'dragon') {
-      // Azure Wings
-      ctx.fillStyle = '#00d2d3';
-      ctx.strokeStyle = '#008889';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.moveTo(-20, -15);
-      ctx.lineTo(-58, -45);
-      ctx.lineTo(-40, -10);
-      ctx.lineTo(-62, 5);
-      ctx.lineTo(-24, 0);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-    } else if (type === 'aquatic') {
-      // Turtle Shell rim
-      ctx.strokeStyle = '#008889';
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 50, 44, 0, 0, Math.PI * 2);
-      ctx.stroke();
-    } else if (type === 'robot') {
-      // Antenna
-      ctx.fillStyle = '#00d2d3';
-      ctx.fillRect(-2, -58, 4, 18);
-      ctx.beginPath();
-      ctx.arc(0, -60, 6, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // 4. Head & Face
-    ctx.save();
-    ctx.translate(0, -36);
-    ctx.rotate(this.petHeadRot);
-
-    // Head Base
-    ctx.fillStyle = primary;
-    ctx.strokeStyle = '#050f18';
-    ctx.lineWidth = 3.5;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 36, 32, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    // Snout / Nose
-    ctx.fillStyle = belly;
-    ctx.beginPath();
-    ctx.ellipse(0, 8, 22, 14, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Eyes
-    if (this.isPettingHead) {
-      // Happy curved squint eyes (^_^)
-      ctx.strokeStyle = '#050f18';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(-14, -4, 8, Math.PI * 1.1, Math.PI * 1.9);
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.arc(14, -4, 8, Math.PI * 1.1, Math.PI * 1.9);
-      ctx.stroke();
-    } else {
-      // Big expressive cartoon eyes
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath(); ctx.ellipse(-14, -4, 10, 13, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(14, -4, 10, 13, 0, 0, Math.PI * 2); ctx.fill();
-
-      // Pupils
-      ctx.fillStyle = '#09141e';
-      ctx.beginPath(); ctx.arc(-13, -3, 6, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(13, -3, 6, 0, Math.PI * 2); ctx.fill();
-
-      // Sparkle Glints
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath(); ctx.arc(-11, -5, 2.5, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(15, -5, 2.5, 0, Math.PI * 2); ctx.fill();
-    }
-
-    // Happy Grinning Mouth
-    ctx.fillStyle = '#050f18';
-    ctx.beginPath();
-    ctx.arc(0, 10, 8, 0, Math.PI);
-    ctx.fill();
-
-    ctx.restore(); // end head
-
-    // 5. Paws & Feet
-    ctx.fillStyle = primary;
-    ctx.strokeStyle = '#050f18';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.ellipse(-22, 34, 14, 9, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.ellipse(22, 34, 14, 9, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
   }
 
   renderEquippedGear(ctx, pet) {
@@ -897,22 +787,25 @@ export class PetSanctuaryCanvas {
     const pId = String(pet.id);
     const gearMap = this.options.gear || (state.petGear && state.petGear[pId]) || (hero && hero.equippedPetGearMap && hero.equippedPetGearMap[pId]) || {};
 
-    // 1. Helmet / Aviator Cap on Head
-    if (gearMap.head || gearMap.helmet) {
+    // 1. MASKS (Head / Visor / Crown)
+    if (gearMap.masks || gearMap.head || gearMap.helmet) {
       ctx.save();
-      ctx.translate(0, -64 + this.petHeadRot * 10);
+      ctx.translate(0, -112 + this.petHeadRot * 8);
+      // Glowing halo visor / crest
       ctx.fillStyle = '#f39c12';
       ctx.strokeStyle = '#ffb961';
       ctx.lineWidth = 2.5;
+      ctx.shadowColor = '#f1c40f';
+      ctx.shadowBlur = 10;
       ctx.beginPath();
-      ctx.arc(0, 0, 26, Math.PI * 1.05, Math.PI * 1.95);
+      ctx.arc(0, 0, 22, Math.PI * 1.1, Math.PI * 1.9);
       ctx.stroke();
 
-      // Aviator Goggles
+      // Mini Hero Visor Goggles
       ctx.fillStyle = '#00d2d3';
       ctx.beginPath();
-      ctx.arc(-12, 4, 8, 0, Math.PI * 2);
-      ctx.arc(12, 4, 8, 0, Math.PI * 2);
+      ctx.arc(-11, 4, 7, 0, Math.PI * 2);
+      ctx.arc(11, 4, 7, 0, Math.PI * 2);
       ctx.fill();
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 1.5;
@@ -920,32 +813,72 @@ export class PetSanctuaryCanvas {
       ctx.restore();
     }
 
-    // 2. Wings / Jetpack on Back
-    if (gearMap.back || gearMap.wings) {
+    // 2. CAPES (Back / Wings)
+    if (gearMap.capes || gearMap.back || gearMap.wings) {
       ctx.save();
-      ctx.translate(0, -10);
-      ctx.fillStyle = '#00d2d3';
-      ctx.strokeStyle = '#54e98a';
-      ctx.lineWidth = 2.5;
+      ctx.translate(0, -55);
+      const flap = Math.sin(this.clock * 4) * 6;
+      ctx.fillStyle = '#e74c3c';
+      ctx.strokeStyle = '#f39c12';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = '#e74c3c';
+      ctx.shadowBlur = 8;
+      // Flowing superhero cape sides
       ctx.beginPath();
-      ctx.moveTo(-28, -8); ctx.lineTo(-65, -35); ctx.lineTo(-45, 12);
+      ctx.moveTo(-28, 0);
+      ctx.quadraticCurveTo(-52 + flap, 25, -42, 60);
+      ctx.lineTo(-24, 45);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
 
       ctx.beginPath();
-      ctx.moveTo(28, -8); ctx.lineTo(65, -35); ctx.lineTo(45, 12);
+      ctx.moveTo(28, 0);
+      ctx.quadraticCurveTo(52 - flap, 25, 42, 60);
+      ctx.lineTo(24, 45);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
       ctx.restore();
     }
 
-    // 3. Greaves on Boots
+    // 3. ARMOR (Chest / Shield)
+    if (gearMap.armor || gearMap.chest) {
+      ctx.save();
+      ctx.translate(0, -32);
+      ctx.fillStyle = '#34495e';
+      ctx.strokeStyle = '#00d2d3';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = '#00d2d3';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 16, 12, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Hero emblem star
+      ctx.fillStyle = '#f1c40f';
+      ctx.beginPath();
+      ctx.arc(0, 0, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // 4. BOOTS (Feet / Greaves)
     if (gearMap.boots || gearMap.legs || gearMap.feet) {
-      ctx.fillStyle = '#ffb961';
-      ctx.fillRect(-26, 26, 12, 6);
-      ctx.fillRect(14, 26, 12, 6);
+      ctx.save();
+      ctx.translate(0, 20);
+      ctx.fillStyle = '#2ecc71';
+      ctx.strokeStyle = '#54e98a';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = '#2ecc71';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.roundRect(-30, 0, 16, 8, 4);
+      ctx.roundRect(14, 0, 16, 8, 4);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
     }
   }
 

@@ -229,71 +229,77 @@ export function renderHeroHQView() {
         </div>
       </div>
 
-      <!-- Isometric 2.5D Floor Stage Area -->
-      <div class="relative w-full flex-1 flex flex-col justify-end min-h-[460px] sm:min-h-[500px] px-4 pb-6">
+      <!-- Isometric 2.5D Floor Stage Area (Two-Tier Split Architecture) -->
+      <div class="relative w-full flex-1 flex flex-col justify-between min-h-[540px] sm:min-h-[580px] px-3 sm:px-6 pt-2 pb-5">
 
         <!-- Wall Shadows & Floor Perspective Gradient -->
-        <div class="absolute inset-x-0 bottom-0 h-4/5 bg-gradient-to-t from-black/50 via-black/20 to-transparent pointer-events-none"></div>
+        <div class="absolute inset-x-0 bottom-0 h-4/5 bg-gradient-to-t from-black/60 via-black/25 to-transparent pointer-events-none"></div>
 
-        <!-- Center Floor Rug (Positioned underneath elevated companion stage) -->
-        <div id="hq-slot-rug" class="absolute bottom-36 sm:bottom-40 left-1/2 -translate-x-1/2 w-80 sm:w-96 h-36 sm:h-44 rounded-[60px] bg-gradient-to-r from-amber-500/20 via-emerald-500/20 to-cyan-500/20 border-2 border-white/20 shadow-inner flex flex-col items-center justify-end pb-3 transition-all cursor-pointer hover:scale-102 hover:border-amber-300" title="${rugItem.name} - Tap to play!">
-          <span class="text-[10px] font-headline font-black text-white/70 bg-black/40 px-3 py-0.5 rounded-full border border-white/10">
-            ${rugItem.name}
-          </span>
-        </div>
-
-        <!-- Elevated Companion Pet Stage & Flanking 4-Category Gear Spotlights -->
-        <div class="absolute bottom-38 sm:bottom-42 left-1/2 -translate-x-1/2 z-20 flex items-center justify-center gap-3 sm:gap-6 pointer-events-auto">
+        <!-- ================================================================= -->
+        <!-- UPPER TIER: Companion Figurine Showcase & 4-Category Gear Spotlights -->
+        <!-- ================================================================= -->
+        <div class="relative z-20 w-full flex-1 flex flex-col items-center justify-center my-auto py-4">
           
-          <!-- Left Gear Flank: Masks (top) & Capes (bottom) -->
-          <div class="flex flex-col gap-2.5 sm:gap-3.5 items-center">
-            ${renderGearSlotTile(gearSlotDefinitions[0])}
-            ${renderGearSlotTile(gearSlotDefinitions[1])}
-          </div>
-
-          <!-- Center: Elevated 3D Figurine Companion Pedestal -->
-          <div id="hq-roaming-pet" class="flex flex-col items-center cursor-pointer transition-transform hover:scale-105 group select-none" title="${activePet.name} - Tap to cuddle!">
-            <!-- Speech Bubble -->
-            <div class="mb-1.5 bg-surface-container-highest/95 backdrop-blur-md text-on-surface text-[10px] sm:text-xs font-black px-3 py-1 rounded-full shadow-lg border-2 border-emerald-400 animate-bounce flex items-center gap-1.5 z-10">
-              <span>🐾</span>
-              <span>${isNight ? 'Nighty night, Hero! 🌙' : `${activePet.shortName || activePet.name} is ready for action! ⚡`}</span>
-            </div>
-
-            <!-- Figurine & Pedestal Glow -->
-            <div class="relative w-32 h-32 sm:w-40 sm:h-40 flex items-center justify-center">
-              <!-- Radial Pedestal Beam Aura -->
-              <div class="absolute inset-0 bg-radial from-emerald-400/30 via-cyan-400/10 to-transparent rounded-full blur-md animate-pulse"></div>
-              
-              <!-- 3D Chunky Figurine Image -->
-              <img 
-                src="${activePet.avatar || `/assets/pets/${activePet.key || 'rex'}.png`}" 
-                alt="${activePet.name}" 
-                class="w-28 h-28 sm:w-36 sm:h-36 object-contain drop-shadow-[0_12px_24px_rgba(0,0,0,0.7)] animate-float-gentle transition-transform group-hover:scale-110"
-              />
-
-              <!-- Pedestal Ring Base -->
-              <div class="absolute -bottom-2 w-28 sm:w-32 h-6 rounded-full bg-surface-container-highest/80 border-t-2 border-emerald-400/60 shadow-[0_0_15px_rgba(46,204,113,0.5)] flex items-center justify-center pointer-events-none">
-                <div class="w-20 sm:w-24 h-3 rounded-full bg-surface-container-high/60"></div>
-              </div>
-            </div>
-
-            <!-- Pet Name & Level Pill -->
-            <div class="mt-2 flex items-center gap-1.5 bg-surface-container-lowest/90 border border-white/20 px-3 py-1 rounded-full shadow-md">
-              <span class="text-xs">${activePet.emoji || '🐾'}</span>
-              <span class="font-headline text-xs font-black text-white">${activePet.name}</span>
-              <span class="text-[10px] font-black px-2 py-0.5 rounded-full ${petLevelData.badgeColor}">
-                Lv.${petLevel}
-              </span>
-            </div>
-            <span class="text-[9px] font-bold text-amber-300 mt-0.5 drop-shadow">
-              ${petStatBonus.label} ${activePet.habitBonus ? `• ${activePet.habitBonus.split(':')[0]}` : ''}
+          <!-- Center Floor Rug (Positioned underneath elevated companion stage) -->
+          <div id="hq-slot-rug" class="absolute w-80 sm:w-96 h-36 sm:h-44 rounded-[60px] bg-gradient-to-r from-amber-500/20 via-emerald-500/20 to-cyan-500/20 border-2 border-white/20 shadow-inner flex flex-col items-center justify-end pb-3 transition-all cursor-pointer hover:scale-102 hover:border-amber-300 pointer-events-auto" title="${rugItem.name} - Tap to play!">
+            <span class="text-[10px] font-headline font-black text-white/70 bg-black/40 px-3 py-0.5 rounded-full border border-white/10">
+              ${rugItem.name}
             </span>
           </div>
 
-          <!-- Right Gear Flank: Armor (top) & Boots (bottom) -->
-          <div class="flex flex-col gap-2.5 sm:gap-3.5 items-center">
-            ${renderGearSlotTile(gearSlotDefinitions[2])}
-            ${renderGearSlotTile(gearSlotDefinitions[3])}
+          <!-- Elevated Companion Pet Stage & Flanking 4-Category Gear Spotlights -->
+          <div class="relative z-20 flex items-center justify-center gap-3 sm:gap-6 pointer-events-auto">
+            
+            <!-- Left Gear Flank: Masks (top) & Capes (bottom) -->
+            <div class="flex flex-col gap-2.5 sm:gap-3.5 items-center">
+              ${renderGearSlotTile(gearSlotDefinitions[0])}
+              ${renderGearSlotTile(gearSlotDefinitions[1])}
+            </div>
+
+            <!-- Center: Elevated 3D Figurine Companion Pedestal -->
+            <div id="hq-roaming-pet" class="flex flex-col items-center cursor-pointer transition-transform hover:scale-105 group select-none" title="${activePet.name} - Tap to cuddle!">
+              <!-- Speech Bubble -->
+              <div class="mb-1.5 bg-surface-container-highest/95 backdrop-blur-md text-on-surface text-[10px] sm:text-xs font-black px-3 py-1 rounded-full shadow-lg border-2 border-emerald-400 animate-bounce flex items-center gap-1.5 z-10">
+                <span>🐾</span>
+                <span>${isNight ? 'Nighty night, Hero! 🌙' : `${activePet.shortName || activePet.name} is ready for action! ⚡`}</span>
+              </div>
+
+              <!-- Figurine & Pedestal Glow -->
+              <div class="relative w-32 h-32 sm:w-40 sm:h-40 flex items-center justify-center">
+                <!-- Radial Pedestal Beam Aura -->
+                <div class="absolute inset-0 bg-radial from-emerald-400/30 via-cyan-400/10 to-transparent rounded-full blur-md animate-pulse"></div>
+                
+                <!-- 3D Chunky Figurine Image -->
+                <img 
+                  src="${activePet.avatar || `/assets/pets/${activePet.key || 'rex'}.png`}" 
+                  alt="${activePet.name}" 
+                  class="w-28 h-28 sm:w-36 sm:h-36 object-contain drop-shadow-[0_12px_24px_rgba(0,0,0,0.7)] animate-float-gentle transition-transform group-hover:scale-110"
+                />
+
+                <!-- Pedestal Ring Base -->
+                <div class="absolute -bottom-2 w-28 sm:w-32 h-6 rounded-full bg-surface-container-highest/80 border-t-2 border-emerald-400/60 shadow-[0_0_15px_rgba(46,204,113,0.5)] flex items-center justify-center pointer-events-none">
+                  <div class="w-20 sm:w-24 h-3 rounded-full bg-surface-container-high/60"></div>
+                </div>
+              </div>
+
+              <!-- Pet Name & Level Pill -->
+              <div class="mt-2 flex items-center gap-1.5 bg-surface-container-lowest/90 border border-white/20 px-3 py-1 rounded-full shadow-md">
+                <span class="text-xs">${activePet.emoji || '🐾'}</span>
+                <span class="font-headline text-xs font-black text-white">${activePet.name}</span>
+                <span class="text-[10px] font-black px-2 py-0.5 rounded-full ${petLevelData.badgeColor}">
+                  Lv.${petLevel}
+                </span>
+              </div>
+              <span class="text-[9px] font-bold text-amber-300 mt-0.5 drop-shadow">
+                ${petStatBonus.label} ${activePet.habitBonus ? `• ${activePet.habitBonus.split(':')[0]}` : ''}
+              </span>
+            </div>
+
+            <!-- Right Gear Flank: Armor (top) & Boots (bottom) -->
+            <div class="flex flex-col gap-2.5 sm:gap-3.5 items-center">
+              ${renderGearSlotTile(gearSlotDefinitions[2])}
+              ${renderGearSlotTile(gearSlotDefinitions[3])}
+            </div>
           </div>
         </div>
 
@@ -331,89 +337,93 @@ export function renderHeroHQView() {
           </div>
         ` : ''}
 
-        <!-- Interactive Placement Slots (Grid Layout) -->
-        <div class="relative z-10 w-full grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 items-end">
-          
-          <!-- Slot 1: BED & NAPPING POD (Left) -->
-          <div id="hq-slot-bed" class="flex flex-col items-center cursor-pointer group transition-transform hover:-translate-y-1" title="${bedItem.name} - Tap to snooze!">
-            <div class="relative w-full max-w-[140px] h-28 sm:h-32 rounded-3xl bg-surface-container/80 backdrop-blur-sm border-2 ${isNight ? 'border-indigo-400 shadow-[0_0_20px_rgba(99,102,241,0.3)]' : 'border-white/30'} flex flex-col items-center justify-center p-2 text-center group-hover:border-primary transition-all">
-              <!-- Zzz Sleep Bubble if napping -->
-              ${isNapping ? `
-                <div class="absolute -top-6 text-xl animate-bounce">💤💤💤</div>
-              ` : ''}
-              ${bedItem.modelUrl ? `
-                <model-viewer src="${bedItem.modelUrl}" auto-rotate camera-controls shadow-intensity="1" ar style="width: 100%; height: 60px; background: transparent;"></model-viewer>
-              ` : `
-                <div class="text-3xl sm:text-4xl transition-transform group-hover:scale-110">
-                  ${bedItem.icon || bedItem.emoji}
+        <!-- ================================================================= -->
+        <!-- LOWER TIER: Furniture & Station Dock (Cleanly Docked at Bottom)    -->
+        <!-- ================================================================= -->
+        <div class="relative z-20 w-full mt-2 pt-3 border-t border-white/10 bg-slate-950/40 backdrop-blur-md rounded-3xl p-2.5 sm:p-3 shadow-2xl">
+          <div class="w-full grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4 items-end max-w-4xl mx-auto">
+            
+            <!-- Slot 1: BED & NAPPING POD (Left) -->
+            <div id="hq-slot-bed" class="flex flex-col items-center cursor-pointer group transition-transform hover:-translate-y-1" title="${bedItem.name} - Tap to snooze!">
+              <div class="relative w-full max-w-[140px] h-28 sm:h-32 rounded-3xl bg-surface-container/80 backdrop-blur-sm border-2 ${isNight ? 'border-indigo-400 shadow-[0_0_20px_rgba(99,102,241,0.3)]' : 'border-white/30'} flex flex-col items-center justify-center p-2 text-center group-hover:border-primary transition-all">
+                <!-- Zzz Sleep Bubble if napping -->
+                ${isNapping ? `
+                  <div class="absolute -top-6 text-xl animate-bounce">💤💤💤</div>
+                ` : ''}
+                ${bedItem.modelUrl ? `
+                  <model-viewer src="${bedItem.modelUrl}" auto-rotate camera-controls shadow-intensity="1" ar style="width: 100%; height: 60px; background: transparent;"></model-viewer>
+                ` : `
+                  <div class="text-3xl sm:text-4xl transition-transform group-hover:scale-110">
+                    ${bedItem.icon || bedItem.emoji}
+                  </div>
+                `}
+                <div class="text-[10px] font-headline font-black text-inverse-surface truncate w-full mt-1">
+                  ${bedItem.name}
                 </div>
-              `}
-              <div class="text-[10px] font-headline font-black text-inverse-surface truncate w-full mt-1">
-                ${bedItem.name}
+                <span class="text-[9px] text-primary font-bold bg-primary/10 px-2 py-0.5 rounded-md mt-0.5">
+                  ${isNapping ? 'Snoozing... 💤' : bedItem.actionPrompt || 'Take a Snooze'}
+                </span>
               </div>
-              <span class="text-[9px] text-primary font-bold bg-primary/10 px-2 py-0.5 rounded-md mt-0.5">
-                ${isNapping ? 'Snoozing... 💤' : bedItem.actionPrompt || 'Take a Snooze'}
-              </span>
             </div>
-          </div>
 
-          <!-- Slot 2: PET LOUNGE & TRAMPOLINE (Center-Left) -->
-          <div id="hq-slot-petLounge" class="flex flex-col items-center cursor-pointer group transition-transform hover:-translate-y-1" title="${petLoungeItem.name} - Tap to play!">
-            <div class="relative w-full max-w-[140px] h-28 sm:h-32 rounded-3xl bg-surface-container/80 backdrop-blur-sm border-2 border-white/30 flex flex-col items-center justify-center p-2 text-center group-hover:border-amber-400 transition-all ${isBouncing ? 'animate-bounce border-amber-400' : ''}">
-              ${isBouncing ? `
-                <div class="absolute -top-7 text-xl animate-ping">🤸💥</div>
-              ` : ''}
-              ${petLoungeItem.modelUrl ? `
-                <model-viewer src="${petLoungeItem.modelUrl}" auto-rotate camera-controls shadow-intensity="1" ar style="width: 100%; height: 60px; background: transparent;"></model-viewer>
-              ` : `
-                <div class="text-3xl sm:text-4xl transition-transform group-hover:scale-110 ${isBouncing ? 'animate-spin' : ''}">
-                  ${petLoungeItem.icon || petLoungeItem.emoji}
+            <!-- Slot 2: PET LOUNGE & TRAMPOLINE (Center-Left) -->
+            <div id="hq-slot-petLounge" class="flex flex-col items-center cursor-pointer group transition-transform hover:-translate-y-1" title="${petLoungeItem.name} - Tap to play!">
+              <div class="relative w-full max-w-[140px] h-28 sm:h-32 rounded-3xl bg-surface-container/80 backdrop-blur-sm border-2 border-white/30 flex flex-col items-center justify-center p-2 text-center group-hover:border-amber-400 transition-all ${isBouncing ? 'animate-bounce border-amber-400' : ''}">
+                ${isBouncing ? `
+                  <div class="absolute -top-7 text-xl animate-ping">🤸💥</div>
+                ` : ''}
+                ${petLoungeItem.modelUrl ? `
+                  <model-viewer src="${petLoungeItem.modelUrl}" auto-rotate camera-controls shadow-intensity="1" ar style="width: 100%; height: 60px; background: transparent;"></model-viewer>
+                ` : `
+                  <div class="text-3xl sm:text-4xl transition-transform group-hover:scale-110 ${isBouncing ? 'animate-spin' : ''}">
+                    ${petLoungeItem.icon || petLoungeItem.emoji}
+                  </div>
+                `}
+                <div class="text-[10px] font-headline font-black text-inverse-surface truncate w-full mt-1">
+                  ${petLoungeItem.name}
                 </div>
-              `}
-              <div class="text-[10px] font-headline font-black text-inverse-surface truncate w-full mt-1">
-                ${petLoungeItem.name}
+                <span class="text-[9px] text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded-md mt-0.5">
+                  ${isBouncing ? 'SUPER BOING!' : petLoungeItem.actionPrompt || 'Bounce & Play'}
+                </span>
               </div>
-              <span class="text-[9px] text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded-md mt-0.5">
-                ${isBouncing ? 'SUPER BOING!' : petLoungeItem.actionPrompt || 'Bounce & Play'}
-              </span>
             </div>
-          </div>
 
-          <!-- Slot 3: MISSION DESK & WORKSTATION (Center-Right) -->
-          <div id="hq-slot-desk" class="flex flex-col items-center cursor-pointer group transition-transform hover:-translate-y-1" title="${deskItem.name} - Tap for hologram!">
-            <div class="relative w-full max-w-[140px] h-28 sm:h-32 rounded-3xl bg-surface-container/80 backdrop-blur-sm border-2 ${isHologramActive ? 'border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.4)]' : 'border-white/30'} flex flex-col items-center justify-center p-2 text-center group-hover:border-cyan-400 transition-all">
-              ${deskItem.modelUrl ? `
-                <model-viewer src="${deskItem.modelUrl}" auto-rotate camera-controls shadow-intensity="1" ar style="width: 100%; height: 60px; background: transparent;"></model-viewer>
-              ` : `
-                <div class="text-3xl sm:text-4xl transition-transform group-hover:scale-110 ${isHologramActive ? 'animate-pulse' : ''}">
-                  ${deskItem.icon || deskItem.emoji}
+            <!-- Slot 3: MISSION DESK & WORKSTATION (Center-Right) -->
+            <div id="hq-slot-desk" class="flex flex-col items-center cursor-pointer group transition-transform hover:-translate-y-1" title="${deskItem.name} - Tap for hologram!">
+              <div class="relative w-full max-w-[140px] h-28 sm:h-32 rounded-3xl bg-surface-container/80 backdrop-blur-sm border-2 ${isHologramActive ? 'border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.4)]' : 'border-white/30'} flex flex-col items-center justify-center p-2 text-center group-hover:border-cyan-400 transition-all">
+                ${deskItem.modelUrl ? `
+                  <model-viewer src="${deskItem.modelUrl}" auto-rotate camera-controls shadow-intensity="1" ar style="width: 100%; height: 60px; background: transparent;"></model-viewer>
+                ` : `
+                  <div class="text-3xl sm:text-4xl transition-transform group-hover:scale-110 ${isHologramActive ? 'animate-pulse' : ''}">
+                    ${deskItem.icon || deskItem.emoji}
+                  </div>
+                `}
+                <div class="text-[10px] font-headline font-black text-inverse-surface truncate w-full mt-1">
+                  ${deskItem.name}
                 </div>
-              `}
-              <div class="text-[10px] font-headline font-black text-inverse-surface truncate w-full mt-1">
-                ${deskItem.name}
+                <span class="text-[9px] text-cyan-400 font-bold bg-cyan-500/10 px-2 py-0.5 rounded-md mt-0.5">
+                  ${isHologramActive ? 'Holo Active 🌐' : deskItem.actionPrompt || 'Hologram Globe'}
+                </span>
               </div>
-              <span class="text-[9px] text-cyan-400 font-bold bg-cyan-500/10 px-2 py-0.5 rounded-md mt-0.5">
-                ${isHologramActive ? 'Holo Active 🌐' : deskItem.actionPrompt || 'Hologram Globe'}
-              </span>
             </div>
-          </div>
 
-          <!-- Slot 4: DECOR & NIGHTLIGHT LAMP (Right) -->
-          <div id="hq-slot-decor" class="flex flex-col items-center cursor-pointer group transition-transform hover:-translate-y-1" title="${decorItem.name} - Tap to toggle nightlight!">
-            <div class="relative w-full max-w-[140px] h-28 sm:h-32 rounded-3xl bg-surface-container/80 backdrop-blur-sm border-2 ${isNight ? 'border-yellow-400 shadow-[0_0_25px_rgba(250,204,21,0.5)]' : 'border-white/30'} flex flex-col items-center justify-center p-2 text-center group-hover:border-yellow-400 transition-all">
-              <div class="text-3xl sm:text-4xl transition-transform group-hover:scale-110 animate-pulse">
-                ${decorItem.icon || decorItem.emoji}
+            <!-- Slot 4: DECOR & NIGHTLIGHT LAMP (Right) -->
+            <div id="hq-slot-decor" class="flex flex-col items-center cursor-pointer group transition-transform hover:-translate-y-1" title="${decorItem.name} - Tap to toggle nightlight!">
+              <div class="relative w-full max-w-[140px] h-28 sm:h-32 rounded-3xl bg-surface-container/80 backdrop-blur-sm border-2 ${isNight ? 'border-yellow-400 shadow-[0_0_25px_rgba(250,204,21,0.5)]' : 'border-white/30'} flex flex-col items-center justify-center p-2 text-center group-hover:border-yellow-400 transition-all">
+                <div class="text-3xl sm:text-4xl transition-transform group-hover:scale-110 animate-pulse">
+                  ${decorItem.icon || decorItem.emoji}
+                </div>
+                <div class="text-[10px] font-headline font-black text-inverse-surface truncate w-full mt-1">
+                  ${decorItem.name}
+                </div>
+                <span class="text-[9px] text-yellow-300 font-bold bg-yellow-500/10 px-2 py-0.5 rounded-md mt-0.5 flex items-center gap-1">
+                  <span class="material-symbols-outlined text-[11px]">power_settings_new</span>
+                  ${isNight ? 'Turn Day' : 'Night Starlight'}
+                </span>
               </div>
-              <div class="text-[10px] font-headline font-black text-inverse-surface truncate w-full mt-1">
-                ${decorItem.name}
-              </div>
-              <span class="text-[9px] text-yellow-300 font-bold bg-yellow-500/10 px-2 py-0.5 rounded-md mt-0.5 flex items-center gap-1">
-                <span class="material-symbols-outlined text-[11px]">power_settings_new</span>
-                ${isNight ? 'Turn Day' : 'Night Starlight'}
-              </span>
             </div>
-          </div>
 
+          </div>
         </div>
 
       </div>

@@ -757,11 +757,11 @@ function renderRosterDrawer(activePet) {
 
   const filterTabs = [
     { id: 'all', label: 'All (24)', icon: 'apps' },
-    { id: 'dino', label: 'Dinos (6)', icon: 'cruelty_free' },
+    { id: 'dino', label: 'Dinos (8)', icon: 'cruelty_free' },
     { id: 'mystic', label: 'Mystics (5)', icon: 'auto_awesome' },
-    { id: 'beast', label: 'Beasts (5)', icon: 'pets' },
-    { id: 'aquatic', label: 'Aquatic (4)', icon: 'water' },
-    { id: 'mech', label: 'Mechs (4)', icon: 'smart_toy' }
+    { id: 'beast', label: 'Beasts (6)', icon: 'pets' },
+    { id: 'aquatic', label: 'Aquatic (3)', icon: 'water' },
+    { id: 'mech', label: 'Mechs (2)', icon: 'smart_toy' }
   ];
 
   const filteredPets = PETS_DATABASE.filter(p => {
@@ -801,11 +801,12 @@ function renderRosterDrawer(activePet) {
       <!-- 24 Pet Cards Grid -->
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-[50vh] overflow-y-auto pr-1">
         ${filteredPets.map(pet => {
-          const isActive = pet.id === activePet.id;
+          const isActive = String(pet.id) === String(activePet.id);
           const archetype = getPetArchetype(pet);
           const level = store.getPetLevel(pet.id);
           const levelData = getPetLevelData(level);
           const statBonus = calculatePetStatBonus(pet, level);
+          const petImg = pet.avatar || `/assets/pets/${pet.key || 'rex'}.png`;
 
           return `
             <div 
@@ -820,10 +821,11 @@ function renderRosterDrawer(activePet) {
                   isActive ? 'border-primary' : 'border-surface-container-highest'
                 } flex items-center justify-center p-1 shadow-inner flex-shrink-0">
                   <img 
-                    src="${pet.avatar || `/assets/pets/${pet.key || 'rex'}.png`}" 
+                    src="${petImg}" 
                     alt="${pet.name}" 
                     class="w-full h-full object-contain filter drop-shadow hover:scale-105 transition-transform"
                     loading="lazy"
+                    onerror="this.onerror=null; this.src='/assets/pets/${pet.key || 'rex'}.png';"
                   >
                 </div>
                 <div class="flex flex-col min-w-0">
@@ -875,9 +877,7 @@ export function attachPetSanctuaryListeners() {
       activeCanvasInstance = null;
     }
     const state = store.getState();
-    const hero = state.selectedHero || {};
-    const activePetId = hero.activePetId || '2';
-    const activePet = getPetById(activePetId) || PETS_DATABASE[0];
+    const activePet = store.getActivePet() || PETS_DATABASE[0];
     const equippedGear = (state.petGear && state.petGear[activePet.id]) || {};
 
     activeCanvasInstance = new PetSanctuaryCanvas(mount, {

@@ -38,7 +38,11 @@ export const KID_AVATARS = [
   { id: 'avatar_space', label: 'Knight Adventurer', url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAUTWERGwaJXM82ZeJ0adcNsuOm_cR4z5CXAleJ2oKcekqKsuaZZD315RkB188DDt6fevx8guS2V20knvs93SzLKjox7deSVry-v8kiyTM-H0Kg5vmB8inoBoKz2SqYnVzUKVk9uulAHGfsUmnIs4VI7GkWcmmfE2gvPnoehqZqjhxHZuHz9Tqs_Omja5bwoX9aPmW8Xf63V9KIQsux3ucTJHZBdI2U8eRyOy7bO0XQMqe2BNGXc3SoWg' }
 ];
 
-export const STORAGE_KEY = 'little_heroes_adventure_master_v8';
+export const STORAGE_KEY = 'little_heroes_adventure_master_v9';
+
+export const ALL_24_PET_IDS = Array.from({ length: 24 }, (_, i) => String(i + 1));
+export const DEFAULT_PET_LEVEL_MAP = Object.fromEntries(ALL_24_PET_IDS.map((id) => [id, 1]));
+export const DEFAULT_PET_XP_MAP = Object.fromEntries(ALL_24_PET_IDS.map((id) => [id, 0]));
 
 const defaultState = {
   isAuthenticated: false,
@@ -152,13 +156,12 @@ const defaultState = {
     coins: 0,  // 🪙 Tokens (Auto-issued, spent on digital items)
     streak: 1,
     stars: 0,
-    activePetId: null,
-    unlockedPetIds: [],
-    hasChosenStarterPet: false,
-    habitatSlots: 1,
-    petStageMap: {},
-    petLevelMap: { 1: 1 },
-    petXpMap: { 1: 0 },
+    activePetId: '1',
+    unlockedPetIds: [...ALL_24_PET_IDS],
+    hasChosenStarterPet: true,
+    habitatSlots: 24,
+    petLevelMap: { ...DEFAULT_PET_LEVEL_MAP },
+    petXpMap: { ...DEFAULT_PET_XP_MAP },
     gameDifficulty: 'medium', // 'easy' (Toddler 3-4), 'medium' (Kids 5-6), 'hard' (Kids 7-9)
     equippedProfileTheme: 'theme_dragon_emerald',
     unlockedThemes: ['theme_dragon_emerald'],
@@ -187,13 +190,12 @@ const defaultState = {
       level: 1,
       points: 0,
       coins: 0,
-      activePetId: null,
-      unlockedPetIds: [],
-      hasChosenStarterPet: false,
-      habitatSlots: 1,
-      petStageMap: {},
-      petLevelMap: { 1: 1 },
-      petXpMap: { 1: 0 },
+      activePetId: '1',
+      unlockedPetIds: [...ALL_24_PET_IDS],
+      hasChosenStarterPet: true,
+      habitatSlots: 24,
+      petLevelMap: { ...DEFAULT_PET_LEVEL_MAP },
+      petXpMap: { ...DEFAULT_PET_XP_MAP },
       streak: 1,
       completionRate: 100,
       gameDifficulty: 'medium',
@@ -230,9 +232,8 @@ const defaultState = {
 
   // 24 Pets Universe & Active Pet State
   pets: PETS_DATABASE,
-  petStageMap: {},
-  petLevelMap: { 1: 1 },
-  petXpMap: { 1: 0 },
+  petLevelMap: { ...DEFAULT_PET_LEVEL_MAP },
+  petXpMap: { ...DEFAULT_PET_XP_MAP },
   petSelectionModal: { isOpen: false, type: 'starter' },
   petStatsMap: {
     1: { hunger: 75, hygiene: 90, energy: 65, joy: 85 }
@@ -618,24 +619,28 @@ class Store {
           parsed.pendingApprovals = [];
         }
 
-        // Migration for Pet Progression Architecture
+        // Clean 24 Pet Progression Architecture Migration
+        parsed.pets = PETS_DATABASE;
+        if (!parsed.petLevelMap) parsed.petLevelMap = { ...DEFAULT_PET_LEVEL_MAP };
+        if (!parsed.petXpMap) parsed.petXpMap = { ...DEFAULT_PET_XP_MAP };
+        ALL_24_PET_IDS.forEach((pId) => {
+          if (!parsed.petLevelMap[pId]) parsed.petLevelMap[pId] = 1;
+          if (parsed.petXpMap[pId] === undefined) parsed.petXpMap[pId] = 0;
+        });
+
         if (parsed.heroes && parsed.heroes.length > 0) {
           parsed.heroes.forEach((h) => {
-            if (!h.unlockedPetIds) {
-              h.unlockedPetIds = h.activePetId ? [h.activePetId] : [];
-            }
-            if (h.hasChosenStarterPet === undefined) {
-              h.hasChosenStarterPet = h.unlockedPetIds.length > 0;
-            }
-            if (!h.habitatSlots) {
-              h.habitatSlots = Math.max(1, h.unlockedPetIds.length);
-            }
-            if (!h.petStageMap) {
-              h.petStageMap = {};
-              h.unlockedPetIds.forEach((pId) => {
-                h.petStageMap[pId] = 1; // Stage 1!
-              });
-            }
+            h.unlockedPetIds = [...ALL_24_PET_IDS];
+            h.hasChosenStarterPet = true;
+            h.habitatSlots = 24;
+            const validActive = h.activePetId ? getPetById(h.activePetId) : null;
+            h.activePetId = validActive ? String(validActive.id) : '1';
+            if (!h.petLevelMap) h.petLevelMap = { ...DEFAULT_PET_LEVEL_MAP };
+            if (!h.petXpMap) h.petXpMap = { ...DEFAULT_PET_XP_MAP };
+            ALL_24_PET_IDS.forEach((pId) => {
+              if (!h.petLevelMap[pId]) h.petLevelMap[pId] = 1;
+              if (h.petXpMap[pId] === undefined) h.petXpMap[pId] = 0;
+            });
             // Screen Time Bank Migration
             if (h.screenTimeMinutes === undefined) h.screenTimeMinutes = 45;
             if (h.screenTimeUsedToday === undefined) h.screenTimeUsedToday = 15;
@@ -648,21 +653,17 @@ class Store {
         }
 
         if (parsed.selectedHero) {
-          if (!parsed.selectedHero.unlockedPetIds) {
-            parsed.selectedHero.unlockedPetIds = parsed.selectedHero.activePetId ? [parsed.selectedHero.activePetId] : [];
-          }
-          if (parsed.selectedHero.hasChosenStarterPet === undefined) {
-            parsed.selectedHero.hasChosenStarterPet = parsed.selectedHero.unlockedPetIds.length > 0;
-          }
-          if (!parsed.selectedHero.habitatSlots) {
-            parsed.selectedHero.habitatSlots = Math.max(1, parsed.selectedHero.unlockedPetIds.length);
-          }
-          if (!parsed.selectedHero.petStageMap) {
-            parsed.selectedHero.petStageMap = {};
-            parsed.selectedHero.unlockedPetIds.forEach((pId) => {
-              parsed.selectedHero.petStageMap[pId] = 1;
-            });
-          }
+          parsed.selectedHero.unlockedPetIds = [...ALL_24_PET_IDS];
+          parsed.selectedHero.hasChosenStarterPet = true;
+          parsed.selectedHero.habitatSlots = 24;
+          const validActive = parsed.selectedHero.activePetId ? getPetById(parsed.selectedHero.activePetId) : null;
+          parsed.selectedHero.activePetId = validActive ? String(validActive.id) : '1';
+          if (!parsed.selectedHero.petLevelMap) parsed.selectedHero.petLevelMap = { ...DEFAULT_PET_LEVEL_MAP };
+          if (!parsed.selectedHero.petXpMap) parsed.selectedHero.petXpMap = { ...DEFAULT_PET_XP_MAP };
+          ALL_24_PET_IDS.forEach((pId) => {
+            if (!parsed.selectedHero.petLevelMap[pId]) parsed.selectedHero.petLevelMap[pId] = 1;
+            if (parsed.selectedHero.petXpMap[pId] === undefined) parsed.selectedHero.petXpMap[pId] = 0;
+          });
           if (parsed.selectedHero.screenTimeMinutes === undefined) parsed.selectedHero.screenTimeMinutes = 45;
           if (parsed.selectedHero.screenTimeUsedToday === undefined) parsed.selectedHero.screenTimeUsedToday = 15;
           if (parsed.selectedHero.dailyMaxScreenTime === undefined) parsed.selectedHero.dailyMaxScreenTime = 60;
@@ -1074,37 +1075,27 @@ class Store {
 
   getPet(id) {
     if (id === undefined || id === null) return this.getActivePet();
-    const idStr = String(id).toLowerCase().trim();
-    const allPets = this.state.pets || PETS_DATABASE;
-    const petData = allPets.find(p => 
-      String(p.id).toLowerCase() === idStr || 
-      (p.key && p.key.toLowerCase() === idStr) || 
-      p.name.toLowerCase().includes(idStr)
-    ) || PETS_DATABASE[0];
-    const hero = this.state.selectedHero;
+    const petData = getPetById(id) || PETS_DATABASE[0];
     const level = this.getPetLevel(petData.id);
     const xp = this.getPetXp(petData.id);
     const levelData = getPetLevelData(level);
     const statBonus = calculatePetStatBonus(petData, level);
-    const stage = Math.min(4, Math.max(1, Math.ceil(level / 6.25)));
     const stats = this.state.petStatsMap?.[petData.id] || { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
     const avatar = petData.avatar || `/assets/pets/${petData.key || 'rex'}.png`;
-    return { ...petData, level, xp, levelData, statBonus, stage, ...stats, image: avatar, avatar };
+    return { ...petData, level, xp, levelData, statBonus, ...stats, image: avatar, avatar };
   }
 
   getActivePet() {
     const hero = this.state.selectedHero;
-    const petId = hero?.activePetId || (hero?.unlockedPetIds?.[0] || '1');
-    const allPets = this.state.pets || PETS_DATABASE;
-    const petData = allPets.find((p) => String(p.id) === String(petId) || (p.key && p.key === String(petId))) || PETS_DATABASE.find((p) => String(p.id) === String(petId)) || allPets[0] || PETS_DATABASE[0];
+    const petId = hero?.activePetId || '1';
+    const petData = getPetById(petId) || PETS_DATABASE[0];
     const level = this.getPetLevel(petData.id);
     const xp = this.getPetXp(petData.id);
     const levelData = getPetLevelData(level);
     const statBonus = calculatePetStatBonus(petData, level);
-    const stage = Math.min(4, Math.max(1, Math.ceil(level / 6.25)));
     const stats = this.state.petStatsMap?.[petData.id] || { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
     const avatar = petData.avatar || `/assets/pets/${petData.key || 'rex'}.png`;
-    return { ...petData, level, xp, levelData, statBonus, stage, ...stats, image: avatar, avatar };
+    return { ...petData, level, xp, levelData, statBonus, ...stats, image: avatar, avatar };
   }
 
   getPetLevel(petId) {
