@@ -496,7 +496,7 @@ export class PetSkeletalBodyCanvas {
     // 1. Draw Runway Floor Shockwaves & Pedestal
     this.renderFloorPedestal(ctx);
 
-    const petImgSrc = `/assets/pets/${this.petId || 'rex'}.png`;
+    const petImgSrc = `assets/pets/${this.petId || 'rex'}.png`;
     if (!this.petImg || this.petImgSrc !== petImgSrc) {
       this.petImgSrc = petImgSrc;
       this.petImg = new Image();

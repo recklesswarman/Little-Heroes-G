@@ -436,7 +436,7 @@ export class PetSkeletalFaceCanvas {
     const p = this.profile;
     const radius = Math.min(this.width, this.height) * 0.44;
 
-    const petImgSrc = `/assets/pets/${this.petId || 'rex'}.png`;
+    const petImgSrc = `assets/pets/${this.petId || 'rex'}.png`;
     if (!this.petImg || this.petImgSrc !== petImgSrc) {
       this.petImgSrc = petImgSrc;
       this.petImg = new Image();

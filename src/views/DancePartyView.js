@@ -24,8 +24,8 @@ import { voicePrompts } from '../utils/voicePrompts.js';
 
 // Helper to reliably get the pet's 3D figurine graphic
 export function getPetDisplayAvatar(pet) {
-  if (!pet) return '/assets/pets/rex.png';
-  return pet.avatar || (pet.key ? `/assets/pets/${pet.key}.png` : null) || PETS_DATABASE[0].avatar || '/assets/pets/rex.png';
+  if (!pet) return 'assets/pets/rex.png';
+  return pet.avatar || (pet.key ? `assets/pets/${pet.key}.png` : null) || PETS_DATABASE[0].avatar || 'assets/pets/rex.png';
 }
 
 // -------------------------------------------------------------
@@ -1369,7 +1369,7 @@ function initMemoryGame() {
     const cardData = {
       id: pet.id,
       name: pet.name,
-      img: pet.avatar || `/assets/pets/${pet.key || 'rex'}.png`,
+      img: pet.avatar || `assets/pets/${pet.key || 'rex'}.png`,
       emoji: pet.emoji || '🐾'
     };
     deck.push(cardData);

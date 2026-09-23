@@ -68,7 +68,7 @@ export function renderPetSanctuaryView() {
 
           <div class="flex items-center gap-2">
             <div class="w-11 h-11 rounded-2xl bg-surface-container-high border-2 border-primary/50 flex items-center justify-center overflow-hidden shadow-inner p-1">
-              <img src="${activePet.avatar || `/assets/pets/${activePet.key || 'rex'}.png`}" alt="${activePet.name}" class="w-full h-full object-contain">
+              <img src="${activePet.avatar || `assets/pets/${activePet.key || 'rex'}.png`}" alt="${activePet.name}" class="w-full h-full object-contain">
             </div>
             <div class="flex flex-col">
               <div class="flex items-center gap-1.5">
@@ -687,7 +687,7 @@ function renderWorkoutDrawer(pet) {
       <!-- Daily Coach Hero Spotlight Card -->
       <div class="p-4 rounded-3xl bg-gradient-to-br from-surface-container-high to-surface-container-lowest border-2 border-amber-400/50 shadow-xl flex items-center gap-4">
         <div class="w-20 h-20 rounded-2xl bg-surface-container-lowest border-2 border-amber-400/60 flex items-center justify-center p-1.5 shadow-md flex-shrink-0">
-          <img src="${dailyCoach.avatar || `/assets/pets/${dailyCoach.key || 'rex'}.png`}" alt="${dailyCoach.name}" class="w-full h-full object-contain filter drop-shadow">
+          <img src="${dailyCoach.avatar || `assets/pets/${dailyCoach.key || 'rex'}.png`}" alt="${dailyCoach.name}" class="w-full h-full object-contain filter drop-shadow">
         </div>
         <div class="flex flex-col min-w-0">
           <div class="flex items-center gap-2">
@@ -802,7 +802,7 @@ function renderRosterDrawer(activePet) {
           const level = store.getPetLevel(pet.id);
           const levelData = getPetLevelData(level);
           const statBonus = calculatePetStatBonus(pet, level);
-          const petImg = pet.avatar || `/assets/pets/${pet.key || 'rex'}.png`;
+          const petImg = pet.avatar || `assets/pets/${pet.key || 'rex'}.png`;
 
           return `
             <div 
@@ -821,7 +821,7 @@ function renderRosterDrawer(activePet) {
                     alt="${pet.name}" 
                     class="w-full h-full object-contain filter drop-shadow hover:scale-105 transition-transform"
                     loading="lazy"
-                    onerror="this.onerror=null; this.src='/assets/pets/${pet.key || 'rex'}.png';"
+                    onerror="this.onerror=null; this.src='assets/pets/${pet.key || 'rex'}.png';"
                   >
                 </div>
                 <div class="flex flex-col min-w-0">

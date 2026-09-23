@@ -12,7 +12,7 @@ export function renderPetDetailView() {
   const levelData = getPetLevelData(level);
   const statBonus = calculatePetStatBonus(pet, level);
   const isEquipped = String(hero.activePetId || '1') === String(pet.id);
-  const currentAvatar = pet.avatar || `/assets/pets/${pet.key || 'rex'}.png`;
+  const currentAvatar = pet.avatar || `assets/pets/${pet.key || 'rex'}.png`;
   const stats = (state.petStatsMap && state.petStatsMap[pet.id]) || { hunger: 75, hygiene: 85, energy: 90, joy: 80 };
   const exclusiveGear = pet.exclusiveGear || [
     { name: `${pet.name}'s Crest`, desc: `Empowers ${pet.name}'s signature moves`, icon: 'shield' }
@@ -75,7 +75,7 @@ export function renderPetDetailView() {
             src="${currentAvatar}" 
             alt="${pet.name}"
             loading="lazy"
-            onerror="this.onerror=null; this.src='/assets/pets/${pet.key || 'rex'}.png';"
+            onerror="this.onerror=null; this.src='assets/pets/${pet.key || 'rex'}.png';"
           />
         </div>
 
