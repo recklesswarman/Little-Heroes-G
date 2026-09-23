@@ -892,6 +892,21 @@ export function attachPetSanctuaryListeners() {
     });
   }
 
+  // Drawer Close Button & Backdrop (Feed/Bath/Wardrobe/Roster/Workout/Expedition drawers)
+  const drawerCloseBtn = document.getElementById('drawer-close-btn');
+  if (drawerCloseBtn) {
+    drawerCloseBtn.addEventListener('click', () => {
+      Sound.bloop();
+      store.closeSanctuaryDrawer();
+    });
+  }
+  const drawerBackdrop = document.getElementById('drawer-backdrop');
+  if (drawerBackdrop) {
+    drawerBackdrop.addEventListener('click', () => {
+      store.closeSanctuaryDrawer();
+    });
+  }
+
   // Quick Whistle
   const whistleBtn = document.getElementById('quick-whistle-btn');
   if (whistleBtn) {
