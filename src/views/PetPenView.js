@@ -3,14 +3,14 @@ import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import { speakRex } from '../services/voiceService.js';
 import confetti from 'canvas-confetti';
-import { PETS_DATABASE } from '../data/petsData.js';
+import { PETS_DATABASE, getPetLevelData } from '../data/petsData.js';
 
 let hasSpokenPenGreeting = false;
 let selectedRadialPetId = null;
 
 const PET_BANTER = [
   "Yum! That picnic fruit looks so delicious! 🍎",
-  "Ready to stomp up some chores and earn sparks! ⚡",
+  "Ready to stomp up some chores and earn training XP! ⚡",
   "The Bubble Bath Lagoon water is warm and bubbly! 🛁",
   "Look at all the magical butterflies in Sunny Meadow! 🦋",
   "Let's train together in the Arena! ⚔️",
@@ -24,10 +24,11 @@ export function renderPetPenView() {
   const hero = state.selectedHero;
   const hasPet = hero.hasChosenStarterPet && hero.unlockedPetIds && hero.unlockedPetIds.length > 0;
   const activePet = store.getActivePet();
-  const currentAvatar = activePet.stage >= 3 && activePet.evolvedAvatar ? activePet.evolvedAvatar : activePet.avatar;
-  const sparks = store.getPetSparks(activePet.id);
+  const currentAvatar = activePet.avatar;
+  const petLevel = store.getPetLevel(activePet.id);
+  const petXp = store.getPetXp(activePet.id);
+  const xpNeeded = petLevel * 100;
   const streakShield = store.getPetStreakShield();
-  const isEvolutionReady = sparks >= 100;
 
   if (!hasPet) {
     return `
@@ -85,13 +86,12 @@ export function renderPetPenView() {
   const unlockedIds = hero.unlockedPetIds || [activePet.id];
   const roamingPets = unlockedIds.map((pId) => {
     const pData = state.pets?.find((p) => p.id === pId) || PETS_DATABASE.find((p) => p.id === pId) || activePet;
-    const stage = state.petStageMap?.[pId] || 1;
-    const avatar = stage >= 3 && pData.evolvedAvatar ? pData.evolvedAvatar : pData.avatar;
+    const level = store.getPetLevel(pId);
     const gearSlots = store.getEquippedPetGearSlots(pId);
     return {
       ...pData,
-      stage,
-      avatar,
+      level,
+      avatar: pData.avatar,
       gearSlots,
       isActiveCompanion: pId === activePet.id
     };
@@ -140,29 +140,29 @@ export function renderPetPenView() {
         </div>
       </div>
 
-      <!-- Evolution Sparks & Pet Streak Shield Banner -->
+      <!-- Companion Level & Pet Streak Shield Banner -->
       <div class="bg-gradient-to-r from-surface-container-high via-surface-container to-surface-container-high rounded-3xl p-4 border-2 border-primary/40 card-shadow flex flex-col sm:flex-row items-center justify-between gap-4">
-        
-        <!-- Left: Evolution Sparks Progress -->
+
+        <!-- Left: Companion Level Progress -->
         <div class="flex items-center gap-3 w-full sm:w-auto flex-1">
-          <div class="w-12 h-12 rounded-2xl bg-primary/20 border border-primary/50 text-primary flex items-center justify-center text-2xl flex-shrink-0 ${isEvolutionReady ? 'animate-bounce' : ''}">
-            <span class="material-symbols-outlined text-3xl">auto_awesome</span>
+          <div class="w-12 h-12 rounded-2xl bg-primary/20 border border-primary/50 text-primary flex items-center justify-center text-2xl flex-shrink-0">
+            <span class="material-symbols-outlined text-3xl">military_tech</span>
           </div>
           <div class="flex flex-col flex-1 max-w-sm">
             <div class="flex justify-between items-center text-xs font-black">
               <span class="text-inverse-surface flex items-center gap-1">
-                <span>Evolution Sparks</span>
-                <span class="text-primary font-black">⚡ ${sparks} / 100</span>
+                <span>Companion Training</span>
+                <span class="text-primary font-black">⭐ ${petXp} / ${xpNeeded} XP</span>
               </span>
-              <span class="text-[10px] text-secondary font-bold">Stage ${activePet.stage}/4</span>
+              <span class="text-[10px] text-secondary font-bold">Level ${petLevel}/25</span>
             </div>
             <div class="w-full h-3.5 bg-surface-container-lowest rounded-full overflow-hidden p-0.5 border border-surface-container-highest mt-1">
-              <div class="h-full bg-gradient-to-r from-primary to-secondary rounded-full transition-all duration-500" style="width: ${Math.min(100, sparks)}%;"></div>
+              <div class="h-full bg-gradient-to-r from-primary to-secondary rounded-full transition-all duration-500" style="width: ${Math.min(100, Math.round((petXp / xpNeeded) * 100))}%;"></div>
             </div>
           </div>
         </div>
 
-        <!-- Right: Action & Streak Shield -->
+        <!-- Right: Streak Shield -->
         <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
           <!-- Streak Shield Pill -->
           <div class="bg-surface-container-lowest/80 px-3 py-1.5 rounded-2xl border border-primary/30 flex items-center gap-1.5" title="Joyful pets shield your streak if 1 day is missed!">
@@ -172,16 +172,6 @@ export function renderPetPenView() {
               <span class="text-[10px] font-black text-primary">${streakShield.isActive ? '🛡️ ACTIVE' : 'Cared For Today'}</span>
             </div>
           </div>
-
-          <!-- Evolution Matrix Trigger -->
-          <button id="pen-evolve-stage-btn" class="px-4 py-2.5 rounded-2xl font-headline text-xs font-black flex items-center gap-1.5 chunky-btn-sm transition-all ${
-            isEvolutionReady
-              ? 'bg-gradient-to-r from-primary to-primary-fixed text-on-primary border-2 border-primary-container shadow-chunky-sm animate-pulse-glow'
-              : 'bg-surface-container-high hover:bg-surface-bright text-primary border-2 border-primary/40'
-          }">
-            <span class="material-symbols-outlined text-base">auto_awesome</span>
-            <span>${isEvolutionReady ? 'READY TO EVOLVE!' : 'Evolution Matrix'}</span>
-          </button>
         </div>
 
       </div>
@@ -211,7 +201,7 @@ export function renderPetPenView() {
               ${renderPet3DViewer({
                 canvasId: 'pen-meadow-3d-pet',
                 petId: activePet.id,
-                stage: activePet.stage || 1,
+                stage: 1,
                 mode: 'sanctuary',
                 avatarFallback: currentAvatar,
                 petName: activePet.name,
@@ -283,7 +273,7 @@ export function renderPetPenView() {
             </div>
 
             <div class="text-[10px] font-bold text-on-surface-variant flex items-center gap-1 justify-center">
-              <span>🍉 Delicious treats restore fullness and grant sparks!</span>
+              <span>🍉 Delicious treats restore fullness and boost training XP!</span>
             </div>
           </div>
 
@@ -399,7 +389,7 @@ export function renderPetPenView() {
           </div>
           <div class="flex flex-col">
             <span class="font-headline text-sm font-black text-inverse-surface">Feed Snack (5 🪙)</span>
-            <span class="text-[10px] font-bold text-on-surface-variant">+25 Fullness • +5 Sparks</span>
+            <span class="text-[10px] font-bold text-on-surface-variant">+25 Fullness • +10 XP</span>
           </div>
         </button>
 
@@ -421,7 +411,7 @@ export function renderPetPenView() {
           </div>
           <div class="flex flex-col">
             <span class="font-headline text-sm font-black text-inverse-surface">Pet & Hug</span>
-            <span class="text-[10px] font-bold text-primary font-black">+20 Joy • +5 Sparks</span>
+            <span class="text-[10px] font-bold text-primary font-black">+20 Joy • +10 XP</span>
           </div>
         </button>
 
@@ -525,10 +515,10 @@ function renderRoamingPetCard(pet, idx) {
         ` : ''}
       </div>
 
-      <!-- Name & Stage Tag -->
+      <!-- Name & Level Tag -->
       <div class="bg-surface-container-lowest/80 px-3 py-1 rounded-full border border-surface-container-highest flex items-center gap-1.5 mt-1 shadow-sm">
         <span class="font-headline text-xs font-black text-inverse-surface">${pet.name}</span>
-        <span class="text-[9px] font-black text-secondary">Stage ${pet.stage}</span>
+        <span class="text-[9px] font-black text-secondary">Lv ${pet.level}</span>
       </div>
 
       <span class="text-[9px] font-bold text-primary mt-0.5 opacity-90 group-hover:opacity-100">Tap for Care Ring ⭕</span>
@@ -542,9 +532,8 @@ function renderRadialActionRing(state) {
   const pet = state.pets?.find(p => p.id === selectedRadialPetId) || PETS_DATABASE.find(p => p.id === selectedRadialPetId);
   if (!pet) return '';
 
-  const stage = state.petStageMap?.[pet.id] || 1;
-  const avatar = stage >= 3 && pet.evolvedAvatar ? pet.evolvedAvatar : pet.avatar;
-  const sparks = store.getPetSparks(pet.id);
+  const avatar = pet.avatar;
+  const petLevel = store.getPetLevel(pet.id);
   const isActive = pet.id === state.selectedHero?.activePetId;
 
   return `
@@ -564,9 +553,9 @@ function renderRadialActionRing(state) {
         <div>
           <h3 class="font-headline text-lg font-black text-inverse-surface flex items-center justify-center gap-1.5">
             ${pet.name}
-            <span class="text-xs text-primary font-black bg-primary/20 px-2 py-0.5 rounded-full">Stage ${stage}</span>
+            <span class="text-xs text-primary font-black bg-primary/20 px-2 py-0.5 rounded-full">Level ${petLevel}</span>
           </h3>
-          <p class="text-xs font-bold text-on-surface-variant">⚡ ${sparks}/100 Evolution Sparks</p>
+          <p class="text-xs font-bold text-on-surface-variant">⭐ Level ${petLevel}/25 Companion</p>
         </div>
 
         <!-- 4-Button Radial Action Ring Grid -->
@@ -576,14 +565,14 @@ function renderRadialActionRing(state) {
           <button id="radial-hug-btn" class="bg-gradient-to-r from-pink-500 to-rose-500 text-white font-headline text-xs font-black p-3.5 rounded-2xl chunky-btn flex flex-col items-center gap-1 hover:brightness-110 active:scale-95 shadow-md">
             <span class="material-symbols-outlined text-2xl">favorite</span>
             <span>Pet & Hug</span>
-            <span class="text-[9px] font-bold text-pink-100">+20 Joy • +5 Sparks</span>
+            <span class="text-[9px] font-bold text-pink-100">+20 Joy • +10 XP</span>
           </button>
 
           <!-- 2. Feed Munchies Treat -->
           <button id="radial-feed-btn" class="bg-gradient-to-r from-amber-500 to-orange-500 text-black font-headline text-xs font-black p-3.5 rounded-2xl chunky-btn flex flex-col items-center gap-1 hover:brightness-110 active:scale-95 shadow-md">
             <span class="material-symbols-outlined text-2xl">nutrition</span>
             <span>Feed Snack (5 🪙)</span>
-            <span class="text-[9px] font-bold text-black/80">+25 Fullness • +5 Sparks</span>
+            <span class="text-[9px] font-bold text-black/80">+25 Fullness • +10 XP</span>
           </button>
 
           <!-- 3. Pet Locker -->
@@ -664,16 +653,16 @@ function triggerPetHugExcitement(petId) {
 }
 
 export function attachPetPenListeners() {
-  // Initialize 3D Interactive Companion Pet Viewer in Sunny Meadow
-  const meadow3DController = initPet3DViewer('pen-meadow-3d-pet', {
-    petId: hero?.activePetId || 'rex',
-    stage: store.getState().petStageMap?.[hero?.activePetId || 1] || 1,
-    mode: 'sanctuary'
-  });
-
   const isEasy = store.isEasyMode();
   const hero = store.getState().selectedHero;
   const hasNoPet = !hero?.hasChosenStarterPet || !hero?.unlockedPetIds || hero.unlockedPetIds.length === 0;
+
+  // Initialize 3D Interactive Companion Pet Viewer in Sunny Meadow
+  const meadow3DController = initPet3DViewer('pen-meadow-3d-pet', {
+    petId: hero?.activePetId || 'rex',
+    stage: 1,
+    mode: 'sanctuary'
+  });
 
   if (isEasy && !hasSpokenPenGreeting && !hasNoPet) {
     hasSpokenPenGreeting = true;
@@ -758,15 +747,6 @@ export function attachPetPenListeners() {
     groupPicnicBtn.addEventListener('click', () => {
       store.feedAllPetsPicnic();
       speakRex("Picnic time! All your companions are enjoying delicious snacks together!");
-    });
-  }
-
-  // Evolution Matrix Button
-  const evolveBtn = document.getElementById('pen-evolve-stage-btn');
-  if (evolveBtn) {
-    evolveBtn.addEventListener('click', () => {
-      Sound.click();
-      store.navigate('evolution');
     });
   }
 

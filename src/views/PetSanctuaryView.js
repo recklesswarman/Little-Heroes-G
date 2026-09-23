@@ -375,10 +375,6 @@ function renderActiveDrawer(drawer, activePet, archetype, needs, petLevel, petLe
   `;
 }
 
-function currentStage(pet) {
-  return pet.stage || 1;
-}
-
 // -----------------------------------------------------------------------------
 // DRAWER 1: FEED TREAT DRAWER
 // -----------------------------------------------------------------------------

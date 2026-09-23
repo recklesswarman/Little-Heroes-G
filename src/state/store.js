@@ -1,6 +1,6 @@
 import { Sound } from '../audio/sfx.js';
 import confetti from 'canvas-confetti';
-import { PETS_DATABASE, getPetArchetype, getPetBondBonus, SANCTUARY_TREATS, makePetSvg, getPetLevelData, calculatePetStatBonus, getDailyRotatingPetCoach } from '../data/petsData.js';
+import { PETS_DATABASE, getPetArchetype, getPetBondBonus, getPetById, SANCTUARY_TREATS, makePetSvg, getPetLevelData, calculatePetStatBonus, getDailyRotatingPetCoach } from '../data/petsData.js';
 import { ADVENTURE_GAMES } from '../data/learningGamesData.js';
 import { MOVEMENT_ROUTINES, getMovementRoutine } from '../data/movementRoutinesData.js';
 import { PROFILE_THEMES } from '../data/profileThemesData.js';
@@ -494,9 +494,6 @@ const defaultState = {
     petId: null,
     currentPose: 'idle'
   },
-  petSparkMap: {
-    1: 65
-  },
   petStreakShield: {
     available: true,
     usedThisWeek: false,
@@ -884,9 +881,6 @@ class Store {
           }
         }
 
-        if (!parsed.petSparkMap || typeof parsed.petSparkMap !== 'object') {
-          parsed.petSparkMap = { ...defaultState.petSparkMap };
-        }
         if (!parsed.petStreakShield) {
           parsed.petStreakShield = { ...defaultState.petStreakShield };
         }
@@ -955,7 +949,6 @@ class Store {
       unlockedPetIds: [...(sHero.unlockedPetIds || [])],
       hasChosenStarterPet: sHero.hasChosenStarterPet ?? ((sHero.unlockedPetIds || []).length > 0),
       habitatSlots: sHero.habitatSlots || 1,
-      petStageMap: { ...(sHero.petStageMap || {}) },
       streak: sHero.streak || 1,
       stars: sHero.stars || 0,
       completionRate: sHero.completionRate ?? 100,
@@ -2048,7 +2041,7 @@ class Store {
     this.addXP(finalXpEarned);
 
     // 2. Active Companion Pet Sparks & Max 100% Hygiene Boost
-    this.addEvolutionSparks(petId, sparksEarned);
+    this.addPetCareXp(petId, sparksEarned);
     if (!this.state.petStatsMap[petId]) {
       this.state.petStatsMap[petId] = { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
     }
@@ -2433,7 +2426,7 @@ class Store {
       if (elapsed >= exp.durationMs) {
         if (!this.state.selectedHero) this.state.selectedHero = {};
         this.state.selectedHero.coins = (this.state.selectedHero.coins || 0) + 100;
-        this.addEvolutionSparks(exp.petId, 20);
+        this.addPetCareXp(exp.petId, 20);
         this.addXP(35);
         sanct.expedition = { active: false };
         if (this.state.activeExpeditions) {
@@ -2464,8 +2457,8 @@ class Store {
 
     const rewards = generateExpeditionRewards(expedition, pet);
 
-    // 1. Award Evolution Sparks to exploring pet
-    this.addEvolutionSparks(pet.id, rewards.sparksAwarded);
+    // 1. Award Pet Training XP to exploring pet
+    this.addPetCareXp(pet.id, rewards.sparksAwarded);
 
     // 2. Award Tokens & XP to hero
     currentHero.coins = (currentHero.coins || 0) + rewards.coinsAwarded;
@@ -2571,7 +2564,7 @@ class Store {
 
     this.showReward(
       `${pet.name.toUpperCase()} RETURNED! 🎒🎉`,
-      `⚡ +${rewards.sparksAwarded} Evolution Sparks for ${pet.name}!\n🪙 +${rewards.coinsAwarded} Habit Tokens & +${rewards.xpAwarded} XP!\n💌 New illustrated postcard added to your Journal!${dropMessage}${gearMessage}`,
+      `⚡ +${rewards.sparksAwarded * 2} Training XP for ${pet.name}!\n🪙 +${rewards.coinsAwarded} Habit Tokens & +${rewards.xpAwarded} XP!\n💌 New illustrated postcard added to your Journal!${dropMessage}${gearMessage}`,
       rewards.coinsAwarded,
       rewards.xpAwarded,
       null,
@@ -3654,34 +3647,11 @@ class Store {
     this.notify();
   }
 
-  getPetSparks(petId) {
-    const id = petId || this.state.selectedHero?.activePetId || 1;
-    if (!this.state.petSparkMap) {
-      this.state.petSparkMap = {};
-    }
-    if (this.state.petSparkMap[id] === undefined) {
-      this.state.petSparkMap[id] = 65; // High initial sparks for immediate toddler satisfaction
-    }
-    return this.state.petSparkMap[id];
-  }
-
-  addEvolutionSparks(petId, amount = 15) {
+  // Grants Level 1-25 Pet Training XP progression (replaces the old
+  // sparks/evolution-stage reward pipeline).
+  addPetCareXp(petId, amount = 15) {
     const id = petId || this.state.selectedHero?.activePetId || '1';
-    // Forward directly to Level 1-25 Pet Training XP progression
-    this.addPetTrainingXp(id, amount * 2);
-    if (!this.state.petSparkMap) {
-      this.state.petSparkMap = {};
-    }
-    const current = this.getPetSparks(id);
-    const next = Math.min(100, current + amount);
-    this.state.petSparkMap[id] = next;
-    if (this.state.selectedHero) {
-      this.state.selectedHero.sparks = next;
-      this.state.selectedHero.evolutionSparks = next;
-    }
-    this.saveState(true);
-    this.notify();
-    return next;
+    return this.addPetTrainingXp(id, amount * 2);
   }
 
   getPetStreakShield() {
@@ -3729,7 +3699,7 @@ class Store {
       s.hunger = Math.min(100, (s.hunger || 70) + 30);
       s.joy = Math.min(100, (s.joy || 80) + 25);
       s.energy = Math.min(100, (s.energy || 65) + 20);
-      this.addEvolutionSparks(pId, 10);
+      this.addPetCareXp(pId, 10);
     });
 
     this.addXP(25);
@@ -3742,12 +3712,12 @@ class Store {
 
     this.logAction(
       `${hero.name} hosted a Sanctuary Group Treat Picnic!`,
-      `All companions ate fresh fruit snacks: +30 Fullness, +25 Joy, +20 Energy & +10 Evolution Sparks!`
+      `All companions ate fresh fruit snacks: +30 Fullness, +25 Joy, +20 Energy & +20 Training XP!`
     );
 
     this.showReward(
       'Group Treat Picnic Time! 🧺🍎',
-      `All ${unlockedIds.length} companion(s) gathered at the picnic clearing! Everyone gained +10 Evolution Sparks ⚡ and full bellies!`,
+      `All ${unlockedIds.length} companion(s) gathered at the picnic clearing! Everyone gained +20 Training XP ⚡ and full bellies!`,
       0,
       25,
       null,
@@ -3785,7 +3755,7 @@ class Store {
     stats.hunger = Math.min(100, (stats.hunger || 70) + 25);
     stats.joy = Math.min(100, (stats.joy || 80) + 15);
     stats.energy = Math.min(100, (stats.energy || 65) + 10);
-    this.addEvolutionSparks(id, 5);
+    this.addPetCareXp(id, 5);
     this.addXP(10);
 
     Sound.snackMunch();
@@ -3799,7 +3769,7 @@ class Store {
     const pet = this.state.pets.find(p => p.id === id) || PETS_DATABASE.find(p => p.id === id);
     this.logAction(
       `${hero.name} fed ${pet?.name || 'companion'} a snack`,
-      `+25 Fullness, +15 Joy, +5 Evolution Sparks ⚡`
+      `+25 Fullness, +15 Joy, +10 Training XP ⚡`
     );
 
     this.saveState(true);
@@ -3815,7 +3785,7 @@ class Store {
     const stats = this.state.petStatsMap[id];
     stats.joy = Math.min(100, (stats.joy || 80) + 20);
     stats.energy = Math.min(100, (stats.energy || 65) + 10);
-    this.addEvolutionSparks(id, 5);
+    this.addPetCareXp(id, 5);
     this.addXP(15);
     Sound.boing();
     Sound.chirp();
@@ -3832,7 +3802,7 @@ class Store {
     if (!activePet || !activePet.id) return;
     const petId = activePet.id;
     const sparkAmount = type === 'ar_battle' ? 10 : 15;
-    this.addEvolutionSparks(petId, sparkAmount);
+    this.addPetCareXp(petId, sparkAmount);
 
     if (!this.state.petStatsMap[petId]) {
       this.state.petStatsMap[petId] = { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
@@ -3842,59 +3812,6 @@ class Store {
     stats.energy = Math.min(100, (stats.energy || 70) + 5);
     this.applyChoreTurboBoost(15, taskId);
     this.saveState(true);
-  }
-
-  evolvePetStage(petId) {
-    const id = petId || this.state.selectedHero?.activePetId || 1;
-    const currentStage = this.state.petStageMap[id] || 1;
-    const hero = this.state.heroes.find(h => h.id === this.state.selectedHero.id) || this.state.selectedHero;
-    const petData = this.state.pets.find(p => p.id === id) || PETS_DATABASE.find(p => p.id === id) || this.state.pets[0];
-
-    if (currentStage < 4) {
-      const nextStage = currentStage + 1;
-      this.state.petStageMap[id] = nextStage;
-      if (!hero.petStageMap) hero.petStageMap = {};
-      hero.petStageMap[id] = nextStage;
-
-      if (!this.state.petSparkMap) this.state.petSparkMap = {};
-      this.state.petSparkMap[id] = 0;
-
-      this.addXP(100);
-      this.state.selectedHero.coins += 100;
-      Sound.evolutionAscent();
-      Sound.fanfare();
-
-      const stageTitle = petData?.evolutionStages?.[nextStage - 1] || `Stage ${nextStage}`;
-      this.logAction(
-        `${hero.name}'s companion ${petData?.name || 'companion'} evolved to ${stageTitle}!`,
-        `Advanced to Stage ${nextStage}! +100 Coins 🪙 & +100 XP awarded!`
-      );
-
-      this.saveState(true);
-
-      const unlocked = hero.unlockedPetIds || [];
-      const firstPetId = unlocked[0];
-
-      if (id === firstPetId && nextStage >= 2 && unlocked.length === 1) {
-        setTimeout(() => {
-          this.openPetSelectionModal('second_pet');
-        }, 1500);
-      }
-
-      if (unlocked.length === 2) {
-        const p1 = unlocked[0];
-        const p2 = unlocked[1];
-        const s1 = hero.petStageMap[p1] || this.state.petStageMap[p1] || 1;
-        const s2 = hero.petStageMap[p2] || this.state.petStageMap[p2] || 1;
-        if (s1 >= 4 && s2 >= 4) {
-          setTimeout(() => {
-            this.openPetSelectionModal('third_pet');
-          }, 1500);
-        }
-      }
-      return nextStage;
-    }
-    return currentStage;
   }
 
   bathPetProgress(amount = 20, petId) {
@@ -3978,14 +3895,11 @@ class Store {
   choosePet(petId, type = 'starter') {
     const hero = this.state.heroes.find(h => h.id === this.state.selectedHero.id) || this.state.selectedHero;
     if (!hero.unlockedPetIds) hero.unlockedPetIds = [];
-    if (!hero.petStageMap) hero.petStageMap = {};
 
     if (!hero.unlockedPetIds.includes(petId)) {
       hero.unlockedPetIds.push(petId);
     }
-    hero.petStageMap[petId] = 1; // Always Stage 1!
     hero.activePetId = petId;
-    this.state.petStageMap[petId] = 1;
 
     if (type === 'starter') {
       hero.hasChosenStarterPet = true;
@@ -4051,7 +3965,6 @@ class Store {
   adoptPetIntoSlot(petId) {
     const hero = this.state.heroes.find(h => h.id === this.state.selectedHero.id) || this.state.selectedHero;
     if (!hero.unlockedPetIds) hero.unlockedPetIds = [];
-    if (!hero.petStageMap) hero.petStageMap = {};
 
     const currentSlots = hero.habitatSlots || 1;
     if (hero.unlockedPetIds.includes(petId)) {
@@ -4069,8 +3982,6 @@ class Store {
     }
 
     hero.unlockedPetIds.push(petId);
-    hero.petStageMap[petId] = 1; // Starts at Stage 1!
-    this.state.petStageMap[petId] = 1;
     this.state.selectedHero.unlockedPetIds = [...hero.unlockedPetIds];
 
     const pet = this.state.pets.find(p => p.id === petId);
@@ -4087,67 +3998,6 @@ class Store {
     this.setActivePet(petId);
     this.saveState(true);
   }
-
-  evolvePet(petId) {
-    const id = petId || this.state.selectedHero.activePetId || 1;
-    const currentStage = this.state.petStageMap[id] || 1;
-    const activePet = this.getActivePet();
-    const hero = this.state.heroes.find(h => h.id === this.state.selectedHero.id) || this.state.selectedHero;
-
-    if (currentStage < 4) {
-      const nextStage = currentStage + 1;
-      this.state.petStageMap[id] = nextStage;
-      if (!hero.petStageMap) hero.petStageMap = {};
-      hero.petStageMap[id] = nextStage;
-      if (!this.state.petSparkMap) this.state.petSparkMap = {};
-      this.state.petSparkMap[id] = 0;
-
-      this.addXP(100);
-      this.state.selectedHero.coins += 100;
-      Sound.levelUp();
-      Sound.fanfare();
-      confetti({
-        particleCount: 150,
-        spread: 120,
-        origin: { y: 0.4 },
-        colors: ['#2ecc71', '#ffb961', '#f1c40f', '#00d67d']
-      });
-      this.showReward(
-        'BIG EVOLUTION!',
-        `Your companion advanced to Stage ${nextStage}! New Golden Armor and Powers Unlocked!`,
-        100,
-        100,
-        activePet.evolvedAvatar || activePet.avatar,
-        'military_tech'
-      );
-      this.saveState(true);
-
-      // Check milestones for 2nd and 3rd free pet choices:
-      const unlocked = hero.unlockedPetIds || [];
-      const firstPetId = unlocked[0];
-
-      // Milestone 1: First pet evolves to Stage 2 -> unlocks 2nd free pet!
-      if (id === firstPetId && nextStage >= 2 && unlocked.length === 1) {
-        setTimeout(() => {
-          this.openPetSelectionModal('second_pet');
-        }, 1200);
-      }
-
-      // Milestone 2: First 2 pets both reach Stage 4 -> unlocks 3rd free pet!
-      if (unlocked.length === 2) {
-        const p1 = unlocked[0];
-        const p2 = unlocked[1];
-        const s1 = hero.petStageMap[p1] || this.state.petStageMap[p1] || 1;
-        const s2 = hero.petStageMap[p2] || this.state.petStageMap[p2] || 1;
-        if (s1 >= 4 && s2 >= 4) {
-          setTimeout(() => {
-            this.openPetSelectionModal('third_pet');
-          }, 1200);
-        }
-      }
-    }
-  }
-
 
   redeemRealLifeReward(rewardId) {
     const reward = this.state.realLifeRewards.find(r => r.id === rewardId);
@@ -4558,8 +4408,8 @@ class Store {
     currentHero.coins = (currentHero.coins || 0) + totalCoins;
     this.addXP(totalXP);
 
-    // Grant +10 Evolution Sparks to companion
-    this.addEvolutionSparks(petId, sparksEarned);
+    // Grant Pet Training XP to companion
+    this.addPetCareXp(petId, sparksEarned);
 
     // Boost Joy and Energy of active companion
     if (!this.state.petStatsMap[petId]) {
@@ -4604,7 +4454,7 @@ class Store {
 
     this.logAction(
       `${currentHero.name} mastered ${game.realm || game.title} (${starsEarned}⭐)`,
-      `+${totalCoins} Tokens 🪙, +${totalXP} XP, +${sparksEarned} Evolution Sparks ⚡ for ${activePet.name}`
+      `+${totalCoins} Tokens 🪙, +${totalXP} XP, +${sparksEarned * 2} Training XP ⚡ for ${activePet.name}`
     );
 
     Sound.fanfare();
@@ -4640,8 +4490,8 @@ class Store {
     currentHero.coins = (currentHero.coins || 0) + coinsEarned;
     this.addXP(xpEarned);
 
-    // 2. Active Pet Evolution Sparks & Vitality Boosts
-    this.addEvolutionSparks(petId, sparksEarned);
+    // 2. Active Pet Training XP & Vitality Boosts
+    this.addPetCareXp(petId, sparksEarned);
     if (!this.state.petStatsMap[petId]) {
       this.state.petStatsMap[petId] = { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
     }
@@ -4796,12 +4646,6 @@ class Store {
       if (!hero.habitatSlots) {
         hero.habitatSlots = Math.max(1, hero.unlockedPetIds.length);
       }
-      if (!hero.petStageMap) {
-        hero.petStageMap = {};
-        hero.unlockedPetIds.forEach((pId) => {
-          hero.petStageMap[pId] = 1; // Stage 1!
-        });
-      }
 
       this.state.selectedHero.id = hero.id;
       this.state.selectedHero.name = hero.name;
@@ -4820,9 +4664,6 @@ class Store {
       this.state.selectedHero.gameDifficulty = hero.gameDifficulty || 'medium';
       this.state.selectedHero.equippedProfileTheme = hero.equippedProfileTheme || 'theme_dragon_emerald';
       this.state.selectedHero.unlockedThemes = hero.unlockedThemes || ['theme_dragon_emerald'];
-
-      // Synchronize global petStageMap with this hero's petStageMap
-      this.state.petStageMap = { ...hero.petStageMap };
 
       Sound.fanfare();
       this.saveState(true);
@@ -4845,7 +4686,6 @@ class Store {
       unlockedPetIds: [],
       hasChosenStarterPet: false,
       habitatSlots: 1,
-      petStageMap: {},
       streak: 1,
       completionRate: 100,
       gameDifficulty: gameDifficulty || 'medium',
@@ -4918,7 +4758,6 @@ class Store {
         unlockedPetIds: [],
         hasChosenStarterPet: false,
         habitatSlots: 1,
-        petStageMap: {},
         streak: 1,
         completionRate: 100,
         gameDifficulty: 'medium',
@@ -4973,7 +4812,6 @@ class Store {
       unlockedPetIds: [],
       hasChosenStarterPet: false,
       habitatSlots: 1,
-      petStageMap: {},
       streak: 1,
       completionRate: 100,
       gameDifficulty: 'medium',
@@ -5250,7 +5088,6 @@ class Store {
       unlockedPetIds: ['1'],
       hasChosenStarterPet: true,
       habitatSlots: 1,
-      petStageMap: { '1': 1 },
       gameDifficulty: 'medium',
       equippedProfileTheme: 'theme_dragon_emerald',
       unlockedThemes: ['theme_dragon_emerald'],
@@ -5684,18 +5521,6 @@ class Store {
           ...(cloudH.unlockedPetIds || []),
           ...(localH?.unlockedPetIds || [])
         ]));
-        const petStageMap = {
-          ...(localH?.petStageMap || {}),
-          ...(cloudH.petStageMap || {})
-        };
-        // Preserve highest pet stage achieved
-        Object.keys(petStageMap).forEach((pId) => {
-          petStageMap[pId] = Math.max(
-            localH?.petStageMap?.[pId] || 1,
-            cloudH?.petStageMap?.[pId] || 1
-          );
-        });
-
         return {
           ...defaultState.selectedHero,
           ...localH,
@@ -5707,7 +5532,6 @@ class Store {
           xp: preferLocalRewards ? (localH.xp ?? 0) : (cloudH.xp !== undefined ? Number(cloudH.xp) : (localH?.xp ?? 0)),
           xpNext: cloudH.xpNext || localH?.xpNext || 100,
           unlockedPetIds,
-          petStageMap,
           habitatSlots: Math.max(cloudH.habitatSlots || 1, localH?.habitatSlots || 1, unlockedPetIds.length || 1),
           hasChosenStarterPet: cloudH.hasChosenStarterPet ?? (unlockedPetIds.length > 0),
           activePetId: cloudH.activePetId || localH?.activePetId || (unlockedPetIds[0] || null),
@@ -5756,7 +5580,6 @@ class Store {
           unlockedPetIds: [],
           hasChosenStarterPet: false,
           habitatSlots: 1,
-          petStageMap: {},
           streak: 1,
           completionRate: 100,
           gameDifficulty: 'medium',
@@ -5784,14 +5607,20 @@ class Store {
       }
     }
 
-    // 4. Pet Stats, Evolution & Gear Maps
+    // 4. Pet Stats, Level/XP Progression & Gear Maps
     if (cloudData.petStatsMap) {
       this.state.petStatsMap = { ...this.state.petStatsMap, ...cloudData.petStatsMap };
     }
-    if (cloudData.petStageMap) {
-      this.state.petStageMap = { ...this.state.petStageMap, ...cloudData.petStageMap };
+    if (cloudData.petLevelMap && typeof cloudData.petLevelMap === 'object') {
+      this.state.petLevelMap = { ...this.state.petLevelMap, ...cloudData.petLevelMap };
       if (this.state.selectedHero) {
-        this.state.selectedHero.petStageMap = { ...this.state.selectedHero.petStageMap, ...cloudData.petStageMap };
+        this.state.selectedHero.petLevelMap = { ...this.state.selectedHero.petLevelMap, ...cloudData.petLevelMap };
+      }
+    }
+    if (cloudData.petXpMap && typeof cloudData.petXpMap === 'object') {
+      this.state.petXpMap = { ...this.state.petXpMap, ...cloudData.petXpMap };
+      if (this.state.selectedHero) {
+        this.state.selectedHero.petXpMap = { ...this.state.selectedHero.petXpMap, ...cloudData.petXpMap };
       }
     }
     if (cloudData.equippedGearMap) {
@@ -5823,9 +5652,6 @@ class Store {
       if (this.state.selectedHero) {
         this.state.selectedHero.savedHeroCards = cloudData.savedHeroCards;
       }
-    }
-    if (cloudData.petSparkMap && typeof cloudData.petSparkMap === 'object') {
-      this.state.petSparkMap = { ...(this.state.petSparkMap || {}), ...cloudData.petSparkMap };
     }
     if (cloudData.petStreakShield && typeof cloudData.petStreakShield === 'object') {
       this.state.petStreakShield = { ...(this.state.petStreakShield || {}), ...cloudData.petStreakShield };
@@ -6956,44 +6782,6 @@ class Store {
     return this.state.petGear[pId];
   }
 
-  evolvePetStarlight(petId = null) {
-    const pId = petId || this.getActivePet()?.id || '2';
-    const currentSparks = this.getPetSparks(pId);
-    if (currentSparks < 100) {
-      return { success: false, message: 'Need 100 Evolution Sparks to awaken!' };
-    }
-
-    // Deduct sparks
-    this.deductPetSparks(pId, 100);
-
-    // Advance evolution stage
-    const currentStage = this.state.petStageMap?.[pId] || 1;
-    const nextStage = Math.min(4, currentStage + 1);
-    if (!this.state.petStageMap) this.state.petStageMap = {};
-    this.state.petStageMap[pId] = nextStage;
-    if (this.state.selectedHero?.petStageMap) {
-      this.state.selectedHero.petStageMap[pId] = nextStage;
-    }
-
-    // Celebration
-    try {
-      if (typeof confetti === 'function' && typeof document !== 'undefined' && document.body) {
-        confetti({
-          particleCount: 120,
-          spread: 100,
-          origin: { y: 0.5 },
-          colors: ['#2ecc71', '#00d2d3', '#f39c12', '#ffb961', '#ffffff']
-        });
-      }
-    } catch (e) {}
-
-    if (typeof Sound?.fanfare === 'function') Sound.fanfare();
-
-    this.saveState(true);
-    this.notify();
-    return { success: true, newStage: nextStage };
-  }
-
   addCustomAIPet(petConfig, deliveryMode = 'egg') {
     const petId = petConfig.id || ('ai_pet_' + Date.now());
     const newPet = {
@@ -7073,53 +6861,6 @@ class Store {
     this.saveState(true);
     this.notify();
     return { success: true, petId: egg.petId, petName: egg.petName };
-  }
-
-  addPetSparks(petId, amount = 15) {
-    return this.addEvolutionSparks(petId, amount);
-  }
-
-  deductPetSparks(petId, amount = 100) {
-    const id = petId || this.state.selectedHero?.activePetId || '1';
-    if (!this.state.petSparkMap) this.state.petSparkMap = {};
-    const current = this.getPetSparks(id);
-    const next = Math.max(0, current - amount);
-    this.state.petSparkMap[id] = next;
-    if (this.state.selectedHero) {
-      this.state.selectedHero.sparks = next;
-      this.state.selectedHero.evolutionSparks = next;
-    }
-    this.saveState(true);
-    this.notify();
-    return next;
-  }
-
-  syncHabitPetCare(habitId, type = 'habit', petId = null) {
-    const activePet = this.getActivePet();
-    const pId = String(petId || activePet?.id || '2');
-    const sanct = this.getPetSanctuaryState();
-
-    // 1. Award +15 Evolution Sparks
-    this.addPetSparks(pId, 15);
-
-    // 2. Award +35 Bond XP
-    if (!sanct.petBondMap[pId]) {
-      sanct.petBondMap[pId] = { level: 1, xp: 0, pearlyGleamUntil: 0 };
-    }
-    const bond = sanct.petBondMap[pId];
-    bond.xp = (bond.xp || 0) + 35;
-    const requiredXp = bond.level * 100;
-    if (bond.xp >= requiredXp && bond.level < 10) {
-      bond.level += 1;
-      bond.xp -= requiredXp;
-    }
-
-    // 3. Activate 24h Pearly Gleam
-    bond.pearlyGleamUntil = Date.now() + (24 * 60 * 60 * 1000);
-
-    this.saveState(true);
-    this.notify();
-    return { sparksAwarded: 15, bondXpAwarded: 35, pearlyGleam: true };
   }
 
   resetAllProgress() {

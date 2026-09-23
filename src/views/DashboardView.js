@@ -60,7 +60,7 @@ export function renderDashboardView() {
         <div class="w-full md:w-auto bg-surface-container-high p-3 sm:p-3.5 rounded-2xl border-2 border-secondary-container/40 flex items-center justify-between md:justify-start gap-3 sm:gap-4 flex-shrink-0">
           <div class="w-14 h-14 rounded-2xl bg-surface-container overflow-hidden border-2 border-secondary flex items-center justify-center flex-shrink-0 relative cursor-pointer active:scale-95 transition-transform animate-idle-bob" id="dash-active-pet-trigger" title="Tap your pet to giggle or do a backflip!">
             <img id="dash-active-pet-img" class="w-full h-full object-contain p-1 select-none" src="${activePet.avatar}" alt="${activePet.name}" />
-            <div class="absolute -top-1 -right-1 bg-primary text-on-primary text-[8px] font-black px-1 rounded">S${activePet.stage}</div>
+            <div class="absolute -top-1 -right-1 bg-primary text-on-primary text-[8px] font-black px-1 rounded">Lv${store.getPetLevel(activePet.id)}</div>
           </div>
 
           <div class="flex flex-col min-w-0">
