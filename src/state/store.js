@@ -5693,7 +5693,19 @@ class Store {
         // A live AR Toothbrush Battle is single-device and second-to-second (HP,
         // countdown, victory modal); a wholesale overwrite here would reset or
         // clobber an in-progress battle from a stale/foreign snapshot.
-        'bossColosseum'
+        'bossColosseum',
+        // These three have dedicated, conflict-safe merges further down in this
+        // function (heroes: preferLocalRewards guard; selectedHero: re-derived
+        // from the merged heroes array, keyed off this device's own currently
+        // active kid; pendingApprovals: preserves not-yet-cloud-confirmed local
+        // requests). A blind overwrite here would replace them with the raw
+        // cloud copy BEFORE those merges run, so "local" would already equal
+        // "cloud" by the time the guards check it -- silently defeating the
+        // guard and reverting an in-progress profile switch or a just-issued
+        // approval back to a stale snapshot.
+        'heroes',
+        'selectedHero',
+        'pendingApprovals'
       ]);
       Object.entries(cloudData.stateSnapshot).forEach(([key, value]) => {
         if (!localOnlyKeys.has(key) && value !== undefined) {
