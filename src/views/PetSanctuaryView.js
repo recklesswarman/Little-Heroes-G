@@ -585,14 +585,16 @@ function renderWardrobeDrawer(pet, equippedGear) {
             const currentlyEquipped = equippedGear[activeCategory] || equippedGear[categories.find(c => c.id === activeCategory)?.legacyKey];
             const isEquipped = currentlyEquipped && (currentlyEquipped.id === item.id || currentlyEquipped === item.id);
             const halo = getGearHaloStyle(item.level || 1);
+            const isOwned = store.isGearOwned(item);
+            const price = store.getGearPrice(item);
 
             return `
               <div class="p-3.5 rounded-2xl bg-surface-container-high border-2 flex items-center justify-between gap-3 transition-all ${
-                isEquipped ? `${halo.border} ${halo.bg} shadow-md` : 'border-surface-container-highest hover:border-primary/50'
+                isEquipped ? `${halo.border} ${halo.bg} shadow-md` : !isOwned ? 'border-surface-container-highest opacity-80' : 'border-surface-container-highest hover:border-primary/50'
               }">
                 <div class="flex items-center gap-3 min-w-0">
                   <div class="w-12 h-12 rounded-2xl flex-shrink-0 flex items-center justify-center ${halo.bg} border-2 ${halo.border} ${halo.haloShadow}">
-                    <span class="material-symbols-outlined text-xl ${halo.text}">${item.icon || 'shield'}</span>
+                    <span class="material-symbols-outlined text-xl ${halo.text}">${!isOwned ? 'lock' : (item.icon || 'shield')}</span>
                   </div>
                   <div class="flex flex-col min-w-0">
                     <div class="flex items-center gap-1.5">
@@ -606,17 +608,27 @@ function renderWardrobeDrawer(pet, equippedGear) {
                   </div>
                 </div>
 
-                <button 
-                  class="${isEquipped ? 'wardrobe-unequip-btn' : 'wardrobe-equip-btn'} px-3 py-2 rounded-xl font-headline font-black text-xs flex-shrink-0 active:scale-95 transition-all ${
-                    isEquipped
-                      ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30'
-                      : 'bg-primary text-slate-950 border-b-2 border-[#1b7a43] hover:bg-emerald-400 shadow-sm'
-                  }"
-                  data-category="${activeCategory}"
-                  data-gear-id="${item.id}"
-                >
-                  ${isEquipped ? 'UNEQUIP' : 'EQUIP'}
-                </button>
+                ${!isOwned ? `
+                  <button
+                    class="buy-wardrobe-gear-btn px-3 py-2 rounded-xl font-headline font-black text-xs flex-shrink-0 active:scale-95 transition-all bg-amber-500 text-slate-950 border-b-2 border-amber-700 hover:brightness-110 shadow-sm"
+                    data-category="${activeCategory}"
+                    data-gear-id="${item.id}"
+                  >
+                    🪙 ${price}
+                  </button>
+                ` : `
+                  <button
+                    class="${isEquipped ? 'wardrobe-unequip-btn' : 'wardrobe-equip-btn'} px-3 py-2 rounded-xl font-headline font-black text-xs flex-shrink-0 active:scale-95 transition-all ${
+                      isEquipped
+                        ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30'
+                        : 'bg-primary text-slate-950 border-b-2 border-[#1b7a43] hover:bg-emerald-400 shadow-sm'
+                    }"
+                    data-category="${activeCategory}"
+                    data-gear-id="${item.id}"
+                  >
+                    ${isEquipped ? 'UNEQUIP' : 'EQUIP'}
+                  </button>
+                `}
               </div>
             `;
           }).join('')}
@@ -1075,6 +1087,19 @@ export function attachPetSanctuaryListeners() {
       Sound.bloop();
       selectedWardrobeCategory = btn.getAttribute('data-category') || 'masks';
       store.notify();
+    });
+  });
+
+  // Wardrobe Buy & Equip Buttons (unowned gear)
+  document.querySelectorAll('.buy-wardrobe-gear-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const cat = btn.getAttribute('data-category');
+      const gearId = btn.getAttribute('data-gear-id');
+      const activePet = store.getActivePet();
+      if (activePet && cat && gearId) {
+        const item = getGearItem(cat, gearId);
+        if (item) store.buyAndEquipGear(activePet.id, cat, item);
+      }
     });
   });
 

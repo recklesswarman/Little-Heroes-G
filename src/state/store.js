@@ -43,6 +43,7 @@ export const STORAGE_KEY = 'little_heroes_adventure_master_v9';
 export const ALL_24_PET_IDS = Array.from({ length: 24 }, (_, i) => String(i + 1));
 export const DEFAULT_PET_LEVEL_MAP = Object.fromEntries(ALL_24_PET_IDS.map((id) => [id, 1]));
 export const DEFAULT_PET_XP_MAP = Object.fromEntries(ALL_24_PET_IDS.map((id) => [id, 0]));
+export const PET_PRICE_COINS = 150;
 
 const defaultState = {
   isAuthenticated: false,
@@ -157,7 +158,7 @@ const defaultState = {
     streak: 1,
     stars: 0,
     activePetId: '1',
-    unlockedPetIds: [...ALL_24_PET_IDS],
+    unlockedPetIds: ['1'],
     hasChosenStarterPet: true,
     habitatSlots: 24,
     petLevelMap: { ...DEFAULT_PET_LEVEL_MAP },
@@ -165,12 +166,10 @@ const defaultState = {
     gameDifficulty: 'medium', // 'easy' (Toddler 3-4), 'medium' (Kids 5-6), 'hard' (Kids 7-9)
     equippedProfileTheme: 'theme_dragon_emerald',
     unlockedThemes: ['theme_dragon_emerald'],
-    equippedPetGearMap: {
-      1: { masks: 'crown_golden_horn', capes: 'cape_classic', armor: 'collar_titan', boots: 'boots_speed_neon', head: 'crown_golden_horn', back: 'cape_classic', chest: 'collar_titan', feet: 'boots_speed_neon' }
-    },
-    customGearDyesMap: {
-      1: { masks: '#f59e0b', capes: '#ef4444', armor: '#475569', boots: '#10b981', head: '#f59e0b', back: '#ef4444', chest: '#475569', feet: '#10b981' }
-    },
+    equippedPetGearMap: {},
+    customGearDyesMap: {},
+    inventory: [],
+    consumables: {},
     savedHeroCards: [],
     screenTimeMinutes: 45,
     screenTimeUsedToday: 15,
@@ -191,7 +190,7 @@ const defaultState = {
       points: 0,
       coins: 0,
       activePetId: '1',
-      unlockedPetIds: [...ALL_24_PET_IDS],
+      unlockedPetIds: ['1'],
       hasChosenStarterPet: true,
       habitatSlots: 24,
       petLevelMap: { ...DEFAULT_PET_LEVEL_MAP },
@@ -201,12 +200,10 @@ const defaultState = {
       gameDifficulty: 'medium',
       equippedProfileTheme: 'theme_dragon_emerald',
       unlockedThemes: ['theme_dragon_emerald'],
-      equippedPetGearMap: {
-        1: { masks: 'cowl_hero', capes: 'cape_classic', armor: 'collar_titan', boots: 'boots_speed_neon', head: 'cowl_hero', back: 'cape_classic', chest: 'collar_titan', feet: 'boots_speed_neon' }
-      },
-      customGearDyesMap: {
-        1: { masks: '#E74C3C', capes: '#3498DB', armor: '#F1C40F', boots: '#2ECC71', head: '#E74C3C', back: '#3498DB', chest: '#F1C40F', feet: '#2ECC71' }
-      },
+      equippedPetGearMap: {},
+      customGearDyesMap: {},
+      inventory: [],
+      consumables: {},
       savedHeroCards: [],
       screenTimeMinutes: 45,
       screenTimeUsedToday: 15,
@@ -477,17 +474,13 @@ const defaultState = {
     }
   ],
 
-  inventory: ['Enchanted Wizard Hat', 'Hero Rocket Badge', 'Crystal Gem Trove'],
-  equippedPetGear: 'Enchanted Wizard Hat',
-  equippedPetGearSlots: {
-    1: { hat: 'Enchanted Wizard Hat', cape: null, aura: null }
-  },
-  equippedPetGearMap: {
-    1: { head: 'crown_golden_horn', back: 'cape_classic', chest: 'collar_titan', feet: 'boots_speed_neon' }
-  },
-  customGearDyesMap: {
-    1: { head: '#f59e0b', back: '#ef4444', chest: '#475569', feet: '#10b981' }
-  },
+  // Pet Economy: no gear is free -- everything here starts empty and is
+  // only populated once a kid actually purchases an item.
+  inventory: [],
+  equippedPetGear: null,
+  equippedPetGearSlots: {},
+  equippedPetGearMap: {},
+  customGearDyesMap: {},
   savedHeroCards: [],
   activeRunwayModal: {
     isOpen: false,
@@ -616,7 +609,7 @@ class Store {
           parsed.pendingApprovals = [];
         }
 
-        // Clean 24 Pet Progression Architecture Migration
+        // Pet Progression: Level/XP maps always present for all 24 pets.
         parsed.pets = PETS_DATABASE;
         if (!parsed.petLevelMap) parsed.petLevelMap = { ...DEFAULT_PET_LEVEL_MAP };
         if (!parsed.petXpMap) parsed.petXpMap = { ...DEFAULT_PET_XP_MAP };
@@ -625,13 +618,43 @@ class Store {
           if (parsed.petXpMap[pId] === undefined) parsed.petXpMap[pId] = 0;
         });
 
+        // Pet Economy Migration: reverse the old "all 24 pets free" model
+        // back into "first pet free, the rest purchased with coins." This
+        // runs exactly ONCE per save -- on that one run it retroactively
+        // collapses every hero's unlockedPetIds down to just their current
+        // active pet (their free first pick); after that, ownership only
+        // grows through Store.buyPet().
+        if (!parsed.petEconomyMigrationApplied) {
+          parsed.petEconomyMigrationApplied = true;
+          if (parsed.heroes && parsed.heroes.length > 0) {
+            parsed.heroes.forEach((h) => {
+              const validActive = h.activePetId ? getPetById(h.activePetId) : null;
+              h.activePetId = validActive ? String(validActive.id) : '1';
+              h.unlockedPetIds = [h.activePetId];
+              h.hasChosenStarterPet = true;
+            });
+          }
+          if (parsed.selectedHero) {
+            const validActive = parsed.selectedHero.activePetId ? getPetById(parsed.selectedHero.activePetId) : null;
+            parsed.selectedHero.activePetId = validActive ? String(validActive.id) : '1';
+            parsed.selectedHero.unlockedPetIds = [parsed.selectedHero.activePetId];
+            parsed.selectedHero.hasChosenStarterPet = true;
+          }
+        }
+
         if (parsed.heroes && parsed.heroes.length > 0) {
           parsed.heroes.forEach((h) => {
-            h.unlockedPetIds = [...ALL_24_PET_IDS];
-            h.hasChosenStarterPet = true;
-            h.habitatSlots = 24;
             const validActive = h.activePetId ? getPetById(h.activePetId) : null;
             h.activePetId = validActive ? String(validActive.id) : '1';
+            // A hero with no ownership record at all (e.g. a fresh save that
+            // predates even unlockedPetIds existing) starts owning just
+            // their (now-validated) active pet as their free first pick.
+            if (!Array.isArray(h.unlockedPetIds) || h.unlockedPetIds.length === 0) {
+              h.unlockedPetIds = [h.activePetId];
+            }
+            if (h.hasChosenStarterPet === undefined) {
+              h.hasChosenStarterPet = h.unlockedPetIds.length > 0;
+            }
             if (!h.petLevelMap) h.petLevelMap = { ...DEFAULT_PET_LEVEL_MAP };
             if (!h.petXpMap) h.petXpMap = { ...DEFAULT_PET_XP_MAP };
             ALL_24_PET_IDS.forEach((pId) => {
@@ -650,11 +673,14 @@ class Store {
         }
 
         if (parsed.selectedHero) {
-          parsed.selectedHero.unlockedPetIds = [...ALL_24_PET_IDS];
-          parsed.selectedHero.hasChosenStarterPet = true;
-          parsed.selectedHero.habitatSlots = 24;
           const validActive = parsed.selectedHero.activePetId ? getPetById(parsed.selectedHero.activePetId) : null;
           parsed.selectedHero.activePetId = validActive ? String(validActive.id) : '1';
+          if (!Array.isArray(parsed.selectedHero.unlockedPetIds) || parsed.selectedHero.unlockedPetIds.length === 0) {
+            parsed.selectedHero.unlockedPetIds = [parsed.selectedHero.activePetId];
+          }
+          if (parsed.selectedHero.hasChosenStarterPet === undefined) {
+            parsed.selectedHero.hasChosenStarterPet = parsed.selectedHero.unlockedPetIds.length > 0;
+          }
           if (!parsed.selectedHero.petLevelMap) parsed.selectedHero.petLevelMap = { ...DEFAULT_PET_LEVEL_MAP };
           if (!parsed.selectedHero.petXpMap) parsed.selectedHero.petXpMap = { ...DEFAULT_PET_XP_MAP };
           ALL_24_PET_IDS.forEach((pId) => {
@@ -1036,11 +1062,11 @@ class Store {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
 
-      // When kid selects the pet pen for the first time after profile creation:
+      // When kid selects the pet sanctuary for the first time after profile creation:
       if (viewName === 'hero_hq') {
         this.checkHQMilestoneUnlocks();
       }
-      if (viewName === 'pet_pen') {
+      if (viewName === 'pet_pen' || viewName === 'pet_sanctuary') {
         const hero = this.state.selectedHero;
         if (!hero?.hasChosenStarterPet || !hero?.unlockedPetIds || hero.unlockedPetIds.length === 0) {
           setTimeout(() => {
@@ -1048,7 +1074,7 @@ class Store {
           }, 350);
         }
       }
-    } else if (viewName === 'pet_pen') {
+    } else if (viewName === 'pet_pen' || viewName === 'pet_sanctuary') {
       const hero = this.state.selectedHero;
       if (!hero?.hasChosenStarterPet || !hero?.unlockedPetIds || hero.unlockedPetIds.length === 0) {
         this.openPetSelectionModal('starter');
@@ -1167,11 +1193,24 @@ class Store {
   setActivePet(petId) {
     const pId = String(petId);
     if (!this.state.selectedHero) this.state.selectedHero = {};
+    const unlockedIds = (this.state.selectedHero.unlockedPetIds || []).map(String);
+    if (!unlockedIds.includes(pId)) {
+      const lockedPet = getPetById(pId);
+      this.showReward(
+        'Companion Locked! 🔒',
+        `Unlock ${lockedPet.name} for ${PET_PRICE_COINS} Habit Coins in the Pet Roster first!`,
+        0,
+        0,
+        lockedPet.avatar,
+        'lock'
+      );
+      return false;
+    }
     this.state.selectedHero.activePetId = pId;
     const allPets = this.state.pets || PETS_DATABASE;
     const pet = allPets.find(p => String(p.id) === pId || (p.key && p.key === pId)) || PETS_DATABASE.find(p => String(p.id) === pId) || PETS_DATABASE[0];
     const petImg = pet?.avatar || `assets/pets/${pet?.key || 'rex'}.png`;
-    
+
     Sound.fanfare();
     confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
     this.showReward(
@@ -1184,10 +1223,54 @@ class Store {
     );
     this.saveState(true);
     this.notify();
+    return true;
   }
 
   selectHeroPet(petId) {
     this.setActivePet(petId);
+  }
+
+  // Pet Economy: purchase an individual companion with Habit Coins.
+  buyPet(petId) {
+    const id = String(petId);
+    if (!this.state.selectedHero) this.state.selectedHero = {};
+    const hero = this.state.heroes?.find(h => h.id === this.state.selectedHero.id) || this.state.selectedHero;
+    if (!hero.unlockedPetIds) hero.unlockedPetIds = [];
+    if (hero.unlockedPetIds.map(String).includes(id)) {
+      this.setActivePet(id);
+      return true;
+    }
+    if ((this.state.selectedHero.coins || 0) < PET_PRICE_COINS) {
+      Sound.hit();
+      this.showReward(
+        'Need More Habit Coins! 🪙',
+        `You need ${PET_PRICE_COINS} Habit Coins to unlock this companion. Keep completing habits to earn more!`,
+        0,
+        0,
+        null,
+        'lock'
+      );
+      return false;
+    }
+    const pet = getPetById(id);
+    this.state.selectedHero.coins -= PET_PRICE_COINS;
+    hero.coins = this.state.selectedHero.coins;
+    hero.unlockedPetIds.push(id);
+    this.state.selectedHero.unlockedPetIds = [...hero.unlockedPetIds];
+    Sound.fanfare();
+    confetti({ particleCount: 100, spread: 90, origin: { y: 0.5 } });
+    this.logAction(`${hero.name} unlocked ${pet.name}!`, `-${PET_PRICE_COINS} Habit Coins 🪙`);
+    this.showReward(
+      'New Companion Unlocked! 🎉',
+      `${pet.name} has joined your sanctuary!`,
+      0,
+      0,
+      pet.avatar,
+      'pets'
+    );
+    this.setActivePet(id);
+    this.saveState(true);
+    return true;
   }
 
   // 1. ADD NEW TASK / ROUTINE (Parent Portal)
@@ -4040,6 +4123,56 @@ class Store {
       reward.icon
     );
     this.saveState(true);
+  }
+
+  // Pet Economy: gear ownership/pricing helpers for the wardrobe-style gear
+  // catalog (masks/capes/armor/boots), which has no built-in price field.
+  isGearOwned(item) {
+    if (!item) return false;
+    if (!this.state.inventory) this.state.inventory = [];
+    return this.state.inventory.includes(item.name || item.title || item.id);
+  }
+
+  getGearPrice(item) {
+    if (!item) return 0;
+    if (typeof item.costCoins === 'number') return item.costCoins;
+    return Math.max(50, (item.level || 1) * 50);
+  }
+
+  buyAndEquipGear(petId, slot, item) {
+    if (!item) return false;
+    if (this.isGearOwned(item)) {
+      return this.equipPetStudioGear(petId, slot, item);
+    }
+    const price = this.getGearPrice(item);
+    if ((this.state.selectedHero.coins || 0) < price) {
+      Sound.hit();
+      this.showReward(
+        'Need More Habit Coins! 🪙',
+        `You need ${price} Habit Coins to unlock ${item.name || 'this gear'}. Keep completing habits!`,
+        0,
+        0,
+        null,
+        'lock'
+      );
+      return false;
+    }
+    if (!this.state.inventory) this.state.inventory = [];
+    this.state.selectedHero.coins -= price;
+    this.state.inventory.push(item.name || item.title || item.id);
+    Sound.fanfare();
+    confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
+    this.showReward(
+      'Gear Unlocked! 🎉',
+      `${item.name || 'New gear'} is now yours to equip!`,
+      0,
+      0,
+      null,
+      'checkroom'
+    );
+    this.equipPetStudioGear(petId, slot, item);
+    this.saveState(true);
+    return true;
   }
 
   buyDigitalGear(gearId) {
