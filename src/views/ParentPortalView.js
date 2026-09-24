@@ -52,6 +52,13 @@ let studioToyType = 'trampoline';
 let studioToyStat = 'joy';
 let studioToyAmount = 30;
 
+// Food State
+let studioFoodTheme = 'orchard';
+let studioFoodHungerFill = 35;
+let studioFoodEnergyFill = 20;
+let studioFoodJoyBoost = 20;
+let studioFoodQuantity = 3;
+
 // 3D Pet Companion State
 let studioPetArchetype = 'dragon'; // 'dino', 'dragon', 'beast', 'aquatic', 'robot', 'mystic'
 let studioPetSynergy = 'dental';
@@ -1419,13 +1426,15 @@ export function renderParentPortalView() {
               const publishedCustomToys = store.getParentCustomToys ? store.getParentCustomToys() : [];
               const publishedCustomBosses = store.getParentCustomBosses ? store.getParentCustomBosses() : [];
               const publishedCustomPets = store.getPetSanctuaryState ? (store.getPetSanctuaryState().unhatchedEggs || []) : [];
+              const publishedCustomFood = store.getParentCustomFood ? store.getParentCustomFood() : [];
 
               const categoryTabs = [
                 { id: 'gear', label: 'Pet Wearable Gear', emoji: '🛡️', count: publishedCustomGear.length, desc: 'Costumes, capes, boots & visors' },
                 { id: 'furniture', label: 'Hero HQ Furniture', emoji: '🛋️', count: publishedCustomFurniture.length, desc: 'Beds, desks, lounges & rugs' },
                 { id: 'toy', label: 'Pet Pen Toys', emoji: '🎾', count: publishedCustomToys.length, desc: 'Trampolines, balls & puzzles' },
                 { id: 'boss', label: 'AR Quest Bosses', emoji: '👾', count: publishedCustomBosses.length, desc: 'Hygiene, dental & bedtime villains' },
-                { id: 'pet', label: '3D Pet Companions', emoji: '🐾', count: publishedCustomPets.length, desc: '6 Archetypes, Habit Bond Perks & Magic Eggs' }
+                { id: 'pet', label: '3D Pet Companions', emoji: '🐾', count: publishedCustomPets.length, desc: '6 Archetypes, Habit Bond Perks & Magic Eggs' },
+                { id: 'food', label: 'Pet Snacks & Food', emoji: '🍎', count: publishedCustomFood.length, desc: 'Limited-use consumable treats' }
               ];
 
               const petModels = [
@@ -1459,6 +1468,13 @@ export function renderParentPortalView() {
                 { key: 'laser_mouse', label: '✨ Starlight Laser Pointer', type: 'laser', stat: 'joy', amount: 25, desc: 'Dancing laser beam that pets chase' },
                 { key: 'treat_puzzle', label: '🧩 Magic Treat Puzzle Box', type: 'puzzle', stat: 'hunger', amount: 40, desc: 'Brain game dispensing healthy snacks' },
                 { key: 'agility_ramp', label: '⚡ Agility Loop Obstacle', type: 'agility', stat: 'all', amount: 25, desc: 'Fun obstacle course for speed practice' }
+              ];
+
+              const foodThemes = [
+                { key: 'orchard', label: '🍎 Orchard Harvest', type: 'orchard', desc: 'Sun-ripened fruit basket' },
+                { key: 'cosmic', label: '🍓 Cosmic Stardust Berries', type: 'cosmic', desc: 'Sparkling stardust berries' },
+                { key: 'jungle', label: '🍯 Jungle Honeycomb Feast', type: 'jungle', desc: 'Sweet wild honeycomb cluster' },
+                { key: 'ocean', label: '🌊 Tidepool Kelp Crunch', type: 'ocean', desc: 'Crispy sea-kissed kelp snacks' }
               ];
 
                             const petThemes = [
@@ -1508,13 +1524,13 @@ export function renderParentPortalView() {
             <div class="flex flex-wrap items-center gap-2 self-end sm:self-auto">
               <span class="px-3 py-1.5 rounded-xl bg-slate-800/90 text-amber-300 border border-amber-400/30 text-xs font-bold flex items-center gap-1.5 shadow">
                 <span class="material-symbols-outlined text-sm">inventory_2</span>
-                <span>${publishedCustomGear.length + publishedCustomFurniture.length + publishedCustomToys.length + publishedCustomBosses.length} Total Published Creations</span>
+                <span>${publishedCustomGear.length + publishedCustomFurniture.length + publishedCustomToys.length + publishedCustomBosses.length + publishedCustomFood.length} Total Published Creations</span>
               </span>
             </div>
           </div>
 
           <!-- 4-Mode Category Navigation Switcher -->
-          <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+          <div class="grid grid-cols-2 sm:grid-cols-6 gap-2.5">
             ${categoryTabs.map(tab => {
               const isSelected = studioActiveCategory === tab.id;
               return `
@@ -1567,6 +1583,12 @@ export function renderParentPortalView() {
                     <span>${t.label}</span>
                   </button>
                 `).join('')
+              : studioActiveCategory === 'food' ?
+                foodThemes.map(t => `
+                  <button class="studio-spark-chip px-3.5 py-2 rounded-2xl text-xs font-black transition-all active:scale-95 flex items-center gap-1.5 border-2 ${studioFoodTheme === t.type ? 'bg-secondary text-on-secondary border-secondary-container shadow-md scale-102' : 'bg-surface-container-high hover:bg-surface-bright text-inverse-surface border-surface-container-highest'}" data-spark="${t.key}" data-category="food" title="${t.desc}">
+                    <span>${t.label}</span>
+                  </button>
+                `).join('')
               :
                 bossThemes.map(t => `
                   <button class="studio-spark-chip px-3.5 py-2 rounded-2xl text-xs font-black transition-all active:scale-95 flex items-center gap-1.5 border-2 ${studioBossDomain === t.domain ? 'bg-secondary text-on-secondary border-secondary-container shadow-md scale-102' : 'bg-surface-container-high hover:bg-surface-bright text-inverse-surface border-surface-container-highest'}" data-spark="${t.key}" data-category="boss" title="${t.desc}">
@@ -1587,7 +1609,7 @@ export function renderParentPortalView() {
               <div class="w-full flex items-center justify-between border-b border-amber-400/20 pb-3">
                 <div class="flex items-center gap-2">
                   <span class="text-xs font-black text-amber-300 uppercase tracking-wider">
-                    ${studioActiveCategory === 'gear' ? 'Companion Catwalk' : studioActiveCategory === 'furniture' ? 'Hero HQ Room Stage' : studioActiveCategory === 'toy' ? 'Pet Pen Playstage' : 'AR Battle Colosseum'}
+                    ${studioActiveCategory === 'gear' ? 'Companion Catwalk' : studioActiveCategory === 'furniture' ? 'Hero HQ Room Stage' : studioActiveCategory === 'toy' ? 'Pet Pen Playstage' : studioActiveCategory === 'food' ? 'Snack Kitchen Stage' : 'AR Battle Colosseum'}
                   </span>
                   <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${studioViewportMode === 'spline' ? 'bg-purple-500/30 text-purple-300 border border-purple-400/50' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'}">
                     ${studioViewportMode === 'spline' ? '✨ Spline 3D' : '🎨 Procedural 3D'}
@@ -1875,6 +1897,25 @@ export function renderParentPortalView() {
                     </button>
                   </div>
                 </div>
+              ` : studioActiveCategory === 'food' ? `
+                <!-- Snack Flavor Theme Selector -->
+                <div class="w-full">
+                  <label class="text-[11px] font-bold text-amber-300 uppercase tracking-wider mb-2 block">Snack Flavor Theme</label>
+                  <div class="grid grid-cols-2 gap-2">
+                    <button class="studio-food-theme-btn p-2 rounded-xl text-xs font-bold border flex items-center gap-2 ${studioFoodTheme === 'orchard' ? 'bg-amber-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-theme="orchard">
+                      <span>🍎</span><span>Orchard Harvest</span>
+                    </button>
+                    <button class="studio-food-theme-btn p-2 rounded-xl text-xs font-bold border flex items-center gap-2 ${studioFoodTheme === 'cosmic' ? 'bg-amber-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-theme="cosmic">
+                      <span>🍓</span><span>Cosmic Stardust</span>
+                    </button>
+                    <button class="studio-food-theme-btn p-2 rounded-xl text-xs font-bold border flex items-center gap-2 ${studioFoodTheme === 'jungle' ? 'bg-amber-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-theme="jungle">
+                      <span>🍯</span><span>Jungle Honeycomb</span>
+                    </button>
+                    <button class="studio-food-theme-btn p-2 rounded-xl text-xs font-bold border flex items-center gap-2 ${studioFoodTheme === 'ocean' ? 'bg-amber-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-theme="ocean">
+                      <span>🌊</span><span>Tidepool Kelp</span>
+                    </button>
+                  </div>
+                </div>
               ` : `
                 <!-- Boss Habit Domain -->
                 <div class="w-full">
@@ -2008,7 +2049,7 @@ export function renderParentPortalView() {
                     id="studio-ai-prompt" 
                     type="text" 
                     value="${studioItemName}"
-                    placeholder="${studioActiveCategory === 'gear' ? 'e.g. Phoenix Flame Tiara or Cyber Jetpack...' : studioActiveCategory === 'furniture' ? 'e.g. Starlight Canopy Bed or Holo Gaming Desk...' : studioActiveCategory === 'toy' ? 'e.g. Super Trampoline or Laser Mouse...' : 'e.g. Sugar Plaque Overlord or Bedtime Gremlin...'}" 
+                    placeholder="${studioActiveCategory === 'gear' ? 'e.g. Phoenix Flame Tiara or Cyber Jetpack...' : studioActiveCategory === 'furniture' ? 'e.g. Starlight Canopy Bed or Holo Gaming Desk...' : studioActiveCategory === 'toy' ? 'e.g. Super Trampoline or Laser Mouse...' : studioActiveCategory === 'food' ? 'e.g. Starberry Bites or Jungle Honeycomb...' : 'e.g. Sugar Plaque Overlord or Bedtime Gremlin...'}"
                     class="flex-1 bg-surface-container-high border border-surface-container-highest rounded-2xl p-3 text-xs font-bold text-inverse-surface focus:outline-none focus:border-secondary shadow-inner"
                   />
                   <button 
@@ -2085,6 +2126,16 @@ export function renderParentPortalView() {
                       <option value="laser" ${studioToyType === 'laser' ? 'selected' : ''}>✨ Starlight Laser Pointer</option>
                       <option value="puzzle" ${studioToyType === 'puzzle' ? 'selected' : ''}>🧩 Treat Puzzle Box</option>
                       <option value="agility" ${studioToyType === 'agility' ? 'selected' : ''}>⚡ Agility Loop Obstacle</option>
+                    </select>
+                  </div>
+                ` : studioActiveCategory === 'food' ? `
+                  <div>
+                    <label class="text-[10px] font-black uppercase text-on-surface-variant">Snack Flavor Theme</label>
+                    <select id="studio-food-theme-select" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-none focus:border-secondary">
+                      <option value="orchard" ${studioFoodTheme === 'orchard' ? 'selected' : ''}>🍎 Orchard Harvest</option>
+                      <option value="cosmic" ${studioFoodTheme === 'cosmic' ? 'selected' : ''}>🍓 Cosmic Stardust Berries</option>
+                      <option value="jungle" ${studioFoodTheme === 'jungle' ? 'selected' : ''}>🍯 Jungle Honeycomb Feast</option>
+                      <option value="ocean" ${studioFoodTheme === 'ocean' ? 'selected' : ''}>🌊 Tidepool Kelp Crunch</option>
                     </select>
                   </div>
                 ` : `
@@ -2218,15 +2269,50 @@ export function renderParentPortalView() {
                       <label class="text-[10px] font-black uppercase text-on-surface-variant">Stat Boost per Play Session</label>
                       <span id="studio-toy-amount-val" class="text-xs font-black text-secondary">+${studioToyAmount} Points</span>
                     </div>
-                    <input 
-                      id="studio-toy-amount-slider" 
-                      type="range" 
-                      min="10" 
-                      max="50" 
-                      step="5" 
+                    <input
+                      id="studio-toy-amount-slider"
+                      type="range"
+                      min="10"
+                      max="50"
+                      step="5"
                       value="${studioToyAmount}"
-                      class="w-full accent-secondary mt-1.5" 
+                      class="w-full accent-secondary mt-1.5"
                     />
+                  </div>
+                </div>
+              ` : studioActiveCategory === 'food' ? `
+                <div class="p-4 bg-surface-container-high/70 rounded-2xl border-2 border-secondary/30 flex flex-col gap-3">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-black uppercase text-secondary flex items-center gap-1.5">
+                      <span class="material-symbols-outlined text-sm">restaurant</span>
+                      <span>Snack Nutrition Profile</span>
+                    </span>
+                    <span id="studio-food-badge" class="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-400/20 text-amber-400 border border-amber-400/40">
+                      🍗${studioFoodHungerFill} ⚡${studioFoodEnergyFill} 💖${studioFoodJoyBoost}
+                    </span>
+                  </div>
+
+                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label class="text-[10px] font-black uppercase text-on-surface-variant">Hunger Fill</label>
+                      <input id="studio-food-hunger-slider" type="range" min="10" max="60" step="5" value="${studioFoodHungerFill}" class="w-full accent-secondary mt-1.5" />
+                    </div>
+                    <div>
+                      <label class="text-[10px] font-black uppercase text-on-surface-variant">Energy Fill</label>
+                      <input id="studio-food-energy-slider" type="range" min="0" max="50" step="5" value="${studioFoodEnergyFill}" class="w-full accent-secondary mt-1.5" />
+                    </div>
+                    <div>
+                      <label class="text-[10px] font-black uppercase text-on-surface-variant">Joy Boost</label>
+                      <input id="studio-food-joy-slider" type="range" min="0" max="50" step="5" value="${studioFoodJoyBoost}" class="w-full accent-secondary mt-1.5" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div class="flex items-center justify-between">
+                      <label class="text-[10px] font-black uppercase text-on-surface-variant">Servings Per Purchase</label>
+                      <span id="studio-food-quantity-val" class="text-xs font-black text-secondary">${studioFoodQuantity}x</span>
+                    </div>
+                    <input id="studio-food-quantity-slider" type="range" min="1" max="10" step="1" value="${studioFoodQuantity}" class="w-full accent-secondary mt-1.5" />
                   </div>
                 </div>
               ` : `
@@ -2381,7 +2467,7 @@ export function renderParentPortalView() {
                   class="w-full sm:w-auto bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-slate-950 font-headline text-xs font-black py-3.5 px-6 rounded-2xl shadow-xl hover:shadow-amber-500/25 active:scale-95 transition-all flex items-center justify-center gap-2 border-2 border-white/30"
                 >
                   <span class="text-lg">🚀</span>
-                  <span>Publish Live to ${studioActiveCategory === 'gear' ? 'Hero Shop' : studioActiveCategory === 'furniture' ? 'Hero HQ' : studioActiveCategory === 'toy' ? 'Pet Pen' : 'AR Quests'}</span>
+                  <span>Publish Live to ${studioActiveCategory === 'gear' ? 'Hero Shop' : studioActiveCategory === 'furniture' ? 'Hero HQ' : studioActiveCategory === 'toy' ? 'Pet Pen' : studioActiveCategory === 'food' ? 'Hero Shop (Snacks)' : 'AR Quests'}</span>
                 </button>
               </div>
 
@@ -2539,6 +2625,41 @@ export function renderParentPortalView() {
                             <span class="material-symbols-outlined text-sm">delete</span>
                           </button>
                         </div>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              `}
+            </div>
+
+            <!-- 5. Custom Pet Snacks & Food Section -->
+            <div class="flex flex-col gap-3 pt-3 border-t border-surface-container-highest">
+              <h4 class="text-xs font-black text-secondary uppercase tracking-wider flex items-center gap-1.5">
+                <span>🍎</span><span>Published Pet Snacks & Food (${publishedCustomFood.length})</span>
+              </h4>
+              ${publishedCustomFood.length === 0 ? `
+                <p class="text-xs text-on-surface-variant italic">No custom pet food published yet.</p>
+              ` : `
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  ${publishedCustomFood.map(item => `
+                    <div class="p-3.5 rounded-2xl bg-surface-container-high border-2 border-lime-400/30 shadow-md flex flex-col justify-between gap-2.5">
+                      <div class="flex items-start gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-lime-500/20 text-lime-300 border border-lime-400/40 flex items-center justify-center text-xl shadow shrink-0">
+                          ${item.emoji || '🍎'}
+                        </div>
+                        <div class="min-w-0 flex-1">
+                          <div class="flex items-center gap-1.5">
+                            <span class="px-2 py-0.2 rounded-full text-[9px] font-black uppercase bg-lime-400/20 text-lime-300 border border-lime-400/30">Snack</span>
+                            <span class="text-[9px] font-black uppercase text-secondary">🪙 ${item.costCoins || 20} • x${item.quantityPerPurchase || 3}</span>
+                          </div>
+                          <h5 class="font-headline text-xs font-black text-inverse-surface truncate mt-0.5">${item.name}</h5>
+                        </div>
+                      </div>
+                      <div class="flex items-center justify-between pt-1.5 border-t border-surface-container-highest">
+                        <span class="text-[10px] font-black text-lime-300">🍗${item.hungerFill || 35} ⚡${item.energyFill || 20} 💖${item.joyBoost || 20}</span>
+                        <button class="delete-custom-food-btn text-error hover:bg-error/15 p-1 rounded-lg" data-food-id="${item.id}" title="Delete Food">
+                          <span class="material-symbols-outlined text-sm">delete</span>
+                        </button>
                       </div>
                     </div>
                   `).join('')}
@@ -4684,7 +4805,7 @@ export function attachParentPortalListeners() {
 
             // Ambient background glow
             const grad = ctx.createRadialGradient(w/2, h/2, 20, w/2, h/2, 160);
-            grad.addColorStop(0, studioActiveCategory === 'furniture' ? 'rgba(16,185,129,0.25)' : studioActiveCategory === 'toy' ? 'rgba(168,85,247,0.25)' : 'rgba(239,68,68,0.3)');
+            grad.addColorStop(0, studioActiveCategory === 'furniture' ? 'rgba(16,185,129,0.25)' : studioActiveCategory === 'toy' ? 'rgba(168,85,247,0.25)' : studioActiveCategory === 'food' ? 'rgba(132,204,22,0.25)' : 'rgba(239,68,68,0.3)');
             grad.addColorStop(1, 'rgba(0,0,0,0)');
             ctx.fillStyle = grad;
             ctx.fillRect(0, 0, w, h);
@@ -4701,7 +4822,7 @@ export function attachParentPortalListeners() {
             ctx.fillStyle = '#0f172a';
             ctx.fill();
             ctx.lineWidth = 3;
-            ctx.strokeStyle = studioActiveCategory === 'furniture' ? '#10b981' : studioActiveCategory === 'toy' ? '#a855f7' : '#ef4444';
+            ctx.strokeStyle = studioActiveCategory === 'furniture' ? '#10b981' : studioActiveCategory === 'toy' ? '#a855f7' : studioActiveCategory === 'food' ? '#84cc16' : '#ef4444';
             ctx.stroke();
 
             // Inner ring
@@ -4752,6 +4873,19 @@ export function attachParentPortalListeners() {
               ctx.lineWidth = 3;
               ctx.beginPath();
               ctx.arc(0, 15, 20 + bounceY * 0.5, 0, Math.PI);
+              ctx.stroke();
+            } else if (studioActiveCategory === 'food') {
+              // 3D Floating Snack Icon
+              const bobY = Math.sin(animAngle * 1.2) * 8;
+              ctx.font = '48px sans-serif';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText(studioFoodTheme === 'orchard' ? '🍎' : studioFoodTheme === 'cosmic' ? '🍓' : studioFoodTheme === 'jungle' ? '🍯' : '🌊', 0, -15 - bobY);
+
+              ctx.strokeStyle = '#84cc16';
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.ellipse(0, 20, 30, 8, 0, 0, Math.PI * 2);
               ctx.stroke();
             } else {
               // 3D AR Villain with Pulsing Corona & Horns
@@ -4828,6 +4962,17 @@ export function attachParentPortalListeners() {
           studioToyStat = 'joy';
           studioToyAmount = 35;
           studioActiveSplineUrl = SPLINE_3D_PRESETS.toy[0]?.splineUrl || '';
+        } else if (cat === 'food') {
+          studioItemName = 'Golden Orchard Fruit Basket';
+          studioItemDesc = 'Sun-ripened fruit picked fresh from the Sanctuary orchard trees!';
+          studioItemPrice = 20;
+          studioPetVoiceLine = 'Yum yum! Best snack ever!';
+          studioFoodTheme = 'orchard';
+          studioFoodHungerFill = 35;
+          studioFoodEnergyFill = 20;
+          studioFoodJoyBoost = 20;
+          studioFoodQuantity = 3;
+          studioActiveSplineUrl = '';
                 } else if (cat === 'pet') {
           studioPetArchetype = sparkKey;
           const matched = petThemes.find(t => t.key === sparkKey);
@@ -5057,6 +5202,41 @@ export function attachParentPortalListeners() {
             studioItemDesc = 'Looping speed track testing reflexes, coordination and agility!';
             studioPetVoiceLine = 'Speed record broken! Hero stamina recharged!';
           }
+        } else if (cat === 'food') {
+          studioFoodTheme = sparkKey;
+          if (sparkKey === 'orchard') {
+            studioItemName = 'Golden Orchard Fruit Basket';
+            studioItemDesc = 'Sun-ripened fruit picked fresh from the Sanctuary orchard trees!';
+            studioFoodHungerFill = 35;
+            studioFoodEnergyFill = 15;
+            studioFoodJoyBoost = 20;
+            studioItemPrice = 20;
+            studioPetVoiceLine = 'Yum yum! Best snack ever!';
+          } else if (sparkKey === 'cosmic') {
+            studioItemName = 'Starlight Cosmic Berries';
+            studioItemDesc = 'Sparkling stardust berries bursting with joyful energy!';
+            studioFoodHungerFill = 25;
+            studioFoodEnergyFill = 35;
+            studioFoodJoyBoost = 25;
+            studioItemPrice = 25;
+            studioPetVoiceLine = 'Sparkly and delicious! My favorite treat!';
+          } else if (sparkKey === 'jungle') {
+            studioItemName = 'Jungle Honeycomb Feast';
+            studioItemDesc = 'Sweet wild honeycomb cluster gathered from the tallest trees!';
+            studioFoodHungerFill = 40;
+            studioFoodEnergyFill = 30;
+            studioFoodJoyBoost = 10;
+            studioItemPrice = 25;
+            studioPetVoiceLine = 'So sweet and sticky! I want more!';
+          } else if (sparkKey === 'ocean') {
+            studioItemName = 'Tidepool Kelp Crunch';
+            studioItemDesc = 'Crispy sea-kissed kelp snacks bursting with ocean minerals!';
+            studioFoodHungerFill = 30;
+            studioFoodEnergyFill = 20;
+            studioFoodJoyBoost = 15;
+            studioItemPrice = 20;
+            studioPetVoiceLine = 'Crunchy and salty, straight from the sea!';
+          }
         } else if (cat === 'boss') {
           if (sparkKey === 'sugar_monster') {
             studioBossDomain = 'dental';
@@ -5255,6 +5435,24 @@ export function attachParentPortalListeners() {
       });
     }
 
+    const foodThemeSelect = document.getElementById('studio-food-theme-select');
+    if (foodThemeSelect) {
+      foodThemeSelect.addEventListener('change', (e) => {
+        studioFoodTheme = e.target.value;
+      });
+    }
+
+    document.querySelectorAll('.studio-food-theme-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const theme = btn.getAttribute('data-theme');
+        if (theme) {
+          studioFoodTheme = theme;
+          Sound.click();
+          store.notify();
+        }
+      });
+    });
+
     const auraSelect = document.getElementById('studio-item-aura');
     if (auraSelect) {
       auraSelect.addEventListener('change', (e) => {
@@ -5332,6 +5530,40 @@ export function attachParentPortalListeners() {
       });
     }
 
+    const foodHungerSlider = document.getElementById('studio-food-hunger-slider');
+    const foodEnergySlider = document.getElementById('studio-food-energy-slider');
+    const foodJoySlider = document.getElementById('studio-food-joy-slider');
+    const updateFoodBadge = () => {
+      const badge = document.getElementById('studio-food-badge');
+      if (badge) badge.textContent = `🍗${studioFoodHungerFill} ⚡${studioFoodEnergyFill} 💖${studioFoodJoyBoost}`;
+    };
+    if (foodHungerSlider) {
+      foodHungerSlider.addEventListener('input', (e) => {
+        studioFoodHungerFill = parseInt(e.target.value, 10) || 35;
+        updateFoodBadge();
+      });
+    }
+    if (foodEnergySlider) {
+      foodEnergySlider.addEventListener('input', (e) => {
+        studioFoodEnergyFill = parseInt(e.target.value, 10) || 20;
+        updateFoodBadge();
+      });
+    }
+    if (foodJoySlider) {
+      foodJoySlider.addEventListener('input', (e) => {
+        studioFoodJoyBoost = parseInt(e.target.value, 10) || 20;
+        updateFoodBadge();
+      });
+    }
+    const foodQuantitySlider = document.getElementById('studio-food-quantity-slider');
+    if (foodQuantitySlider) {
+      foodQuantitySlider.addEventListener('input', (e) => {
+        studioFoodQuantity = parseInt(e.target.value, 10) || 3;
+        const val = document.getElementById('studio-food-quantity-val');
+        if (val) val.textContent = `${studioFoodQuantity}x`;
+      });
+    }
+
     // 17. Unified AI Generate Button (Gemini 2.5 + Offline Fallback)
     const studioAiBtn = document.getElementById('studio-gear-ai-btn') || document.getElementById('studio-ai-btn');
     if (studioAiBtn) {
@@ -5346,7 +5578,7 @@ export function attachParentPortalListeners() {
           const generated = await firebaseAI.generate3DContent({
             category: studioActiveCategory,
             promptText: promptInput,
-            theme: studioSelectedTheme,
+            theme: studioActiveCategory === 'food' ? studioFoodTheme : studioSelectedTheme,
             socket: studioSelectedSocket,
             petId: studioSelectedPetId,
             furnitureType: studioFurnitureType,
@@ -5378,6 +5610,11 @@ export function attachParentPortalListeners() {
               studioToyStat = generated.statRefillTarget || studioToyStat;
               studioToyAmount = generated.statRefillAmount || studioToyAmount;
               studioPetVoiceLine = generated.cheerVoiceLine || studioPetVoiceLine;
+            } else if (studioActiveCategory === 'food') {
+              studioFoodHungerFill = generated.hungerFill || studioFoodHungerFill;
+              studioFoodEnergyFill = generated.energyFill || studioFoodEnergyFill;
+              studioFoodJoyBoost = generated.joyBoost || studioFoodJoyBoost;
+              studioFoodQuantity = generated.quantityPerPurchase || studioFoodQuantity;
                     } else if (studioActiveCategory === 'pet') {
           const petToPublish = {
             id: `parent_pet_${Date.now()}`,
@@ -5472,6 +5709,21 @@ export function attachParentPortalListeners() {
             isCustom: true
           };
           store.publishCustomAIToy(toyToPublish);
+        } else if (studioActiveCategory === 'food') {
+          const foodToPublish = {
+            id: `parent_food_${Date.now()}`,
+            name: nameVal.trim() || 'Hero Pet Snack',
+            title: nameVal.trim() || 'Hero Pet Snack',
+            desc: descVal.trim() || 'Custom pet snack handcrafted by parent!',
+            emoji: studioFoodTheme === 'orchard' ? '🍎' : studioFoodTheme === 'cosmic' ? '🍓' : studioFoodTheme === 'jungle' ? '🍯' : '🌊',
+            hungerFill: studioFoodHungerFill,
+            energyFill: studioFoodEnergyFill,
+            joyBoost: studioFoodJoyBoost,
+            quantityPerPurchase: studioFoodQuantity,
+            costCoins: studioItemPrice,
+            isCustom: true
+          };
+          store.publishCustomAIFood(foodToPublish);
         } else if (studioActiveCategory === 'boss') {
           const bossToPublish = {
             id: `parent_boss_${Date.now()}`,
@@ -5520,6 +5772,14 @@ export function attachParentPortalListeners() {
       e.stopPropagation();
       const toyId = btn.getAttribute('data-toy-id');
       if (toyId) store.deleteCustomAIToy(toyId);
+    });
+  });
+
+  document.querySelectorAll('.delete-custom-food-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const foodId = btn.getAttribute('data-food-id');
+      if (foodId) store.deleteCustomAIFood(foodId);
     });
   });
 

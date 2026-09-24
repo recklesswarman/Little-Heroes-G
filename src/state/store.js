@@ -3519,6 +3519,86 @@ class Store {
     return true;
   }
 
+  getParentCustomFood() {
+    return this.state.parentCustomFood || [];
+  }
+
+  // Publishes a parent-generated limited-use pet food/snack. Lives in
+  // parentCustomFood (audit/listing, mirrors the toy trio) AND is unshifted
+  // into digitalGear as a 'Snacks' item so it's purchasable through the
+  // existing Shop UI -- buying it grants stock in hero.consumables[id],
+  // and feedPetTreat spends that stock exactly like a built-in treat.
+  publishCustomAIFood(item) {
+    if (!item || (!item.name && !item.title)) return null;
+    const name = item.name || item.title || 'Custom Pet Snack';
+    const food = {
+      ...item,
+      id: item.id || `ai_food_${Date.now()}`,
+      name,
+      title: name,
+      category: 'Snacks',
+      isParentCrafted: true,
+      isCustomAI: true,
+      costCoins: Number(item.costCoins || item.coinPrice) || 20,
+      hungerFill: Number(item.hungerFill || item.hunger) || 35,
+      energyFill: Number(item.energyFill) || 20,
+      joyBoost: Number(item.joyBoost) || 20,
+      xpBoost: Number(item.xpBoost) || 20,
+      quantityPerPurchase: Number(item.quantityPerPurchase || item.quantity) || 3,
+      quantity: Number(item.quantityPerPurchase || item.quantity) || 3,
+      createdAt: item.createdAt || new Date().toISOString()
+    };
+
+    if (!this.state.parentCustomFood) this.state.parentCustomFood = [];
+    const idx = this.state.parentCustomFood.findIndex(f => f.id === food.id);
+    if (idx >= 0) {
+      this.state.parentCustomFood[idx] = food;
+    } else {
+      this.state.parentCustomFood.unshift(food);
+    }
+
+    if (!this.state.digitalGear) this.state.digitalGear = [];
+    const shopIdx = this.state.digitalGear.findIndex(g => g.id === food.id);
+    if (shopIdx >= 0) {
+      this.state.digitalGear[shopIdx] = food;
+    } else {
+      this.state.digitalGear.unshift(food);
+    }
+
+    this.logAction(
+      `Parent crafted Pet Food: '${food.name}'`,
+      `Now purchasable in the Rewards Shop -- ${food.quantityPerPurchase}x uses for ${food.costCoins} coins!`
+    );
+
+    Sound.fanfare();
+    confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
+    this.showReward(
+      '🍎 Pet Snack Published!',
+      `"${food.name}" is now in the Rewards Shop!\n🪙 ${food.costCoins} coins for ${food.quantityPerPurchase}x uses\n🐾 Feed it to companions in the Pet Sanctuary!`,
+      0,
+      0,
+      food.image,
+      food.icon || 'nutrition'
+    );
+
+    this.saveState(true);
+    this.notify();
+    return food;
+  }
+
+  deleteCustomAIFood(foodId) {
+    if (!foodId) return false;
+    if (this.state.parentCustomFood) {
+      this.state.parentCustomFood = this.state.parentCustomFood.filter(f => f.id !== foodId);
+    }
+    if (this.state.digitalGear) {
+      this.state.digitalGear = this.state.digitalGear.filter(g => g.id !== foodId);
+    }
+    this.saveState(true);
+    this.notify();
+    return true;
+  }
+
   getParentCustomBosses() {
     return this.state.parentCustomBosses || [];
   }
@@ -4178,6 +4258,38 @@ class Store {
   buyDigitalGear(gearId) {
     const item = this.state.digitalGear.find((i) => i.id === gearId);
     if (!item) return;
+
+    // Pet Economy: Snacks are consumable and repeatably purchasable --
+    // each purchase grants stock, not a permanent one-time unlock.
+    if (item.category === 'Snacks') {
+      if ((this.state.selectedHero.coins || 0) < item.costCoins) {
+        Sound.deny();
+        this.showReward(
+          'Not Enough Habit Tokens!',
+          `You need ${item.costCoins - this.state.selectedHero.coins} more Habit Tokens for this snack pack!`,
+          0,
+          0,
+          item.image
+        );
+        return;
+      }
+      this.state.selectedHero.coins -= item.costCoins;
+      if (!this.state.selectedHero.consumables) this.state.selectedHero.consumables = {};
+      const qty = item.quantity || 3;
+      this.state.selectedHero.consumables[item.id] = (this.state.selectedHero.consumables[item.id] || 0) + qty;
+      Sound.fanfare();
+      confetti({ particleCount: 40, spread: 50 });
+      this.showReward(
+        'Snack Pack Purchased! 🧺',
+        `You bought ${qty}x ${item.title}! Feed your companions in the Pet Sanctuary.`,
+        0,
+        0,
+        item.image
+      );
+      this.saveState(true);
+      this.notify();
+      return;
+    }
 
     if (this.state.inventory.includes(item.title)) {
       this.state.equippedPetGear = item.title;
@@ -6809,19 +6921,78 @@ class Store {
     this.notify();
   }
 
+  // Pet Economy: how many single-use portions of a treat this hero has in
+  // stock (always Infinity-equivalent for the free fallback treat).
+  // Every feedable item: the 4 built-in SANCTUARY_TREATS plus any
+  // parent-published AI food packs.
+  getAllFeedableTreats() {
+    return [...SANCTUARY_TREATS, ...this.getParentCustomFood()];
+  }
+
+  getTreatStock(treatId) {
+    const treat = this.getAllFeedableTreats().find(t => t.id === treatId);
+    if (!treat || treat.costCoins <= 0) return Infinity;
+    if (!this.state.selectedHero?.consumables) return 0;
+    return this.state.selectedHero.consumables[treatId] || 0;
+  }
+
+  // Buy a pack of a purchasable treat (grants quantityPerPurchase uses).
+  buyTreatPack(treatId) {
+    const treat = this.getAllFeedableTreats().find(t => t.id === treatId);
+    if (!treat || treat.costCoins <= 0) return false;
+    if ((this.state.selectedHero.coins || 0) < treat.costCoins) {
+      if (typeof Sound?.hit === 'function') Sound.hit();
+      this.showReward(
+        'Need More Habit Coins! 🪙',
+        `You need ${treat.costCoins} Habit Coins for a pack of ${treat.name}.`,
+        0,
+        0,
+        null,
+        'lock'
+      );
+      return false;
+    }
+    this.state.selectedHero.coins -= treat.costCoins;
+    if (!this.state.selectedHero.consumables) this.state.selectedHero.consumables = {};
+    const qty = treat.quantityPerPurchase || 1;
+    this.state.selectedHero.consumables[treatId] = (this.state.selectedHero.consumables[treatId] || 0) + qty;
+    if (typeof Sound?.fanfare === 'function') Sound.fanfare();
+    this.showReward(
+      'Treat Pack Purchased! 🛒',
+      `You bought ${qty}x ${treat.name}! Feed your companions in the Sanctuary.`,
+      0,
+      0,
+      null,
+      'nutrition'
+    );
+    this.saveState(true);
+    this.notify();
+    return true;
+  }
+
   feedPetTreat(petId = null, treatId = 'crunchy_apple') {
     const sanct = this.getPetSanctuaryState();
     const pId = String(petId || this.getActivePet()?.id || '2');
-    const treat = SANCTUARY_TREATS.find(t => t.id === treatId) || SANCTUARY_TREATS[0];
+    const treat = this.getAllFeedableTreats().find(t => t.id === treatId) || SANCTUARY_TREATS[0];
 
-    // Check token cost
+    // Consumable stock check (the free fallback treat has unlimited stock)
     const hero = this.state.selectedHero;
-    if (treat.costCoins > 0 && (hero.coins || 0) < treat.costCoins) {
-      if (typeof Sound?.hit === 'function') Sound.hit();
-      return { success: false, message: 'Need more coins for this treat!' };
-    }
     if (treat.costCoins > 0) {
-      hero.coins = Math.max(0, (hero.coins || 0) - treat.costCoins);
+      if (!hero.consumables) hero.consumables = {};
+      const stock = hero.consumables[treatId] || 0;
+      if (stock <= 0) {
+        if (typeof Sound?.hit === 'function') Sound.hit();
+        this.showReward(
+          'Out of Stock! 📦',
+          `You're out of ${treat.name}! Buy another pack for ${treat.costCoins} Habit Coins.`,
+          0,
+          0,
+          null,
+          'nutrition'
+        );
+        return { success: false, message: 'Out of stock for this treat!' };
+      }
+      hero.consumables[treatId] = stock - 1;
     }
 
     // Refill hunger & energy

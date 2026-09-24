@@ -759,11 +759,16 @@ PETS_DATABASE.forEach(p => {
   PET_EMOJIS[p.key] = p.emoji;
 });
 
+// Pet Economy: crunchy_apple is the always-free fallback snack (no stock
+// needed, feedable any time). Every other treat is a limited-use
+// consumable -- a single purchase (costCoins) grants `quantityPerPurchase`
+// uses, tracked per-kid in hero.consumables[treatId] and decremented by 1
+// each time it's fed to a pet.
 export const SANCTUARY_TREATS = [
   { id: 'crunchy_apple', name: 'Crunchy Orchard Apple', emoji: '🍎', color: '#e74c3c', hunger: 25, hungerFill: 25, energyFill: 15, joyBoost: 10, xpBoost: 20, costCoins: 0, unlockedByDefault: true, lore: 'Crisp sweet apple picked from the Sanctuary Meadow trees.' },
-  { id: 'star_berry', name: 'Cosmic Starberry', emoji: '🍓', color: '#ffb961', hunger: 35, hungerFill: 35, energyFill: 25, joyBoost: 20, xpBoost: 35, costCoins: 10, unlockedByDefault: true, lore: 'Bursting with sparkling stardust juice that fills companions with joyful energy!' },
-  { id: 'honey_crunch', name: 'Golden Honey Crunch', emoji: '🍯', color: '#f39c12', hunger: 45, hungerFill: 45, energyFill: 30, joyBoost: 25, xpBoost: 45, costCoins: 15, unlockedByDefault: true, lore: 'Sweet honeycomb cluster with golden sun crunch.' },
-  { id: 'super_carrot', name: 'Heroic Mega Carrot', emoji: '🥕', color: '#e67e22', hunger: 50, hungerFill: 50, energyFill: 40, joyBoost: 30, xpBoost: 55, costCoins: 20, unlockedByDefault: true, lore: 'Super-charged with vibrant vitamin power for giant high leaps!' }
+  { id: 'star_berry', name: 'Cosmic Starberry', emoji: '🍓', color: '#ffb961', hunger: 35, hungerFill: 35, energyFill: 25, joyBoost: 20, xpBoost: 35, costCoins: 10, quantityPerPurchase: 3, unlockedByDefault: true, lore: 'Bursting with sparkling stardust juice that fills companions with joyful energy!' },
+  { id: 'honey_crunch', name: 'Golden Honey Crunch', emoji: '🍯', color: '#f39c12', hunger: 45, hungerFill: 45, energyFill: 30, joyBoost: 25, xpBoost: 45, costCoins: 15, quantityPerPurchase: 3, unlockedByDefault: true, lore: 'Sweet honeycomb cluster with golden sun crunch.' },
+  { id: 'super_carrot', name: 'Heroic Mega Carrot', emoji: '🥕', color: '#e67e22', hunger: 50, hungerFill: 50, energyFill: 40, joyBoost: 30, xpBoost: 55, costCoins: 20, quantityPerPurchase: 3, unlockedByDefault: true, lore: 'Super-charged with vibrant vitamin power for giant high leaps!' }
 ];
 
 export function getPetArchetype(pet) {

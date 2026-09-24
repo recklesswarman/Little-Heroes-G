@@ -8,7 +8,7 @@
  */
 
 import { store } from '../state/store.js';
-import { PETS_DATABASE, SANCTUARY_TREATS, getPetArchetype, getPetBondBonus, getPetById, getPetLevelData, calculatePetStatBonus, getDailyRotatingPetCoach } from '../data/petsData.js';
+import { PETS_DATABASE, getPetArchetype, getPetBondBonus, getPetById, getPetLevelData, calculatePetStatBonus, getDailyRotatingPetCoach } from '../data/petsData.js';
 import { PET_GEAR_CATALOG, getGearHaloStyle, normalizeGearSlot, getGearItem, calculateActiveGearBuffs } from '../data/petGearStudioData.js';
 import { PetSanctuaryCanvas } from '../components/PetSanctuaryCanvas.js';
 import { Sound } from '../audio/sfx.js';
@@ -407,17 +407,26 @@ function renderFeedDrawer(pet, needs) {
       <div>
         <span class="text-xs font-black uppercase text-on-surface-variant tracking-wider block mb-3">Choose a snack to feed ${pet.name}:</span>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          ${SANCTUARY_TREATS.map(treat => `
-            <button 
-              class="feed-treat-btn flex flex-col items-center text-center p-3.5 rounded-2xl bg-surface-container-high hover:bg-surface-bright border-2 border-surface-container-highest active:scale-95 transition-all shadow group"
+          ${store.getAllFeedableTreats().map(treat => {
+            const stock = store.getTreatStock(treat.id);
+            const isFree = treat.costCoins <= 0;
+            const outOfStock = !isFree && stock <= 0;
+            return `
+            <button
+              class="${outOfStock ? 'buy-treat-pack-btn' : 'feed-treat-btn'} flex flex-col items-center text-center p-3.5 rounded-2xl ${outOfStock ? 'bg-amber-950/40 border-amber-500/40 hover:bg-amber-950/60' : 'bg-surface-container-high hover:bg-surface-bright border-surface-container-highest'} border-2 active:scale-95 transition-all shadow group"
               data-treat-id="${treat.id}"
             >
-              <span class="text-3xl sm:text-4xl group-hover:scale-110 transition-transform">${treat.emoji}</span>
+              <span class="text-3xl sm:text-4xl group-hover:scale-110 transition-transform ${outOfStock ? 'grayscale opacity-60' : ''}">${outOfStock ? '🔒' : treat.emoji}</span>
               <span class="font-headline font-black text-xs text-on-surface mt-2">${treat.name}</span>
-              <span class="text-[10px] font-bold text-secondary mt-0.5">+${treat.hungerFill || treat.hunger || 25} Hunger</span>
-              <span class="text-[10px] font-black text-primary">+${treat.bondXp || 20} Bond XP</span>
+              ${
+                outOfStock
+                  ? `<span class="text-[10px] font-black text-amber-400 mt-0.5">🪙 Buy Pack: ${treat.costCoins}</span>`
+                  : `<span class="text-[10px] font-bold text-secondary mt-0.5">+${treat.hungerFill || treat.hunger || 25} Hunger</span>
+                     <span class="text-[10px] font-black text-primary">${isFree ? 'Always Free' : `${stock} left`}</span>`
+              }
             </button>
-          `).join('')}
+          `;
+          }).join('')}
         </div>
       </div>
     </div>
@@ -1150,6 +1159,15 @@ export function attachPetSanctuaryListeners() {
       if (result?.success) {
         Sound.snackMunch();
       }
+      store.notify();
+    });
+  });
+
+  // Feed Drawer: Buy Treat Pack (out of stock)
+  document.querySelectorAll('.buy-treat-pack-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const treatId = btn.getAttribute('data-treat-id');
+      store.buyTreatPack(treatId);
     });
   });
 
