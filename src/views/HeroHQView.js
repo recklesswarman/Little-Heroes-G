@@ -772,11 +772,13 @@ function renderQuickGearModal(category, activePet, state) {
           ${categoryGear.map(item => {
             const isEquipped = currentEquippedId === item.id;
             const halo = getGearHaloStyle(item.level || 1);
+            const isOwned = store.isGearOwned(item);
+            const price = store.getGearPrice(item);
             return `
-              <div class="p-3 rounded-2xl border-2 ${isEquipped ? `${halo.border} ${halo.bg} ${halo.haloShadow}` : 'border-white/10 bg-surface-container/80 hover:border-white/30'} flex flex-col justify-between gap-2.5 transition-all">
+              <div class="p-3 rounded-2xl border-2 ${isEquipped ? `${halo.border} ${halo.bg} ${halo.haloShadow}` : !isOwned ? 'border-white/10 bg-surface-container/60 opacity-80' : 'border-white/10 bg-surface-container/80 hover:border-white/30'} flex flex-col justify-between gap-2.5 transition-all">
                 <div class="flex items-start gap-2.5">
                   <div class="w-11 h-11 rounded-xl ${halo.bg} border ${halo.border} flex items-center justify-center shrink-0">
-                    <span class="material-symbols-outlined text-2xl ${halo.text}">${item.icon}</span>
+                    <span class="material-symbols-outlined text-2xl ${halo.text}">${!isOwned ? 'lock' : item.icon}</span>
                   </div>
                   <div class="min-w-0 flex-1">
                     <div class="flex items-center gap-1">
@@ -791,6 +793,10 @@ function renderQuickGearModal(category, activePet, state) {
                   ${isEquipped ? `
                     <button class="hq-unequip-gear-slot-btn bg-surface-container text-amber-300 hover:text-amber-200 text-[10px] font-black px-3 py-1.5 rounded-xl border border-amber-400/40 w-full active:scale-95" data-category="${category}">
                       Unequip ✕
+                    </button>
+                  ` : !isOwned ? `
+                    <button class="hq-buy-gear-piece-btn bg-amber-500 hover:bg-amber-400 text-slate-950 text-[10px] font-black px-3 py-1.5 rounded-xl shadow w-full active:scale-95 flex items-center justify-center gap-1" data-category="${category}" data-gear-id="${item.id}">
+                      <span>🪙 ${price}</span>
                     </button>
                   ` : `
                     <button class="hq-equip-gear-piece-btn bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-[10px] font-black px-3 py-1.5 rounded-xl shadow w-full active:scale-95 flex items-center justify-center gap-1" data-category="${category}" data-gear-id="${item.id}">
@@ -1179,12 +1185,34 @@ export function attachHeroHQListeners() {
       const cat = btn.getAttribute('data-category');
       const gearId = btn.getAttribute('data-gear-id');
       const activePet = store.getActivePet();
+      const item = getGearItem(cat, gearId);
+      if (!item || !store.isGearOwned(item)) return;
       store.equipPetStudioGear(activePet.id, cat, gearId);
       Sound.gearSnap();
       try {
         confetti({ particleCount: 35, spread: 50, origin: { y: 0.6 } });
       } catch (err) {}
       activeGearSlotForModal = null;
+      store.notify();
+    });
+  });
+
+  // 18b. Buy & Equip Gear Piece (unowned)
+  document.querySelectorAll('.hq-buy-gear-piece-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const cat = btn.getAttribute('data-category');
+      const gearId = btn.getAttribute('data-gear-id');
+      const activePet = store.getActivePet();
+      const item = getGearItem(cat, gearId);
+      if (!item) return;
+      const bought = store.buyAndEquipGear(activePet.id, cat, item);
+      if (bought) {
+        try {
+          confetti({ particleCount: 35, spread: 50, origin: { y: 0.6 } });
+        } catch (err) {}
+        activeGearSlotForModal = null;
+      }
       store.notify();
     });
   });

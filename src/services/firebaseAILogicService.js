@@ -459,6 +459,97 @@ Generate an exciting 3D pet playground toy. Return ONLY valid JSON:
   }
 
   /**
+   * Generates custom limited-use pet food/snack packs, purchasable in the
+   * Shop and consumed one-at-a-time by feedPetTreat. Mirrors the toy
+   * generator's shape/pattern (single custom-items array, no cross-catalog
+   * mutation needed).
+   */
+  async generate3DPetFood(options = {}) {
+    const { promptText = '', theme = 'orchard', defaultPrice = 20 } = options;
+    const foodDefaults = {
+      orchard: { name: 'Golden Orchard Fruit Basket', desc: 'Sun-ripened fruit picked fresh from the Sanctuary orchard trees!', icon: 'nutrition', emoji: '🍎', color: '#e74c3c', accent: '#f1c40f' },
+      cosmic: { name: 'Starlight Cosmic Berries', desc: 'Sparkling stardust berries bursting with joyful energy!', icon: 'auto_awesome', emoji: '🍓', color: '#a855f7', accent: '#ec4899' },
+      jungle: { name: 'Jungle Honeycomb Feast', desc: 'Sweet wild honeycomb cluster gathered from the tallest trees!', icon: 'hive', emoji: '🍯', color: '#f39c12', accent: '#e67e22' },
+      ocean: { name: 'Tidepool Kelp Crunch', desc: 'Crispy sea-kissed kelp snacks bursting with ocean minerals!', icon: 'water', emoji: '🌊', color: '#0ea5e9', accent: '#06b6d4' }
+    };
+
+    const def = foodDefaults[theme] || foodDefaults.orchard;
+    let name = promptText.trim() || def.name;
+    let desc = def.desc;
+    let emoji = def.emoji;
+    let primaryColor = def.color;
+    let hungerFill = 35;
+    let energyFill = 20;
+    let joyBoost = 20;
+    let quantityPerPurchase = 3;
+    let costCoins = parseInt(defaultPrice) || 20;
+    let icon = def.icon;
+
+    if (this.isAiReady && this.model) {
+      try {
+        const aiPrompt = `You are a whimsical pet food & snack designer for a kids (ages 3-9) adventure app.
+Parent Idea: "${promptText || theme}"
+Generate a fun, healthy-sounding pet snack pack. Return ONLY valid JSON (no markdown, no code fences):
+{
+  "name": "Catchy Snack Name (Max 4 words)",
+  "desc": "Fun kid-friendly description (1-2 sentences)",
+  "emoji": "A single food emoji",
+  "hungerFill": 35,
+  "energyFill": 20,
+  "joyBoost": 20,
+  "quantityPerPurchase": 3,
+  "costCoins": ${costCoins},
+  "icon": "Material symbol name (e.g. nutrition, restaurant, hive, water)"
+}`;
+        const result = await this.model.generateContent(aiPrompt);
+        const text = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
+        const parsed = JSON.parse(text);
+        if (parsed.name) name = parsed.name;
+        if (parsed.desc) desc = parsed.desc;
+        if (parsed.emoji) emoji = parsed.emoji;
+        if (parsed.hungerFill) hungerFill = Math.min(60, Math.max(10, parseInt(parsed.hungerFill) || hungerFill));
+        if (parsed.energyFill) energyFill = Math.min(50, Math.max(5, parseInt(parsed.energyFill) || energyFill));
+        if (parsed.joyBoost) joyBoost = Math.min(50, Math.max(5, parseInt(parsed.joyBoost) || joyBoost));
+        if (parsed.quantityPerPurchase) quantityPerPurchase = Math.min(10, Math.max(1, parseInt(parsed.quantityPerPurchase) || quantityPerPurchase));
+        if (parsed.costCoins) costCoins = Math.max(5, parseInt(parsed.costCoins) || costCoins);
+        if (parsed.icon) icon = parsed.icon;
+      } catch (err) {
+        console.warn("AI Pet Food generation fallback:", err.message);
+      }
+    }
+
+    const uniqueId = `ai_food_${Date.now()}`;
+    const graphicDataUrl = generate3DIcon(icon, getThemeColorName(primaryColor), name.slice(0, 12));
+
+    return {
+      id: uniqueId,
+      name,
+      title: name,
+      desc,
+      category: 'Snacks',
+      emoji,
+      color: primaryColor,
+      hunger: hungerFill,
+      hungerFill,
+      energyFill,
+      joyBoost,
+      xpBoost: 20,
+      quantityPerPurchase,
+      quantity: quantityPerPurchase,
+      costCoins,
+      coinPrice: costCoins,
+      icon,
+      image: graphicDataUrl,
+      deliveryMethod: options.deliveryMethod || 'instant_gift',
+      targetChildProfile: options.targetChildProfile || 'all',
+      bountyRequirement: options.bountyRequirement || null,
+      isParentCrafted: true,
+      isCustomAI: true,
+      createdAt: new Date().toISOString()
+    };
+  }
+
+  /**
    * Generates custom AR Quest & Hygiene Bosses for chore battles.
    */
   async generate3DARBoss(options = {}) {
@@ -732,6 +823,8 @@ Return ONLY valid JSON:
       return this.generate3DARBoss(options);
     } else if (category === 'pet') {
       return this.generate3DPetCompanion(options);
+    } else if (category === 'food') {
+      return this.generate3DPetFood(options);
     } else {
       return this.generate3DPetGear(options);
     }
