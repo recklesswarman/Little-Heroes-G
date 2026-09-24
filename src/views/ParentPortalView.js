@@ -29,7 +29,7 @@ let isLoadingInsights = false;
 let studioActiveCategory = 'gear'; // 'gear', 'furniture', 'toy', 'boss'
 let studioViewportMode = 'canvas'; // 'canvas', 'spline'
 let studioActiveSplineUrl = '';
-let studioSelectedPetId = 1;
+let studioSelectedPetId = '1';
 let studioSelectedSocket = 'head';
 let studioSelectedTheme = 'cyber';
 let studioSelectedDye = '#06b6d4';
@@ -5101,7 +5101,7 @@ export function attachParentPortalListeners() {
     // 9. Companion Pet Switcher (Gear)
     document.querySelectorAll('.studio-pet-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        const pId = parseInt(btn.getAttribute('data-pet-id'), 10);
+        const pId = btn.getAttribute('data-pet-id');
         if (!pId || pId === studioSelectedPetId) return;
         studioSelectedPetId = pId;
         Sound.click();

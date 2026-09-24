@@ -1,4 +1,4 @@
-import { store } from '../state/store.js';
+import { store, PET_PRICE_COINS } from '../state/store.js';
 import { PETS_DATABASE, getPetArchetype, getPetLevelData, calculatePetStatBonus } from '../data/petsData.js';
 import { Sound } from '../audio/sfx.js';
 
@@ -7,6 +7,7 @@ let activeArchetypeFilter = 'all';
 export function renderPetRosterView() {
   const activePet = store.getActivePet();
   const activePetId = activePet ? String(activePet.id) : '1';
+  const unlockedIds = (store.getState().selectedHero?.unlockedPetIds || []).map(String);
 
   const filterTabs = [
     { id: 'all', label: 'All (24)', icon: 'apps' },
@@ -81,7 +82,8 @@ export function renderPetRosterView() {
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         ${filteredPets
           .map((pet) => {
-            const isEquipped = String(activePetId) === String(pet.id);
+            const isOwned = unlockedIds.includes(String(pet.id));
+            const isEquipped = isOwned && String(activePetId) === String(pet.id);
             const archetype = getPetArchetype(pet);
             const level = store.getPetLevel(pet.id);
             const levelData = getPetLevelData(level);
@@ -92,28 +94,31 @@ export function renderPetRosterView() {
             <div data-pet-card-id="${pet.id}" class="pet-roster-card bg-surface-container rounded-3xl p-4 border-2 ${
               isEquipped
                 ? 'border-primary bg-surface-container-high shadow-[0_0_20px_rgba(84,233,138,0.3)] ring-2 ring-primary/40'
-                : 'border-surface-container-highest hover:border-primary/50'
+                : !isOwned
+                  ? 'border-surface-container-highest opacity-80'
+                  : 'border-surface-container-highest hover:border-primary/50'
             } card-shadow flex flex-col items-center justify-between gap-3 cursor-pointer group relative overflow-hidden text-center transition-transform active:scale-95">
-              
+
               <!-- Level & Archetype Status Ribbon -->
               <div class="w-full flex justify-between items-center text-[10px] font-black uppercase">
                 <span class="text-cyan-300 bg-cyan-950/60 px-2 py-0.5 rounded-full border border-cyan-400/30">
                   Lv.${level} • ${levelData.title}
                 </span>
-                ${isEquipped ? `<span class="text-slate-950 bg-primary px-2.5 py-0.5 rounded-full font-black shadow-sm">ACTIVE</span>` : `<span class="text-secondary bg-secondary/20 px-2 py-0.5 rounded-full border border-secondary/40">${archetype.name}</span>`}
+                ${isEquipped ? `<span class="text-slate-950 bg-primary px-2.5 py-0.5 rounded-full font-black shadow-sm">ACTIVE</span>` : !isOwned ? `<span class="text-amber-300 bg-amber-950/60 px-2 py-0.5 rounded-full border border-amber-400/30 flex items-center gap-0.5"><span class="material-symbols-outlined text-[11px]">lock</span> Locked</span>` : `<span class="text-secondary bg-secondary/20 px-2 py-0.5 rounded-full border border-secondary/40">${archetype.name}</span>`}
               </div>
 
               <!-- Avatar 3D Toy Figurine Stage -->
               <div class="w-28 h-28 rounded-2xl bg-surface-container-lowest flex items-center justify-center p-2 shadow-inner border-2 ${
                 isEquipped ? 'border-primary' : 'border-surface-container-highest'
               } relative">
-                <img 
-                  class="w-full h-full object-contain group-hover:scale-110 transition-transform duration-300 drop-shadow-md" 
-                  src="${petImg}" 
+                <img
+                  class="w-full h-full object-contain group-hover:scale-110 transition-transform duration-300 drop-shadow-md ${!isOwned ? 'grayscale opacity-60' : ''}"
+                  src="${petImg}"
                   alt="${pet.name}"
                   loading="lazy"
                   onerror="this.onerror=null; this.src='assets/pets/${pet.key || 'rex'}.png';"
                 />
+                ${!isOwned ? `<span class="material-symbols-outlined absolute text-4xl text-amber-300/90 drop-shadow-lg">lock</span>` : ''}
               </div>
 
               <!-- Pet Info -->
@@ -132,9 +137,15 @@ export function renderPetRosterView() {
                     <span class="material-symbols-outlined text-sm">check_circle</span> Active Companion
                   </div>
                 `
-                    : `
+                    : isOwned
+                    ? `
                   <button data-equip-pet-id="${pet.id}" class="equip-roster-pet-btn w-full bg-primary text-slate-950 font-headline text-[11px] font-black py-2.5 rounded-xl chunky-btn-sm border-b-2 border-[#1b7a43] shadow-sm hover:brightness-110 active:scale-95 min-h-[44px] flex items-center justify-center gap-1">
                     <span class="material-symbols-outlined text-sm">pets</span> Equip Companion
+                  </button>
+                `
+                    : `
+                  <button data-buy-pet-id="${pet.id}" class="buy-roster-pet-btn w-full bg-amber-500 text-slate-950 font-headline text-[11px] font-black py-2.5 rounded-xl chunky-btn-sm border-b-2 border-amber-700 shadow-sm hover:brightness-110 active:scale-95 min-h-[44px] flex items-center justify-center gap-1">
+                    <span class="material-symbols-outlined text-sm">lock_open</span> Unlock: ${PET_PRICE_COINS} 🪙
                   </button>
                 `
                 }
@@ -174,6 +185,15 @@ export function attachPetRosterListeners() {
       e.stopPropagation();
       const petId = btn.getAttribute('data-equip-pet-id');
       if (petId) store.setActivePet(petId);
+    });
+  });
+
+  // Unlock/Buy Pet
+  document.querySelectorAll('.buy-roster-pet-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const petId = btn.getAttribute('data-buy-pet-id');
+      if (petId) store.buyPet(petId);
     });
   });
 
