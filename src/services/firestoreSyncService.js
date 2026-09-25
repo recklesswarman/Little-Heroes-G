@@ -1,6 +1,6 @@
 import { doc, setDoc, onSnapshot, updateDoc, deleteField, arrayRemove } from "firebase/firestore";
 import { db, isFirebaseAvailable } from "../config/firebase.js";
-import { store, STORAGE_KEY } from "../state/store.js";
+import { store, STORAGE_KEY, HERO_STAMPED_FIELDS } from "../state/store.js";
 import { persistentLink } from "./persistentLinkService.js";
 
 const DEVICE_ID_KEY = 'stitch_device_id';
@@ -453,6 +453,12 @@ class FirestoreSyncService {
     } else {
       // Coalesce render/action bursts without making cross-device updates feel delayed.
       this.debounceTimer = setTimeout(() => {
+        // Must clear the handle once it fires: hasPendingLocalChanges() reads
+        // it, and a stale non-null handle made every device report "unsent
+        // local change" forever after its first debounced save -- so it
+        // rejected all incoming points/coins/xp and pushed its old values
+        // back over the top of them.
+        this.debounceTimer = null;
         this._doPush();
       }, CLOUD_SYNC_DEBOUNCE_MS);
     }
@@ -469,6 +475,9 @@ class FirestoreSyncService {
     // Ensure local hero state is thoroughly synchronized before pushing to cloud
     if (typeof store.syncSelectedHeroWithHeroes === 'function') {
       store.syncSelectedHeroWithHeroes();
+    }
+    if (typeof store.stampHeroFieldChanges === 'function') {
+      store.stampHeroFieldChanges();
     }
 
     const state = store.getState();
@@ -519,14 +528,12 @@ class FirestoreSyncService {
             isScreenTimePaused: h.isScreenTimePaused !== undefined ? Boolean(h.isScreenTimePaused) : false,
             screenTimeLockMessage: h.screenTimeLockMessage || 'Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙',
             inventory: h.inventory || [],
-            // Preserve this hero's own last-genuine-change marker instead of
-            // blindly stamping "now" on every push. A blanket "now" here
-            // would make ANY push (even from a device with stale cached
-            // data) look like the freshest write purely by wall-clock
-            // ordering, defeating the point of a per-hero timestamp: it
-            // must reflect when the reward data actually changed, not when
-            // this device last happened to save.
-            updatedAt: h.lastUpdated || h.updatedAt || timestamp
+            // Every stamped field is always written (0 = never stamped): the
+            // doc is written with {merge:true}, which deep-merges nested maps,
+            // so a partial map would leave another device's newer stamp next
+            // to this device's older value.
+            fieldStamps: Object.fromEntries(HERO_STAMPED_FIELDS.map((f) => [f, Number(h.fieldStamps?.[f]) || 0])),
+            updatedAt: timestamp
           };
         }
       });
@@ -567,6 +574,7 @@ class FirestoreSyncService {
         deletedHeroIds: state.deletedHeroIds || [],
         selectedHero: state.selectedHero || null,
         pendingApprovals: state.pendingApprovals || [],
+        resolvedApprovals: state.resolvedApprovals || [],
         taskCompletionLogs: state.taskCompletionLogs || [],
         taskLedgerLogs: state.taskLedgerLogs || [],
         petStatsMap: state.petStatsMap || {},
