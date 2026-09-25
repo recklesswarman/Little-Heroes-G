@@ -4378,6 +4378,12 @@ class Store {
       const earnedMinutes = pointsToAward * rate;
       hero.screenTimeMinutes = (hero.screenTimeMinutes || 0) + earnedMinutes;
 
+      // Stamp this exact hero record as freshly changed so a stale cloud
+      // snapshot from another device (one that hasn't seen this approval
+      // yet) can be recognized as stale and skipped during merge, no
+      // matter how many seconds later it happens to arrive.
+      hero.lastUpdated = Date.now();
+
       if (this.state.selectedHero.id === hero.id) {
         this.state.selectedHero.points = hero.points;
         this.state.selectedHero.screenTimeMinutes = hero.screenTimeMinutes;
@@ -4420,6 +4426,7 @@ class Store {
       );
     } else if (req.type === 'reward') {
       hero.points = Math.max(0, hero.points - req.costPoints);
+      hero.lastUpdated = Date.now();
       if (this.state.selectedHero.id === hero.id) {
         this.state.selectedHero.points = hero.points;
       }
@@ -4526,6 +4533,7 @@ class Store {
     const hero = this.state.heroes.find(h => h.id === heroId) || this.state.selectedHero;
     if (!hero) return;
     hero.screenTimeMinutes = (hero.screenTimeMinutes || 0) + minutes;
+    hero.lastUpdated = Date.now();
     if (this.state.selectedHero.id === hero.id) {
       this.state.selectedHero.screenTimeMinutes = hero.screenTimeMinutes;
     }
@@ -4539,6 +4547,7 @@ class Store {
     const hero = this.state.heroes.find(h => h.id === heroId) || this.state.selectedHero;
     if (!hero) return;
     hero.screenTimeMinutes = Math.max(0, (hero.screenTimeMinutes || 0) - minutes);
+    hero.lastUpdated = Date.now();
     if (this.state.selectedHero.id === hero.id) {
       this.state.selectedHero.screenTimeMinutes = hero.screenTimeMinutes;
     }
@@ -4959,8 +4968,12 @@ class Store {
     if (updatedData.coins !== undefined) {
       hero.coins = Math.max(0, Number(updatedData.coins));
       hero.tokens = hero.coins;
+      hero.lastUpdated = Date.now();
     }
-    if (updatedData.points !== undefined) hero.points = Math.max(0, Number(updatedData.points));
+    if (updatedData.points !== undefined) {
+      hero.points = Math.max(0, Number(updatedData.points));
+      hero.lastUpdated = Date.now();
+    }
 
     // If currently active hero was edited, synchronize selectedHero
     if (this.state.selectedHero.id === heroId) {
@@ -5773,7 +5786,18 @@ class Store {
       // Merge with local heroes so no kids or progress are dropped
       const mergedHeroes = incomingHeroes.map((cloudH) => {
         const localH = (this.state.heroes || []).find((h) => h.id === cloudH.id);
-        const preferLocalRewards = trustLocalRewards && Boolean(localH);
+        // trustLocalRewards only covers the narrow window while THIS device's
+        // own push is in flight -- it doesn't protect against a genuinely
+        // stale write from ANOTHER device (one that hasn't seen a recent
+        // local change like a parent approval yet) landing seconds later,
+        // after our own push already confirmed. Each hero carries its own
+        // lastUpdated/updatedAt marker stamped only when its reward fields
+        // actually change (see approveParentRequest/rejectParentRequest and
+        // firestoreSyncService's per-hero updatedAt), so comparing those
+        // catches that race regardless of arrival timing or which device
+        // happened to write last.
+        const localNewer = Boolean(localH?.lastUpdated) && Number(localH.lastUpdated) > Number(cloudH.updatedAt || 0);
+        const preferLocalRewards = (trustLocalRewards || localNewer) && Boolean(localH);
         const unlockedPetIds = Array.from(new Set([
           ...(cloudH.unlockedPetIds || []),
           ...(localH?.unlockedPetIds || [])
@@ -5804,7 +5828,7 @@ class Store {
           equippedPetGearMap: cloudH.equippedPetGearMap || localH?.equippedPetGearMap || {},
           customGearDyesMap: cloudH.customGearDyesMap || localH?.customGearDyesMap || {},
           savedHeroCards: cloudH.savedHeroCards || localH?.savedHeroCards || [],
-          screenTimeMinutes: cloudH.screenTimeMinutes !== undefined ? Number(cloudH.screenTimeMinutes) : (localH?.screenTimeMinutes ?? 45),
+          screenTimeMinutes: preferLocalRewards ? (localH.screenTimeMinutes ?? 45) : (cloudH.screenTimeMinutes !== undefined ? Number(cloudH.screenTimeMinutes) : (localH?.screenTimeMinutes ?? 45)),
           screenTimeUsedToday: cloudH.screenTimeUsedToday !== undefined ? Number(cloudH.screenTimeUsedToday) : (localH?.screenTimeUsedToday ?? 15),
           dailyMaxScreenTime: cloudH.dailyMaxScreenTime !== undefined ? Number(cloudH.dailyMaxScreenTime) : (localH?.dailyMaxScreenTime ?? 60),
           bedtimeCurfew: cloudH.bedtimeCurfew || localH?.bedtimeCurfew || '20:00',
@@ -6034,7 +6058,19 @@ class Store {
       cloudData.taskCompletionLogs.forEach((log) => {
         if (log && log.id) {
           const existing = logMap.get(log.id);
-          logMap.set(log.id, { ...(existing || {}), ...log });
+          // A resolved (approved/rejected) log is terminal -- an older cloud
+          // snapshot that still shows 'pending' for this same log id (e.g.
+          // pushed by another device, or an earlier in-flight push of our
+          // own, before this device's approval happened) must never regress
+          // it back to pending. Without this guard the approval "reappears"
+          // exactly like the request in pendingApprovals it's tied to.
+          const existingResolved = existing && (existing.status === 'approved' || existing.status === 'rejected');
+          const incomingResolved = log.status === 'approved' || log.status === 'rejected';
+          if (existingResolved && !incomingResolved) {
+            logMap.set(log.id, existing);
+          } else {
+            logMap.set(log.id, { ...(existing || {}), ...log });
+          }
         }
       });
       this.state.taskCompletionLogs = Array.from(logMap.values())
@@ -6072,7 +6108,17 @@ class Store {
         const ageMs = localReq.timestamp ? (Date.now() - new Date(localReq.timestamp).getTime()) : 0;
         return ageMs > 0 && ageMs < 45000;
       });
-      this.state.pendingApprovals = [...cloudData.pendingApprovals, ...unconfirmedLocal];
+      // A cloud snapshot can still list a request this device already
+      // approved/rejected -- e.g. it was pushed from another device (or an
+      // earlier in-flight push of our own) that predates our own resolution
+      // and simply hasn't caught up yet. Without this filter that stale
+      // entry gets spliced right back into pendingApprovals below, making
+      // an already-approved task pop back up "as if it was never approved".
+      // resolvedLogIds is keyed by this device's own taskCompletionLogs,
+      // which persists the approval permanently, so this holds regardless
+      // of how many seconds later the stale snapshot arrives.
+      const freshCloudPending = cloudData.pendingApprovals.filter((c) => c && c.id && !resolvedLogIds.has(c.id));
+      this.state.pendingApprovals = [...freshCloudPending, ...unconfirmedLocal];
     }
 
     // 10. Linked Devices Presence Tracking & Revocations
