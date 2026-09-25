@@ -519,7 +519,14 @@ class FirestoreSyncService {
             isScreenTimePaused: h.isScreenTimePaused !== undefined ? Boolean(h.isScreenTimePaused) : false,
             screenTimeLockMessage: h.screenTimeLockMessage || 'Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙',
             inventory: h.inventory || [],
-            updatedAt: timestamp
+            // Preserve this hero's own last-genuine-change marker instead of
+            // blindly stamping "now" on every push. A blanket "now" here
+            // would make ANY push (even from a device with stale cached
+            // data) look like the freshest write purely by wall-clock
+            // ordering, defeating the point of a per-hero timestamp: it
+            // must reflect when the reward data actually changed, not when
+            // this device last happened to save.
+            updatedAt: h.lastUpdated || h.updatedAt || timestamp
           };
         }
       });
