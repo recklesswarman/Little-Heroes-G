@@ -34,7 +34,7 @@ import { renderPetDetailView, attachPetDetailListeners } from './views/PetDetail
 import { renderPetBathView, attachPetBathListeners } from './views/PetBathView.js';
 import { renderAdventuresMapView, attachAdventuresMapListeners } from './views/AdventuresMapView.js';
 import { renderShopView, attachShopListeners } from './views/ShopView.js';
-import { renderBattleView, attachBattleListeners } from './views/BattleView.js';
+import { renderBattleView, attachBattleListeners, abandonBattleIfRunning } from './views/BattleView.js';
 import { renderDancePartyView, attachDancePartyListeners } from './views/DancePartyView.js';
 import { renderProfileView, attachProfileListeners } from './views/ProfileView.js';
 import { renderParentPortalView, attachParentPortalListeners } from './views/ParentPortalView.js';
@@ -48,6 +48,8 @@ import { isExistingActiveHousehold } from './utils/householdHeuristics.js';
 
 const app = document.getElementById('app');
 
+let lastActiveViewForBattleCleanup = null;
+
 function renderApp() {
   // Stop any canvas-backed view's requestAnimationFrame loop from the
   // previous render before tearing down/rebuilding app.innerHTML below --
@@ -56,6 +58,20 @@ function renderApp() {
 
   const state = store.getState();
   const activeView = state.activeView;
+
+  // The AR Toothbrush Battle keeps its countdown timer, rhythm music and
+  // camera/mic sensors running in module-level state that isn't tied to the
+  // Battle view's DOM (see BattleView.js's stopBattleSensorsAndTimers). If the
+  // player navigates away without tapping Quit, none of that stops on its
+  // own -- the timer keeps ticking and the music keeps playing behind
+  // whatever screen they're now on. Catch that the instant we're about to
+  // render a different view.
+  const wasOnBattleView = lastActiveViewForBattleCleanup === 'battle' || lastActiveViewForBattleCleanup === 'ar_battle';
+  const isLeavingBattleView = wasOnBattleView && activeView !== 'battle' && activeView !== 'ar_battle';
+  if (isLeavingBattleView) {
+    abandonBattleIfRunning();
+  }
+  lastActiveViewForBattleCleanup = activeView;
 
   // Check if this device has been revoked by a household parent
   const myDeviceId = (typeof localStorage !== 'undefined') ? localStorage.getItem('stitch_device_id') : null;

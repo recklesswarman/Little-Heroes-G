@@ -1078,7 +1078,11 @@ function concludeVictory() {
   store.completeToothbrushBattle(selectedBossId, totalDuration, avgCadence);
 }
 
-export function quitBattle() {
+// Stops every running timer/timeout, releases the camera+mic, and tears down
+// the 3D battle scene. Shared by the explicit Quit button and by the
+// automatic in-app-navigation guard below -- neither leaves this module's
+// setInterval/rhythm loop orphaned and running behind a different screen.
+function stopBattleSensorsAndTimers() {
   if (battleTimer) {
     clearInterval(battleTimer);
     battleTimer = null;
@@ -1109,6 +1113,10 @@ export function quitBattle() {
   brushAudioAnalyzer.stopListening();
   stopSensors();
   hanaBattle3DService.destroy();
+}
+
+export function quitBattle() {
+  stopBattleSensorsAndTimers();
 
   if (isBattleRunning && secondsRemaining > 0) {
     isBattleRunning = false;
@@ -1127,6 +1135,22 @@ export function quitBattle() {
   isBattlePaused = false;
   const targetView = (store.state && store.state.previousView === 'quest_map') ? 'quest_map' : 'dashboard';
   store.navigate(targetView);
+}
+
+// Called by main.js the instant the app navigates away from the Battle view
+// to somewhere else (bottom nav, quest map, a reward popup, etc.) without the
+// player ever tapping Quit. Without this, battleTimer/bombTimer/autoAssistInterval
+// and the rhythm music are module-level state with no DOM/view lifecycle tied
+// to them, so they kept ticking and playing forever behind whatever screen the
+// player navigated to, and the camera/mic stayed open. This performs the same
+// stop-everything cleanup as quitBattle() but has no store side effects (no
+// reward popup, no navigate -- a navigation is already in flight), so it is
+// safe to call synchronously from inside the render/notify cycle.
+export function abandonBattleIfRunning() {
+  if (!isBattleRunning) return;
+  stopBattleSensorsAndTimers();
+  isBattleRunning = false;
+  isBattlePaused = false;
 }
 
 function showComicHit(text) {
