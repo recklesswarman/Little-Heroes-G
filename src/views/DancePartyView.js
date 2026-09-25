@@ -15,12 +15,71 @@ function getMoveForPose(pose) {
 import { renderDance3DViewer, initDance3DViewer, getActiveDance3DInstance } from '../components/Dance3DViewer.js';
 import { store } from '../state/store.js';
 import { PETS_DATABASE } from '../data/petsData.js';
-import { ADVENTURE_GAMES, getGameChallenges } from '../data/learningGamesData.js';
 import { MOVEMENT_ROUTINES, getMovementRoutine } from '../data/movementRoutinesData.js';
 import { movementSynth } from '../audio/movementAudioSynthesizer.js';
 import { Sound } from '../audio/sfx.js';
 import confetti from 'canvas-confetti';
 import { voicePrompts } from '../utils/voicePrompts.js';
+
+// -------------------------------------------------------------
+// Difficulty tiers: reuses each kid's existing gameDifficulty
+// (easy = Toddler 3-4, medium = Kids 5-6, hard = Kids 7-9), the
+// same field set in the Parent Portal for the quiz realms.
+// -------------------------------------------------------------
+function getDifficultyTier(hero) {
+  const tier = hero?.gameDifficulty;
+  return ['easy', 'medium', 'hard'].includes(tier) ? tier : 'medium';
+}
+function isToddlerHero(hero) {
+  return store.isEasyMode ? store.isEasyMode() : getDifficultyTier(hero) === 'easy';
+}
+
+const TREAT_DIFFICULTY = {
+  easy: { duration: 30, bubbleCount: 4, pointsPerPop: 10 },
+  medium: { duration: 20, bubbleCount: 5, pointsPerPop: 10 },
+  hard: { duration: 15, bubbleCount: 7, pointsPerPop: 15 }
+};
+const MEMORY_DIFFICULTY = {
+  easy: { pairs: 3 },
+  medium: { pairs: 4 },
+  hard: { pairs: 6 }
+};
+const DISCO_DIFFICULTY = {
+  easy: { goal: 5, timeLimit: 40 },
+  medium: { goal: 8, timeLimit: 30 },
+  hard: { goal: 12, timeLimit: 22 }
+};
+const WORKOUT_DIFFICULTY = {
+  easy: { duration: 20, coins: 40, xp: 40 },
+  medium: { duration: 30, coins: 50, xp: 50 },
+  hard: { duration: 45, coins: 65, xp: 65 }
+};
+const BATH_PROGRESS_STEP = { easy: 34, medium: 25, hard: 17 };
+const COLOR_DASH_DIFFICULTY = {
+  easy: { choices: 3, roundSeconds: 8, rounds: 6 },
+  medium: { choices: 5, roundSeconds: 5, rounds: 8 },
+  hard: { choices: 7, roundSeconds: 3, rounds: 10 }
+};
+const ECHO_MATCH_DIFFICULTY = {
+  easy: { pads: 3, startLength: 2, maxLength: 5, stepMs: 750 },
+  medium: { pads: 4, startLength: 3, maxLength: 8, stepMs: 550 },
+  hard: { pads: 4, startLength: 4, maxLength: 12, stepMs: 380 }
+};
+const COLOR_SWATCHES = [
+  { name: 'Red', hex: '#ef4444' },
+  { name: 'Blue', hex: '#3498db' },
+  { name: 'Yellow', hex: '#f1c40f' },
+  { name: 'Green', hex: '#2ecc71' },
+  { name: 'Purple', hex: '#9b59b6' },
+  { name: 'Orange', hex: '#f97316' },
+  { name: 'Pink', hex: '#ec4899' }
+];
+const ECHO_PADS = [
+  { key: 'red', label: 'Red', hex: '#ef4444', tone: 'chirp' },
+  { key: 'blue', label: 'Blue', hex: '#3498db', tone: 'laser' },
+  { key: 'yellow', label: 'Yellow', hex: '#f1c40f', tone: 'coin' },
+  { key: 'green', label: 'Green', hex: '#2ecc71', tone: 'pop' }
+];
 
 // Helper to reliably get the pet's 3D figurine graphic
 export function getPetDisplayAvatar(pet) {
@@ -31,7 +90,7 @@ export function getPetDisplayAvatar(pet) {
 // -------------------------------------------------------------
 // State Machine for Movement Hub & Mini-Games
 // -------------------------------------------------------------
-let arcadeMode = 'hub'; // 'hub', 'movement_session', 'treat_catch', 'memory_match', 'learning_game', 'disco_party'
+let arcadeMode = 'hub'; // 'hub', 'movement_session', 'treat_catch', 'memory_match', 'disco_party', 'color_dash', 'echo_match'
 
 // 1. Movement Routine Session State
 let activeRoutine = null;
@@ -53,23 +112,46 @@ let treatTimeLeft = 20;
 let treatTimer = null;
 let treatItems = [];
 let treatGameActive = false;
+let treatPointsPerPop = 10;
 
 // 3. Memory Match State
 let memoryCards = [];
 let flippedCardIdxs = [];
 let matchedCardIds = [];
 let memoryWon = false;
+let memoryPairsTarget = 4;
 
-// 4. Learning Academy State (Legacy / Quick-Quest)
-let selectedLearningGame = null;
-let currentChallengeIdx = 0;
-let learningScore = 0;
-
-// 5. Disco Party State
+// 4. Disco Party State
 let isDancing = false;
 let discoStep = 0;
+let discoChallengeActive = false;
+let discoChallengeTarget = null;
+let discoChallengeHits = 0;
+let discoChallengeGoal = 8;
+let discoChallengeTimeLeft = 30;
+let discoChallengeTimer = null;
+let discoChallengeWon = false;
 
-// 6. Pet Companion Interaction State
+// 5. Color Dash State (color-matching reflex game)
+let colorDashActive = false;
+let colorDashTarget = null;
+let colorDashChoices = [];
+let colorDashRound = 0;
+let colorDashScore = 0;
+let colorDashTimeLeft = 5;
+let colorDashTimer = null;
+let colorDashWon = false;
+
+// 6. Echo Match State (Simon-says sequence memory game)
+let echoSequence = [];
+let echoPlayerIdx = 0;
+let echoIsPlaying = false;
+let echoActivePad = null;
+let echoActive = false;
+let echoLost = false;
+let echoWon = false;
+
+// 7. Pet Companion Interaction State
 let petMood = 'Happy';
 let petSpeech = 'Hi Hero! Pick a movement routine to stretch, dance, and earn Training XP together! ⚡';
 let petAnimation = 'animate-bounce-slow';
@@ -96,11 +178,14 @@ export function renderDancePartyView() {
   if (arcadeMode === 'memory_match') {
     return renderMemoryMatchGame(hero, activePet, petAvatarUrl, petName);
   }
-  if (arcadeMode === 'learning_game') {
-    return renderLearningGame(hero, activePet, petAvatarUrl, petName);
-  }
   if (arcadeMode === 'disco_party') {
     return renderDiscoParty(hero, activePet, petAvatarUrl, petName, state);
+  }
+  if (arcadeMode === 'color_dash') {
+    return renderColorDashGame(hero, activePet, petAvatarUrl, petName);
+  }
+  if (arcadeMode === 'echo_match') {
+    return renderEchoMatchGame(hero, activePet, petAvatarUrl, petName);
   }
 
   // MAIN HERO MOVEMENT HUB
@@ -289,6 +374,28 @@ export function renderDancePartyView() {
             <div class="flex flex-col">
               <span class="font-headline text-xs font-black text-inverse-surface">Disco Floor</span>
               <span class="text-[11px] text-on-surface-variant">Rhythm pads & confetti DJ</span>
+            </div>
+          </button>
+
+          <!-- Color Dash -->
+          <button id="launch-color-dash-btn" class="bg-surface-container hover:bg-surface-bright rounded-2xl p-4 border-2 border-rose-500/40 flex items-center gap-3 text-left chunky-btn-sm active:scale-95">
+            <div class="w-12 h-12 rounded-xl bg-rose-500/20 border border-rose-500/50 flex items-center justify-center text-2xl flex-shrink-0">
+              🎨
+            </div>
+            <div class="flex flex-col">
+              <span class="font-headline text-xs font-black text-inverse-surface">Color Dash</span>
+              <span class="text-[11px] text-on-surface-variant">Tap the color Rex calls out!</span>
+            </div>
+          </button>
+
+          <!-- Echo Match -->
+          <button id="launch-echo-match-btn" class="bg-surface-container hover:bg-surface-bright rounded-2xl p-4 border-2 border-violet-500/40 flex items-center gap-3 text-left chunky-btn-sm active:scale-95">
+            <div class="w-12 h-12 rounded-xl bg-violet-500/20 border border-violet-500/50 flex items-center justify-center text-2xl flex-shrink-0">
+              🎵
+            </div>
+            <div class="flex flex-col">
+              <span class="font-headline text-xs font-black text-inverse-surface">Echo Match</span>
+              <span class="text-[11px] text-on-surface-variant">Watch, listen, repeat the pattern</span>
             </div>
           </button>
 
@@ -619,7 +726,7 @@ function renderMemoryMatchGame(hero, activePet, petAvatarUrl, petName) {
       <div class="bg-gradient-to-b from-[#131b26] to-[#0a111a] rounded-3xl p-6 border-3 border-primary/40 card-shadow flex flex-col items-center gap-4">
         
         <div class="w-full text-center text-xs font-black text-primary bg-surface-container-highest/80 px-4 py-2 rounded-xl">
-          ${memoryWon ? '🎉 All Companion Pairs Matched! +25 Coins & +25 Pet XP Awarded!' : 'Find all 4 matching pairs of 3D companion figurines!'}
+          ${memoryWon ? '🎉 All Companion Pairs Matched! +25 Coins & +25 Pet XP Awarded!' : `Find all ${memoryPairsTarget} matching pairs of 3D companion figurines!`}
         </div>
 
         <div class="grid grid-cols-4 gap-3 w-full max-w-md my-2">
@@ -649,26 +756,94 @@ function renderMemoryMatchGame(hero, activePet, petAvatarUrl, petName) {
 }
 
 // -------------------------------------------------------------
-// SUB-VIEW 3: LEARNING ACADEMY (Legacy Adapter)
+// SUB-VIEW 5: COLOR DASH (reflex color-matching game)
 // -------------------------------------------------------------
-function renderLearningGame(hero, activePet, petAvatarUrl, petName) {
+function renderColorDashGame(hero, activePet, petAvatarUrl, petName) {
+  const cfg = COLOR_DASH_DIFFICULTY[getDifficultyTier(hero)];
   return `
     <div class="max-w-2xl mx-auto px-4 pt-4 pb-28 flex flex-col gap-5 animate-fade-in select-none">
       <div class="flex items-center justify-between">
         <button id="game-exit-to-hub-btn" class="bg-surface-container hover:bg-surface-bright text-on-surface-variant font-headline text-xs font-black px-3.5 py-2.5 rounded-2xl border-2 border-surface-container-highest flex items-center gap-1.5 chunky-btn-sm active:scale-95">
           <span class="material-symbols-outlined text-base">arrow_back</span> Movement Hub
         </button>
-        <h1 class="font-headline text-lg font-black text-inverse-surface">Learning Adventures</h1>
-        <div></div>
+        <h1 class="font-headline text-lg font-black text-inverse-surface">Color Dash</h1>
+        <div class="bg-surface-container-high px-3 py-1.5 rounded-full border-2 border-primary text-xs font-black text-primary flex items-center gap-1">
+          <span class="material-symbols-outlined text-sm">star</span> ${colorDashScore}/${cfg.rounds}
+        </div>
       </div>
 
-      <div class="bg-surface-container rounded-3xl p-6 border-3 border-secondary/40 text-center flex flex-col items-center gap-4">
-        <span class="text-5xl">🧭</span>
-        <h2 class="font-headline text-xl font-black text-inverse-surface">Full Learning Realms Available!</h2>
-        <p class="text-xs text-on-surface-variant max-w-sm">Explore the 5 comprehensive curriculum realms with 3-Star Mastery on the Adventures Map!</p>
-        <button id="open-adventures-map-btn" class="bg-primary text-on-primary font-headline text-xs font-black px-6 py-3 rounded-2xl chunky-btn border-primary-container shadow active:scale-95">
-          OPEN ADVENTURES MAP 🚀
+      <div class="relative bg-gradient-to-b from-[#152233] via-[#0f1b29] to-[#07111b] rounded-3xl p-6 border-4 border-rose-500/40 min-h-[380px] card-shadow flex flex-col items-center justify-center gap-5">
+        ${!colorDashActive && !colorDashWon ? `
+          <span class="text-5xl">🎨</span>
+          <h2 class="font-headline text-xl font-black text-inverse-surface text-center">Tap the color Rex calls out!</h2>
+          <p class="text-xs text-on-surface-variant text-center max-w-sm">Listen and look for the matching color as fast as you can!</p>
+          <button id="start-color-dash-btn" class="bg-primary text-on-primary font-headline text-sm font-black px-8 py-3 rounded-2xl chunky-btn shadow-chunky-sm active:scale-95">START! 🎨</button>
+        ` : colorDashWon ? `
+          <span class="text-5xl">🏆</span>
+          <h2 class="font-headline text-xl font-black text-inverse-surface">Color Dash Complete!</h2>
+          <p class="text-sm text-on-surface-variant">You matched ${colorDashScore} of ${cfg.rounds} colors!</p>
+          <button id="start-color-dash-btn" class="bg-primary text-on-primary font-headline text-sm font-black px-8 py-3 rounded-2xl chunky-btn shadow-chunky-sm active:scale-95">PLAY AGAIN 🎨</button>
+        ` : `
+          <div class="flex items-center gap-2 bg-surface-container-highest/90 px-4 py-2 rounded-2xl border border-rose-400/40">
+            <span class="text-xs font-black text-on-surface-variant">Find:</span>
+            <span class="font-headline text-lg font-black" style="color: ${colorDashTarget.hex};">${colorDashTarget.name.toUpperCase()}</span>
+          </div>
+          <div class="bg-surface-container-lowest h-2.5 w-full max-w-xs rounded-full overflow-hidden border border-surface-container-highest">
+            <div class="bg-gradient-to-r from-rose-400 to-amber-400 h-full rounded-full transition-all" style="width: ${(colorDashTimeLeft / cfg.roundSeconds) * 100}%;"></div>
+          </div>
+          <div class="grid grid-cols-3 gap-3 w-full max-w-sm">
+            ${colorDashChoices.map((c) => `
+              <button data-color-dash-hex="${c.hex}" class="color-dash-choice-btn h-16 rounded-2xl border-3 border-white/20 shadow-md active:scale-90 transition-transform" style="background-color: ${c.hex};"></button>
+            `).join('')}
+          </div>
+        `}
+      </div>
+    </div>
+  `;
+}
+
+// -------------------------------------------------------------
+// SUB-VIEW 6: ECHO MATCH (Simon-says sequence memory game)
+// -------------------------------------------------------------
+function renderEchoMatchGame(hero, activePet, petAvatarUrl, petName) {
+  const cfg = ECHO_MATCH_DIFFICULTY[getDifficultyTier(hero)];
+  const pads = ECHO_PADS.slice(0, cfg.pads);
+  return `
+    <div class="max-w-2xl mx-auto px-4 pt-4 pb-28 flex flex-col gap-5 animate-fade-in select-none">
+      <div class="flex items-center justify-between">
+        <button id="game-exit-to-hub-btn" class="bg-surface-container hover:bg-surface-bright text-on-surface-variant font-headline text-xs font-black px-3.5 py-2.5 rounded-2xl border-2 border-surface-container-highest flex items-center gap-1.5 chunky-btn-sm active:scale-95">
+          <span class="material-symbols-outlined text-base">arrow_back</span> Movement Hub
         </button>
+        <h1 class="font-headline text-lg font-black text-inverse-surface">Echo Match</h1>
+        <div class="bg-surface-container-high px-3 py-1.5 rounded-full border-2 border-violet-400 text-xs font-black text-violet-300 flex items-center gap-1">
+          <span class="material-symbols-outlined text-sm">graphic_eq</span> ${echoSequence.length || 0}
+        </div>
+      </div>
+
+      <div class="relative bg-gradient-to-b from-[#1a1530] via-[#120e24] to-[#080614] rounded-3xl p-6 border-4 border-violet-500/40 min-h-[380px] card-shadow flex flex-col items-center justify-center gap-5">
+        ${!echoActive && !echoWon && !echoLost ? `
+          <span class="text-5xl">🎵</span>
+          <h2 class="font-headline text-xl font-black text-inverse-surface text-center">Watch, Listen, Repeat!</h2>
+          <p class="text-xs text-on-surface-variant text-center max-w-sm">Rex will light up a pattern of pads. Copy it back in the same order!</p>
+          <button id="start-echo-match-btn" class="bg-primary text-on-primary font-headline text-sm font-black px-8 py-3 rounded-2xl chunky-btn shadow-chunky-sm active:scale-95">START! 🎵</button>
+        ` : echoWon ? `
+          <span class="text-5xl">🏆</span>
+          <h2 class="font-headline text-xl font-black text-inverse-surface">Pattern Master!</h2>
+          <p class="text-sm text-on-surface-variant">You matched a ${echoSequence.length}-step pattern!</p>
+          <button id="start-echo-match-btn" class="bg-primary text-on-primary font-headline text-sm font-black px-8 py-3 rounded-2xl chunky-btn shadow-chunky-sm active:scale-95">PLAY AGAIN 🎵</button>
+        ` : echoLost ? `
+          <span class="text-5xl">🔁</span>
+          <h2 class="font-headline text-xl font-black text-inverse-surface">Good Try!</h2>
+          <p class="text-sm text-on-surface-variant">You matched ${echoPlayerIdx} step${echoPlayerIdx === 1 ? '' : 's'}. Try again!</p>
+          <button id="start-echo-match-btn" class="bg-primary text-on-primary font-headline text-sm font-black px-8 py-3 rounded-2xl chunky-btn shadow-chunky-sm active:scale-95">TRY AGAIN 🎵</button>
+        ` : `
+          <span class="text-xs font-bold text-violet-300 uppercase tracking-wide">${echoIsPlaying ? 'Watch closely...' : 'Your turn!'}</span>
+          <div class="grid grid-cols-2 gap-4 w-full max-w-xs">
+            ${pads.map((p) => `
+              <button data-echo-pad-key="${p.key}" class="echo-pad-btn h-24 rounded-2xl border-4 transition-all active:scale-90 ${echoActivePad === p.key ? 'scale-105 border-white shadow-[0_0_25px_rgba(255,255,255,0.6)]' : 'border-white/10'}" style="background-color: ${p.hex}${echoActivePad === p.key ? '' : 'cc'};"></button>
+            `).join('')}
+          </div>
+        `}
       </div>
     </div>
   `;
@@ -734,6 +909,26 @@ function renderDiscoParty(hero, activePet, petAvatarUrl, petName, state) {
           </button>
         </div>
 
+        <!-- Beat Match Challenge -->
+        <div class="w-full max-w-md z-10 bg-surface-container-highest/80 backdrop-blur-md rounded-2xl p-3 mt-3 border border-secondary/30 flex flex-col items-center gap-2">
+          ${discoChallengeActive ? `
+            <div class="flex items-center justify-between w-full text-xs font-black">
+              <span class="text-secondary">Hit the ${discoChallengeTarget ? discoChallengeTarget.toUpperCase() : ''} pad!</span>
+              <span class="text-amber-400">⏱ ${discoChallengeTimeLeft}s</span>
+            </div>
+            <div class="w-full bg-surface-container-lowest h-3 rounded-full overflow-hidden border border-surface-container-highest">
+              <div class="bg-gradient-to-r from-primary to-secondary h-full rounded-full transition-all" style="width: ${Math.min(100, (discoChallengeHits / discoChallengeGoal) * 100)}%;"></div>
+            </div>
+            <span class="text-[10px] text-on-surface-variant">${discoChallengeHits} / ${discoChallengeGoal} hits</span>
+          ` : discoChallengeWon ? `
+            <span class="text-sm font-black text-primary">🏆 Beat Match Complete! +30 🪙 +30 XP</span>
+            <button id="disco-start-challenge-btn" class="bg-primary text-on-primary font-headline text-xs font-black px-5 py-2 rounded-xl chunky-btn-sm active:scale-95">PLAY AGAIN</button>
+          ` : `
+            <span class="text-xs font-bold text-on-surface-variant">Ready for a Beat Match Challenge?</span>
+            <button id="disco-start-challenge-btn" class="bg-secondary text-on-secondary font-headline text-xs font-black px-5 py-2 rounded-xl chunky-btn-sm active:scale-95">START CHALLENGE 🎵</button>
+          `}
+        </div>
+
       </div>
 
       <!-- Party DJ Controls -->
@@ -758,6 +953,7 @@ function renderDiscoParty(hero, activePet, petAvatarUrl, petName, state) {
 // EVENT LISTENERS & LIFECYCLE CONTROLS
 // -------------------------------------------------------------
 export function attachDancePartyEvents() {
+  const hero = store.getState().selectedHero;
   if (arcadeMode === 'movement_session') {
     initDance3DViewer('dance-coach-3d-canvas', {
       petId: store.getActivePet()?.id || 'rex',
@@ -793,14 +989,6 @@ export function attachDancePartyEvents() {
       cleanupMovementSession();
       arcadeMode = 'hub';
       store.notify();
-    });
-  }
-
-  const openAdvMapBtn = document.getElementById('open-adventures-map-btn');
-  if (openAdvMapBtn) {
-    openAdvMapBtn.addEventListener('click', () => {
-      cleanupMovementSession();
-      store.setView('adventures_map');
     });
   }
 
@@ -914,11 +1102,7 @@ export function attachDancePartyEvents() {
     launchTreatBtn.addEventListener('click', () => {
       cleanupMovementSession();
       arcadeMode = 'treat_catch';
-      treatScore = 0;
-      treatTimeLeft = 20;
-      treatGameActive = true;
-      generateTreatItems();
-      startTreatTimer();
+      startTreatCatchGame(hero);
       Sound.click();
       store.notify();
     });
@@ -929,7 +1113,7 @@ export function attachDancePartyEvents() {
     launchMemoryBtn.addEventListener('click', () => {
       cleanupMovementSession();
       arcadeMode = 'memory_match';
-      initMemoryGame();
+      initMemoryGame(hero);
       Sound.click();
       store.notify();
     });
@@ -945,15 +1129,39 @@ export function attachDancePartyEvents() {
     });
   }
 
+  const launchColorDashBtn = document.getElementById('launch-color-dash-btn');
+  if (launchColorDashBtn) {
+    launchColorDashBtn.addEventListener('click', () => {
+      cleanupMovementSession();
+      arcadeMode = 'color_dash';
+      colorDashActive = false;
+      colorDashWon = false;
+      colorDashRound = 0;
+      colorDashScore = 0;
+      Sound.click();
+      store.notify();
+    });
+  }
+
+  const launchEchoMatchBtn = document.getElementById('launch-echo-match-btn');
+  if (launchEchoMatchBtn) {
+    launchEchoMatchBtn.addEventListener('click', () => {
+      cleanupMovementSession();
+      arcadeMode = 'echo_match';
+      echoActive = false;
+      echoWon = false;
+      echoLost = false;
+      echoSequence = [];
+      Sound.click();
+      store.notify();
+    });
+  }
+
   // --- TREAT CATCH LISTENERS ---
   const startTreatBtn = document.getElementById('start-treat-game-btn');
   if (startTreatBtn) {
     startTreatBtn.addEventListener('click', () => {
-      treatScore = 0;
-      treatTimeLeft = 20;
-      treatGameActive = true;
-      generateTreatItems();
-      startTreatTimer();
+      startTreatCatchGame(hero);
       Sound.fanfare();
       store.notify();
     });
@@ -963,10 +1171,10 @@ export function attachDancePartyEvents() {
     btn.addEventListener('click', () => {
       const idx = parseInt(btn.getAttribute('data-bubble-idx'));
       Sound.pop();
-      treatScore += 10;
+      treatScore += treatPointsPerPop;
       treatItems.splice(idx, 1);
       if (treatItems.length < 3) {
-        generateTreatItems();
+        generateTreatItems(TREAT_DIFFICULTY[getDifficultyTier(hero)].bubbleCount);
       }
       store.notify();
     });
@@ -976,16 +1184,59 @@ export function attachDancePartyEvents() {
   document.querySelectorAll('.memory-card-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       const idx = parseInt(btn.getAttribute('data-memory-card-idx'));
-      handleMemoryCardClick(idx);
+      handleMemoryCardClick(idx, hero);
     });
   });
 
   const resetMemoryBtn = document.getElementById('reset-memory-game-btn');
   if (resetMemoryBtn) {
     resetMemoryBtn.addEventListener('click', () => {
-      initMemoryGame();
+      initMemoryGame(hero);
       Sound.click();
       store.notify();
+    });
+  }
+
+  // --- COLOR DASH LISTENERS ---
+  const startColorDashBtn = document.getElementById('start-color-dash-btn');
+  if (startColorDashBtn) {
+    startColorDashBtn.addEventListener('click', () => {
+      startColorDashGame(hero);
+      Sound.click();
+      store.notify();
+    });
+  }
+
+  document.querySelectorAll('.color-dash-choice-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (!colorDashActive) return;
+      const hex = btn.getAttribute('data-color-dash-hex');
+      advanceColorDashRound(hero, hex === colorDashTarget.hex);
+    });
+  });
+
+  // --- ECHO MATCH LISTENERS ---
+  const startEchoMatchBtn = document.getElementById('start-echo-match-btn');
+  if (startEchoMatchBtn) {
+    startEchoMatchBtn.addEventListener('click', () => {
+      startEchoMatchGame(hero);
+      Sound.click();
+    });
+  }
+
+  document.querySelectorAll('.echo-pad-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const padKey = btn.getAttribute('data-echo-pad-key');
+      handleEchoPadPress(padKey, hero);
+    });
+  });
+
+  // --- DISCO BEAT MATCH CHALLENGE LISTENERS ---
+  const discoStartChallengeBtn = document.getElementById('disco-start-challenge-btn');
+  if (discoStartChallengeBtn) {
+    discoStartChallengeBtn.addEventListener('click', () => {
+      startDiscoChallenge(hero);
+      Sound.click();
     });
   }
 
@@ -1039,6 +1290,17 @@ export function attachDancePartyEvents() {
       if (pActor) {
         pActor.style.transform = 'scale(1.25) rotate(180deg)';
         setTimeout(() => { pActor.style.transform = ''; }, 300);
+      }
+
+      if (discoChallengeActive && padType === discoChallengeTarget) {
+        discoChallengeHits++;
+        if (discoChallengeHits >= discoChallengeGoal) {
+          finishDiscoChallenge(hero);
+        } else {
+          discoChallengeTarget = ['green', 'blue', 'yellow'][Math.floor(Math.random() * 3)];
+          if (isToddlerHero(hero)) voicePrompts.speak(`Now hit the ${discoChallengeTarget} pad!`);
+          store.notify();
+        }
       }
     });
   });
@@ -1308,13 +1570,21 @@ function cleanupTimers() {
     clearInterval(treatTimer);
     treatTimer = null;
   }
+  if (colorDashTimer) {
+    clearInterval(colorDashTimer);
+    colorDashTimer = null;
+  }
+  if (discoChallengeTimer) {
+    clearInterval(discoChallengeTimer);
+    discoChallengeTimer = null;
+  }
   if (isDancing) {
     Sound.stopDisco();
     isDancing = false;
   }
 }
 
-function generateTreatItems() {
+function generateTreatItems(bubbleCount = 5) {
   const archetypeTreats = [
     { icon: '⭐', name: 'Starberry' },
     { icon: '🍈', name: 'Solar Melon' },
@@ -1325,7 +1595,7 @@ function generateTreatItems() {
     { icon: '🪙', name: 'Hero Coin' }
   ];
   treatItems = [];
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < bubbleCount; i++) {
     const treat = archetypeTreats[Math.floor(Math.random() * archetypeTreats.length)];
     treatItems.push({
       icon: treat.icon,
@@ -1336,7 +1606,20 @@ function generateTreatItems() {
   }
 }
 
-function startTreatTimer() {
+function startTreatCatchGame(hero) {
+  const cfg = TREAT_DIFFICULTY[getDifficultyTier(hero)];
+  treatScore = 0;
+  treatTimeLeft = cfg.duration;
+  treatPointsPerPop = cfg.pointsPerPop;
+  treatGameActive = true;
+  generateTreatItems(cfg.bubbleCount);
+  startTreatTimer(hero);
+  if (isToddlerHero(hero)) {
+    voicePrompts.speak('Pop the bubbles to feed your pet! Tap, tap, tap!');
+  }
+}
+
+function startTreatTimer(hero) {
   if (treatTimer) clearInterval(treatTimer);
   treatTimer = setInterval(() => {
     if (treatTimeLeft > 1) {
@@ -1356,14 +1639,18 @@ function startTreatTimer() {
         store.addPetTrainingXp(currentPet.id, 25);
       }
       store.saveState(true);
+      if (isToddlerHero(hero)) {
+        voicePrompts.speak('Great job feeding your pet!');
+      }
       store.notify();
     }
   }, 1000);
 }
 
-function initMemoryGame() {
-  // Select 4 companion figurines from the 24 PETS_DATABASE companions
-  const shuffledPets = [...PETS_DATABASE].sort(() => Math.random() - 0.5).slice(0, 4);
+function initMemoryGame(hero) {
+  const pairs = MEMORY_DIFFICULTY[getDifficultyTier(hero)].pairs;
+  memoryPairsTarget = pairs;
+  const shuffledPets = [...PETS_DATABASE].sort(() => Math.random() - 0.5).slice(0, pairs);
   const deck = [];
   shuffledPets.forEach((pet) => {
     const cardData = {
@@ -1379,9 +1666,12 @@ function initMemoryGame() {
   flippedCardIdxs = [];
   matchedCardIds = [];
   memoryWon = false;
+  if (isToddlerHero(hero)) {
+    voicePrompts.speak('Flip two cards to find a matching pair!');
+  }
 }
 
-function handleMemoryCardClick(idx) {
+function handleMemoryCardClick(idx, hero) {
   if (flippedCardIdxs.length >= 2 || flippedCardIdxs.includes(idx)) return;
   const card = memoryCards[idx];
   if (matchedCardIds.includes(card.id)) return;
@@ -1397,7 +1687,7 @@ function handleMemoryCardClick(idx) {
       Sound.chirp();
       matchedCardIds.push(card1.id);
       flippedCardIdxs = [];
-      if (matchedCardIds.length === 4) {
+      if (matchedCardIds.length === memoryPairsTarget) {
         memoryWon = true;
         Sound.fanfare();
         confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
@@ -1407,6 +1697,11 @@ function handleMemoryCardClick(idx) {
           store.addPetTrainingXp(currentPet.id, 25);
         }
         store.saveState(true);
+        if (isToddlerHero(hero)) {
+          voicePrompts.speak('Wonderful! You found all the pairs!');
+        }
+      } else if (isToddlerHero(hero)) {
+        voicePrompts.speak('Great match! Keep going!');
       }
     } else {
       setTimeout(() => {
@@ -1414,6 +1709,238 @@ function handleMemoryCardClick(idx) {
         store.notify();
       }, 900);
     }
+  }
+  store.notify();
+}
+
+// -------------------------------------------------------------
+// COLOR DASH HELPERS
+// -------------------------------------------------------------
+function generateColorDashRound(hero) {
+  const cfg = COLOR_DASH_DIFFICULTY[getDifficultyTier(hero)];
+  const pool = [...COLOR_SWATCHES].sort(() => Math.random() - 0.5).slice(0, cfg.choices);
+  colorDashTarget = pool[Math.floor(Math.random() * pool.length)];
+  colorDashChoices = pool.sort(() => Math.random() - 0.5);
+  colorDashTimeLeft = cfg.roundSeconds;
+  if (isToddlerHero(hero)) {
+    voicePrompts.speak(`Find the color ${colorDashTarget.name}!`);
+  }
+}
+
+function startColorDashGame(hero) {
+  if (colorDashTimer) clearInterval(colorDashTimer);
+  colorDashActive = true;
+  colorDashWon = false;
+  colorDashRound = 0;
+  colorDashScore = 0;
+  generateColorDashRound(hero);
+  colorDashTimer = setInterval(() => {
+    if (arcadeMode !== 'color_dash') return;
+    if (colorDashTimeLeft > 1) {
+      colorDashTimeLeft--;
+    } else {
+      advanceColorDashRound(hero, false);
+    }
+    store.notify();
+  }, 1000);
+  store.notify();
+}
+
+function advanceColorDashRound(hero, wasCorrect) {
+  const cfg = COLOR_DASH_DIFFICULTY[getDifficultyTier(hero)];
+  if (wasCorrect) {
+    colorDashScore++;
+    Sound.chirp();
+  } else {
+    Sound.click();
+  }
+  colorDashRound++;
+  if (colorDashRound >= cfg.rounds) {
+    finishColorDashGame(hero);
+  } else {
+    generateColorDashRound(hero);
+  }
+  store.notify();
+}
+
+function finishColorDashGame(hero) {
+  if (colorDashTimer) {
+    clearInterval(colorDashTimer);
+    colorDashTimer = null;
+  }
+  colorDashActive = false;
+  colorDashWon = true;
+  Sound.fanfare();
+  confetti({ particleCount: 90, spread: 75, origin: { y: 0.6 } });
+  const coinsWon = 15 + colorDashScore * 5;
+  store.getState().selectedHero.coins += coinsWon;
+  const currentPet = store.getActivePet();
+  if (currentPet) {
+    store.addPetTrainingXp(currentPet.id, 20 + colorDashScore * 2);
+  }
+  store.saveState(true);
+  if (isToddlerHero(hero)) {
+    voicePrompts.speak('Wow, great color spotting!');
+  }
+  store.notify();
+}
+
+// -------------------------------------------------------------
+// ECHO MATCH HELPERS
+// -------------------------------------------------------------
+function playEchoPadSound(pad) {
+  if (!pad) return;
+  if (pad.tone === 'chirp') Sound.chirp();
+  else if (pad.tone === 'laser') Sound.laser();
+  else if (pad.tone === 'coin') Sound.coin();
+  else Sound.pop();
+}
+
+function playEchoSequence(hero) {
+  const cfg = ECHO_MATCH_DIFFICULTY[getDifficultyTier(hero)];
+  echoIsPlaying = true;
+  let i = 0;
+  const step = () => {
+    if (arcadeMode !== 'echo_match') return;
+    if (i >= echoSequence.length) {
+      echoIsPlaying = false;
+      echoActivePad = null;
+      store.notify();
+      return;
+    }
+    const padKey = echoSequence[i];
+    echoActivePad = padKey;
+    playEchoPadSound(ECHO_PADS.find((p) => p.key === padKey));
+    store.notify();
+    setTimeout(() => {
+      if (arcadeMode !== 'echo_match') return;
+      echoActivePad = null;
+      store.notify();
+      i++;
+      setTimeout(step, cfg.stepMs * 0.3);
+    }, cfg.stepMs * 0.7);
+  };
+  step();
+}
+
+function startEchoMatchGame(hero) {
+  const cfg = ECHO_MATCH_DIFFICULTY[getDifficultyTier(hero)];
+  echoActive = true;
+  echoLost = false;
+  echoWon = false;
+  echoSequence = [];
+  for (let i = 0; i < cfg.startLength; i++) {
+    echoSequence.push(ECHO_PADS[Math.floor(Math.random() * cfg.pads)].key);
+  }
+  echoPlayerIdx = 0;
+  if (isToddlerHero(hero)) {
+    voicePrompts.speak('Watch and listen, then copy the pattern!');
+  }
+  store.notify();
+  setTimeout(() => playEchoSequence(hero), 400);
+}
+
+function handleEchoPadPress(padKey, hero) {
+  if (echoIsPlaying || !echoActive || echoWon || echoLost) return;
+  playEchoPadSound(ECHO_PADS.find((p) => p.key === padKey));
+  echoActivePad = padKey;
+  setTimeout(() => {
+    echoActivePad = null;
+    store.notify();
+  }, 200);
+
+  const expected = echoSequence[echoPlayerIdx];
+  if (padKey === expected) {
+    echoPlayerIdx++;
+    if (echoPlayerIdx >= echoSequence.length) {
+      const cfg = ECHO_MATCH_DIFFICULTY[getDifficultyTier(hero)];
+      if (echoSequence.length >= cfg.maxLength) {
+        finishEchoMatchGame(hero, true);
+      } else {
+        echoSequence.push(ECHO_PADS[Math.floor(Math.random() * cfg.pads)].key);
+        echoPlayerIdx = 0;
+        setTimeout(() => playEchoSequence(hero), 700);
+      }
+    }
+  } else {
+    finishEchoMatchGame(hero, false);
+  }
+  store.notify();
+}
+
+function finishEchoMatchGame(hero, won) {
+  echoActive = false;
+  if (won) {
+    echoWon = true;
+    Sound.fanfare();
+    confetti({ particleCount: 100, spread: 80, origin: { y: 0.6 } });
+    const coinsWon = 20 + echoSequence.length * 3;
+    store.getState().selectedHero.coins += coinsWon;
+    const currentPet = store.getActivePet();
+    if (currentPet) {
+      store.addPetTrainingXp(currentPet.id, 25);
+    }
+    store.saveState(true);
+    if (isToddlerHero(hero)) {
+      voicePrompts.speak('Amazing memory! You matched the whole pattern!');
+    }
+  } else {
+    echoLost = true;
+    Sound.click();
+    if (isToddlerHero(hero)) {
+      voicePrompts.speak("Good try! Let's try again!");
+    }
+  }
+  store.notify();
+}
+
+// -------------------------------------------------------------
+// DISCO BEAT MATCH CHALLENGE HELPERS
+// -------------------------------------------------------------
+function startDiscoChallenge(hero) {
+  const cfg = DISCO_DIFFICULTY[getDifficultyTier(hero)];
+  if (discoChallengeTimer) clearInterval(discoChallengeTimer);
+  discoChallengeActive = true;
+  discoChallengeWon = false;
+  discoChallengeHits = 0;
+  discoChallengeGoal = cfg.goal;
+  discoChallengeTimeLeft = cfg.timeLimit;
+  discoChallengeTarget = ['green', 'blue', 'yellow'][Math.floor(Math.random() * 3)];
+  if (isToddlerHero(hero)) {
+    voicePrompts.speak(`Hit the ${discoChallengeTarget} pad!`);
+  }
+  discoChallengeTimer = setInterval(() => {
+    if (arcadeMode !== 'disco_party') return;
+    if (discoChallengeTimeLeft > 1) {
+      discoChallengeTimeLeft--;
+    } else {
+      clearInterval(discoChallengeTimer);
+      discoChallengeTimer = null;
+      discoChallengeActive = false;
+      Sound.click();
+    }
+    store.notify();
+  }, 1000);
+  store.notify();
+}
+
+function finishDiscoChallenge(hero) {
+  if (discoChallengeTimer) {
+    clearInterval(discoChallengeTimer);
+    discoChallengeTimer = null;
+  }
+  discoChallengeActive = false;
+  discoChallengeWon = true;
+  Sound.fanfare();
+  confetti({ particleCount: 100, spread: 80, origin: { y: 0.6 } });
+  store.getState().selectedHero.coins += 30;
+  const currentPet = store.getActivePet();
+  if (currentPet) {
+    store.addPetTrainingXp(currentPet.id, 30);
+  }
+  store.saveState(true);
+  if (isToddlerHero(hero)) {
+    voicePrompts.speak('Amazing dancing! You did it!');
   }
   store.notify();
 }

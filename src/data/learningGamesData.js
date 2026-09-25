@@ -195,19 +195,25 @@ export const ADVENTURE_GAMES = [
     desc: "Count the shiny gold coins and gems to unlock castle mystery gates!",
     challengesByDifficulty: {
       easy: [
-        { question: "Can you tap the number 2?", options: ["Number 2", "Number 5", "Number 9"], answer: 0 },
-        { question: "Count the apples: 🍎 🍎 🍎", options: ["2 Apples", "3 Apples", "5 Apples"], answer: 1 },
-        { question: "How many stars are here? ⭐ ⭐", options: ["1 Star", "2 Stars", "4 Stars"], answer: 1 }
+        { question: "Can you tap the number 2?", options: ["Number 2", "Number 5", "Number 9"], answer: 0, hint: "Two little space ducks!" },
+        { question: "Count the apples: 🍎 🍎 🍎", options: ["2 Apples", "3 Apples", "5 Apples"], answer: 1, hint: "One, two, three sweet apples!" },
+        { question: "How many stars are here? ⭐ ⭐", options: ["1 Star", "2 Stars", "4 Stars"], answer: 1, hint: "Point with your finger: one, two!" },
+        { question: "Which group has MORE rockets? 🚀 🚀 vs 🚀", options: ["2 Rockets 🚀🚀", "1 Rocket 🚀", "They are equal"], answer: 0, hint: "Two rockets is more than one rocket!" },
+        { question: "What number comes after 1? (1, __)", options: ["Number 2", "Number 4", "Number 0"], answer: 0, hint: "1, 2, 3, blast off!" }
       ],
       medium: [
-        { question: "If Sparky has 3 coins and finds 4 more, how many does he have?", options: ["6 Coins", "7 Coins", "8 Coins"], answer: 1 },
-        { question: "Count the stars: ⭐ ⭐ ⭐ ⭐ ⭐", options: ["4 Stars", "5 Stars", "6 Stars"], answer: 1 },
-        { question: "What is 10 minus 2 gems?", options: ["8 Gems", "7 Gems", "9 Gems"], answer: 0 }
+        { question: "If Sparky has 3 coins and finds 4 more, how many does he have?", options: ["6 Coins", "7 Coins", "8 Coins"], answer: 1, hint: "3 + 4 = 7 shiny coins!" },
+        { question: "Count the stars: ⭐ ⭐ ⭐ ⭐ ⭐", options: ["4 Stars", "5 Stars", "6 Stars"], answer: 1, hint: "Count each star: 1, 2, 3, 4, 5!" },
+        { question: "What is 10 minus 2 gems?", options: ["8 Gems", "7 Gems", "9 Gems"], answer: 0, hint: "Start at 10 and count backwards by 2!" },
+        { question: "Which number is an EVEN number?", options: ["6", "7", "9"], answer: 0, hint: "Even numbers can be split into two equal teams!" },
+        { question: "What number comes next: 2, 4, 6, __?", options: ["8", "7", "10"], answer: 0, hint: "Skip count by 2s!" }
       ],
       hard: [
-        { question: "Sparky has 14 coins and buys an apple for 6 coins. How many are left?", options: ["8 Coins", "7 Coins", "9 Coins"], answer: 0 },
-        { question: "What is 5 multiplied by 4?", options: ["20", "25", "15"], answer: 0 },
-        { question: "What number comes next in the sequence: 4, 8, 12, __?", options: ["14", "16", "18"], answer: 1 }
+        { question: "Sparky has 14 coins and buys an apple for 6 coins. How many are left?", options: ["8 Coins", "7 Coins", "9 Coins"], answer: 0, hint: "14 - 6 = 8 coins." },
+        { question: "What is 5 multiplied by 4?", options: ["20", "25", "15"], answer: 0, hint: "Five groups of four equal twenty!" },
+        { question: "What number comes next in the sequence: 4, 8, 12, __?", options: ["14", "16", "18"], answer: 1, hint: "Add 4 each step: 12 + 4 = 16!" },
+        { question: "What is half of 50 space tokens?", options: ["25", "20", "30"], answer: 0, hint: "25 + 25 = 50!" },
+        { question: "If a spaceship travels 15 miles in 3 minutes, how fast is it per minute?", options: ["5 Miles", "3 Miles", "6 Miles"], answer: 0, hint: "Divide 15 by 3!" }
       ]
     }
   },
@@ -224,19 +230,25 @@ export const ADVENTURE_GAMES = [
     desc: "Fit triangles, squares, and circles into temple totem slots!",
     challengesByDifficulty: {
       easy: [
-        { question: "Find the round Circle like a ball!", options: ["🔴 Circle", "⏹️ Square", "🔺 Triangle"], answer: 0 },
-        { question: "Which shape has 3 pointy corners?", options: ["🔺 Triangle", "⏹️ Square", "⭕ Circle"], answer: 0 },
-        { question: "What shape is a slice of pizza?", options: ["🔺 Triangle", "⏹️ Square", "⭐ Star"], answer: 0 }
+        { question: "Find the round Circle like a ball!", options: ["🔴 Circle", "⏹️ Square", "🔺 Triangle"], answer: 0, hint: "Round and round with no corners!" },
+        { question: "Which shape has 3 pointy corners?", options: ["🔺 Triangle", "⏹️ Square", "⭕ Circle"], answer: 0, hint: "Three sides and three points like a party hat!" },
+        { question: "What shape is a slice of pizza?", options: ["🔺 Triangle", "⏹️ Square", "⭐ Star"], answer: 0, hint: "Pointy triangle slice!" },
+        { question: "Which shape looks like a picture frame or window?", options: ["⏹️ Square", "🔴 Circle", "🔺 Triangle"], answer: 0, hint: "Four straight sides that are all the same!" },
+        { question: "Find the shining Star shape!", options: ["⭐ Star", "🔷 Diamond", "🟣 Oval"], answer: 0, hint: "Twinkle twinkle little star!" }
       ],
       medium: [
-        { question: "How many sides does a triangle have?", options: ["3 Sides", "4 Sides", "5 Sides"], answer: 0 },
-        { question: "Which shape has 4 equal straight sides?", options: ["Circle", "Square", "Oval"], answer: 1 },
-        { question: "What shape is a shiny habit coin?", options: ["Circle", "Triangle", "Star"], answer: 0 }
+        { question: "How many sides does a triangle have?", options: ["3 Sides", "4 Sides", "5 Sides"], answer: 0, hint: "Tri- means three, like a tricycle!" },
+        { question: "Which shape has 4 equal straight sides?", options: ["Circle", "Square", "Oval"], answer: 1, hint: "A square has 4 equal sides and 4 square corners." },
+        { question: "What shape is a shiny habit coin?", options: ["Circle", "Triangle", "Star"], answer: 0, hint: "Coins roll easily because they are circles!" },
+        { question: "Which 3D shape looks like an ice cream cone?", options: ["Cone 🍦", "Cube 🧊", "Sphere ⚽"], answer: 0, hint: "Pointy at the bottom, round on top!" },
+        { question: "How many sides does a rectangle have?", options: ["4 Sides", "3 Sides", "6 Sides"], answer: 0, hint: "2 long sides and 2 short sides make 4 sides!" }
       ],
       hard: [
-        { question: "A shape with 5 straight sides is called a:", options: ["Pentagon", "Hexagon", "Octagon"], answer: 0 },
-        { question: "How many corners (vertices) does a cube have?", options: ["6", "8", "12"], answer: 1 },
-        { question: "Which 3D shape looks like a soda can?", options: ["Cylinder", "Cone", "Sphere"], answer: 0 }
+        { question: "A shape with 5 straight sides is called a:", options: ["Pentagon", "Hexagon", "Octagon"], answer: 0, hint: "Penta- means 5 sides!" },
+        { question: "How many corners (vertices) does a cube have?", options: ["6", "8", "12"], answer: 1, hint: "4 corners on the top face + 4 on the bottom = 8 vertices!" },
+        { question: "Which 3D shape looks like a soda can?", options: ["Cylinder", "Cone", "Sphere"], answer: 0, hint: "A cylinder has 2 circular bases and 1 curved surface." },
+        { question: "A stop sign on the street is which polygon shape?", options: ["Octagon (8 sides)", "Hexagon (6 sides)", "Decagon (10 sides)"], answer: 0, hint: "Stop signs have 8 sides!" },
+        { question: "What is the name of a triangle where all 3 sides are equal length?", options: ["Equilateral", "Isosceles", "Scalene"], answer: 0, hint: "Equi- means equal!" }
       ]
     }
   }
