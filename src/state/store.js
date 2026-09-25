@@ -45,6 +45,26 @@ export const DEFAULT_PET_LEVEL_MAP = Object.fromEntries(ALL_24_PET_IDS.map((id) 
 export const DEFAULT_PET_XP_MAP = Object.fromEntries(ALL_24_PET_IDS.map((id) => [id, 0]));
 export const PET_PRICE_COINS = 150;
 
+// Hero fields that more than one device can change (a kid earning/spending on
+// their own device, a parent approving on another). Each carries its own
+// change timestamp in hero.fieldStamps, set only when THIS device actually
+// changes the value, so a cross-device merge keeps the most recent real
+// change instead of whichever device happened to save last.
+export const HERO_STAMPED_FIELDS = ['points', 'coins', 'tokens', 'xp', 'level', 'xpNext', 'screenTimeMinutes', 'activePetId'];
+
+// Union of two resolved-approval lists by id (newest timestamp wins), capped
+// to the most recent entries so the synced household doc can't grow forever.
+const RESOLVED_APPROVALS_CAP = 300;
+function mergeResolvedApprovals(a = [], b = []) {
+  const byId = new Map();
+  [...(Array.isArray(a) ? a : []), ...(Array.isArray(b) ? b : [])].forEach((e) => {
+    if (!e || !e.id) return;
+    const at = Number(e.at) || 0;
+    if (!byId.has(e.id) || byId.get(e.id).at < at) byId.set(e.id, { id: e.id, at });
+  });
+  return Array.from(byId.values()).sort((x, y) => y.at - x.at).slice(0, RESOLVED_APPROVALS_CAP);
+}
+
 const defaultState = {
   isAuthenticated: false,
   isAuthReady: false,
@@ -531,6 +551,9 @@ const defaultState = {
 
   // Parent Admin Portal: Action Approvals Queue
   pendingApprovals: [],
+  // {id, at} for every approval request already approved/rejected on any
+  // device. Synced so no device re-adds a request it only has a stale copy of.
+  resolvedApprovals: [],
 
   // Dedicated Timestamped Routine & Task Completion Audit Trail
   taskCompletionLogs: [],
@@ -588,6 +611,38 @@ class Store {
     this.isParentSessionUnlocked = false;
     this.syncService = null;
     this.state = this.loadState();
+    this.resetHeroFieldBaseline();
+  }
+
+  // Record the current value of every stamped field for every hero, so the
+  // next stampHeroFieldChanges() can tell which ones this device changed.
+  resetHeroFieldBaseline() {
+    this._heroFieldBaseline = {};
+    (this.state?.heroes || []).forEach((h) => {
+      if (!h || !h.id) return;
+      const snap = {};
+      HERO_STAMPED_FIELDS.forEach((f) => { snap[f] = h[f]; });
+      this._heroFieldBaseline[h.id] = snap;
+    });
+  }
+
+  // Stamp every stamped field whose value changed since the last baseline.
+  // Runs on every save (and before merging inbound cloud data), so it covers
+  // every code path that mutates a hero without each one stamping by hand.
+  stampHeroFieldChanges() {
+    const baseline = this._heroFieldBaseline || {};
+    const now = Date.now();
+    (this.state?.heroes || []).forEach((h) => {
+      if (!h || !h.id) return;
+      const prev = baseline[h.id];
+      if (!prev) return;
+      HERO_STAMPED_FIELDS.forEach((f) => {
+        if (String(h[f] ?? '') !== String(prev[f] ?? '')) {
+          h.fieldStamps = { ...(h.fieldStamps || {}), [f]: now };
+        }
+      });
+    });
+    this.resetHeroFieldBaseline();
   }
 
   setSyncService(service) {
@@ -999,6 +1054,7 @@ class Store {
   saveState(immediate = false) {
     try {
       this.syncSelectedHeroWithHeroes();
+      this.stampHeroFieldChanges();
       if (typeof localStorage !== 'undefined') {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
       }
@@ -4378,12 +4434,6 @@ class Store {
       const earnedMinutes = pointsToAward * rate;
       hero.screenTimeMinutes = (hero.screenTimeMinutes || 0) + earnedMinutes;
 
-      // Stamp this exact hero record as freshly changed so a stale cloud
-      // snapshot from another device (one that hasn't seen this approval
-      // yet) can be recognized as stale and skipped during merge, no
-      // matter how many seconds later it happens to arrive.
-      hero.lastUpdated = Date.now();
-
       if (this.state.selectedHero.id === hero.id) {
         this.state.selectedHero.points = hero.points;
         this.state.selectedHero.screenTimeMinutes = hero.screenTimeMinutes;
@@ -4426,7 +4476,6 @@ class Store {
       );
     } else if (req.type === 'reward') {
       hero.points = Math.max(0, hero.points - req.costPoints);
-      hero.lastUpdated = Date.now();
       if (this.state.selectedHero.id === hero.id) {
         this.state.selectedHero.points = hero.points;
       }
@@ -4434,6 +4483,7 @@ class Store {
     }
 
     this.state.pendingApprovals.splice(reqIndex, 1);
+    this.markApprovalResolved(req.id);
     Sound.click();
     this.saveState(true);
   }
@@ -4475,13 +4525,21 @@ class Store {
     }
 
     this.state.pendingApprovals.splice(reqIndex, 1);
+    this.markApprovalResolved(req.id);
     Sound.click();
     this.saveState(true);
+  }
+
+  markApprovalResolved(id) {
+    if (!id) return;
+    const list = Array.isArray(this.state.resolvedApprovals) ? this.state.resolvedApprovals : [];
+    this.state.resolvedApprovals = mergeResolvedApprovals(list, [{ id, at: Date.now() }]);
   }
 
   // Clear all pending parent approval notifications and reset buttons across all tasks & habits
   clearAllPendingApprovals() {
     // 1. Clear state.pendingApprovals
+    (this.state.pendingApprovals || []).forEach((p) => this.markApprovalResolved(p?.id));
     this.state.pendingApprovals = [];
 
     // Mark pending logs as cleared
@@ -4533,7 +4591,6 @@ class Store {
     const hero = this.state.heroes.find(h => h.id === heroId) || this.state.selectedHero;
     if (!hero) return;
     hero.screenTimeMinutes = (hero.screenTimeMinutes || 0) + minutes;
-    hero.lastUpdated = Date.now();
     if (this.state.selectedHero.id === hero.id) {
       this.state.selectedHero.screenTimeMinutes = hero.screenTimeMinutes;
     }
@@ -4547,7 +4604,6 @@ class Store {
     const hero = this.state.heroes.find(h => h.id === heroId) || this.state.selectedHero;
     if (!hero) return;
     hero.screenTimeMinutes = Math.max(0, (hero.screenTimeMinutes || 0) - minutes);
-    hero.lastUpdated = Date.now();
     if (this.state.selectedHero.id === hero.id) {
       this.state.selectedHero.screenTimeMinutes = hero.screenTimeMinutes;
     }
@@ -4968,12 +5024,8 @@ class Store {
     if (updatedData.coins !== undefined) {
       hero.coins = Math.max(0, Number(updatedData.coins));
       hero.tokens = hero.coins;
-      hero.lastUpdated = Date.now();
     }
-    if (updatedData.points !== undefined) {
-      hero.points = Math.max(0, Number(updatedData.points));
-      hero.lastUpdated = Date.now();
-    }
+    if (updatedData.points !== undefined) hero.points = Math.max(0, Number(updatedData.points));
 
     // If currently active hero was edited, synchronize selectedHero
     if (this.state.selectedHero.id === heroId) {
@@ -5718,7 +5770,8 @@ class Store {
         // approval back to a stale snapshot.
         'heroes',
         'selectedHero',
-        'pendingApprovals'
+        'pendingApprovals',
+        'resolvedApprovals'
       ]);
       Object.entries(cloudData.stateSnapshot).forEach(([key, value]) => {
         if (!localOnlyKeys.has(key) && value !== undefined) {
@@ -5759,6 +5812,7 @@ class Store {
     const deletedHeroIdsSet = new Set(this.state.deletedHeroIds || []);
 
     // 3. Heroes & Kid Profiles (Smart Merge from heroesMap AND heroes array)
+    let repairPushNeeded = false;
     let incomingHeroes = [];
     if (cloudData.heroesMap && typeof cloudData.heroesMap === 'object') {
       incomingHeroes = Object.values(cloudData.heroesMap).filter(Boolean);
@@ -5775,29 +5829,39 @@ class Store {
       // Filter out any hero that was deleted
       incomingHeroes = incomingHeroes.filter((h) => h && h.id && !deletedHeroIdsSet.has(h.id));
 
-      // If this device has a local push queued or in flight, an inbound
-      // snapshot may predate that local edit (e.g. another device just
-      // overwrote the cloud doc with its own stale cache in the narrow
-      // window before our push lands). Prefer our own local reward values
-      // over the cloud's until our pending push confirms, instead of
-      // letting a stale snapshot silently erase progress a kid just earned.
+      // Give any not-yet-saved local change its stamp first, so it isn't
+      // mistaken for an older value by the merge below.
+      this.syncSelectedHeroWithHeroes();
+      this.stampHeroFieldChanges();
+
+      // Legacy fallback, used only for a field neither side has stamped yet
+      // (data from before fieldStamps existed): if this device has a local
+      // push queued or in flight, the inbound snapshot may predate it.
       const trustLocalRewards = Boolean(this.syncService?.hasPendingLocalChanges?.());
 
       // Merge with local heroes so no kids or progress are dropped
       const mergedHeroes = incomingHeroes.map((cloudH) => {
         const localH = (this.state.heroes || []).find((h) => h.id === cloudH.id);
-        // trustLocalRewards only covers the narrow window while THIS device's
-        // own push is in flight -- it doesn't protect against a genuinely
-        // stale write from ANOTHER device (one that hasn't seen a recent
-        // local change like a parent approval yet) landing seconds later,
-        // after our own push already confirmed. Each hero carries its own
-        // lastUpdated/updatedAt marker stamped only when its reward fields
-        // actually change (see approveParentRequest/rejectParentRequest and
-        // firestoreSyncService's per-hero updatedAt), so comparing those
-        // catches that race regardless of arrival timing or which device
-        // happened to write last.
-        const localNewer = Boolean(localH?.lastUpdated) && Number(localH.lastUpdated) > Number(cloudH.updatedAt || 0);
-        const preferLocalRewards = (trustLocalRewards || localNewer) && Boolean(localH);
+        const preferLocalRewards = trustLocalRewards && Boolean(localH);
+        const localStamps = localH?.fieldStamps || {};
+        const cloudStamps = cloudH.fieldStamps || {};
+        const fieldStamps = {};
+        // The most recent real change to a field wins, whichever device made
+        // it -- so a device re-saving an old copy (e.g. a kid's tablet that
+        // hadn't received a parent's approval yet) can't erase it. If our
+        // copy is the newer one, the cloud copy is stale: flag a repair push.
+        const resolve = (field, cloudValue, legacyValue) => {
+          const ls = Number(localStamps[field]) || 0;
+          const cs = Number(cloudStamps[field]) || 0;
+          if (!ls && !cs) return legacyValue;
+          fieldStamps[field] = Math.max(ls, cs);
+          if (localH && ls > cs) {
+            if (String(localH[field] ?? '') !== String(cloudValue ?? '')) repairPushNeeded = true;
+            return localH[field];
+          }
+          return cloudValue !== undefined ? cloudValue : localH?.[field];
+        };
+        const num = (v) => (v !== undefined && v !== null ? Number(v) : undefined);
         const unlockedPetIds = Array.from(new Set([
           ...(cloudH.unlockedPetIds || []),
           ...(localH?.unlockedPetIds || [])
@@ -5806,16 +5870,17 @@ class Store {
           ...defaultState.selectedHero,
           ...localH,
           ...cloudH,
-          coins: preferLocalRewards ? (localH.coins ?? 0) : (cloudH.coins !== undefined ? Number(cloudH.coins) : (localH?.coins ?? 0)),
-          points: preferLocalRewards ? (localH.points ?? 0) : (cloudH.points !== undefined ? Number(cloudH.points) : (localH?.points ?? 0)),
-          tokens: preferLocalRewards ? (localH.tokens ?? localH.coins ?? 0) : (cloudH.tokens !== undefined ? Number(cloudH.tokens) : (localH?.tokens ?? (cloudH.coins !== undefined ? Number(cloudH.coins) : 0))),
-          level: Math.max(cloudH.level || 1, localH?.level || 1),
-          xp: preferLocalRewards ? (localH.xp ?? 0) : (cloudH.xp !== undefined ? Number(cloudH.xp) : (localH?.xp ?? 0)),
-          xpNext: cloudH.xpNext || localH?.xpNext || 100,
+          coins: resolve('coins', num(cloudH.coins), preferLocalRewards ? (localH.coins ?? 0) : (cloudH.coins !== undefined ? Number(cloudH.coins) : (localH?.coins ?? 0))),
+          points: resolve('points', num(cloudH.points), preferLocalRewards ? (localH.points ?? 0) : (cloudH.points !== undefined ? Number(cloudH.points) : (localH?.points ?? 0))),
+          tokens: resolve('tokens', num(cloudH.tokens), preferLocalRewards ? (localH.tokens ?? localH.coins ?? 0) : (cloudH.tokens !== undefined ? Number(cloudH.tokens) : (localH?.tokens ?? (cloudH.coins !== undefined ? Number(cloudH.coins) : 0)))),
+          level: resolve('level', num(cloudH.level), Math.max(cloudH.level || 1, localH?.level || 1)),
+          xp: resolve('xp', num(cloudH.xp), preferLocalRewards ? (localH.xp ?? 0) : (cloudH.xp !== undefined ? Number(cloudH.xp) : (localH?.xp ?? 0))),
+          xpNext: resolve('xpNext', num(cloudH.xpNext), cloudH.xpNext || localH?.xpNext || 100),
           unlockedPetIds,
           habitatSlots: Math.max(cloudH.habitatSlots || 1, localH?.habitatSlots || 1, unlockedPetIds.length || 1),
           hasChosenStarterPet: cloudH.hasChosenStarterPet ?? (unlockedPetIds.length > 0),
-          activePetId: preferLocalRewards ? (localH.activePetId || (unlockedPetIds[0] || null)) : (cloudH.activePetId || localH?.activePetId || (unlockedPetIds[0] || null)),
+          activePetId: resolve('activePetId', cloudH.activePetId, preferLocalRewards ? (localH.activePetId || (unlockedPetIds[0] || null)) : (cloudH.activePetId || localH?.activePetId || (unlockedPetIds[0] || null))),
+          fieldStamps,
           streak: Math.max(cloudH.streak || 1, localH?.streak || 1),
           stars: Math.max(cloudH.stars || 0, localH?.stars || 0),
           role: cloudH.role || localH?.role || cloudH.title || 'Brave Adventurer',
@@ -5828,7 +5893,7 @@ class Store {
           equippedPetGearMap: cloudH.equippedPetGearMap || localH?.equippedPetGearMap || {},
           customGearDyesMap: cloudH.customGearDyesMap || localH?.customGearDyesMap || {},
           savedHeroCards: cloudH.savedHeroCards || localH?.savedHeroCards || [],
-          screenTimeMinutes: preferLocalRewards ? (localH.screenTimeMinutes ?? 45) : (cloudH.screenTimeMinutes !== undefined ? Number(cloudH.screenTimeMinutes) : (localH?.screenTimeMinutes ?? 45)),
+          screenTimeMinutes: resolve('screenTimeMinutes', num(cloudH.screenTimeMinutes), preferLocalRewards ? (localH.screenTimeMinutes ?? 45) : (cloudH.screenTimeMinutes !== undefined ? Number(cloudH.screenTimeMinutes) : (localH?.screenTimeMinutes ?? 45))),
           screenTimeUsedToday: cloudH.screenTimeUsedToday !== undefined ? Number(cloudH.screenTimeUsedToday) : (localH?.screenTimeUsedToday ?? 15),
           dailyMaxScreenTime: cloudH.dailyMaxScreenTime !== undefined ? Number(cloudH.dailyMaxScreenTime) : (localH?.dailyMaxScreenTime ?? 60),
           bedtimeCurfew: cloudH.bedtimeCurfew || localH?.bedtimeCurfew || '20:00',
@@ -5886,6 +5951,9 @@ class Store {
           ...matchedHero
         };
       }
+
+      // Values just adopted from the cloud are not local changes.
+      this.resetHeroFieldBaseline();
     }
 
     // 4. Pet Stats, Level/XP Progression & Gear Maps
@@ -6094,30 +6162,37 @@ class Store {
     }
 
     // 9. Approvals Queue (Authoritative Cloud with In-Flight Local Preservation)
+    // Union every device's record of already-resolved requests first, so a
+    // resolution made anywhere is known here before the queue is merged.
+    if (Array.isArray(cloudData.resolvedApprovals)) {
+      this.state.resolvedApprovals = mergeResolvedApprovals(this.state.resolvedApprovals, cloudData.resolvedApprovals);
+    }
     if (cloudData.pendingApprovals !== undefined && Array.isArray(cloudData.pendingApprovals)) {
-      const resolvedLogIds = new Set(
-        (this.state.taskCompletionLogs || [])
-          .filter((l) => l.status === 'approved' || l.status === 'rejected')
-          .map((l) => l.approvalRequestId || l.id)
-      );
+      // A request is resolved if any device approved/rejected it -- either via
+      // the synced resolvedApprovals list (covers every request type,
+      // including reward redemptions, which have no completion log) or via
+      // its task completion log.
+      const resolvedIds = new Set((this.state.resolvedApprovals || []).map((e) => e.id));
+      (this.state.taskCompletionLogs || [])
+        .filter((l) => l.status === 'approved' || l.status === 'rejected')
+        .forEach((l) => resolvedIds.add(l.approvalRequestId || l.id));
+
       const unconfirmedLocal = (this.state.pendingApprovals || []).filter((localReq) => {
         if (!localReq || !localReq.id) return false;
-        if (resolvedLogIds.has(localReq.id)) return false;
+        if (resolvedIds.has(localReq.id)) return false;
         const inCloud = cloudData.pendingApprovals.some((c) => c.id === localReq.id);
         if (inCloud) return false;
         const ageMs = localReq.timestamp ? (Date.now() - new Date(localReq.timestamp).getTime()) : 0;
         return ageMs > 0 && ageMs < 45000;
       });
-      // A cloud snapshot can still list a request this device already
-      // approved/rejected -- e.g. it was pushed from another device (or an
-      // earlier in-flight push of our own) that predates our own resolution
-      // and simply hasn't caught up yet. Without this filter that stale
-      // entry gets spliced right back into pendingApprovals below, making
-      // an already-approved task pop back up "as if it was never approved".
-      // resolvedLogIds is keyed by this device's own taskCompletionLogs,
-      // which persists the approval permanently, so this holds regardless
-      // of how many seconds later the stale snapshot arrives.
-      const freshCloudPending = cloudData.pendingApprovals.filter((c) => c && c.id && !resolvedLogIds.has(c.id));
+      // The cloud list can still hold a request that's already resolved: it
+      // was re-saved by a device (or an in-flight push) from before the
+      // approval. Never let that bring it back -- and push our corrected
+      // queue so the cloud stops carrying it.
+      const freshCloudPending = cloudData.pendingApprovals.filter((c) => c && c.id && !resolvedIds.has(c.id));
+      if (freshCloudPending.length !== cloudData.pendingApprovals.length) {
+        repairPushNeeded = true;
+      }
       this.state.pendingApprovals = [...freshCloudPending, ...unconfirmedLocal];
     }
 
@@ -6147,6 +6222,13 @@ class Store {
       }
     } catch (e) {
       console.warn('Could not save hydrated state to localStorage:', e);
+    }
+
+    // The cloud copy was stale somewhere -- a hero field older than ours, or a
+    // request that's already resolved (another device re-saved an old copy).
+    // Push ours back so every device and the cloud converge.
+    if (repairPushNeeded && typeof this.syncService?.pushStateToCloud === 'function') {
+      this.syncService.pushStateToCloud();
     }
 
     // Notify subscribers and trigger immediate UI re-render
