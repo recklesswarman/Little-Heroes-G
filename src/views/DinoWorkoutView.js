@@ -19,6 +19,22 @@ let activeCanvasInstance = null;
 let timerInterval = null;
 let isWorkingOut = false;
 let countdown = 30;
+let hasSpokenMidpoint = false;
+
+// Difficulty tiers reuse each kid's existing gameDifficulty
+// (easy = Toddler 3-4, medium = Kids 5-6, hard = Kids 7-9).
+const WORKOUT_DIFFICULTY = {
+  easy: { duration: 20, coins: 40, xp: 40 },
+  medium: { duration: 30, coins: 50, xp: 50 },
+  hard: { duration: 45, coins: 65, xp: 65 }
+};
+function getDifficultyTier(hero) {
+  const tier = hero?.gameDifficulty;
+  return ['easy', 'medium', 'hard'].includes(tier) ? tier : 'medium';
+}
+function isToddlerHero(hero) {
+  return store.isEasyMode ? store.isEasyMode() : getDifficultyTier(hero) === 'easy';
+}
 
 export function renderDinoWorkoutView() {
   const hero = store.getState().selectedHero || {};
@@ -30,6 +46,7 @@ export function renderDinoWorkoutView() {
   const coach = dailyCoach || activePet;
   const signature = coach.signatureMove || 'Hero Stomp & Power Roar';
   const workoutDesc = coach.workoutDesc || 'Jump, march, and follow the coach rhythm!';
+  const cfg = WORKOUT_DIFFICULTY[getDifficultyTier(hero)];
 
   return `
     <div class="p-4 sm:p-6 min-h-screen flex flex-col bg-surface-container-lowest text-on-background select-none font-body pb-28">
@@ -89,14 +106,14 @@ export function renderDinoWorkoutView() {
 
         <!-- Workout Countdown Clock -->
         <div id="workout-timer-display" class="text-5xl font-headline font-black text-primary my-2 hidden font-mono tracking-wider drop-shadow-[0_0_15px_rgba(46,204,113,0.6)]">
-          30
+          ${cfg.duration}
         </div>
 
         <!-- Reward Teaser Pill -->
         <div class="flex items-center gap-3 bg-surface-container-lowest px-4 py-1.5 rounded-full border border-surface-container-highest my-2">
           <span class="text-xs font-bold text-on-surface-variant">Rewards:</span>
-          <span class="text-xs font-black text-cyan-300">+50 Pet Training XP ⚡</span>
-          <span class="text-xs font-black text-amber-300">+50 Coins 🪙</span>
+          <span class="text-xs font-black text-cyan-300">+${cfg.xp} Pet Training XP ⚡</span>
+          <span class="text-xs font-black text-amber-300">+${cfg.coins} Coins 🪙</span>
         </div>
 
         <!-- Action Buttons -->
@@ -163,9 +180,13 @@ export function attachDinoWorkoutListeners() {
     btnStart.addEventListener('click', () => {
       Sound.fanfare();
       isWorkingOut = true;
+      hasSpokenMidpoint = false;
       btnStart.classList.add('hidden');
       timerDisplay.classList.remove('hidden');
-      
+
+      const cfg = WORKOUT_DIFFICULTY[getDifficultyTier(hero)];
+      const toddler = isToddlerHero(hero);
+
       try {
         speakCompanion(`${coach.signatureMove || 'Hero workout time'}! ${coach.workoutDesc || 'March and stomp with me!'}`, coach.id);
       } catch(e) {}
@@ -174,12 +195,18 @@ export function attachDinoWorkoutListeners() {
         activeCanvasInstance.startWorkoutAnimation();
       }
 
-      countdown = 30;
+      countdown = cfg.duration;
       timerDisplay.textContent = countdown;
 
       timerInterval = setInterval(() => {
         countdown--;
         timerDisplay.textContent = countdown;
+        if (toddler && !hasSpokenMidpoint && countdown === Math.round(cfg.duration / 2)) {
+          hasSpokenMidpoint = true;
+          try {
+            speakCompanion("You're doing great! Keep going, little hero!", coach.id);
+          } catch (e) {}
+        }
         if (countdown <= 0) {
           stopTimer();
           timerDisplay.classList.add('hidden');
@@ -195,20 +222,21 @@ export function attachDinoWorkoutListeners() {
       Sound.fanfare();
       const currentPet = store.getActivePet();
       const earnedPetId = currentPet?.id || activePetId;
+      const cfg = WORKOUT_DIFFICULTY[getDifficultyTier(hero)];
 
       // Reward Pet Training XP (Level 1-25) & Hero Coins
-      store.addPetTrainingXp(earnedPetId, 50);
-      store.addCoins(50);
-      
+      store.addPetTrainingXp(earnedPetId, cfg.xp);
+      store.addCoins(cfg.coins);
+
       confetti({ particleCount: 100, spread: 90 });
       store.saveState(true);
-      
+
       store.showReward(
-        'Coach Workout Complete! 🏅', 
-        `Incredible training with Coach ${coach.name}! ${currentPet?.name || 'Your companion'} earned +50 Pet Training XP ⚡ and +50 Hero Coins 🪙!`, 
-        50, 
-        0, 
-        null, 
+        'Coach Workout Complete! 🏅',
+        `Incredible training with Coach ${coach.name}! ${currentPet?.name || 'Your companion'} earned +${cfg.xp} Pet Training XP ⚡ and +${cfg.coins} Hero Coins 🪙!`,
+        cfg.coins,
+        0,
+        null,
         'fitness_center'
       );
 

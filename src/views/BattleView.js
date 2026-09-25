@@ -8,6 +8,19 @@ import { brushAudioAnalyzer } from '../audio/brushAudioAnalyzer.js';
 
 const sugarVillainEscapedImg = new URL('../assets/sugar_villain_escaped.jpg', import.meta.url).href;
 
+// Difficulty tiers reuse each kid's existing gameDifficulty
+// (easy = Toddler 3-4, medium = Kids 5-6, hard = Kids 7-9): shorter,
+// more forgiving battles for younger kids; longer, faster-paced for older kids.
+const BATTLE_DIFFICULTY = {
+  easy: { durationMultiplier: 0.7, bombIntervalMs: 20000, autoAssistIdleMs: 1200 },
+  medium: { durationMultiplier: 1, bombIntervalMs: 14000, autoAssistIdleMs: 1800 },
+  hard: { durationMultiplier: 1.2, bombIntervalMs: 10000, autoAssistIdleMs: 2400 }
+};
+function getDifficultyTier(hero) {
+  const tier = hero?.gameDifficulty;
+  return ['easy', 'medium', 'hard'].includes(tier) ? tier : 'medium';
+}
+
 // =========================================================================
 // LIVE-ACTION 3D CARTOON TOOTHBRUSH BATTLE ARENA (100% HANDS-FREE ARCADE)
 // =========================================================================
@@ -760,7 +773,10 @@ export function startBattle() {
   isBattleRunning = true;
   isBattlePaused = false;
   
-  const bossDuration = currentBoss.battleDurationSec || store.getState().parentSettings?.arBattleDuration || 120;
+  const hero = store.getState().selectedHero;
+  const battleCfg = BATTLE_DIFFICULTY[getDifficultyTier(hero)];
+  const baseBossDuration = currentBoss.battleDurationSec || store.getState().parentSettings?.arBattleDuration || 120;
+  const bossDuration = Math.round(baseBossDuration * battleCfg.durationMultiplier);
   secondsRemaining = bossDuration;
   totalDuration = bossDuration;
   totalScrubHits = 0;
@@ -785,7 +801,7 @@ export function startBattle() {
   autoAssistInterval = setInterval(() => {
     if (!isBattleRunning || isBattlePaused) return;
     const now = Date.now();
-    if (now - lastScrubTimestamp > 1800) {
+    if (now - lastScrubTimestamp > battleCfg.autoAssistIdleMs) {
       isAutoAssistPulseActive = true;
       const activeQuad = getDentalQuadrant(secondsRemaining, totalDuration);
       handleScrubHit(activeQuad, 'assist');
@@ -799,7 +815,7 @@ export function startBattle() {
     if (isBattleRunning && !isBattlePaused && secondsRemaining > 10) {
       triggerDeflectFlurry();
     }
-  }, 14000);
+  }, battleCfg.bombIntervalMs);
 
   const initialQuad = getDentalQuadrant(secondsRemaining, totalDuration);
   currentRexCoachText = initialQuad.coachMessage || 'Get ready! Scrub in gentle circles on your top right teeth!';

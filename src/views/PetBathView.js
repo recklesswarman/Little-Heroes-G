@@ -13,6 +13,18 @@ let isBlowingDry = false;
 let poppedBubblesCount = 0;
 let isRewardClaimed = false;
 
+// Difficulty tiers reuse each kid's existing gameDifficulty
+// (easy = Toddler 3-4, medium = Kids 5-6, hard = Kids 7-9): easier
+// tiers need fewer taps to reach 100% wash/dry progress.
+const BATH_PROGRESS_STEP = { easy: 34, medium: 25, hard: 17 };
+function getDifficultyTier(hero) {
+  const tier = hero?.gameDifficulty;
+  return ['easy', 'medium', 'hard'].includes(tier) ? tier : 'medium';
+}
+function isToddlerHero(hero) {
+  return store.isEasyMode ? store.isEasyMode() : getDifficultyTier(hero) === 'easy';
+}
+
 export function renderPetBathView() {
   const state = store.getState();
   const activePet = store.getActivePet();
@@ -475,8 +487,10 @@ function handleScrubAction() {
   Sound.splash();
   spawnFallingBubbles();
 
-  // Progress wash by 25% increments
-  washProgress = Math.min(100, washProgress + 25);
+  const hero = store.getState().selectedHero;
+  const step = BATH_PROGRESS_STEP[getDifficultyTier(hero)];
+  const wasZero = washProgress === 0;
+  washProgress = Math.min(100, washProgress + step);
   store.bathPetProgress(10); // incrementally raise hygiene stat
 
   // Trigger 3D bubble lather animation
@@ -498,6 +512,11 @@ function handleScrubAction() {
       origin: { y: 0.6 },
       colors: ['#2ecc71', '#3498db', '#f1c40f']
     });
+    if (isToddlerHero(hero)) {
+      speakRex('All soapy and clean! Now tap BLOW DRY to fluff me up!');
+    }
+  } else if (isToddlerHero(hero) && wasZero) {
+    speakRex('Great scrubbing! Keep tapping SCRUB SUDS to make more bubbles!');
   }
 
   // Re-render UI state cleanly
@@ -525,8 +544,10 @@ function handleBlowDryAction() {
   Sound.wind();
   spawnWindGustStreams();
 
-  // Progress dry by 25% increments
-  dryProgress = Math.min(100, dryProgress + 25);
+  const hero = store.getState().selectedHero;
+  const step = BATH_PROGRESS_STEP[getDifficultyTier(hero)];
+  const wasZero = dryProgress === 0;
+  dryProgress = Math.min(100, dryProgress + step);
 
   // Trigger 3D fluffed wiggle animation
   const pet3dBlow = getActivePet3DInstance('bath-tub-3d-canvas');
@@ -547,6 +568,9 @@ function handleBlowDryAction() {
     // Issue reward ONLY now!
     store.completePetBathReward(activePet.id);
   } else {
+    if (isToddlerHero(hero) && wasZero) {
+      speakRex('Warm breeze coming! Keep tapping BLOW DRY to fluff up my fur!');
+    }
     setTimeout(() => {
       isBlowingDry = false;
       store.notify();

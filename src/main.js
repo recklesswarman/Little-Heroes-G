@@ -40,7 +40,6 @@ import { renderProfileView, attachProfileListeners } from './views/ProfileView.j
 import { renderParentPortalView, attachParentPortalListeners } from './views/ParentPortalView.js';
 import { renderPetLockerView, attachPetLockerListeners } from './views/PetLockerView.js';
 import { renderHeroHQView, attachHeroHQListeners } from './views/HeroHQView.js';
-import { renderPetExpeditionView, attachPetExpeditionListeners } from './views/PetExpeditionView.js';
 import { renderHeroForgeView, attachHeroForgeListeners } from './views/HeroForgeView.js';
 import { renderDinoWorkoutView, attachDinoWorkoutListeners } from './views/DinoWorkoutView.js';
 import { destroyActiveCanvas } from './utils/activeViewCanvasRegistry.js';
@@ -163,11 +162,6 @@ function renderApp() {
     case 'pet-pen':
       mainContent = renderPetSanctuaryView();
       attachViewListeners = attachPetSanctuaryListeners;
-      break;
-    case 'pet_expedition':
-    case 'pet-expedition':
-      mainContent = renderPetExpeditionView();
-      attachViewListeners = attachPetExpeditionListeners;
       break;
     case 'dino_workout':
       mainContent = renderDinoWorkoutView();
