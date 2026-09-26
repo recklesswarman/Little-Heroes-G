@@ -27,6 +27,7 @@ import { renderGiftCrateWidget, renderGiftCrateModal, attachGiftCrateListeners }
 // Views
 import { renderDashboardView, attachDashboardListeners } from './views/DashboardView.js';
 import { renderQuestMapView, attachQuestMapListeners } from './views/QuestMapView.js';
+import { renderWorldAdventureMapView, attachWorldAdventureMapListeners } from './views/WorldAdventureMapView.js';
 import { renderPetSanctuaryView, attachPetSanctuaryListeners } from './views/PetSanctuaryView.js';
 import { renderPetPenView, attachPetPenListeners } from './views/PetPenView.js';
 import { renderPetRosterView, attachPetRosterListeners } from './views/PetRosterView.js';
@@ -153,8 +154,13 @@ function renderApp() {
       attachViewListeners = attachDashboardListeners;
       break;
     case 'quest_map':
-      mainContent = renderQuestMapView();
-      attachViewListeners = attachQuestMapListeners;
+    case 'adventures_map':
+    case 'world_map':
+    case 'adventure_map':
+    case 'learn':
+    case '/learn':
+      mainContent = renderWorldAdventureMapView();
+      attachViewListeners = attachWorldAdventureMapListeners;
       break;
     case 'pet_sanctuary':
     case 'pet-sanctuary':
@@ -182,12 +188,6 @@ function renderApp() {
     case 'pet_locker':
       mainContent = renderPetLockerView();
       attachViewListeners = attachPetLockerListeners;
-      break;
-    case 'adventures_map':
-    case 'learn':
-    case '/learn':
-      mainContent = renderAdventuresMapView();
-      attachViewListeners = attachAdventuresMapListeners;
       break;
     case 'shop':
       mainContent = renderShopView();

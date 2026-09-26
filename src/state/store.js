@@ -1,6 +1,6 @@
 import { Sound } from '../audio/sfx.js';
 import confetti from 'canvas-confetti';
-import { PETS_DATABASE, getPetArchetype, getPetBondBonus, getPetById, SANCTUARY_TREATS, makePetSvg, getPetLevelData, calculatePetStatBonus, getDailyRotatingPetCoach } from '../data/petsData.js';
+import { PETS_DATABASE, getPetById, getPetArchetype, getPetBondBonus, SANCTUARY_TREATS, makePetSvg, getPetLevelData, calculatePetStatBonus, getDailyRotatingPetCoach } from '../data/petsData.js';
 import { ADVENTURE_GAMES } from '../data/learningGamesData.js';
 import { MOVEMENT_ROUTINES, getMovementRoutine } from '../data/movementRoutinesData.js';
 import { PROFILE_THEMES } from '../data/profileThemesData.js';
@@ -30,6 +30,7 @@ import { speakCompanion } from '../services/voiceService.js';
 import { isExistingActiveHousehold } from '../utils/householdHeuristics.js';
 import { FORGE_BLUEPRINTS, getBlueprintById, isBlueprintUnlocked } from '../data/heroForgeData.js';
 import { firebaseAI } from '../services/firebaseAILogicService.js';
+import { WORLD_BIOMES, PATH_OF_VALOR_WAYPOINTS, SECRET_SHRINES, TOY_BOX_ENTITIES } from '../data/worldMapData.js';
 
 export const KID_AVATARS = [
   { id: 'avatar_dragon', label: 'Dragon Explorer', url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZfP7_Cwlp4sz41asI8ymuapAKvjmqHtvI4zcMAF_XwUmibj8IheGrS5cA5QD5gmXgVxEkZM9FlWJPRZnct3x6-9SQB7zJKqkEDjJ3m95tAy3zRqS-PbmcQ4kv_9pmIfm2Py4mh3Fw083hkDookz1w4_r50SBA1jc9igDaAPFLYBFgSP2aQBz7Q4jVE-DwhMOyUEHlxDkQk6Gwc2EAFCSKs1c0QuhUOi3tkrk5MXRARKqZcYVzyJe6gA' },
@@ -585,6 +586,35 @@ const defaultState = {
     geminiApiKey: '',
     voiceName: 'Puck',
     autoListenInQuests: true
+  },
+
+  // 3D World Adventure Map & Waypoint Quests State
+  worldAdventureMap: {
+    activeTab: 'path', // 'path' (Today's Path) or 'island' (3D Adventure Island)
+    discoveredSecrets: [],
+    parentHiddenChests: [
+      {
+        id: 'chest_streak_starter',
+        title: 'Parent Secret Stash: 3-Day Streak Vault',
+        description: 'Keep your 3-day habit streak going to crack open this golden crate!',
+        rewardCoins: 100,
+        rewardSparks: 50,
+        requiredStreak: 3,
+        unlocked: false,
+        biomeId: 'whispering_meadows',
+        coordinates: { x: -8, y: 1.8, z: -14 },
+        createdAt: Date.now()
+      }
+    ],
+    customLandmarks: [],
+    islandTimeOverride: null, // null (real-time) or 'morning' | 'day' | 'sunset' | 'bedtime'
+    bedtimeLullabyActive: false,
+    selectedWaypointId: null,
+    toyBoxInteractions: {
+      applesHarvested: 0,
+      waterfallSplashes: 0,
+      chimesPlayed: 0
+    }
   },
 
   // Deleted kid profiles tracked to prevent resurrection across concurrent devices
@@ -6903,7 +6933,8 @@ class Store {
     return {
       ...bonus,
       currentXp: bond.xp,
-      pearlyGleamActive: isPearly
+      pearlyGleamActive: isPearly,
+      isPearlyGleamActive: isPearly
     };
   }
 
@@ -7169,6 +7200,274 @@ class Store {
     this.saveState(true);
     this.notify();
     return { success: true, petId: egg.petId, petName: egg.petName };
+  }
+
+  addPetSparks(petId, amount = 15) {
+    return this.addEvolutionSparks(petId, amount);
+  }
+
+  deductPetSparks(petId, amount = 100) {
+    const id = petId || this.state.selectedHero?.activePetId || '1';
+    if (!this.state.petSparkMap) this.state.petSparkMap = {};
+    const current = this.getPetSparks(id);
+    const next = Math.max(0, current - amount);
+    this.state.petSparkMap[id] = next;
+    if (this.state.selectedHero) {
+      this.state.selectedHero.sparks = next;
+      this.state.selectedHero.evolutionSparks = next;
+    }
+    this.saveState(true);
+    this.notify();
+    return next;
+  }
+
+  syncHabitPetCare(habitId, type = 'habit', petId = null) {
+    const activePet = this.getActivePet();
+    const pId = String(petId || activePet?.id || '2');
+    const sanct = this.getPetSanctuaryState();
+
+    // 1. Award +15 Evolution Sparks
+    this.addPetSparks(pId, 15);
+
+    // 2. Award +35 Bond XP
+    if (!sanct.petBondMap[pId]) {
+      sanct.petBondMap[pId] = { level: 1, xp: 0, pearlyGleamUntil: 0 };
+    }
+    const bond = sanct.petBondMap[pId];
+    bond.xp = (bond.xp || 0) + 35;
+    const requiredXp = bond.level * 100;
+    if (bond.xp >= requiredXp && bond.level < 10) {
+      bond.level += 1;
+      bond.xp -= requiredXp;
+    }
+
+    // 3. Activate 24h Pearly Gleam
+    bond.pearlyGleamUntil = Date.now() + (24 * 60 * 60 * 1000);
+
+    this.saveState(true);
+    this.notify();
+    return { sparksAwarded: 15, bondXpAwarded: 35, pearlyGleam: true };
+  }
+
+  // =========================================================================
+  // 3D WORLD ADVENTURE MAP & WAYPOINT QUESTS
+  // =========================================================================
+
+  getWorldAdventureMapState() {
+    if (!this.state.worldAdventureMap) {
+      this.state.worldAdventureMap = {
+        activeTab: 'path',
+        discoveredSecrets: [],
+        parentHiddenChests: [
+          {
+            id: 'chest_streak_starter',
+            title: 'Parent Secret Stash: 3-Day Streak Vault',
+            description: 'Keep your 3-day habit streak going to crack open this golden crate!',
+            rewardCoins: 100,
+            rewardSparks: 50,
+            requiredStreak: 3,
+            unlocked: false,
+            biomeId: 'whispering_meadows',
+            coordinates: { x: -8, y: 1.8, z: -14 },
+            createdAt: Date.now()
+          }
+        ],
+        customLandmarks: [],
+        islandTimeOverride: null,
+        bedtimeLullabyActive: false,
+        selectedWaypointId: null,
+        toyBoxInteractions: {
+          applesHarvested: 0,
+          waterfallSplashes: 0,
+          chimesPlayed: 0
+        }
+      };
+    }
+    return this.state.worldAdventureMap;
+  }
+
+  setWorldMapTab(tab = 'path') {
+    const mapState = this.getWorldAdventureMapState();
+    mapState.activeTab = tab === 'island' ? 'island' : 'path';
+    if (typeof Sound?.tap === 'function') Sound.tap();
+    this.notify();
+  }
+
+  setWorldWaypointSelected(waypointId) {
+    const mapState = this.getWorldAdventureMapState();
+    mapState.selectedWaypointId = waypointId;
+    this.notify();
+  }
+
+  discoverWorldSecret(shrineId) {
+    const mapState = this.getWorldAdventureMapState();
+    if (!mapState.discoveredSecrets) mapState.discoveredSecrets = [];
+    if (mapState.discoveredSecrets.includes(shrineId)) {
+      return { alreadyDiscovered: true };
+    }
+    const shrine = SECRET_SHRINES.find(s => s.id === shrineId);
+    if (!shrine) return { success: false };
+
+    mapState.discoveredSecrets.push(shrineId);
+
+    // Award Rewards
+    const hero = this.state.selectedHero;
+    hero.coins = (hero.coins || 0) + shrine.rewardCoins;
+    hero.points = (hero.points || 0) + Math.round(shrine.rewardCoins / 2);
+    hero.stars = (hero.stars || 0) + 1;
+
+    const pId = String(hero.activePetId || '1');
+    this.addPetSparks(pId, shrine.rewardSparks || 15);
+
+    if (typeof Sound?.fanfare === 'function') Sound.fanfare();
+    if (typeof confetti === 'function' && typeof document !== 'undefined' && typeof document.createElement === 'function' && document.body) {
+      confetti({ particleCount: 50, spread: 70, origin: { y: 0.6 } });
+    }
+
+    this.saveState(true);
+    this.notify();
+    return {
+      success: true,
+      shrine,
+      rewardCoins: shrine.rewardCoins,
+      rewardSparks: shrine.rewardSparks
+    };
+  }
+
+  placeParentWorldChest(chestData) {
+    const mapState = this.getWorldAdventureMapState();
+    if (!mapState.parentHiddenChests) mapState.parentHiddenChests = [];
+
+    const newChest = {
+      id: chestData.id || `chest_${Date.now()}`,
+      title: chestData.title || 'Parent Mystery Stash',
+      description: chestData.description || 'Complete your streaks to unlock!',
+      rewardCoins: Number(chestData.rewardCoins) || 100,
+      rewardSparks: Number(chestData.rewardSparks) || 50,
+      requiredStreak: Number(chestData.requiredStreak) || 3,
+      unlocked: false,
+      biomeId: chestData.biomeId || 'whispering_meadows',
+      coordinates: chestData.coordinates || { x: 0, y: 2, z: 0 },
+      createdAt: Date.now()
+    };
+
+    mapState.parentHiddenChests.push(newChest);
+    this.saveState(true);
+    this.notify();
+    return newChest;
+  }
+
+  unlockParentWorldChest(chestId) {
+    const mapState = this.getWorldAdventureMapState();
+    const chest = (mapState.parentHiddenChests || []).find(c => c.id === chestId);
+    if (!chest || chest.unlocked) return { success: false, reason: 'Already unlocked or not found' };
+
+    const hero = this.state.selectedHero;
+    const currentStreak = hero.streak || 1;
+
+    if (currentStreak < chest.requiredStreak) {
+      if (typeof Sound?.hit === 'function') Sound.hit();
+      return {
+        success: false,
+        reason: `Need a ${chest.requiredStreak}-day streak! Current streak is ${currentStreak}.`
+      };
+    }
+
+    chest.unlocked = true;
+    hero.coins = (hero.coins || 0) + chest.rewardCoins;
+    hero.points = (hero.points || 0) + Math.round(chest.rewardCoins / 2);
+
+    const pId = String(hero.activePetId || '1');
+    this.addPetSparks(pId, chest.rewardSparks || 50);
+
+    if (typeof Sound?.fanfare === 'function') Sound.fanfare();
+    if (typeof confetti === 'function' && typeof document !== 'undefined' && typeof document.createElement === 'function' && document.body) {
+      confetti({ particleCount: 75, spread: 80, origin: { y: 0.5 } });
+    }
+
+    this.saveState(true);
+    this.notify();
+    return { success: true, chest };
+  }
+
+  addCustomWorldLandmark(landmarkData) {
+    const mapState = this.getWorldAdventureMapState();
+    if (!mapState.customLandmarks) mapState.customLandmarks = [];
+
+    const landmark = {
+      id: landmarkData.id || `landmark_${Date.now()}`,
+      name: landmarkData.name || 'AI Starlight Landmark',
+      description: landmarkData.description || 'A magical structure summoned by parent creativity!',
+      biomeId: landmarkData.biomeId || 'whispering_meadows',
+      icon: landmarkData.icon || 'fort',
+      color: landmarkData.color || '#2ecc71',
+      coordinates: landmarkData.coordinates || { x: 10, y: 3, z: 10 },
+      createdAt: Date.now()
+    };
+
+    mapState.customLandmarks.push(landmark);
+    this.saveState(true);
+    this.notify();
+    return landmark;
+  }
+
+  setIslandTimeOverride(override) {
+    const mapState = this.getWorldAdventureMapState();
+    mapState.islandTimeOverride = override; // null, 'morning', 'day', 'sunset', 'bedtime'
+    this.notify();
+  }
+
+  toggleBedtimeLullaby(active = null) {
+    const mapState = this.getWorldAdventureMapState();
+    mapState.bedtimeLullabyActive = active !== null ? Boolean(active) : !mapState.bedtimeLullabyActive;
+    if (typeof Sound?.chirp === 'function') Sound.chirp();
+    this.notify();
+    return mapState.bedtimeLullabyActive;
+  }
+
+  recordToyBoxInteraction(type) {
+    const mapState = this.getWorldAdventureMapState();
+    if (!mapState.toyBoxInteractions) {
+      mapState.toyBoxInteractions = { applesHarvested: 0, waterfallSplashes: 0, chimesPlayed: 0 };
+    }
+    if (type === 'apple') {
+      mapState.toyBoxInteractions.applesHarvested = (mapState.toyBoxInteractions.applesHarvested || 0) + 1;
+      const hero = this.state.selectedHero;
+      hero.coins = (hero.coins || 0) + 2;
+    } else if (type === 'splash') {
+      mapState.toyBoxInteractions.waterfallSplashes = (mapState.toyBoxInteractions.waterfallSplashes || 0) + 1;
+    } else if (type === 'chime') {
+      mapState.toyBoxInteractions.chimesPlayed = (mapState.toyBoxInteractions.chimesPlayed || 0) + 1;
+    }
+    this.saveState(true);
+    this.notify();
+  }
+
+  completeWaypointChore(waypointId) {
+    const waypoint = PATH_OF_VALOR_WAYPOINTS.find(w => w.id === waypointId);
+    if (!waypoint) return { success: false };
+
+    const hero = this.state.selectedHero;
+    const pId = String(hero.activePetId || '1');
+
+    hero.coins = (hero.coins || 0) + waypoint.rewardCoins;
+    hero.points = (hero.points || 0) + Math.round(waypoint.rewardCoins / 2);
+    hero.xp = (hero.xp || 0) + waypoint.rewardXp;
+    this.addPetSparks(pId, waypoint.rewardSparks);
+
+    // Sync habit care & pearly gleam if dental
+    if (waypoint.choreKey && waypoint.choreKey.includes('brush')) {
+      this.syncHabitPetCare('brush_teeth', 'daily_routine');
+    }
+
+    if (typeof Sound?.fanfare === 'function') Sound.fanfare();
+    if (typeof confetti === 'function' && typeof document !== 'undefined' && typeof document.createElement === 'function' && document.body) {
+      confetti({ particleCount: 45, spread: 60, origin: { y: 0.6 } });
+    }
+
+    this.saveState(true);
+    this.notify();
+    return { success: true, waypoint };
   }
 
   resetAllProgress() {

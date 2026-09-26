@@ -1434,7 +1434,8 @@ export function renderParentPortalView() {
                 { id: 'toy', label: 'Pet Pen Toys', emoji: '🎾', count: publishedCustomToys.length, desc: 'Trampolines, balls & puzzles' },
                 { id: 'boss', label: 'AR Quest Bosses', emoji: '👾', count: publishedCustomBosses.length, desc: 'Hygiene, dental & bedtime villains' },
                 { id: 'pet', label: '3D Pet Companions', emoji: '🐾', count: publishedCustomPets.length, desc: '6 Archetypes, Habit Bond Perks & Magic Eggs' },
-                { id: 'food', label: 'Pet Snacks & Food', emoji: '🍎', count: publishedCustomFood.length, desc: 'Limited-use consumable treats' }
+                { id: 'food', label: 'Pet Snacks & Food', emoji: '🍎', count: publishedCustomFood.length, desc: 'Limited-use consumable treats' },
+                { id: 'world_stash', label: '3D Map Secret Stashes', emoji: '🗺️', count: (store.getWorldAdventureMapState().parentHiddenChests || []).length, desc: 'Hidden Mystery Crates, Landmarks & Bedtime Switch' }
               ];
 
               const petModels = [
@@ -5745,6 +5746,19 @@ export function attachParentPortalListeners() {
             isCustom: true
           };
           store.publishCustomAIBoss(bossToPublish);
+        } else if (studioActiveCategory === 'world_stash') {
+          const stashToPublish = {
+            id: `chest_parent_${Date.now()}`,
+            title: nameVal.trim() || 'Parent Mystery Stash',
+            description: descVal.trim() || 'Keep your streak alive to unlock this secret treasure!',
+            rewardCoins: studioItemPrice || 120,
+            rewardSparks: 50,
+            requiredStreak: studioBountyStreakDays || 3,
+            biomeId: 'whispering_meadows',
+            coordinates: { x: (Math.random() - 0.5) * 36, y: 2, z: (Math.random() - 0.5) * 36 }
+          };
+          store.placeParentWorldChest(stashToPublish);
+          store.showReward('Secret Stash Placed on 3D Map!', `Hidden with a ${stashToPublish.requiredStreak}-day streak requirement!`, 0, 0);
         }
       });
     }

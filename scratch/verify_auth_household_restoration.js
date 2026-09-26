@@ -114,7 +114,7 @@ pass("Firebase Auth handleAuthUser(null) keeps active household device in dashbo
 localStorage.clear();
 localStorage.removeItem('stitch_persistent_link_session');
 persistentLink.clearSession();
-store.loadState();
+store.resetAllProgress();
 state = store.getState();
 state.isAuthenticated = false;
 state.isHouseholdConfigured = false;

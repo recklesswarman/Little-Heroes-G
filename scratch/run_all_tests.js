@@ -8,7 +8,8 @@ const testFiles = [
   'scratch/verify_auth_household_restoration.js',
   'scratch/verify_realtime_sync_and_device_revocation.js',
   'scratch/verify_live_rex_companion.js',
-  'scratch/verify_approval_sync_across_devices.js'
+  'scratch/verify_approval_sync_across_devices.js',
+  'scratch/test_world_adventure_map.cjs'
 ];
 
 let allPassed = true;
