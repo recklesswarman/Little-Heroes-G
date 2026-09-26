@@ -14,6 +14,7 @@ import { Sound } from '../audio/sfx.js';
 import { triggerInteractiveCelebration } from './InteractiveCelebrationOverlay.js';
 import { renderPetSkeletalFaceViewer, initPetSkeletalFaceViewer, getActivePetSkeletalInstance } from './PetSkeletalFaceViewer.js';
 import { getPetFaceProfile } from '../services/petSkeletalFaceService.js';
+import { preserveScrollPosition } from '../utils/scrollPreserve.js';
 
 let activeTab = 'live'; // 'live' | 'chat'
 let chatSpeedMode = 'smart'; // 'smart' | 'fast'
@@ -454,17 +455,17 @@ export function renderLiveRexWidget() {
             </div>
 
             <!-- Quick Ask Chips for Kids -->
-            <div class="flex items-center gap-1.5 overflow-x-auto pb-1 hide-scrollbar">
-              <button data-chat-chip="Tell me a funny dinosaur joke!" class="rex-chat-chip whitespace-nowrap bg-surface-container-high hover:bg-surface-bright text-on-surface-variant hover:text-inverse-surface px-2.5 py-1 rounded-full text-[11px] font-headline font-bold border border-surface-container-highest active:scale-95 transition-all cursor-pointer">
+            <div id="rex-chat-chip-bar" class="flex items-center gap-1.5 overflow-x-auto pb-1 hide-scrollbar">
+              <button data-chat-chip="Tell me a funny dinosaur joke!" class="rex-chat-chip flex-shrink-0 whitespace-nowrap bg-surface-container-high hover:bg-surface-bright text-on-surface-variant hover:text-inverse-surface px-2.5 py-1 rounded-full text-[11px] font-headline font-bold border border-surface-container-highest active:scale-95 transition-all cursor-pointer">
                 🤣 Dino Joke
               </button>
-              <button data-chat-chip="How do I brush my back teeth?" class="rex-chat-chip whitespace-nowrap bg-surface-container-high hover:bg-surface-bright text-on-surface-variant hover:text-inverse-surface px-2.5 py-1 rounded-full text-[11px] font-headline font-bold border border-surface-container-highest active:scale-95 transition-all cursor-pointer">
+              <button data-chat-chip="How do I brush my back teeth?" class="rex-chat-chip flex-shrink-0 whitespace-nowrap bg-surface-container-high hover:bg-surface-bright text-on-surface-variant hover:text-inverse-surface px-2.5 py-1 rounded-full text-[11px] font-headline font-bold border border-surface-container-highest active:scale-95 transition-all cursor-pointer">
                 🪥 Brush Molars
               </button>
-              <button data-chat-chip="Give me an encouraging hint for my learning quest!" class="rex-chat-chip whitespace-nowrap bg-surface-container-high hover:bg-surface-bright text-on-surface-variant hover:text-inverse-surface px-2.5 py-1 rounded-full text-[11px] font-headline font-bold border border-surface-container-highest active:scale-95 transition-all cursor-pointer">
+              <button data-chat-chip="Give me an encouraging hint for my learning quest!" class="rex-chat-chip flex-shrink-0 whitespace-nowrap bg-surface-container-high hover:bg-surface-bright text-on-surface-variant hover:text-inverse-surface px-2.5 py-1 rounded-full text-[11px] font-headline font-bold border border-surface-container-highest active:scale-95 transition-all cursor-pointer">
                 🌟 Quest Hint
               </button>
-              <button data-chat-chip="Tell me a calming bedtime adventure!" class="rex-chat-chip whitespace-nowrap bg-surface-container-high hover:bg-surface-bright text-on-surface-variant hover:text-inverse-surface px-2.5 py-1 rounded-full text-[11px] font-headline font-bold border border-surface-container-highest active:scale-95 transition-all cursor-pointer">
+              <button data-chat-chip="Tell me a calming bedtime adventure!" class="rex-chat-chip flex-shrink-0 whitespace-nowrap bg-surface-container-high hover:bg-surface-bright text-on-surface-variant hover:text-inverse-surface px-2.5 py-1 rounded-full text-[11px] font-headline font-bold border border-surface-container-highest active:scale-95 transition-all cursor-pointer">
                 🌙 Bedtime Story
               </button>
             </div>
@@ -989,6 +990,7 @@ export function attachLiveRexWidgetListeners() {
       await handleSendChatMessage(prompt);
     });
   });
+  preserveScrollPosition('rex-chat-chip-bar');
 
   // Chat Form Submit
   const chatForm = document.getElementById('rex-chat-form');

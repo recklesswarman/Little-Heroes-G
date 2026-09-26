@@ -2,6 +2,7 @@ import { store } from '../state/store.js';
 import { PETS_DATABASE } from '../data/petsData.js';
 import { Sound } from '../audio/sfx.js';
 import { speakRex } from '../services/voiceService.js';
+import { preserveScrollPosition } from '../utils/scrollPreserve.js';
 
 let activeElementFilter = 'All';
 
@@ -78,12 +79,12 @@ export function renderPetSelectionModal() {
         </div>
 
         <!-- Element Filter Chips -->
-        <div class="flex gap-2 overflow-x-auto pb-1 flex-shrink-0">
+        <div id="pet-select-elem-bar" class="flex gap-2 overflow-x-auto pb-1 flex-shrink-0">
           ${elements
             .map((elem) => {
               const isActive = activeElementFilter === elem;
               return `
-              <button data-select-elem="${elem}" class="pet-select-elem-btn px-3 py-1.5 rounded-xl font-headline text-xs font-black whitespace-nowrap transition-all ${
+              <button data-select-elem="${elem}" class="pet-select-elem-btn flex-shrink-0 px-3 py-1.5 rounded-xl font-headline text-xs font-black whitespace-nowrap transition-all ${
                 isActive
                   ? 'bg-primary text-on-primary chunky-btn-sm border-primary-container shadow-sm'
                   : 'bg-surface-container-high hover:bg-surface-bright text-on-surface-variant border border-surface-container-highest'
@@ -186,6 +187,7 @@ export function attachPetSelectionModalListeners() {
       store.notify();
     });
   });
+  preserveScrollPosition('pet-select-elem-bar');
 
   // Choose Pet Action
   document.querySelectorAll('.choose-pet-btn').forEach((btn) => {

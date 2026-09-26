@@ -1,6 +1,7 @@
 import { store, PET_PRICE_COINS } from '../state/store.js';
 import { PETS_DATABASE, getPetArchetype, getPetLevelData, calculatePetStatBonus } from '../data/petsData.js';
 import { Sound } from '../audio/sfx.js';
+import { preserveScrollPosition } from '../utils/scrollPreserve.js';
 
 let activeArchetypeFilter = 'all';
 
@@ -60,12 +61,12 @@ export function renderPetRosterView() {
       </div>
 
       <!-- Archetype Filter Pills -->
-      <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+      <div id="roster-archetype-filter-bar" class="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
         ${filterTabs
           .map((tab) => {
             const isActive = activeArchetypeFilter === tab.id;
             return `
-            <button data-archetype="${tab.id}" class="archetype-filter-btn px-4 py-2 rounded-2xl font-headline text-xs font-black whitespace-nowrap transition-all min-h-[44px] inline-flex items-center justify-center gap-1.5 ${
+            <button data-archetype="${tab.id}" class="archetype-filter-btn flex-shrink-0 px-4 py-2 rounded-2xl font-headline text-xs font-black whitespace-nowrap transition-all min-h-[44px] inline-flex items-center justify-center gap-1.5 ${
               isActive
                 ? 'bg-primary text-slate-950 font-black shadow-md'
                 : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border border-surface-container-highest'
@@ -178,6 +179,7 @@ export function attachPetRosterListeners() {
       store.notify();
     });
   });
+  preserveScrollPosition('roster-archetype-filter-bar');
 
   // Equip Pet
   document.querySelectorAll('.equip-roster-pet-btn').forEach((btn) => {

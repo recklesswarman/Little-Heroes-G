@@ -406,12 +406,18 @@ input[type="range"]::-webkit-slider-thumb:active {
 }
 
 /* Hides the scrollbar on horizontally-scrolling tab/pill strips while
-   keeping them fully scrollable (used across Parent Portal, Shop, etc.) */
-.hide-scrollbar {
+   keeping them fully scrollable. Different views/components independently
+   picked different names for the same intent -- all three are supported
+   so every existing usage renders without a stray native scrollbar. */
+.hide-scrollbar,
+.no-scrollbar,
+.scrollbar-none {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
-.hide-scrollbar::-webkit-scrollbar {
+.hide-scrollbar::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar,
+.scrollbar-none::-webkit-scrollbar {
   display: none;
 }
 
