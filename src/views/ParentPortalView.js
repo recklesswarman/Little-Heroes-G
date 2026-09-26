@@ -22,6 +22,26 @@ let activeAdminTab = 'approvals'; // approvals, screentime, reports, kids, tasks
 export function setActiveAdminTab(tab) {
   activeAdminTab = tab;
 }
+
+// The whole Parent Portal re-renders (fresh DOM) on every store update, which
+// would otherwise snap any horizontally-scrolling tab/pill strip back to
+// scrollLeft 0 on any unrelated background change (an approval, a sync tick,
+// etc). Persist each strip's scroll position by container id and reapply it
+// after every render so mid-scroll position isn't lost and distant tabs
+// (e.g. Pricing Editor, 3D Studio, Analytics, Settings) stay reachable.
+const scrollBarPositions = {};
+function preserveScrollBarPosition(containerId) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.scrollLeft = scrollBarPositions[containerId] || 0;
+  el.addEventListener(
+    'scroll',
+    () => {
+      scrollBarPositions[containerId] = el.scrollLeft;
+    },
+    { passive: true }
+  );
+}
 let isAddKidModalOpen = false;
 let isAddParentModalOpen = false;
 let editingKid = null;
@@ -183,12 +203,12 @@ export function renderParentPortalView() {
       </div>
 
       <!-- Admin Tab Navigation Pills -->
-      <div class="flex overflow-x-auto gap-2 pb-1 hide-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
+      <div id="admin-tab-bar" class="flex overflow-x-auto gap-2 pb-1 hide-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
         ${tabs
           .map((tab) => {
             const isTabActive = activeAdminTab === tab.id;
             return `
-            <button data-admin-tab="${tab.id}" class="admin-tab-btn px-4 py-2.5 rounded-2xl font-headline text-xs font-black flex items-center gap-2 whitespace-nowrap transition-all min-h-[44px] ${
+            <button data-admin-tab="${tab.id}" class="admin-tab-btn flex-shrink-0 px-4 py-2.5 rounded-2xl font-headline text-xs font-black flex items-center gap-2 whitespace-nowrap transition-all min-h-[44px] ${
               isTabActive
                 ? 'bg-secondary text-on-secondary chunky-btn-sm border-secondary-container shadow-sm'
                 : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border border-surface-container-highest'
@@ -378,8 +398,8 @@ export function renderParentPortalView() {
           </div>
 
           <!-- Multi-Kid Selector Pills -->
-          <div class="flex items-center gap-2 overflow-x-auto pb-1 hide-scrollbar">
-            <button data-screentime-kid="all" class="screentime-kid-pill px-4 py-2.5 rounded-2xl text-xs font-headline font-black transition-all ${
+          <div id="screentime-kid-pill-bar" class="flex items-center gap-2 overflow-x-auto pb-1 hide-scrollbar">
+            <button data-screentime-kid="all" class="screentime-kid-pill flex-shrink-0 px-4 py-2.5 rounded-2xl text-xs font-headline font-black transition-all ${
               selectedScreenTimeKidId === 'all'
                 ? 'bg-sky-500 text-white chunky-btn-sm shadow-sm'
                 : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border border-surface-container-highest'
@@ -389,7 +409,7 @@ export function renderParentPortalView() {
             ${heroes
               .map(
                 (h) => `
-              <button data-screentime-kid="${h.id}" class="screentime-kid-pill px-4 py-2.5 rounded-2xl text-xs font-headline font-black transition-all flex items-center gap-2 ${
+              <button data-screentime-kid="${h.id}" class="screentime-kid-pill flex-shrink-0 px-4 py-2.5 rounded-2xl text-xs font-headline font-black transition-all flex items-center gap-2 ${
                 selectedScreenTimeKidId === h.id
                   ? 'bg-sky-500 text-white chunky-btn-sm shadow-sm'
                   : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border border-surface-container-highest'
@@ -608,8 +628,8 @@ export function renderParentPortalView() {
           <!-- Controls: Kid Selector & Week Selector -->
           <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <!-- Multi-Kid Pills -->
-            <div class="flex items-center gap-2 overflow-x-auto pb-1 hide-scrollbar w-full sm:w-auto">
-              <button data-report-kid="all" class="report-kid-pill px-4 py-2 rounded-2xl text-xs font-headline font-black transition-all ${
+            <div id="report-kid-pill-bar" class="flex items-center gap-2 overflow-x-auto pb-1 hide-scrollbar w-full sm:w-auto">
+              <button data-report-kid="all" class="report-kid-pill flex-shrink-0 px-4 py-2 rounded-2xl text-xs font-headline font-black transition-all ${
                 selectedReportKidId === 'all'
                   ? 'bg-primary text-on-primary chunky-btn-sm shadow-sm'
                   : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border border-surface-container-highest'
@@ -619,7 +639,7 @@ export function renderParentPortalView() {
               ${heroes
                 .map(
                   (h) => `
-                <button data-report-kid="${h.id}" class="report-kid-pill px-4 py-2 rounded-2xl text-xs font-headline font-black transition-all flex items-center gap-2 ${
+                <button data-report-kid="${h.id}" class="report-kid-pill flex-shrink-0 px-4 py-2 rounded-2xl text-xs font-headline font-black transition-all flex items-center gap-2 ${
                   selectedReportKidId === h.id
                     ? 'bg-primary text-on-primary chunky-btn-sm shadow-sm'
                     : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border border-surface-container-highest'
@@ -4161,6 +4181,8 @@ export function attachParentPortalListeners() {
     });
   });
 
+  preserveScrollBarPosition('admin-tab-bar');
+
   // APPROVALS TAB
   const clearAllPendingBtn = document.getElementById('admin-clear-all-pending-btn');
   if (clearAllPendingBtn) {
@@ -4251,6 +4273,7 @@ export function attachParentPortalListeners() {
       store.notify();
     });
   });
+  preserveScrollBarPosition('screentime-kid-pill-bar');
 
   // SCREEN TIME BANK: Quick Overrides
   document.querySelectorAll('.admin-screentime-bonus-btn').forEach((btn) => {
@@ -4304,6 +4327,7 @@ export function attachParentPortalListeners() {
       store.notify();
     });
   });
+  preserveScrollBarPosition('report-kid-pill-bar');
 
   // 4-PILLAR AI DEVELOPMENTAL REPORTS: Week Selector
   const reportWeekSelect = document.getElementById('report-week-select');
