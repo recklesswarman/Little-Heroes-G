@@ -7202,8 +7202,28 @@ class Store {
     return { success: true, petId: egg.petId, petName: egg.petName };
   }
 
+  getPetSparks(petId) {
+    const id = String(petId || this.state.selectedHero?.activePetId || '1');
+    if (!this.state.petSparkMap) this.state.petSparkMap = {};
+    return this.state.petSparkMap[id] ?? this.state.selectedHero?.sparks ?? 0;
+  }
+
   addPetSparks(petId, amount = 15) {
-    return this.addEvolutionSparks(petId, amount);
+    const id = String(petId || this.state.selectedHero?.activePetId || '1');
+    if (!this.state.petSparkMap) this.state.petSparkMap = {};
+    const current = this.getPetSparks(id);
+    const next = current + amount;
+    this.state.petSparkMap[id] = next;
+    if (this.state.selectedHero) {
+      this.state.selectedHero.sparks = next;
+      this.state.selectedHero.evolutionSparks = next;
+    }
+    if (typeof this.addPetCareXp === 'function') {
+      this.addPetCareXp(id, amount);
+    }
+    this.saveState(true);
+    this.notify();
+    return next;
   }
 
   deductPetSparks(petId, amount = 100) {
