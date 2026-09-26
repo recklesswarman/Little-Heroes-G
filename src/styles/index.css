@@ -405,6 +405,16 @@ input[type="range"]::-webkit-slider-thumb:active {
   background: #3d4a3e;
 }
 
+/* Hides the scrollbar on horizontally-scrolling tab/pill strips while
+   keeping them fully scrollable (used across Parent Portal, Shop, etc.) */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* ==========================================================================
    Pet Bath & Grooming Interactive Animations
    ========================================================================== */
