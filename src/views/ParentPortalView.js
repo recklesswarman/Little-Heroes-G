@@ -11,6 +11,7 @@ import { firebaseAI, SPLINE_3D_PRESETS } from '../services/firebaseAILogicServic
 import { COLOR_DYES, formatStatBonusName } from '../data/petGearStudioData.js';
 import { THREE_D_ASSETS, getThreeDAssetsByCategory, matchBestThreeDAsset } from '../data/threeDAssetCatalog.js';
 import { registerActiveCanvas } from '../utils/activeViewCanvasRegistry.js';
+import { preserveScrollPosition as preserveScrollBarPosition } from '../utils/scrollPreserve.js';
 import {
   LANDMARK_ARCHETYPES,
   BIOME_PLACEMENT_PRESETS,
@@ -23,25 +24,6 @@ export function setActiveAdminTab(tab) {
   activeAdminTab = tab;
 }
 
-// The whole Parent Portal re-renders (fresh DOM) on every store update, which
-// would otherwise snap any horizontally-scrolling tab/pill strip back to
-// scrollLeft 0 on any unrelated background change (an approval, a sync tick,
-// etc). Persist each strip's scroll position by container id and reapply it
-// after every render so mid-scroll position isn't lost and distant tabs
-// (e.g. Pricing Editor, 3D Studio, Analytics, Settings) stay reachable.
-const scrollBarPositions = {};
-function preserveScrollBarPosition(containerId) {
-  const el = document.getElementById(containerId);
-  if (!el) return;
-  el.scrollLeft = scrollBarPositions[containerId] || 0;
-  el.addEventListener(
-    'scroll',
-    () => {
-      scrollBarPositions[containerId] = el.scrollLeft;
-    },
-    { passive: true }
-  );
-}
 let isAddKidModalOpen = false;
 let isAddParentModalOpen = false;
 let editingKid = null;

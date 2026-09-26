@@ -3,6 +3,7 @@ import { Sound } from '../audio/sfx.js';
 import confetti from 'canvas-confetti';
 import { speakRex } from '../services/voiceService.js';
 import { renderPetGearStudioViewer, initPetGearStudioViewer } from '../components/PetGearStudioViewer.js';
+import { preserveScrollPosition } from '../utils/scrollPreserve.js';
 
 let activeCategoryFilter = 'all';
 
@@ -164,29 +165,29 @@ export function renderPetLockerView() {
       </section>
 
       <!-- Category Filter Pills -->
-      <div class="flex items-center gap-2 overflow-x-auto pb-1 z-10">
-        <button data-locker-cat="all" class="locker-filter-btn px-4 py-2 rounded-xl font-headline text-xs font-black whitespace-nowrap transition-all min-h-[44px] inline-flex items-center justify-center ${
+      <div id="locker-filter-bar" class="flex items-center gap-2 overflow-x-auto pb-1 z-10 hide-scrollbar">
+        <button data-locker-cat="all" class="locker-filter-btn flex-shrink-0 px-4 py-2 rounded-xl font-headline text-xs font-black whitespace-nowrap transition-all min-h-[44px] inline-flex items-center justify-center ${
           activeCategoryFilter === 'all'
             ? 'bg-amber-500 text-on-primary shadow-sm'
             : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
         }">
           All Digital Items (${uniqueContent.length})
         </button>
-        <button data-locker-cat="unlocked" class="locker-filter-btn px-4 py-2 rounded-xl font-headline text-xs font-black whitespace-nowrap transition-all min-h-[44px] inline-flex items-center justify-center ${
+        <button data-locker-cat="unlocked" class="locker-filter-btn flex-shrink-0 px-4 py-2 rounded-xl font-headline text-xs font-black whitespace-nowrap transition-all min-h-[44px] inline-flex items-center justify-center ${
           activeCategoryFilter === 'unlocked'
             ? 'bg-amber-500 text-on-primary shadow-sm'
             : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
         }">
           Unlocked & Owned (${uniqueContent.filter(i => i.isUnlocked).length})
         </button>
-        <button data-locker-cat="accessories" class="locker-filter-btn px-4 py-2 rounded-xl font-headline text-xs font-black whitespace-nowrap transition-all min-h-[44px] inline-flex items-center justify-center ${
+        <button data-locker-cat="accessories" class="locker-filter-btn flex-shrink-0 px-4 py-2 rounded-xl font-headline text-xs font-black whitespace-nowrap transition-all min-h-[44px] inline-flex items-center justify-center ${
           activeCategoryFilter === 'accessories'
             ? 'bg-amber-500 text-on-primary shadow-sm'
             : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
         }">
           Accessories & Gear
         </button>
-        <button data-locker-cat="badges" class="locker-filter-btn px-4 py-2 rounded-xl font-headline text-xs font-black whitespace-nowrap transition-all min-h-[44px] inline-flex items-center justify-center ${
+        <button data-locker-cat="badges" class="locker-filter-btn flex-shrink-0 px-4 py-2 rounded-xl font-headline text-xs font-black whitespace-nowrap transition-all min-h-[44px] inline-flex items-center justify-center ${
           activeCategoryFilter === 'badges'
             ? 'bg-amber-500 text-on-primary shadow-sm'
             : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
@@ -367,6 +368,7 @@ export function attachPetLockerListeners() {
       store.notify();
     });
   });
+  preserveScrollPosition('locker-filter-bar');
 
   // Equip Gear Buttons
   document.querySelectorAll('.locker-equip-btn').forEach(btn => {

@@ -1,5 +1,6 @@
 import { store } from '../state/store.js';
 import { speakRex } from '../services/voiceService.js';
+import { preserveScrollPosition } from '../utils/scrollPreserve.js';
 
 let selectedCategory = 'all'; // 'all', 'weapons', 'gear', 'badges', 'snacks', 'themes', 'real_life'
 let selectedSort = 'cheapest'; // 'cheapest', 'expensive'
@@ -76,7 +77,7 @@ export function renderShopView() {
           Recently Unlocked Stickers & Trophies
         </h2>
 
-        <div class="flex overflow-x-auto gap-4 pb-2 hide-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div id="shop-recent-unlocked-carousel" class="flex overflow-x-auto gap-4 pb-2 hide-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
           ${recentlyUnlocked
             .map(
               (item) => `
@@ -100,7 +101,7 @@ export function renderShopView() {
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-2">
         
         <!-- Filter Pills -->
-        <div class="flex overflow-x-auto gap-2 pb-1 hide-scrollbar w-full sm:w-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div id="shop-category-pill-bar" class="flex overflow-x-auto gap-2 pb-1 hide-scrollbar w-full sm:w-auto -mx-4 px-4 sm:mx-0 sm:px-0">
           <button data-cat="all" class="cat-pill-btn flex-shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all min-h-[44px] inline-flex items-center justify-center ${
             selectedCategory === 'all'
               ? 'bg-primary text-on-primary border-primary-container shadow-md'
@@ -459,6 +460,8 @@ export function attachShopListeners() {
       store.notify();
     });
   });
+  preserveScrollPosition('shop-category-pill-bar');
+  preserveScrollPosition('shop-recent-unlocked-carousel');
 
   const sortSelect = document.getElementById('shop-sort-select');
   if (sortSelect) {

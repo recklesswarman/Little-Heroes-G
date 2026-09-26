@@ -20,6 +20,7 @@ import {
   calculateActiveGearBuffs
 } from '../data/petGearStudioData.js';
 import { getPetLevelData, calculatePetStatBonus } from '../data/petsData.js';
+import { preserveScrollPosition } from '../utils/scrollPreserve.js';
 
 // Local UI state for live previewing and interactive widgets
 let activePreviewItem = null;
@@ -501,12 +502,12 @@ function renderRedecorateDrawer(state) {
       </div>
 
       <!-- Category Filter Tabs -->
-      <div class="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-        <button class="hq-cat-tab px-3.5 py-2 rounded-2xl font-headline text-xs font-black transition-all flex items-center gap-1.5 whitespace-nowrap chunky-btn-sm ${activeCategory === 'themes' ? 'bg-primary text-on-primary shadow-md' : 'bg-surface-bright text-on-surface-variant hover:bg-surface-container-highest'}" data-category="themes">
+      <div id="hq-cat-tab-bar" class="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+        <button class="hq-cat-tab flex-shrink-0 px-3.5 py-2 rounded-2xl font-headline text-xs font-black transition-all flex items-center gap-1.5 whitespace-nowrap chunky-btn-sm ${activeCategory === 'themes' ? 'bg-primary text-on-primary shadow-md' : 'bg-surface-bright text-on-surface-variant hover:bg-surface-container-highest'}" data-category="themes">
           <span>🏛️</span> Themes
         </button>
         ${FURNITURE_SLOTS.map(slot => `
-          <button class="hq-cat-tab px-3.5 py-2 rounded-2xl font-headline text-xs font-black transition-all flex items-center gap-1.5 whitespace-nowrap chunky-btn-sm ${activeCategory === slot.id ? 'bg-primary text-on-primary shadow-md' : 'bg-surface-bright text-on-surface-variant hover:bg-surface-container-highest'}" data-category="${slot.id}">
+          <button class="hq-cat-tab flex-shrink-0 px-3.5 py-2 rounded-2xl font-headline text-xs font-black transition-all flex items-center gap-1.5 whitespace-nowrap chunky-btn-sm ${activeCategory === slot.id ? 'bg-primary text-on-primary shadow-md' : 'bg-surface-bright text-on-surface-variant hover:bg-surface-container-highest'}" data-category="${slot.id}">
             <span>${slot.emoji}</span> ${slot.name}
           </button>
         `).join('')}
@@ -902,6 +903,7 @@ export function attachHeroHQListeners() {
       store.setHQRedecorateDrawer(true, cat);
     });
   });
+  preserveScrollPosition('hq-cat-tab-bar');
 
   // 6. Select Theme
   document.querySelectorAll('.hq-select-theme-btn').forEach(btn => {

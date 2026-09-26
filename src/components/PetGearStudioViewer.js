@@ -8,6 +8,7 @@ import { GEAR_SOCKETS, COLOR_DYES, PET_GEAR_CATALOG, getGearItem, getAllGearForS
 import { getPetFaceProfile } from '../services/petSkeletalFaceService.js';
 import { Sound } from '../audio/sfx.js';
 import { store } from '../state/store.js';
+import { preserveScrollPosition } from '../utils/scrollPreserve.js';
 
 // Cache active gear studio instances
 const activeStudioInstances = new Map();
@@ -145,7 +146,7 @@ export function renderPetGearStudioViewer({
       <div class="lg:col-span-7 flex flex-col gap-4">
         
         <!-- Gear Socket Category Tabs -->
-        <div class="flex items-center gap-2 p-1.5 bg-slate-800/80 rounded-2xl border border-slate-700/60 overflow-x-auto">
+        <div id="${containerId}-socket-tabs" class="flex items-center gap-2 p-1.5 bg-slate-800/80 rounded-2xl border border-slate-700/60 overflow-x-auto">
           ${socketTabs.map(tab => {
             const isTabActive = tab.key === activeSocket;
             const equippedId = equipped[tab.key];
@@ -323,6 +324,8 @@ export function initPetGearStudioViewer(containerId = 'pet-gear-studio-container
     container
   };
   activeStudioInstances.set(canvasId, record);
+
+  preserveScrollPosition(`${containerId}-socket-tabs`);
 
   // --- ATTACH EVENT LISTENERS ---
 

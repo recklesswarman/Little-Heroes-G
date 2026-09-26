@@ -2,6 +2,7 @@ import { store, ALL_24_PET_IDS } from '../state/store.js';
 import { PETS_DATABASE, getPetById } from '../data/petsData.js';
 import { Sound } from '../audio/sfx.js';
 import { speakRex } from '../services/voiceService.js';
+import { preserveScrollPosition } from '../utils/scrollPreserve.js';
 
 export const PET_GEAR_CATALOG = {
   hat: [
@@ -157,13 +158,13 @@ export function renderPetLockerModal() {
 
         <!-- Companion Switcher (if child has multiple companions) -->
         ${unlockedIds.length > 1 ? `
-          <div class="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-            <span class="text-xs font-black text-on-surface-variant uppercase tracking-wider whitespace-nowrap">Companion:</span>
+          <div id="pet-locker-companion-switcher" class="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+            <span class="text-xs font-black text-on-surface-variant uppercase tracking-wider whitespace-nowrap flex-shrink-0">Companion:</span>
             ${unlockedIds.map(uId => {
               const uPet = state.pets?.find(p => p.id === uId) || PETS_DATABASE.find(p => p.id === uId);
               const isCurrent = String(uId) === String(petId);
               return `
-                <button data-switch-pet="${uId}" class="px-3 py-1.5 rounded-xl font-headline text-xs font-black flex items-center gap-1.5 transition-all ${
+                <button data-switch-pet="${uId}" class="flex-shrink-0 px-3 py-1.5 rounded-xl font-headline text-xs font-black flex items-center gap-1.5 transition-all ${
                   isCurrent
                     ? 'bg-amber-500 text-black shadow-sm scale-105'
                     : 'bg-surface-container-high text-on-surface-variant hover:bg-surface-bright'
@@ -352,6 +353,7 @@ export function attachPetLockerModalListeners() {
       store.openPetLockerModal(newPetId);
     });
   });
+  preserveScrollPosition('pet-locker-companion-switcher');
 
   // Equip / Unequip buttons
   const equipBtns = document.querySelectorAll('[data-equip-item]');

@@ -13,6 +13,7 @@ import { speakCompanion } from '../services/voiceService.js';
 import { Sound } from '../audio/sfx.js';
 import confetti from 'canvas-confetti';
 import { registerActiveCanvas } from '../utils/activeViewCanvasRegistry.js';
+import { preserveScrollPosition } from '../utils/scrollPreserve.js';
 
 let activeCanvasInstance = null;
 
@@ -338,11 +339,11 @@ export function renderHeroForgeView() {
           </div>
 
           <!-- 4 Chunky Category Navigation Tabs -->
-          <div class="flex items-center gap-1.5 overflow-x-auto pb-1">
+          <div id="forge-category-tab-bar" class="flex items-center gap-1.5 overflow-x-auto pb-1 hide-scrollbar">
             ${FORGE_CATEGORIES.map(cat => {
               const isActive = cat.id === currentCategory;
               return `
-                <button data-forge-category="${cat.id}" class="px-3.5 py-1.5 rounded-2xl font-headline font-black text-xs uppercase tracking-wider flex items-center gap-1.5 border-2 transition-all active:translate-y-0.5 ${
+                <button data-forge-category="${cat.id}" class="flex-shrink-0 px-3.5 py-1.5 rounded-2xl font-headline font-black text-xs uppercase tracking-wider flex items-center gap-1.5 border-2 transition-all active:translate-y-0.5 ${
                   isActive
                     ? 'bg-[#5fbaff] text-[#001d31] border-[#cce5ff] shadow-[0_3px_0_0_#004970] -translate-y-0.5'
                     : 'bg-[#121d26] text-slate-300 border-[#2b3640] hover:bg-[#202b35] shadow-[0_3px_0_0_#050f18]'
@@ -517,6 +518,7 @@ export function attachHeroForgeListeners() {
       store.selectForgeCategory(cat);
     });
   });
+  preserveScrollPosition('forge-category-tab-bar');
 
   // 4. Select Blueprint Cards
   document.querySelectorAll('[data-select-blueprint]').forEach(card => {

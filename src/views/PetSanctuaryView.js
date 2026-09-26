@@ -13,6 +13,7 @@ import { PET_GEAR_CATALOG, getGearHaloStyle, normalizeGearSlot, getGearItem, cal
 import { PetSanctuaryCanvas } from '../components/PetSanctuaryCanvas.js';
 import { Sound } from '../audio/sfx.js';
 import { registerActiveCanvas } from '../utils/activeViewCanvasRegistry.js';
+import { preserveScrollPosition } from '../utils/scrollPreserve.js';
 
 let activeCanvasInstance = null;
 let eggCrackTaps = {}; // { [eggId]: tapCount }
@@ -799,7 +800,7 @@ function renderRosterDrawer(activePet) {
       </div>
 
       <!-- Archetype Filter Pills -->
-      <div class="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+      <div id="sanctuary-roster-filter-bar" class="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
         ${filterTabs.map(tab => `
           <button 
             class="roster-filter-btn flex-shrink-0 px-3 py-1.5 rounded-xl font-headline font-black text-xs flex items-center gap-1.5 transition-all ${
@@ -1089,6 +1090,8 @@ export function attachPetSanctuaryListeners() {
       store.notify();
     });
   });
+  preserveScrollPosition('sanctuary-roster-filter-bar');
+  preserveScrollPosition('sanctuary-drawer-sheet');
 
   // Wardrobe Category Tabs
   document.querySelectorAll('.wardrobe-category-tab').forEach(btn => {
