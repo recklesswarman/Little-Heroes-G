@@ -18,7 +18,9 @@ import {
   WORLD_BIOMES,
   PATH_OF_VALOR_WAYPOINTS,
   SECRET_SHRINES,
-  TOY_BOX_ENTITIES
+  TOY_BOX_ENTITIES,
+  LANDMARK_ARCHETYPES,
+  SEASONS_DATA
 } from '../data/worldMapData.js';
 import { WorldAdventureMapCanvas } from '../components/WorldAdventureMapCanvas.js';
 import { ADVENTURE_GAMES, getGameChallenges } from '../data/learningGamesData.js';
@@ -31,6 +33,7 @@ let activeCanvasInstance = null;
 let activeMiniGame = null;
 let currentMiniGameIdx = 0;
 let selectedModalWaypoint = null;
+let selectedModalLandmark = null;
 
 export function renderWorldAdventureMapView() {
   const state = store.getState();
@@ -162,6 +165,9 @@ export function renderWorldAdventureMapView() {
       <!-- WAYPOINT DETAIL MODAL (WHEN A STOP IS CLICKED) -->
       ${selectedModalWaypoint ? renderWaypointModal(selectedModalWaypoint, hero) : ''}
 
+      <!-- CUSTOM LANDMARK DETAIL MODAL (WHEN A LANDMARK IS CLICKED) -->
+      ${selectedModalLandmark ? renderLandmarkModal(selectedModalLandmark, hero) : ''}
+
     </div>
   `;
 }
@@ -274,27 +280,36 @@ function renderTodaysPathTab(hero, activePet, mapState) {
 function renderIslandSandboxTab(hero, activePet, mapState, timeOfDay) {
   const interactions = mapState.toyBoxInteractions || { applesHarvested: 0, waterfallSplashes: 0, chimesPlayed: 0 };
   const isLullabyActive = mapState.bedtimeLullabyActive;
+  const effectiveSeason = store.getEffectiveSeason();
+  const seasonInfo = SEASONS_DATA[effectiveSeason] || SEASONS_DATA.spring;
+  const customLandmarks = mapState.customLandmarks || [];
 
   return `
     <div class="flex flex-col gap-4 animate-fade-in">
       
-      <!-- TOP 3D HUD CONTROLS (TIME & RECENTER) -->
+      <!-- TOP 3D HUD CONTROLS (TIME, SEASON & RECENTER) -->
       <div class="flex flex-wrap items-center justify-between gap-2.5 bg-[#09141e] px-4 py-2.5 rounded-2xl border-2 border-surface-container-highest">
         <div class="flex items-center gap-2">
-          <span class="text-xs font-black uppercase text-slate-300">Atmosphere:</span>
+          <span class="text-xs font-black uppercase text-slate-300">Sky:</span>
           <span class="text-xs font-black px-2.5 py-0.5 rounded-full ${
             timeOfDay === 'bedtime' ? 'bg-[#ffb961]/20 text-[#ffb961] border border-[#ffb961]/40' :
             timeOfDay === 'sunset' ? 'bg-[#f39c12]/20 text-[#f39c12] border border-[#f39c12]/40' :
             timeOfDay === 'morning' ? 'bg-[#2ecc71]/20 text-[#2ecc71] border border-[#2ecc71]/40' :
             'bg-[#00d2d3]/20 text-[#00d2d3] border border-[#00d2d3]/40'
           }">
-            ${timeOfDay === 'bedtime' ? '🌙 Bedtime Twilight & Fireflies' :
+            ${timeOfDay === 'bedtime' ? '🌙 Bedtime Twilight' :
               timeOfDay === 'sunset' ? '🌅 Golden Sunset' :
               timeOfDay === 'morning' ? '☀️ Morning Sunrise' : '🌤️ Sunny Daylight'}
           </span>
         </div>
 
         <div class="flex items-center gap-2">
+          <!-- Seasonal Weather Wand Button -->
+          <button id="island-cycle-season-btn" class="px-3 py-1.5 rounded-xl font-headline text-xs font-black flex items-center gap-1.5 chunky-btn-sm transition-all bg-[#0f2334] text-white border border-[#00d2d3]/40 hover:border-[#00d2d3] active:scale-95 cursor-pointer" title="Tap to switch seasons">
+            <span>${seasonInfo.icon}</span>
+            <span>${seasonInfo.name}</span>
+          </button>
+
           <!-- Bedtime Lullaby Toggle Button -->
           <button id="island-toggle-lullaby-btn" class="px-3 py-1.5 rounded-xl font-headline text-xs font-black flex items-center gap-1.5 chunky-btn-sm transition-all ${
             isLullabyActive ? 'bg-[#ffb961] text-[#050f18] shadow' : 'bg-surface-container-high text-slate-300 hover:text-white'
@@ -319,32 +334,102 @@ function renderIslandSandboxTab(hero, activePet, mapState, timeOfDay) {
         <!-- FLOATING OVERLAY HINTS -->
         <div class="absolute top-4 left-4 pointer-events-none bg-[#09141e]/85 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-surface-container-highest text-xs text-slate-300 font-bold flex items-center gap-2 shadow">
           <span class="text-[#2ecc71] animate-pulse">●</span>
-          <span>Drag to orbit 360° • Pinch to zoom • Tap objects to interact!</span>
+          <span>Drag to orbit 360° • Pinch to zoom • Tap landmarks & props!</span>
         </div>
 
         <!-- BOTTOM TOY-BOX STATS STRIP -->
         <div class="absolute bottom-4 left-4 right-4 bg-[#09141e]/90 backdrop-blur-md p-3 rounded-2xl border-2 border-surface-container-highest flex flex-wrap items-center justify-between gap-3 shadow-lg">
-          <div class="flex items-center gap-4 text-xs font-black">
+          <div class="flex items-center gap-3.5 text-xs font-black flex-wrap">
             <span class="text-[#2ecc71] flex items-center gap-1">
-              🍎 ${interactions.applesHarvested} Apples Picked
+              🍎 ${interactions.applesHarvested} Apples
             </span>
             <span class="text-[#00d2d3] flex items-center gap-1">
-              🐟 ${interactions.waterfallSplashes} Splashes Made
+              🐟 ${interactions.waterfallSplashes} Splashes
             </span>
             <span class="text-[#ffb961] flex items-center gap-1">
-              🎵 ${interactions.chimesPlayed} Chimes Ringing
+              🎵 ${interactions.chimesPlayed} Chimes
+            </span>
+            <span class="text-white flex items-center gap-1 bg-[#1a3850] px-2.5 py-0.5 rounded-lg border border-primary/40">
+              🏰 ${customLandmarks.length} Landmarks
             </span>
           </div>
 
           <div class="flex items-center gap-2">
             <button id="island-inspect-secrets-btn" class="bg-primary/20 text-primary border border-primary/40 px-3 py-1 rounded-xl text-xs font-black hover:bg-primary/30 active:scale-95 transition-all">
-              ★ View 4 Secret Shrines
+              ★ View 4 Shrines
             </button>
           </div>
         </div>
 
       </div>
 
+    </div>
+  `;
+}
+
+function renderLandmarkModal(landmark, hero) {
+  const archetype = LANDMARK_ARCHETYPES.find(a => a.type === landmark.type) || { emoji: '🏰', name: 'Hero Landmark' };
+  const coinsReward = landmark.rewardCoins || 35;
+  const sparksReward = landmark.rewardSparks || 15;
+
+  return `
+    <div id="landmark-modal-backdrop" class="fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in select-none">
+      <div class="bg-[#09141e] border-4 border-surface-container-highest rounded-4xl p-6 sm:p-8 max-w-md w-full shadow-[0_16px_0_0_#050f18] flex flex-col gap-5 text-center relative overflow-hidden">
+        
+        <button id="close-landmark-modal-btn" class="absolute top-4 right-4 w-9 h-9 rounded-full bg-surface-container-high text-slate-300 hover:text-white flex items-center justify-center font-black">
+          ✕
+        </button>
+
+        <div class="flex flex-col items-center gap-2">
+          <div class="w-16 h-16 rounded-3xl bg-[#0f2334] border-3 flex items-center justify-center text-4xl shadow-inner" style="border-color: ${landmark.color || '#2ecc71'};">
+            <span>${archetype.emoji}</span>
+          </div>
+          <span class="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-[#f39c12] text-black">
+            ${archetype.name}
+          </span>
+          <h2 class="font-headline text-xl sm:text-2xl font-black text-white leading-tight">
+            ${landmark.name}
+          </h2>
+          <p class="text-xs text-slate-300 font-bold px-2">
+            ${landmark.description}
+          </p>
+        </div>
+
+        <!-- Voice / Lore Callout Card -->
+        <div class="bg-[#0f2334] rounded-2xl p-4 border-2 border-surface-container-highest flex flex-col gap-2.5 text-left">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-black uppercase text-[#ffb961] flex items-center gap-1">
+              <span class="material-symbols-outlined text-xs">auto_stories</span>
+              <span>Secret Landmark Lore</span>
+            </span>
+            <button id="modal-speak-lore-btn" class="bg-[#1b3d58] hover:bg-[#255073] text-white px-2.5 py-1 rounded-lg text-[10px] font-black flex items-center gap-1 active:scale-95 cursor-pointer">
+              <span class="material-symbols-outlined text-xs">volume_up</span>
+              <span>Listen</span>
+            </button>
+          </div>
+          <p class="text-xs text-white font-semibold italic">
+            "${landmark.voiceLine || 'A legendary haven built for heroes to rest and discover secrets!'}"
+          </p>
+        </div>
+
+        <!-- Bounty Rewards Strip -->
+        <div class="grid grid-cols-2 gap-2 bg-[#050f18] p-3 rounded-2xl border border-surface-container-highest">
+          <div class="flex flex-col items-center">
+            <span class="text-[10px] text-slate-400 font-black uppercase">Explorer Tokens</span>
+            <span class="font-headline text-base font-black text-[#ffb961]">🪙 +${coinsReward}</span>
+          </div>
+          <div class="flex flex-col items-center">
+            <span class="text-[10px] text-slate-400 font-black uppercase">Companion Sparks</span>
+            <span class="font-headline text-base font-black text-[#00d2d3]">⚡ +${sparksReward}</span>
+          </div>
+        </div>
+
+        <button id="modal-claim-landmark-btn" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#2ecc71] to-[#27ae60] text-[#050f18] font-headline font-black text-sm tracking-wide shadow-[0_4px_0_0_#145237] active:translate-y-1 active:shadow-none flex items-center justify-center gap-2 cursor-pointer">
+          <span class="material-symbols-outlined text-lg">celebration</span>
+          <span>EXPLORE & CLAIM BOUNTY</span>
+        </button>
+
+      </div>
     </div>
   `;
 }
@@ -449,6 +534,27 @@ export function attachWorldAdventureMapListeners() {
         onWaypointClick: (wp) => {
           selectedModalWaypoint = wp;
           store.notify();
+        },
+        onLandmarkClick: (landmark) => {
+          selectedModalLandmark = landmark;
+          store.notify();
+        }
+      });
+    }
+
+    // Weather Wand / Cycle Season Button
+    const cycleSeasonBtn = document.getElementById('island-cycle-season-btn');
+    if (cycleSeasonBtn) {
+      cycleSeasonBtn.addEventListener('click', () => {
+        const seasons = ['auto', 'spring', 'summer', 'autumn', 'winter'];
+        const current = store.getWorldAdventureMapState().season || 'auto';
+        const nextIdx = (seasons.indexOf(current) + 1) % seasons.length;
+        const nextSeason = seasons[nextIdx];
+        store.setIslandSeason(nextSeason);
+        const effective = store.getEffectiveSeason();
+        const seasonInfo = SEASONS_DATA[effective];
+        if (typeof voicePrompts?.speak === 'function') {
+          voicePrompts.speak(`Weather changed to ${seasonInfo.name}!`);
         }
       });
     }
@@ -522,12 +628,45 @@ export function attachWorldAdventureMapListeners() {
     });
   }
 
-  // 4. Modal Handlers
+  // 4. Modal Handlers (Waypoint & Custom Landmark)
   const closeModalBtn = document.getElementById('close-waypoint-modal-btn');
   if (closeModalBtn) {
     closeModalBtn.addEventListener('click', () => {
       selectedModalWaypoint = null;
       store.notify();
+    });
+  }
+
+  const closeLandmarkBtn = document.getElementById('close-landmark-modal-btn');
+  if (closeLandmarkBtn) {
+    closeLandmarkBtn.addEventListener('click', () => {
+      selectedModalLandmark = null;
+      store.notify();
+    });
+  }
+
+  const speakLoreBtn = document.getElementById('modal-speak-lore-btn');
+  if (speakLoreBtn && selectedModalLandmark) {
+    speakLoreBtn.addEventListener('click', () => {
+      Sound.tap();
+      if (typeof voicePrompts?.speak === 'function') {
+        voicePrompts.speak(selectedModalLandmark.voiceLine || selectedModalLandmark.description);
+      }
+    });
+  }
+
+  const claimLandmarkBtn = document.getElementById('modal-claim-landmark-btn');
+  if (claimLandmarkBtn && selectedModalLandmark) {
+    claimLandmarkBtn.addEventListener('click', () => {
+      const lm = selectedModalLandmark;
+      selectedModalLandmark = null;
+      const res = store.interactWithCustomLandmark(lm.id);
+      store.showReward(
+        'Landmark Bounty Claimed!',
+        `You explored ${lm.name}! Earned +${res.rewardCoins} Tokens & +${res.rewardSparks} Sparks!`,
+        res.rewardCoins,
+        Math.round(res.rewardCoins / 2)
+      );
     });
   }
 

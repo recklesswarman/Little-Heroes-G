@@ -302,3 +302,158 @@ export const TOY_BOX_ENTITIES = [
     label: 'Omega Rune'
   }
 ];
+
+export const LANDMARK_ARCHETYPES = [
+  {
+    type: 'fort',
+    name: 'Hero Fortress Tower',
+    icon: 'castle',
+    emoji: '🏰',
+    color: '#2ecc71',
+    description: 'A valiant stone fortress tower with battlements and waving banner.'
+  },
+  {
+    type: 'lighthouse',
+    name: 'Kindness Beacon',
+    icon: 'wb_incandescent',
+    emoji: '🗼',
+    color: '#00d2d3',
+    description: 'A coastal beacon casting a rotating ray of starlight guidance.'
+  },
+  {
+    type: 'observatory',
+    name: 'Scholar Telescope Dome',
+    icon: 'telescope',
+    emoji: '🔭',
+    color: '#ffb961',
+    description: 'An astronomical dome with brass telescope gazing into constellations.'
+  },
+  {
+    type: 'fossil_dig',
+    name: 'Titan Dino Dig Site',
+    icon: 'footprint',
+    emoji: '🦴',
+    color: '#f39c12',
+    description: 'An ancient excavation featuring giant dinosaur fossil footprints.'
+  },
+  {
+    type: 'launchpad',
+    name: 'Starlight Rocket Launchpad',
+    icon: 'rocket_launch',
+    emoji: '🚀',
+    color: '#00d2d3',
+    description: 'A space launch station with a sleek rocket ready for orbit.'
+  },
+  {
+    type: 'crystal_tree',
+    name: 'Wishing Crystal Tree',
+    icon: 'psychiatry',
+    emoji: '🌲',
+    color: '#2ecc71',
+    description: 'A prism tree with leaves made of glittering, chime-singing gems.'
+  },
+  {
+    type: 'hearth_cabin',
+    name: 'Cozy Explorer Cabin',
+    icon: 'cottage',
+    emoji: '🛖',
+    color: '#f39c12',
+    description: 'A rustic timber cabin with warm lantern glow and puffing chimney.'
+  }
+];
+
+export const BIOME_PLACEMENT_PRESETS = [
+  {
+    id: 'meadow_hillside',
+    name: 'Meadow Hillside',
+    biomeId: 'whispering_meadows',
+    coordinates: { x: -26, y: 2.2, z: -12 }
+  },
+  {
+    id: 'orchard_clearing',
+    name: 'Orchard Clearing',
+    biomeId: 'whispering_meadows',
+    coordinates: { x: -14, y: 2.0, z: -26 }
+  },
+  {
+    id: 'lagoon_shore',
+    name: 'Lagoon Shore',
+    biomeId: 'sunken_lagoon',
+    coordinates: { x: 22, y: 1.8, z: -16 }
+  },
+  {
+    id: 'waterfall_bluff',
+    name: 'Waterfall Bluff',
+    biomeId: 'sunken_lagoon',
+    coordinates: { x: 34, y: 2.5, z: -22 }
+  },
+  {
+    id: 'volcano_ridge',
+    name: 'Volcano Ridge',
+    biomeId: 'molten_volcano',
+    coordinates: { x: -24, y: 3.8, z: 22 }
+  },
+  {
+    id: 'forge_cavern',
+    name: 'Forge Cavern Entrance',
+    biomeId: 'molten_volcano',
+    coordinates: { x: -12, y: 3.5, z: 28 }
+  },
+  {
+    id: 'summit_peak',
+    name: 'Starlight Summit Peak',
+    biomeId: 'crystal_summit',
+    coordinates: { x: 26, y: 6.2, z: 24 }
+  },
+  {
+    id: 'crystal_plateau',
+    name: 'Crystal Plateau',
+    biomeId: 'crystal_summit',
+    coordinates: { x: 14, y: 5.5, z: 32 }
+  }
+];
+
+export const SEASONS_DATA = {
+  spring: {
+    id: 'spring',
+    name: 'Spring Blossom',
+    icon: '🌸',
+    accentColor: '#2ecc71',
+    particleType: 'petal',
+    particleColor: '#86efac',
+    ambientSfx: 'birds',
+    description: 'Drifting petals and brisk morning birdsong across the meadows'
+  },
+  summer: {
+    id: 'summer',
+    name: 'Summer Sunbeams',
+    icon: '☀️',
+    accentColor: '#ffb961',
+    particleType: 'sunbeam',
+    particleColor: '#ffb961',
+    ambientSfx: 'breeze',
+    description: 'Radiant golden sunbeams and sparkling lagoon water reflections'
+  },
+  autumn: {
+    id: 'autumn',
+    name: 'Autumn Harvest',
+    icon: '🍂',
+    accentColor: '#f39c12',
+    particleType: 'leaf',
+    particleColor: '#f39c12',
+    ambientSfx: 'leaves',
+    description: 'Golden amber harvest leaves swirling across the terrain'
+  },
+  winter: {
+    id: 'winter',
+    name: 'Winter Frost & Aurora',
+    icon: '❄️',
+    accentColor: '#00d2d3',
+    particleType: 'snow',
+    particleColor: '#e0f2fe',
+    auroraColors: ['#2ecc71', '#00d2d3', '#38bdf8'],
+    ambientSfx: 'wind',
+    description: 'Crystalline snowflakes and emerald-cyan aurora ribbons in the night sky'
+  }
+};
+

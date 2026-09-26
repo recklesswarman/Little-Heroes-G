@@ -15,7 +15,9 @@ import {
   WORLD_BIOMES,
   PATH_OF_VALOR_WAYPOINTS,
   SECRET_SHRINES,
-  TOY_BOX_ENTITIES
+  TOY_BOX_ENTITIES,
+  LANDMARK_ARCHETYPES,
+  SEASONS_DATA
 } from '../data/worldMapData.js';
 import { registerActiveCanvas } from '../utils/activeViewCanvasRegistry.js';
 
@@ -60,6 +62,8 @@ export class WorldAdventureMapCanvas {
     this.stars = []; // sky stars
     this.clouds = []; // sky clouds
     this.floatingNotes = []; // chime particles
+    this.seasonalParticles = []; // seasonal weather particles (petals, leaves, snow)
+    this.lighthouseBeamAngle = 0;
 
     // Hero & Pet Walking Path State
     this.heroPos = { x: -28, y: 1.5, z: -28 };
@@ -104,6 +108,19 @@ export class WorldAdventureMapCanvas {
       y: Math.random() * 8 + 1,
       z: (Math.random() - 0.5) * 80,
       speed: Math.random() * 0.8 + 0.4,
+      phase: Math.random() * Math.PI * 2
+    }));
+
+    // Generate 45 seasonal 3D weather particles
+    this.seasonalParticles = Array.from({ length: 45 }, () => ({
+      x: (Math.random() - 0.5) * 90,
+      y: Math.random() * 25 + 5,
+      z: (Math.random() - 0.5) * 90,
+      vx: (Math.random() - 0.5) * 0.4,
+      vy: Math.random() * 0.3 + 0.15,
+      rot: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - 0.5) * 0.06,
+      size: Math.random() * 3.5 + 2,
       phase: Math.random() * Math.PI * 2
     }));
   }
@@ -246,8 +263,40 @@ export class WorldAdventureMapCanvas {
         this.tapParentChest(target.data);
         break;
 
+      case 'custom_landmark':
+        this.tapCustomLandmark(target.data, target.screenX, target.screenY);
+        break;
+
       default:
         break;
+    }
+  }
+
+  tapCustomLandmark(landmark, screenX, screenY) {
+    if (typeof Sound?.fanfare === 'function') Sound.fanfare();
+    else if (typeof Sound?.chirp === 'function') Sound.chirp();
+
+    const res = store.interactWithCustomLandmark(landmark.id);
+
+    // Floating text particle
+    this.floatingNotes.push({
+      x: screenX,
+      y: screenY - 20,
+      vy: -1.6,
+      life: 1.2,
+      text: `🌟 +${landmark.rewardCoins || 25} Coins & +${landmark.rewardSparks || 10} Sparks!`,
+      color: landmark.color || '#2ecc71'
+    });
+
+    if (this.options.onLandmarkClick) {
+      this.options.onLandmarkClick(landmark, res);
+    } else {
+      store.showReward(
+        landmark.name || 'AI Hero Landmark',
+        `${landmark.description}\n\n"${landmark.voiceLine || 'Great job exploring!'}"`,
+        landmark.rewardCoins || 25,
+        Math.round((landmark.rewardCoins || 25) / 2)
+      );
     }
   }
 
@@ -438,6 +487,45 @@ export class WorldAdventureMapCanvas {
       }
     }
 
+    // Update Lighthouse beam angle
+    this.lighthouseBeamAngle = (this.lighthouseBeamAngle || 0) + dt * 0.0018;
+
+    // Update Seasonal Weather Particles
+    const season = store.getEffectiveSeason();
+    if (this.seasonalParticles && this.seasonalParticles.length > 0) {
+      this.seasonalParticles.forEach((sp) => {
+        if (season === 'spring') {
+          sp.x += Math.cos(this.time + sp.phase) * 0.15 + 0.1;
+          sp.y -= 0.08;
+          sp.z += Math.sin(this.time + sp.phase) * 0.12;
+          sp.rot += sp.rotSpeed;
+          if (sp.y <= 0) sp.y = 25;
+        } else if (season === 'summer') {
+          sp.y += 0.06;
+          sp.x += Math.sin(this.time * 2 + sp.phase) * 0.08;
+          if (sp.y >= 30) sp.y = 2;
+        } else if (season === 'autumn') {
+          sp.x += 0.22 + Math.cos(this.time * 1.5 + sp.phase) * 0.18;
+          sp.y -= 0.14;
+          sp.z += Math.sin(this.time * 1.5 + sp.phase) * 0.15;
+          sp.rot += sp.rotSpeed * 2;
+          if (sp.y <= 0) {
+            sp.y = 28;
+            sp.x = (Math.random() - 0.5) * 90;
+          }
+        } else if (season === 'winter') {
+          sp.x += Math.sin(this.time + sp.phase) * 0.06;
+          sp.y -= 0.12;
+          sp.z += Math.cos(this.time + sp.phase) * 0.06;
+          sp.rot += sp.rotSpeed * 0.5;
+          if (sp.y <= 0) {
+            sp.y = 26;
+            sp.x = (Math.random() - 0.5) * 90;
+          }
+        }
+      });
+    }
+
     // Hero & Pet Path Walking Lerp
     const waypoints = PATH_OF_VALOR_WAYPOINTS;
     const targetWp = waypoints[this.targetWaypointIdx] || waypoints[0];
@@ -476,8 +564,9 @@ export class WorldAdventureMapCanvas {
 
     // 7. Draw Mystery Chests & Custom Landmarks
     this.drawParentStashes();
+    this.drawCustomLandmarks();
 
-    // 8. Draw Atmosphere Particles (Fireflies / Splashes / Floating Text)
+    // 8. Draw Atmosphere Particles (Fireflies / Splashes / Floating Text / Seasonal Weather)
     this.drawAtmosphere(timeOfDay);
   }
 
@@ -519,6 +608,47 @@ export class WorldAdventureMapCanvas {
       }
       ctx.globalAlpha = 1.0;
     }
+
+    // Draw Aurora Borealis in winter night/bedtime
+    const currentSeason = store.getEffectiveSeason();
+    if (currentSeason === 'winter' && (timeOfDay === 'bedtime' || timeOfDay === 'sunset' || store.getWorldAdventureMapState().bedtimeLullabyActive)) {
+      this.drawAurora();
+    }
+  }
+
+  drawAurora() {
+    const ctx = this.ctx;
+    ctx.save();
+    for (let layer = 0; layer < 3; layer++) {
+      ctx.beginPath();
+      ctx.moveTo(0, this.height * 0.12 + layer * 16);
+      for (let x = 0; x <= this.width; x += 40) {
+        const wave = Math.sin(x * 0.007 + this.time * 1.5 + layer * 1.2) * 22
+                   + Math.cos(x * 0.014 - this.time * 0.8) * 12;
+        ctx.lineTo(x, this.height * 0.16 + wave + layer * 16);
+      }
+      ctx.lineTo(this.width, 0);
+      ctx.lineTo(0, 0);
+      ctx.closePath();
+
+      const auroraGrad = ctx.createLinearGradient(0, 0, 0, this.height * 0.35);
+      if (layer === 0) {
+        auroraGrad.addColorStop(0, 'rgba(46, 204, 113, 0)');
+        auroraGrad.addColorStop(0.5, 'rgba(46, 204, 113, 0.22)');
+        auroraGrad.addColorStop(1, 'rgba(0, 210, 211, 0)');
+      } else if (layer === 1) {
+        auroraGrad.addColorStop(0, 'rgba(0, 210, 211, 0)');
+        auroraGrad.addColorStop(0.5, 'rgba(0, 210, 211, 0.28)');
+        auroraGrad.addColorStop(1, 'rgba(56, 189, 248, 0)');
+      } else {
+        auroraGrad.addColorStop(0, 'rgba(56, 189, 248, 0)');
+        auroraGrad.addColorStop(0.5, 'rgba(134, 239, 172, 0.18)');
+        auroraGrad.addColorStop(1, 'rgba(46, 204, 113, 0)');
+      }
+      ctx.fillStyle = auroraGrad;
+      ctx.fill();
+    }
+    ctx.restore();
   }
 
   drawIslandBase() {
@@ -944,8 +1074,266 @@ export class WorldAdventureMapCanvas {
     });
   }
 
+  drawCustomLandmarks() {
+    const ctx = this.ctx;
+    const mapState = store.getWorldAdventureMapState();
+    const landmarks = mapState.customLandmarks || [];
+
+    landmarks.forEach((landmark) => {
+      const coords = landmark.coordinates || { x: 0, y: 2, z: 0 };
+      const p = this.project3D(coords.x, coords.y, coords.z);
+
+      ctx.save();
+      ctx.translate(p.screenX, p.screenY);
+      ctx.scale(p.scale, p.scale);
+
+      const color = landmark.color || '#2ecc71';
+      const type = landmark.type || 'fort';
+
+      // 1. Soft Ground Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 16, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 2. Archetype Geometry
+      if (type === 'fort') {
+        // Stone Fortress Tower
+        ctx.fillStyle = '#1c3144';
+        ctx.fillRect(-12, -28, 24, 28);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-12, -28, 24, 28);
+
+        // Crenellations (battlements)
+        ctx.fillStyle = color;
+        [-12, -4, 4].forEach(bx => {
+          ctx.fillRect(bx, -34, 6, 6);
+        });
+
+        // Slit Window
+        ctx.fillStyle = '#ffb961';
+        ctx.fillRect(-2, -18, 4, 8);
+
+        // Pennant flag waving in wind
+        const wave = Math.sin(this.time * 6) * 4;
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(1, -34);
+        ctx.lineTo(14, -30 + wave);
+        ctx.lineTo(1, -26);
+        ctx.closePath();
+        ctx.fill();
+
+      } else if (type === 'lighthouse') {
+        // Beacon Tower (Striped)
+        ctx.fillStyle = '#0b2536';
+        ctx.beginPath();
+        ctx.moveTo(-10, 0);
+        ctx.lineTo(10, 0);
+        ctx.lineTo(6, -36);
+        ctx.lineTo(-6, -36);
+        ctx.closePath();
+        ctx.fill();
+
+        // Stripes
+        ctx.fillStyle = color;
+        ctx.fillRect(-8, -12, 16, 6);
+        ctx.fillRect(-7, -26, 14, 6);
+
+        // Lantern Room
+        ctx.fillStyle = '#ffb961';
+        ctx.fillRect(-6, -42, 12, 6);
+
+        // Rotating Beacon Light Cone
+        const beamAngle = this.lighthouseBeamAngle;
+        const beamDx = Math.cos(beamAngle) * 60;
+        const beamDy = Math.sin(beamAngle) * 20;
+
+        ctx.save();
+        const beamGrad = ctx.createRadialGradient(0, -39, 2, beamDx, -39 + beamDy, 70);
+        beamGrad.addColorStop(0, 'rgba(255, 185, 97, 0.7)');
+        beamGrad.addColorStop(0.6, 'rgba(0, 210, 211, 0.2)');
+        beamGrad.addColorStop(1, 'rgba(0, 210, 211, 0)');
+        ctx.fillStyle = beamGrad;
+        ctx.beginPath();
+        ctx.moveTo(0, -39);
+        ctx.lineTo(beamDx - 20, -39 + beamDy - 15);
+        ctx.lineTo(beamDx + 20, -39 + beamDy + 15);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+
+      } else if (type === 'observatory') {
+        // Dome Base
+        ctx.fillStyle = '#1c3144';
+        ctx.fillRect(-12, -14, 24, 14);
+
+        // Observatory Spherical Dome
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(0, -14, 14, Math.PI, 0);
+        ctx.fill();
+        ctx.strokeStyle = '#050f18';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Brass Telescope Tube
+        ctx.save();
+        ctx.rotate(-0.5 + Math.sin(this.time * 2) * 0.08);
+        ctx.fillStyle = '#ffb961';
+        ctx.fillRect(-3, -32, 6, 20);
+        ctx.restore();
+
+      } else if (type === 'fossil_dig') {
+        // Pit Rim
+        ctx.fillStyle = '#3a200a';
+        ctx.beginPath();
+        ctx.ellipse(0, -2, 18, 9, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Dino Footprint
+        ctx.fillStyle = '#1a0e04';
+        [-6, 0, 6].forEach((ox, i) => {
+          ctx.beginPath();
+          ctx.ellipse(ox, -4 + (i === 1 ? -2 : 1), 2.5, 4.5, 0, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 6, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Fossil Rib Bones
+        ctx.strokeStyle = '#fef08a';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(-8, -6, 6, 0.2, Math.PI - 0.2);
+        ctx.arc(8, -6, 6, 0.2, Math.PI - 0.2);
+        ctx.stroke();
+
+      } else if (type === 'launchpad') {
+        // Gantry Tower
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-16, -32, 6, 32);
+
+        // Rocket Fuselage
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(-5, -26, 10, 22);
+
+        // Fins
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(-5, -10);
+        ctx.lineTo(-10, -4);
+        ctx.lineTo(-5, -4);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.moveTo(5, -10);
+        ctx.lineTo(10, -4);
+        ctx.lineTo(5, -4);
+        ctx.closePath();
+        ctx.fill();
+
+        // Nose Cone
+        ctx.fillStyle = '#f39c12';
+        ctx.beginPath();
+        ctx.moveTo(-5, -26);
+        ctx.lineTo(0, -35);
+        ctx.lineTo(5, -26);
+        ctx.closePath();
+        ctx.fill();
+
+      } else if (type === 'crystal_tree') {
+        // Crystal Spire Trunk
+        ctx.fillStyle = '#064e3b';
+        ctx.fillRect(-3, -12, 6, 12);
+
+        // Faceted Gems
+        const gemPulse = Math.sin(this.time * 4) * 2;
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(0, -32 + gemPulse);
+        ctx.lineTo(14, -18);
+        ctx.lineTo(0, -8);
+        ctx.lineTo(-14, -18);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#a7f3d0';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+      } else {
+        // Hearth Cabin
+        ctx.fillStyle = '#78350f';
+        ctx.fillRect(-14, -14, 28, 14);
+
+        // Pitched Roof
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(-16, -14);
+        ctx.lineTo(0, -28);
+        ctx.lineTo(16, -14);
+        ctx.closePath();
+        ctx.fill();
+
+        // Stone Chimney
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(6, -26, 5, 12);
+
+        // Chimney Smoke Puff
+        const smokeOffset = (this.time * 20) % 16;
+        const smokeAlpha = 1 - (smokeOffset / 16);
+        ctx.fillStyle = `rgba(226, 232, 240, ${smokeAlpha})`;
+        ctx.beginPath();
+        ctx.arc(8.5, -28 - smokeOffset, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Glowing Window
+        ctx.fillStyle = '#ffb961';
+        ctx.fillRect(-4, -10, 8, 6);
+      }
+
+      // 3. Floating Landmark Name & Icon Badge
+      ctx.fillStyle = '#09141e';
+      ctx.fillRect(-28, -48, 56, 14);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(-28, -48, 56, 14);
+
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = 'bold 8px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const labelText = landmark.name.length > 10 ? landmark.name.slice(0, 9) + '…' : landmark.name;
+      ctx.fillText(labelText, 0, -41);
+
+      ctx.restore();
+
+      // 4. Hit target registration
+      this.renderedHitTargets.push({
+        type: 'custom_landmark',
+        id: landmark.id,
+        data: landmark,
+        screenX: p.screenX,
+        screenY: p.screenY - 20 * p.scale,
+        radius: 28 * p.scale,
+        depth: p.depth
+      });
+    });
+  }
+
   drawAtmosphere(timeOfDay) {
     const ctx = this.ctx;
+
+    // Draw Seasonal Weather Particles & Sunbeams
+    const currentSeason = store.getEffectiveSeason();
+    this.drawSeasonalWeather(currentSeason);
 
     // Draw Water Splash Droplets
     for (const s of this.splashes) {
@@ -985,6 +1373,83 @@ export class WorldAdventureMapCanvas {
         ctx.fill();
         ctx.shadowBlur = 0;
       }
+      ctx.globalAlpha = 1.0;
+    }
+  }
+
+  drawSeasonalWeather(season) {
+    const ctx = this.ctx;
+
+    if (season === 'summer') {
+      // Golden Sunbeams Radiating from Sky
+      ctx.save();
+      const numRays = 5;
+      const sunCenterX = this.width * 0.8;
+      const sunCenterY = this.height * 0.12;
+
+      for (let i = 0; i < numRays; i++) {
+        const rayAngle = (i / numRays) * 0.9 + Math.PI * 0.55 + Math.sin(this.time * 0.8 + i) * 0.05;
+        const rayLength = this.height * 0.85;
+        const rx1 = sunCenterX + Math.cos(rayAngle - 0.08) * rayLength;
+        const ry1 = sunCenterY + Math.sin(rayAngle - 0.08) * rayLength;
+        const rx2 = sunCenterX + Math.cos(rayAngle + 0.08) * rayLength;
+        const ry2 = sunCenterY + Math.sin(rayAngle + 0.08) * rayLength;
+
+        const rayGrad = ctx.createLinearGradient(sunCenterX, sunCenterY, (rx1 + rx2) / 2, (ry1 + ry2) / 2);
+        rayGrad.addColorStop(0, 'rgba(255, 185, 97, 0.18)');
+        rayGrad.addColorStop(0.7, 'rgba(255, 185, 97, 0.06)');
+        rayGrad.addColorStop(1, 'rgba(255, 185, 97, 0)');
+
+        ctx.fillStyle = rayGrad;
+        ctx.beginPath();
+        ctx.moveTo(sunCenterX, sunCenterY);
+        ctx.lineTo(rx1, ry1);
+        ctx.lineTo(rx2, ry2);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // 3D Projected Particles: Petals (Spring), Leaves (Autumn), Snow (Winter)
+    if (this.seasonalParticles && this.seasonalParticles.length > 0) {
+      this.seasonalParticles.forEach((sp) => {
+        const p = this.project3D(sp.x, sp.y, sp.z);
+        if (p.screenX < -20 || p.screenX > this.width + 20 || p.screenY < -20 || p.screenY > this.height + 20) return;
+
+        ctx.save();
+        ctx.translate(p.screenX, p.screenY);
+        ctx.rotate(sp.rot);
+        ctx.scale(p.scale, p.scale);
+
+        if (season === 'spring') {
+          // Mint & Blossom Petal
+          ctx.fillStyle = '#86efac';
+          ctx.globalAlpha = 0.75;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, sp.size * 1.5, sp.size * 0.8, 0, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (season === 'autumn') {
+          // Amber Harvest Leaf
+          ctx.fillStyle = sp.phase > Math.PI ? '#f39c12' : '#e67e22';
+          ctx.globalAlpha = 0.85;
+          ctx.beginPath();
+          ctx.moveTo(0, -sp.size * 1.6);
+          ctx.lineTo(sp.size, 0);
+          ctx.lineTo(0, sp.size * 1.6);
+          ctx.lineTo(-sp.size, 0);
+          ctx.closePath();
+          ctx.fill();
+        } else if (season === 'winter') {
+          // Crystalline Snowflake
+          ctx.fillStyle = '#e0f2fe';
+          ctx.globalAlpha = 0.8;
+          ctx.beginPath();
+          ctx.arc(0, 0, sp.size * 0.9, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      });
       ctx.globalAlpha = 1.0;
     }
   }

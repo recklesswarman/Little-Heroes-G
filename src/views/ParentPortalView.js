@@ -11,6 +11,12 @@ import { firebaseAI, SPLINE_3D_PRESETS } from '../services/firebaseAILogicServic
 import { COLOR_DYES, formatStatBonusName } from '../data/petGearStudioData.js';
 import { THREE_D_ASSETS, getThreeDAssetsByCategory, matchBestThreeDAsset } from '../data/threeDAssetCatalog.js';
 import { registerActiveCanvas } from '../utils/activeViewCanvasRegistry.js';
+import {
+  LANDMARK_ARCHETYPES,
+  BIOME_PLACEMENT_PRESETS,
+  WORLD_BIOMES,
+  SEASONS_DATA
+} from '../data/worldMapData.js';
 
 let activeAdminTab = 'approvals'; // approvals, screentime, reports, kids, tasks, rewards, pricing, studio, analytics, settings
 export function setActiveAdminTab(tab) {
@@ -86,6 +92,13 @@ let isRecordingVoice = false;
 let studioUploadedImageBase64 = null;
 let isChildEyePreviewOpen = false;
 let studioSpeechRecognition = null;
+
+// World Stash & 3D Landmark Studio State
+let studioWorldStashMode = 'landmark'; // 'landmark', 'mystery_stash'
+let studioLandmarkArchetype = 'fort'; // 'fort', 'lighthouse', 'observatory', 'fossil_dig', 'launchpad', 'crystal_tree', 'hearth_cabin'
+let studioLandmarkPreset = 'meadow_hillside'; // Preset from BIOME_PLACEMENT_PRESETS
+let studioLandmarkCoins = 40;
+let studioLandmarkSparks = 15;
 
 let activeStudioCanvasInstance = null;
 let activeStudioAnimFrame = null;
@@ -2316,6 +2329,112 @@ export function renderParentPortalView() {
                     <input id="studio-food-quantity-slider" type="range" min="1" max="10" step="1" value="${studioFoodQuantity}" class="w-full accent-secondary mt-1.5" />
                   </div>
                 </div>
+              ` : studioActiveCategory === 'world_stash' ? `
+                <div class="p-4 bg-surface-container-high/70 rounded-2xl border-2 border-secondary/30 flex flex-col gap-3.5">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-black uppercase text-secondary flex items-center gap-1.5">
+                      <span class="material-symbols-outlined text-sm">explore</span>
+                      <span>3D World Map Island Configuration</span>
+                    </span>
+                    <span class="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-400/20 text-emerald-400 border border-emerald-400/40">
+                      ${studioWorldStashMode === 'landmark' ? '3D AI Landmark' : 'Secret Mystery Stash'}
+                    </span>
+                  </div>
+
+                  <!-- Mode Switcher: 3D Landmark vs Mystery Stash -->
+                  <div class="grid grid-cols-2 gap-2 bg-[#09141e] p-1 rounded-xl border border-surface-container-highest">
+                    <button type="button" class="studio-world-mode-btn py-2 px-3 rounded-lg text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer ${studioWorldStashMode === 'landmark' ? 'bg-[#2ecc71] text-[#050f18] shadow' : 'text-slate-400 hover:text-white'}" data-mode="landmark">
+                      <span>🏰</span>
+                      <span>3D Landmark</span>
+                    </button>
+                    <button type="button" class="studio-world-mode-btn py-2 px-3 rounded-lg text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer ${studioWorldStashMode === 'mystery_stash' ? 'bg-[#f39c12] text-[#050f18] shadow' : 'text-slate-400 hover:text-white'}" data-mode="mystery_stash">
+                      <span>📦</span>
+                      <span>Streak Stash Crate</span>
+                    </button>
+                  </div>
+
+                  ${studioWorldStashMode === 'landmark' ? `
+                    <!-- Landmark Archetype Selector -->
+                    <div>
+                      <label class="text-[10px] font-black uppercase text-on-surface-variant">Landmark Archetype</label>
+                      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-1.5">
+                        ${LANDMARK_ARCHETYPES.map(arch => `
+                          <button type="button" class="studio-landmark-arch-btn p-2 rounded-xl border flex items-center gap-1.5 text-xs font-black transition-all cursor-pointer ${studioLandmarkArchetype === arch.type ? 'bg-[#2ecc71]/20 border-[#2ecc71] text-white' : 'bg-surface-container border-surface-container-highest text-slate-400 hover:text-white'}" data-arch="${arch.type}">
+                            <span>${arch.emoji}</span>
+                            <span class="truncate">${arch.name.split(' ')[0]}</span>
+                          </button>
+                        `).join('')}
+                      </div>
+                    </div>
+
+                    <!-- Landmark Location Preset Selector -->
+                    <div>
+                      <label class="text-[10px] font-black uppercase text-on-surface-variant">Island Location & Biome</label>
+                      <select id="studio-landmark-preset-select" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface mt-1 focus:outline-none focus:border-secondary">
+                        ${BIOME_PLACEMENT_PRESETS.map(preset => `
+                          <option value="${preset.id}" ${studioLandmarkPreset === preset.id ? 'selected' : ''}>
+                            ${preset.name} (${preset.biomeId.replace('_', ' ')})
+                          </option>
+                        `).join('')}
+                      </select>
+                    </div>
+
+                    <!-- Token & Spark Rewards -->
+                    <div class="grid grid-cols-2 gap-3">
+                      <div>
+                        <div class="flex items-center justify-between">
+                          <label class="text-[10px] font-black uppercase text-on-surface-variant">Explorer Tokens</label>
+                          <span id="studio-landmark-coins-val" class="text-xs font-black text-secondary">🪙 ${studioLandmarkCoins}</span>
+                        </div>
+                        <input id="studio-landmark-coins-slider" type="range" min="15" max="100" step="5" value="${studioLandmarkCoins}" class="w-full accent-secondary mt-1.5" />
+                      </div>
+                      <div>
+                        <div class="flex items-center justify-between">
+                          <label class="text-[10px] font-black uppercase text-on-surface-variant">Companion Sparks</label>
+                          <span id="studio-landmark-sparks-val" class="text-xs font-black text-secondary">⚡ ${studioLandmarkSparks}</span>
+                        </div>
+                        <input id="studio-landmark-sparks-slider" type="range" min="5" max="50" step="5" value="${studioLandmarkSparks}" class="w-full accent-secondary mt-1.5" />
+                      </div>
+                    </div>
+                  ` : `
+                    <!-- Mystery Stash Streak Requirement & Bounty -->
+                    <div>
+                      <div class="flex items-center justify-between">
+                        <label class="text-[10px] font-black uppercase text-on-surface-variant">Required Habit Streak to Unlock</label>
+                        <span id="studio-stash-streak-val" class="text-xs font-black text-amber-400">🔥 ${studioBountyStreakDays}-Day Streak</span>
+                      </div>
+                      <input id="studio-stash-streak-slider" type="range" min="1" max="14" step="1" value="${studioBountyStreakDays}" class="w-full accent-amber-400 mt-1.5" />
+                    </div>
+
+                    <div>
+                      <label class="text-[10px] font-black uppercase text-on-surface-variant">Island Biome</label>
+                      <select id="studio-stash-biome-select" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface mt-1 focus:outline-none focus:border-secondary">
+                        <option value="whispering_meadows">Whispering Meadows (Morning)</option>
+                        <option value="sunken_lagoon">Sunken Lagoon (Afternoon)</option>
+                        <option value="molten_volcano">Molten Volcano (Evening)</option>
+                        <option value="crystal_summit">Crystal Summit (Bedtime)</option>
+                      </select>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                      <div>
+                        <div class="flex items-center justify-between">
+                          <label class="text-[10px] font-black uppercase text-on-surface-variant">Chest Token Bounty</label>
+                          <span class="text-xs font-black text-secondary">🪙 ${studioItemPrice || 100}</span>
+                        </div>
+                        <input id="studio-stash-coins-slider" type="range" min="50" max="300" step="25" value="${studioItemPrice || 100}" class="w-full accent-secondary mt-1.5" />
+                      </div>
+                      <div>
+                        <div class="flex items-center justify-between">
+                          <label class="text-[10px] font-black uppercase text-on-surface-variant">Companion Sparks</label>
+                          <span class="text-xs font-black text-secondary">⚡ 50</span>
+                        </div>
+                        <input type="range" min="20" max="100" step="10" value="50" disabled class="w-full accent-secondary mt-1.5 opacity-60" />
+                      </div>
+                    </div>
+                  `}
+
+                </div>
               ` : `
                 <div class="p-4 bg-surface-container-high/70 rounded-2xl border-2 border-secondary/30 flex flex-col gap-3">
                   <div class="flex items-center justify-between">
@@ -2664,6 +2783,74 @@ export function renderParentPortalView() {
                       </div>
                     </div>
                   `).join('')}
+                </div>
+              `}
+            </div>
+
+            <!-- 6. Published 3D Map Stashes & Landmarks Section -->
+            <div class="flex flex-col gap-3 pt-3 border-t border-surface-container-highest">
+              <h4 class="text-xs font-black text-secondary uppercase tracking-wider flex items-center justify-between">
+                <span class="flex items-center gap-1.5">
+                  <span>🗺️</span>
+                  <span>Published 3D Map Stashes & Landmarks (${(store.getWorldAdventureMapState().parentHiddenChests || []).length + (store.getWorldAdventureMapState().customLandmarks || []).length})</span>
+                </span>
+              </h4>
+              ${((store.getWorldAdventureMapState().parentHiddenChests || []).length === 0 && (store.getWorldAdventureMapState().customLandmarks || []).length === 0) ? `
+                <p class="text-xs text-on-surface-variant italic">No secret stashes or landmarks published to the 3D map yet.</p>
+              ` : `
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <!-- Parent Hidden Chests -->
+                  ${(store.getWorldAdventureMapState().parentHiddenChests || []).map(chest => `
+                    <div class="p-3.5 rounded-2xl bg-surface-container-high border-2 border-amber-400/30 shadow-md flex flex-col justify-between gap-2.5">
+                      <div class="flex items-start gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-400/40 flex items-center justify-center text-xl shadow shrink-0">
+                          📦
+                        </div>
+                        <div class="min-w-0 flex-1">
+                          <div class="flex items-center gap-1.5">
+                            <span class="px-2 py-0.2 rounded-full text-[9px] font-black uppercase bg-amber-400/20 text-amber-300 border border-amber-400/30">Mystery Stash</span>
+                            <span class="text-[9px] font-black uppercase text-secondary">🔥 ${chest.requiredStreak}-Day Streak</span>
+                          </div>
+                          <h5 class="font-headline text-xs font-black text-inverse-surface truncate mt-0.5">${chest.title}</h5>
+                          <p class="text-[10px] text-slate-400 truncate">${chest.description}</p>
+                        </div>
+                      </div>
+                      <div class="flex items-center justify-between pt-1.5 border-t border-surface-container-highest">
+                        <span class="text-[10px] font-black text-amber-400">🪙 +${chest.rewardCoins} • ⚡ +${chest.rewardSparks}</span>
+                        <button class="delete-parent-chest-btn text-error hover:bg-error/15 p-1 rounded-lg" data-chest-id="${chest.id}" title="Delete Stash">
+                          <span class="material-symbols-outlined text-sm">delete</span>
+                        </button>
+                      </div>
+                    </div>
+                  `).join('')}
+
+                  <!-- Custom 3D Landmarks -->
+                  ${(store.getWorldAdventureMapState().customLandmarks || []).map(landmark => {
+                    const arch = LANDMARK_ARCHETYPES.find(a => a.type === landmark.type) || { emoji: '🏰', name: 'Landmark' };
+                    return `
+                      <div class="p-3.5 rounded-2xl bg-surface-container-high border-2 border-emerald-400/30 shadow-md flex flex-col justify-between gap-2.5">
+                        <div class="flex items-start gap-3">
+                          <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 flex items-center justify-center text-xl shadow shrink-0">
+                            ${arch.emoji}
+                          </div>
+                          <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-1.5">
+                              <span class="px-2 py-0.2 rounded-full text-[9px] font-black uppercase bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">3D Landmark</span>
+                              <span class="text-[9px] font-black uppercase text-secondary">${arch.name.split(' ')[0]}</span>
+                            </div>
+                            <h5 class="font-headline text-xs font-black text-inverse-surface truncate mt-0.5">${landmark.name}</h5>
+                            <p class="text-[10px] text-slate-400 truncate">${landmark.description}</p>
+                          </div>
+                        </div>
+                        <div class="flex items-center justify-between pt-1.5 border-t border-surface-container-highest">
+                          <span class="text-[10px] font-black text-emerald-400">🪙 +${landmark.rewardCoins} • ⚡ +${landmark.rewardSparks}</span>
+                          <button class="delete-custom-landmark-btn text-error hover:bg-error/15 p-1 rounded-lg" data-landmark-id="${landmark.id}" title="Delete Landmark">
+                            <span class="material-symbols-outlined text-sm">delete</span>
+                          </button>
+                        </div>
+                      </div>
+                    `;
+                  }).join('')}
                 </div>
               `}
             </div>
@@ -5565,6 +5752,64 @@ export function attachParentPortalListeners() {
       });
     }
 
+    // World Stash & 3D Landmark Form Controls
+    document.querySelectorAll('.studio-world-mode-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        studioWorldStashMode = btn.getAttribute('data-mode') || 'landmark';
+        Sound.tap();
+        store.notify();
+      });
+    });
+
+    document.querySelectorAll('.studio-landmark-arch-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        studioLandmarkArchetype = btn.getAttribute('data-arch') || 'fort';
+        const arch = LANDMARK_ARCHETYPES.find(a => a.type === studioLandmarkArchetype);
+        if (arch) {
+          studioItemName = arch.name;
+          studioItemDesc = arch.description;
+        }
+        Sound.tap();
+        store.notify();
+      });
+    });
+
+    const landmarkPresetSelect = document.getElementById('studio-landmark-preset-select');
+    if (landmarkPresetSelect) {
+      landmarkPresetSelect.addEventListener('change', (e) => {
+        studioLandmarkPreset = e.target.value;
+      });
+    }
+
+    const landmarkCoinsSlider = document.getElementById('studio-landmark-coins-slider');
+    if (landmarkCoinsSlider) {
+      landmarkCoinsSlider.addEventListener('input', (e) => {
+        studioLandmarkCoins = parseInt(e.target.value, 10) || 40;
+        const val = document.getElementById('studio-landmark-coins-val');
+        if (val) val.textContent = `🪙 ${studioLandmarkCoins}`;
+      });
+    }
+
+    const landmarkSparksSlider = document.getElementById('studio-landmark-sparks-slider');
+    if (landmarkSparksSlider) {
+      landmarkSparksSlider.addEventListener('input', (e) => {
+        studioLandmarkSparks = parseInt(e.target.value, 10) || 15;
+        const val = document.getElementById('studio-landmark-sparks-val');
+        if (val) val.textContent = `⚡ ${studioLandmarkSparks}`;
+      });
+    }
+
+    const stashStreakSlider = document.getElementById('studio-stash-streak-slider');
+    if (stashStreakSlider) {
+      stashStreakSlider.addEventListener('input', (e) => {
+        studioBountyStreakDays = parseInt(e.target.value, 10) || 3;
+        const val = document.getElementById('studio-stash-streak-val');
+        if (val) val.textContent = `🔥 ${studioBountyStreakDays}-Day Streak`;
+      });
+    }
+
     // 17. Unified AI Generate Button (Gemini 2.5 + Offline Fallback)
     const studioAiBtn = document.getElementById('studio-gear-ai-btn') || document.getElementById('studio-ai-btn');
     if (studioAiBtn) {
@@ -5747,18 +5992,41 @@ export function attachParentPortalListeners() {
           };
           store.publishCustomAIBoss(bossToPublish);
         } else if (studioActiveCategory === 'world_stash') {
-          const stashToPublish = {
-            id: `chest_parent_${Date.now()}`,
-            title: nameVal.trim() || 'Parent Mystery Stash',
-            description: descVal.trim() || 'Keep your streak alive to unlock this secret treasure!',
-            rewardCoins: studioItemPrice || 120,
-            rewardSparks: 50,
-            requiredStreak: studioBountyStreakDays || 3,
-            biomeId: 'whispering_meadows',
-            coordinates: { x: (Math.random() - 0.5) * 36, y: 2, z: (Math.random() - 0.5) * 36 }
-          };
-          store.placeParentWorldChest(stashToPublish);
-          store.showReward('Secret Stash Placed on 3D Map!', `Hidden with a ${stashToPublish.requiredStreak}-day streak requirement!`, 0, 0);
+          if (studioWorldStashMode === 'landmark') {
+            const preset = BIOME_PLACEMENT_PRESETS.find(p => p.id === studioLandmarkPreset) || BIOME_PLACEMENT_PRESETS[0];
+            const arch = LANDMARK_ARCHETYPES.find(a => a.type === studioLandmarkArchetype) || LANDMARK_ARCHETYPES[0];
+            const landmarkToPublish = {
+              id: `landmark_parent_${Date.now()}`,
+              name: nameVal.trim() || arch.name,
+              description: descVal.trim() || arch.description,
+              type: studioLandmarkArchetype,
+              biomeId: preset.biomeId,
+              icon: arch.icon,
+              color: arch.color,
+              coordinates: { ...preset.coordinates },
+              rewardCoins: studioLandmarkCoins || 40,
+              rewardSparks: studioLandmarkSparks || 15,
+              voiceLine: voiceVal.trim() || 'Welcome to our secret hero landmark!'
+            };
+            store.addCustomWorldLandmark(landmarkToPublish);
+            store.showReward('3D Landmark Placed on Island!', `Created ${landmarkToPublish.name} in ${preset.name}!`, 0, 0);
+          } else {
+            const biomeSelect = document.getElementById('studio-stash-biome-select')?.value || 'whispering_meadows';
+            const coinsVal = Number(document.getElementById('studio-stash-coins-slider')?.value) || studioItemPrice || 100;
+            const streakVal = Number(document.getElementById('studio-stash-streak-slider')?.value) || studioBountyStreakDays || 3;
+            const stashToPublish = {
+              id: `chest_parent_${Date.now()}`,
+              title: nameVal.trim() || 'Parent Mystery Stash',
+              description: descVal.trim() || `Keep your ${streakVal}-day streak alive to unlock this secret treasure!`,
+              rewardCoins: coinsVal,
+              rewardSparks: 50,
+              requiredStreak: streakVal,
+              biomeId: biomeSelect,
+              coordinates: { x: (Math.random() - 0.5) * 36, y: 2, z: (Math.random() - 0.5) * 36 }
+            };
+            store.placeParentWorldChest(stashToPublish);
+            store.showReward('Secret Stash Placed on 3D Map!', `Hidden with a ${stashToPublish.requiredStreak}-day streak requirement!`, 0, 0);
+          }
         }
       });
     }
@@ -5813,6 +6081,31 @@ export function attachParentPortalListeners() {
         if (store.setSelectedBossId) store.setSelectedBossId(bossId);
         Sound.tap();
         store.navigate('ar_battle');
+      }
+    });
+  });
+
+  document.querySelectorAll('.delete-parent-chest-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const chestId = btn.getAttribute('data-chest-id');
+      if (chestId) {
+        const mapState = store.getWorldAdventureMapState();
+        mapState.parentHiddenChests = (mapState.parentHiddenChests || []).filter(c => c.id !== chestId);
+        Sound.bloop();
+        store.saveState(true);
+        store.notify();
+      }
+    });
+  });
+
+  document.querySelectorAll('.delete-custom-landmark-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const landmarkId = btn.getAttribute('data-landmark-id');
+      if (landmarkId) {
+        Sound.bloop();
+        store.removeCustomWorldLandmark(landmarkId);
       }
     });
   });

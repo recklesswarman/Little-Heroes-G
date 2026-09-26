@@ -7277,6 +7277,7 @@ class Store {
     if (!this.state.worldAdventureMap) {
       this.state.worldAdventureMap = {
         activeTab: 'path',
+        season: 'auto',
         discoveredSecrets: [],
         parentHiddenChests: [
           {
@@ -7302,6 +7303,9 @@ class Store {
           chimesPlayed: 0
         }
       };
+    }
+    if (!this.state.worldAdventureMap.season) {
+      this.state.worldAdventureMap.season = 'auto';
     }
     return this.state.worldAdventureMap;
   }
@@ -7410,6 +7414,28 @@ class Store {
     return { success: true, chest };
   }
 
+  getEffectiveSeason() {
+    const mapState = this.getWorldAdventureMapState();
+    const season = mapState.season || mapState.islandSeason || 'auto';
+    if (season !== 'auto') return season;
+    const month = new Date().getMonth();
+    if (month >= 2 && month <= 4) return 'spring';
+    if (month >= 5 && month <= 7) return 'summer';
+    if (month >= 8 && month <= 10) return 'autumn';
+    return 'winter';
+  }
+
+  setIslandSeason(season = 'auto') {
+    const mapState = this.getWorldAdventureMapState();
+    mapState.season = season;
+    mapState.islandSeason = season;
+    if (typeof Sound?.chirp === 'function') Sound.chirp();
+    else if (typeof Sound?.tap === 'function') Sound.tap();
+    this.saveState(true);
+    this.notify();
+    return this.getEffectiveSeason();
+  }
+
   addCustomWorldLandmark(landmarkData) {
     const mapState = this.getWorldAdventureMapState();
     if (!mapState.customLandmarks) mapState.customLandmarks = [];
@@ -7418,10 +7444,17 @@ class Store {
       id: landmarkData.id || `landmark_${Date.now()}`,
       name: landmarkData.name || 'AI Starlight Landmark',
       description: landmarkData.description || 'A magical structure summoned by parent creativity!',
+      type: landmarkData.type || 'fort', // 'fort', 'lighthouse', 'observatory', 'fossil_dig', 'launchpad', 'crystal_tree', 'hearth_cabin'
       biomeId: landmarkData.biomeId || 'whispering_meadows',
-      icon: landmarkData.icon || 'fort',
+      icon: landmarkData.icon || 'castle',
       color: landmarkData.color || '#2ecc71',
-      coordinates: landmarkData.coordinates || { x: 10, y: 3, z: 10 },
+      coordinates: landmarkData.coordinates || { x: -26, y: 2.2, z: -12 },
+      rewardCoins: Number(landmarkData.rewardCoins) || 40,
+      rewardSparks: Number(landmarkData.rewardSparks) || 15,
+      voiceLine: landmarkData.voiceLine || 'Welcome to our secret hero landmark!',
+      interactedCount: 0,
+      claimed: false,
+      lastInteractedAt: null,
       createdAt: Date.now()
     };
 
@@ -7429,6 +7462,67 @@ class Store {
     this.saveState(true);
     this.notify();
     return landmark;
+  }
+
+  removeCustomWorldLandmark(landmarkId) {
+    const mapState = this.getWorldAdventureMapState();
+    if (!mapState.customLandmarks) return false;
+    const initialLen = mapState.customLandmarks.length;
+    mapState.customLandmarks = mapState.customLandmarks.filter(l => l.id !== landmarkId);
+    if (mapState.customLandmarks.length !== initialLen) {
+      this.saveState(true);
+      this.notify();
+      return true;
+    }
+    return false;
+  }
+
+  interactWithCustomLandmark(landmarkId) {
+    const mapState = this.getWorldAdventureMapState();
+    const landmark = (mapState.customLandmarks || []).find(l => l.id === landmarkId);
+    if (!landmark) return { success: false, reason: 'Landmark not found' };
+
+    const wasClaimed = Boolean(landmark.claimed);
+    landmark.interactedCount = (landmark.interactedCount || 0) + 1;
+    landmark.lastInteractedAt = Date.now();
+
+    if (wasClaimed) {
+      if (typeof Sound?.tap === 'function') Sound.tap();
+      return {
+        success: true,
+        alreadyClaimed: true,
+        landmark,
+        rewardCoins: 0,
+        rewardSparks: 0,
+        voiceLine: landmark.voiceLine
+      };
+    }
+
+    landmark.claimed = true;
+    const hero = this.state.selectedHero;
+    const coinsAwarded = landmark.rewardCoins || 25;
+    const sparksAwarded = landmark.rewardSparks || 10;
+
+    hero.coins = (hero.coins || 0) + coinsAwarded;
+    hero.points = (hero.points || 0) + Math.round(coinsAwarded / 2);
+
+    const pId = String(hero.activePetId || '1');
+    this.addPetSparks(pId, sparksAwarded);
+
+    if (typeof Sound?.fanfare === 'function') Sound.fanfare();
+    else if (typeof Sound?.chirp === 'function') Sound.chirp();
+
+    this.saveState(true);
+    this.notify();
+
+    return {
+      success: true,
+      alreadyClaimed: false,
+      landmark,
+      rewardCoins: coinsAwarded,
+      rewardSparks: sparksAwarded,
+      voiceLine: landmark.voiceLine
+    };
   }
 
   setIslandTimeOverride(override) {

@@ -47,7 +47,10 @@ async function runTests() {
       WORLD_BIOMES,
       PATH_OF_VALOR_WAYPOINTS,
       SECRET_SHRINES,
-      TOY_BOX_ENTITIES
+      TOY_BOX_ENTITIES,
+      LANDMARK_ARCHETYPES,
+      BIOME_PLACEMENT_PRESETS,
+      SEASONS_DATA
     } = await import('../src/data/worldMapData.js');
 
     const { store } = await import('../src/state/store.js');
@@ -182,7 +185,75 @@ async function runTests() {
     store.setWorldMapTab('island');
     const islandHtml = renderWorldAdventureMapView();
     assert(islandHtml.includes('world-adventure-canvas'), 'Renders #world-adventure-canvas container');
-    assert(islandHtml.includes('Apples Picked'), 'Renders toy-box stats bar');
+    assert(islandHtml.includes('Apples'), 'Renders toy-box stats bar');
+    assert(islandHtml.includes('island-cycle-season-btn'), 'Renders season cycle button in Island HUD');
+    assert(islandHtml.includes('Landmarks'), 'Renders active landmarks counter in bottom bar');
+
+    // 10. Seasonal Weather System & Dynamic Season Cycler
+    console.log('\n--- 10. Seasonal Weather System ---');
+    assert(Object.keys(SEASONS_DATA).length === 4, 'Should define exactly 4 seasons');
+    assert(SEASONS_DATA.spring && SEASONS_DATA.summer && SEASONS_DATA.autumn && SEASONS_DATA.winter, 'All 4 canonical seasons defined');
+
+    // Palette check for seasons: zero pink or purple
+    const seasonPaletteCheck = Object.values(SEASONS_DATA).every(s => 
+      !s.accentColor.toLowerCase().includes('pink') &&
+      !s.accentColor.toLowerCase().includes('purple') &&
+      s.accentColor.toLowerCase() !== '#ec4899' &&
+      s.accentColor.toLowerCase() !== '#a855f7' &&
+      !s.particleColor.toLowerCase().includes('pink') &&
+      !s.particleColor.toLowerCase().includes('purple')
+    );
+    assert(seasonPaletteCheck, 'Strictly zero pink or purple in seasonal color definitions');
+
+    const effectiveSeason = store.getEffectiveSeason();
+    assert(['spring', 'summer', 'autumn', 'winter'].includes(effectiveSeason), 'getEffectiveSeason() returns valid season');
+
+    store.setIslandSeason('winter');
+    assert(store.getWorldAdventureMapState().islandSeason === 'winter', 'Season successfully set to winter');
+    assert(store.getEffectiveSeason() === 'winter', 'Effective season matches forced winter season');
+
+    store.setIslandSeason('summer');
+    assert(store.getEffectiveSeason() === 'summer', 'Effective season matches forced summer season');
+
+    // 11. Dynamic AI Landmark Placement & Interaction
+    console.log('\n--- 11. Dynamic AI Landmark Placement & Interaction ---');
+    assert(LANDMARK_ARCHETYPES.length === 7, 'Defines 7 landmark archetypes');
+    assert(BIOME_PLACEMENT_PRESETS.length === 8, 'Defines 8 biome placement presets across the island');
+
+    const archetypeTypes = LANDMARK_ARCHETYPES.map(a => a.type);
+    assert(archetypeTypes.includes('fort') && archetypeTypes.includes('lighthouse') && archetypeTypes.includes('observatory'), 'Includes fort, lighthouse, and observatory archetypes');
+
+    const customLandmark = store.addCustomWorldLandmark({
+      name: 'Crystal Star Spire',
+      description: 'Gleams under the polar auroras',
+      type: 'crystal_tree',
+      biomeId: 'crystal_summit',
+      rewardCoins: 45,
+      rewardSparks: 20,
+      coordinates: { x: 14, y: 0, z: -14 },
+      voiceLine: 'A radiant crystal spire sings in the cold wind!'
+    });
+    assert(customLandmark.id !== undefined, 'Custom landmark placed with unique ID');
+    assert(customLandmark.name === 'Crystal Star Spire', 'Custom landmark name preserved');
+
+    const mapStateWithLm = store.getWorldAdventureMapState();
+    assert(mapStateWithLm.customLandmarks.some(lm => lm.id === customLandmark.id), 'Custom landmark registered in map state');
+
+    const initialCoins = store.getState().selectedHero.coins;
+    const initialSparks = store.getPetSparks(store.getState().selectedHero.selectedPetId || '1');
+    const interactRes = store.interactWithCustomLandmark(customLandmark.id);
+    assert(interactRes.success === true, 'First interaction with landmark succeeds');
+    assert(interactRes.alreadyClaimed === false, 'Awards initial claim status');
+    assert(store.getState().selectedHero.coins === initialCoins + 45, 'Rewards 45 gold coins to hero');
+    assert(store.getPetSparks(store.getState().selectedHero.selectedPetId || '1') === initialSparks + 20, 'Rewards 20 sparks to pet');
+
+    const secondInteract = store.interactWithCustomLandmark(customLandmark.id);
+    assert(secondInteract.alreadyClaimed === true, 'Subsequent interaction indicates already claimed');
+
+    // Remove landmark test
+    const removeRes = store.removeCustomWorldLandmark(customLandmark.id);
+    assert(removeRes === true, 'removeCustomWorldLandmark succeeds');
+    assert(!store.getWorldAdventureMapState().customLandmarks.some(lm => lm.id === customLandmark.id), 'Landmark cleanly removed from store');
 
   } catch (err) {
     console.error('Unexpected error in test execution:', err);
