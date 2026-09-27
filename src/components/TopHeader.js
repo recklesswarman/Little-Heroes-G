@@ -26,6 +26,12 @@ export function renderTopHeader() {
           <span class="text-sm sm:text-base">🏠</span>
           <span class="font-headline text-xs font-black text-emerald-400 hidden sm:inline">HQ</span>
         </button>
+
+        <!-- Bedtime Sanctuary Quick Shortcut -->
+        <button id="header-bedtime-btn" title="Bedtime Wind-Down Sanctuary & AI Storybook" aria-label="Bedtime Sanctuary" class="bg-surface-container hover:bg-surface-bright text-[#ffb961] rounded-2xl px-2.5 py-1.5 sm:px-3 sm:py-2 border-2 border-[#ffb961]/40 chunky-btn-sm transition-all flex items-center gap-1 active:scale-95 min-h-[44px] flex-shrink-0">
+          <span class="text-sm sm:text-base">🌙</span>
+          <span class="font-headline text-xs font-black text-[#ffb961] hidden sm:inline">Bedtime</span>
+        </button>
       </div>
 
       <!-- Right: Dual Currencies (Points ⭐ & Coins 🪙), Household Sync & Parent Gate -->
@@ -82,6 +88,14 @@ export function attachTopHeaderListeners() {
     heroHQBtn.addEventListener('click', () => {
       Sound.whoosh();
       store.navigate('hero_hq');
+    });
+  }
+
+  const bedtimeBtn = document.getElementById('header-bedtime-btn');
+  if (bedtimeBtn) {
+    bedtimeBtn.addEventListener('click', () => {
+      Sound.bloop();
+      store.navigate('bedtime_sanctuary');
     });
   }
 

@@ -274,6 +274,8 @@ function renderApp() {
         attachViewListeners = attachParentPortalListeners;
       }
       break;
+    case 'bedtime_sanctuary':
+    case 'bedtime-sanctuary':
     case 'bedtime_story':
     case 'bedtime-story':
     case 'storybook':

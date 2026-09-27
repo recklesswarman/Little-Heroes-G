@@ -135,7 +135,11 @@ async function runTests() {
     const act3 = await bedtimeStoryService.advanceStory('Brush Away Stardust ✨');
     assert(act3 !== null, 'advanceStory returns Act 3');
     assert(act3.actNumber === 3, 'Act 3 correctly indexed');
-    assert(act3.isSleepingEnd === true, 'Act 3 marked as sleeping end');
+
+    const act4 = await bedtimeStoryService.advanceStory('Share Warm Blanket 🤝');
+    assert(act4 !== null, 'advanceStory returns Act 4');
+    assert(act4.actNumber === 4, 'Act 4 correctly indexed');
+    assert(act4.isSleepingEnd === true, 'Act 4 marked as sleeping end');
 
     // 6. View HTML Rendering
     console.log('\n--- 6. HTML View Rendering ---');

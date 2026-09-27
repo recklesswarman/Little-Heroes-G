@@ -31,6 +31,7 @@ import { isExistingActiveHousehold } from '../utils/householdHeuristics.js';
 import { FORGE_BLUEPRINTS, getBlueprintById, isBlueprintUnlocked } from '../data/heroForgeData.js';
 import { firebaseAI } from '../services/firebaseAILogicService.js';
 import { WORLD_BIOMES, PATH_OF_VALOR_WAYPOINTS, SECRET_SHRINES, TOY_BOX_ENTITIES } from '../data/worldMapData.js';
+import { BEDTIME_MORALS, CONSTELLATION_STICKERS } from '../data/bedtimeStoryData.js';
 
 export const KID_AVATARS = [
   { id: 'avatar_dragon', label: 'Dragon Explorer', url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZfP7_Cwlp4sz41asI8ymuapAKvjmqHtvI4zcMAF_XwUmibj8IheGrS5cA5QD5gmXgVxEkZM9FlWJPRZnct3x6-9SQB7zJKqkEDjJ3m95tAy3zRqS-PbmcQ4kv_9pmIfm2Py4mh3Fw083hkDookz1w4_r50SBA1jc9igDaAPFLYBFgSP2aQBz7Q4jVE-DwhMOyUEHlxDkQk6Gwc2EAFCSKs1c0QuhUOi3tkrk5MXRARKqZcYVzyJe6gA' },
@@ -621,6 +622,13 @@ const defaultState = {
   // Bedtime AI Storybook Adventure & Bookshelf Library
   bedtimeStoryLibrary: [],
   activeBedtimeStory: null,
+  bedtimeSanctuaryState: {
+    currentStep: 1,
+    pajamasCompletedDate: null,
+    selectedMoralId: 'brave_dark',
+    customBedtimeWish: '',
+    narrationMode: 'rex'
+  },
 
   // Deleted kid profiles tracked to prevent resurrection across concurrent devices
   deletedHeroIds: [],
@@ -1033,6 +1041,17 @@ class Store {
         }
         if (!parsed.gameMasteryMap || typeof parsed.gameMasteryMap !== 'object') {
           parsed.gameMasteryMap = {};
+        }
+        if (!parsed.bedtimeSanctuaryState) {
+          parsed.bedtimeSanctuaryState = { ...defaultState.bedtimeSanctuaryState };
+        } else {
+          parsed.bedtimeSanctuaryState = {
+            ...defaultState.bedtimeSanctuaryState,
+            ...parsed.bedtimeSanctuaryState
+          };
+        }
+        if (!parsed.bedtimeStoryLibrary || !Array.isArray(parsed.bedtimeStoryLibrary)) {
+          parsed.bedtimeStoryLibrary = [];
         }
 
         const loaded = { ...defaultState, ...parsed };
@@ -7780,6 +7799,72 @@ class Store {
   }
 
   // --- Bedtime AI Storybook Adventure & Bookshelf Library Methods ---
+  getBedtimeSanctuaryState() {
+    if (!this.state.bedtimeSanctuaryState) {
+      this.state.bedtimeSanctuaryState = {
+        currentStep: 1,
+        pajamasCompletedDate: null,
+        selectedMoralId: 'brave_dark',
+        customBedtimeWish: '',
+        narrationMode: 'rex'
+      };
+    }
+    return this.state.bedtimeSanctuaryState;
+  }
+
+  updateBedtimeSanctuaryState(partial = {}) {
+    this.state.bedtimeSanctuaryState = {
+      ...this.getBedtimeSanctuaryState(),
+      ...partial
+    };
+    this.saveState(true);
+    this.notify();
+    return this.state.bedtimeSanctuaryState;
+  }
+
+  completePajamasTidyStep() {
+    const today = new Date().toDateString();
+    const sanctuary = this.getBedtimeSanctuaryState();
+    sanctuary.pajamasCompletedDate = today;
+    sanctuary.currentStep = 3;
+
+    const hero = this.state.selectedHero;
+    const coinsAwarded = 15;
+    const xpAwarded = 10;
+    if (hero) {
+      hero.coins = (hero.coins || 0) + coinsAwarded;
+      hero.xp = (hero.xp || 0) + xpAwarded;
+      hero.points = (hero.points || 0) + Math.round(coinsAwarded / 2);
+    }
+
+    this.syncHabitPetCare('clean_toys', 'daily_routine');
+    this.logAction('Completed Pajamas & Tidy Up', `Tidied room and put on cozy pajamas! +${coinsAwarded} 🪙, +${xpAwarded} ⭐`);
+    if (typeof Sound?.chime === 'function') Sound.chime();
+    this.saveState(true);
+    this.notify();
+    return { success: true, coinsAwarded, xpAwarded };
+  }
+
+  getAvailableBedtimeMorals(heroId = null) {
+    const targetHeroId = heroId || this.state.selectedHero?.id;
+    const heroInArray = (this.state.heroes || []).find(h => h.id === targetHeroId);
+    const selected = (this.state.selectedHero?.id === targetHeroId) ? this.state.selectedHero : null;
+    const history = selected?.bedtimeHistory || heroInArray?.bedtimeHistory || [];
+    const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+
+    const recentMoralIds = new Set();
+    history.forEach(item => {
+      if (item && item.moralId && (now - (item.timestamp || 0)) < THIRTY_DAYS_MS) {
+        recentMoralIds.add(item.moralId);
+      }
+    });
+
+    const available = BEDTIME_MORALS.filter(m => !recentMoralIds.has(m.id));
+    if (available.length > 0) return available;
+    return BEDTIME_MORALS;
+  }
+
   getBedtimeStoryLibrary() {
     if (!this.state.bedtimeStoryLibrary) {
       this.state.bedtimeStoryLibrary = [];
@@ -7787,16 +7872,37 @@ class Store {
     return this.state.bedtimeStoryLibrary;
   }
 
+  toggleFavoriteBedtimeStory(storyId) {
+    if (!this.state.bedtimeStoryLibrary) return false;
+    const story = this.state.bedtimeStoryLibrary.find(s => s.id === storyId);
+    if (!story) return false;
+    story.isFavorite = !story.isFavorite;
+    this.saveState(true);
+    this.notify();
+    return story.isFavorite;
+  }
+
   saveBedtimeStory(storyData) {
     if (!this.state.bedtimeStoryLibrary) {
       this.state.bedtimeStoryLibrary = [];
     }
     const storyId = storyData.id || `story_${Date.now()}`;
+    
+    // Assign a constellation star sticker badge if not already present
+    let stickerId = storyData.constellationStickerId;
+    if (!stickerId) {
+      const idx = Math.floor(Math.random() * CONSTELLATION_STICKERS.length);
+      stickerId = CONSTELLATION_STICKERS[idx]?.id || 'starlight_dino';
+    }
+
     const newStory = {
       ...storyData,
       id: storyId,
-      savedAt: Date.now()
+      constellationStickerId: stickerId,
+      isFavorite: Boolean(storyData.isFavorite),
+      savedAt: storyData.savedAt || Date.now()
     };
+
     const idx = this.state.bedtimeStoryLibrary.findIndex(s => s.id === storyId);
     if (idx >= 0) {
       this.state.bedtimeStoryLibrary[idx] = newStory;
@@ -7816,11 +7922,36 @@ class Store {
     const sparksAwarded = 15;
     const xpAwarded = 20;
 
-    hero.coins = (hero.coins || 0) + coinsAwarded;
-    hero.points = (hero.points || 0) + Math.round(coinsAwarded / 2);
-    hero.xp = (hero.xp || 0) + xpAwarded;
+    if (hero) {
+      hero.coins = (hero.coins || 0) + coinsAwarded;
+      hero.points = (hero.points || 0) + Math.round(coinsAwarded / 2);
+      hero.xp = (hero.xp || 0) + xpAwarded;
 
-    // Quiet habit sync: mark sleep_on_time and wp_bedtime_sleep as done (awards +15 sparks & +35 Bond XP)
+      // 30-day anti-repetition: log moral and story title into hero.bedtimeHistory
+      if (!Array.isArray(hero.bedtimeHistory)) {
+        hero.bedtimeHistory = [];
+      }
+      hero.bedtimeHistory.unshift({
+        moralId: storyData.moralId || 'brave_dark',
+        title: storyData.title || 'Bedtime Story',
+        timestamp: Date.now()
+      });
+      // Cap history at 100 entries
+      if (hero.bedtimeHistory.length > 100) {
+        hero.bedtimeHistory = hero.bedtimeHistory.slice(0, 100);
+      }
+
+      // Also mirror to matching hero in heroes array
+      const hIdx = (this.state.heroes || []).findIndex(h => h.id === hero.id);
+      if (hIdx !== -1) {
+        this.state.heroes[hIdx].coins = hero.coins;
+        this.state.heroes[hIdx].xp = hero.xp;
+        this.state.heroes[hIdx].points = hero.points;
+        this.state.heroes[hIdx].bedtimeHistory = hero.bedtimeHistory;
+      }
+    }
+
+    // Quiet habit sync: mark sleep_on_time and wp_bedtime_sleep as done
     this.syncHabitPetCare('sleep_on_time', 'daily_routine');
     this.toggleBedtimeLullaby(true);
 

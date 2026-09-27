@@ -12,6 +12,7 @@ let battleRhythmInterval = null;
 let lullabyInterval = null;
 let lullabyNoteIndex = 0;
 let lullabyActive = false;
+let lullabyDucked = false;
 let battleBpm = 118;
 let lastBloopTime = 0;
 
@@ -1617,13 +1618,16 @@ export const Sound = {
         filter.frequency.setValueAtTime(2600, now);
         filter.frequency.exponentialRampToValueAtTime(900, now + 0.9);
 
-        // Clear, soothing volume designed for bedtime listening
+        // Clear, soothing volume designed for bedtime listening (scaled by ducking)
+        const peakGain = lullabyDucked ? 0.07 : 0.24;
+        const overtoneGain = lullabyDucked ? 0.02 : 0.07;
+
         gain.gain.setValueAtTime(0.001, now);
-        gain.gain.linearRampToValueAtTime(0.24, now + 0.035);
+        gain.gain.linearRampToValueAtTime(peakGain, now + 0.035);
         gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.15);
 
         gain2.gain.setValueAtTime(0.001, now);
-        gain2.gain.linearRampToValueAtTime(0.07, now + 0.025);
+        gain2.gain.linearRampToValueAtTime(overtoneGain, now + 0.025);
         gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.55);
 
         // Route osc through gain and osc2 through gain2, then through lowpass filter to destination
@@ -1667,8 +1671,52 @@ export const Sound = {
     }
   },
 
+  duckLullaby(ducked = true) {
+    lullabyDucked = Boolean(ducked);
+  },
+
+  isLullabyDucked() {
+    return lullabyDucked;
+  },
+
+  // Soft single celesta chime note when tapping interactive elements during bedtime stories
+  playBedtimeChime(customFreq = null) {
+    if (isMuted) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    try {
+      if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+      const now = ctx.currentTime;
+      const CHIME_PENTATONIC = [523.25, 587.33, 659.25, 783.99, 880.00, 1046.50];
+      const freq = customFreq || CHIME_PENTATONIC[Math.floor(Math.random() * CHIME_PENTATONIC.length)];
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now);
+
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(3200, now);
+      filter.frequency.exponentialRampToValueAtTime(1100, now + 0.7);
+
+      const peak = lullabyDucked ? 0.08 : 0.16;
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(peak, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.75);
+
+      osc.connect(gain);
+      gain.connect(filter);
+      filter.connect(ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.8);
+    } catch (e) {}
+  },
+
   stopLullaby() {
     lullabyActive = false;
+    lullabyDucked = false;
     if (lullabyInterval) {
       clearInterval(lullabyInterval);
       lullabyInterval = null;

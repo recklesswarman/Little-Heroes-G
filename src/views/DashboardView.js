@@ -234,6 +234,34 @@ export function renderDashboardView() {
           : ''
       }
 
+      <!-- Evening Wind-Down Sanctuary Banner -->
+      <div id="dashboard-evening-sanctuary-banner" class="bg-gradient-to-r from-[#091e2b] via-[#0f2d40] to-[#091e2b] border-2 border-[#00d2d3]/50 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fade-in card-shadow">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-2xl bg-[#050f18] text-[#00d2d3] border-2 border-[#00d2d3] flex items-center justify-center text-2xl flex-shrink-0 shadow-inner">
+            🌙
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-[#00d2d3]/20 text-[#00d2d3] border border-[#00d2d3]/40">
+                Evening Wind-Down
+              </span>
+              <span class="text-xs text-amber-300 font-bold">✨ Bedtime Sanctuary</span>
+            </div>
+            <h3 class="font-headline text-sm font-black text-white mt-0.5">
+              Ready for bedtime, ${hero.name}?
+            </h3>
+            <p class="text-[11px] text-slate-300">
+              Brush teeth, put on cozy pajamas, and embark on tonight's 4-chapter AI storybook!
+            </p>
+          </div>
+        </div>
+
+        <button id="dashboard-goto-bedtime-btn" class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#00d2d3] to-[#2ecc71] text-[#050f18] font-headline font-black text-xs flex items-center justify-center gap-1.5 shadow active:scale-95 transition-all flex-shrink-0 cursor-pointer">
+          <span class="material-symbols-outlined text-sm">auto_stories</span>
+          <span>Open Bedtime Sanctuary 🌙</span>
+        </button>
+      </div>
+
       <!-- ZONE 1: Habit Islands (Preset Positive Behaviors) -->
       <section class="flex flex-col gap-3.5">
         <div class="flex justify-between items-center px-1">
@@ -614,6 +642,11 @@ export function attachDashboardListeners() {
       speakRex("Hi Little Hero! I am Rex the Dino! Tap any quest card to hear how to earn tokens and level up!");
     });
   }
+
+  document.getElementById('dashboard-goto-bedtime-btn')?.addEventListener('click', () => {
+    Sound.bloop();
+    store.navigate('bedtime_sanctuary');
+  });
 
   document.querySelectorAll('.habit-check-btn').forEach((btn) => {
     btn.addEventListener('click', (e) => {
