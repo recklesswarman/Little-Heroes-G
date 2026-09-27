@@ -617,6 +617,10 @@ const defaultState = {
     }
   },
 
+  // Bedtime AI Storybook Adventure & Bookshelf Library
+  bedtimeStoryLibrary: [],
+  activeBedtimeStory: null,
+
   // Deleted kid profiles tracked to prevent resurrection across concurrent devices
   deletedHeroIds: [],
 
@@ -7582,6 +7586,68 @@ class Store {
     this.saveState(true);
     this.notify();
     return { success: true, waypoint };
+  }
+
+  // --- Bedtime AI Storybook Adventure & Bookshelf Library Methods ---
+  getBedtimeStoryLibrary() {
+    if (!this.state.bedtimeStoryLibrary) {
+      this.state.bedtimeStoryLibrary = [];
+    }
+    return this.state.bedtimeStoryLibrary;
+  }
+
+  saveBedtimeStory(storyData) {
+    if (!this.state.bedtimeStoryLibrary) {
+      this.state.bedtimeStoryLibrary = [];
+    }
+    const storyId = storyData.id || `story_${Date.now()}`;
+    const newStory = {
+      ...storyData,
+      id: storyId,
+      savedAt: Date.now()
+    };
+    const idx = this.state.bedtimeStoryLibrary.findIndex(s => s.id === storyId);
+    if (idx >= 0) {
+      this.state.bedtimeStoryLibrary[idx] = newStory;
+    } else {
+      this.state.bedtimeStoryLibrary.unshift(newStory);
+    }
+    this.saveState(true);
+    this.notify();
+    return newStory;
+  }
+
+  completeBedtimeStory(storyData) {
+    const savedStory = this.saveBedtimeStory(storyData);
+
+    const hero = this.state.selectedHero;
+    const coinsAwarded = 30;
+    const sparksAwarded = 15;
+    const xpAwarded = 20;
+
+    hero.coins = (hero.coins || 0) + coinsAwarded;
+    hero.points = (hero.points || 0) + Math.round(coinsAwarded / 2);
+    hero.xp = (hero.xp || 0) + xpAwarded;
+
+    // Quiet habit sync: mark sleep_on_time and wp_bedtime_sleep as done (awards +15 sparks & +35 Bond XP)
+    this.syncHabitPetCare('sleep_on_time', 'daily_routine');
+    this.toggleBedtimeLullaby(true);
+
+    // Non-blocking log per kid_voice_companion_guidelines.md (NO blocking full-screen modal)
+    this.logAction('Completed Bedtime Storybook Adventure', `Read "${storyData.title || 'Bedtime Story'}" with Rex. +${coinsAwarded} 🪙, +${sparksAwarded} ⚡`);
+
+    if (typeof Sound?.bloop === 'function') Sound.bloop();
+
+    this.saveState(true);
+    this.notify();
+
+    return {
+      success: true,
+      story: savedStory,
+      rewardCoins: coinsAwarded,
+      rewardSparks: sparksAwarded,
+      rewardXp: xpAwarded
+    };
   }
 
   resetAllProgress() {

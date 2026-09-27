@@ -209,6 +209,11 @@ function renderTodaysPathTab(hero, activePet, mapState) {
               <span class="material-symbols-outlined text-base">swords</span>
               <span>BATTLE BOSS!</span>
             </button>
+          ` : nextWaypoint.id === 'wp_bedtime_sleep' ? `
+            <button id="path-launch-bedtime-story-btn" class="w-full sm:w-auto px-5 py-3 rounded-2xl bg-gradient-to-r from-[#00d2d3] to-[#0284c7] text-[#050f18] font-headline font-black text-xs sm:text-sm tracking-wide shadow-[0_4px_0_0_#05253b] active:translate-y-1 active:shadow-none flex items-center justify-center gap-2 cursor-pointer">
+              <span class="text-base">📖</span>
+              <span>READ BEDTIME STORY</span>
+            </button>
           ` : `
             <button data-complete-waypoint="${nextWaypoint.id}" class="w-full sm:w-auto px-5 py-3 rounded-2xl bg-gradient-to-r from-[#2ecc71] to-[#27ae60] text-[#050f18] font-headline font-black text-xs sm:text-sm tracking-wide shadow-[0_4px_0_0_#145237] active:translate-y-1 active:shadow-none flex items-center justify-center gap-2 cursor-pointer">
               <span class="material-symbols-outlined text-base">check_circle</span>
@@ -316,6 +321,12 @@ function renderIslandSandboxTab(hero, activePet, mapState, timeOfDay) {
           }">
             <span class="material-symbols-outlined text-sm">music_note</span>
             <span>${isLullabyActive ? 'Lullaby Playing' : 'Play Lullaby'}</span>
+          </button>
+
+          <!-- Bedtime Storybook Button -->
+          <button id="island-open-storybook-btn" class="px-3 py-1.5 rounded-xl font-headline text-xs font-black flex items-center gap-1.5 chunky-btn-sm transition-all bg-[#00d2d3]/20 text-[#00d2d3] border border-[#00d2d3]/40 hover:bg-[#00d2d3]/30 active:scale-95 cursor-pointer" title="Bedtime AI Storybook">
+            <span>📖</span>
+            <span class="hidden sm:inline">Storybook</span>
           </button>
 
           <!-- Recenter Camera -->
@@ -479,6 +490,15 @@ function renderWaypointModal(wp, hero) {
               <span class="material-symbols-outlined text-2xl">swords</span>
               <span>LAUNCH HYGIENE BOSS BATTLE!</span>
             </button>
+          ` : wp.id === 'wp_bedtime_sleep' ? `
+            <button id="modal-open-bedtime-story-btn" class="w-full py-4 rounded-2xl bg-gradient-to-r from-[#00d2d3] to-[#0284c7] text-[#050f18] font-headline text-base font-black tracking-wide shadow-[0_6px_0_0_#05253b] active:translate-y-1 active:shadow-none flex items-center justify-center gap-2 cursor-pointer">
+              <span class="text-xl">📖</span>
+              <span>READ BEDTIME AI STORYBOOK</span>
+            </button>
+            <button id="modal-complete-chore-btn" class="w-full py-3 rounded-2xl bg-[#0f2334] text-slate-300 hover:text-white border border-surface-container-highest font-headline text-xs font-black tracking-wide flex items-center justify-center gap-2 cursor-pointer">
+              <span class="material-symbols-outlined text-base">check_circle</span>
+              <span>${isDone ? 'COMPLETED TODAY' : 'MARK CHORE COMPLETE WITHOUT STORY'}</span>
+            </button>
           ` : `
             <button id="modal-complete-chore-btn" class="w-full py-4 rounded-2xl bg-gradient-to-r from-[#2ecc71] to-[#27ae60] text-[#050f18] font-headline text-base font-black tracking-wide shadow-[0_6px_0_0_#145237] active:translate-y-1 active:shadow-none flex items-center justify-center gap-2 cursor-pointer">
               <span class="material-symbols-outlined text-2xl">check_circle</span>
@@ -576,6 +596,15 @@ export function attachWorldAdventureMapListeners() {
         if (active) {
           voicePrompts.speak("Bedtime twilight mode activated. Sweet dreams Little Hero!");
         }
+      });
+    }
+
+    // Island Storybook Button
+    const storybookBtn = document.getElementById('island-open-storybook-btn');
+    if (storybookBtn) {
+      storybookBtn.addEventListener('click', () => {
+        Sound.bloop();
+        store.navigate('bedtime_story');
       });
     }
 
@@ -678,6 +707,19 @@ export function attachWorldAdventureMapListeners() {
       store.navigate('ar_battle');
     });
   }
+
+  // Next-Up Banner Bedtime Story Button
+  document.getElementById('path-launch-bedtime-story-btn')?.addEventListener('click', () => {
+    Sound.bloop();
+    store.navigate('bedtime_story');
+  });
+
+  // Modal Bedtime Story Button
+  document.getElementById('modal-open-bedtime-story-btn')?.addEventListener('click', () => {
+    selectedModalWaypoint = null;
+    Sound.bloop();
+    store.navigate('bedtime_story');
+  });
 
   const modalCompleteBtn = document.getElementById('modal-complete-chore-btn');
   if (modalCompleteBtn && selectedModalWaypoint) {

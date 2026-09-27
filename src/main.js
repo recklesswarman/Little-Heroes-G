@@ -43,6 +43,7 @@ import { renderPetLockerView, attachPetLockerListeners } from './views/PetLocker
 import { renderHeroHQView, attachHeroHQListeners } from './views/HeroHQView.js';
 import { renderHeroForgeView, attachHeroForgeListeners } from './views/HeroForgeView.js';
 import { renderDinoWorkoutView, attachDinoWorkoutListeners } from './views/DinoWorkoutView.js';
+import { renderBedtimeStoryView, setupBedtimeStoryListeners } from './views/BedtimeStoryView.js';
 import { destroyActiveCanvas } from './utils/activeViewCanvasRegistry.js';
 import { isExistingActiveHousehold } from './utils/householdHeuristics.js';
 
@@ -230,6 +231,12 @@ function renderApp() {
         mainContent = renderParentPortalView();
         attachViewListeners = attachParentPortalListeners;
       }
+      break;
+    case 'bedtime_story':
+    case 'bedtime-story':
+    case 'storybook':
+      mainContent = renderBedtimeStoryView();
+      attachViewListeners = setupBedtimeStoryListeners;
       break;
     default:
       mainContent = renderDashboardView();
