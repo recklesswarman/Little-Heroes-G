@@ -88,6 +88,14 @@ function restoreFocusedFieldState(saved) {
 }
 
 function renderApp() {
+  // Capture once per render, before any of the branches below replace
+  // app.innerHTML -- there are three separate replacement points (the auth
+  // splash, the landing/auth wall, and the main app shell) and any of them
+  // can fire while the user is mid-edit on a text field (e.g. typing a
+  // household join code on the landing screen while Firebase auth state
+  // resolves in the background).
+  const savedFocusedField = captureFocusedFieldState();
+
   // Stop any canvas-backed view's requestAnimationFrame loop from the
   // previous render before tearing down/rebuilding app.innerHTML below --
   // innerHTML alone removes the DOM node but not the running RAF loop.
@@ -166,6 +174,7 @@ function renderApp() {
         </div>
       </div>
     `;
+    restoreFocusedFieldState(savedFocusedField);
     return;
   }
 
@@ -179,6 +188,7 @@ function renderApp() {
       </div>
     `;
     attachLandingAuthModalListeners();
+    restoreFocusedFieldState(savedFocusedField);
     return;
   }
 
@@ -281,7 +291,6 @@ function renderApp() {
   }
 
   // Render Full Application Shell
-  const savedFocusedField = captureFocusedFieldState();
   app.innerHTML = `
     <div class="min-h-screen bg-background text-on-surface flex flex-col font-body selection:bg-primary selection:text-on-primary">
       ${renderTopHeader()}
