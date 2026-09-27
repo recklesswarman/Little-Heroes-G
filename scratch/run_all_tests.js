@@ -12,7 +12,8 @@ const testFiles = [
   'scratch/test_world_adventure_map.cjs',
   'scratch/test_bedtime_storybook.cjs',
   'scratch/test_user_reported_fixes.cjs',
-  'scratch/test_bedtime_sanctuary.cjs'
+  'scratch/test_bedtime_sanctuary.cjs',
+  'scratch/test_mobile_and_avatar_fix.cjs'
 ];
 
 let allPassed = true;
