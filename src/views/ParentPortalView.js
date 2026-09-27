@@ -4129,7 +4129,7 @@ export function attachParentPortalListeners() {
 
   document.querySelectorAll('.rex-voice-select-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const voice = btn.getAttribute('data-rex-voice');
+      const voice = btn.getAttribute('data-rex-voice') || btn.getAttribute('data-voice-id');
       if (voice) {
         Sound.click();
         store.setLiveRexVoice(voice);
@@ -4935,17 +4935,6 @@ export function attachParentPortalListeners() {
       store.getState().parentSettings.arBattleDuration = dur;
       Sound.click();
       store.saveState();
-    });
-  });
-
-  // Rex AI Companion Voice Persona Selection
-  document.querySelectorAll('.rex-voice-select-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const vId = btn.getAttribute('data-voice-id');
-      if (vId) {
-        Sound.click();
-        store.setLiveRexVoice(vId);
-      }
     });
   });
 
