@@ -51,6 +51,42 @@ const app = document.getElementById('app');
 
 let lastActiveViewForBattleCleanup = null;
 
+// Every view/modal is a full app.innerHTML replace with no DOM diffing, so a
+// re-render triggered by anything unrelated to the field the user is
+// actively editing (a remote household sync, a background timer, another
+// button elsewhere on the same screen) would otherwise destroy and recreate
+// the focused <input>/<textarea> from its static template value, silently
+// discarding whatever the user had just typed and dropping focus. Capture
+// the in-progress edit before the replace and restore it into the freshly
+// rendered element (by id) afterward so typing survives any re-render that
+// happens to land mid-edit.
+function captureFocusedFieldState() {
+  const el = document.activeElement;
+  if (!el || !app.contains(el)) return null;
+  const tag = el.tagName;
+  if (tag !== 'INPUT' && tag !== 'TEXTAREA') return null;
+  if (!el.id) return null;
+  return {
+    id: el.id,
+    value: el.value,
+    selectionStart: el.selectionStart,
+    selectionEnd: el.selectionEnd
+  };
+}
+
+function restoreFocusedFieldState(saved) {
+  if (!saved) return;
+  const el = document.getElementById(saved.id);
+  if (!el || (el.tagName !== 'INPUT' && el.tagName !== 'TEXTAREA')) return;
+  el.value = saved.value;
+  try {
+    el.setSelectionRange(saved.selectionStart, saved.selectionEnd);
+  } catch {
+    // Some input types (e.g. number, email) don't support selection ranges
+  }
+  el.focus();
+}
+
 function renderApp() {
   // Stop any canvas-backed view's requestAnimationFrame loop from the
   // previous render before tearing down/rebuilding app.innerHTML below --
@@ -245,6 +281,7 @@ function renderApp() {
   }
 
   // Render Full Application Shell
+  const savedFocusedField = captureFocusedFieldState();
   app.innerHTML = `
     <div class="min-h-screen bg-background text-on-surface flex flex-col font-body selection:bg-primary selection:text-on-primary">
       ${renderTopHeader()}
@@ -276,6 +313,7 @@ function renderApp() {
   attachLiveRexWidgetListeners();
   attachGiftCrateListeners();
   attachViewListeners();
+  restoreFocusedFieldState(savedFocusedField);
 }
 
 let lastRenderedView = null;
