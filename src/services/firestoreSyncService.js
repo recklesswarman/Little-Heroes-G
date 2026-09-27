@@ -22,7 +22,9 @@ const LOCAL_ONLY_STATE_KEYS = new Set([
   'mysterySurprise',
   'activeUnboxingCrateId',
   'activeDrawer',
-  'bossColosseum'
+  'bossColosseum',
+  'aiQuests',
+  'heroAiQuestsMap'
 ]);
 
 function buildCloudStateSnapshot(state) {
@@ -598,6 +600,7 @@ class FirestoreSyncService {
         taskForest: state.taskForest || [],
         habitIslands: state.habitIslands || [],
         aiQuests: state.aiQuests || [],
+        heroAiQuestsMap: state.heroAiQuestsMap || {},
         recentlyUnlocked: state.recentlyUnlocked || [],
         realLifeRewards: state.realLifeRewards || [],
         digitalGear: state.digitalGear || [],

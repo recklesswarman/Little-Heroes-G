@@ -486,7 +486,6 @@ export function setupBedtimeStoryListeners() {
   document.getElementById('toggle-story-lullaby-btn')?.addEventListener('click', () => {
     Sound.tap();
     store.toggleBedtimeLullaby();
-    store.notify();
   });
 
   // View Bookshelf Tab

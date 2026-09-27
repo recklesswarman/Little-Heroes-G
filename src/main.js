@@ -41,7 +41,6 @@ import { renderProfileView, attachProfileListeners } from './views/ProfileView.j
 import { renderParentPortalView, attachParentPortalListeners } from './views/ParentPortalView.js';
 import { renderPetLockerView, attachPetLockerListeners } from './views/PetLockerView.js';
 import { renderHeroHQView, attachHeroHQListeners } from './views/HeroHQView.js';
-import { renderHeroForgeView, attachHeroForgeListeners } from './views/HeroForgeView.js';
 import { renderDinoWorkoutView, attachDinoWorkoutListeners } from './views/DinoWorkoutView.js';
 import { renderBedtimeStoryView, setupBedtimeStoryListeners } from './views/BedtimeStoryView.js';
 import { destroyActiveCanvas } from './utils/activeViewCanvasRegistry.js';
@@ -260,13 +259,10 @@ function renderApp() {
       attachViewListeners = attachProfileListeners;
       break;
     case 'hero_hq':
-      mainContent = renderHeroHQView();
-      attachViewListeners = attachHeroHQListeners;
-      break;
     case 'hero_forge':
     case 'hero-forge':
-      mainContent = renderHeroForgeView();
-      attachViewListeners = attachHeroForgeListeners;
+      mainContent = renderHeroHQView();
+      attachViewListeners = attachHeroHQListeners;
       break;
     case 'parent_portal':
       if (!store.isParentUnlocked()) {

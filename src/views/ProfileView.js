@@ -1,4 +1,5 @@
 import { store, KID_AVATARS } from '../state/store.js';
+import { PETS_DATABASE, getPetById } from '../data/petsData.js';
 import { Sound } from '../audio/sfx.js';
 import { processProfilePhoto } from '../utils/photoUploader.js';
 
@@ -20,6 +21,13 @@ export function renderProfileView() {
   };
 
   const unlockedThemes = currentHero.unlockedThemes || [activeTheme.id];
+
+  // Active Companion Pet for this kid's profile
+  const activePetId = String(currentHero.activePetId || currentHero.unlockedPetIds?.[0] || '1');
+  const allPets = state.pets || [];
+  const activePet = allPets.find(p => String(p.id) === activePetId || p.key === activePetId) || getPetById(activePetId) || PETS_DATABASE[0];
+  const petLevel = state.petLevelMap?.[activePet.id] || 1;
+  const unlockedPetsCount = (currentHero.unlockedPetIds || ['1']).length;
 
   return `
     <div class="max-w-4xl mx-auto px-4 pt-4 pb-32 flex flex-col gap-6 animate-fade-in select-none">
@@ -113,6 +121,45 @@ export function renderProfileView() {
         </div>
       </div>
 
+      <!-- ACTIVE COMPANION PET SHOWCASE (Saved to Kid's Profile) -->
+      <div class="bg-surface-container rounded-4xl p-5 sm:p-6 border-3 border-secondary/40 card-shadow flex flex-col sm:flex-row items-center justify-between gap-5 relative overflow-hidden">
+        <div class="flex items-center gap-4 z-10 w-full sm:w-auto">
+          <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-surface-container-high border-3 border-secondary/50 flex items-center justify-center p-2 shadow-inner flex-shrink-0 relative">
+            <img class="w-full h-full object-contain drop-shadow-md" src="${activePet.avatar}" alt="${activePet.name}" />
+            <span class="absolute -bottom-1 -right-1 bg-secondary text-on-secondary font-headline text-[10px] font-black px-2 py-0.5 rounded-full border border-surface-container-lowest shadow">
+              Lvl ${petLevel}
+            </span>
+          </div>
+          <div class="flex flex-col text-left min-w-0 flex-1">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-[10px] font-black uppercase text-secondary tracking-wider bg-secondary/15 px-2.5 py-0.5 rounded-full border border-secondary/30">
+                Active Companion • ${activePet.element}
+              </span>
+              <span class="text-[10px] font-bold text-on-surface-variant">
+                ${unlockedPetsCount} Companions Unlocked
+              </span>
+            </div>
+            <h3 class="font-headline text-lg sm:text-xl font-black text-inverse-surface truncate mt-1">${activePet.name}</h3>
+            <p class="text-xs text-on-surface-variant line-clamp-1 italic">"${activePet.title}"</p>
+            <div class="mt-1 text-[11px] font-bold text-primary flex items-center gap-1">
+              <span>⚡</span>
+              <span>${activePet.habitBonus}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2.5 w-full sm:w-auto flex-shrink-0 z-10">
+          <button id="profile-choose-pet-btn" class="flex-1 sm:flex-initial bg-primary text-on-primary font-headline text-xs font-black px-4 py-2.5 rounded-xl chunky-btn-sm inline-flex items-center justify-center gap-1.5 active:scale-95 shadow min-h-[44px]">
+            <span class="material-symbols-outlined text-sm">pets</span>
+            <span>Switch Pet</span>
+          </button>
+          <button id="profile-goto-sanctuary-btn" class="flex-1 sm:flex-initial bg-surface-container-high hover:bg-surface-bright text-on-surface font-headline text-xs font-black px-4 py-2.5 rounded-xl border border-surface-container-highest inline-flex items-center justify-center gap-1.5 active:scale-95 shadow-sm min-h-[44px]">
+            <span class="material-symbols-outlined text-sm">cabin</span>
+            <span>Pet Sanctuary</span>
+          </button>
+        </div>
+      </div>
+
       <!-- HERO CHARACTERS GRID (Pick Adventurer) -->
       <div class="flex flex-col gap-3">
         <div class="flex items-center justify-between">
@@ -128,6 +175,8 @@ export function renderProfileView() {
             .map((h) => {
               const isSelected = currentHero.id === h.id;
               const kidDiff = h.gameDifficulty || 'medium';
+              const hPetId = String(h.activePetId || (h.unlockedPetIds?.[0] || '1'));
+              const hPet = PETS_DATABASE.find((p) => String(p.id) === hPetId) || PETS_DATABASE[0];
 
               return `
               <button data-hero-id="${h.id}" class="select-hero-btn bg-surface-container rounded-3xl p-4 border-3 ${
@@ -148,6 +197,12 @@ export function renderProfileView() {
                 <div class="bg-surface-container-highest px-2.5 py-0.5 rounded-full flex items-center gap-1 border border-surface-container-low text-[10px] font-black text-secondary">
                   <span>★ Lvl ${h.level}</span>
                   <span>• ${kidDiff === 'easy' ? 'Toddler' : kidDiff === 'hard' ? 'Hard' : 'Med'}</span>
+                </div>
+
+                <!-- Assigned Companion Pet -->
+                <div class="bg-surface-container-highest/80 px-2 py-0.5 rounded-full flex items-center gap-1 text-[9px] font-black text-primary border border-primary/20 max-w-full truncate">
+                  <span>🐾</span>
+                  <span class="truncate">${hPet.name}</span>
                 </div>
 
                 ${
@@ -269,6 +324,23 @@ export function attachProfileListeners() {
     shopThemesBtn.addEventListener('click', () => {
       Sound.click();
       store.navigate('shop');
+    });
+  }
+
+  // Profile Active Pet Companion Actions
+  const choosePetBtn = document.getElementById('profile-choose-pet-btn');
+  if (choosePetBtn) {
+    choosePetBtn.addEventListener('click', () => {
+      Sound.bloop();
+      store.openPetSelectionModal('switch');
+    });
+  }
+
+  const sanctuaryBtn = document.getElementById('profile-goto-sanctuary-btn');
+  if (sanctuaryBtn) {
+    sanctuaryBtn.addEventListener('click', () => {
+      Sound.whoosh();
+      store.navigate('pet_sanctuary');
     });
   }
 

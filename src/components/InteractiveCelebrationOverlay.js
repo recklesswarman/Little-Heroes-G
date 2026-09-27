@@ -140,6 +140,7 @@ let celebrationAutoCloseTimeout = null;
 let celebrationSecondsRemaining = CELEBRATION_DURATION_SECONDS;
 
 export function triggerInteractiveCelebration(particleCount = 50) {
+  if (typeof document === 'undefined') return;
   isOverlayActive = true;
   poppedStarsCount = 0;
   celebrationSecondsRemaining = CELEBRATION_DURATION_SECONDS;

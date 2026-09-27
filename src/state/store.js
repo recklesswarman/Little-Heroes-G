@@ -236,6 +236,7 @@ const defaultState = {
 
   // AI Spark Autonomous Micro-Quests (Dynamic Gemini 2.5 Flash Subagent Quests)
   aiQuests: [],
+  heroAiQuestsMap: {},
 
   // 24 Pets Universe & Active Pet State
   pets: PETS_DATABASE,
@@ -724,12 +725,14 @@ class Store {
           parsed.heroes.forEach((h) => {
             const validActive = h.activePetId ? getPetById(h.activePetId) : null;
             h.activePetId = validActive ? String(validActive.id) : '1';
-            // A hero with no ownership record at all (e.g. a fresh save that
-            // predates even unlockedPetIds existing) starts owning just
-            // their (now-validated) active pet as their free first pick.
+            // A hero with no ownership record at all starts owning just
+            // their active pet as their free first pick.
             if (!Array.isArray(h.unlockedPetIds) || h.unlockedPetIds.length === 0) {
               h.unlockedPetIds = [h.activePetId];
+            } else if (!h.unlockedPetIds.map(String).includes(h.activePetId)) {
+              h.unlockedPetIds.push(h.activePetId);
             }
+            h.unlockedPetIds = h.unlockedPetIds.map(String);
             if (h.hasChosenStarterPet === undefined) {
               h.hasChosenStarterPet = h.unlockedPetIds.length > 0;
             }
@@ -755,7 +758,10 @@ class Store {
           parsed.selectedHero.activePetId = validActive ? String(validActive.id) : '1';
           if (!Array.isArray(parsed.selectedHero.unlockedPetIds) || parsed.selectedHero.unlockedPetIds.length === 0) {
             parsed.selectedHero.unlockedPetIds = [parsed.selectedHero.activePetId];
+          } else if (!parsed.selectedHero.unlockedPetIds.map(String).includes(parsed.selectedHero.activePetId)) {
+            parsed.selectedHero.unlockedPetIds.push(parsed.selectedHero.activePetId);
           }
+          parsed.selectedHero.unlockedPetIds = parsed.selectedHero.unlockedPetIds.map(String);
           if (parsed.selectedHero.hasChosenStarterPet === undefined) {
             parsed.selectedHero.hasChosenStarterPet = parsed.selectedHero.unlockedPetIds.length > 0;
           }
@@ -798,7 +804,26 @@ class Store {
         if (!parsed.expeditionHistory || !Array.isArray(parsed.expeditionHistory)) {
           parsed.expeditionHistory = [];
         }
-                if (!parsed.heroHQ || typeof parsed.heroHQ !== 'object') {
+        if (!parsed.aiQuests || !Array.isArray(parsed.aiQuests)) {
+          parsed.aiQuests = [];
+        }
+        if (!parsed.heroAiQuestsMap || typeof parsed.heroAiQuestsMap !== 'object') {
+          parsed.heroAiQuestsMap = {};
+        }
+        if (parsed.selectedHero) {
+          const sHeroId = parsed.selectedHero.id;
+          if (!parsed.selectedHero.aiQuests || !Array.isArray(parsed.selectedHero.aiQuests) || parsed.selectedHero.aiQuests.length === 0) {
+            parsed.selectedHero.aiQuests = parsed.heroAiQuestsMap?.[sHeroId] || parsed.aiQuests || [];
+          }
+        }
+        if (parsed.heroes && parsed.heroes.length > 0) {
+          parsed.heroes.forEach((h) => {
+            if (!h.aiQuests || !Array.isArray(h.aiQuests) || h.aiQuests.length === 0) {
+              h.aiQuests = parsed.heroAiQuestsMap?.[h.id] || [];
+            }
+          });
+        }
+        if (!parsed.heroHQ || typeof parsed.heroHQ !== 'object') {
           parsed.heroHQ = JSON.parse(JSON.stringify(defaultState.heroHQ));
         } else {
           parsed.heroHQ = {
@@ -1049,8 +1074,8 @@ class Store {
       coins: Math.max(0, Number(sHero.coins) || 0),
       points: Math.max(0, Number(sHero.points) || 0),
       tokens: Math.max(0, Number(sHero.tokens ?? sHero.coins) || 0),
-      activePetId: sHero.activePetId || null,
-      unlockedPetIds: [...(sHero.unlockedPetIds || [])],
+      activePetId: sHero.activePetId ? String(sHero.activePetId) : null,
+      unlockedPetIds: (sHero.unlockedPetIds || []).map(String),
       hasChosenStarterPet: sHero.hasChosenStarterPet ?? ((sHero.unlockedPetIds || []).length > 0),
       habitatSlots: sHero.habitatSlots || 1,
       streak: sHero.streak || 1,
@@ -1064,6 +1089,7 @@ class Store {
       customGearDyesMap: { ...(sHero.customGearDyesMap || this.state.customGearDyesMap || {}) },
       savedHeroCards: [...(sHero.savedHeroCards || this.state.savedHeroCards || [])],
       inventory: [...(sHero.inventory || [])],
+      aiQuests: [...(sHero.aiQuests || this.state.heroAiQuestsMap?.[heroId] || this.state.aiQuests || [])],
       lastUpdated: Date.now()
     };
 
@@ -1118,10 +1144,14 @@ class Store {
       targetView = 'adventures_map';
     } else if (targetView === 'boost' || targetView === '/boost') {
       targetView = 'battle';
+    } else if (targetView === 'hero_forge' || targetView === 'hero-forge') {
+      targetView = 'hero_hq';
     }
 
     if (targetView === 'parent_portal' && !this.isParentUnlocked()) {
-      window.dispatchEvent(new CustomEvent('open-parent-modal'));
+      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+        window.dispatchEvent(new CustomEvent('open-parent-modal'));
+      }
       return;
     }
 
@@ -1137,7 +1167,7 @@ class Store {
         } catch (e) {}
       }
       this.notify();
-      if (typeof window?.scrollTo === 'function') {
+      if (typeof window !== 'undefined' && typeof window.scrollTo === 'function') {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
 
@@ -1272,34 +1302,33 @@ class Store {
   setActivePet(petId) {
     const pId = String(petId);
     if (!this.state.selectedHero) this.state.selectedHero = {};
-    const unlockedIds = (this.state.selectedHero.unlockedPetIds || []).map(String);
-    if (!unlockedIds.includes(pId)) {
-      const lockedPet = getPetById(pId);
-      this.showReward(
-        'Companion Locked! 🔒',
-        `Unlock ${lockedPet.name} for ${PET_PRICE_COINS} Habit Coins in the Pet Roster first!`,
-        0,
-        0,
-        lockedPet.avatar,
-        'lock'
-      );
-      return false;
+    if (!this.state.selectedHero.unlockedPetIds) {
+      this.state.selectedHero.unlockedPetIds = ['1'];
     }
+    const unlockedIds = this.state.selectedHero.unlockedPetIds.map(String);
+    if (!unlockedIds.includes(pId)) {
+      unlockedIds.push(pId);
+    }
+    this.state.selectedHero.unlockedPetIds = unlockedIds;
     this.state.selectedHero.activePetId = pId;
-    const allPets = this.state.pets || PETS_DATABASE;
-    const pet = allPets.find(p => String(p.id) === pId || (p.key && p.key === pId)) || PETS_DATABASE.find(p => String(p.id) === pId) || PETS_DATABASE[0];
-    const petImg = pet?.avatar || `assets/pets/${pet?.key || 'rex'}.png`;
+    this.state.selectedHero.hasChosenStarterPet = true;
+
+    const heroIdx = (this.state.heroes || []).findIndex(h => h.id === this.state.selectedHero.id);
+    if (heroIdx !== -1) {
+      this.state.heroes[heroIdx].activePetId = pId;
+      this.state.heroes[heroIdx].unlockedPetIds = [...unlockedIds];
+      this.state.heroes[heroIdx].hasChosenStarterPet = true;
+    }
+
+    if (this.state.petSelectionModal?.isOpen) {
+      this.closePetSelectionModal();
+    }
 
     Sound.fanfare();
-    confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
-    this.showReward(
-      'Companion Equipped!',
-      `You are now adventuring with ${pet?.name || 'your pet'}!`,
-      0,
-      0,
-      petImg,
-      'pets'
-    );
+    try {
+      confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
+    } catch {}
+
     this.saveState(true);
     this.notify();
     return true;
@@ -1757,15 +1786,15 @@ class Store {
     Sound.coin();
     Sound.fanfare();
 
-    confetti({
-      particleCount: 50,
-      spread: 60,
-      origin: { y: 0.7 },
-      colors: ['#2ecc71', '#ffb961', '#3498db', '#f1c40f']
-    });
-
-    // Interactive Particle Celebration: flood screen with stars kids can pop & swipe!
-    triggerInteractiveCelebration(45);
+    try {
+      confetti({
+        particleCount: 50,
+        spread: 60,
+        origin: { y: 0.7 },
+        colors: ['#2ecc71', '#ffb961', '#3498db', '#f1c40f']
+      });
+      triggerInteractiveCelebration(45);
+    } catch {}
 
     // ⭐ Points are queued for Parent Approval
     this.state.pendingApprovals.push({
@@ -1882,15 +1911,15 @@ class Store {
     Sound.coin();
     Sound.fanfare();
 
-    confetti({
-      particleCount: 70,
-      spread: 80,
-      origin: { y: 0.6 },
-      colors: ['#2ecc71', '#54e98a', '#f1c40f']
-    });
-
-    // Interactive Particle Celebration: flood screen with stars kids can pop & swipe!
-    triggerInteractiveCelebration(45);
+    try {
+      confetti({
+        particleCount: 70,
+        spread: 80,
+        origin: { y: 0.6 },
+        colors: ['#2ecc71', '#54e98a', '#f1c40f']
+      });
+      triggerInteractiveCelebration(45);
+    } catch {}
 
     // ⭐ Points are queued for Parent Approval
     this.state.pendingApprovals.push({
@@ -2797,21 +2826,62 @@ class Store {
   // ---------------------------------------------------------
   // AI SPARK AUTONOMOUS MICRO-QUESTS
   // ---------------------------------------------------------
-  setAiQuests(quests) {
-    this.state.aiQuests = Array.isArray(quests) ? quests : [];
+  setAiQuests(quests, heroId = null) {
+    const questList = Array.isArray(quests) ? quests : [];
+    const currentHero = this.state.selectedHero;
+    const hId = heroId || currentHero?.id || 'hero_1';
+
+    this.state.aiQuests = questList;
+    if (!this.state.heroAiQuestsMap) {
+      this.state.heroAiQuestsMap = {};
+    }
+    this.state.heroAiQuestsMap[hId] = questList;
+
+    if (currentHero) {
+      currentHero.aiQuests = questList;
+    }
+    const heroIdx = (this.state.heroes || []).findIndex((h) => h.id === hId);
+    if (heroIdx !== -1) {
+      this.state.heroes[heroIdx].aiQuests = questList;
+    }
+
     this.saveState(true);
   }
 
-  getAiQuests() {
-    return this.state.aiQuests || [];
+  getAiQuests(heroId = null) {
+    const hId = heroId || this.state.selectedHero?.id;
+    const heroMapQuests = (hId && this.state.heroAiQuestsMap?.[hId]) || [];
+    const selectedHeroQuests = (hId && this.state.selectedHero?.id === hId && this.state.selectedHero?.aiQuests) || [];
+    const globalQuests = this.state.aiQuests || [];
+
+    const all = [...heroMapQuests];
+    const seen = new Set(all.map((q) => q.id));
+
+    selectedHeroQuests.forEach((q) => {
+      if (q && q.id && !seen.has(q.id)) {
+        seen.add(q.id);
+        all.push(q);
+      }
+    });
+
+    if (!hId || (this.state.selectedHero && this.state.selectedHero.id === hId)) {
+      globalQuests.forEach((q) => {
+        if (q && q.id && !seen.has(q.id)) {
+          seen.add(q.id);
+          all.push(q);
+        }
+      });
+    }
+
+    return all;
   }
 
   completeAiQuest(questId, verifiedResult = null) {
-    const quest = (this.state.aiQuests || []).find((q) => q.id === questId);
-    if (!quest) return;
-
     const currentHero = this.state.selectedHero;
     const heroId = currentHero?.id || 'hero_1';
+    const quests = this.getAiQuests(heroId);
+    const quest = (this.state.aiQuests || []).find((q) => q.id === questId) || quests.find((q) => q.id === questId);
+    if (!quest) return;
 
     const coins = verifiedResult?.coinsEarned ?? quest.coinReward ?? 25;
     const points = verifiedResult?.pointsEarned ?? quest.pointReward ?? 10;
@@ -2850,6 +2920,10 @@ class Store {
     }
 
     quest.completed = true;
+    if (this.state.heroAiQuestsMap?.[heroId]) {
+      const qInMap = this.state.heroAiQuestsMap[heroId].find((q) => q.id === questId);
+      if (qInMap) qInMap.completed = true;
+    }
 
     currentHero.coins += coins;
     this.addXP(xp);
@@ -2857,13 +2931,15 @@ class Store {
     Sound.coin();
     Sound.fanfare();
 
-    confetti({
-      particleCount: 60,
-      spread: 75,
-      origin: { y: 0.6 },
-      colors: ['#3498db', '#f1c40f', '#2ecc71', '#9b59b6']
-    });
-    triggerInteractiveCelebration(40);
+    try {
+      confetti({
+        particleCount: 60,
+        spread: 75,
+        origin: { y: 0.6 },
+        colors: ['#3498db', '#f1c40f', '#2ecc71', '#9b59b6']
+      });
+      triggerInteractiveCelebration(40);
+    } catch {}
 
     this.state.pendingApprovals.push({
       id: approvalReqId,
@@ -4129,13 +4205,16 @@ class Store {
   }
 
   choosePet(petId, type = 'starter') {
+    const pId = String(petId);
     const hero = this.state.heroes.find(h => h.id === this.state.selectedHero.id) || this.state.selectedHero;
     if (!hero.unlockedPetIds) hero.unlockedPetIds = [];
+    hero.unlockedPetIds = hero.unlockedPetIds.map(String);
 
-    if (!hero.unlockedPetIds.includes(petId)) {
-      hero.unlockedPetIds.push(petId);
+    const isAlreadyUnlocked = hero.unlockedPetIds.includes(pId);
+    if (!isAlreadyUnlocked) {
+      hero.unlockedPetIds.push(pId);
     }
-    hero.activePetId = petId;
+    hero.activePetId = pId;
 
     if (type === 'starter') {
       hero.hasChosenStarterPet = true;
@@ -4146,27 +4225,43 @@ class Store {
       hero.habitatSlots = Math.max(3, hero.habitatSlots || 3);
     }
 
-    this.state.selectedHero.activePetId = petId;
+    this.state.selectedHero.activePetId = pId;
     this.state.selectedHero.unlockedPetIds = [...hero.unlockedPetIds];
     this.state.selectedHero.hasChosenStarterPet = true;
     this.state.selectedHero.habitatSlots = hero.habitatSlots;
 
-    this.closePetSelectionModal();
+    const heroIdx = this.state.heroes.findIndex(h => h.id === hero.id);
+    if (heroIdx !== -1) {
+      this.state.heroes[heroIdx].activePetId = pId;
+      this.state.heroes[heroIdx].unlockedPetIds = [...hero.unlockedPetIds];
+      this.state.heroes[heroIdx].hasChosenStarterPet = true;
+      this.state.heroes[heroIdx].habitatSlots = hero.habitatSlots;
+    }
 
-    const pet = this.state.pets.find(p => p.id === petId);
+    this.closePetSelectionModal();
     this.saveState(true);
 
-    // Mystery Surprise Unboxing: Pet arrives in a Glowing Mystic Egg!
-    this.openMysterySurprise({
-      type: 'egg',
-      title: `${pet?.name || 'Companion'} Hatched!`,
-      image: pet?.avatar,
-      icon: 'egg',
-      desc: `Welcome ${pet?.name || 'your pet'}! They start at Stage 1 (Mystic Hatchling). Complete habits and brush to evolve together!`,
-      category: 'Pet Companion',
-      coinsEarned: 50,
-      xpEarned: 35
-    });
+    // Mystery Surprise Unboxing: Pet arrives in a Glowing Mystic Egg only for new milestone unlocks!
+    if (type !== 'switch' && !isAlreadyUnlocked) {
+      const allPets = this.state.pets || PETS_DATABASE;
+      const pet = allPets.find(p => String(p.id) === pId || p.key === pId) || getPetById(pId) || PETS_DATABASE[0];
+      this.openMysterySurprise({
+        type: 'egg',
+        title: `${pet?.name || 'Companion'} Hatched!`,
+        image: pet?.avatar,
+        icon: 'egg',
+        desc: `Welcome ${pet?.name || 'your pet'}! They start at Stage 1 (Mystic Hatchling). Complete habits and brush to evolve together!`,
+        category: 'Pet Companion',
+        coinsEarned: 50,
+        xpEarned: 35
+      });
+    } else {
+      Sound.fanfare();
+      try {
+        confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
+      } catch {}
+      this.notify();
+    }
   }
 
   buyHabitatSlot() {
@@ -4199,28 +4294,35 @@ class Store {
   }
 
   adoptPetIntoSlot(petId) {
+    const pId = String(petId);
     const hero = this.state.heroes.find(h => h.id === this.state.selectedHero.id) || this.state.selectedHero;
     if (!hero.unlockedPetIds) hero.unlockedPetIds = [];
+    hero.unlockedPetIds = hero.unlockedPetIds.map(String);
 
     const currentSlots = hero.habitatSlots || 1;
-    if (hero.unlockedPetIds.includes(petId)) {
-      this.setActivePet(petId);
+    if (hero.unlockedPetIds.includes(pId)) {
+      this.setActivePet(pId);
       return;
     }
 
     if (hero.unlockedPetIds.length >= currentSlots) {
       if (confirm(`Your Habitat Slots are full (${hero.unlockedPetIds.length}/${currentSlots})! Would you like to unlock a new Habitat Slot for 250 Habit Coins (🪙)?`)) {
         if (this.buyHabitatSlot()) {
-          this.adoptPetIntoSlot(petId);
+          this.adoptPetIntoSlot(pId);
         }
       }
       return;
     }
 
-    hero.unlockedPetIds.push(petId);
+    hero.unlockedPetIds.push(pId);
     this.state.selectedHero.unlockedPetIds = [...hero.unlockedPetIds];
+    const heroIdx = this.state.heroes.findIndex(h => h.id === hero.id);
+    if (heroIdx !== -1) {
+      this.state.heroes[heroIdx].unlockedPetIds = [...hero.unlockedPetIds];
+    }
 
-    const pet = this.state.pets.find(p => p.id === petId);
+    const allPets = this.state.pets || PETS_DATABASE;
+    const pet = allPets.find(p => String(p.id) === pId || p.key === pId) || getPetById(pId) || PETS_DATABASE[0];
     Sound.fanfare();
     confetti({ particleCount: 100, spread: 80, origin: { y: 0.5 } });
     this.showReward(
@@ -4231,7 +4333,7 @@ class Store {
       pet?.avatar,
       'pets'
     );
-    this.setActivePet(petId);
+    this.setActivePet(pId);
     this.saveState(true);
   }
 
@@ -4983,14 +5085,18 @@ class Store {
       this.state.selectedHero.coins = hero.coins || 0;
       this.state.selectedHero.xp = hero.xp || 0;
       this.state.selectedHero.xpNext = hero.xpNext || 100;
-      this.state.selectedHero.activePetId = hero.activePetId || (hero.unlockedPetIds[0] || null);
-      this.state.selectedHero.unlockedPetIds = [...hero.unlockedPetIds];
-      this.state.selectedHero.hasChosenStarterPet = hero.hasChosenStarterPet;
-      this.state.selectedHero.habitatSlots = hero.habitatSlots;
+      const rawPetId = hero.activePetId || (hero.unlockedPetIds?.[0] || '1');
+      this.state.selectedHero.activePetId = rawPetId ? String(rawPetId) : '1';
+      this.state.selectedHero.unlockedPetIds = (hero.unlockedPetIds || ['1']).map(String);
+      this.state.selectedHero.hasChosenStarterPet = hero.hasChosenStarterPet ?? (this.state.selectedHero.unlockedPetIds.length > 0);
+      this.state.selectedHero.habitatSlots = hero.habitatSlots || 1;
       this.state.selectedHero.streak = hero.streak || 1;
       this.state.selectedHero.gameDifficulty = hero.gameDifficulty || 'medium';
       this.state.selectedHero.equippedProfileTheme = hero.equippedProfileTheme || 'theme_dragon_emerald';
       this.state.selectedHero.unlockedThemes = hero.unlockedThemes || ['theme_dragon_emerald'];
+
+      // Restore hero-specific AI Spark Quests
+      this.state.aiQuests = this.getAiQuests(hero.id);
 
       Sound.fanfare();
       this.saveState(true);
@@ -5043,6 +5149,18 @@ class Store {
       hero.tokens = hero.coins;
     }
     if (updatedData.points !== undefined) hero.points = Math.max(0, Number(updatedData.points));
+    if (updatedData.activePetId !== undefined) {
+      hero.activePetId = String(updatedData.activePetId);
+      if (!hero.unlockedPetIds) hero.unlockedPetIds = [];
+      if (!hero.unlockedPetIds.map(String).includes(hero.activePetId)) {
+        hero.unlockedPetIds.push(hero.activePetId);
+      }
+    }
+    if (updatedData.unlockedPetIds !== undefined && Array.isArray(updatedData.unlockedPetIds)) {
+      hero.unlockedPetIds = Array.from(new Set(updatedData.unlockedPetIds.map(String)));
+    }
+    if (updatedData.hasChosenStarterPet !== undefined) hero.hasChosenStarterPet = Boolean(updatedData.hasChosenStarterPet);
+    if (updatedData.habitatSlots !== undefined) hero.habitatSlots = Math.max(1, Number(updatedData.habitatSlots));
 
     // If currently active hero was edited, synchronize selectedHero
     if (this.state.selectedHero.id === heroId) {
@@ -5054,6 +5172,10 @@ class Store {
       this.state.selectedHero.coins = hero.coins;
       this.state.selectedHero.tokens = hero.coins;
       this.state.selectedHero.points = hero.points;
+      if (hero.activePetId) this.state.selectedHero.activePetId = hero.activePetId;
+      if (hero.unlockedPetIds) this.state.selectedHero.unlockedPetIds = [...hero.unlockedPetIds];
+      if (hero.hasChosenStarterPet !== undefined) this.state.selectedHero.hasChosenStarterPet = hero.hasChosenStarterPet;
+      if (hero.habitatSlots !== undefined) this.state.selectedHero.habitatSlots = hero.habitatSlots;
     }
 
     this.saveState(true);
@@ -5788,7 +5910,11 @@ class Store {
         'heroes',
         'selectedHero',
         'pendingApprovals',
-        'resolvedApprovals'
+        'resolvedApprovals',
+        // AI Spark Quests are generated locally and merged safely in Section 6 below;
+        // blind snapshot overwrites would wipe active quests with empty arrays.
+        'aiQuests',
+        'heroAiQuestsMap'
       ]);
       Object.entries(cloudData.stateSnapshot).forEach(([key, value]) => {
         if (!localOnlyKeys.has(key) && value !== undefined) {
@@ -5879,10 +6005,16 @@ class Store {
           return cloudValue !== undefined ? cloudValue : localH?.[field];
         };
         const num = (v) => (v !== undefined && v !== null ? Number(v) : undefined);
-        const unlockedPetIds = Array.from(new Set([
+        const rawUnlocked = Array.from(new Set([
           ...(cloudH.unlockedPetIds || []),
           ...(localH?.unlockedPetIds || [])
-        ]));
+        ])).map(String);
+        const resolvedActivePet = resolve(
+          'activePetId',
+          cloudH.activePetId,
+          localH?.activePetId || cloudH?.activePetId || rawUnlocked[0] || '1'
+        );
+        const unlockedPetIds = Array.from(new Set([...rawUnlocked, resolvedActivePet].filter(Boolean))).map(String);
         return {
           ...defaultState.selectedHero,
           ...localH,
@@ -5896,7 +6028,7 @@ class Store {
           unlockedPetIds,
           habitatSlots: Math.max(cloudH.habitatSlots || 1, localH?.habitatSlots || 1, unlockedPetIds.length || 1),
           hasChosenStarterPet: cloudH.hasChosenStarterPet ?? (unlockedPetIds.length > 0),
-          activePetId: resolve('activePetId', cloudH.activePetId, preferLocalRewards ? (localH.activePetId || (unlockedPetIds[0] || null)) : (cloudH.activePetId || localH?.activePetId || (unlockedPetIds[0] || null))),
+          activePetId: resolvedActivePet,
           fieldStamps,
           streak: Math.max(cloudH.streak || 1, localH?.streak || 1),
           stars: Math.max(cloudH.stars || 0, localH?.stars || 0),
@@ -5917,7 +6049,14 @@ class Store {
           screenTimeRate: cloudH.screenTimeRate !== undefined ? Number(cloudH.screenTimeRate) : (localH?.screenTimeRate ?? 2),
           isScreenTimePaused: cloudH.isScreenTimePaused !== undefined ? Boolean(cloudH.isScreenTimePaused) : (localH?.isScreenTimePaused ?? false),
           screenTimeLockMessage: cloudH.screenTimeLockMessage || localH?.screenTimeLockMessage || 'Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙',
-          inventory: Array.from(new Set([...(localH?.inventory || []), ...(cloudH.inventory || [])]))
+          inventory: Array.from(new Set([...(localH?.inventory || []), ...(cloudH.inventory || [])])),
+          aiQuests: (localH?.aiQuests && localH.aiQuests.length > 0)
+            ? localH.aiQuests
+            : (this.state.heroAiQuestsMap?.[cloudH.id]?.length > 0)
+              ? this.state.heroAiQuestsMap[cloudH.id]
+              : (this.state.selectedHero?.id === cloudH.id && this.state.selectedHero?.aiQuests?.length > 0)
+                ? this.state.selectedHero.aiQuests
+                : (cloudH?.aiQuests || [])
         };
       });
 
@@ -5963,10 +6102,14 @@ class Store {
         matchedHero = this.state.heroes[0];
       }
       if (matchedHero) {
+        const existingHeroQuests = this.state.selectedHero?.aiQuests || [];
         this.state.selectedHero = {
           ...defaultState.selectedHero,
           ...matchedHero
         };
+        if ((!this.state.selectedHero.aiQuests || this.state.selectedHero.aiQuests.length === 0) && existingHeroQuests.length > 0) {
+          this.state.selectedHero.aiQuests = existingHeroQuests;
+        }
       }
 
       // Values just adopted from the cloud are not local changes.
@@ -6088,7 +6231,45 @@ class Store {
 
     // 6. Autonomous Micro-Quests (AI Spark) & Badges/Trophies
     if (cloudData.aiQuests && Array.isArray(cloudData.aiQuests)) {
-      this.state.aiQuests = cloudData.aiQuests;
+      if (cloudData.aiQuests.length > 0) {
+        const localQuests = this.state.aiQuests || [];
+        const cloudQuestIds = new Set(cloudData.aiQuests.map((q) => q.id));
+        this.state.aiQuests = [
+          ...cloudData.aiQuests,
+          ...localQuests.filter((q) => !cloudQuestIds.has(q.id))
+        ];
+
+        const currentHeroId = this.state.selectedHero?.id;
+        if (currentHeroId) {
+          if (!this.state.heroAiQuestsMap) this.state.heroAiQuestsMap = {};
+          const localHeroQuests = this.state.heroAiQuestsMap[currentHeroId] || [];
+          const existingIds = new Set(localHeroQuests.map((q) => q.id));
+          const toAdd = cloudData.aiQuests.filter((q) => !existingIds.has(q.id));
+          if (toAdd.length > 0) {
+            this.state.heroAiQuestsMap[currentHeroId] = [...localHeroQuests, ...toAdd];
+          }
+        }
+      }
+      // If cloudData.aiQuests is empty, preserve existing local active quests
+    }
+    if (cloudData.heroAiQuestsMap && typeof cloudData.heroAiQuestsMap === 'object') {
+      if (!this.state.heroAiQuestsMap) this.state.heroAiQuestsMap = {};
+      Object.entries(cloudData.heroAiQuestsMap).forEach(([hId, quests]) => {
+        if (Array.isArray(quests) && quests.length > 0) {
+          const localHeroQuests = this.state.heroAiQuestsMap[hId] || [];
+          const cloudIds = new Set(quests.map((q) => q.id));
+          this.state.heroAiQuestsMap[hId] = [
+            ...quests,
+            ...localHeroQuests.filter((q) => !cloudIds.has(q.id))
+          ];
+        }
+      });
+    }
+    if (this.state.selectedHero) {
+      const activeQuests = this.getAiQuests(this.state.selectedHero.id);
+      if (activeQuests.length > 0) {
+        this.state.selectedHero.aiQuests = activeQuests;
+      }
     }
     if (cloudData.recentlyUnlocked && Array.isArray(cloudData.recentlyUnlocked)) {
       this.state.recentlyUnlocked = cloudData.recentlyUnlocked;
@@ -7538,7 +7719,17 @@ class Store {
   toggleBedtimeLullaby(active = null) {
     const mapState = this.getWorldAdventureMapState();
     mapState.bedtimeLullabyActive = active !== null ? Boolean(active) : !mapState.bedtimeLullabyActive;
-    if (typeof Sound?.chirp === 'function') Sound.chirp();
+    if (mapState.bedtimeLullabyActive) {
+      if (typeof Sound?.startLullaby === 'function') {
+        Sound.startLullaby();
+      } else if (typeof Sound?.chirp === 'function') {
+        Sound.chirp();
+      }
+    } else {
+      if (typeof Sound?.stopLullaby === 'function') {
+        Sound.stopLullaby();
+      }
+    }
     this.notify();
     return mapState.bedtimeLullabyActive;
   }

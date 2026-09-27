@@ -11,7 +11,7 @@ export function renderDashboardView() {
   const hero = state.selectedHero;
   const habitIslands = state.habitIslands;
   const taskForest = state.taskForest;
-  const aiQuests = store.getAiQuests();
+  const aiQuests = store.getAiQuests(hero?.id);
   const activePet = store.getActivePet();
   const pendingCount = state.pendingApprovals.filter(r => r.kidId === hero.id).length;
   const isEasyMode = store.isEasyMode();
@@ -777,7 +777,7 @@ export function attachDashboardListeners() {
         });
 
         if (res?.quests && res.quests.length > 0) {
-          store.setAiQuests(res.quests);
+          store.setAiQuests(res.quests, hero?.id);
           Sound.fanfare();
           speakRex(`*Happy giggle!* Hooray! I created ${res.quests.length} new spark quests for you!`);
         }

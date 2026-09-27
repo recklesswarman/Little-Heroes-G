@@ -9,6 +9,9 @@ let audioCtx = null;
 let isMuted = false;
 let discoInterval = null;
 let battleRhythmInterval = null;
+let lullabyInterval = null;
+let lullabyNoteIndex = 0;
+let lullabyActive = false;
 let battleBpm = 118;
 let lastBloopTime = 0;
 
@@ -33,16 +36,20 @@ export const Sound = {
 
   toggleMute() {
     isMuted = !isMuted;
-    if (isMuted && discoInterval) {
+    if (isMuted) {
       this.stopDisco();
+      this.stopBattleRhythm();
+      this.stopLullaby();
     }
     return isMuted;
   },
 
   setMute(mute) {
     isMuted = mute;
-    if (isMuted && discoInterval) {
+    if (isMuted) {
       this.stopDisco();
+      this.stopBattleRhythm();
+      this.stopLullaby();
     }
   },
 
@@ -823,6 +830,7 @@ export const Sound = {
 
   // 18. DANCE PARTY DISCO GROOVE LOOP
   startDisco(onBeat) {
+    this.stopLullaby();
     if (discoInterval) clearInterval(discoInterval);
     const ctx = getAudioContext();
     if (!ctx) return;
@@ -879,6 +887,7 @@ export const Sound = {
   // 17. HEROIC TOOTHBRUSH BATTLE RHYTHM (Procedural energetic chiptune drum & bass groove)
   startBattleRhythm(onBeat) {
     if (isMuted) return;
+    this.stopLullaby();
     this.stopBattleRhythm();
     const ctx = getAudioContext();
     if (!ctx) return;
@@ -1540,6 +1549,135 @@ export const Sound = {
       osc2.start(now + 0.015);
       osc2.stop(now + 0.12);
     } catch (e) {}
+  },
+
+  // 38. PROCEDURAL BEDTIME LULLABY MUSIC BOX
+  // Gentle, soothing celesta/sine chimes playing pentatonic melodies for bedtime relaxation
+  startLullaby(onNote = null) {
+    if (isMuted) return;
+    this.stopLullaby();
+    this.stopDisco();
+    this.stopBattleRhythm();
+    lullabyActive = true;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    // Soothing celesta / music box pentatonic lullaby sequence
+    const LULLABY_NOTES = [
+      261.63, // C4
+      329.63, // E4
+      392.00, // G4
+      440.00, // A4
+      392.00, // G4
+      329.63, // E4
+      293.66, // D4
+      261.63, // C4
+      329.63, // E4
+      392.00, // G4
+      523.25, // C5
+      493.88, // B4
+      440.00, // A4
+      392.00, // G4
+      329.63, // E4
+      261.63  // C4
+    ];
+
+    lullabyNoteIndex = 0;
+
+    const playNextNote = () => {
+      if (isMuted || !lullabyActive) {
+        this.stopLullaby();
+        return;
+      }
+      try {
+        const context = getAudioContext();
+        if (!context) return;
+        if (context.state === 'suspended') {
+          context.resume().catch(() => {});
+        }
+        const now = context.currentTime;
+        const freq = LULLABY_NOTES[lullabyNoteIndex % LULLABY_NOTES.length];
+        lullabyNoteIndex++;
+
+        // Warm pure sine bell chime
+        const osc = context.createOscillator();
+        const gain = context.createGain();
+        const filter = context.createBiquadFilter();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now);
+
+        // Subtle soft overtone (celesta chime sparkle)
+        const osc2 = context.createOscillator();
+        const gain2 = context.createGain();
+        osc2.type = 'triangle';
+        osc2.frequency.setValueAtTime(freq * 2, now);
+
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(2600, now);
+        filter.frequency.exponentialRampToValueAtTime(900, now + 0.9);
+
+        // Clear, soothing volume designed for bedtime listening
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.24, now + 0.035);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.15);
+
+        gain2.gain.setValueAtTime(0.001, now);
+        gain2.gain.linearRampToValueAtTime(0.07, now + 0.025);
+        gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.55);
+
+        // Route osc through gain and osc2 through gain2, then through lowpass filter to destination
+        osc.connect(gain);
+        gain.connect(filter);
+        osc2.connect(gain2);
+        gain2.connect(filter);
+        filter.connect(context.destination);
+
+        osc.start(now);
+        osc2.start(now);
+        osc.stop(now + 1.2);
+        osc2.stop(now + 0.6);
+
+        if (typeof onNote === 'function') {
+          onNote(freq, lullabyNoteIndex);
+        }
+      } catch (e) {
+        console.debug('Lullaby audio error', e);
+      }
+    };
+
+    const startNoteLoop = () => {
+      if (!lullabyActive) return;
+      playNextNote();
+      if (!lullabyInterval && lullabyActive) {
+        lullabyInterval = setInterval(playNextNote, 1150);
+      }
+    };
+
+    if (ctx.state === 'suspended') {
+      ctx.resume().then(() => {
+        if (!lullabyActive) return;
+        startNoteLoop();
+      }).catch(() => {
+        if (!lullabyActive) return;
+        startNoteLoop();
+      });
+    } else {
+      startNoteLoop();
+    }
+  },
+
+  stopLullaby() {
+    lullabyActive = false;
+    if (lullabyInterval) {
+      clearInterval(lullabyInterval);
+      lullabyInterval = null;
+    }
+    lullabyNoteIndex = 0;
+  },
+
+  isLullabyPlaying() {
+    return lullabyActive && lullabyInterval !== null;
   }
 };
 

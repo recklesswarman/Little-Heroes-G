@@ -13,14 +13,15 @@ export function renderPetSelectionModal() {
   if (!modal || !modal.isOpen) return '';
 
   const hero = state.selectedHero;
-  const unlockedIds = hero.unlockedPetIds || [];
-  const modalType = modal.type || 'starter'; // 'starter', 'second_pet', 'third_pet'
+  const unlockedIds = (hero.unlockedPetIds || []).map(String);
+  const activePetId = String(hero.activePetId || unlockedIds[0] || '1');
+  const modalType = modal.type || 'starter'; // 'starter', 'second_pet', 'third_pet', 'switch'
 
-  // Filter out already unlocked pets for 2nd and 3rd pet choices
+  // Filter out already unlocked pets for 2nd and 3rd milestone reward choices
   const availablePets =
-    modalType === 'starter'
+    modalType === 'starter' || modalType === 'switch'
       ? PETS_DATABASE
-      : PETS_DATABASE.filter((p) => !unlockedIds.includes(p.id));
+      : PETS_DATABASE.filter((p) => !unlockedIds.includes(String(p.id)));
 
   const filteredPets =
     activeElementFilter === 'All'
@@ -34,7 +35,12 @@ export function renderPetSelectionModal() {
   let badgeText = '✨ FREE STARTER COMPANION • STAGE 1';
   let badgeColor = 'bg-primary/20 text-primary border-primary/40';
 
-  if (modalType === 'second_pet') {
+  if (modalType === 'switch') {
+    title = 'Choose Companion Pet';
+    subtitle = `Pick which magical companion joins ${hero.name || 'your hero'} on daily quests!`;
+    badgeText = '🐾 COMPANION SELECTION';
+    badgeColor = 'bg-primary/20 text-primary border-primary/40';
+  } else if (modalType === 'second_pet') {
     title = 'Choose Your 2nd Free Pet!';
     subtitle = 'Milestone Reached: Your first companion has evolved to Stage 2! Pick your 2nd free companion to join your hero team (starts at Stage 1).';
     badgeText = '🎉 STAGE 2 MILESTONE REWARD • 2ND FREE PET';
@@ -48,10 +54,10 @@ export function renderPetSelectionModal() {
 
   return `
     <div id="pet-selection-backdrop" class="fixed inset-0 bg-background/90 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-5 animate-fade-in select-none">
-      <div class="bg-surface-container border-4 border-primary/50 rounded-3xl p-5 sm:p-6 max-w-3xl w-full max-h-[92vh] card-shadow-lg flex flex-col gap-4 relative overflow-hidden">
+      <div class="bg-surface-container border-4 border-primary/50 rounded-3xl p-4 sm:p-6 max-w-3xl w-full h-[90vh] max-h-[92vh] card-shadow-lg flex flex-col gap-3 sm:gap-4 relative overflow-hidden">
         
         <!-- Header -->
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b-2 border-surface-container-highest pb-3">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b-2 border-surface-container-highest pb-3 flex-shrink-0">
           <div class="flex items-center gap-3">
             <div class="w-12 h-12 rounded-2xl bg-primary text-on-primary flex items-center justify-center text-2xl shadow-md flex-shrink-0">
               <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">pets</span>
@@ -96,50 +102,61 @@ export function renderPetSelectionModal() {
             .join('')}
         </div>
 
-        <!-- Scrollable Pets Grid -->
-        <div class="overflow-y-auto pr-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 flex-1 min-h-[300px]">
-          ${filteredPets
-            .map((pet) => {
-              return `
-              <div class="bg-surface-container-high rounded-2xl p-4 border-2 border-surface-container-highest hover:border-primary flex flex-col justify-between gap-3 text-center group transition-transform hover:-translate-y-1 card-shadow">
-                
-                <div class="flex flex-col items-center gap-2">
-                  <!-- Stage 1 Pill & Element Tag -->
-                  <div class="w-full flex justify-between items-center text-[10px] font-black uppercase">
-                    <span class="bg-primary/20 text-primary px-2 py-0.5 rounded-full border border-primary/30">
-                      Stage 1 (Egg/Baby)
-                    </span>
-                    <span class="text-secondary font-bold">${pet.element}</span>
+        <!-- Scrollable Pets Container -->
+        <div id="pet-selection-scroll-container" class="overflow-y-auto pr-1 flex-1 min-h-0 overscroll-contain touch-pan-y" style="min-height: 0; flex: 1 1 0%; touch-action: pan-y; -webkit-overflow-scrolling: touch; overflow-y: auto;">
+          <div id="pet-selection-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 pb-2">
+            ${filteredPets
+              .map((pet) => {
+                const isCurrentActive = String(pet.id) === activePetId;
+                const isAlreadyUnlocked = unlockedIds.includes(String(pet.id));
+
+                return `
+                <div class="bg-surface-container-high rounded-2xl p-4 border-2 ${
+                  isCurrentActive ? 'border-primary ring-2 ring-primary/30' : 'border-surface-container-highest hover:border-primary'
+                } flex flex-col justify-between gap-3 text-center group transition-transform hover:-translate-y-1 card-shadow">
+                  
+                  <div class="flex flex-col items-center gap-2">
+                    <!-- Stage 1 Pill & Element Tag -->
+                    <div class="w-full flex justify-between items-center text-[10px] font-black uppercase">
+                      <span class="${isCurrentActive ? 'bg-primary text-on-primary' : 'bg-primary/20 text-primary'} px-2 py-0.5 rounded-full border border-primary/30">
+                        ${isCurrentActive ? 'Active Companion' : 'Stage 1 (Egg/Baby)'}
+                      </span>
+                      <span class="text-secondary font-bold">${pet.element}</span>
+                    </div>
+
+                    <!-- Pet Avatar -->
+                    <div class="w-24 h-24 rounded-full bg-surface-container-lowest border-2 border-surface-container-highest flex items-center justify-center p-2 shadow-inner group-hover:scale-105 transition-transform relative">
+                      <img class="w-full h-full object-contain drop-shadow-md" src="${pet.avatar}" alt="${pet.name}" />
+                    </div>
+
+                    <!-- Name & Lore -->
+                    <div>
+                      <h3 class="font-headline text-base font-black text-inverse-surface">${pet.name}</h3>
+                      <p class="text-[11px] font-bold text-secondary">${pet.title}</p>
+                      <p class="text-[10px] text-on-surface-variant font-medium mt-1 line-clamp-2 italic">"${pet.backstory}"</p>
+                    </div>
+
+                    <!-- Habit Buff Tag -->
+                    <div class="bg-surface-container px-2.5 py-1 rounded-xl border border-surface-container-highest text-[10px] font-bold text-primary w-full">
+                      ⚡ ${pet.habitBonus}
+                    </div>
                   </div>
 
-                  <!-- Pet Avatar -->
-                  <div class="w-24 h-24 rounded-full bg-surface-container-lowest border-2 border-surface-container-highest flex items-center justify-center p-2 shadow-inner group-hover:scale-105 transition-transform relative">
-                    <img class="w-full h-full object-contain drop-shadow-md" src="${pet.avatar}" alt="${pet.name}" />
-                  </div>
+                  <!-- Choose Pet Button -->
+                  <button data-choose-pet-id="${pet.id}" class="choose-pet-btn w-full ${
+                    isCurrentActive
+                      ? 'bg-surface-container-highest text-slate-300 border-surface-bright cursor-default'
+                      : 'bg-primary text-on-primary hover:brightness-110 active:scale-95 border-primary-container shadow-sm'
+                  } font-headline text-xs font-black py-2.5 px-3 rounded-xl chunky-btn flex items-center justify-center gap-1.5 transition-all">
+                    <span class="material-symbols-outlined text-base">pets</span>
+                    <span>${isCurrentActive ? 'Active Companion' : isAlreadyUnlocked ? 'Equip This Pet!' : 'Adopt This Pet!'}</span>
+                  </button>
 
-                  <!-- Name & Lore -->
-                  <div>
-                    <h3 class="font-headline text-base font-black text-inverse-surface">${pet.name}</h3>
-                    <p class="text-[11px] font-bold text-secondary">${pet.title}</p>
-                    <p class="text-[10px] text-on-surface-variant font-medium mt-1 line-clamp-2 italic">"${pet.backstory}"</p>
-                  </div>
-
-                  <!-- Habit Buff Tag -->
-                  <div class="bg-surface-container px-2.5 py-1 rounded-xl border border-surface-container-highest text-[10px] font-bold text-primary w-full">
-                    ⚡ ${pet.habitBonus}
-                  </div>
                 </div>
-
-                <!-- Choose Pet Button -->
-                <button data-choose-pet-id="${pet.id}" class="choose-pet-btn w-full bg-primary text-on-primary font-headline text-xs font-black py-2.5 px-3 rounded-xl chunky-btn border-primary-container shadow-sm hover:brightness-110 active:scale-95 flex items-center justify-center gap-1.5">
-                  <span class="material-symbols-outlined text-base">pets</span>
-                  <span>Adopt This Pet!</span>
-                </button>
-
-              </div>
-            `;
-            })
-            .join('')}
+              `;
+              })
+              .join('')}
+          </div>
         </div>
 
         <!-- Footer Guidance -->
@@ -183,23 +200,63 @@ export function attachPetSelectionModalListeners() {
   document.querySelectorAll('.pet-select-elem-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       activeElementFilter = btn.getAttribute('data-select-elem') || 'All';
+      const sc = document.getElementById('pet-selection-scroll-container');
+      if (sc) sc.scrollTop = 0;
       Sound.click();
       store.notify();
     });
   });
   preserveScrollPosition('pet-select-elem-bar');
+  preserveScrollPosition('pet-selection-scroll-container');
+
+  // Forward wheel and touch scrolling from backdrop or modal box to scroll container
+  const backdropEl = document.getElementById('pet-selection-backdrop');
+  const scrollContainer = document.getElementById('pet-selection-scroll-container');
+  if (backdropEl && scrollContainer) {
+    backdropEl.addEventListener('wheel', (e) => {
+      if (!scrollContainer.contains(e.target)) {
+        scrollContainer.scrollTop += e.deltaY;
+      }
+    }, { passive: true });
+
+    let touchStartY = 0;
+    backdropEl.addEventListener('touchstart', (e) => {
+      if (e.touches && e.touches.length > 0) {
+        touchStartY = e.touches[0].clientY;
+      }
+    }, { passive: true });
+
+    backdropEl.addEventListener('touchmove', (e) => {
+      if (!scrollContainer.contains(e.target) && e.touches && e.touches.length > 0) {
+        const delta = touchStartY - e.touches[0].clientY;
+        scrollContainer.scrollTop += delta;
+        touchStartY = e.touches[0].clientY;
+      }
+    }, { passive: true });
+  }
 
   // Choose Pet Action
   document.querySelectorAll('.choose-pet-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const petId = Number(btn.getAttribute('data-choose-pet-id'));
+      const petId = String(btn.getAttribute('data-choose-pet-id') || '1');
       const modal = store.getState().petSelectionModal;
-      if (petId === 2) {
+      const hero = store.getState().selectedHero;
+      const unlockedIds = (hero?.unlockedPetIds || []).map(String);
+      const isAlreadyUnlocked = unlockedIds.includes(petId);
+
+      if (petId === '2' || petId === '1') {
         speakRex("Rawr! I am Rex the Dino! Let's go on an adventure!");
       }
-      if (petId) {
-        store.choosePet(petId, modal?.type || 'starter');
+
+      // If switching active pet or equipping an already unlocked companion, directly equip and close modal cleanly
+      if (modal?.type === 'switch' || isAlreadyUnlocked) {
+        store.setActivePet(petId);
+        store.closePetSelectionModal();
+        return;
       }
+
+      // Otherwise first-time unlock (starter, 2nd, or 3rd free milestone)
+      store.choosePet(petId, modal?.type || 'starter');
     });
   });
 }
