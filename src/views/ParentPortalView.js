@@ -1583,7 +1583,7 @@ export function renderParentPortalView() {
             <div class="flex flex-wrap items-center gap-2">
               ${studioActiveCategory === 'gear' ? 
                 gearThemes.map(t => `
-                  <button class="studio-spark-chip px-3.5 py-2 rounded-2xl text-xs font-black transition-all active:scale-95 flex items-center gap-1.5 border-2 ${studioSelectedTheme === t.key ? 'bg-secondary text-on-secondary border-secondary-container shadow-md scale-102' : 'bg-surface-container-high hover:bg-surface-bright text-inverse-surface border-surface-container-highest'}" data-spark="${t.key}" data-category="gear" title="${t.desc}">
+                  <button class="studio-spark-chip px-3.5 py-2 rounded-2xl text-xs font-black transition-all active:scale-95 flex items-center gap-1.5 border-2 ${studioSelectedTheme === t.key ? 'bg-secondary text-on-secondary border-secondary-container shadow-md scale-102' : 'bg-surface-container-high hover:bg-surface-bright text-inverse-surface border-surface-container-highest'}" data-spark="${t.key}" title="${t.desc}">
                     <span>${t.label}</span>
                   </button>
                 `).join('')
