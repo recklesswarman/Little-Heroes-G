@@ -318,7 +318,10 @@ export function renderBattleView() {
       <!-- ================= 7. REX VOICE COMPANION COACHING (BOTTOM-LEFT) ================= -->
       <div class="absolute bottom-16 sm:bottom-18 left-3 sm:left-6 z-25 flex items-end gap-2 pointer-events-none">
         <div class="relative w-12 h-12 sm:w-14 sm:h-14 bg-slate-900/95 rounded-2xl border-2 border-emerald-400 p-1 shadow-lg flex flex-col items-center justify-center overflow-hidden">
-          <span class="text-2xl sm:text-3xl">${activePet.avatar || '🦖'}</span>
+          ${typeof activePet?.avatar === 'string' && (activePet.avatar.startsWith('http') || activePet.avatar.startsWith('data:') || activePet.avatar.startsWith('assets/') || activePet.avatar.includes('/'))
+            ? `<img src="${activePet.avatar}" alt="${activePet.name || 'Companion'}" class="w-full h-full object-contain pointer-events-none select-none" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\\'text-2xl sm:text-3xl\\'>${activePet.emoji || '🦖'}</span>';" />`
+            : `<span class="text-2xl sm:text-3xl">${activePet?.emoji || activePet?.avatar || '🦖'}</span>`
+          }
         </div>
         <div class="bg-slate-900/95 border-2 border-emerald-400/80 px-3 py-1.5 rounded-2xl rounded-bl-none shadow-2xl max-w-[200px] sm:max-w-[280px]">
           <p id="rex-dialogue-bubble" class="font-headline font-bold text-[10px] sm:text-[11px] text-emerald-300 leading-snug">
