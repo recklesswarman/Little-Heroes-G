@@ -6446,8 +6446,13 @@ class Store {
         if (resolvedIds.has(localReq.id)) return false;
         const inCloud = cloudData.pendingApprovals.some((c) => c.id === localReq.id);
         if (inCloud) return false;
+        // A request timestamped in the same millisecond as this check (age 0)
+        // is exactly as "unconfirmed and recent" as one a few ms old -- on a
+        // fast machine (e.g. CI) this is common, not an edge case, so the
+        // lower bound must be inclusive or a just-created request gets
+        // wrongly treated as stale and dropped.
         const ageMs = localReq.timestamp ? (Date.now() - new Date(localReq.timestamp).getTime()) : 0;
-        return ageMs > 0 && ageMs < 45000;
+        return ageMs >= 0 && ageMs < 45000;
       });
       // The cloud list can still hold a request that's already resolved: it
       // was re-saved by a device (or an in-flight push) from before the
