@@ -624,6 +624,21 @@ function triggerQuestVoice(title = '', id = '', desc = '') {
   }
 }
 
+// Launches the Toothbrush AR Battle, first showing the Floss Reminder screen
+// if the parent flagged one for this kid today and it hasn't been shown yet
+// today -- flossing happens before brushing starts, so this gates entry into
+// the battle rather than firing alongside it.
+function launchToothbrushBattle() {
+  Sound.click();
+  const kidId = store.getState().selectedHero?.id;
+  if (kidId && store.shouldShowHygieneReminder(kidId, 'floss')) {
+    store.openHygieneReminder('floss', { navTo: 'ar_battle' });
+    return;
+  }
+  speakRex("3, 2, 1, BRUSH!");
+  store.navigate('ar_battle');
+}
+
 export function attachDashboardListeners() {
   const isEasy = store.isEasyMode();
   const currentHeroId = store.getState().selectedHero?.id;
@@ -686,9 +701,7 @@ export function attachDashboardListeners() {
       triggerQuestVoice(task?.title || '', taskId || '', task?.desc || '');
       const isAR = card.querySelector('.task-ar-launch-btn');
       if (isAR) {
-        Sound.click();
-        speakRex("3, 2, 1, BRUSH!");
-        store.navigate('ar_battle');
+        launchToothbrushBattle();
       } else if (taskId) {
         store.toggleTaskForest(taskId);
       }
@@ -698,9 +711,7 @@ export function attachDashboardListeners() {
   document.querySelectorAll('.task-ar-launch-btn').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      Sound.click();
-      speakRex("3, 2, 1, BRUSH!");
-      store.navigate('ar_battle');
+      launchToothbrushBattle();
     });
   });
 

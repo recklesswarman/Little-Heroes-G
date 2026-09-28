@@ -3200,6 +3200,53 @@ export function renderParentPortalView() {
             </div>
           </div>
 
+          <!-- Floss & Mouthwash Daily Reminders (Per Kid) -->
+          <div class="bg-surface-container rounded-3xl p-6 border-2 border-surface-container-highest card-shadow flex flex-col gap-5">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-2xl bg-primary/20 text-primary border border-primary/40 flex items-center justify-center text-2xl shadow-sm">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">health_and_safety</span>
+              </div>
+              <div>
+                <h3 class="font-headline text-base sm:text-lg font-black text-inverse-surface">Floss & Mouthwash Reminders</h3>
+                <p class="text-xs text-on-surface-variant font-bold">Pick which kids need a reminder today. Floss reminders show before the Toothbrush Battle starts; mouthwash reminders show right after it's won.</p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              ${heroes.map((h) => {
+                const flossOn = store.isHygieneReminderActive(h.id, 'floss');
+                const mouthwashOn = store.isHygieneReminderActive(h.id, 'mouthwash');
+                return `
+                  <div class="bg-surface-container-high rounded-2xl p-4 border-2 border-surface-container-highest flex flex-col gap-3">
+                    <div class="flex items-center gap-2.5">
+                      <img src="${h.avatar}" class="w-10 h-10 rounded-full border-2 border-primary object-cover" />
+                      <div class="flex flex-col">
+                        <span class="font-headline text-sm font-black text-inverse-surface">${h.name}</span>
+                        <span class="text-[10px] text-on-surface-variant font-bold">Today's Reminders</span>
+                      </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                      <button data-kid-id="${h.id}" data-reminder-type="floss" class="hygiene-reminder-toggle-btn rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 border-2 transition-all ${
+                        flossOn ? 'bg-primary text-on-primary border-primary-container shadow-sm font-black' : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border-surface-container-highest'
+                      }">
+                        <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">health_and_safety</span>
+                        <span class="text-[11px] font-headline font-black">Floss${flossOn ? ' ✓' : ''}</span>
+                      </button>
+
+                      <button data-kid-id="${h.id}" data-reminder-type="mouthwash" class="hygiene-reminder-toggle-btn rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 border-2 transition-all ${
+                        mouthwashOn ? 'bg-secondary text-on-secondary border-secondary-container shadow-sm font-black' : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border-surface-container-highest'
+                      }">
+                        <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">water_drop</span>
+                        <span class="text-[11px] font-headline font-black">Mouthwash${mouthwashOn ? ' ✓' : ''}</span>
+                      </button>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+
           <!-- Rex AI Companion Voice Persona & Live Settings -->
           <div class="bg-surface-container rounded-3xl p-6 border-2 border-primary/30 card-shadow flex flex-col gap-5">
             <div class="flex items-center gap-3">
@@ -4935,6 +4982,17 @@ export function attachParentPortalListeners() {
       store.getState().parentSettings.arBattleDuration = dur;
       Sound.click();
       store.saveState();
+    });
+  });
+
+  // FLOSS & MOUTHWASH DAILY REMINDER TOGGLES (Settings Tab, per kid)
+  document.querySelectorAll('.hygiene-reminder-toggle-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const kidId = btn.getAttribute('data-kid-id');
+      const type = btn.getAttribute('data-reminder-type');
+      const isActive = store.isHygieneReminderActive(kidId, type);
+      store.setHygieneReminder(kidId, type, !isActive);
+      Sound.click();
     });
   });
 

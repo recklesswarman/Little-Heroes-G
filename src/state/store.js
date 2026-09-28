@@ -573,6 +573,20 @@ const defaultState = {
   // Mystery Surprise Unboxing (Glowing Egg / Treasure Chest)
   mysterySurprise: null,
 
+  // Parent-scheduled Floss & Mouthwash Reminders, keyed by kid id:
+  // { [kidId]: { flossDate, flossAckDate, mouthwashDate, mouthwashAckDate } }
+  // A reminder is "on" for a kid when its *Date field matches today's date
+  // string; it auto-clears the next day instead of nagging forever. The
+  // *AckDate field records the day the kid last dismissed that reminder, so
+  // once shown before a kid's first battle (floss) or after their first
+  // victory (mouthwash) that same day, it won't pop up again on a retry.
+  hygieneReminders: {},
+
+  // Transient single-device prompt currently on screen for the active kid:
+  // { type: 'floss' | 'mouthwash', kidId, payload }. Never synced to the
+  // cloud/other devices (see localOnlyKeys in mergeCloudState).
+  activeHygieneReminder: null,
+
   // Live Interactive Rex the Dino (Gemini Live & Interactions API)
   liveRex: {
     isOpen: false,
@@ -5368,6 +5382,80 @@ class Store {
     this.notify();
   }
 
+  // ===========================================================================
+  // FLOSS & MOUTHWASH REMINDERS (Parent Panel: per-kid, per-day toggles)
+  // ===========================================================================
+
+  getHygieneReminderRecord(kidId) {
+    if (!this.state.hygieneReminders) this.state.hygieneReminders = {};
+    if (!this.state.hygieneReminders[kidId]) {
+      this.state.hygieneReminders[kidId] = { flossDate: null, flossAckDate: null, mouthwashDate: null, mouthwashAckDate: null };
+    }
+    return this.state.hygieneReminders[kidId];
+  }
+
+  // Turns a kid's floss/mouthwash reminder on (for today) or off.
+  setHygieneReminder(kidId, type, enabled) {
+    if (!kidId || (type !== 'floss' && type !== 'mouthwash')) return;
+    const rec = this.getHygieneReminderRecord(kidId);
+    rec[`${type}Date`] = enabled ? new Date().toDateString() : null;
+    this.saveState();
+  }
+
+  isHygieneReminderActive(kidId, type) {
+    const rec = this.state.hygieneReminders?.[kidId];
+    if (!rec) return false;
+    return rec[`${type}Date`] === new Date().toDateString();
+  }
+
+  hasAcknowledgedHygieneReminderToday(kidId, type) {
+    const rec = this.state.hygieneReminders?.[kidId];
+    if (!rec) return false;
+    return rec[`${type}AckDate`] === new Date().toDateString();
+  }
+
+  // True when the parent flagged this reminder for today AND the kid hasn't
+  // already seen it yet today (so a battle retry doesn't re-nag them).
+  shouldShowHygieneReminder(kidId, type) {
+    return this.isHygieneReminderActive(kidId, type) && !this.hasAcknowledgedHygieneReminderToday(kidId, type);
+  }
+
+  // Puts the full-screen Floss/Mouthwash reminder prompt on screen for the
+  // active kid. `payload` is plain serializable data consumed once the kid
+  // acknowledges it -- e.g. { navTo } to continue into the AR battle for a
+  // floss reminder, or the just-finished battle's reward args for mouthwash.
+  openHygieneReminder(type, payload = null) {
+    const kidId = this.state.selectedHero?.id;
+    if (!kidId) return;
+    this.state.activeHygieneReminder = { type, kidId, payload };
+    this.notify();
+  }
+
+  closeHygieneReminder() {
+    this.state.activeHygieneReminder = null;
+    this.notify();
+  }
+
+  // Called when the kid taps "Got it!" on the reminder prompt: records
+  // today's acknowledgement so it won't reappear, then resumes whatever the
+  // reminder was blocking (entering the battle, or crediting the victory).
+  acknowledgeActiveHygieneReminder() {
+    const active = this.state.activeHygieneReminder;
+    if (!active) return;
+    const rec = this.getHygieneReminderRecord(active.kidId);
+    rec[`${active.type}AckDate`] = new Date().toDateString();
+    this.state.activeHygieneReminder = null;
+    this.saveState();
+
+    if (active.type === 'floss' && active.payload?.navTo) {
+      this.navigate(active.payload.navTo);
+    } else if (active.type === 'mouthwash' && active.payload) {
+      const { bossId, durationSec, avgCadence } = active.payload;
+      this.completeToothbrushBattle(bossId, durationSec, avgCadence);
+    }
+    this.notify();
+  }
+
   toggleLiveRexModal(forceOpen) {
     if (!this.state.liveRex) {
       this.state.liveRex = { ...defaultState.liveRex };
@@ -5932,6 +6020,7 @@ class Store {
         'petSelectionModal',
         'rewardModal',
         'mysterySurprise',
+        'activeHygieneReminder',
         'activeUnboxingCrateId',
         'activeDrawer',
         'devices',

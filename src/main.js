@@ -18,6 +18,7 @@ import { renderHouseholdLinkModal, initHouseholdModal, attachHouseholdLinkModalL
 import { renderPetSelectionModal, attachPetSelectionModalListeners } from './components/PetSelectionModal.js';
 import { renderPetLockerModal, attachPetLockerModalListeners } from './components/PetLockerModal.js';
 import { renderMysterySurpriseModal, attachMysterySurpriseModalListeners } from './components/MysterySurpriseModal.js';
+import { renderHygieneReminderModal, attachHygieneReminderModalListeners } from './components/HygieneReminderModal.js';
 import { renderLiveRexWidget, attachLiveRexWidgetListeners } from './components/LiveRexWidget.js';
 import { geminiLiveService } from './services/geminiLiveService.js';
 import { rexEngine } from './services/rexCompanionEngine.js';
@@ -302,6 +303,7 @@ function renderApp() {
       ${renderPetSelectionModal()}
       ${renderPetLockerModal()}
       ${renderMysterySurpriseModal()}
+      ${renderHygieneReminderModal()}
       ${renderLiveRexWidget()}
       ${renderGiftCrateWidget()}
       ${renderGiftCrateModal()}
@@ -317,6 +319,7 @@ function renderApp() {
   attachPetSelectionModalListeners();
   attachPetLockerModalListeners();
   attachMysterySurpriseModalListeners();
+  attachHygieneReminderModalListeners();
   attachLiveRexWidgetListeners();
   attachGiftCrateListeners();
   attachViewListeners();
