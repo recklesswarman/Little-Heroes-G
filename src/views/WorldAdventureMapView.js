@@ -513,10 +513,13 @@ function renderWaypointModal(wp, hero) {
 }
 
 function isWaypointDone(wp, hero) {
-  // Check if routine/chore for this waypoint is completed today
-  const routines = store.getState().taskForest || [];
-  const r = routines.find(r => r.id === wp.choreKey);
-  return r ? r.completed : false;
+  // Check if routine/chore for this waypoint is completed today. taskForest
+  // is a shared household-level catalog, not per-kid, so its own r.completed
+  // flag must never be read here -- it would mark this waypoint "done" for
+  // every kid the moment ANY one of them finished it. getTaskCompletionsToday
+  // is correctly scoped to this specific hero.
+  const heroId = hero?.id || store.getState().selectedHero?.id;
+  return store.getTaskCompletionsToday(wp.choreKey, heroId).length > 0;
 }
 
 export function attachWorldAdventureMapListeners() {
