@@ -1109,6 +1109,15 @@ class Store {
       savedHeroCards: [...(sHero.savedHeroCards || this.state.savedHeroCards || [])],
       inventory: [...(sHero.inventory || [])],
       aiQuests: [...(sHero.aiQuests || this.state.heroAiQuestsMap?.[heroId] || this.state.aiQuests || [])],
+      // Per-kid pet progress (training level/XP, hunger/hygiene/joy/energy,
+      // bond levels, sanctuary drawer/eggs). Without flushing these back into
+      // the heroes[] record here, switching to another kid on a shared
+      // device (switchHero) would silently discard whatever this hero's pet
+      // just did, since selectedHero is about to be overwritten.
+      petLevelMap: sHero.petLevelMap ? { ...sHero.petLevelMap } : (idx !== -1 ? this.state.heroes[idx].petLevelMap : undefined),
+      petXpMap: sHero.petXpMap ? { ...sHero.petXpMap } : (idx !== -1 ? this.state.heroes[idx].petXpMap : undefined),
+      petStatsMap: sHero.petStatsMap ? { ...sHero.petStatsMap } : (idx !== -1 ? this.state.heroes[idx].petStatsMap : undefined),
+      petSanctuary: sHero.petSanctuary ? { ...sHero.petSanctuary } : (idx !== -1 ? this.state.heroes[idx].petSanctuary : undefined),
       lastUpdated: Date.now()
     };
 
@@ -1227,7 +1236,7 @@ class Store {
     const xp = this.getPetXp(petData.id);
     const levelData = getPetLevelData(level);
     const statBonus = calculatePetStatBonus(petData, level);
-    const stats = this.state.petStatsMap?.[petData.id] || { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
+    const stats = this.getPetStats(petData.id);
     const avatar = petData.avatar || `assets/pets/${petData.key || 'rex'}.png`;
     return { ...petData, level, xp, levelData, statBonus, ...stats, image: avatar, avatar };
   }
@@ -1240,28 +1249,65 @@ class Store {
     const xp = this.getPetXp(petData.id);
     const levelData = getPetLevelData(level);
     const statBonus = calculatePetStatBonus(petData, level);
-    const stats = this.state.petStatsMap?.[petData.id] || { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
+    const stats = this.getPetStats(petData.id);
     const avatar = petData.avatar || `assets/pets/${petData.key || 'rex'}.png`;
     return { ...petData, level, xp, levelData, statBonus, ...stats, image: avatar, avatar };
+  }
+
+  // petStatsMap (hunger/hygiene/energy/joy) used to live ONLY in the single
+  // shared, household-level this.state.petStatsMap, keyed by pet id -- so if
+  // two kids both owned the same pet species, feeding/bathing/playing with
+  // one kid's pet silently changed the stats the OTHER kid saw for theirs
+  // too. It's now tracked per-hero; these two helpers are the only place
+  // that should ever touch petStatsMap, so every pet-care call site reads
+  // and writes through the currently selected hero's own copy.
+  getPetStats(petId, defaults = { hunger: 75, hygiene: 90, energy: 65, joy: 85 }) {
+    const id = String(petId);
+    const hero = this.state.selectedHero;
+    if (hero?.petStatsMap?.[id]) return hero.petStatsMap[id];
+    // Legacy data saved before per-hero tracking existed: fall back to the
+    // shared copy once, but never let it override a hero who already has
+    // their own value (handled by the branch above).
+    return this.state.petStatsMap?.[id] || { ...defaults };
+  }
+
+  ensurePetStats(petId, defaults = { hunger: 75, hygiene: 90, energy: 65, joy: 85 }) {
+    const id = String(petId);
+    const hero = this.state.selectedHero;
+    if (!hero) {
+      if (!this.state.petStatsMap) this.state.petStatsMap = {};
+      if (!this.state.petStatsMap[id]) this.state.petStatsMap[id] = { ...defaults };
+      return this.state.petStatsMap[id];
+    }
+    if (!hero.petStatsMap) hero.petStatsMap = {};
+    if (!hero.petStatsMap[id]) {
+      hero.petStatsMap[id] = { ...defaults, ...(this.state.petStatsMap?.[id] || {}) };
+    }
+    return hero.petStatsMap[id];
   }
 
   getPetLevel(petId) {
     const id = petId !== undefined && petId !== null ? String(petId) : (this.state.selectedHero?.activePetId || '1');
     const hero = this.state.selectedHero;
-    const rawLvl = this.state.petLevelMap?.[id] || hero?.petLevelMap?.[id] || 1;
+    // petLevelMap/petXpMap started as a single shared (household-level) map
+    // and later grew a per-hero copy alongside it, but reads here still
+    // checked the shared copy FIRST -- so if two kids both own the same pet
+    // (same id), whichever kid trained it last would silently overwrite the
+    // level/XP the OTHER kid sees for their own copy of that pet. The
+    // hero-scoped value must always win; the shared map is only a fallback
+    // for data saved before per-hero tracking existed.
+    const rawLvl = hero?.petLevelMap?.[id] ?? this.state.petLevelMap?.[id] ?? 1;
     return Math.max(1, Math.min(25, Math.floor(rawLvl)));
   }
 
   getPetXp(petId) {
     const id = petId !== undefined && petId !== null ? String(petId) : (this.state.selectedHero?.activePetId || '1');
     const hero = this.state.selectedHero;
-    return this.state.petXpMap?.[id] || hero?.petXpMap?.[id] || 0;
+    return hero?.petXpMap?.[id] ?? this.state.petXpMap?.[id] ?? 0;
   }
 
   addPetTrainingXp(petId, amount = 25) {
     const id = petId !== undefined && petId !== null ? String(petId) : (this.state.selectedHero?.activePetId || '1');
-    if (!this.state.petLevelMap) this.state.petLevelMap = {};
-    if (!this.state.petXpMap) this.state.petXpMap = {};
     const hero = this.state.selectedHero;
     if (hero) {
       if (!hero.petLevelMap) hero.petLevelMap = {};
@@ -1284,11 +1330,19 @@ class Store {
       }
     }
 
-    this.state.petLevelMap[id] = currentLvl;
-    this.state.petXpMap[id] = currentXp;
+    // Deliberately no longer written into the legacy shared this.state.
+    // petLevelMap/petXpMap -- that map is now read-only migration fallback
+    // for pre-existing data; continuing to write to it here would let one
+    // kid's training progress silently become the "no history yet" default
+    // for another kid who later unlocks the same pet id.
     if (hero) {
       hero.petLevelMap[id] = currentLvl;
       hero.petXpMap[id] = currentXp;
+    } else {
+      if (!this.state.petLevelMap) this.state.petLevelMap = {};
+      if (!this.state.petXpMap) this.state.petXpMap = {};
+      this.state.petLevelMap[id] = currentLvl;
+      this.state.petXpMap[id] = currentXp;
     }
 
     if (leveledUp) {
@@ -2246,10 +2300,7 @@ class Store {
 
     // 2. Active Companion Pet Sparks & Max 100% Hygiene Boost
     this.addPetCareXp(petId, sparksEarned);
-    if (!this.state.petStatsMap[petId]) {
-      this.state.petStatsMap[petId] = { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
-    }
-    const pStats = this.state.petStatsMap[petId];
+    const pStats = this.ensurePetStats(petId);
     pStats.hygiene = 100; // Refill to 100% sparkling clean
     pStats.joy = Math.min(100, (pStats.joy || 80) + 20);
 
@@ -2669,10 +2720,7 @@ class Store {
     this.addXP(rewards.xpAwarded);
 
     // 3. Companion Pet Joy & Energy Boost
-    if (!this.state.petStatsMap[pet.id]) {
-      this.state.petStatsMap[pet.id] = { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
-    }
-    const pStats = this.state.petStatsMap[pet.id];
+    const pStats = this.ensurePetStats(pet.id);
     pStats.joy = Math.min(100, (pStats.joy || 80) + 25);
     pStats.energy = Math.min(100, (pStats.energy || 70) + 15);
 
@@ -3043,9 +3091,7 @@ class Store {
 
   feedPet(petId) {
     const id = String(petId || this.state.selectedHero?.activePetId || '1');
-    if (!this.state.petStatsMap) this.state.petStatsMap = {};
-    if (!this.state.petStatsMap[id]) this.state.petStatsMap[id] = { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
-    const stats = this.state.petStatsMap[id];
+    const stats = this.ensurePetStats(id);
     const activePet = this.getActivePet();
 
     if (stats.hunger >= 100) {
@@ -3082,9 +3128,7 @@ class Store {
 
   playWithPet(petId) {
     const id = String(petId || this.state.selectedHero?.activePetId || '1');
-    if (!this.state.petStatsMap) this.state.petStatsMap = {};
-    if (!this.state.petStatsMap[id]) this.state.petStatsMap[id] = { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
-    const stats = this.state.petStatsMap[id];
+    const stats = this.ensurePetStats(id);
 
     // Increases BOTH Joy and Energy (not decreasing)
     stats.joy = Math.min(100, (stats.joy || 85) + 20);
@@ -3871,12 +3915,9 @@ class Store {
     const comfortXp = Math.round(15 * (1 + comfortBoost / 100));
     this.addXP(comfortXp);
 
-    if (!this.state.petStatsMap) this.state.petStatsMap = {};
-    if (!this.state.petStatsMap[pId]) {
-      this.state.petStatsMap[pId] = { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
-    }
-    const energyRefill = Math.min(100, (this.state.petStatsMap[pId].energy || 60) + Math.max(10, Math.round(comfortBoost * 0.8)));
-    this.state.petStatsMap[pId].energy = energyRefill;
+    const petStats = this.ensurePetStats(pId);
+    const energyRefill = Math.min(100, (petStats.energy || 60) + Math.max(10, Math.round(comfortBoost * 0.8)));
+    petStats.energy = energyRefill;
 
     this.logAction(
       `${pet.name} used ${furniture.name} in Hero HQ 🛋️`,
@@ -3895,15 +3936,12 @@ class Store {
     const pId = petId || this.getActivePet()?.id || this.state.selectedHero?.activePetId || 1;
     const pet = this.getActivePet() || { name: 'Rex' };
 
-    if (!this.state.petStatsMap) this.state.petStatsMap = {};
-    if (!this.state.petStatsMap[pId]) {
-      this.state.petStatsMap[pId] = { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
-    }
+    const petStats = this.ensurePetStats(pId);
 
     const statType = toy.statRefillType || 'joy';
     const amount = toy.statRefillAmount || 25;
-    const currentVal = this.state.petStatsMap[pId][statType] || 70;
-    this.state.petStatsMap[pId][statType] = Math.min(100, currentVal + amount);
+    const currentVal = petStats[statType] || 70;
+    petStats[statType] = Math.min(100, currentVal + amount);
 
     const voiceLine = toy.petVoiceLine || toy.companionReaction || `Wheee! Playing with the ${toy.name} is so much fun!`;
     speakCompanion(voiceLine);
@@ -3990,7 +4028,7 @@ class Store {
       this.state.petStreakShield = { available: true, usedThisWeek: false, lastProtectedDate: null };
     }
     const activePet = this.getActivePet();
-    const stats = this.state.petStatsMap?.[activePet?.id] || { joy: 85 };
+    const stats = activePet?.id ? this.getPetStats(activePet.id) : { joy: 85 };
     const isHappy = (stats.joy || 80) >= 60;
     return {
       ...this.state.petStreakShield,
@@ -4023,10 +4061,7 @@ class Store {
       : [hero.activePetId || 1];
 
     unlockedIds.forEach(pId => {
-      if (!this.state.petStatsMap[pId]) {
-        this.state.petStatsMap[pId] = { hunger: 70, hygiene: 85, energy: 65, joy: 80 };
-      }
-      const s = this.state.petStatsMap[pId];
+      const s = this.ensurePetStats(pId, { hunger: 70, hygiene: 85, energy: 65, joy: 80 });
       s.hunger = Math.min(100, (s.hunger || 70) + 30);
       s.joy = Math.min(100, (s.joy || 80) + 25);
       s.energy = Math.min(100, (s.energy || 65) + 20);
@@ -4079,10 +4114,7 @@ class Store {
     }
 
     hero.coins -= cost;
-    if (!this.state.petStatsMap[id]) {
-      this.state.petStatsMap[id] = { hunger: 70, hygiene: 85, energy: 65, joy: 80 };
-    }
-    const stats = this.state.petStatsMap[id];
+    const stats = this.ensurePetStats(id, { hunger: 70, hygiene: 85, energy: 65, joy: 80 });
     stats.hunger = Math.min(100, (stats.hunger || 70) + 25);
     stats.joy = Math.min(100, (stats.joy || 80) + 15);
     stats.energy = Math.min(100, (stats.energy || 65) + 10);
@@ -4110,10 +4142,7 @@ class Store {
 
   petHugPet(petId) {
     const id = petId || this.state.selectedHero?.activePetId || 1;
-    if (!this.state.petStatsMap[id]) {
-      this.state.petStatsMap[id] = { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
-    }
-    const stats = this.state.petStatsMap[id];
+    const stats = this.ensurePetStats(id);
     stats.joy = Math.min(100, (stats.joy || 80) + 20);
     stats.energy = Math.min(100, (stats.energy || 65) + 10);
     this.addPetCareXp(id, 5);
@@ -4135,10 +4164,7 @@ class Store {
     const sparkAmount = type === 'ar_battle' ? 10 : 15;
     this.addPetCareXp(petId, sparkAmount);
 
-    if (!this.state.petStatsMap[petId]) {
-      this.state.petStatsMap[petId] = { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
-    }
-    const stats = this.state.petStatsMap[petId];
+    const stats = this.ensurePetStats(petId);
     stats.joy = Math.min(100, (stats.joy || 80) + 5);
     stats.energy = Math.min(100, (stats.energy || 70) + 5);
     this.applyChoreTurboBoost(15, taskId);
@@ -4147,9 +4173,7 @@ class Store {
 
   bathPetProgress(amount = 20, petId) {
     const id = String(petId || this.state.selectedHero?.activePetId || '1');
-    if (!this.state.petStatsMap) this.state.petStatsMap = {};
-    if (!this.state.petStatsMap[id]) this.state.petStatsMap[id] = { hunger: 75, hygiene: 60, energy: 65, joy: 85 };
-    const stats = this.state.petStatsMap[id];
+    const stats = this.ensurePetStats(id, { hunger: 75, hygiene: 60, energy: 65, joy: 85 });
     stats.hygiene = Math.min(100, (stats.hygiene || 60) + amount);
 
     // Sync with Pet Sanctuary state
@@ -4166,9 +4190,7 @@ class Store {
 
   completePetBathReward(petId) {
     const id = String(petId || this.state.selectedHero?.activePetId || '1');
-    if (!this.state.petStatsMap) this.state.petStatsMap = {};
-    if (!this.state.petStatsMap[id]) this.state.petStatsMap[id] = { hunger: 75, hygiene: 60, energy: 65, joy: 85 };
-    const stats = this.state.petStatsMap[id];
+    const stats = this.ensurePetStats(id, { hunger: 75, hygiene: 60, energy: 65, joy: 85 });
     const activePet = this.getActivePet();
 
     stats.hygiene = 100;
@@ -4860,10 +4882,7 @@ class Store {
     this.addPetCareXp(petId, sparksEarned);
 
     // Boost Joy and Energy of active companion
-    if (!this.state.petStatsMap[petId]) {
-      this.state.petStatsMap[petId] = { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
-    }
-    const pStats = this.state.petStatsMap[petId];
+    const pStats = this.ensurePetStats(petId);
     pStats.joy = Math.min(100, (pStats.joy || 80) + 15);
     pStats.energy = Math.min(100, (pStats.energy || 70) + 10);
 
@@ -4940,10 +4959,7 @@ class Store {
 
     // 2. Active Pet Training XP & Vitality Boosts
     this.addPetCareXp(petId, sparksEarned);
-    if (!this.state.petStatsMap[petId]) {
-      this.state.petStatsMap[petId] = { hunger: 75, hygiene: 90, energy: 65, joy: 85 };
-    }
-    const pStats = this.state.petStatsMap[petId];
+    const pStats = this.ensurePetStats(petId);
     pStats.joy = Math.min(100, (pStats.joy || 80) + 25);
     pStats.energy = Math.min(100, (pStats.energy || 70) + 20);
 
@@ -5070,9 +5086,8 @@ class Store {
     }
 
     const id = this.state.selectedHero.activePetId || 1;
-    if (this.state.petStatsMap[id]) {
-      this.state.petStatsMap[id].energy = Math.max(0, (this.state.petStatsMap[id].energy || 50) - game.energyCost);
-    }
+    const petStats = this.ensurePetStats(id);
+    petStats.energy = Math.max(0, (petStats.energy || 50) - game.energyCost);
 
     if (isWin) {
       this.completeAdventureGame(gameId, 3, 3);
@@ -5113,6 +5128,13 @@ class Store {
       this.state.selectedHero.gameDifficulty = hero.gameDifficulty || 'medium';
       this.state.selectedHero.equippedProfileTheme = hero.equippedProfileTheme || 'theme_dragon_emerald';
       this.state.selectedHero.unlockedThemes = hero.unlockedThemes || ['theme_dragon_emerald'];
+      // This kid's own pet training level/XP, hunger/hygiene/joy/energy, bond
+      // levels, and sanctuary state -- never the other kid's, whose data was
+      // just flushed out (above) into their own heroes[] record instead.
+      this.state.selectedHero.petLevelMap = hero.petLevelMap ? { ...hero.petLevelMap } : undefined;
+      this.state.selectedHero.petXpMap = hero.petXpMap ? { ...hero.petXpMap } : undefined;
+      this.state.selectedHero.petStatsMap = hero.petStatsMap ? { ...hero.petStatsMap } : undefined;
+      this.state.selectedHero.petSanctuary = hero.petSanctuary ? { ...hero.petSanctuary } : undefined;
 
       // Restore hero-specific AI Spark Quests
       this.state.aiQuests = this.getAiQuests(hero.id);
@@ -6136,19 +6158,31 @@ class Store {
     }
 
     // 4. Pet Stats, Level/XP Progression & Gear Maps
+    // petStatsMap/petLevelMap/petXpMap/petSanctuary started as single shared
+    // (household-level) fields and only later grew a per-hero copy on each
+    // hero object (kept in sync by section 3's merge above, and by
+    // switchHero/syncSelectedHeroWithHeroes locally). The legacy flat cloud
+    // copy below is no longer authoritative once a hero has their own copy
+    // -- it must never clobber it, or every snapshot from ANY device would
+    // reassign whichever kid's progress it happened to carry onto whichever
+    // kid is currently selected here. It's only ever used to migrate data
+    // saved before per-hero tracking existed.
     if (cloudData.petStatsMap) {
       this.state.petStatsMap = { ...this.state.petStatsMap, ...cloudData.petStatsMap };
+      if (this.state.selectedHero && !this.state.selectedHero.petStatsMap) {
+        this.state.selectedHero.petStatsMap = { ...cloudData.petStatsMap };
+      }
     }
     if (cloudData.petLevelMap && typeof cloudData.petLevelMap === 'object') {
       this.state.petLevelMap = { ...this.state.petLevelMap, ...cloudData.petLevelMap };
-      if (this.state.selectedHero) {
-        this.state.selectedHero.petLevelMap = { ...this.state.selectedHero.petLevelMap, ...cloudData.petLevelMap };
+      if (this.state.selectedHero && !this.state.selectedHero.petLevelMap) {
+        this.state.selectedHero.petLevelMap = { ...cloudData.petLevelMap };
       }
     }
     if (cloudData.petXpMap && typeof cloudData.petXpMap === 'object') {
       this.state.petXpMap = { ...this.state.petXpMap, ...cloudData.petXpMap };
-      if (this.state.selectedHero) {
-        this.state.selectedHero.petXpMap = { ...this.state.selectedHero.petXpMap, ...cloudData.petXpMap };
+      if (this.state.selectedHero && !this.state.selectedHero.petXpMap) {
+        this.state.selectedHero.petXpMap = { ...cloudData.petXpMap };
       }
     }
     if (cloudData.equippedGearMap) {
@@ -6340,6 +6374,16 @@ class Store {
       (this.state.taskCompletionLogs || []).forEach((log) => {
         if (log && log.id) logMap.set(log.id, log);
       });
+      const cloudLogIds = new Set(cloudData.taskCompletionLogs.filter((l) => l && l.id).map((l) => l.id));
+      // A log id this device knows about but the cloud snapshot doesn't means
+      // this whole-array field was overwritten by another device's concurrent
+      // write (e.g. two kids completing tasks on separate devices moments
+      // apart -- Firestore {merge:true} replaces an array field wholesale, it
+      // doesn't union its entries). We recover it locally below, but unless we
+      // also push it back, the cloud (and every other device reading only the
+      // cloud, like the Parent Portal) never learns it exists until some
+      // unrelated save happens to carry it along.
+      logMap.forEach((log, id) => { if (!cloudLogIds.has(id)) repairPushNeeded = true; });
       cloudData.taskCompletionLogs.forEach((log) => {
         if (log && log.id) {
           const existing = logMap.get(log.id);
@@ -6353,6 +6397,7 @@ class Store {
           const incomingResolved = log.status === 'approved' || log.status === 'rejected';
           if (existingResolved && !incomingResolved) {
             logMap.set(log.id, existing);
+            repairPushNeeded = true;
           } else {
             logMap.set(log.id, { ...(existing || {}), ...log });
           }
@@ -6367,6 +6412,8 @@ class Store {
       (this.state.taskLedgerLogs || []).forEach((log) => {
         if (log && log.id) ledgerMap.set(log.id, log);
       });
+      const cloudLedgerIds = new Set(cloudData.taskLedgerLogs.filter((l) => l && l.id).map((l) => l.id));
+      ledgerMap.forEach((log, id) => { if (!cloudLedgerIds.has(id)) repairPushNeeded = true; });
       cloudData.taskLedgerLogs.forEach((log) => {
         if (log && log.id) {
           const existing = ledgerMap.get(log.id);
@@ -6408,6 +6455,16 @@ class Store {
       // queue so the cloud stops carrying it.
       const freshCloudPending = cloudData.pendingApprovals.filter((c) => c && c.id && !resolvedIds.has(c.id));
       if (freshCloudPending.length !== cloudData.pendingApprovals.length) {
+        repairPushNeeded = true;
+      }
+      // unconfirmedLocal entries are, by definition, requests this device
+      // knows about that the cloud snapshot has no record of -- another
+      // device's concurrent write clobbered this whole-array field before it
+      // ever saw ours (the exact "two kids submit at the same time" race).
+      // We're restoring it into our own state below, but the Parent Portal
+      // (and any sibling's device) only ever reads the cloud copy, so it
+      // won't show up as a separate item to approve until we push it back.
+      if (unconfirmedLocal.length > 0) {
         repairPushNeeded = true;
       }
       this.state.pendingApprovals = [...freshCloudPending, ...unconfirmedLocal];
@@ -7101,28 +7158,44 @@ class Store {
   // =========================================================================
 
   getPetSanctuaryState() {
-    if (!this.state.petSanctuary) {
-      this.state.petSanctuary = {
-        activeDrawer: null,
-        petBondMap: {
-          '1': { level: 3, xp: 180, pearlyGleamUntil: 0 },
-          '2': { level: 4, xp: 240, pearlyGleamUntil: 0 },
-          'rex': { level: 4, xp: 240, pearlyGleamUntil: 0 },
-          'sparky': { level: 3, xp: 180, pearlyGleamUntil: 0 }
-        },
-        petNeedsMap: {
-          '1': { hunger: 85, hygiene: 80, joy: 90, energy: 90 },
-          '2': { hunger: 90, hygiene: 85, joy: 95, energy: 90 },
-          'rex': { hunger: 90, hygiene: 85, joy: 95, energy: 90 },
-          'sparky': { hunger: 85, hygiene: 80, joy: 90, energy: 90 }
-        },
-        unhatchedEggs: [],
-        hatchingEggModal: null,
-        activeBathLather: 0,
-        activePicnicSnack: null
-      };
+    // petSanctuary (pet bond levels, hunger/hygiene/joy/energy needs, eggs,
+    // bath/picnic state) used to live ONLY in the single shared, household-
+    // level this.state.petSanctuary -- so two kids who both owned the same
+    // pet id would see and silently overwrite each other's bond XP and
+    // needs bars. It's now tracked per-hero; this getter is the only place
+    // that should ever touch petSanctuary, so every call site above reads
+    // and writes through the currently selected hero's own copy.
+    const defaults = () => ({
+      activeDrawer: null,
+      petBondMap: {
+        '1': { level: 3, xp: 180, pearlyGleamUntil: 0 },
+        '2': { level: 4, xp: 240, pearlyGleamUntil: 0 },
+        'rex': { level: 4, xp: 240, pearlyGleamUntil: 0 },
+        'sparky': { level: 3, xp: 180, pearlyGleamUntil: 0 }
+      },
+      petNeedsMap: {
+        '1': { hunger: 85, hygiene: 80, joy: 90, energy: 90 },
+        '2': { hunger: 90, hygiene: 85, joy: 95, energy: 90 },
+        'rex': { hunger: 90, hygiene: 85, joy: 95, energy: 90 },
+        'sparky': { hunger: 85, hygiene: 80, joy: 90, energy: 90 }
+      },
+      unhatchedEggs: [],
+      hatchingEggModal: null,
+      activeBathLather: 0,
+      activePicnicSnack: null
+    });
+    const hero = this.state.selectedHero;
+    if (!hero) {
+      if (!this.state.petSanctuary) this.state.petSanctuary = defaults();
+      return this.state.petSanctuary;
     }
-    return this.state.petSanctuary;
+    if (!hero.petSanctuary) {
+      // Legacy data saved before per-hero tracking existed: migrate the
+      // shared copy in once, then never again -- each hero's own copy
+      // evolves independently from here on.
+      hero.petSanctuary = this.state.petSanctuary ? { ...defaults(), ...this.state.petSanctuary } : defaults();
+    }
+    return hero.petSanctuary;
   }
 
   getPetBondState(petId = null) {
@@ -7259,8 +7332,8 @@ class Store {
     }
 
     sanct.activePicnicSnack = treat;
-    if (!this.state.petStatsMap) this.state.petStatsMap = {};
-    this.state.petStatsMap[pId] = {
+    this.ensurePetStats(pId);
+    this.state.selectedHero.petStatsMap[pId] = {
       hunger: needs.hunger,
       hygiene: needs.hygiene,
       joy: needs.joy,
@@ -7297,8 +7370,8 @@ class Store {
     }
 
     sanct.activeBathLather = Math.min(100, (sanct.activeBathLather || 0) + 20);
-    if (!this.state.petStatsMap) this.state.petStatsMap = {};
-    this.state.petStatsMap[pId] = {
+    this.ensurePetStats(pId);
+    this.state.selectedHero.petStatsMap[pId] = {
       hunger: needs.hunger,
       hygiene: needs.hygiene,
       joy: needs.joy,
