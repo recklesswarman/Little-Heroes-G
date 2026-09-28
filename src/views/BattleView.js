@@ -9,12 +9,14 @@ import { brushAudioAnalyzer } from '../audio/brushAudioAnalyzer.js';
 const sugarVillainEscapedImg = new URL('../assets/sugar_villain_escaped.jpg', import.meta.url).href;
 
 // Difficulty tiers reuse each kid's existing gameDifficulty
-// (easy = Toddler 3-4, medium = Kids 5-6, hard = Kids 7-9): shorter,
-// more forgiving battles for younger kids; longer, faster-paced for older kids.
+// (easy = Toddler 3-4, medium = Kids 5-6, hard = Kids 7-9): pacing only
+// (how often bombs attack / how forgiving the auto-assist is) varies by
+// tier. The battle's total countdown length never varies by kid -- it is
+// always exactly the duration the parent selected in the Parent Panel.
 const BATTLE_DIFFICULTY = {
-  easy: { durationMultiplier: 0.7, bombIntervalMs: 20000, autoAssistIdleMs: 1200 },
-  medium: { durationMultiplier: 1, bombIntervalMs: 14000, autoAssistIdleMs: 1800 },
-  hard: { durationMultiplier: 1.2, bombIntervalMs: 10000, autoAssistIdleMs: 2400 }
+  easy: { bombIntervalMs: 20000, autoAssistIdleMs: 1200 },
+  medium: { bombIntervalMs: 14000, autoAssistIdleMs: 1800 },
+  hard: { bombIntervalMs: 10000, autoAssistIdleMs: 2400 }
 };
 function getDifficultyTier(hero) {
   const tier = hero?.gameDifficulty;
@@ -778,8 +780,13 @@ export function startBattle() {
   
   const hero = store.getState().selectedHero;
   const battleCfg = BATTLE_DIFFICULTY[getDifficultyTier(hero)];
-  const baseBossDuration = currentBoss.battleDurationSec || store.getState().parentSettings?.arBattleDuration || 120;
-  const bossDuration = Math.round(baseBossDuration * battleCfg.durationMultiplier);
+  // The Parent Panel's "Toothbrush AR Battle Duration Slider" is the single
+  // source of truth for every kid's timer, so it always wins over a
+  // boss-specific default -- otherwise a custom AR villain built in the Boss
+  // Studio (which bakes in its own battleDurationSec) would silently ignore
+  // whatever duration the parent has selected, and different kids fighting
+  // different bosses would see different countdown lengths.
+  const bossDuration = store.getState().parentSettings?.arBattleDuration || currentBoss.battleDurationSec || 120;
   secondsRemaining = bossDuration;
   totalDuration = bossDuration;
   totalScrubHits = 0;
@@ -1094,7 +1101,16 @@ function concludeVictory() {
   voicePrompts.speakBossDefeated(boss.name);
 
   store.updateColosseumTimer(0, totalDuration);
-  store.completeToothbrushBattle(selectedBossId, totalDuration, avgCadence);
+
+  // Mouthwash reminders fire after the battle completes, so if the parent
+  // flagged one for this kid today, show it before crediting the victory
+  // (coins/XP/badges) rather than alongside it.
+  const kidId = store.getState().selectedHero?.id;
+  if (kidId && store.shouldShowHygieneReminder(kidId, 'mouthwash')) {
+    store.openHygieneReminder('mouthwash', { bossId: selectedBossId, durationSec: totalDuration, avgCadence });
+  } else {
+    store.completeToothbrushBattle(selectedBossId, totalDuration, avgCadence);
+  }
 }
 
 // Stops every running timer/timeout, releases the camera+mic, and tears down
