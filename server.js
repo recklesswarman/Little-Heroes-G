@@ -4,6 +4,7 @@ import http from 'http';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { handleTTSRequest, handleChatRequest, attachGeminiLiveWebSocket } from './server/geminiService.js';
+import { handleElevenLabsTTSRequest } from './server/elevenLabsService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,6 +22,9 @@ app.get('/healthz', (req, res) => {
 // Gemini API Endpoints
 app.post('/api/gemini/tts', handleTTSRequest);
 app.post('/api/gemini/chat', handleChatRequest);
+
+// ElevenLabs voice endpoint (primary companion voice tier; see voiceService.js)
+app.post('/api/elevenlabs/tts', handleElevenLabsTTSRequest);
 
 // Serve static build in production with SPA fallback
 app.use(express.static(path.join(__dirname, 'dist')));

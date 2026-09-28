@@ -88,7 +88,7 @@ export const PET_PERSONAS = {
 // without breaking the app's unauthenticated-by-design device flow.
 const rateLimitHits = new Map();
 
-function isRateLimited(key, maxHits, windowMs) {
+export function isRateLimited(key, maxHits, windowMs) {
   const now = Date.now();
   const hits = (rateLimitHits.get(key) || []).filter((t) => now - t < windowMs);
   if (hits.length >= maxHits) {
@@ -100,7 +100,7 @@ function isRateLimited(key, maxHits, windowMs) {
   return false;
 }
 
-function getRequestIp(req) {
+export function getRequestIp(req) {
   const forwarded = req.headers?.['x-forwarded-for'];
   if (typeof forwarded === 'string' && forwarded.trim()) {
     return forwarded.split(',')[0].trim();
