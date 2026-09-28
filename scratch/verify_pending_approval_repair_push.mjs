@@ -10,7 +10,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as esbuild from 'esbuild';
 
-const REPO = '/home/user/Little-Heroes-G';
+const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..').replace(/\\/g, '/');
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'unit-hydrate-'));
 
 const stubs = {
