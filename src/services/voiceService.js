@@ -1,12 +1,14 @@
 // Pet Companion & Rex the Dino Spoken Voice Guidance Service
 // Architecture:
-// 1. Primary: Realistic Human Kid-Friendly Voice via Gemini 3.1 Flash TTS (/api/gemini/tts)
-// 2. Resilient Fallback: High-Fidelity Cartoon Speech Synthesis with device-native voice
-// 3. Multi-Pet Pitch & Persona Tuning (Rex the Dino, Aqua Drake, Bella, Barnaby, Pip)
-// 4. Browser Autoplay & Gesture Pre-Unlock Engine
+// 1. Primary: ElevenLabs voice, where a pet has one configured (/api/elevenlabs/tts)
+// 2. Secondary: Realistic Human Kid-Friendly Voice via Gemini 3.1 Flash TTS (/api/gemini/tts)
+// 3. Resilient Fallback: High-Fidelity Cartoon Speech Synthesis with device-native voice
+// 4. Multi-Pet Pitch & Persona Tuning (Rex the Dino, Aqua Drake, Bella, Barnaby, Pip)
+// 5. Browser Autoplay & Gesture Pre-Unlock Engine
 
 import { store } from '../state/store.js';
 
+const ELEVENLABS_TTS_ENDPOINT = '/api/elevenlabs/tts';
 const TTS_ENDPOINT = '/api/gemini/tts';
 
 export const COMPANION_VOICE_PROFILES = {
@@ -369,10 +371,99 @@ function base64ToFloat32Array(base64Data) {
 }
 
 /**
+ * Plays a base64 raw-PCM16 TTS response (shared shape returned by both the
+ * ElevenLabs and Gemini TTS server routes) through the shared AudioContext,
+ * wiring up the same speech-start/syllable/end events used for lip-sync.
+ * Returns true if playback started.
+ */
+async function playPcmTtsResponse(data, cleanSpoken, petId, callback) {
+  if (!data || !data.audio) return false;
+
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  if (!sharedAudioContext || sharedAudioContext.state === 'closed') {
+    sharedAudioContext = new AudioCtx({ sampleRate: 24000 });
+  }
+  if (sharedAudioContext.state === 'suspended') {
+    await sharedAudioContext.resume().catch(() => {});
+  }
+
+  const float32 = base64ToFloat32Array(data.audio);
+  const sampleRate = data.sampleRate || 24000;
+  const audioBuffer = sharedAudioContext.createBuffer(1, float32.length, sampleRate);
+  audioBuffer.copyToChannel(float32, 0);
+
+  const source = sharedAudioContext.createBufferSource();
+  source.buffer = audioBuffer;
+  source.connect(sharedAudioContext.destination);
+  currentAudioSource = source;
+
+  store.setLiveRexState({ isSpeaking: true, status: 'speaking' }, true);
+  dispatchSpeechEvent('companion-speech-start', { text: cleanSpoken, petId, voice: data.voice });
+
+  currentSyllableInterval = setInterval(() => {
+    if (!currentAudioSource) {
+      clearInterval(currentSyllableInterval);
+      currentSyllableInterval = null;
+      return;
+    }
+    dispatchSpeechEvent('companion-speech-syllable', { text: cleanSpoken, petId });
+  }, 110);
+
+  source.onended = () => {
+    if (currentAudioSource === source) {
+      currentAudioSource = null;
+    }
+    if (currentSyllableInterval) {
+      clearInterval(currentSyllableInterval);
+      currentSyllableInterval = null;
+    }
+    store.setLiveRexState({ isSpeaking: false }, true);
+    dispatchSpeechEvent('companion-speech-end', { petId });
+    if (typeof callback === 'function') {
+      callback();
+    } else {
+      const liveRex = store.getState().liveRex;
+      if (!liveRex?.isListening && liveRex?.status !== 'listening') {
+        store.setLiveRexState({ status: 'idle' }, true);
+      }
+    }
+  };
+
+  source.start(0);
+  return true;
+}
+
+/**
+ * Fetches a PCM TTS response from a server endpoint with a short timeout,
+ * returning the parsed JSON on success or null on any failure/timeout/
+ * non-2xx response (so callers can fall through to the next voice tier).
+ */
+async function fetchPcmTts(endpoint, cleanSpoken, petId, timeoutMs = 4500) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: cleanSpoken, petId }),
+      signal: controller.signal
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data && data.audio ? data : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
  * Unified Spoken Voice Entrypoint for Pet Companions
  * 1. Prepares dialogue text by stripping asterisks/stage directions.
- * 2. Primary: Realistic kid-friendly voice via Gemini 3.1 Flash TTS (/api/gemini/tts).
- * 3. Resilient Fallback: Cartoon Speech Synthesis if offline or network error.
+ * 2. Primary: ElevenLabs voice, where this pet has one configured (/api/elevenlabs/tts).
+ * 3. Secondary: Realistic kid-friendly voice via Gemini 3.1 Flash TTS (/api/gemini/tts).
+ * 4. Resilient Fallback: Cartoon Speech Synthesis if offline or both network calls fail.
  */
 export const speakCompanion = async (text, petIdOrOptions = 'rex', onEnded = null) => {
   if (!text || typeof text !== 'string' || !text.trim()) return;
@@ -408,86 +499,24 @@ export const speakCompanion = async (text, petIdOrOptions = 'rex', onEnded = nul
     pendingUnlockSpeech = { text: cleanSpoken, petId, onEnded: callback };
   }
 
-  // 1. Primary: Server-Side Realistic Gemini TTS Engine (/api/gemini/tts)
   let ttsSucceeded = false;
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4500);
 
-    const response = await fetch(TTS_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ text: cleanSpoken, petId }),
-      signal: controller.signal
-    });
-
-    clearTimeout(timeoutId);
-
-    if (response.ok) {
-      const data = await response.json();
-      if (data && data.audio) {
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        if (!sharedAudioContext || sharedAudioContext.state === 'closed') {
-          sharedAudioContext = new AudioCtx({ sampleRate: 24000 });
-        }
-        if (sharedAudioContext.state === 'suspended') {
-          await sharedAudioContext.resume().catch(() => {});
-        }
-
-        const float32 = base64ToFloat32Array(data.audio);
-        const sampleRate = data.sampleRate || 24000;
-        const audioBuffer = sharedAudioContext.createBuffer(1, float32.length, sampleRate);
-        audioBuffer.copyToChannel(float32, 0);
-
-        const source = sharedAudioContext.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(sharedAudioContext.destination);
-        currentAudioSource = source;
-
-        store.setLiveRexState({ isSpeaking: true, status: 'speaking' }, true);
-        dispatchSpeechEvent('companion-speech-start', { text: cleanSpoken, petId, voice: data.voice });
-
-        currentSyllableInterval = setInterval(() => {
-          if (!currentAudioSource) {
-            clearInterval(currentSyllableInterval);
-            currentSyllableInterval = null;
-            return;
-          }
-          dispatchSpeechEvent('companion-speech-syllable', { text: cleanSpoken, petId });
-        }, 110);
-
-        source.onended = () => {
-          if (currentAudioSource === source) {
-            currentAudioSource = null;
-          }
-          if (currentSyllableInterval) {
-            clearInterval(currentSyllableInterval);
-            currentSyllableInterval = null;
-          }
-          store.setLiveRexState({ isSpeaking: false }, true);
-          dispatchSpeechEvent('companion-speech-end', { petId });
-          if (typeof callback === 'function') {
-            callback();
-          } else {
-            const liveRex = store.getState().liveRex;
-            if (!liveRex?.isListening && liveRex?.status !== 'listening') {
-              store.setLiveRexState({ status: 'idle' }, true);
-            }
-          }
-        };
-
-        source.start(0);
-        ttsSucceeded = true;
-      }
-    }
-  } catch (err) {
-    console.warn('Gemini TTS network/fetch note, switching to resilient fallback:', err?.message || err);
-    ttsSucceeded = false;
+  // 1. Primary: ElevenLabs voice (only pets with a configured voice get one;
+  // the server responds 404 for anyone else, and we fall through below).
+  const elevenLabsData = await fetchPcmTts(ELEVENLABS_TTS_ENDPOINT, cleanSpoken, petId);
+  if (elevenLabsData) {
+    ttsSucceeded = await playPcmTtsResponse(elevenLabsData, cleanSpoken, petId, callback);
   }
 
-  // 2. Resilient Client-Side Speech Synthesis Fallback (Daniel Voice)
+  // 2. Secondary: Server-Side Realistic Gemini TTS Engine (/api/gemini/tts)
+  if (!ttsSucceeded) {
+    const geminiData = await fetchPcmTts(TTS_ENDPOINT, cleanSpoken, petId);
+    if (geminiData) {
+      ttsSucceeded = await playPcmTtsResponse(geminiData, cleanSpoken, petId, callback);
+    }
+  }
+
+  // 3. Resilient Client-Side Speech Synthesis Fallback (Daniel Voice)
   if (!ttsSucceeded) {
     speakWithSpeechSynthesis(cleanSpoken, petId, callback);
   }

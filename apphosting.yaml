@@ -25,3 +25,18 @@ env:
     availability:
       - BUILD
       - RUNTIME
+  # ElevenLabs voice for Rex the Dino. The voice id isn't sensitive (just an
+  # account identifier), so it's a plain value; the API key IS sensitive and
+  # is bound to a Secret Manager secret of the same name instead of a value
+  # -- set its real value once with:
+  #   firebase apphosting:secrets:set ELEVENLABS_API_KEY
+  # (interactive prompt, never written to this file or to git). RUNTIME-only
+  # and never VITE_-prefixed, so it's never bundled into client JS.
+  - variable: ELEVENLABS_REX_VOICE_ID
+    value: e9sQs6aLWU82SSolkPYZ
+    availability:
+      - RUNTIME
+  - variable: ELEVENLABS_API_KEY
+    secret: ELEVENLABS_API_KEY
+    availability:
+      - RUNTIME
