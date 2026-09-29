@@ -36,6 +36,12 @@ env:
     value: e9sQs6aLWU82SSolkPYZ
     availability:
       - RUNTIME
+  # 0.7 (slowest) - 1.2 (fastest), default 1.0. Slowed down for toddlers/young
+  # kids -- tune here (no Secret Manager round-trip needed, it's not sensitive).
+  - variable: ELEVENLABS_SPEECH_SPEED
+    value: "0.85"
+    availability:
+      - RUNTIME
   - variable: ELEVENLABS_API_KEY
     secret: ELEVENLABS_API_KEY
     availability:

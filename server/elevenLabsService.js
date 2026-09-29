@@ -14,6 +14,17 @@ const ELEVENLABS_VOICE_MAP = {
 const ELEVENLABS_TTS_URL = (voiceId) =>
   `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}/stream?output_format=pcm_24000`;
 
+// ElevenLabs' speed setting is valid from 0.7 (slowest) to 1.2 (fastest),
+// default 1.0. Slower reads better for toddlers/young kids; configurable via
+// env so it can be tuned without a code change or redeploy. Clamped so a bad
+// env value can never send an out-of-range request upstream.
+const DEFAULT_SPEECH_SPEED = 0.85;
+function getSpeechSpeed() {
+  const raw = Number(process.env.ELEVENLABS_SPEECH_SPEED);
+  if (!Number.isFinite(raw)) return DEFAULT_SPEECH_SPEED;
+  return Math.min(1.2, Math.max(0.7, raw));
+}
+
 /**
  * Handle HTTP POST /api/elevenlabs/tts
  * Generates companion speech audio via the ElevenLabs API, streamed back as
@@ -75,7 +86,8 @@ export async function handleElevenLabsTTSRequest(req, res) {
           stability: 0.5,
           similarity_boost: 0.75,
           style: 0.3,
-          use_speaker_boost: true
+          use_speaker_boost: true,
+          speed: getSpeechSpeed()
         }
       })
     });
