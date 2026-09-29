@@ -1,4 +1,5 @@
 import { isRateLimited, getRequestIp } from './geminiService.js';
+import { getPetById } from '../src/data/petsData.js';
 
 // Maps a companion pet id to its ElevenLabs voice id. Only pets with an
 // entry here get an ElevenLabs voice -- everyone else falls through to the
@@ -46,7 +47,14 @@ export async function handleElevenLabsTTSRequest(req, res) {
       return res.status(400).json({ error: 'No readable speech text found.' });
     }
 
-    const normalizedPetId = String(petId || 'rex').toLowerCase();
+    // petId from the client can be the pet's numeric roster id (e.g. '1' for
+    // Rex the T-Rex), its short semantic key ('rex'), or a display name --
+    // the voice map is keyed by the semantic key, so it must be resolved via
+    // the same pet catalog the rest of the app uses (getPetById), not just
+    // lowercased as-is. getPetById defaults to PETS_DATABASE[0] (Rex) for an
+    // unrecognized id, matching the same "assume Rex" convention already
+    // used by the Gemini TTS/persona lookups in geminiService.js.
+    const normalizedPetId = (getPetById(petId)?.key || 'rex').toLowerCase();
     const voiceId = ELEVENLABS_VOICE_MAP[normalizedPetId];
     if (!voiceId) {
       // No ElevenLabs voice configured for this pet -- client falls back.
