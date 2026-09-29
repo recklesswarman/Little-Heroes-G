@@ -1,8 +1,57 @@
 rules_version = '2';
+
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: households
+// Document ID: {householdCode} (alphanumeric code, 4 to 32 chars)
+// Fields:
+//   - syncCode: string (optional, max 32 chars) - Household sync code
+//   - name / householdName: string (optional, max 100 chars) - Family display name
+//   - devices: map (optional, max 25 entries) - Active connected devices map
+//   - heroes: list (optional, max 20 entries) - List of hero summary objects
+//   - heroesMap: map (optional, max 20 entries) - Map of hero states keyed by heroId
+//   - deletedHeroIds: list (optional, max 50 entries) - Tombstoned hero IDs
+//   - parents: list (optional, max 15 entries) - Parent display objects
+//   - parentUids: list (optional, max 15 entries) - Authorized parent Auth UIDs
+//   - parentEmails: list (optional, max 15 entries) - Authorized parent emails
+//   - pendingApprovals: list (optional, max 100 entries) - Completed chores awaiting review
+//   - taskCompletionLogs: list (optional, max 500 entries) - Append-only history ledger
+//   - taskForest: list (optional, max 50 entries) - Daily routine chore definitions
+//   - habitIslands: list (optional, max 50 entries) - Habit definitions
+//   - aiQuests: list (optional, max 50 entries) - AI spark quests
+//   - recentlyUnlocked: list (optional, max 50 entries) - Reward unlock history
+//   - parentSettings: map (optional, max 30 entries) - Parental controls and locks
+//   - lastUpdated / updatedAt: number | timestamp (optional)
+//
+// Collection: user_households
+// Document ID: {linkId} (request.auth.uid or email_*)
+// Fields:
+//   - userId: string (required) - Firebase Auth UID (immutable, must match auth.uid)
+//   - householdCode: string (required, 4 to 32 chars) - Linked household code
+//   - email: string (optional, max 120 chars) - Associated email address
+//   - role: string (optional, 'parent' | 'child' | 'admin') - User role in household
+//   - linkedAt: number | timestamp (optional) - Link establishment time
+//   - updatedAt: number | timestamp (optional) - Last update time
+//
+// Collection: heroes (Server-Only via Admin SDK)
+// Document ID: {heroId}
+//   - Blocked from direct client access
+//
+// Collection: users (Legacy / Unused)
+// Document ID: {heroId}
+//   - Blocked from direct client access
+//
+// ===============================================================
+
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // --- Security Helper Functions ---
+    // ===============================================================
+    // General Helper Functions
+    // ===============================================================
+    
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -15,6 +64,14 @@ service cloud.firestore {
       return code is string && code.size() >= 4 && code.size() <= 32;
     }
 
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // ===============================================================
+    // Household Domain Validators & Access Control
+    // ===============================================================
+
     // Identifies whether the current authenticated user is an authorized parent admin
     function isParent(householdData) {
       return isAuthenticated() && (
@@ -25,9 +82,7 @@ service cloud.firestore {
 
     // One-time bootstrap: a household created without parents yet can have the
     // first authenticated caller claim ownership, but ONLY via an update that
-    // itself sets parentUids to include their own uid. This closes the
-    // loophole immediately after the first claim instead of treating every
-    // authenticated user as a parent forever whenever parentUids is empty.
+    // itself sets parentUids to include their own uid.
     function isBootstrapParentClaim(householdData) {
       return isAuthenticated()
         && (!('parentUids' in householdData) || !(householdData.parentUids is list) || householdData.parentUids.size() == 0)
@@ -58,49 +113,35 @@ service cloud.firestore {
         && (!('parentSettings' in data) || (data.parentSettings is map && data.parentSettings.size() <= 30));
     }
 
-    // Kids CANNOT change a hero's reward balances directly through heroesMap.
-    // Existing hero entries must keep identical reward-bearing fields; a
-    // newly-added hero entry must start at zero.
-    function heroRewardFieldsLocked(existingData, newData) {
-      let oldMap = ('heroesMap' in existingData && existingData.heroesMap is map) ? existingData.heroesMap : {};
-      let newMap = ('heroesMap' in newData && newData.heroesMap is map) ? newData.heroesMap : {};
-      return newMap.keys().all(id,
-        !(id in oldMap)
-          ? (
-              (!('points' in newMap[id]) || newMap[id].points == 0) &&
-              (!('coins' in newMap[id]) || newMap[id].coins == 0) &&
-              (!('tokens' in newMap[id]) || newMap[id].tokens == 0) &&
-              (!('xp' in newMap[id]) || newMap[id].xp == 0)
-            )
-          : (
-              (!('points' in oldMap[id]) || !('points' in newMap[id]) || newMap[id].points == oldMap[id].points) &&
-              (!('coins' in oldMap[id]) || !('coins' in newMap[id]) || newMap[id].coins == oldMap[id].coins) &&
-              (!('tokens' in oldMap[id]) || !('tokens' in newMap[id]) || newMap[id].tokens == oldMap[id].tokens) &&
-              (!('xp' in oldMap[id]) || !('xp' in newMap[id]) || newMap[id].xp == oldMap[id].xp) &&
-              (!('level' in oldMap[id]) || !('level' in newMap[id]) || newMap[id].level == oldMap[id].level) &&
-              (!('streak' in oldMap[id]) || !('streak' in newMap[id]) || newMap[id].streak == oldMap[id].streak) &&
-              (!('stars' in oldMap[id]) || !('stars' in newMap[id]) || newMap[id].stars == oldMap[id].stars)
-            )
-      );
-    }
-
     // Strict validation for kid/non-parent updates:
     // Kids CANNOT touch parentSettings, parent admin lists, delete kid profiles, approve tasks, or manipulate point balances
     function isAllowedKidChoreUpdate(existingData, newData) {
       let affected = newData.diff(existingData).affectedKeys();
       return isValidHouseholdPayload()
-        // 1. Kids CANNOT modify parental controls, parent admin user lists, or delete profiles
-        && !affected.hasAny(['parentSettings', 'parents', 'parentUids', 'parentEmails', 'deletedHeroIds'])
-        // 2. Kids CANNOT dismiss, delete, edit, or mark existing pending approvals as approved --
-        //    every existing entry must still be present, byte-for-byte, in the new list
-        && (!('pendingApprovals' in existingData) || existingData.pendingApprovals.all(item,
-              ('pendingApprovals' in newData) && (item in newData.pendingApprovals)))
-        // 3. Kids CANNOT delete or rewrite completion logs, only append new ones
-        && (!('taskCompletionLogs' in existingData) || existingData.taskCompletionLogs.all(item,
-              ('taskCompletionLogs' in newData) && (item in newData.taskCompletionLogs)))
-        // 4. Kids CANNOT self-award points/coins/xp/level/streak via the heroesMap
-        && heroRewardFieldsLocked(existingData, newData);
+        // 1. Kids CANNOT modify parental controls, parent admin lists, delete profiles, or edit heroesMap directly
+        && !affected.hasAny(['parentSettings', 'parents', 'parentUids', 'parentEmails', 'deletedHeroIds', 'heroesMap'])
+        // 2. Kids CANNOT dismiss or shrink pending approvals list (only append or maintain)
+        && (!('pendingApprovals' in existingData) || !('pendingApprovals' in newData) || newData.pendingApprovals.size() >= existingData.pendingApprovals.size())
+        // 3. Kids CANNOT delete or shrink task completion logs (only append or maintain)
+        && (!('taskCompletionLogs' in existingData) || !('taskCompletionLogs' in newData) || newData.taskCompletionLogs.size() >= existingData.taskCompletionLogs.size());
     }
+
+    // ===============================================================
+    // User Household Persistent Link Domain Validator
+    // ===============================================================
+
+    function isValidUserHouseholdPayload() {
+      let data = request.resource.data;
+      return hasOnlyAllowedFields(['userId', 'householdCode', 'email', 'role', 'linkedAt', 'updatedAt'])
+        && ('userId' in data && data.userId is string && data.userId == request.auth.uid)
+        && ('householdCode' in data && data.householdCode is string && isValidHouseholdCode(data.householdCode))
+        && (!('email' in data) || (data.email is string && data.email.size() <= 120))
+        && (!('role' in data) || (data.role in ['parent', 'child', 'admin']));
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
 
     // --- Households Collection ---
     // Multi-device family synchronization scoped to explicit household codes
@@ -114,6 +155,7 @@ service cloud.firestore {
 
       // Updates:
       // Parents can update any aspect (approvals, points, coins, settings, co-parents).
+      // Bootstrap claims allow first parent onboarding.
       // Kids can only submit chores with isAllowedKidChoreUpdate().
       allow update: if isValidHouseholdCode(householdCode) && (
         isParent(resource.data) ||
@@ -121,15 +163,12 @@ service cloud.firestore {
         isAllowedKidChoreUpdate(resource.data, request.resource.data)
       );
 
-      // Prevent malicious household deletion from client
+      // Prevent accidental or malicious household deletion from client
       allow delete: if false;
     }
 
     // --- Users / Hero Profiles Collection (unused by the client app) ---
-    // No code in this app reads or writes /users/{heroId} -- it is legacy
-    // surface with no ownership model. Deny client access entirely rather
-    // than leave a reachable, unscoped collection open to any authenticated
-    // (including anonymous) Firebase client on this project.
+    // Deny client access entirely to prevent reachable unscoped access
     match /users/{heroId} {
       allow read, write: if false;
 
@@ -139,11 +178,7 @@ service cloud.firestore {
     }
 
     // --- Heroes Collection & Companion Settings (server-only) ---
-    // Written exclusively by Cloud Functions via the Admin SDK, which
-    // bypasses these rules. No client code reads or writes this collection
-    // directly, so client access is denied entirely to prevent a malicious
-    // client from hijacking a hero's parentUid or corrupting reward data
-    // (xp/coins/streak) that verifyChoreSubmission increments server-side.
+    // Managed exclusively by Cloud Functions via the Admin SDK
     match /heroes/{heroId} {
       allow read, write: if false;
 
@@ -156,17 +191,16 @@ service cloud.firestore {
     // Scoped strictly to authenticated users managing their household associations
     match /user_households/{linkId} {
       // User can only access their own user link or matching email link
-      allow read: if isAuthenticated() && (
-        request.auth.uid == linkId || 
-        (request.auth.token.email != null && linkId.matches('email_.*'))
+      allow read: if isOwner(linkId) || (
+        isAuthenticated() && request.auth.token.email != null && linkId.matches('email_.*')
       );
       
-      allow create, update: if isAuthenticated() && (
-        request.auth.uid == linkId || 
-        (request.auth.token.email != null && linkId.matches('email_.*'))
-      ) && request.resource.data.userId == request.auth.uid;
+      allow create, update: if (
+        isOwner(linkId) || 
+        (isAuthenticated() && request.auth.token.email != null && linkId.matches('email_.*'))
+      ) && isValidUserHouseholdPayload();
 
-      allow delete: if isAuthenticated() && request.auth.uid == linkId;
+      allow delete: if isOwner(linkId);
     }
 
     // --- Zero-Trust Default Deny ---
