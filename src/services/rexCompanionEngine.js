@@ -479,7 +479,6 @@ class RexVoiceEngine {
     const activePetId = activePet?.id || "rex";
     const activeHero = store.getState().selectedHero;
     const heroName = activeHero?.name || "Little Hero";
-    const storedKey = store.getState()?.liveRex?.geminiApiKey || (typeof localStorage !== 'undefined' ? localStorage.getItem('gemini_api_key') : '') || '';
 
     store.setLiveRexState({
       lastUserTranscript: message,
@@ -487,7 +486,7 @@ class RexVoiceEngine {
     }, true);
 
     try {
-      // 1. Primary: Server-Side Gemini Chatbot API
+      // 1. Primary: Server-Side Gemini Chatbot API (secure server credentials)
       const response = await fetch('/api/gemini/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -495,8 +494,7 @@ class RexVoiceEngine {
           message,
           petId: activePetId,
           speedMode: 'smart',
-          childName: heroName,
-          apiKey: storedKey
+          childName: heroName
         })
       });
 

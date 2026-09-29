@@ -3458,40 +3458,21 @@ export function renderParentPortalView() {
               </div>
 
               <!-- Status Pill -->
-              <span class="text-[10px] font-black uppercase px-3 py-1.5 rounded-full ${
-                state.liveRex?.geminiApiKey || localStorage.getItem('gemini_api_key')
-                  ? 'bg-primary/20 text-primary border border-primary/40'
-                  : 'bg-secondary/20 text-secondary border border-secondary/40'
-              } flex items-center gap-1.5 shadow-sm">
-                <span class="w-2 h-2 rounded-full ${
-                  state.liveRex?.geminiApiKey || localStorage.getItem('gemini_api_key') ? 'bg-primary animate-pulse' : 'bg-secondary'
-                }"></span>
-                ${state.liveRex?.geminiApiKey || localStorage.getItem('gemini_api_key') ? 'Custom Key Active' : 'Default Project Key Ready'}
+              <span class="text-[10px] font-black uppercase px-3 py-1.5 rounded-full bg-primary/20 text-primary border border-primary/40 flex items-center gap-1.5 shadow-sm">
+                <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+                Cloud Secret Protection Active
               </span>
             </div>
 
-            <!-- API Key Configuration Section -->
-            <div class="bg-surface-container-high rounded-2xl p-4 border border-surface-container-highest flex flex-col gap-3">
-              <div class="flex flex-col gap-1">
-                <span class="font-headline text-xs font-black text-inverse-surface">Google Gemini API Key</span>
-                <span class="text-[11px] text-on-surface-variant">Powers real-time voice recognition, live toddler conversation, quest assistance, and AI animations.</span>
+            <!-- Server-Side Secret Management Architecture Notice -->
+            <div class="bg-surface-container-high rounded-2xl p-4 border border-surface-container-highest flex flex-col gap-2.5">
+              <div class="flex items-center gap-2 text-primary font-headline text-xs font-black">
+                <span class="material-symbols-outlined text-base">verified_user</span>
+                <span>Server-Side Secret Manager Integration</span>
               </div>
-              <div class="flex flex-col sm:flex-row gap-2">
-                <input
-                  type="password"
-                  id="admin-gemini-key-input"
-                  placeholder="Paste Gemini API Key (e.g. AIzaSy...)"
-                  value="${state.liveRex?.geminiApiKey || localStorage.getItem('gemini_api_key') || ''}"
-                  class="flex-1 bg-surface-container-lowest border-2 border-surface-container-highest rounded-xl px-3.5 py-2.5 text-xs text-inverse-surface focus:outline-none focus:border-primary font-mono"
-                />
-                <button id="admin-save-gemini-key-btn" class="bg-primary text-on-primary font-headline text-xs font-black px-4 py-2.5 rounded-xl border border-primary-container chunky-btn-sm active:scale-95 shadow-sm hover:brightness-110 flex items-center justify-center gap-1.5">
-                  <span class="material-symbols-outlined text-sm">save</span>
-                  <span>Save Key</span>
-                </button>
-                <button id="admin-clear-gemini-key-btn" class="bg-surface-container hover:bg-surface-bright text-on-surface-variant font-headline text-xs font-black px-3.5 py-2.5 rounded-xl border border-surface-container-highest chunky-btn-sm active:scale-95 flex items-center justify-center gap-1">
-                  <span>Reset</span>
-                </button>
-              </div>
+              <p class="text-[11px] text-on-surface-variant leading-relaxed">
+                Gemini AI and Voice models are authenticated securely through server-side environment secrets (<code class="font-mono text-inverse-surface bg-surface-container-lowest px-1.5 py-0.5 rounded">GEMINI_API_KEY</code>). API keys are never exposed to client browsers, public URLs, or local storage.
+              </p>
             </div>
 
             <!-- Prebuilt Voice Selection -->
@@ -4151,28 +4132,8 @@ export function attachParentPortalListeners() {
     });
   }
 
-  // Rex the Dino Live AI Settings Listeners
-  const geminiKeyInput = document.getElementById('admin-gemini-key-input');
-  const saveGeminiKeyBtn = document.getElementById('admin-save-gemini-key-btn');
-  const clearGeminiKeyBtn = document.getElementById('admin-clear-gemini-key-btn');
+  // Rex the Dino Live AI Settings Listeners (Server-Side Managed)
 
-  if (saveGeminiKeyBtn && geminiKeyInput) {
-    saveGeminiKeyBtn.addEventListener('click', () => {
-      const key = geminiKeyInput.value.trim();
-      store.setLiveRexApiKey(key);
-      Sound.fanfare();
-      alert('Google Gemini API Key saved successfully! Rex the Dino is ready for live voice interactions.');
-    });
-  }
-
-  if (clearGeminiKeyBtn) {
-    clearGeminiKeyBtn.addEventListener('click', () => {
-      store.setLiveRexApiKey('');
-      if (geminiKeyInput) geminiKeyInput.value = '';
-      Sound.click();
-      alert('Custom Gemini API Key cleared. Default project key will be used.');
-    });
-  }
 
   document.querySelectorAll('.rex-voice-select-btn').forEach((btn) => {
     btn.addEventListener('click', () => {

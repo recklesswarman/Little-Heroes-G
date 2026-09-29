@@ -322,7 +322,6 @@ export function attachGeminiLiveWebSocket(httpServer) {
     console.log('Gemini Live client connected');
     const url = new URL(request.url, `http://${request.headers.host || 'localhost'}`);
     const petId = url.searchParams.get('pet') || 'rex';
-    const apiKeyParam = url.searchParams.get('apiKey');
     const normalizedPetId = String(petId).toLowerCase();
     const voiceName = PET_VOICE_MAP[normalizedPetId] || 'Puck';
     const persona = PET_PERSONAS[normalizedPetId] || PET_PERSONAS.rex;
@@ -331,9 +330,9 @@ export function attachGeminiLiveWebSocket(httpServer) {
     let isSessionAlive = true;
 
     try {
-      const ai = getGeminiClient(apiKeyParam);
+      const ai = getGeminiClient();
       if (!ai) {
-        clientWs.close(1011, 'Gemini service not initialized');
+        clientWs.close(1011, 'Gemini service not initialized on server');
         return;
       }
 

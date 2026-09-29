@@ -599,7 +599,6 @@ const defaultState = {
     walkieState: 'idle',
     lastUserTranscript: '',
     lastRexTranscript: '',
-    geminiApiKey: '',
     voiceName: 'Puck',
     autoListenInQuests: true
   },
@@ -656,7 +655,15 @@ class Store {
     this.subscribers = new Set();
     this.isParentSessionUnlocked = false;
     this.syncService = null;
+    if (typeof localStorage !== 'undefined') {
+      try {
+        localStorage.removeItem('gemini_api_key');
+      } catch {}
+    }
     this.state = this.loadState();
+    if (this.state?.liveRex?.geminiApiKey) {
+      delete this.state.liveRex.geminiApiKey;
+    }
     this.resetHeroFieldBaseline();
   }
 
@@ -5477,13 +5484,12 @@ class Store {
     }
   }
 
-  setLiveRexApiKey(key) {
-    if (!this.state.liveRex) {
-      this.state.liveRex = { ...defaultState.liveRex };
-    }
-    this.state.liveRex.geminiApiKey = key;
+  setLiveRexApiKey(_key) {
     if (typeof localStorage !== 'undefined') {
-      localStorage.setItem('gemini_api_key', key);
+      localStorage.removeItem('gemini_api_key');
+    }
+    if (this.state.liveRex) {
+      delete this.state.liveRex.geminiApiKey;
     }
     this.saveState();
     this.notify();
@@ -6440,7 +6446,6 @@ class Store {
         isOpen: this.state.liveRex.isOpen || cloudData.liveRex.isOpen || false,
         voiceName: cloudData.liveRex.voiceName || this.state.liveRex.voiceName || 'Puck',
         autoListenInQuests: cloudData.liveRex.autoListenInQuests ?? this.state.liveRex.autoListenInQuests ?? true,
-        geminiApiKey: cloudData.liveRex.geminiApiKey || this.state.liveRex.geminiApiKey || '',
         status: cloudData.liveRex.status || this.state.liveRex.status || 'idle',
         statusMessage: cloudData.liveRex.statusMessage || this.state.liveRex.statusMessage || '',
         lastRexTranscript: cloudData.liveRex.lastRexTranscript || this.state.liveRex.lastRexTranscript || '',

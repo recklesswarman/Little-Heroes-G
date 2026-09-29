@@ -218,24 +218,23 @@ class GeminiLiveService {
           return reject(new Error('WebSocket is not supported in this environment'));
         }
 
-        const isStaticFirebaseHost = typeof window !== 'undefined' && 
-          (window.location.hostname.includes('web.app') || window.location.hostname.includes('firebaseapp.com'));
+        const isStaticHost = typeof window !== 'undefined' && 
+          (window.location.hostname.includes('web.app') || 
+           window.location.hostname.includes('firebaseapp.com') ||
+           window.location.hostname.includes('github.io'));
         const customWsUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GEMINI_WS_URL) || 
           (typeof localStorage !== 'undefined' ? localStorage.getItem('gemini_ws_url') : '');
 
-        if (isStaticFirebaseHost && !customWsUrl) {
+        if (isStaticHost && !customWsUrl) {
           clearTimeout(timer);
           this.cleanup();
           this.updateStatus('idle', `${petName} is ready!`);
-          return reject(new Error('Firebase Hosting is a static host without a persistent WebSocket bridge. Using speech recognition & Cloud Functions fallback.'));
+          return reject(new Error('Static hosting detected without a persistent WebSocket bridge. Using speech recognition & Cloud Functions fallback.'));
         }
 
         const protocol = (typeof window !== 'undefined' && window.location.protocol === 'https:') ? 'wss:' : 'ws:';
         const host = (typeof window !== 'undefined' && window.location.host) ? window.location.host : 'localhost:3000';
-        const envKey = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GEMINI_API_KEY) ? import.meta.env.VITE_GEMINI_API_KEY : '';
-        const storedKey = store.getState()?.liveRex?.geminiApiKey || (typeof localStorage !== 'undefined' ? localStorage.getItem('gemini_api_key') : '') || envKey;
-        const keyParam = storedKey ? `&apiKey=${encodeURIComponent(storedKey)}` : '';
-        const wsUrl = customWsUrl || `${protocol}//${host}/api/gemini/live?pet=${encodeURIComponent(activePet)}${keyParam}`;
+        const wsUrl = customWsUrl || `${protocol}//${host}/api/gemini/live?pet=${encodeURIComponent(activePet)}`;
         
         this.ws = new WebSocket(wsUrl);
 
@@ -643,7 +642,6 @@ class GeminiLiveService {
     const petId = store.getActivePet?.()?.id || 'rex';
     const petName = store.getActivePet?.()?.name || 'Rex the Dino';
     const childName = store.getState().selectedHero?.name || 'Little Hero';
-    const storedKey = store.getState()?.liveRex?.geminiApiKey || (typeof localStorage !== 'undefined' ? localStorage.getItem('gemini_api_key') : '') || '';
 
     this.updateStatus('connecting', `${petName} is thinking...`);
     store.setLiveRexState({ lastUserTranscript: promptText }, true);
@@ -656,8 +654,7 @@ class GeminiLiveService {
           message: promptText,
           petId,
           speedMode,
-          childName,
-          apiKey: storedKey
+          childName
         })
       });
 

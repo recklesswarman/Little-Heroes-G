@@ -40,4 +40,12 @@ env:
     secret: ELEVENLABS_API_KEY
     availability:
       - RUNTIME
+  # Google Gemini API key for live voice companion and AI storybook.
+  # Bound to a Secret Manager secret so it is never exposed in client URLs or bundles.
+  # -- set once with: firebase apphosting:secrets:set GEMINI_API_KEY
+  - variable: GEMINI_API_KEY
+    secret: GEMINI_API_KEY
+    availability:
+      - RUNTIME
+
 
