@@ -76,7 +76,7 @@ service cloud.firestore {
     function isParent(householdData) {
       return isAuthenticated() && (
         ('parentUids' in householdData && householdData.parentUids is list && request.auth.uid in householdData.parentUids) ||
-        ('parentEmails' in householdData && householdData.parentEmails is list && request.auth.token.email != null && request.auth.token.email in householdData.parentEmails)
+        ('parentEmails' in householdData && householdData.parentEmails is list && request.auth.token.email_verified == true && request.auth.token.email != null && request.auth.token.email in householdData.parentEmails)
       );
     }
 
@@ -134,6 +134,7 @@ service cloud.firestore {
       let data = request.resource.data;
       return hasOnlyAllowedFields(['userId', 'householdCode', 'email', 'role', 'linkedAt', 'updatedAt'])
         && ('userId' in data && data.userId is string && data.userId == request.auth.uid)
+        && (resource == null || !('userId' in resource.data) || data.userId == resource.data.userId)
         && ('householdCode' in data && data.householdCode is string && isValidHouseholdCode(data.householdCode))
         && (!('email' in data) || (data.email is string && data.email.size() <= 120))
         && (!('role' in data) || (data.role in ['parent', 'child', 'admin']));
@@ -146,22 +147,27 @@ service cloud.firestore {
     // --- Households Collection ---
     // Multi-device family synchronization scoped to explicit household codes
     match /households/{householdCode} {
-      // Allow read with valid household code syntax
-      allow read: if isValidHouseholdCode(householdCode);
+      // Allow read with valid household code syntax and authenticated session
+      allow read: if isAuthenticated() && isValidHouseholdCode(householdCode);
       
-      // Allow creation of a valid household payload
-      allow create: if isValidHouseholdCode(householdCode)
+      // Allow creation of a valid household payload by authenticated users
+      allow create: if isAuthenticated()
+        && isValidHouseholdCode(householdCode)
         && isValidHouseholdPayload();
 
       // Updates:
+      // Require authenticated session, valid code, and valid payload on ALL updates.
       // Parents can update any aspect (approvals, points, coins, settings, co-parents).
       // Bootstrap claims allow first parent onboarding.
       // Kids can only submit chores with isAllowedKidChoreUpdate().
-      allow update: if isValidHouseholdCode(householdCode) && (
-        isParent(resource.data) ||
-        isBootstrapParentClaim(resource.data) ||
-        isAllowedKidChoreUpdate(resource.data, request.resource.data)
-      );
+      allow update: if isAuthenticated()
+        && isValidHouseholdCode(householdCode)
+        && isValidHouseholdPayload()
+        && (
+          isParent(resource.data) ||
+          isBootstrapParentClaim(resource.data) ||
+          isAllowedKidChoreUpdate(resource.data, request.resource.data)
+        );
 
       // Prevent accidental or malicious household deletion from client
       allow delete: if false;
