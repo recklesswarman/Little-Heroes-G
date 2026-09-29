@@ -35,16 +35,18 @@
       ]
     }
   ],
-  "apphosting": {
-    "backendId": "little-heroes-adventures",
-    "rootDir": "/",
-    "ignore": [
-      "node_modules",
-      ".git",
-      "firebase-debug.log",
-      "firebase-debug.*.log"
-    ]
-  },
+  "apphosting": [
+    {
+      "backendId": "littleheroes-g1",
+      "rootDir": ".",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log"
+      ]
+    }
+  ],
   "hosting": {
     "public": "dist",
     "ignore": [
