@@ -2,6 +2,7 @@ import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getFunctions } from "firebase/functions";
+import { getStorage } from "firebase/storage";
 
 // Official Real Firebase Applet Project Configuration for Little Heroes Adventures
 const firebaseConfig = {
@@ -22,8 +23,10 @@ let app = null;
 let auth = null;
 let db = null;
 let functions = null;
+let storage = null;
 let googleProvider = null;
 let isFirebaseAvailable = false;
+let isStorageAvailable = false;
 
 try {
   app = initializeApp(firebaseConfig);
@@ -48,13 +51,21 @@ try {
     console.warn("Firebase Functions initialization notice:", fnErr.message);
   }
 
+  // Connect to Cloud Storage
+  try {
+    storage = getStorage(app);
+    isStorageAvailable = true;
+  } catch (storageErr) {
+    console.warn("Firebase Storage initialization notice:", storageErr.message);
+  }
+
   googleProvider = new GoogleAuthProvider();
   googleProvider.setCustomParameters({ prompt: 'select_account' });
   isFirebaseAvailable = true;
-  console.log(`🔥 Firebase initialized successfully for project: ${firebaseConfig.projectId} (DB: ${firestoreDatabaseId})`);
+  console.log(`🔥 Firebase initialized successfully for project: ${firebaseConfig.projectId} (DB: ${firestoreDatabaseId}, Storage: ${firebaseConfig.storageBucket})`);
 } catch (e) {
   console.warn("Firebase initialized with local fallback:", e.message);
 }
 
-export { app, auth, db, functions, googleProvider, isFirebaseAvailable, firestoreDatabaseId, firebaseConfig };
+export { app, auth, db, functions, storage, googleProvider, isFirebaseAvailable, isStorageAvailable, firestoreDatabaseId, firebaseConfig };
 

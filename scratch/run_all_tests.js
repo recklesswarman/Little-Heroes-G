@@ -17,7 +17,8 @@ const testFiles = [
   'scratch/test_bedtime_storybook.cjs',
   'scratch/test_user_reported_fixes.cjs',
   'scratch/test_bedtime_sanctuary.cjs',
-  'scratch/test_mobile_and_avatar_fix.cjs'
+  'scratch/test_mobile_and_avatar_fix.cjs',
+  'scratch/test_firebase_storage.cjs'
 ];
 
 let allPassed = true;

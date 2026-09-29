@@ -6,6 +6,7 @@ import { firestoreSync } from './services/firestoreSyncService.js';
 // Connect centralized Firestore Sync Service to Store
 store.setSyncService(firestoreSync);
 import { firebaseAuth } from './services/firebaseAuthService.js';
+import { firebaseStorageService } from './services/firebaseStorageService.js';
 import { isFirebaseAvailable } from './config/firebase.js';
 
 // Layout Components
@@ -464,10 +465,14 @@ window.addEventListener('popstate', () => {
 // Initial Render
 renderApp();
 
-// Expose Live Rex Companion Service on window for convenient console testing
+// Expose Live Rex Companion Service & Firebase Storage Service on window for convenient console testing
 import('./services/heroAgentService.js').then(({ talkToRex, playRexVoice }) => {
   window.talkToRex = talkToRex;
   window.playRexVoice = playRexVoice;
   console.log('🦖 Rex the Dino Agent Service active! Test anytime in console: await talkToRex("Hello Rex!")');
 });
+
+if (typeof window !== 'undefined') {
+  window.firebaseStorage = firebaseStorageService;
+}
 

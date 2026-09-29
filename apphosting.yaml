@@ -40,3 +40,4 @@ env:
     secret: ELEVENLABS_API_KEY
     availability:
       - RUNTIME
+

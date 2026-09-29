@@ -1,4 +1,5 @@
 import { cloudFunctionsService } from './cloudFunctionsService.js';
+import { firebaseStorageService } from './firebaseStorageService.js';
 
 /**
  * Service to handle client-side image compression, offline queuing,
@@ -97,6 +98,24 @@ class AIVisionChoreService {
       console.warn('Image compression skipped, using original:', e);
     }
 
+    // Persist photo to Cloud Storage if available (non-blocking)
+    let finalPhotoUrl = compressedUrl;
+    if (firebaseStorageService.isReady()) {
+      try {
+        const uploadResult = await firebaseStorageService.uploadChorePhotoProof(
+          'demo-household',
+          heroName,
+          taskId,
+          compressedUrl
+        );
+        if (uploadResult?.downloadUrl) {
+          finalPhotoUrl = uploadResult.downloadUrl;
+        }
+      } catch (storageErr) {
+        console.warn('[AIVisionChoreService] Cloud storage upload notice:', storageErr);
+      }
+    }
+
     // Try cloud function verification if online. Whatever it honestly reports
     // (verified or not) is returned as-is -- it must never be silently
     // overridden into a fabricated approval, since the Parent Portal shows
@@ -115,7 +134,7 @@ class AIVisionChoreService {
         if (cloudResult) {
           return {
             ...cloudResult,
-            photoUrl: compressedUrl
+            photoUrl: finalPhotoUrl
           };
         }
       } catch (err) {
@@ -123,7 +142,7 @@ class AIVisionChoreService {
       }
     } else {
       // Offline: queue for background sync
-      this.queueOfflineProof({ taskId, taskTitle, heroName, childAge, photoUrl: compressedUrl, timestamp: Date.now() });
+      this.queueOfflineProof({ taskId, taskTitle, heroName, childAge, photoUrl: finalPhotoUrl, timestamp: Date.now() });
     }
 
     // Verification could not be performed (offline, or the cloud call
@@ -135,7 +154,7 @@ class AIVisionChoreService {
       feedbackForKid: 'Nice job, ' + heroName + '! Rex will check your photo with a grown-up soon! 🦖',
       parentRecommendation: 'AI verification unavailable -- please review this photo manually.',
       badgeEarned: undefined,
-      photoUrl: compressedUrl
+      photoUrl: finalPhotoUrl
     };
   }
 

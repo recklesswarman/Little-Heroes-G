@@ -1,0 +1,52 @@
+rules_version = '2';
+
+// Craft rules based on data in your Firestore database
+// controls access to Google Cloud Storage for Little Heroes Adventures
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAllowedImage() {
+      return request.resource.contentType.matches('image/.*')
+        && request.resource.size < 10 * 1024 * 1024; // 10MB limit
+    }
+
+    function isAllowedAudio() {
+      return request.resource.contentType.matches('audio/.*')
+        && request.resource.size < 25 * 1024 * 1024; // 25MB limit
+    }
+
+    function isAllowedJson() {
+      return request.resource.contentType == 'application/json'
+        && request.resource.size < 5 * 1024 * 1024; // 5MB limit
+    }
+
+    // 1. Household chore photo proofs, logs, and private assets
+    match /households/{householdId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (isAllowedImage() || isAllowedAudio() || isAllowedJson());
+    }
+
+    // 2. Hero avatars (publicly readable so sibling/household profiles can see them)
+    match /heroes/{heroId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAuthenticated() && isAllowedImage();
+    }
+
+    // 3. Bedtime story recordings, bedtime illustrations & audio
+    match /bedtime/{householdId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (isAllowedAudio() || isAllowedJson() || isAllowedImage());
+    }
+
+    // 4. Public assets (pre-cached lullabies, stickers, starter avatars)
+    match /public/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+  }
+}
