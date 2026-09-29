@@ -8,7 +8,11 @@
         "supportEmail": "mymusicdj11@gmail.com",
         "authorizedRedirectUris": [
           "http://localhost",
-          "http://localhost:5173"
+          "http://localhost:5173",
+          "https://littleheroes-g1--little-heroes-quest-8842.us-east4.hosted.app",
+          "https://little-heroes-quest-8842.web.app",
+          "https://little-heroes-quest-8842.firebaseapp.com",
+          "https://recklesswarman.github.io"
         ]
       }
     }

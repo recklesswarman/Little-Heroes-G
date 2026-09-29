@@ -26,7 +26,7 @@ import { storage, isStorageAvailable, firebaseConfig } from "../config/firebase.
 const STORAGE_ATTRIBUTION_METADATA = {
   agent: "gcs-skills/1.0",
   skill: "google-cloud-storage-basics",
-  app: "little-heroes-adventures",
+  app: "littleheroes-g1",
   version: "1.0.0"
 };
 
