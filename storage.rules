@@ -1,52 +1,92 @@
 rules_version = '2';
 
-// Craft rules based on data in your Firestore database
-// controls access to Google Cloud Storage for Little Heroes Adventures
+// Little Heroes Adventures - Cloud Storage Security Rules
+// Controls and hardens access to Google Cloud Storage assets:
+// - Household chore photo proofs & completion media
+// - Hero avatars & toddler drawings
+// - Bedtime story records, audio narrations & illustrations
+// - Public starter assets
+
 service firebase.storage {
   match /b/{bucket}/o {
     
-    // Helper functions
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
     function isAuthenticated() {
       return request.auth != null;
     }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 64;
+    }
     
+    // Restrict images to safe raster formats (explicitly exclude SVG to prevent Stored XSS)
     function isAllowedImage() {
-      return request.resource.contentType.matches('image/.*')
-        && request.resource.size < 10 * 1024 * 1024; // 10MB limit
+      return request.resource != null
+        && request.resource.contentType.matches('image/(jpeg|png|webp|gif)')
+        && request.resource.size > 0
+        && request.resource.size <= 10 * 1024 * 1024; // 10MB limit
     }
 
+    // Restrict audio files to standard formats and enforce size bounds
     function isAllowedAudio() {
-      return request.resource.contentType.matches('audio/.*')
-        && request.resource.size < 25 * 1024 * 1024; // 25MB limit
+      return request.resource != null
+        && request.resource.contentType.matches('audio/(mpeg|mp3|wav|ogg|webm|aac|pcm|x-wav)')
+        && request.resource.size > 0
+        && request.resource.size <= 25 * 1024 * 1024; // 25MB limit
     }
 
+    // Restrict JSON data structures to application/json and limit payload size
     function isAllowedJson() {
-      return request.resource.contentType == 'application/json'
-        && request.resource.size < 5 * 1024 * 1024; // 5MB limit
+      return request.resource != null
+        && (request.resource.contentType == 'application/json' || request.resource.contentType.matches('application/json;.*'))
+        && request.resource.size > 0
+        && request.resource.size <= 5 * 1024 * 1024; // 5MB limit
     }
+
+    // ===============================================================
+    // Path Rules
+    // ===============================================================
 
     // 1. Household chore photo proofs, logs, and private assets
     match /households/{householdId}/{allPaths=**} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && (isAllowedImage() || isAllowedAudio() || isAllowedJson());
+      allow read: if isAuthenticated() && isValidId(householdId);
+      allow create, update: if isAuthenticated() 
+        && isValidId(householdId) 
+        && (isAllowedImage() || isAllowedAudio() || isAllowedJson());
+      allow delete: if isAuthenticated() && isValidId(householdId);
     }
 
     // 2. Hero avatars (publicly readable so sibling/household profiles can see them)
     match /heroes/{heroId}/{allPaths=**} {
       allow read: if true;
-      allow write: if isAuthenticated() && isAllowedImage();
+      allow create, update: if isAuthenticated() 
+        && isValidId(heroId) 
+        && isAllowedImage();
+      allow delete: if isAuthenticated() && isValidId(heroId);
     }
 
     // 3. Bedtime story recordings, bedtime illustrations & audio
     match /bedtime/{householdId}/{allPaths=**} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && (isAllowedAudio() || isAllowedJson() || isAllowedImage());
+      allow read: if isAuthenticated() && isValidId(householdId);
+      allow create, update: if isAuthenticated() 
+        && isValidId(householdId) 
+        && (isAllowedAudio() || isAllowedJson() || isAllowedImage());
+      allow delete: if isAuthenticated() && isValidId(householdId);
     }
 
     // 4. Public assets (pre-cached lullabies, stickers, starter avatars)
+    // Read-only to clients; client write/delete is strictly disabled
     match /public/{allPaths=**} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if false;
+    }
+
+    // 5. Zero-Trust Default Deny Catch-all
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }
