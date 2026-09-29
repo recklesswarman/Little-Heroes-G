@@ -147,21 +147,21 @@ service cloud.firestore {
     // --- Households Collection ---
     // Multi-device family synchronization scoped to explicit household codes
     match /households/{householdCode} {
-      // Allow read with valid household code syntax and authenticated session
-      allow read: if isAuthenticated() && isValidHouseholdCode(householdCode);
+      // Allow single document read with valid household code syntax.
+      // List/collection queries are strictly denied to prevent database crawling.
+      allow get: if isValidHouseholdCode(householdCode);
+      allow list: if false;
       
-      // Allow creation of a valid household payload by authenticated users
-      allow create: if isAuthenticated()
-        && isValidHouseholdCode(householdCode)
+      // Allow creation of a valid household payload
+      allow create: if isValidHouseholdCode(householdCode)
         && isValidHouseholdPayload();
 
       // Updates:
-      // Require authenticated session, valid code, and valid payload on ALL updates.
+      // Require valid code and valid payload on ALL updates.
       // Parents can update any aspect (approvals, points, coins, settings, co-parents).
       // Bootstrap claims allow first parent onboarding.
       // Kids can only submit chores with isAllowedKidChoreUpdate().
-      allow update: if isAuthenticated()
-        && isValidHouseholdCode(householdCode)
+      allow update: if isValidHouseholdCode(householdCode)
         && isValidHouseholdPayload()
         && (
           isParent(resource.data) ||
@@ -173,13 +173,13 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // --- Users / Hero Profiles Collection (unused by the client app) ---
-    // Deny client access entirely to prevent reachable unscoped access
-    match /users/{heroId} {
-      allow read, write: if false;
+    // --- Users / Profiles Collection ---
+    // Allow authenticated users to read and write their own profile document
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
 
       match /{allChildren=**} {
-        allow read, write: if false;
+        allow read, write: if isOwner(userId);
       }
     }
 
