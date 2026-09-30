@@ -3,6 +3,7 @@ import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import { speakRex } from '../services/voiceService.js';
 import confetti from 'canvas-confetti';
+import { DIGITAL_REWARDS_CATALOG } from '../data/digitalRewardsCatalog.js';
 import {
   ROOM_THEMES,
   FURNITURE_SLOTS,
@@ -26,6 +27,8 @@ import { preserveScrollPosition } from '../utils/scrollPreserve.js';
 let activePreviewItem = null;
 let selectedTrophyForModal = null;
 let activeGearSlotForModal = null; // 'masks' | 'capes' | 'armor' | 'boots' | null
+let isWeaponModalOpen = false;
+let isAllTrophiesShowcaseOpen = false;
 let isHologramActive = false;
 let isNapping = false;
 let isBouncing = false;
@@ -97,6 +100,8 @@ export function renderHeroHQView() {
     return tId ? trophies.find(t => t.id === tId) || null : null;
   });
 
+  const equippedWeapon = store.getEquippedHeroWeapon ? store.getEquippedHeroWeapon() : null;
+
   // Calculate habit stats for the Hologram Globe
   const brushStreak = state.brushStreak || hero.streak || 1;
   const choresDone = (state.choresCompletedCount || 0) + (state.taskCompletionLogs?.length || 0);
@@ -155,7 +160,7 @@ export function renderHeroHQView() {
         <div class="absolute top-4 left-8 text-xl animate-pulse text-amber-200">✨</div>
         <div class="absolute top-12 left-1/4 text-sm animate-ping text-cyan-200">⭐</div>
         <div class="absolute top-6 left-1/2 text-2xl animate-pulse text-yellow-100">🌟</div>
-        <div class="absolute top-10 right-1/3 text-sm animate-bounce text-pink-200">✨</div>
+        <div class="absolute top-10 right-1/3 text-sm animate-bounce text-cyan-200">✨</div>
         <div class="absolute top-5 right-12 text-xl animate-pulse text-cyan-100">⭐</div>
         <div class="absolute top-16 right-1/4 text-xs animate-ping text-yellow-200">✨</div>
         <!-- Soft Ceiling Galaxy Glow -->
@@ -185,36 +190,57 @@ export function renderHeroHQView() {
           </button>
         </div>
 
-        <!-- 4 Featured Spotlight Pedestals -->
-        <div class="grid grid-cols-4 gap-2 sm:gap-4 max-w-2xl mx-auto w-full pt-1">
+        <!-- 5 Featured Spotlight Pedestals (4 Trophies + 1 Active Combat Weapon) -->
+        <div class="grid grid-cols-5 gap-1.5 sm:gap-3 max-w-3xl mx-auto w-full pt-1">
           ${featuredTrophies.map((trophy, idx) => {
             if (trophy) {
               return `
                 <div class="group relative flex flex-col items-center cursor-pointer transition-transform hover:scale-105" data-inspect-trophy-id="${trophy.id}">
                   <!-- Spotlight Beam -->
-                  <div class="absolute -top-4 w-12 h-16 bg-gradient-to-b from-yellow-300/20 to-transparent blur-[2px] pointer-events-none rounded-full"></div>
+                  <div class="absolute -top-4 w-10 sm:w-12 h-16 bg-gradient-to-b from-yellow-300/20 to-transparent blur-[2px] pointer-events-none rounded-full"></div>
                   <!-- Trophy 3D Icon & Pedestal -->
-                  <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br ${trophy.iconColor} p-0.5 shadow-[0_0_15px_rgba(234,179,8,0.4)] border-2 border-yellow-200 flex items-center justify-center text-2xl sm:text-3xl animate-pulse">
+                  <div class="w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br ${trophy.iconColor} p-0.5 shadow-[0_0_15px_rgba(234,179,8,0.4)] border-2 border-yellow-200 flex items-center justify-center text-xl sm:text-3xl animate-pulse">
                     ${trophy.emoji}
                   </div>
                   <!-- Mini Plaque -->
-                  <div class="mt-1.5 px-2 py-0.5 rounded-lg bg-black/60 border border-yellow-400/40 text-[9px] sm:text-[10px] font-black text-amber-200 text-center truncate max-w-[85px]">
+                  <div class="mt-1.5 px-1 sm:px-2 py-0.5 rounded-lg bg-black/60 border border-yellow-400/40 text-[8px] sm:text-[10px] font-black text-amber-200 text-center truncate max-w-[65px] sm:max-w-[85px]">
                     ${trophy.title}
                   </div>
-                  <span class="text-[8px] text-white/60 font-bold uppercase tracking-widest mt-0.5">Spotlight #${idx + 1}</span>
+                  <span class="text-[7px] sm:text-[8px] text-white/60 font-bold uppercase tracking-widest mt-0.5">Trophy #${idx + 1}</span>
                 </div>
               `;
             } else {
               return `
                 <div class="flex flex-col items-center justify-center cursor-pointer opacity-70 hover:opacity-100 transition-opacity" data-pin-slot="${idx}">
-                  <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/5 border-2 border-dashed border-white/20 flex flex-col items-center justify-center text-white/50 hover:border-amber-400 hover:text-amber-300 transition-colors">
+                  <div class="w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-white/5 border-2 border-dashed border-white/20 flex flex-col items-center justify-center text-white/50 hover:border-amber-400 hover:text-amber-300 transition-colors">
                     <span class="material-symbols-outlined text-base sm:text-xl">add</span>
                   </div>
-                  <span class="text-[9px] text-white/40 font-black mt-1 uppercase">Spotlight #${idx + 1}</span>
+                  <span class="text-[8px] sm:text-[9px] text-white/40 font-black mt-1 uppercase">Trophy #${idx + 1}</span>
                 </div>
               `;
             }
           }).join('')}
+
+          <!-- 5th Pedestal: Dedicated Equipped Weapon Spotlight -->
+          <div id="hq-weapon-spotlight-pedestal" class="group relative flex flex-col items-center cursor-pointer transition-transform hover:scale-105" title="Equipped Combat Weapon - Tap to view & switch weapons!">
+            <!-- Spotlight Beam -->
+            <div class="absolute -top-4 w-10 sm:w-12 h-16 bg-gradient-to-b from-cyan-400/30 to-transparent blur-[2px] pointer-events-none rounded-full"></div>
+            <!-- Weapon 3D Icon & Pedestal -->
+            <div class="w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-cyan-900/90 to-blue-950/90 p-1 shadow-[0_0_15px_rgba(6,182,212,0.6)] border-2 border-cyan-400 flex items-center justify-center relative overflow-hidden group-hover:border-cyan-200">
+              ${equippedWeapon?.image ? `
+                <img src="${equippedWeapon.image}" alt="${equippedWeapon.title}" class="w-8 h-8 sm:w-10 sm:h-10 object-contain drop-shadow" />
+              ` : `
+                <span class="text-xl sm:text-2xl">${equippedWeapon?.icon || '⚔️'}</span>
+              `}
+              <span class="absolute top-0.5 right-0.5 text-[7px] bg-cyan-400 text-slate-950 font-black px-1 rounded-sm shadow">1/1</span>
+            </div>
+            <!-- Mini Plaque -->
+            <div class="mt-1.5 px-1 sm:px-2 py-0.5 rounded-lg bg-black/80 border border-cyan-400/50 text-[8px] sm:text-[10px] font-black text-cyan-200 text-center truncate max-w-[65px] sm:max-w-[85px] flex items-center gap-0.5 justify-center">
+              <span>⚔️</span>
+              <span class="truncate">${equippedWeapon ? equippedWeapon.title : 'Weapon'}</span>
+            </div>
+            <span class="text-[7px] sm:text-[8px] text-cyan-300 font-bold uppercase tracking-widest mt-0.5">Weapon Slot</span>
+          </div>
         </div>
       </div>
 
@@ -422,11 +448,17 @@ export function renderHeroHQView() {
     <!-- Redecorate Studio Slide-Up Drawer -->
     ${heroHQ.redecorateDrawerOpen ? renderRedecorateDrawer(state) : ''}
 
+    <!-- All Trophies Showcase & Spotlights Gallery Modal -->
+    ${isAllTrophiesShowcaseOpen ? renderAllTrophiesShowcaseModal(state, equippedWeapon) : ''}
+
     <!-- Trophy Inspect Modal -->
     ${selectedTrophyForModal ? renderTrophyModal(selectedTrophyForModal, state) : ''}
 
     <!-- Quick Gear Wardrobe Modal -->
     ${activeGearSlotForModal ? renderQuickGearModal(activeGearSlotForModal, activePet, state) : ''}
+
+    <!-- Combat Weapon Switcher Modal -->
+    ${isWeaponModalOpen ? renderWeaponModal(state, equippedWeapon) : ''}
 
   </div>
   `;
@@ -601,6 +633,138 @@ function renderFurnitureGrid(slotId, heroHQ, userCoins) {
   }).join('');
 }
 
+function renderAllTrophiesShowcaseModal(state, equippedWeapon) {
+  const heroHQ = state.heroHQ || {};
+  const trophies = getTrophiesForDisplay(state);
+  const featuredIds = heroHQ.featuredTrophyIds || ['rookie_hero_crest'];
+
+  return `
+  <div id="hq-all-trophies-modal-backdrop" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-5 animate-fade-in font-body">
+    <div class="bg-surface-container-high border-4 border-amber-400 rounded-3xl p-4 sm:p-6 max-w-2xl w-full shadow-[0_0_50px_rgba(245,158,11,0.35)] flex flex-col gap-4 animate-scale-up text-on-surface max-h-[90vh] overflow-y-auto">
+      
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-11 h-11 rounded-2xl bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-2xl shadow">
+            🏆
+          </div>
+          <div>
+            <h3 class="font-headline text-lg sm:text-xl font-black text-inverse-surface flex items-center gap-2">
+              <span>Trophy Showcase & Spotlights</span>
+              <span class="text-xs bg-amber-400/20 text-amber-300 border border-amber-400/40 px-2 py-0.5 rounded-full font-bold">
+                ${trophies.length} Earned
+              </span>
+            </h3>
+            <p class="text-xs text-on-surface-variant font-medium">Spotlight pedestals, battle weapon, and earned achievements!</p>
+          </div>
+        </div>
+        <button id="hq-close-all-trophies-btn" class="w-9 h-9 rounded-xl bg-surface-container hover:bg-surface-bright flex items-center justify-center text-white/70 hover:text-white border border-white/20 transition-colors">
+          <span class="material-symbols-outlined text-lg">close</span>
+        </button>
+      </div>
+
+      <!-- HIGHLIGHT SLOT: Dedicated Equipped Combat Weapon -->
+      <div class="bg-gradient-to-r from-cyan-950/90 via-slate-900 to-blue-950/90 rounded-2xl p-4 border-2 border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.3)] flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div class="flex items-center gap-3.5 w-full sm:w-auto">
+          <div class="relative w-16 h-16 sm:w-18 sm:h-18 rounded-2xl bg-gradient-to-br from-cyan-900 to-blue-950 border-2 border-cyan-300 flex items-center justify-center flex-shrink-0 shadow-md">
+            ${equippedWeapon?.image ? `
+              <img src="${equippedWeapon.image}" alt="${equippedWeapon.title}" class="w-12 h-12 object-contain drop-shadow" />
+            ` : `
+              <span class="text-3xl">${equippedWeapon?.icon || '⚔️'}</span>
+            `}
+            <span class="absolute -top-1.5 -right-1.5 text-[8px] bg-cyan-400 text-slate-950 font-black px-1.5 py-0.5 rounded-md shadow">
+              1/1 EQUIPPED
+            </span>
+          </div>
+          <div class="flex flex-col min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] font-black uppercase tracking-wider text-cyan-300 font-headline">Equipped Combat Weapon Slot</span>
+              <span class="text-[9px] bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 px-1.5 py-0.2 rounded font-bold">Active in Battle</span>
+            </div>
+            <h4 class="font-headline text-base sm:text-lg font-black text-white truncate">
+              ${equippedWeapon?.title || 'Laser Toothbrush Saber'}
+            </h4>
+            <p class="text-[11px] text-cyan-200/80 font-medium">
+              ${equippedWeapon?.description || 'Focus photon beams to scrub plaque villains with maximum power!'}
+            </p>
+          </div>
+        </div>
+
+        <button id="hq-showcase-switch-weapon-btn" class="w-full sm:w-auto flex-shrink-0 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-headline text-xs font-black px-4 py-2.5 rounded-xl shadow-lg flex items-center justify-center gap-1.5 active:scale-95 transition-all">
+          <span class="material-symbols-outlined text-base">swords</span>
+          <span>Switch Weapon</span>
+        </button>
+      </div>
+
+      <!-- Spotlight Pedestals Mini-Overview -->
+      <div class="flex flex-col gap-2 bg-black/40 rounded-2xl p-3 border border-white/10">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-headline font-black text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+            <span>✨</span> Active Back-Wall Spotlight Pedestals
+          </span>
+          <span class="text-[10px] text-white/60 font-bold">5 Pinned Spots</span>
+        </div>
+        <div class="grid grid-cols-5 gap-2 pt-1">
+          ${[0, 1, 2, 3].map(slotIdx => {
+            const tId = featuredIds[slotIdx];
+            const trophy = tId ? trophies.find(t => t.id === tId) : null;
+            if (trophy) {
+              return `
+                <div class="flex flex-col items-center bg-white/5 border border-amber-400/40 rounded-xl p-1.5 cursor-pointer hover:border-amber-300 transition-colors hq-inspect-from-showcase-btn" data-trophy-id="${trophy.id}">
+                  <span class="text-2xl">${trophy.emoji}</span>
+                  <span class="text-[8px] font-bold text-amber-200 truncate max-w-[50px] mt-0.5">${trophy.title}</span>
+                  <span class="text-[7px] text-white/50 font-bold">#${slotIdx + 1}</span>
+                </div>
+              `;
+            } else {
+              return `
+                <div class="flex flex-col items-center bg-white/5 border border-dashed border-white/20 rounded-xl p-1.5 justify-center">
+                  <span class="text-xs text-white/40 font-bold">Empty</span>
+                  <span class="text-[7px] text-white/40 mt-1">#${slotIdx + 1}</span>
+                </div>
+              `;
+            }
+          }).join('')}
+          <!-- 5th: Weapon Slot -->
+          <div id="hq-showcase-weapon-pedestal-slot" class="flex flex-col items-center bg-cyan-950/60 border border-cyan-400 rounded-xl p-1.5 cursor-pointer hover:border-cyan-200 transition-colors" title="Combat Weapon Slot">
+            <span class="text-2xl">${equippedWeapon?.icon || '⚔️'}</span>
+            <span class="text-[8px] font-bold text-cyan-200 truncate max-w-[50px] mt-0.5">${equippedWeapon?.title || 'Weapon'}</span>
+            <span class="text-[7px] text-cyan-300 font-bold">Weapon 1/1</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- All Earned Trophies Section -->
+      <div class="flex flex-col gap-2">
+        <h4 class="font-headline text-xs font-black uppercase tracking-wider text-white/80">
+          All Milestones & Crests (${trophies.length})
+        </h4>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[36vh] overflow-y-auto pr-1">
+          ${trophies.map(trophy => `
+            <div class="bg-surface-container border border-white/10 hover:border-amber-400/60 rounded-2xl p-3 flex items-center justify-between gap-2.5 transition-all">
+              <div class="flex items-center gap-2.5 min-w-0 cursor-pointer hq-inspect-from-showcase-btn" data-trophy-id="${trophy.id}">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br ${trophy.iconColor} border border-amber-200 flex items-center justify-center text-2xl flex-shrink-0 shadow">
+                  ${trophy.emoji}
+                </div>
+                <div class="flex flex-col min-w-0">
+                  <h5 class="font-headline text-sm font-black text-white truncate">${trophy.title}</h5>
+                  <span class="text-[10px] text-amber-300/90 font-bold">${trophy.category} • ${trophy.dateEarned}</span>
+                </div>
+              </div>
+              <button class="hq-showcase-inspect-btn bg-surface-bright hover:bg-amber-400 hover:text-slate-950 text-white text-[11px] font-black px-2.5 py-1.5 rounded-xl border border-white/20 transition-all flex items-center gap-1 flex-shrink-0" data-trophy-id="${trophy.id}">
+                <span class="material-symbols-outlined text-sm">visibility</span>
+                <span>Inspect</span>
+              </button>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+    </div>
+  </div>
+  `;
+}
+
 function renderTrophyModal(trophy, state) {
   const heroHQ = state.heroHQ || {};
   const featuredIds = heroHQ.featuredTrophyIds || [];
@@ -773,6 +937,120 @@ function renderQuickGearModal(category, activePet, state) {
         </div>
       </div>
     </div>
+  `;
+}
+
+function renderWeaponModal(state, equippedWeapon) {
+  const hero = state.selectedHero || {};
+  const heroInventory = Array.isArray(hero.inventory) ? hero.inventory : ['laser_toothbrush'];
+  const allWeapons = [
+    ...DIGITAL_REWARDS_CATALOG.filter(item => item.category === 'Weapons'),
+    ...(state.digitalGear || []).filter(item => item.category === 'Weapons' && !DIGITAL_REWARDS_CATALOG.some(d => d.id === item.id))
+  ];
+
+  return `
+  <div id="hq-weapon-modal-backdrop" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in font-body">
+    <div class="bg-surface-container-high border-4 border-cyan-400 rounded-3xl p-5 max-w-lg w-full shadow-[0_0_40px_rgba(6,182,212,0.4)] flex flex-col gap-4 animate-scale-up text-on-surface max-h-[90vh] overflow-y-auto">
+      
+      <!-- Header -->
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-10 h-10 rounded-2xl bg-cyan-950/80 border-2 border-cyan-400 flex items-center justify-center text-2xl shadow">
+            ⚔️
+          </div>
+          <div>
+            <h3 class="font-headline text-lg font-black text-inverse-surface flex items-center gap-1.5">
+              <span>Combat Weapon Arsenal</span>
+              <span class="text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 px-2 py-0.5 rounded-full uppercase">1 Equipped / Battle</span>
+            </h3>
+            <p class="text-xs text-on-surface-variant font-medium">Equip 1 favorite weapon per AR Toothbrush Battle!</p>
+          </div>
+        </div>
+        <button id="hq-close-weapon-modal-btn" class="w-9 h-9 rounded-xl bg-surface-container hover:bg-surface-bright flex items-center justify-center text-white/70 hover:text-white border border-white/20">
+          <span class="material-symbols-outlined text-lg">close</span>
+        </button>
+      </div>
+
+      <!-- Currently Equipped Weapon Feature Card -->
+      <div class="bg-gradient-to-r from-cyan-950/80 via-slate-900 to-blue-950/80 rounded-2xl p-4 border-2 border-cyan-400/60 shadow-lg flex items-center gap-3.5">
+        <div class="w-16 h-16 rounded-2xl bg-cyan-900/60 border border-cyan-400 flex items-center justify-center flex-shrink-0 p-1">
+          ${equippedWeapon?.image ? `
+            <img src="${equippedWeapon.image}" alt="${equippedWeapon.title}" class="w-full h-full object-contain drop-shadow" />
+          ` : `
+            <span class="text-3xl">${equippedWeapon?.icon || '⚔️'}</span>
+          `}
+        </div>
+        <div class="flex flex-col flex-1 min-w-0">
+          <span class="text-[10px] font-black uppercase tracking-wider text-cyan-300 font-headline">Currently Equipped in Battle</span>
+          <h4 class="font-headline text-base font-black text-white truncate">${equippedWeapon?.title || 'Laser Toothbrush Saber'}</h4>
+          <span class="text-xs font-bold text-emerald-400 flex items-center gap-1">
+            <span class="material-symbols-outlined text-sm">bolt</span>
+            ${equippedWeapon?.statBonus || '+20% Battle Scrub Damage'}
+          </span>
+        </div>
+        <div class="bg-emerald-500/20 text-emerald-300 border border-emerald-400/50 px-3 py-1 rounded-xl text-xs font-black uppercase">
+          Active
+        </div>
+      </div>
+
+      <!-- Weapons Grid -->
+      <div class="flex flex-col gap-2">
+        <h4 class="font-headline text-xs font-black uppercase tracking-wider text-amber-300 flex items-center gap-1">
+          <span>🎒</span> Your Weapons Collection
+        </h4>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          ${allWeapons.map(weapon => {
+            const isOwned = heroInventory.includes(weapon.id) || heroInventory.includes(weapon.title);
+            const isEquipped = (equippedWeapon?.id === weapon.id) || (equippedWeapon?.title === weapon.title);
+
+            return `
+              <div class="bg-surface-container rounded-2xl p-3.5 border-2 ${isEquipped ? 'border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)]' : isOwned ? 'border-surface-container-highest hover:border-cyan-500/50' : 'border-surface-container-highest/40 opacity-70'} flex flex-col justify-between gap-3">
+                <div class="flex items-start gap-3">
+                  <div class="w-12 h-12 rounded-xl bg-surface-container-high border border-white/10 flex items-center justify-center p-1 flex-shrink-0">
+                    ${weapon.image ? `
+                      <img src="${weapon.image}" alt="${weapon.title}" class="w-full h-full object-contain" />
+                    ` : `
+                      <span class="text-2xl">${weapon.icon || '⚔️'}</span>
+                    `}
+                  </div>
+                  <div class="flex flex-col flex-1 min-w-0">
+                    <div class="flex items-center justify-between gap-1">
+                      <h5 class="font-headline text-xs font-black text-inverse-surface truncate">${weapon.title}</h5>
+                      ${isEquipped ? '<span class="text-[9px] bg-cyan-400 text-slate-950 font-black px-1.5 py-0.5 rounded">Active</span>' : ''}
+                    </div>
+                    <span class="text-[10px] text-emerald-400 font-bold">${weapon.statBonus || '+20% Damage'}</span>
+                    <p class="text-[10px] text-on-surface-variant line-clamp-1 mt-0.5">${weapon.desc || ''}</p>
+                  </div>
+                </div>
+
+                <div class="flex items-center justify-between pt-2 border-t border-white/10">
+                  <button class="hq-weapon-voice-preview-btn text-[10px] font-bold text-cyan-300 hover:text-cyan-200 flex items-center gap-1" data-weapon-id="${weapon.id}">
+                    <span class="material-symbols-outlined text-xs">volume_up</span>
+                    <span>Rex Voice</span>
+                  </button>
+                  ${isEquipped ? `
+                    <span class="text-xs font-black text-emerald-400 flex items-center gap-1">
+                      <span class="material-symbols-outlined text-sm">check_circle</span>
+                      Equipped
+                    </span>
+                  ` : isOwned ? `
+                    <button class="hq-equip-specific-weapon-btn bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-headline text-xs font-black px-3.5 py-1.5 rounded-xl border border-cyan-300 shadow chunky-btn-sm active:scale-95" data-weapon-id="${weapon.id}">
+                      Equip for Battle
+                    </button>
+                  ` : `
+                    <button class="hq-go-shop-weapon-btn bg-surface-container-high hover:bg-secondary text-inverse-surface hover:text-on-secondary font-headline text-xs font-black px-3 py-1 rounded-xl border border-white/20 transition-all flex items-center gap-1" data-weapon-id="${weapon.id}">
+                      <span>Unlock 🪙 ${weapon.costCoins || 50}</span>
+                    </button>
+                  `}
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+
+    </div>
+  </div>
   `;
 }
 
@@ -1070,18 +1348,71 @@ export function attachHeroHQListeners() {
     });
   });
 
-  // 15. View All Trophies
+  // 15. View All Trophies Showcase & Spotlights Gallery
   const viewAllTrophiesBtn = document.getElementById('hq-view-all-trophies-btn');
   if (viewAllTrophiesBtn) {
     viewAllTrophiesBtn.addEventListener('click', () => {
-      const trophies = getTrophiesForDisplay(store.getState());
-      if (trophies.length > 0) {
-        selectedTrophyForModal = trophies[0];
-        Sound.bloop();
+      isAllTrophiesShowcaseOpen = true;
+      Sound.bloop();
+      store.notify();
+    });
+  }
+
+  // 15b. Close All Trophies Showcase Modal
+  const closeAllTrophiesBtn = document.getElementById('hq-close-all-trophies-btn');
+  if (closeAllTrophiesBtn) {
+    closeAllTrophiesBtn.addEventListener('click', () => {
+      isAllTrophiesShowcaseOpen = false;
+      Sound.pop();
+      store.notify();
+    });
+  }
+  const allTrophiesModalBackdrop = document.getElementById('hq-all-trophies-modal-backdrop');
+  if (allTrophiesModalBackdrop) {
+    allTrophiesModalBackdrop.addEventListener('click', (e) => {
+      if (e.target === allTrophiesModalBackdrop) {
+        isAllTrophiesShowcaseOpen = false;
+        Sound.pop();
         store.notify();
       }
     });
   }
+
+  // 15c. Switch Weapon from Showcase Modal
+  const switchWeaponFromShowcase = document.getElementById('hq-showcase-switch-weapon-btn');
+  if (switchWeaponFromShowcase) {
+    switchWeaponFromShowcase.addEventListener('click', () => {
+      isAllTrophiesShowcaseOpen = false;
+      isWeaponModalOpen = true;
+      Sound.bloop();
+      store.notify();
+    });
+  }
+  const showcaseWeaponPedestalSlot = document.getElementById('hq-showcase-weapon-pedestal-slot');
+  if (showcaseWeaponPedestalSlot) {
+    showcaseWeaponPedestalSlot.addEventListener('click', () => {
+      isAllTrophiesShowcaseOpen = false;
+      isWeaponModalOpen = true;
+      Sound.bloop();
+      store.notify();
+    });
+  }
+
+  // 15d. Inspect Trophy from Showcase Modal
+  document.querySelectorAll('.hq-showcase-inspect-btn, .hq-inspect-from-showcase-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const trophyId = btn.getAttribute('data-trophy-id');
+      const trophies = getTrophiesForDisplay(store.getState());
+      const trophy = trophies.find(t => t.id === trophyId);
+      if (trophy) {
+        isAllTrophiesShowcaseOpen = false;
+        selectedTrophyForModal = trophy;
+        Sound.bloop();
+        store.notify();
+      }
+    });
+  });
 
   // 16. Gear Spotlight Slots Click -> Open Quick Wardrobe Modal
   document.querySelectorAll('.hq-gear-spotlight-slot').forEach(slotEl => {
@@ -1164,6 +1495,85 @@ export function attachHeroHQListeners() {
       Sound.click();
       activeGearSlotForModal = null;
       store.notify();
+    });
+  });
+
+  // 20. Weapon Spotlight Click -> Open Weapon Arsenal Switcher Modal
+  const weaponSpotlightPedestal = document.getElementById('hq-weapon-spotlight-pedestal');
+  if (weaponSpotlightPedestal) {
+    weaponSpotlightPedestal.addEventListener('click', () => {
+      isWeaponModalOpen = true;
+      Sound.bloop();
+      store.notify();
+    });
+  }
+
+  // 21. Close Weapon Modal
+  const closeWeaponModalBtn = document.getElementById('hq-close-weapon-modal-btn');
+  if (closeWeaponModalBtn) {
+    closeWeaponModalBtn.addEventListener('click', () => {
+      isWeaponModalOpen = false;
+      Sound.pop();
+      store.notify();
+    });
+  }
+  const weaponModalBackdrop = document.getElementById('hq-weapon-modal-backdrop');
+  if (weaponModalBackdrop) {
+    weaponModalBackdrop.addEventListener('click', (e) => {
+      if (e.target === weaponModalBackdrop) {
+        isWeaponModalOpen = false;
+        Sound.pop();
+        store.notify();
+      }
+    });
+  }
+
+  // 22. Equip Specific Weapon
+  document.querySelectorAll('.hq-equip-specific-weapon-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const weaponId = btn.getAttribute('data-weapon-id');
+      const equipped = store.equipHeroWeapon(weaponId);
+      if (equipped) {
+        Sound.gearSnap();
+        try {
+          confetti({ particleCount: 35, spread: 55, origin: { y: 0.6 } });
+        } catch (err) {}
+        const weapon = (store.getState().digitalGear || []).find(g => g.id === weaponId) ||
+                       DIGITAL_REWARDS_CATALOG.find(g => g.id === weaponId);
+        if (weapon?.voiceLine) {
+          speakRex(weapon.voiceLine);
+        } else {
+          speakRex(`Equipped ${weapon?.title || 'weapon'}! Ready to scrub cavity villains!`);
+        }
+        isWeaponModalOpen = false;
+        store.notify();
+      }
+    });
+  });
+
+  // 23. Weapon Voice Line Preview
+  document.querySelectorAll('.hq-weapon-voice-preview-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const weaponId = btn.getAttribute('data-weapon-id');
+      const weapon = (store.getState().digitalGear || []).find(g => g.id === weaponId) ||
+                     DIGITAL_REWARDS_CATALOG.find(g => g.id === weaponId);
+      if (weapon?.voiceLine) {
+        speakRex(weapon.voiceLine);
+      } else {
+        speakRex(`That ${weapon?.title || 'weapon'} has awesome hero power!`);
+      }
+    });
+  });
+
+  // 24. Go to Shop for Weapon
+  document.querySelectorAll('.hq-go-shop-weapon-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      isWeaponModalOpen = false;
+      Sound.whoosh();
+      store.setActiveView('shop');
     });
   });
 }

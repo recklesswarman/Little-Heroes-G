@@ -98,9 +98,9 @@ export function getBattleBoss(bossId) {
       ...foundCustom,
       title: foundCustom.title || foundCustom.domain || 'Custom AR Villain',
       avatar: foundCustom.emoji || foundCustom.avatar || '👾',
-      color: foundCustom.color || '#a855f7',
-      accentBorder: foundCustom.accentBorder || 'border-purple-500',
-      gradient: foundCustom.gradient || 'from-purple-900 via-indigo-900 to-slate-900',
+      color: foundCustom.color || '#0284c7',
+      accentBorder: foundCustom.accentBorder || 'border-cyan-500',
+      gradient: foundCustom.gradient || 'from-cyan-950 via-slate-900 to-indigo-950',
       shieldName: foundCustom.shieldName || 'Biofilm Energy Shell',
       bombName: foundCustom.attackName || (foundCustom.attackType ? foundCustom.attackType.replace('_', ' ') : 'Sugar Slime Bomb'),
       trophyRelicId: foundCustom.trophyRelicId || 'trophy_sugar_bandit',
@@ -116,14 +116,33 @@ export function getBattleBoss(bossId) {
   return preset || HYGIENE_BOSSES[0];
 }
 
-// Check if current hero owns/equipped the Laser Toothbrush (+30% buff)
-function checkLaserToothbrushEquipped() {
+// Resolve the current hero's equipped weapon and battle buff
+export function getActiveCombatWeapon() {
+  if (store.getEquippedHeroWeapon) {
+    const weapon = store.getEquippedHeroWeapon();
+    if (weapon) {
+      let multiplier = 1.25; // default 25% boost
+      if (weapon.statBonusPercent !== undefined) {
+        multiplier = 1.0 + (weapon.statBonusPercent / 100);
+      } else if (typeof weapon.statBonus === 'string') {
+        const match = weapon.statBonus.match(/\+(\d+)%/);
+        if (match) multiplier = 1.0 + (parseInt(match[1]) / 100);
+      }
+      return { weapon, multiplier, hasWeapon: true };
+    }
+  }
   const hero = store.getState().selectedHero;
-  if (!hero) return false;
-  const inEquipped = Array.isArray(hero.equippedGear) && hero.equippedGear.includes('laser_toothbrush');
-  const inHeroInv = Array.isArray(hero.inventory) && hero.inventory.includes('laser_toothbrush');
-  const inStoreInv = Array.isArray(store.getState().inventory) && store.getState().inventory.includes('laser_toothbrush');
-  return inEquipped || inHeroInv || inStoreInv;
+  const inEquipped = Array.isArray(hero?.equippedGear) && hero.equippedGear.includes('laser_toothbrush');
+  const inHeroInv = Array.isArray(hero?.inventory) && hero.inventory.includes('laser_toothbrush');
+  if (inEquipped || inHeroInv) {
+    return { weapon: { title: 'Laser Toothbrush Saber', icon: '⚔️' }, multiplier: 1.3, hasWeapon: true };
+  }
+  return { weapon: null, multiplier: 1.0, hasWeapon: false };
+}
+
+// Check if current hero owns/equipped the Laser Toothbrush or combat weapon
+function checkLaserToothbrushEquipped() {
+  return getActiveCombatWeapon().hasWeapon;
 }
 
 // =========================================================================
@@ -133,7 +152,8 @@ export function renderBattleView() {
   selectedBossId = store.getSelectedBossId ? store.getSelectedBossId() : selectedBossId;
   const currentBoss = getBattleBoss(selectedBossId);
   const colState = store.getBossColosseumState ? store.getBossColosseumState() : {};
-  const hasLaserSword = checkLaserToothbrushEquipped();
+  const activeCombatWeapon = getActiveCombatWeapon();
+  const hasLaserSword = activeCombatWeapon.hasWeapon;
   const activePet = store.getActivePet ? store.getActivePet() : { name: 'Rex', avatar: '🦖' };
 
   const elapsed = totalDuration - secondsRemaining;
@@ -153,7 +173,7 @@ export function renderBattleView() {
   const availableVillains = [
     { id: 'sugar_bandit', name: 'Sugar Bandit', emoji: '🍬', color: '#f59e0b' },
     { id: 'plaque_kraken', name: 'Plaque Kraken', emoji: '🐙', color: '#06b6d4' },
-    { id: 'tartar_titan', name: 'Tartar Titan', emoji: '💎', color: '#a855f7' }
+    { id: 'tartar_titan', name: 'Tartar Titan', emoji: '💎', color: '#0284c7' }
   ];
 
   return `
@@ -945,8 +965,9 @@ function handleScrubHit(activeQuad, source = 'manual') {
   lastScrubTimestamp = Date.now();
   currentCombo = Math.min(50, currentCombo + 1);
 
-  const hasLaser = checkLaserToothbrushEquipped();
-  const scrubMultiplier = hasLaser ? 1.3 : 1.0;
+  const combatWeapon = getActiveCombatWeapon();
+  const hasLaser = combatWeapon.hasWeapon;
+  const scrubMultiplier = combatWeapon.multiplier;
 
   const hero = store.getState().selectedHero;
   const activePet = store.getActivePet ? store.getActivePet() : null;
@@ -996,7 +1017,8 @@ function handleScrubHit(activeQuad, source = 'manual') {
   });
 
   if (source === 'manual') {
-    showComicHit(hasLaser ? 'LASER BLAST! ⚡' : 'MINTY BLAST! 🫧');
+    const weaponTitle = combatWeapon.weapon?.title || 'Weapon';
+    showComicHit(hasLaser ? `${weaponTitle.toUpperCase()} BLAST! ⚡` : 'MINTY BLAST! 🫧');
   }
 
   syncCockpitHUD();

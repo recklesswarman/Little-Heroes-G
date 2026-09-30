@@ -1519,122 +1519,211 @@ export function renderParentPortalView() {
               const presetsForCategory = SPLINE_3D_PRESETS[studioActiveCategory] || [];
 
               return `
-        <section class="flex flex-col gap-6 animate-fade-in">
+<section class="flex flex-col gap-5 animate-fade-in font-body">
           
           <!-- Top Studio Header Banner -->
-          <div class="bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-950 rounded-3xl p-6 border-2 border-amber-400/40 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-white">
+          <div class="bg-gradient-to-r from-slate-900 via-cyan-950/50 to-slate-900 rounded-3xl p-5 border-2 border-cyan-400/40 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-white">
             <div class="flex items-center gap-3.5">
-              <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-slate-950 flex items-center justify-center text-3xl shadow-lg border-2 border-white/20">
+              <div class="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 text-slate-950 flex items-center justify-center text-3xl shadow-lg border-2 border-white/20 flex-shrink-0">
                 ✨
               </div>
               <div>
-                <div class="flex items-center gap-2">
-                  <h2 class="font-headline text-xl sm:text-2xl font-black text-amber-300">3D Pet Gear & Prop Studio (Multi-Category 3D)</h2>
-                  <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-400/20 text-amber-300 border border-amber-400/40">Hybrid 3D Engine</span>
+                <div class="flex flex-wrap items-center gap-2">
+                  <h2 class="font-headline text-lg sm:text-2xl font-black text-cyan-300">
+                    Parent AI Rewards & Prop Studio
+                  </h2>
+                  <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-cyan-400/20 text-cyan-300 border border-cyan-400/40">
+                    3D Hybrid Engine
+                  </span>
                 </div>
-                <p class="text-xs text-slate-300 mt-0.5">Design wearable gear, Hero HQ furniture, Pet Pen toys & AR Quest bosses with live procedural canvas + Spline 3D scenes!</p>
+                <p class="text-xs text-slate-300 mt-0.5">
+                  Craft custom weapons, pet gear, treats, HQ furniture & AR quest bosses with Gemini AI!
+                </p>
               </div>
             </div>
 
-            <!-- Published Counts Summary Pill -->
-            <div class="flex flex-wrap items-center gap-2 self-end sm:self-auto">
-              <span class="px-3 py-1.5 rounded-xl bg-slate-800/90 text-amber-300 border border-amber-400/30 text-xs font-bold flex items-center gap-1.5 shadow">
-                <span class="material-symbols-outlined text-sm">inventory_2</span>
-                <span>${publishedCustomGear.length + publishedCustomFurniture.length + publishedCustomToys.length + publishedCustomBosses.length + publishedCustomFood.length} Total Published Creations</span>
+            <!-- Published Summary Badge -->
+            <div class="flex items-center gap-2 self-end sm:self-auto bg-slate-800/90 px-3.5 py-1.5 rounded-2xl border border-cyan-400/30 shadow">
+              <span class="material-symbols-outlined text-cyan-400 text-sm">inventory_2</span>
+              <span class="text-xs font-headline font-black text-cyan-200">
+                ${publishedCustomWeapons.length + publishedCustomGear.length + publishedCustomFurniture.length + publishedCustomToys.length + publishedCustomBosses.length + publishedCustomFood.length} Published
               </span>
             </div>
           </div>
 
-          <!-- 4-Mode Category Navigation Switcher -->
-          <div class="grid grid-cols-2 sm:grid-cols-6 gap-2.5">
-            ${categoryTabs.map(tab => {
-              const isSelected = studioActiveCategory === tab.id;
-              return `
-              <button 
-                class="studio-category-pill p-3.5 rounded-2xl font-headline text-xs font-black transition-all active:scale-95 flex flex-col items-center gap-1 border-2 text-center ${
-                  isSelected 
-                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 border-white shadow-lg scale-102 ring-2 ring-amber-400' 
-                    : 'bg-surface-container hover:bg-surface-bright text-inverse-surface border-surface-container-highest'
-                }"
-                data-category="${tab.id}"
-              >
-                <div class="flex items-center gap-1.5 text-base">
-                  <span>${tab.emoji}</span>
-                  <span class="font-black">${tab.label}</span>
-                </div>
-                <span class="text-[10px] ${isSelected ? 'text-slate-900 font-black' : 'text-on-surface-variant font-medium'}">
-                  ${tab.count} Published • ${tab.desc}
+          <!-- STEP 1: Choose Reward Category -->
+          <div class="bg-surface-container/90 rounded-3xl p-4 border border-surface-container-highest shadow-sm flex flex-col gap-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-400 text-xs font-black flex items-center justify-center border border-cyan-400/40">1</span>
+                <span class="font-headline text-xs font-black uppercase tracking-wider text-inverse-surface">
+                  Choose Category to Craft
                 </span>
-              </button>
-              `;
-            }).join('')}
+              </div>
+              <span class="text-[11px] text-on-surface-variant font-medium">Active: <b class="text-cyan-400 uppercase">${studioActiveCategory}</b></span>
+            </div>
+
+            <!-- Segmented Category Pill Bar -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+              ${categoryTabs.map(tab => {
+                const isSelected = studioActiveCategory === tab.id;
+                return `
+                <button 
+                  type="button"
+                  class="studio-category-pill p-2.5 rounded-2xl font-headline text-xs font-black transition-all active:scale-95 flex flex-col items-center justify-center gap-1 border-2 text-center ${
+                    isSelected 
+                      ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 border-white shadow-lg ring-2 ring-cyan-400' 
+                      : 'bg-surface-container-high hover:bg-surface-bright text-inverse-surface border-surface-container-highest'
+                  }"
+                  data-category="${tab.id}"
+                >
+                  <span class="text-lg">${tab.emoji}</span>
+                  <span class="truncate w-full leading-tight">${tab.label.split(' ')[0]}</span>
+                  <span class="text-[9px] ${isSelected ? 'text-slate-950 font-black' : 'text-on-surface-variant font-bold'}">
+                    ${tab.count} built
+                  </span>
+                </button>
+                `;
+              }).join('')}
+            </div>
+
+            <!-- Curated Sparks Inspiration Bar -->
+            <div class="pt-2 border-t border-surface-container-highest flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div class="flex items-center gap-1.5 text-[11px] font-black text-amber-300">
+                <span class="material-symbols-outlined text-sm text-amber-400">flash_on</span>
+                <span>Quick Sparks (${studioActiveCategory.toUpperCase()}):</span>
+              </div>
+              <div class="flex flex-wrap items-center gap-1.5 flex-1 sm:justify-end">
+                ${studioActiveCategory === 'weapon' ?
+                  weaponThemes.map(t => `
+                    <button type="button" class="studio-spark-chip px-2.5 py-1 rounded-xl text-xs font-black transition-all active:scale-95 flex items-center gap-1 border ${studioSelectedTheme === t.key ? 'bg-amber-400 text-slate-950 border-amber-300 shadow' : 'bg-surface-container hover:bg-surface-bright text-inverse-surface border-white/10'}" data-spark="${t.key}" data-category="weapon" title="${t.desc}">
+                      <span>${t.label}</span>
+                    </button>
+                  `).join('')
+                : studioActiveCategory === 'gear' ? 
+                  gearThemes.map(t => `
+                    <button type="button" class="studio-spark-chip px-2.5 py-1 rounded-xl text-xs font-black transition-all active:scale-95 flex items-center gap-1 border ${studioSelectedTheme === t.key ? 'bg-amber-400 text-slate-950 border-amber-300 shadow' : 'bg-surface-container hover:bg-surface-bright text-inverse-surface border-white/10'}" data-spark="${t.key}" data-category="gear" title="${t.desc}">
+                      <span>${t.label}</span>
+                    </button>
+                  `).join('')
+                : studioActiveCategory === 'furniture' ?
+                  furnitureThemes.map(t => `
+                    <button type="button" class="studio-spark-chip px-2.5 py-1 rounded-xl text-xs font-black transition-all active:scale-95 flex items-center gap-1 border ${studioFurnitureType === t.type ? 'bg-amber-400 text-slate-950 border-amber-300 shadow' : 'bg-surface-container hover:bg-surface-bright text-inverse-surface border-white/10'}" data-spark="${t.key}" data-category="furniture" title="${t.desc}">
+                      <span>${t.label}</span>
+                    </button>
+                  `).join('')
+                : studioActiveCategory === 'toy' ?
+                  toyThemes.map(t => `
+                    <button type="button" class="studio-spark-chip px-2.5 py-1 rounded-xl text-xs font-black transition-all active:scale-95 flex items-center gap-1 border ${studioToyType === t.type ? 'bg-amber-400 text-slate-950 border-amber-300 shadow' : 'bg-surface-container hover:bg-surface-bright text-inverse-surface border-white/10'}" data-spark="${t.key}" data-category="toy" title="${t.desc}">
+                      <span>${t.label}</span>
+                    </button>
+                  `).join('')
+                : studioActiveCategory === 'food' ?
+                  foodThemes.map(t => `
+                    <button type="button" class="studio-spark-chip px-2.5 py-1 rounded-xl text-xs font-black transition-all active:scale-95 flex items-center gap-1 border ${studioFoodTheme === t.type ? 'bg-amber-400 text-slate-950 border-amber-300 shadow' : 'bg-surface-container hover:bg-surface-bright text-inverse-surface border-white/10'}" data-spark="${t.key}" data-category="food" title="${t.desc}">
+                      <span>${t.label}</span>
+                    </button>
+                  `).join('')
+                :
+                  bossThemes.map(t => `
+                    <button type="button" class="studio-spark-chip px-2.5 py-1 rounded-xl text-xs font-black transition-all active:scale-95 flex items-center gap-1 border ${studioBossDomain === t.domain ? 'bg-amber-400 text-slate-950 border-amber-300 shadow' : 'bg-surface-container hover:bg-surface-bright text-inverse-surface border-white/10'}" data-spark="${t.key}" data-category="boss" title="${t.desc}">
+                      <span>${t.label}</span>
+                    </button>
+                  `).join('')
+                }
+              </div>
+            </div>
           </div>
 
-          <!-- Quick Theme / Sparks Chips for Active Category -->
-          <div class="bg-surface-container rounded-3xl p-4 border border-surface-container-highest shadow-sm">
-            <div class="flex items-center justify-between mb-2.5">
-              <span class="text-xs font-black uppercase text-on-surface-variant flex items-center gap-1.5">
-                <span class="material-symbols-outlined text-sm text-secondary">flash_on</span>
-                <span>Quick Sparks Theme Wizard (${studioActiveCategory.toUpperCase()})</span>
+          <!-- STEP 2: AI Prompt & Concept Generator -->
+          <div class="bg-surface-container/90 rounded-3xl p-4 sm:p-5 border border-surface-container-highest shadow-sm flex flex-col gap-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-400 text-xs font-black flex items-center justify-center border border-cyan-400/40">2</span>
+                <span class="font-headline text-xs font-black uppercase tracking-wider text-inverse-surface">
+                  Describe Concept or Prompt Gemini AI
+                </span>
+              </div>
+              <span class="text-[10px] text-cyan-400 font-bold bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-400/30">
+                Gemini 2.5 Flash Lite
               </span>
-              <span class="text-[11px] text-on-surface-variant">Tap any spark to auto-inspire 3D models, stats & spoken voice lines</span>
             </div>
-            
-            <div class="flex flex-wrap items-center gap-2">
-              ${studioActiveCategory === 'gear' ? 
-                gearThemes.map(t => `
-                  <button class="studio-spark-chip px-3.5 py-2 rounded-2xl text-xs font-black transition-all active:scale-95 flex items-center gap-1.5 border-2 ${studioSelectedTheme === t.key ? 'bg-secondary text-on-secondary border-secondary-container shadow-md scale-102' : 'bg-surface-container-high hover:bg-surface-bright text-inverse-surface border-surface-container-highest'}" data-spark="${t.key}" title="${t.desc}">
-                    <span>${t.label}</span>
-                  </button>
-                `).join('')
-              : studioActiveCategory === 'furniture' ?
-                furnitureThemes.map(t => `
-                  <button class="studio-spark-chip px-3.5 py-2 rounded-2xl text-xs font-black transition-all active:scale-95 flex items-center gap-1.5 border-2 ${studioFurnitureType === t.type ? 'bg-secondary text-on-secondary border-secondary-container shadow-md scale-102' : 'bg-surface-container-high hover:bg-surface-bright text-inverse-surface border-surface-container-highest'}" data-spark="${t.key}" data-category="furniture" title="${t.desc}">
-                    <span>${t.label}</span>
-                  </button>
-                `).join('')
-              : studioActiveCategory === 'toy' ?
-                toyThemes.map(t => `
-                  <button class="studio-spark-chip px-3.5 py-2 rounded-2xl text-xs font-black transition-all active:scale-95 flex items-center gap-1.5 border-2 ${studioToyType === t.type ? 'bg-secondary text-on-secondary border-secondary-container shadow-md scale-102' : 'bg-surface-container-high hover:bg-surface-bright text-inverse-surface border-surface-container-highest'}" data-spark="${t.key}" data-category="toy" title="${t.desc}">
-                    <span>${t.label}</span>
-                  </button>
-                `).join('')
-              : studioActiveCategory === 'food' ?
-                foodThemes.map(t => `
-                  <button class="studio-spark-chip px-3.5 py-2 rounded-2xl text-xs font-black transition-all active:scale-95 flex items-center gap-1.5 border-2 ${studioFoodTheme === t.type ? 'bg-secondary text-on-secondary border-secondary-container shadow-md scale-102' : 'bg-surface-container-high hover:bg-surface-bright text-inverse-surface border-surface-container-highest'}" data-spark="${t.key}" data-category="food" title="${t.desc}">
-                    <span>${t.label}</span>
-                  </button>
-                `).join('')
-              :
-                bossThemes.map(t => `
-                  <button class="studio-spark-chip px-3.5 py-2 rounded-2xl text-xs font-black transition-all active:scale-95 flex items-center gap-1.5 border-2 ${studioBossDomain === t.domain ? 'bg-secondary text-on-secondary border-secondary-container shadow-md scale-102' : 'bg-surface-container-high hover:bg-surface-bright text-inverse-surface border-surface-container-highest'}" data-spark="${t.key}" data-category="boss" title="${t.desc}">
-                    <span>${t.label}</span>
-                  </button>
-                `).join('')
-              }
+
+            <!-- Integrated Input Bar -->
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+              
+              <!-- Left Inputs: Voice & Photo -->
+              <div class="flex items-center gap-2 flex-shrink-0">
+                <button 
+                  type="button"
+                  id="studio-voice-mic-btn"
+                  class="px-3 py-2.5 min-h-[44px] rounded-2xl text-xs font-headline font-black flex items-center gap-1.5 transition-all active:scale-95 ${isRecordingVoice ? 'bg-red-500 text-white animate-pulse' : 'bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-400/30'}"
+                  title="Dictate with microphone"
+                >
+                  <span>🎙️</span>
+                  <span class="hidden sm:inline">${isRecordingVoice ? 'Listening...' : 'Voice'}</span>
+                </button>
+
+                <label class="px-3 py-2.5 min-h-[44px] rounded-2xl text-xs font-headline font-black bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-400/30 flex items-center gap-1.5 cursor-pointer transition-all active:scale-95" title="Upload child drawing or photo">
+                  <span>📷</span>
+                  <span class="hidden sm:inline">Photo</span>
+                  <input type="file" id="studio-photo-upload" accept="image/*" class="hidden" />
+                </label>
+
+                ${studioUploadedImageBase64 ? `
+                  <div class="flex items-center gap-1.5">
+                    <img src="${studioUploadedImageBase64}" class="w-8 h-8 rounded-xl object-cover border border-cyan-400 shadow" alt="Drawing Preview" />
+                    <button 
+                      type="button"
+                      id="studio-vision-generate-btn"
+                      class="px-2.5 py-1.5 rounded-xl text-[10px] font-black bg-gradient-to-r from-cyan-500 to-blue-500 text-slate-950 hover:scale-105 active:scale-95 transition-all shadow"
+                    >
+                      Turn 3D
+                    </button>
+                  </div>
+                ` : ''}
+              </div>
+
+              <!-- Center: Text Prompt -->
+              <input 
+                id="studio-ai-prompt" 
+                type="text" 
+                value="${studioItemName}"
+                placeholder="${studioActiveCategory === 'weapon' ? 'e.g. Star-Plasma Saber or Hydro Blaster...' : studioActiveCategory === 'gear' ? 'e.g. Phoenix Flame Tiara or Cyber Jetpack...' : studioActiveCategory === 'furniture' ? 'e.g. Starlight Canopy Bed or Holo Gaming Desk...' : studioActiveCategory === 'toy' ? 'e.g. Super Trampoline or Laser Mouse...' : studioActiveCategory === 'food' ? 'e.g. Starberry Bites or Jungle Honeycomb...' : 'e.g. Sugar Plaque Overlord or Bedtime Gremlin...'}"
+                class="flex-1 bg-surface-container-high border border-surface-container-highest rounded-2xl px-4 py-2.5 text-xs font-bold text-inverse-surface focus:outline-none focus:border-cyan-400 shadow-inner"
+              />
+
+              <!-- Right: AI Generate Button -->
+              <button 
+                type="button"
+                id="studio-gear-ai-btn" 
+                data-studio-ai-btn="true"
+                class="bg-gradient-to-r from-cyan-500 via-blue-600 to-emerald-500 text-slate-950 font-headline text-xs font-black px-5 py-2.5 min-h-[44px] rounded-2xl shadow-lg hover:brightness-110 active:scale-95 flex items-center justify-center gap-1.5 shrink-0 border border-white/20 ${
+                  isStudioGenerating ? 'opacity-70 cursor-wait' : ''
+                }"
+              >
+                <span class="material-symbols-outlined text-base">${isStudioGenerating ? 'progress_activity' : 'auto_awesome'}</span>
+                <span>${isStudioGenerating ? 'Designing 3D...' : '✨ Generate with AI'}</span>
+              </button>
+
             </div>
           </div>
 
-          <!-- Studio Main Stage: 2-Column Responsive Layout -->
-          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <!-- STEP 3: Studio Stage & Customization (2-Column Split) -->
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
             
-            <!-- Left Column: Adaptive 3D Viewport & Preview Stage (5 cols) -->
-            <div class="lg:col-span-5 bg-gradient-to-b from-slate-900/95 via-indigo-950/90 to-slate-900/95 rounded-3xl p-5 border-2 border-amber-400/40 shadow-2xl flex flex-col items-center gap-4 text-white">
+            <!-- Left Column: 3D Stage & Visualizer (5 cols) -->
+            <div class="lg:col-span-5 bg-gradient-to-b from-slate-900/95 via-slate-950 to-slate-900/95 rounded-3xl p-4 sm:p-5 border-2 border-cyan-400/40 shadow-2xl flex flex-col items-center gap-3.5 text-white">
               
-              <!-- Viewport Mode Switcher & Category Status -->
-              <div class="w-full flex items-center justify-between border-b border-amber-400/20 pb-3">
-                <div class="flex items-center gap-2">
-                  <span class="text-xs font-black text-amber-300 uppercase tracking-wider">
-                    ${studioActiveCategory === 'gear' ? 'Companion Catwalk' : studioActiveCategory === 'furniture' ? 'Hero HQ Room Stage' : studioActiveCategory === 'toy' ? 'Pet Pen Playstage' : studioActiveCategory === 'food' ? 'Snack Kitchen Stage' : 'AR Battle Colosseum'}
-                  </span>
-                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${studioViewportMode === 'spline' ? 'bg-purple-500/30 text-purple-300 border border-purple-400/50' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'}">
-                    ${studioViewportMode === 'spline' ? '✨ Spline 3D' : '🎨 Procedural 3D'}
-                  </span>
-                </div>
+              <!-- Viewport Switcher -->
+              <div class="w-full flex items-center justify-between border-b border-cyan-400/20 pb-2.5">
+                <span class="text-xs font-headline font-black text-cyan-300 uppercase tracking-wider">
+                  ${studioActiveCategory === 'gear' ? 'Companion Catwalk' : studioActiveCategory === 'furniture' ? 'HQ Stage' : studioActiveCategory === 'toy' ? 'Playstage' : studioActiveCategory === 'food' ? 'Kitchen Stage' : 'AR Colosseum'}
+                </span>
 
-                <!-- Triple Viewport Toggle Buttons -->
-                <div class="flex items-center gap-1 bg-slate-800/80 p-1 rounded-xl border border-white/10">
+                <div class="flex items-center gap-1 bg-slate-800/90 p-1 rounded-xl border border-white/10">
                   <button 
+                    type="button"
                     id="studio-mode-canvas-btn" 
                     class="px-2.5 py-1 rounded-lg text-xs font-black transition-all ${studioViewportMode === 'canvas' ? 'bg-amber-400 text-slate-950 shadow' : 'text-slate-300 hover:text-white'}"
                     title="Switch to Procedural 3D Canvas"
@@ -1642,29 +1731,32 @@ export function renderParentPortalView() {
                     Canvas
                   </button>
                   <button 
+                    type="button"
                     id="studio-mode-modelviewer-btn" 
                     class="px-2.5 py-1 rounded-lg text-xs font-black transition-all ${studioViewportMode === 'modelviewer' ? 'bg-cyan-500 text-slate-950 shadow' : 'text-slate-300 hover:text-white'}"
-                    title="Switch to 3D GLB Model Viewer (with WebXR AR)"
+                    title="Switch to 3D GLB Model Viewer"
                   >
                     3D GLB
                   </button>
                   <button 
+                    type="button"
                     id="studio-mode-spline-btn" 
-                    class="px-2.5 py-1 rounded-lg text-xs font-black transition-all ${studioViewportMode === 'spline' ? 'bg-purple-500 text-white shadow' : 'text-slate-300 hover:text-white'}"
-                    title="Switch to Spline 3D Scene View"
+                    class="px-2.5 py-1 rounded-lg text-xs font-black transition-all ${studioViewportMode === 'spline' ? 'bg-cyan-400 text-slate-950 shadow' : 'text-slate-300 hover:text-white'}"
+                    title="Switch to Spline 3D Scene"
                   >
                     Spline
                   </button>
                 </div>
               </div>
 
-              <!-- Companion Switcher (When in Gear mode) -->
+              <!-- Companion Selection (Gear Mode) -->
               ${studioActiveCategory === 'gear' ? `
                 <div class="w-full flex items-center justify-between px-1">
-                  <span class="text-[11px] text-slate-300 font-bold">Companion Model:</span>
+                  <span class="text-[11px] text-slate-300 font-bold">Companion:</span>
                   <div class="flex items-center gap-1">
                     ${petModels.map(p => `
                       <button 
+                        type="button"
                         class="studio-pet-btn w-7 h-7 rounded-xl text-sm flex items-center justify-center transition-all active:scale-95 border ${studioSelectedPetId === p.id ? 'bg-amber-400 text-slate-950 font-black border-white shadow-md scale-110' : 'bg-slate-800/80 hover:bg-slate-700 text-white border-white/20'}"
                         data-pet-id="${p.id}"
                         title="${p.name}"
@@ -1676,20 +1768,20 @@ export function renderParentPortalView() {
                 </div>
               ` : ''}
 
-              <!-- Adaptive 3D Viewport Container -->
-              <div class="relative w-full max-w-[320px] aspect-square rounded-3xl overflow-hidden bg-radial from-indigo-900/60 via-slate-900/90 to-black border-2 border-amber-400/30 shadow-2xl flex items-center justify-center group">
-                <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(251,191,36,0.18)_0%,rgba(99,102,241,0.08)_50%,transparent_75%)] pointer-events-none"></div>
+              <!-- 3D Viewport Frame -->
+              <div class="relative w-full max-w-[300px] aspect-square rounded-3xl overflow-hidden bg-radial from-slate-900 via-cyan-950/30 to-black border-2 border-cyan-400/30 shadow-2xl flex items-center justify-center group">
+                <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(6,182,212,0.15)_0%,rgba(15,23,42,0.1)_50%,transparent_75%)] pointer-events-none"></div>
 
                 <!-- 1. Procedural 3D Canvas -->
                 <canvas 
                   id="parent-ai-preview-canvas" 
-                  width="320" 
-                  height="320" 
+                  width="300" 
+                  height="300" 
                   class="relative z-10 w-full h-full object-contain cursor-grab active:cursor-grabbing touch-none ${studioViewportMode === 'canvas' ? 'block' : 'hidden'}"
                   aria-label="Parent Multi-Category 3D Live Stage"
                 ></canvas>
 
-                <!-- 2. Google <model-viewer> 3D GLB Container -->
+                <!-- 2. Google <model-viewer> 3D GLB -->
                 <div 
                   id="parent-ai-model-viewer-container"
                   class="relative z-10 w-full h-full flex items-center justify-center ${studioViewportMode === 'modelviewer' ? 'block' : 'hidden'}"
@@ -1706,15 +1798,15 @@ export function renderParentPortalView() {
                     style="width: 100%; height: 100%; background: transparent;"
                   >
                     <button slot="ar-button" class="absolute bottom-3 right-3 px-3 py-1.5 rounded-xl bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1 shadow-lg hover:scale-105 transition-all">
-                      📱 View in Room
+                      📱 AR View
                     </button>
                   </model-viewer>
                 </div>
 
-                <!-- 3. Spline 3D Interactive Scene Container -->
+                <!-- 3. Spline 3D Scene View -->
                 <div 
                   id="parent-ai-spline-container" 
-                  class="relative z-10 w-full h-full flex flex-col items-center justify-center p-3 text-center ${studioViewportMode === 'spline' ? 'block' : 'hidden'}"
+                  class="relative z-10 w-full h-full flex flex-col items-center justify-center p-2 text-center ${studioViewportMode === 'spline' ? 'block' : 'hidden'}"
                 >
                   ${studioActiveSplineUrl ? `
                     <iframe 
@@ -1725,48 +1817,47 @@ export function renderParentPortalView() {
                       title="Spline 3D Scene View"
                     ></iframe>
                   ` : `
-                    <div class="flex flex-col items-center justify-center gap-2 text-center p-4">
-                      <div class="w-14 h-14 rounded-2xl bg-purple-500/20 text-purple-300 flex items-center justify-center text-3xl border border-purple-400/40 animate-pulse">
+                    <div class="flex flex-col items-center justify-center gap-2 text-center p-3">
+                      <div class="w-12 h-12 rounded-2xl bg-cyan-500/20 text-cyan-300 flex items-center justify-center text-2xl border border-cyan-400/40 animate-pulse">
                         🎨
                       </div>
-                      <h4 class="font-headline text-sm font-black text-purple-300">Spline 3D Scene Viewer</h4>
-                      <p class="text-[11px] text-slate-300 max-w-[240px]">
-                        Select a curated preset below or paste any custom Spline scene URL to load the high-fidelity 3D model!
+                      <h4 class="font-headline text-xs font-black text-cyan-300">Spline 3D Scene Viewer</h4>
+                      <p class="text-[10px] text-slate-300 max-w-[200px]">
+                        Select a curated preset below to view the 3D scene!
                       </p>
                     </div>
                   `}
                 </div>
 
-                <!-- Stage Floor Reflection line -->
-                <div class="absolute bottom-4 left-1/2 -translate-x-1/2 w-44 h-2.5 rounded-full bg-gradient-to-r from-transparent via-amber-400/40 to-transparent blur-xs pointer-events-none"></div>
+                <!-- Stage Floor Reflection -->
+                <div class="absolute bottom-3 left-1/2 -translate-x-1/2 w-36 h-2 rounded-full bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent blur-xs pointer-events-none"></div>
               </div>
 
-              
-              <!-- Curated 3D Asset Carousel from threeDAssetCatalog -->
-              <div class="w-full p-3 bg-slate-800/80 rounded-2xl border border-amber-400/30 flex flex-col gap-2">
-                <div class="flex items-center justify-between">
-                  <span class="text-[11px] font-bold text-amber-300 flex items-center gap-1">
+              <!-- Curated 3D Asset Carousel -->
+              <div class="w-full p-2.5 bg-slate-800/80 rounded-2xl border border-cyan-400/30 flex flex-col gap-1.5">
+                <div class="flex items-center justify-between text-[11px] font-bold text-cyan-300">
+                  <span class="flex items-center gap-1">
                     <span class="material-symbols-outlined text-xs">view_in_ar</span>
-                    <span>Curated 3D Asset Library (${studioActiveCategory.toUpperCase()})</span>
+                    <span>3D Asset Models</span>
                   </span>
-                  <span class="text-[10px] text-slate-400">PBR & WebXR AR</span>
+                  <span class="text-[10px] text-slate-400">PBR / GLB</span>
                 </div>
-                <div class="grid grid-cols-2 gap-2 max-h-44 overflow-y-auto pr-1">
+                <div class="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto pr-1">
                   ${getThreeDAssetsByCategory(studioActiveCategory).map(asset => `
                     <button 
                       type="button"
-                      class="studio-3d-asset-card p-2 rounded-xl text-left transition-all border ${studioActive3DAssetId === asset.id ? 'bg-amber-400/20 border-amber-400 shadow-sm' : 'bg-slate-900/80 border-slate-700 hover:border-slate-500'}"
+                      class="studio-3d-asset-card p-1.5 rounded-xl text-left transition-all border ${studioActive3DAssetId === asset.id ? 'bg-cyan-500/20 border-cyan-400 shadow-sm' : 'bg-slate-900/80 border-slate-700 hover:border-slate-500'}"
                       data-asset-id="${asset.id}"
                       data-model-url="${asset.modelUrl || ''}"
                       data-spline-url="${asset.splineUrl || ''}"
                       data-asset-name="${asset.name}"
                     >
-                      <div class="flex items-center gap-1.5 mb-1">
-                        <span class="text-xl">${asset.emoji}</span>
-                        <span class="text-xs font-black text-white truncate flex-1">${asset.name}</span>
+                      <div class="flex items-center gap-1 mb-0.5">
+                        <span class="text-base">${asset.emoji}</span>
+                        <span class="text-[11px] font-black text-white truncate flex-1">${asset.name}</span>
                       </div>
-                      <div class="flex items-center justify-between text-[10px] text-slate-400">
-                        <span class="text-amber-300 font-bold">${asset.badge}</span>
+                      <div class="flex items-center justify-between text-[9px] text-slate-400">
+                        <span class="text-cyan-300 font-bold">${asset.badge}</span>
                         <span>⚡ ${asset.defaultMultiplier ? `+${Math.round((asset.defaultMultiplier - 1) * 100)}%` : '3D'}</span>
                       </div>
                     </button>
@@ -1774,235 +1865,176 @@ export function renderParentPortalView() {
                 </div>
               </div>
 
-              <!-- Spline 3D Toolbar: Curated Presets & Custom URL Input -->
-              <div class="w-full p-3 bg-slate-800/80 rounded-2xl border border-purple-400/30 flex flex-col gap-2">
-                <div class="flex items-center justify-between">
-                  <span class="text-[11px] font-bold text-purple-300 flex items-center gap-1">
-                    <span class="material-symbols-outlined text-xs">view_in_ar</span>
-                    <span>Spline 3D Preset Library</span>
-                  </span>
-                  <span class="text-[10px] text-slate-400">Curated & Custom</span>
+              <!-- Spline 3D Presets Dropdown -->
+              <div class="w-full p-2.5 bg-slate-800/80 rounded-2xl border border-cyan-400/30 flex flex-col gap-1.5">
+                <div class="flex items-center justify-between text-[11px] font-bold text-cyan-300">
+                  <span>Spline 3D Presets</span>
+                  <span class="text-[10px] text-slate-400">High-Res</span>
                 </div>
-
-                <!-- Presets Dropdown -->
-                <select id="studio-spline-preset-select" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs font-bold text-amber-300 focus:outline-none focus:border-purple-400">
-                  <option value="">Choose a Curated Spline 3D Preset...</option>
+                <select id="studio-spline-preset-select" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs font-bold text-amber-300 focus:outline-none focus:border-cyan-400">
+                  <option value="">Choose Spline 3D Preset...</option>
                   ${presetsForCategory.map(p => `
                     <option value="${p.splineUrl}" ${studioActiveSplineUrl === p.splineUrl ? 'selected' : ''}>
                       ${p.name}
                     </option>
                   `).join('')}
                 </select>
-
-                <!-- Custom Spline Scene URL Input & Test Button -->
-                <div class="flex gap-1.5 mt-1">
+                <div class="flex gap-1.5 mt-0.5">
                   <input 
                     id="studio-spline-url-input" 
                     type="url" 
                     value="${studioActiveSplineUrl}" 
-                    placeholder="https://prod.spline.design/..." 
-                    class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 text-[11px] text-white focus:outline-none focus:border-purple-400"
+                    placeholder="Custom Spline URL..." 
+                    class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-2 py-1 text-[11px] text-white focus:outline-none focus:border-cyan-400"
                   />
                   <button 
+                    type="button"
                     id="studio-spline-load-btn" 
-                    class="bg-purple-600 hover:bg-purple-500 text-white text-xs font-black px-3 py-1.5 rounded-xl transition-all active:scale-95 shadow shrink-0"
-                    title="Load Spline Scene"
+                    class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-black px-2.5 py-1 rounded-xl transition-all active:scale-95 shadow shrink-0"
                   >
-                    Load 3D
+                    Load
                   </button>
                 </div>
               </div>
 
-              <!-- Category-Specific Stage Controls -->
+              <!-- Category Stage Modifiers -->
               ${studioActiveCategory === 'gear' ? `
-                <!-- Target Socket Selector -->
+                <!-- Target Socket -->
                 <div class="w-full">
-                  <p class="text-[11px] font-bold text-amber-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                    <span class="material-symbols-outlined text-xs">extension</span>
-                    <span>Target Attachment Socket</span>
-                  </p>
-                  <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                  <span class="text-[10px] font-bold text-cyan-300 uppercase tracking-wider mb-1 block">Socket</span>
+                  <div class="grid grid-cols-4 gap-1">
                     ${socketPills.map(s => `
                       <button 
-                        class="studio-socket-btn px-2.5 py-1.5 rounded-xl text-xs font-black transition-all active:scale-95 flex items-center justify-center gap-1 border ${studioSelectedSocket === s.key ? 'bg-amber-400 text-slate-950 border-white shadow-md scale-102' : 'bg-slate-800/80 hover:bg-slate-700 text-slate-200 border-white/20'}"
+                        type="button"
+                        class="studio-socket-btn px-1.5 py-1 rounded-xl text-[10px] font-black transition-all active:scale-95 flex items-center justify-center gap-0.5 border ${studioSelectedSocket === s.key ? 'bg-cyan-400 text-slate-950 border-white shadow scale-102' : 'bg-slate-800/80 hover:bg-slate-700 text-slate-200 border-white/20'}"
                         data-socket="${s.key}"
                       >
                         <span>${s.emoji}</span>
-                        <span>${s.label}</span>
+                        <span>${s.label.split(' ')[0]}</span>
                       </button>
                     `).join('')}
                   </div>
                 </div>
 
-                <!-- Superhero Color Dye Palette -->
-                <div class="w-full p-2.5 bg-slate-800/60 rounded-2xl border border-slate-700/60">
-                  <div class="flex items-center justify-between mb-1.5">
-                    <span class="text-[11px] font-bold text-amber-300 flex items-center gap-1">
-                      <span class="material-symbols-outlined text-xs">palette</span>
-                      <span>Superhero Dye Swatch</span>
-                    </span>
-                    <span class="text-[10px] text-slate-400">Live Tint</span>
-                  </div>
-                  <div class="flex flex-wrap items-center gap-1.5">
+                <!-- Superhero Dye Swatch -->
+                <div class="w-full p-2 bg-slate-800/60 rounded-xl border border-slate-700/60 flex items-center justify-between">
+                  <span class="text-[10px] font-bold text-cyan-300 uppercase">Dye Color:</span>
+                  <div class="flex flex-wrap items-center gap-1">
                     ${COLOR_DYES.map(dye => {
                       const isDyeActive = studioSelectedDye === dye.hex;
                       return `
                       <button 
-                        class="studio-dye-btn w-7 h-7 rounded-full border-2 transition-transform hover:scale-115 active:scale-95 shadow flex items-center justify-center ${isDyeActive ? 'border-white ring-2 ring-amber-400 scale-110' : 'border-white/30'}"
+                        type="button"
+                        class="studio-dye-btn w-5 h-5 rounded-full border transition-transform hover:scale-115 active:scale-95 shadow flex items-center justify-center ${isDyeActive ? 'border-white ring-2 ring-cyan-400 scale-110' : 'border-white/30'}"
                         style="background-color: ${dye.hex};"
                         data-hex="${dye.hex}"
                         title="${dye.name}"
                       >
-                        ${isDyeActive ? '<span class="text-white text-[10px] font-black drop-shadow">✓</span>' : ''}
+                        ${isDyeActive ? '<span class="text-white text-[8px] font-black">✓</span>' : ''}
                       </button>
                       `;
                     }).join('')}
                   </div>
                 </div>
 
-                <!-- Catwalk Poses -->
+                <!-- Poses -->
                 <div class="w-full">
-                  <p class="text-[11px] font-bold text-amber-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                    <span class="material-symbols-outlined text-xs">sports_gymnastics</span>
-                    <span>Test Heroic Catwalk Poses</span>
-                  </p>
-                  <div class="grid grid-cols-3 gap-1.5">
-                    <button class="studio-pose-btn px-2 py-1.5 rounded-xl bg-slate-800/90 hover:bg-amber-500/20 border border-slate-700 text-xs font-bold text-slate-200 transition-all active:scale-95 flex items-center justify-center gap-1" data-pose="hero_landing"><span>🦸</span><span>Landing</span></button>
-                    <button class="studio-pose-btn px-2 py-1.5 rounded-xl bg-slate-800/90 hover:bg-amber-500/20 border border-slate-700 text-xs font-bold text-slate-200 transition-all active:scale-95 flex items-center justify-center gap-1" data-pose="wing_flare"><span>✨</span><span>Flare</span></button>
-                    <button class="studio-pose-btn px-2 py-1.5 rounded-xl bg-slate-800/90 hover:bg-amber-500/20 border border-slate-700 text-xs font-bold text-slate-200 transition-all active:scale-95 flex items-center justify-center gap-1" data-pose="spin_360"><span>🔄</span><span>Spin</span></button>
-                    <button class="studio-pose-btn px-2 py-1.5 rounded-xl bg-slate-800/90 hover:bg-amber-500/20 border border-slate-700 text-xs font-bold text-slate-200 transition-all active:scale-95 flex items-center justify-center gap-1" data-pose="hero_salute"><span>🫡</span><span>Salute</span></button>
-                    <button class="studio-pose-btn px-2 py-1.5 rounded-xl bg-slate-800/90 hover:bg-amber-500/20 border border-slate-700 text-xs font-bold text-slate-200 transition-all active:scale-95 flex items-center justify-center gap-1" data-pose="runway_walk"><span>🚶</span><span>Strut</span></button>
-                    <button class="studio-pose-btn px-2 py-1.5 rounded-xl bg-slate-800/90 hover:bg-amber-500/20 border border-slate-700 text-xs font-bold text-slate-200 transition-all active:scale-95 flex items-center justify-center gap-1" data-pose="idle"><span>🧍</span><span>Idle</span></button>
+                  <span class="text-[10px] font-bold text-cyan-300 uppercase tracking-wider mb-1 block">Poses</span>
+                  <div class="grid grid-cols-3 gap-1">
+                    <button type="button" class="studio-pose-btn p-1 rounded-lg bg-slate-800 hover:bg-cyan-500/20 border border-slate-700 text-[10px] font-bold text-slate-200 transition-all active:scale-95 flex items-center justify-center gap-1" data-pose="hero_landing"><span>🦸</span><span>Landing</span></button>
+                    <button type="button" class="studio-pose-btn p-1 rounded-lg bg-slate-800 hover:bg-cyan-500/20 border border-slate-700 text-[10px] font-bold text-slate-200 transition-all active:scale-95 flex items-center justify-center gap-1" data-pose="wing_flare"><span>✨</span><span>Flare</span></button>
+                    <button type="button" class="studio-pose-btn p-1 rounded-lg bg-slate-800 hover:bg-cyan-500/20 border border-slate-700 text-[10px] font-bold text-slate-200 transition-all active:scale-95 flex items-center justify-center gap-1" data-pose="spin_360"><span>🔄</span><span>Spin</span></button>
                   </div>
                 </div>
               ` : studioActiveCategory === 'furniture' ? `
-                <!-- Target HQ Room Zone -->
+                <!-- Target Room Zone -->
                 <div class="w-full">
-                  <label class="text-[11px] font-bold text-amber-300 uppercase tracking-wider mb-2 block">Hero HQ Room Zone</label>
-                  <div class="grid grid-cols-2 gap-2">
-                    <button class="studio-zone-btn p-2 rounded-xl text-xs font-bold border flex items-center gap-2 ${studioFurnitureZone === 'bedroom' ? 'bg-amber-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-zone="bedroom">
+                  <label class="text-[10px] font-bold text-cyan-300 uppercase tracking-wider mb-1 block">Room Zone</label>
+                  <div class="grid grid-cols-2 gap-1.5">
+                    <button type="button" class="studio-zone-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioFurnitureZone === 'bedroom' ? 'bg-cyan-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-zone="bedroom">
                       <span>🛏️</span><span>Bedroom</span>
                     </button>
-                    <button class="studio-zone-btn p-2 rounded-xl text-xs font-bold border flex items-center gap-2 ${studioFurnitureZone === 'command_deck' ? 'bg-amber-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-zone="command_deck">
-                      <span>💻</span><span>Command Deck</span>
+                    <button type="button" class="studio-zone-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioFurnitureZone === 'command_deck' ? 'bg-cyan-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-zone="command_deck">
+                      <span>💻</span><span>Command</span>
                     </button>
-                    <button class="studio-zone-btn p-2 rounded-xl text-xs font-bold border flex items-center gap-2 ${studioFurnitureZone === 'lounge' ? 'bg-amber-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-zone="lounge">
-                      <span>🛋️</span><span>Hero Lounge</span>
+                    <button type="button" class="studio-zone-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioFurnitureZone === 'lounge' ? 'bg-cyan-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-zone="lounge">
+                      <span>🛋️</span><span>Lounge</span>
                     </button>
-                    <button class="studio-zone-btn p-2 rounded-xl text-xs font-bold border flex items-center gap-2 ${studioFurnitureZone === 'trophy_hall' ? 'bg-amber-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-zone="trophy_hall">
+                    <button type="button" class="studio-zone-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioFurnitureZone === 'trophy_hall' ? 'bg-cyan-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-zone="trophy_hall">
                       <span>🏆</span><span>Trophy Hall</span>
                     </button>
                   </div>
                 </div>
               ` : studioActiveCategory === 'toy' ? `
-                <!-- Target Stat Refill Selector -->
+                <!-- Target Stat -->
                 <div class="w-full">
-                  <label class="text-[11px] font-bold text-amber-300 uppercase tracking-wider mb-2 block">Pet Need Refilled</label>
-                  <div class="grid grid-cols-2 gap-2">
-                    <button class="studio-toy-stat-btn p-2 rounded-xl text-xs font-bold border flex items-center gap-2 ${studioToyStat === 'joy' ? 'bg-amber-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-stat="joy">
-                      <span>💖</span><span>Joy (+Happy)</span>
+                  <label class="text-[10px] font-bold text-cyan-300 uppercase tracking-wider mb-1 block">Pet Need Refill</label>
+                  <div class="grid grid-cols-2 gap-1.5">
+                    <button type="button" class="studio-toy-stat-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioToyStat === 'joy' ? 'bg-cyan-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-stat="joy">
+                      <span>💖</span><span>Joy</span>
                     </button>
-                    <button class="studio-toy-stat-btn p-2 rounded-xl text-xs font-bold border flex items-center gap-2 ${studioToyStat === 'energy' ? 'bg-amber-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-stat="energy">
-                      <span>⚡</span><span>Energy (+Stamina)</span>
+                    <button type="button" class="studio-toy-stat-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioToyStat === 'energy' ? 'bg-cyan-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-stat="energy">
+                      <span>⚡</span><span>Energy</span>
                     </button>
-                    <button class="studio-toy-stat-btn p-2 rounded-xl text-xs font-bold border flex items-center gap-2 ${studioToyStat === 'hunger' ? 'bg-amber-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-stat="hunger">
-                      <span>🍎</span><span>Snack / Fullness</span>
+                    <button type="button" class="studio-toy-stat-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioToyStat === 'hunger' ? 'bg-cyan-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-stat="hunger">
+                      <span>🍎</span><span>Hunger</span>
                     </button>
-                    <button class="studio-toy-stat-btn p-2 rounded-xl text-xs font-bold border flex items-center gap-2 ${studioToyStat === 'all' ? 'bg-amber-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-stat="all">
-                      <span>✨</span><span>All Stats Refill</span>
+                    <button type="button" class="studio-toy-stat-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioToyStat === 'all' ? 'bg-cyan-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-stat="all">
+                      <span>✨</span><span>All Needs</span>
                     </button>
                   </div>
                 </div>
               ` : studioActiveCategory === 'food' ? `
-                <!-- Snack Flavor Theme Selector -->
+                <!-- Snack Flavor Theme -->
                 <div class="w-full">
-                  <label class="text-[11px] font-bold text-amber-300 uppercase tracking-wider mb-2 block">Snack Flavor Theme</label>
-                  <div class="grid grid-cols-2 gap-2">
-                    <button class="studio-food-theme-btn p-2 rounded-xl text-xs font-bold border flex items-center gap-2 ${studioFoodTheme === 'orchard' ? 'bg-amber-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-theme="orchard">
-                      <span>🍎</span><span>Orchard Harvest</span>
+                  <label class="text-[10px] font-bold text-cyan-300 uppercase tracking-wider mb-1 block">Snack Theme</label>
+                  <div class="grid grid-cols-2 gap-1.5">
+                    <button type="button" class="studio-food-theme-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioFoodTheme === 'orchard' ? 'bg-cyan-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-theme="orchard">
+                      <span>🍎</span><span>Orchard</span>
                     </button>
-                    <button class="studio-food-theme-btn p-2 rounded-xl text-xs font-bold border flex items-center gap-2 ${studioFoodTheme === 'cosmic' ? 'bg-amber-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-theme="cosmic">
-                      <span>🍓</span><span>Cosmic Stardust</span>
+                    <button type="button" class="studio-food-theme-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioFoodTheme === 'cosmic' ? 'bg-cyan-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-theme="cosmic">
+                      <span>🍓</span><span>Cosmic</span>
                     </button>
-                    <button class="studio-food-theme-btn p-2 rounded-xl text-xs font-bold border flex items-center gap-2 ${studioFoodTheme === 'jungle' ? 'bg-amber-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-theme="jungle">
-                      <span>🍯</span><span>Jungle Honeycomb</span>
+                    <button type="button" class="studio-food-theme-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioFoodTheme === 'jungle' ? 'bg-cyan-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-theme="jungle">
+                      <span>🍯</span><span>Jungle</span>
                     </button>
-                    <button class="studio-food-theme-btn p-2 rounded-xl text-xs font-bold border flex items-center gap-2 ${studioFoodTheme === 'ocean' ? 'bg-amber-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-theme="ocean">
-                      <span>🌊</span><span>Tidepool Kelp</span>
+                    <button type="button" class="studio-food-theme-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioFoodTheme === 'ocean' ? 'bg-cyan-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-theme="ocean">
+                      <span>🌊</span><span>Ocean</span>
                     </button>
                   </div>
                 </div>
               ` : `
                 <!-- Boss Habit Domain -->
                 <div class="w-full">
-                  <label class="text-[11px] font-bold text-amber-300 uppercase tracking-wider mb-2 block">Habit & Routine Domain</label>
-                  <div class="grid grid-cols-2 gap-2">
-                    <button class="studio-boss-domain-btn p-2 rounded-xl text-xs font-bold border flex items-center gap-2 ${studioBossDomain === 'dental' ? 'bg-amber-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-domain="dental">
+                  <label class="text-[10px] font-bold text-cyan-300 uppercase tracking-wider mb-1 block">Habit Domain</label>
+                  <div class="grid grid-cols-2 gap-1.5">
+                    <button type="button" class="studio-boss-domain-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioBossDomain === 'dental' ? 'bg-cyan-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-domain="dental">
                       <span>🪥</span><span>Dental Care</span>
                     </button>
-                    <button class="studio-boss-domain-btn p-2 rounded-xl text-xs font-bold border flex items-center gap-2 ${studioBossDomain === 'bedtime' ? 'bg-amber-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-domain="bedtime">
-                      <span>🌙</span><span>Bedtime Routine</span>
+                    <button type="button" class="studio-boss-domain-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioBossDomain === 'bedtime' ? 'bg-cyan-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-domain="bedtime">
+                      <span>🌙</span><span>Bedtime</span>
                     </button>
-                    <button class="studio-boss-domain-btn p-2 rounded-xl text-xs font-bold border flex items-center gap-2 ${studioBossDomain === 'screens' ? 'bg-amber-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-domain="screens">
-                      <span>📱</span><span>Screen Limits</span>
+                    <button type="button" class="studio-boss-domain-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioBossDomain === 'screens' ? 'bg-cyan-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-domain="screens">
+                      <span>📱</span><span>Screens</span>
                     </button>
-                    <button class="studio-boss-domain-btn p-2 rounded-xl text-xs font-bold border flex items-center gap-2 ${studioBossDomain === 'nutrition' ? 'bg-amber-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-domain="nutrition">
-                      <span>🥦</span><span>Healthy Nutrition</span>
+                    <button type="button" class="studio-boss-domain-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioBossDomain === 'nutrition' ? 'bg-cyan-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-domain="nutrition">
+                      <span>🥦</span><span>Nutrition</span>
                     </button>
                   </div>
 
-                  <!-- Toothbrush Battle Dental Controls (When Dental Domain selected) -->
                   ${studioBossDomain === 'dental' ? `
-                    <div class="mt-3 pt-3 border-t border-slate-700/60 flex flex-col gap-2.5">
-                      <!-- Battle Duration -->
-                      <div>
-                        <label class="text-[10px] font-bold text-cyan-300 uppercase tracking-wider mb-1 block">Toothbrush Battle Timer Duration</label>
-                        <div class="grid grid-cols-3 gap-1.5">
-                          <button type="button" class="studio-boss-duration-btn p-1.5 rounded-lg text-[10px] font-black border transition-all ${studioBossBattleDuration === 60 ? 'bg-cyan-500 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'}" data-duration="60">
-                            60s (Toddler)
-                          </button>
-                          <button type="button" class="studio-boss-duration-btn p-1.5 rounded-lg text-[10px] font-black border transition-all ${studioBossBattleDuration === 120 ? 'bg-cyan-500 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'}" data-duration="120">
-                            120s (Standard)
-                          </button>
-                          <button type="button" class="studio-boss-duration-btn p-1.5 rounded-lg text-[10px] font-black border transition-all ${studioBossBattleDuration === 180 ? 'bg-cyan-500 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'}" data-duration="180">
-                            180s (Master)
-                          </button>
+                    <div class="mt-2.5 pt-2 border-t border-slate-700/60 flex flex-col gap-2">
+                      <div class="flex items-center justify-between text-[10px] font-bold text-cyan-300">
+                        <span>Timer:</span>
+                        <div class="flex gap-1">
+                          <button type="button" class="studio-boss-duration-btn px-2 py-0.5 rounded text-[10px] font-black border ${studioBossBattleDuration === 60 ? 'bg-cyan-500 text-slate-950' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-duration="60">60s</button>
+                          <button type="button" class="studio-boss-duration-btn px-2 py-0.5 rounded text-[10px] font-black border ${studioBossBattleDuration === 120 ? 'bg-cyan-500 text-slate-950' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-duration="120">120s</button>
+                          <button type="button" class="studio-boss-duration-btn px-2 py-0.5 rounded text-[10px] font-black border ${studioBossBattleDuration === 180 ? 'bg-cyan-500 text-slate-950' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-duration="180">180s</button>
                         </div>
                       </div>
-
-                      <!-- Attack Archetype -->
-                      <div>
-                        <label class="text-[10px] font-bold text-cyan-300 uppercase tracking-wider mb-1 block">Dental Attack Archetype</label>
-                        <div class="grid grid-cols-2 gap-1.5">
-                          <button type="button" class="studio-boss-attack-btn p-1.5 rounded-lg text-[10px] font-bold border transition-all flex items-center gap-1.5 ${studioBossAttackType === 'caramel_bomb' ? 'bg-amber-500 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'}" data-attack="caramel_bomb">
-                            <span>🍬</span><span>Caramel Bomb</span>
-                          </button>
-                          <button type="button" class="studio-boss-attack-btn p-1.5 rounded-lg text-[10px] font-bold border transition-all flex items-center gap-1.5 ${studioBossAttackType === 'plaque_slime' ? 'bg-emerald-500 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'}" data-attack="plaque_slime">
-                            <span>🦠</span><span>Plaque Slime</span>
-                          </button>
-                          <button type="button" class="studio-boss-attack-btn p-1.5 rounded-lg text-[10px] font-bold border transition-all flex items-center gap-1.5 ${studioBossAttackType === 'acid_shard' ? 'bg-rose-500 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'}" data-attack="acid_shard">
-                            <span>⚔️</span><span>Acid Shard</span>
-                          </button>
-                          <button type="button" class="studio-boss-attack-btn p-1.5 rounded-lg text-[10px] font-bold border transition-all flex items-center gap-1.5 ${studioBossAttackType === 'sticky_taffy' ? 'bg-purple-500 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'}" data-attack="sticky_taffy">
-                            <span>🕸️</span><span>Sticky Taffy</span>
-                          </button>
-                        </div>
-                      </div>
-
-                      <!-- Focus Quadrant -->
-                      <div>
-                        <label class="text-[10px] font-bold text-cyan-300 uppercase tracking-wider mb-1 block">Brushing Focus Zone</label>
-                        <div class="grid grid-cols-3 gap-1.5">
-                          <button type="button" class="studio-boss-focus-btn p-1 rounded-lg text-[10px] font-bold border transition-all ${studioBossFocusQuadrant === 'all' ? 'bg-cyan-500 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'}" data-focus="all">
-                            🦷 All 4 Zones
-                          </button>
-                          <button type="button" class="studio-boss-focus-btn p-1 rounded-lg text-[10px] font-bold border transition-all ${studioBossFocusQuadrant === 'upper' ? 'bg-cyan-500 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'}" data-focus="upper">
-                            ⬆️ Upper Molars
-                          </button>
-                          <button type="button" class="studio-boss-focus-btn p-1 rounded-lg text-[10px] font-bold border transition-all ${studioBossFocusQuadrant === 'lower' ? 'bg-cyan-500 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'}" data-focus="lower">
-                            ⬇️ Lower Chew
-                          </button>
-                        </div>
+                      <div class="grid grid-cols-2 gap-1">
+                        <button type="button" class="studio-boss-attack-btn p-1 rounded text-[10px] font-bold border flex items-center gap-1 ${studioBossAttackType === 'caramel_bomb' ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-attack="caramel_bomb"><span>🍬</span><span>Caramel</span></button>
+                        <button type="button" class="studio-boss-attack-btn p-1 rounded text-[10px] font-bold border flex items-center gap-1 ${studioBossAttackType === 'plaque_slime' ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-attack="plaque_slime"><span>🦠</span><span>Slime</span></button>
                       </div>
                     </div>
                   ` : ''}
@@ -2011,103 +2043,51 @@ export function renderParentPortalView() {
 
             </div>
 
-            <!-- Right Column: AI Crafting Form & Multiplier Engine (7 cols) -->
-            <div class="lg:col-span-7 bg-surface-container rounded-3xl p-6 border-2 border-secondary-container card-shadow flex flex-col gap-5">
+            <!-- Right Column: Reward Settings & Publishing (7 cols) -->
+            <div class="lg:col-span-7 bg-surface-container/90 rounded-3xl p-5 border-2 border-surface-container-highest shadow-sm flex flex-col gap-4">
               
-              <!-- Idea Prompt & AI Generation Trigger -->
-              <div class="flex flex-col gap-2">
-                <label class="text-xs font-black uppercase text-on-surface-variant flex items-center justify-between">
-                  <span class="flex items-center gap-1">
-                    <span class="material-symbols-outlined text-sm text-secondary">psychology</span>
-                    <span>Parent Creative Concept (${studioActiveCategory.toUpperCase()})</span>
-                  </span>
-                  <span class="text-[10px] text-secondary font-bold">Powered by Gemini 2.5 Flash Lite</span>
-                </label>
-                
-                <!-- Multimodal Input Bar (Voice Dictation & Drawing Upload) -->
-                <div class="flex flex-wrap items-center justify-between gap-2 bg-slate-800/80 p-2.5 rounded-2xl border border-white/10 mb-3">
-                  <div class="flex items-center gap-2">
-                    <!-- Voice Dictation -->
-                    <button 
-                      type="button"
-                      id="studio-voice-mic-btn"
-                      class="px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all ${isRecordingVoice ? 'bg-red-500 text-white animate-pulse' : 'bg-slate-700 hover:bg-slate-600 text-amber-300'}"
-                      title="Dictate with microphone"
-                    >
-                      <span>🎙️</span>
-                      <span>${isRecordingVoice ? 'Listening...' : 'Voice Dictate'}</span>
-                    </button>
-
-                    <!-- Child Drawing / Photo Upload Input -->
-                    <label class="px-3 py-1.5 rounded-xl text-xs font-black bg-slate-700 hover:bg-slate-600 text-cyan-300 flex items-center gap-1.5 cursor-pointer transition-all">
-                      <span>📷</span>
-                      <span>Child Drawing / Photo</span>
-                      <input type="file" id="studio-photo-upload" accept="image/*" class="hidden" />
-                    </label>
-                  </div>
-
-                  ${studioUploadedImageBase64 ? `
-                    <div class="flex items-center gap-2">
-                      <img src="${studioUploadedImageBase64}" class="w-8 h-8 rounded-lg object-cover border border-cyan-400" alt="Drawing Preview" />
-                      <button 
-                        type="button"
-                        id="studio-vision-generate-btn"
-                        class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-gradient-to-r from-cyan-500 to-blue-500 text-slate-950 hover:scale-105 transition-all shadow"
-                      >
-                        ✨ Turn into 3D
-                      </button>
-                    </div>
-                  ` : ''}
-                </div>
-
-                <div class="flex gap-2">
-                  <input 
-                    id="studio-ai-prompt" 
-                    type="text" 
-                    value="${studioItemName}"
-                    placeholder="${studioActiveCategory === 'gear' ? 'e.g. Phoenix Flame Tiara or Cyber Jetpack...' : studioActiveCategory === 'furniture' ? 'e.g. Starlight Canopy Bed or Holo Gaming Desk...' : studioActiveCategory === 'toy' ? 'e.g. Super Trampoline or Laser Mouse...' : studioActiveCategory === 'food' ? 'e.g. Starberry Bites or Jungle Honeycomb...' : 'e.g. Sugar Plaque Overlord or Bedtime Gremlin...'}"
-                    class="flex-1 bg-surface-container-high border border-surface-container-highest rounded-2xl p-3 text-xs font-bold text-inverse-surface focus:outline-none focus:border-secondary shadow-inner"
-                  />
-                  <button 
-                    id="studio-gear-ai-btn" 
-                    data-studio-ai-btn="true"
-                    class="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white font-headline text-xs font-black px-4 py-3 rounded-2xl shadow-md hover:brightness-110 active:scale-95 flex items-center gap-1.5 shrink-0 ${
-                      isStudioGenerating ? 'opacity-70 cursor-wait' : ''
-                    }"
-                  >
-                    <span class="material-symbols-outlined text-base">${isStudioGenerating ? 'progress_activity' : 'auto_awesome'}</span>
-                    <span>${isStudioGenerating ? 'Designing 3D...' : '✨ Generate with AI'}</span>
-                  </button>
-                </div>
+              <!-- Item Details Header -->
+              <div class="flex items-center justify-between border-b border-surface-container-highest pb-2.5">
+                <span class="font-headline text-xs font-black uppercase tracking-wider text-inverse-surface flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-sm text-cyan-500">settings</span>
+                  <span>Reward Specifications & Economy</span>
+                </span>
+                <span class="text-xs font-black text-amber-400 flex items-center gap-1">
+                  <span>🪙</span>
+                  <span id="studio-item-price-label">${studioItemPrice} Tokens</span>
+                </span>
               </div>
 
-              <!-- Item Specifications Grid -->
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                
-                <!-- Item Name -->
+              <!-- Name & Archetype in 2 Columns -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label class="text-[10px] font-black uppercase text-on-surface-variant">Name / Title</label>
+                  <label class="text-[10px] font-black uppercase text-on-surface-variant block mb-1">Item Name</label>
                   <input 
                     id="studio-item-name" 
                     type="text" 
                     value="${studioItemName}"
-                    class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-none focus:border-secondary" 
+                    class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-none focus:border-cyan-400" 
                   />
                 </div>
 
-                <!-- Category-Specific Dropdown -->
-                ${studioActiveCategory === 'gear' ? `
-                  <div>
-                    <label class="text-[10px] font-black uppercase text-on-surface-variant">Mesh Archetype</label>
-                    <select id="studio-gear-archetype" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-none focus:border-secondary">
+                <div>
+                  <label class="text-[10px] font-black uppercase text-on-surface-variant block mb-1">Archetype / Slot</label>
+                  ${studioActiveCategory === 'weapon' ? `
+                    <select id="studio-weapon-archetype" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-none focus:border-cyan-400">
+                      <option value="laser_sword" ${studioItemArchetype === 'laser_sword' ? 'selected' : ''}>⚡ Star-Plasma Saber (Energy Blade)</option>
+                      <option value="blaster" ${studioItemArchetype === 'blaster' ? 'selected' : ''}>🔫 Turbo Hydro Blaster (Plaque Dissolver)</option>
+                      <option value="hammer" ${studioItemArchetype === 'hammer' ? 'selected' : ''}>🔨 Meteor Shockwave Hammer (Smasher)</option>
+                      <option value="shield_blaster" ${studioItemArchetype === 'shield_blaster' ? 'selected' : ''}>🛡️ Aegis Spark Cannon (Counter-Beam)</option>
+                    </select>
+                  ` : studioActiveCategory === 'gear' ? `
+                    <select id="studio-gear-archetype" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-none focus:border-cyan-400">
                       ${studioSelectedSocket === 'head' ? `
                         <option value="visor" ${studioItemArchetype === 'visor' ? 'selected' : ''}>Cyber HUD Visor (Glow Bar)</option>
                         <option value="crown" ${studioItemArchetype === 'crown' ? 'selected' : ''}>Golden Horn Crown (Spikes)</option>
                         <option value="cowl" ${studioItemArchetype === 'cowl' ? 'selected' : ''}>Hero Cowl (Aerodynamic Mask)</option>
                         <option value="goggles" ${studioItemArchetype === 'goggles' ? 'selected' : ''}>Sky-Captain Goggles (Brass Lenses)</option>
-                        <option value="tiara" ${studioItemArchetype === 'tiara' ? 'selected' : ''}>Phoenix Fire Tiara (Crest Gem)</option>
                       ` : studioSelectedSocket === 'back' ? `
-                        <option value="wings" ${studioItemArchetype === 'wings' ? 'selected' : ''}>Meteor Glider Wings (Dual Thrusters)</option>
+                        <option value="wings" ${studioItemArchetype === 'wings' ? 'selected' : ''}>Meteor Glider Wings (Thrusters)</option>
                         <option value="jetpack" ${studioItemArchetype === 'jetpack' ? 'selected' : ''}>Twin Turbo Jetpack (Exhaust Flares)</option>
                         <option value="cape" ${studioItemArchetype === 'cape' ? 'selected' : ''}>Fluttering Hero Cape (Spring Cloth)</option>
                         <option value="cloak" ${studioItemArchetype === 'cloak' ? 'selected' : ''}>Moonlight Star Cloak (Silky Cloth)</option>
@@ -2121,56 +2101,45 @@ export function renderParentPortalView() {
                         <option value="lava_greaves" ${studioItemArchetype === 'lava_greaves' ? 'selected' : ''}>Lava Stomp Greaves (Molten Cracks)</option>
                       `}
                     </select>
-                  </div>
-                ` : studioActiveCategory === 'furniture' ? `
-                  <div>
-                    <label class="text-[10px] font-black uppercase text-on-surface-variant">Furniture Slot</label>
-                    <select id="studio-furniture-type-select" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-none focus:border-secondary">
+                  ` : studioActiveCategory === 'furniture' ? `
+                    <select id="studio-furniture-type-select" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-none focus:border-cyan-400">
                       <option value="bed" ${studioFurnitureType === 'bed' ? 'selected' : ''}>🛏️ Hero Sleeping Bed</option>
                       <option value="desk" ${studioFurnitureType === 'desk' ? 'selected' : ''}>💻 Mission Study Desk</option>
                       <option value="petLounge" ${studioFurnitureType === 'petLounge' ? 'selected' : ''}>🛋️ Pet Lounge / Beanbag</option>
                       <option value="decor" ${studioFurnitureType === 'decor' ? 'selected' : ''}>🏆 Floor Decor / Trophy Stand</option>
                       <option value="rug" ${studioFurnitureType === 'rug' ? 'selected' : ''}>🌈 Room Adventure Rug</option>
                     </select>
-                  </div>
-                ` : studioActiveCategory === 'toy' ? `
-                  <div>
-                    <label class="text-[10px] font-black uppercase text-on-surface-variant">Toy Archetype</label>
-                    <select id="studio-toy-type-select" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-none focus:border-secondary">
+                  ` : studioActiveCategory === 'toy' ? `
+                    <select id="studio-toy-type-select" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-none focus:border-cyan-400">
                       <option value="trampoline" ${studioToyType === 'trampoline' ? 'selected' : ''}>🎪 Anti-Gravity Trampoline</option>
                       <option value="ball" ${studioToyType === 'ball' ? 'selected' : ''}>🚀 Turbo Ball Launcher</option>
                       <option value="laser" ${studioToyType === 'laser' ? 'selected' : ''}>✨ Starlight Laser Pointer</option>
                       <option value="puzzle" ${studioToyType === 'puzzle' ? 'selected' : ''}>🧩 Treat Puzzle Box</option>
-                      <option value="agility" ${studioToyType === 'agility' ? 'selected' : ''}>⚡ Agility Loop Obstacle</option>
                     </select>
-                  </div>
-                ` : studioActiveCategory === 'food' ? `
-                  <div>
-                    <label class="text-[10px] font-black uppercase text-on-surface-variant">Snack Flavor Theme</label>
-                    <select id="studio-food-theme-select" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-none focus:border-secondary">
+                  ` : studioActiveCategory === 'food' ? `
+                    <select id="studio-food-theme-select" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-none focus:border-cyan-400">
                       <option value="orchard" ${studioFoodTheme === 'orchard' ? 'selected' : ''}>🍎 Orchard Harvest</option>
                       <option value="cosmic" ${studioFoodTheme === 'cosmic' ? 'selected' : ''}>🍓 Cosmic Stardust Berries</option>
                       <option value="jungle" ${studioFoodTheme === 'jungle' ? 'selected' : ''}>🍯 Jungle Honeycomb Feast</option>
                       <option value="ocean" ${studioFoodTheme === 'ocean' ? 'selected' : ''}>🌊 Tidepool Kelp Crunch</option>
                     </select>
-                  </div>
-                ` : `
-                  <div>
-                    <label class="text-[10px] font-black uppercase text-on-surface-variant">Boss Habit Domain</label>
-                    <select id="studio-boss-domain-select" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-none focus:border-secondary">
+                  ` : `
+                    <select id="studio-boss-domain-select" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-none focus:border-cyan-400">
                       <option value="dental" ${studioBossDomain === 'dental' ? 'selected' : ''}>🪥 Dental & Tooth Brushing</option>
                       <option value="bedtime" ${studioBossDomain === 'bedtime' ? 'selected' : ''}>🌙 Sleep & Bedtime Routine</option>
                       <option value="screens" ${studioBossDomain === 'screens' ? 'selected' : ''}>📱 Screen Time Management</option>
                       <option value="nutrition" ${studioBossDomain === 'nutrition' ? 'selected' : ''}>🥦 Healthy Eating & Veggies</option>
                     </select>
-                  </div>
-                `}
+                  `}
+                </div>
+              </div>
 
-                <!-- Price Slider -->
+              <!-- Price & Aura in 2 Columns -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-surface-container-high/60 p-3 rounded-2xl border border-surface-container-highest">
                 <div>
-                  <div class="flex items-center justify-between">
-                    <label class="text-[10px] font-black uppercase text-on-surface-variant">Token Cost</label>
-                    <span id="studio-item-price-label" class="text-xs font-black text-secondary">🪙 ${studioItemPrice} Tokens</span>
+                  <div class="flex items-center justify-between mb-1">
+                    <label class="text-[10px] font-black uppercase text-on-surface-variant">Price in Tokens</label>
+                    <span class="text-xs font-black text-amber-400">🪙 ${studioItemPrice}</span>
                   </div>
                   <input 
                     id="studio-gear-price" 
@@ -2179,54 +2148,52 @@ export function renderParentPortalView() {
                     max="500" 
                     step="25" 
                     value="${studioItemPrice}"
-                    class="w-full accent-secondary mt-1.5" 
+                    class="w-full accent-amber-400" 
                   />
                 </div>
 
-                <!-- Elemental Particle Aura -->
                 <div>
-                  <label class="text-[10px] font-black uppercase text-on-surface-variant">Visual Aura Effect</label>
-                  <select id="studio-item-aura" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-none focus:border-secondary">
-                    <option value="none" ${studioItemAura === 'none' ? 'selected' : ''}>None (Pure Metallic)</option>
+                  <label class="text-[10px] font-black uppercase text-on-surface-variant block mb-1">Visual Aura</label>
+                  <select id="studio-item-aura" class="w-full bg-surface-container border border-surface-container-highest rounded-xl p-2 text-xs font-bold text-inverse-surface focus:outline-none focus:border-cyan-400">
+                    <option value="none" ${studioItemAura === 'none' ? 'selected' : ''}>None (Metallic)</option>
                     <option value="electric" ${studioItemAura === 'electric' ? 'selected' : ''}>⚡ Electric Spark (Cyan)</option>
                     <option value="fire" ${studioItemAura === 'fire' ? 'selected' : ''}>🔥 Blazing Fire (Orange)</option>
                     <option value="stardust" ${studioItemAura === 'stardust' ? 'selected' : ''}>✨ Stardust Sparkles (Gold)</option>
-                    <option value="cosmic" ${studioItemAura === 'cosmic' ? 'selected' : ''}>🌟 Cosmic Void (Purple)</option>
-                    <option value="wind" ${studioItemAura === 'wind' ? 'selected' : ''}>💨 Gale Wind (Sky)</option>
+                    <option value="cosmic" ${studioItemAura === 'cosmic' ? 'selected' : ''}>🌟 Cosmic Aurora (Cyan)</option>
                   </select>
                 </div>
-
               </div>
 
-              <!-- Category Functional Gameplay Stats Multiplier Box -->
-              ${studioActiveCategory === 'gear' ? `
-                <div class="p-4 bg-surface-container-high/70 rounded-2xl border-2 border-secondary/30 flex flex-col gap-3">
+              <!-- Gameplay Buffs / Stat Multipliers Card -->
+              ${(studioActiveCategory === 'gear' || studioActiveCategory === 'weapon') ? `
+                <div class="p-3.5 bg-surface-container-high/60 rounded-2xl border border-surface-container-highest flex flex-col gap-2.5">
                   <div class="flex items-center justify-between">
-                    <span class="text-xs font-black uppercase text-secondary flex items-center gap-1.5">
+                    <span class="text-xs font-headline font-black text-cyan-400 uppercase tracking-wider flex items-center gap-1">
                       <span class="material-symbols-outlined text-sm">trending_up</span>
-                      <span>Functional Gameplay Stat Buff</span>
+                      <span>${studioActiveCategory === 'weapon' ? 'Battle Attack Power' : 'Gameplay Stat Buff'}</span>
                     </span>
-                    <span id="studio-stat-badge" class="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-400/20 text-amber-400 border border-amber-400/40">
+                    <span id="studio-stat-badge" class="px-2 py-0.5 rounded-full text-xs font-black bg-cyan-400/20 text-cyan-300 border border-cyan-400/40">
                       +${studioStatPercent}% ${formatStatBonusName(studioStatType)}
                     </span>
                   </div>
 
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label class="text-[10px] font-black uppercase text-on-surface-variant">Stat Bonus Category</label>
-                      <select id="studio-gear-stat-type" class="w-full bg-surface-container border border-surface-container-highest rounded-xl p-2 text-xs font-bold text-inverse-surface focus:outline-none focus:border-secondary">
-                        <option value="damage_boost" ${studioStatType === 'damage_boost' ? 'selected' : ''}>⚔️ +AR Boss Battle Damage</option>
-                        <option value="coin_boost" ${studioStatType === 'coin_boost' ? 'selected' : ''}>🪙 +Habit & Chore Tokens</option>
-                        <option value="xp_boost" ${studioStatType === 'xp_boost' ? 'selected' : ''}>✨ +Quest & Adventure XP</option>
-                        <option value="speed_boost" ${studioStatType === 'speed_boost' ? 'selected' : ''}>⚡ +Runway & Habit Speed</option>
-                        <option value="defense_boost" ${studioStatType === 'defense_boost' ? 'selected' : ''}>🛡️ +Pet Defense & Vitality</option>
+                      <select id="studio-gear-stat-type" class="w-full bg-surface-container border border-surface-container-highest rounded-xl p-2 text-xs font-bold text-inverse-surface focus:outline-none focus:border-cyan-400">
+                        <option value="damage_boost" ${studioStatType === 'damage_boost' ? 'selected' : ''}>⚔️ +Boss Battle Damage</option>
+                        ${studioActiveCategory === 'gear' ? `
+                          <option value="coin_boost" ${studioStatType === 'coin_boost' ? 'selected' : ''}>🪙 +Habit Tokens</option>
+                          <option value="xp_boost" ${studioStatType === 'xp_boost' ? 'selected' : ''}>✨ +Adventure XP</option>
+                          <option value="speed_boost" ${studioStatType === 'speed_boost' ? 'selected' : ''}>⚡ +Hero Speed</option>
+                          <option value="defense_boost" ${studioStatType === 'defense_boost' ? 'selected' : ''}>🛡️ +Defense Vitality</option>
+                        ` : ''}
                       </select>
                     </div>
 
                     <div>
-                      <div class="flex items-center justify-between">
-                        <label class="text-[10px] font-black uppercase text-on-surface-variant">Bonus Power Multiplier</label>
-                        <span id="studio-stat-percent-label" class="text-xs font-black text-secondary">+${studioStatPercent}%</span>
+                      <div class="flex items-center justify-between mb-0.5">
+                        <span class="text-[10px] font-black uppercase text-on-surface-variant">Bonus Power</span>
+                        <span id="studio-stat-percent-label" class="text-xs font-black text-cyan-400">+${studioStatPercent}%</span>
                       </div>
                       <input 
                         id="studio-gear-stat-percent" 
@@ -2235,28 +2202,20 @@ export function renderParentPortalView() {
                         max="50" 
                         step="5" 
                         value="${studioStatPercent}"
-                        class="w-full accent-secondary mt-1.5" 
+                        class="w-full accent-cyan-400" 
                       />
                     </div>
                   </div>
                 </div>
               ` : studioActiveCategory === 'furniture' ? `
-                <div class="p-4 bg-surface-container-high/70 rounded-2xl border-2 border-secondary/30 flex flex-col gap-3">
+                <div class="p-3.5 bg-surface-container-high/60 rounded-2xl border border-surface-container-highest flex flex-col gap-2">
                   <div class="flex items-center justify-between">
-                    <span class="text-xs font-black uppercase text-secondary flex items-center gap-1.5">
-                      <span class="material-symbols-outlined text-sm">bed</span>
-                      <span>HQ Rest & Comfort Multiplier</span>
-                    </span>
-                    <span id="studio-comfort-badge" class="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-400/20 text-amber-400 border border-amber-400/40">
+                    <span class="text-xs font-headline font-black text-cyan-400 uppercase tracking-wider">HQ Comfort Level</span>
+                    <span id="studio-comfort-badge" class="px-2 py-0.5 rounded-full text-xs font-black bg-cyan-400/20 text-cyan-300 border border-cyan-400/40">
                       +${studioFurnitureComfort} Comfort XP
                     </span>
                   </div>
-
-                  <div>
-                    <div class="flex items-center justify-between">
-                      <label class="text-[10px] font-black uppercase text-on-surface-variant">Comfort Level / Tap Rest Refill</label>
-                      <span id="studio-comfort-val" class="text-xs font-black text-secondary">+${studioFurnitureComfort} Comfort</span>
-                    </div>
+                  <div class="flex items-center gap-3">
                     <input 
                       id="studio-furniture-comfort-slider" 
                       type="range" 
@@ -2264,27 +2223,20 @@ export function renderParentPortalView() {
                       max="50" 
                       step="5" 
                       value="${studioFurnitureComfort}"
-                      class="w-full accent-secondary mt-1.5" 
+                      class="flex-1 accent-cyan-400" 
                     />
+                    <span id="studio-comfort-val" class="text-xs font-black text-cyan-400 w-24 text-right">+${studioFurnitureComfort} Comfort</span>
                   </div>
                 </div>
               ` : studioActiveCategory === 'toy' ? `
-                <div class="p-4 bg-surface-container-high/70 rounded-2xl border-2 border-secondary/30 flex flex-col gap-3">
+                <div class="p-3.5 bg-surface-container-high/60 rounded-2xl border border-surface-container-highest flex flex-col gap-2">
                   <div class="flex items-center justify-between">
-                    <span class="text-xs font-black uppercase text-secondary flex items-center gap-1.5">
-                      <span class="material-symbols-outlined text-sm">toys</span>
-                      <span>Pet Need Refill Potency</span>
-                    </span>
-                    <span id="studio-toy-badge" class="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-400/20 text-amber-400 border border-amber-400/40">
+                    <span class="text-xs font-headline font-black text-cyan-400 uppercase tracking-wider">Play Session Refill</span>
+                    <span id="studio-toy-badge" class="px-2 py-0.5 rounded-full text-xs font-black bg-cyan-400/20 text-cyan-300 border border-cyan-400/40">
                       +${studioToyAmount} ${studioToyStat.toUpperCase()}
                     </span>
                   </div>
-
-                  <div>
-                    <div class="flex items-center justify-between">
-                      <label class="text-[10px] font-black uppercase text-on-surface-variant">Stat Boost per Play Session</label>
-                      <span id="studio-toy-amount-val" class="text-xs font-black text-secondary">+${studioToyAmount} Points</span>
-                    </div>
+                  <div class="flex items-center gap-3">
                     <input
                       id="studio-toy-amount-slider"
                       type="range"
@@ -2292,256 +2244,189 @@ export function renderParentPortalView() {
                       max="50"
                       step="5"
                       value="${studioToyAmount}"
-                      class="w-full accent-secondary mt-1.5"
+                      class="flex-1 accent-cyan-400"
                     />
+                    <span id="studio-toy-amount-val" class="text-xs font-black text-cyan-400 w-24 text-right">+${studioToyAmount} Pts</span>
                   </div>
                 </div>
               ` : studioActiveCategory === 'food' ? `
-                <div class="p-4 bg-surface-container-high/70 rounded-2xl border-2 border-secondary/30 flex flex-col gap-3">
+                <div class="p-3.5 bg-surface-container-high/60 rounded-2xl border border-surface-container-highest flex flex-col gap-2.5">
                   <div class="flex items-center justify-between">
-                    <span class="text-xs font-black uppercase text-secondary flex items-center gap-1.5">
-                      <span class="material-symbols-outlined text-sm">restaurant</span>
-                      <span>Snack Nutrition Profile</span>
-                    </span>
-                    <span id="studio-food-badge" class="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-400/20 text-amber-400 border border-amber-400/40">
+                    <span class="text-xs font-headline font-black text-cyan-400 uppercase tracking-wider">Treat Nutrition & Servings</span>
+                    <span id="studio-food-badge" class="px-2 py-0.5 rounded-full text-xs font-black bg-emerald-400/20 text-emerald-300 border border-emerald-400/40">
                       🍗${studioFoodHungerFill} ⚡${studioFoodEnergyFill} 💖${studioFoodJoyBoost}
                     </span>
                   </div>
 
-                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div class="grid grid-cols-3 gap-2">
                     <div>
-                      <label class="text-[10px] font-black uppercase text-on-surface-variant">Hunger Fill</label>
-                      <input id="studio-food-hunger-slider" type="range" min="10" max="60" step="5" value="${studioFoodHungerFill}" class="w-full accent-secondary mt-1.5" />
+                      <span class="text-[9px] font-black uppercase text-on-surface-variant block">Hunger</span>
+                      <input id="studio-food-hunger-slider" type="range" min="10" max="60" step="5" value="${studioFoodHungerFill}" class="w-full accent-cyan-400 mt-1" />
                     </div>
                     <div>
-                      <label class="text-[10px] font-black uppercase text-on-surface-variant">Energy Fill</label>
-                      <input id="studio-food-energy-slider" type="range" min="0" max="50" step="5" value="${studioFoodEnergyFill}" class="w-full accent-secondary mt-1.5" />
+                      <span class="text-[9px] font-black uppercase text-on-surface-variant block">Energy</span>
+                      <input id="studio-food-energy-slider" type="range" min="0" max="50" step="5" value="${studioFoodEnergyFill}" class="w-full accent-cyan-400 mt-1" />
                     </div>
                     <div>
-                      <label class="text-[10px] font-black uppercase text-on-surface-variant">Joy Boost</label>
-                      <input id="studio-food-joy-slider" type="range" min="0" max="50" step="5" value="${studioFoodJoyBoost}" class="w-full accent-secondary mt-1.5" />
+                      <span class="text-[9px] font-black uppercase text-on-surface-variant block">Joy</span>
+                      <input id="studio-food-joy-slider" type="range" min="0" max="50" step="5" value="${studioFoodJoyBoost}" class="w-full accent-cyan-400 mt-1" />
                     </div>
                   </div>
 
-                  <div>
-                    <div class="flex items-center justify-between">
-                      <label class="text-[10px] font-black uppercase text-on-surface-variant">Servings Per Purchase</label>
-                      <span id="studio-food-quantity-val" class="text-xs font-black text-secondary">${studioFoodQuantity}x</span>
+                  <div class="flex items-center justify-between pt-1 border-t border-surface-container-highest">
+                    <span class="text-[10px] font-black uppercase text-on-surface-variant">Servings per Purchase:</span>
+                    <div class="flex items-center gap-2">
+                      <input id="studio-food-quantity-slider" type="range" min="1" max="10" step="1" value="${studioFoodQuantity}" class="w-28 accent-cyan-400" />
+                      <span id="studio-food-quantity-val" class="text-xs font-black text-cyan-400">${studioFoodQuantity}x</span>
                     </div>
-                    <input id="studio-food-quantity-slider" type="range" min="1" max="10" step="1" value="${studioFoodQuantity}" class="w-full accent-secondary mt-1.5" />
                   </div>
                 </div>
               ` : studioActiveCategory === 'world_stash' ? `
-                <div class="p-4 bg-surface-container-high/70 rounded-2xl border-2 border-secondary/30 flex flex-col gap-3.5">
+                <div class="p-3.5 bg-surface-container-high/60 rounded-2xl border border-surface-container-highest flex flex-col gap-2.5">
                   <div class="flex items-center justify-between">
-                    <span class="text-xs font-black uppercase text-secondary flex items-center gap-1.5">
-                      <span class="material-symbols-outlined text-sm">explore</span>
-                      <span>3D World Map Island Configuration</span>
-                    </span>
-                    <span class="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-400/20 text-emerald-400 border border-emerald-400/40">
-                      ${studioWorldStashMode === 'landmark' ? '3D AI Landmark' : 'Secret Mystery Stash'}
+                    <span class="text-xs font-headline font-black text-cyan-400 uppercase tracking-wider">3D Island Configuration</span>
+                    <span class="px-2 py-0.5 rounded-full text-xs font-black bg-emerald-400/20 text-emerald-300 border border-emerald-400/40">
+                      ${studioWorldStashMode === 'landmark' ? '3D Landmark' : 'Mystery Stash'}
                     </span>
                   </div>
 
-                  <!-- Mode Switcher: 3D Landmark vs Mystery Stash -->
                   <div class="grid grid-cols-2 gap-2 bg-[#09141e] p-1 rounded-xl border border-surface-container-highest">
-                    <button type="button" class="studio-world-mode-btn py-2 px-3 rounded-lg text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer ${studioWorldStashMode === 'landmark' ? 'bg-[#2ecc71] text-[#050f18] shadow' : 'text-slate-400 hover:text-white'}" data-mode="landmark">
-                      <span>🏰</span>
-                      <span>3D Landmark</span>
+                    <button type="button" class="studio-world-mode-btn py-1.5 px-3 rounded-lg text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer ${studioWorldStashMode === 'landmark' ? 'bg-[#2ecc71] text-[#050f18] shadow' : 'text-slate-400 hover:text-white'}" data-mode="landmark">
+                      <span>🏰</span><span>3D Landmark</span>
                     </button>
-                    <button type="button" class="studio-world-mode-btn py-2 px-3 rounded-lg text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer ${studioWorldStashMode === 'mystery_stash' ? 'bg-[#f39c12] text-[#050f18] shadow' : 'text-slate-400 hover:text-white'}" data-mode="mystery_stash">
-                      <span>📦</span>
-                      <span>Streak Stash Crate</span>
+                    <button type="button" class="studio-world-mode-btn py-1.5 px-3 rounded-lg text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer ${studioWorldStashMode === 'mystery_stash' ? 'bg-[#f39c12] text-[#050f18] shadow' : 'text-slate-400 hover:text-white'}" data-mode="mystery_stash">
+                      <span>📦</span><span>Streak Crate</span>
                     </button>
                   </div>
 
                   ${studioWorldStashMode === 'landmark' ? `
-                    <!-- Landmark Archetype Selector -->
-                    <div>
-                      <label class="text-[10px] font-black uppercase text-on-surface-variant">Landmark Archetype</label>
-                      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-1.5">
-                        ${LANDMARK_ARCHETYPES.map(arch => `
-                          <button type="button" class="studio-landmark-arch-btn p-2 rounded-xl border flex items-center gap-1.5 text-xs font-black transition-all cursor-pointer ${studioLandmarkArchetype === arch.type ? 'bg-[#2ecc71]/20 border-[#2ecc71] text-white' : 'bg-surface-container border-surface-container-highest text-slate-400 hover:text-white'}" data-arch="${arch.type}">
-                            <span>${arch.emoji}</span>
-                            <span class="truncate">${arch.name.split(' ')[0]}</span>
-                          </button>
-                        `).join('')}
-                      </div>
+                    <div class="grid grid-cols-4 gap-1.5 mt-1">
+                      ${LANDMARK_ARCHETYPES.map(arch => `
+                        <button type="button" class="studio-landmark-arch-btn p-1.5 rounded-xl border flex flex-col items-center gap-0.5 text-[10px] font-black transition-all cursor-pointer ${studioLandmarkArchetype === arch.type ? 'bg-[#2ecc71]/20 border-[#2ecc71] text-white' : 'bg-surface-container border-surface-container-highest text-slate-400 hover:text-white'}" data-arch="${arch.type}">
+                          <span>${arch.emoji}</span>
+                          <span class="truncate w-full text-center">${arch.name.split(' ')[0]}</span>
+                        </button>
+                      `).join('')}
                     </div>
-
-                    <!-- Landmark Location Preset Selector -->
-                    <div>
-                      <label class="text-[10px] font-black uppercase text-on-surface-variant">Island Location & Biome</label>
-                      <select id="studio-landmark-preset-select" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface mt-1 focus:outline-none focus:border-secondary">
-                        ${BIOME_PLACEMENT_PRESETS.map(preset => `
-                          <option value="${preset.id}" ${studioLandmarkPreset === preset.id ? 'selected' : ''}>
-                            ${preset.name} (${preset.biomeId.replace('_', ' ')})
-                          </option>
-                        `).join('')}
-                      </select>
-                    </div>
-
-                    <!-- Token & Spark Rewards -->
-                    <div class="grid grid-cols-2 gap-3">
+                    <select id="studio-landmark-preset-select" class="w-full bg-surface-container border border-surface-container-highest rounded-xl p-2 text-xs font-bold text-inverse-surface mt-1 focus:outline-none focus:border-cyan-400">
+                      ${BIOME_PLACEMENT_PRESETS.map(preset => `
+                        <option value="${preset.id}" ${studioLandmarkPreset === preset.id ? 'selected' : ''}>
+                          ${preset.name} (${preset.biomeId.replace('_', ' ')})
+                        </option>
+                      `).join('')}
+                    </select>
+                    <div class="grid grid-cols-2 gap-2 mt-1">
                       <div>
-                        <div class="flex items-center justify-between">
-                          <label class="text-[10px] font-black uppercase text-on-surface-variant">Explorer Tokens</label>
-                          <span id="studio-landmark-coins-val" class="text-xs font-black text-secondary">🪙 ${studioLandmarkCoins}</span>
+                        <div class="flex items-center justify-between text-[10px] font-black uppercase text-on-surface-variant">
+                          <span>Tokens</span>
+                          <span id="studio-landmark-coins-val" class="text-cyan-400">🪙 ${studioLandmarkCoins}</span>
                         </div>
-                        <input id="studio-landmark-coins-slider" type="range" min="15" max="100" step="5" value="${studioLandmarkCoins}" class="w-full accent-secondary mt-1.5" />
+                        <input id="studio-landmark-coins-slider" type="range" min="15" max="100" step="5" value="${studioLandmarkCoins}" class="w-full accent-cyan-400 mt-1" />
                       </div>
                       <div>
-                        <div class="flex items-center justify-between">
-                          <label class="text-[10px] font-black uppercase text-on-surface-variant">Companion Sparks</label>
-                          <span id="studio-landmark-sparks-val" class="text-xs font-black text-secondary">⚡ ${studioLandmarkSparks}</span>
+                        <div class="flex items-center justify-between text-[10px] font-black uppercase text-on-surface-variant">
+                          <span>Sparks</span>
+                          <span id="studio-landmark-sparks-val" class="text-cyan-400">⚡ ${studioLandmarkSparks}</span>
                         </div>
-                        <input id="studio-landmark-sparks-slider" type="range" min="5" max="50" step="5" value="${studioLandmarkSparks}" class="w-full accent-secondary mt-1.5" />
+                        <input id="studio-landmark-sparks-slider" type="range" min="5" max="50" step="5" value="${studioLandmarkSparks}" class="w-full accent-cyan-400 mt-1" />
                       </div>
                     </div>
                   ` : `
-                    <!-- Mystery Stash Streak Requirement & Bounty -->
-                    <div>
-                      <div class="flex items-center justify-between">
-                        <label class="text-[10px] font-black uppercase text-on-surface-variant">Required Habit Streak to Unlock</label>
-                        <span id="studio-stash-streak-val" class="text-xs font-black text-amber-400">🔥 ${studioBountyStreakDays}-Day Streak</span>
-                      </div>
-                      <input id="studio-stash-streak-slider" type="range" min="1" max="14" step="1" value="${studioBountyStreakDays}" class="w-full accent-amber-400 mt-1.5" />
+                    <div class="flex items-center justify-between text-xs font-bold text-amber-400">
+                      <span>Habit Streak Required:</span>
+                      <span id="studio-stash-streak-val">🔥 ${studioBountyStreakDays}-Day Streak</span>
                     </div>
-
-                    <div>
-                      <label class="text-[10px] font-black uppercase text-on-surface-variant">Island Biome</label>
-                      <select id="studio-stash-biome-select" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface mt-1 focus:outline-none focus:border-secondary">
-                        <option value="whispering_meadows">Whispering Meadows (Morning)</option>
-                        <option value="sunken_lagoon">Sunken Lagoon (Afternoon)</option>
-                        <option value="molten_volcano">Molten Volcano (Evening)</option>
-                        <option value="crystal_summit">Crystal Summit (Bedtime)</option>
-                      </select>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-3">
-                      <div>
-                        <div class="flex items-center justify-between">
-                          <label class="text-[10px] font-black uppercase text-on-surface-variant">Chest Token Bounty</label>
-                          <span class="text-xs font-black text-secondary">🪙 ${studioItemPrice || 100}</span>
-                        </div>
-                        <input id="studio-stash-coins-slider" type="range" min="50" max="300" step="25" value="${studioItemPrice || 100}" class="w-full accent-secondary mt-1.5" />
-                      </div>
-                      <div>
-                        <div class="flex items-center justify-between">
-                          <label class="text-[10px] font-black uppercase text-on-surface-variant">Companion Sparks</label>
-                          <span class="text-xs font-black text-secondary">⚡ 50</span>
-                        </div>
-                        <input type="range" min="20" max="100" step="10" value="50" disabled class="w-full accent-secondary mt-1.5 opacity-60" />
-                      </div>
-                    </div>
+                    <input id="studio-stash-streak-slider" type="range" min="1" max="14" step="1" value="${studioBountyStreakDays}" class="w-full accent-amber-400" />
+                    <select id="studio-stash-biome-select" class="w-full bg-surface-container border border-surface-container-highest rounded-xl p-2 text-xs font-bold text-inverse-surface focus:outline-none focus:border-cyan-400">
+                      <option value="whispering_meadows">Whispering Meadows (Morning)</option>
+                      <option value="sunken_lagoon">Sunken Lagoon (Afternoon)</option>
+                      <option value="molten_volcano">Molten Volcano (Evening)</option>
+                      <option value="crystal_summit">Crystal Summit (Bedtime)</option>
+                    </select>
+                    <input id="studio-stash-coins-slider" type="range" min="50" max="300" step="25" value="${studioItemPrice || 100}" class="w-full accent-cyan-400" />
                   `}
-
                 </div>
               ` : `
-                <div class="p-4 bg-surface-container-high/70 rounded-2xl border-2 border-secondary/30 flex flex-col gap-3">
+                <div class="p-3.5 bg-surface-container-high/60 rounded-2xl border border-surface-container-highest flex flex-col gap-2">
                   <div class="flex items-center justify-between">
-                    <span class="text-xs font-black uppercase text-secondary flex items-center gap-1.5">
-                      <span class="material-symbols-outlined text-sm">swords</span>
-                      <span>AR Quest Battle Parameters</span>
-                    </span>
-                    <span id="studio-boss-badge" class="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-400/20 text-amber-400 border border-amber-400/40">
+                    <span class="text-xs font-headline font-black text-cyan-400 uppercase tracking-wider">Quest Battle Boss</span>
+                    <span id="studio-boss-badge" class="px-2 py-0.5 rounded-full text-xs font-black bg-cyan-400/20 text-cyan-300 border border-cyan-400/40">
                       HP: ${studioBossHp} • Reward: ${studioBossCoins} 🪙
                     </span>
                   </div>
-
-                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div class="grid grid-cols-2 gap-3">
                     <div>
-                      <label class="text-[10px] font-black uppercase text-on-surface-variant">Boss Base Health (HP)</label>
-                      <input 
-                        id="studio-boss-hp-slider" 
-                        type="range" 
-                        min="100" 
-                        max="500" 
-                        step="25" 
-                        value="${studioBossHp}"
-                        class="w-full accent-secondary mt-1.5" 
-                      />
+                      <span class="text-[9px] font-black uppercase text-on-surface-variant block mb-1">Health (HP)</span>
+                      <input id="studio-boss-hp-slider" type="range" min="100" max="500" step="25" value="${studioBossHp}" class="w-full accent-cyan-400" />
                     </div>
                     <div>
-                      <label class="text-[10px] font-black uppercase text-on-surface-variant">Victory Token Reward</label>
-                      <input 
-                        id="studio-boss-coins-slider" 
-                        type="range" 
-                        min="20" 
-                        max="120" 
-                        step="10" 
-                        value="${studioBossCoins}"
-                        class="w-full accent-secondary mt-1.5" 
-                      />
+                      <span class="text-[9px] font-black uppercase text-on-surface-variant block mb-1">Token Bounty</span>
+                      <input id="studio-boss-coins-slider" type="range" min="20" max="120" step="10" value="${studioBossCoins}" class="w-full accent-cyan-400" />
                     </div>
                   </div>
                 </div>
               `}
 
-              <!-- Lore Description -->
-              <div>
-                <label class="text-[10px] font-black uppercase text-on-surface-variant">Lore & Encouraging Description</label>
-                <input 
-                  id="studio-item-desc" 
-                  type="text" 
-                  value="${studioItemDesc}"
-                  placeholder="e.g. Forged from pure starlight to give brave heroes extra courage!"
-                  class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-none focus:border-secondary" 
-                />
+              <!-- Lore & Voice Line -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="text-[10px] font-black uppercase text-on-surface-variant block mb-1">Lore / Description</label>
+                  <input 
+                    id="studio-item-desc" 
+                    type="text" 
+                    value="${studioItemDesc}"
+                    placeholder="e.g. Forged from starlight for extra courage!"
+                    class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-none focus:border-cyan-400" 
+                  />
+                </div>
+
+                <div>
+                  <label class="text-[10px] font-black uppercase text-on-surface-variant block mb-1 flex items-center gap-1">
+                    <span class="material-symbols-outlined text-xs text-cyan-400">record_voice_over</span>
+                    <span>${studioActiveCategory === 'boss' ? 'Boss Taunt Rally' : 'Rex Voice Line'}</span>
+                  </label>
+                  <input 
+                    id="studio-item-voiceline" 
+                    type="text" 
+                    value="${studioActiveCategory === 'boss' ? studioBossTaunt : studioPetVoiceLine}"
+                    placeholder="e.g. Woohoo! Super hero power!"
+                    class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-cyan-300 focus:outline-none focus:border-cyan-400" 
+                  />
+                </div>
               </div>
 
-              <!-- Companion Spoken Reaction Voice Line / Boss Battle Rally -->
-              <div>
-                <label class="text-[10px] font-black uppercase text-on-surface-variant flex items-center gap-1">
-                  <span class="material-symbols-outlined text-xs text-secondary">record_voice_over</span>
-                  <span>${studioActiveCategory === 'boss' ? 'Boss Taunt & Heroic Rally Call' : 'Companion Spoken Reaction Line (When Interacted)'}</span>
-                </label>
-                <input 
-                  id="studio-item-voiceline" 
-                  type="text" 
-                  value="${studioActiveCategory === 'boss' ? studioBossTaunt : studioPetVoiceLine}"
-                  placeholder="${studioActiveCategory === 'boss' ? 'e.g. You cannot defeat the Plaque Monster!' : 'e.g. Woohoo! Look at my new gear! Super hero power!'}"
-                  class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-secondary focus:outline-none focus:border-secondary" 
-                />
-              </div>
-
-              <!-- Delivery Channels & Target Child Selector -->
-              <div class="bg-slate-800/80 p-4 rounded-2xl border border-amber-400/30 flex flex-col gap-3 my-3">
+              <!-- Delivery Channel & Child Target (Clean Card) -->
+              <div class="bg-slate-800/80 p-3.5 rounded-2xl border border-cyan-400/30 flex flex-col gap-2.5 text-white">
                 <div class="flex items-center justify-between">
-                  <span class="text-xs font-black uppercase text-amber-300 flex items-center gap-1.5">
+                  <span class="text-xs font-headline font-black uppercase text-cyan-300 flex items-center gap-1.5">
                     <span class="material-symbols-outlined text-sm">local_shipping</span>
-                    <span>Delivery Channel & Child Target</span>
+                    <span>Delivery Option & Child Profile</span>
                   </span>
                 </div>
 
-                <!-- 3 Delivery Channels: Instant Gift vs Hero Shop vs Habit Bounty -->
                 <div class="grid grid-cols-3 gap-2">
-                  <label class="flex flex-col items-center gap-1 p-2.5 rounded-xl border cursor-pointer text-center transition-all ${studioDeliveryMethod === 'instant_gift' ? 'bg-amber-400/20 border-amber-400 text-amber-300 font-bold' : 'bg-slate-900/60 border-slate-700 text-slate-400'}">
+                  <label class="flex flex-col items-center gap-0.5 p-2 rounded-xl border cursor-pointer text-center transition-all ${studioDeliveryMethod === 'instant_gift' ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300 font-bold' : 'bg-slate-900/60 border-slate-700 text-slate-400'}">
                     <input type="radio" name="studio-delivery-method" value="instant_gift" ${studioDeliveryMethod === 'instant_gift' ? 'checked' : ''} class="hidden studio-delivery-radio" />
-                    <span class="text-xl">🎁</span>
-                    <span class="text-[11px] font-black">Instant Gift</span>
-                    <span class="text-[9px] text-slate-400">Surprise crate</span>
+                    <span class="text-lg">🎁</span>
+                    <span class="text-[10px] font-black">Gift Crate</span>
                   </label>
 
-                  <label class="flex flex-col items-center gap-1 p-2.5 rounded-xl border cursor-pointer text-center transition-all ${studioDeliveryMethod === 'hero_shop' ? 'bg-amber-400/20 border-amber-400 text-amber-300 font-bold' : 'bg-slate-900/60 border-slate-700 text-slate-400'}">
+                  <label class="flex flex-col items-center gap-0.5 p-2 rounded-xl border cursor-pointer text-center transition-all ${studioDeliveryMethod === 'hero_shop' ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300 font-bold' : 'bg-slate-900/60 border-slate-700 text-slate-400'}">
                     <input type="radio" name="studio-delivery-method" value="hero_shop" ${studioDeliveryMethod === 'hero_shop' ? 'checked' : ''} class="hidden studio-delivery-radio" />
-                    <span class="text-xl">🪙</span>
-                    <span class="text-[11px] font-black">Hero Shop</span>
-                    <span class="text-[9px] text-slate-400">Token unlock</span>
+                    <span class="text-lg">🪙</span>
+                    <span class="text-[10px] font-black">Hero Shop</span>
                   </label>
 
-                  <label class="flex flex-col items-center gap-1 p-2.5 rounded-xl border cursor-pointer text-center transition-all ${studioDeliveryMethod === 'habit_bounty' ? 'bg-amber-400/20 border-amber-400 text-amber-300 font-bold' : 'bg-slate-900/60 border-slate-700 text-slate-400'}">
+                  <label class="flex flex-col items-center gap-0.5 p-2 rounded-xl border cursor-pointer text-center transition-all ${studioDeliveryMethod === 'habit_bounty' ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300 font-bold' : 'bg-slate-900/60 border-slate-700 text-slate-400'}">
                     <input type="radio" name="studio-delivery-method" value="habit_bounty" ${studioDeliveryMethod === 'habit_bounty' ? 'checked' : ''} class="hidden studio-delivery-radio" />
-                    <span class="text-xl">🎯</span>
-                    <span class="text-[11px] font-black">Habit Bounty</span>
-                    <span class="text-[9px] text-slate-400">Streak goal</span>
+                    <span class="text-lg">🎯</span>
+                    <span class="text-[10px] font-black">Habit Goal</span>
                   </label>
                 </div>
 
-                <!-- Target Child Profile -->
                 <div class="flex items-center gap-2">
                   <span class="text-xs text-slate-300 font-bold">Target Hero:</span>
-                  <select id="studio-target-child-select" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl p-1.5 text-xs font-bold text-amber-300">
+                  <select id="studio-target-child-select" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl p-1.5 text-xs font-bold text-cyan-300">
                     <option value="all">🌟 All Children in Household</option>
                     ${(store.getState().heroes || []).map(h => `
                       <option value="${h.id}" ${studioTargetChildProfile === h.id ? 'selected' : ''}>🦸 ${h.name}</option>
@@ -2549,53 +2434,54 @@ export function renderParentPortalView() {
                   </select>
                 </div>
 
-                <!-- If Habit Bounty selected, choose habit & streak days -->
                 ${studioDeliveryMethod === 'habit_bounty' ? `
                   <div class="flex flex-col gap-2 pt-2 border-t border-slate-700">
                     <div class="flex items-center justify-between text-xs text-slate-300 font-bold">
-                      <span>Required Habit:</span>
-                      <select id="studio-bounty-habit-select" class="bg-slate-900 border border-slate-700 rounded-xl p-1.5 text-xs text-amber-300 font-bold">
-                        <option value="brush_teeth" ${studioBountyHabitId === 'brush_teeth' ? 'selected' : ''}>🪥 Brush Teeth (Morning or Night)</option>
-                        <option value="drink_water" ${studioBountyHabitId === 'drink_water' ? 'selected' : ''}>💧 Drink Fresh Water</option>
-                        <option value="tidy_toys" ${studioBountyHabitId === 'tidy_toys' ? 'selected' : ''}>🧸 Tidy Up Hero Toys</option>
-                        <option value="eat_healthy_snack" ${studioBountyHabitId === 'eat_healthy_snack' ? 'selected' : ''}>🍎 Eat Healthy Snack</option>
-                        <option value="make_bed" ${studioBountyHabitId === 'make_bed' ? 'selected' : ''}>🛏️ Make Hero Bed</option>
-                        <option value="any" ${studioBountyHabitId === 'any' ? 'selected' : ''}>⭐ Any Daily Habit</option>
+                      <span>Habit:</span>
+                      <select id="studio-bounty-habit-select" class="bg-slate-900 border border-slate-700 rounded-xl p-1.5 text-xs text-cyan-300 font-bold">
+                        <option value="brush_teeth" ${studioBountyHabitId === 'brush_teeth' ? 'selected' : ''}>🪥 Brush Teeth</option>
+                        <option value="drink_water" ${studioBountyHabitId === 'drink_water' ? 'selected' : ''}>💧 Drink Water</option>
+                        <option value="tidy_toys" ${studioBountyHabitId === 'tidy_toys' ? 'selected' : ''}>🧸 Tidy Up Toys</option>
+                        <option value="eat_healthy_snack" ${studioBountyHabitId === 'eat_healthy_snack' ? 'selected' : ''}>🍎 Healthy Snack</option>
+                        <option value="make_bed" ${studioBountyHabitId === 'make_bed' ? 'selected' : ''}>🛏️ Make Bed</option>
+                        <option value="any" ${studioBountyHabitId === 'any' ? 'selected' : ''}>⭐ Any Habit</option>
                       </select>
                     </div>
                     <div class="flex items-center justify-between text-xs text-slate-300 font-bold">
-                      <span>Streak Target:</span>
-                      <span id="studio-bounty-streak-val" class="text-amber-300 font-black">${studioBountyStreakDays} Days</span>
+                      <span>Streak:</span>
+                      <span id="studio-bounty-streak-val" class="text-cyan-300 font-black">${studioBountyStreakDays} Days</span>
                     </div>
-                    <input type="range" id="studio-bounty-streak-slider" min="1" max="7" value="${studioBountyStreakDays}" class="w-full accent-amber-400" />
+                    <input type="range" id="studio-bounty-streak-slider" min="1" max="7" value="${studioBountyStreakDays}" class="w-full accent-cyan-400" />
                   </div>
                 ` : ''}
               </div>
 
-              <!-- Action Bar: Test as Child & Publish Live Buttons -->
+              <!-- Publish Action Bar -->
               <div class="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-surface-container-highest">
                 <button 
                   type="button" 
                   id="studio-test-as-child-btn"
-                  class="w-full sm:w-auto py-3 px-4 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-headline text-xs font-black shadow-lg hover:scale-102 active:scale-95 transition-all flex items-center justify-center gap-2"
+                  class="w-full sm:w-auto py-2.5 px-4 min-h-[44px] rounded-2xl bg-surface-container-high border border-surface-container-highest text-inverse-surface hover:bg-surface-bright font-headline text-xs font-black shadow active:scale-95 transition-all flex items-center justify-center gap-1.5"
                 >
                   <span>👀</span>
-                  <span>Test as Child (Preview Simulator)</span>
+                  <span>Test as Child</span>
                 </button>
 
                 <button 
+                  type="button" 
                   id="studio-gear-publish-btn" 
                   data-studio-publish="true"
-                  class="w-full sm:w-auto bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-slate-950 font-headline text-xs font-black py-3.5 px-6 rounded-2xl shadow-xl hover:shadow-amber-500/25 active:scale-95 transition-all flex items-center justify-center gap-2 border-2 border-white/30"
+                  class="w-full sm:w-auto bg-gradient-to-r from-cyan-500 via-blue-600 to-emerald-500 text-slate-950 font-headline text-xs sm:text-sm font-black py-3 px-6 min-h-[44px] rounded-2xl shadow-xl hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 border-2 border-white/30"
                 >
-                  <span class="text-lg">🚀</span>
-                  <span>Publish Live to ${studioActiveCategory === 'gear' ? 'Hero Shop' : studioActiveCategory === 'furniture' ? 'Hero HQ' : studioActiveCategory === 'toy' ? 'Pet Pen' : studioActiveCategory === 'food' ? 'Hero Shop (Snacks)' : 'AR Quests'}</span>
+                  <span class="text-base">🚀</span>
+                  <span>Publish Reward Live</span>
                 </button>
               </div>
 
             </div>
 
           </div>
+
 
           <!-- Published Custom Creations Galleries -->
           <div class="bg-surface-container rounded-3xl p-6 border border-surface-container-highest shadow-sm flex flex-col gap-6">
@@ -5007,7 +4893,7 @@ export function attachParentPortalListeners() {
 
             // Ambient background glow
             const grad = ctx.createRadialGradient(w/2, h/2, 20, w/2, h/2, 160);
-            grad.addColorStop(0, studioActiveCategory === 'furniture' ? 'rgba(16,185,129,0.25)' : studioActiveCategory === 'toy' ? 'rgba(168,85,247,0.25)' : studioActiveCategory === 'food' ? 'rgba(132,204,22,0.25)' : 'rgba(239,68,68,0.3)');
+            grad.addColorStop(0, studioActiveCategory === 'furniture' ? 'rgba(16,185,129,0.25)' : studioActiveCategory === 'toy' ? 'rgba(6,182,212,0.25)' : studioActiveCategory === 'food' ? 'rgba(132,204,22,0.25)' : 'rgba(239,68,68,0.3)');
             grad.addColorStop(1, 'rgba(0,0,0,0)');
             ctx.fillStyle = grad;
             ctx.fillRect(0, 0, w, h);
@@ -5024,7 +4910,7 @@ export function attachParentPortalListeners() {
             ctx.fillStyle = '#0f172a';
             ctx.fill();
             ctx.lineWidth = 3;
-            ctx.strokeStyle = studioActiveCategory === 'furniture' ? '#10b981' : studioActiveCategory === 'toy' ? '#a855f7' : studioActiveCategory === 'food' ? '#84cc16' : '#ef4444';
+            ctx.strokeStyle = studioActiveCategory === 'furniture' ? '#10b981' : studioActiveCategory === 'toy' ? '#06b6d4' : studioActiveCategory === 'food' ? '#84cc16' : '#ef4444';
             ctx.stroke();
 
             // Inner ring
@@ -5176,7 +5062,7 @@ export function attachParentPortalListeners() {
           studioFoodQuantity = 3;
           studioActiveSplineUrl = '';
                 } else if (cat === 'pet') {
-          studioPetArchetype = sparkKey;
+          studioPetArchetype = 'dino';
           const matched = petThemes.find(t => t.key === sparkKey);
           if (matched) {
             studioItemName = matched.label.split(' ').slice(1).join(' ');

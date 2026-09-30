@@ -428,12 +428,12 @@ export function renderPetPenView() {
         const customToys = store.getParentCustomToys ? store.getParentCustomToys() : [];
         if (customToys.length === 0) return '';
         return `
-        <section class="bg-gradient-to-r from-purple-950/80 via-slate-900/90 to-purple-950/80 rounded-3xl p-4 border-2 border-purple-400/40 shadow-xl flex flex-col gap-3">
+        <section class="bg-gradient-to-r from-emerald-950/80 via-slate-900/90 to-cyan-950/80 rounded-3xl p-4 border-2 border-cyan-400/40 shadow-xl flex flex-col gap-3">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
-              <span class="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-400/30 flex items-center justify-center text-lg">🎾</span>
+              <span class="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-400/30 flex items-center justify-center text-lg">🎾</span>
               <div>
-                <h3 class="font-headline text-xs sm:text-sm font-black text-purple-300 flex items-center gap-1.5">
+                <h3 class="font-headline text-xs sm:text-sm font-black text-cyan-300 flex items-center gap-1.5">
                   Parent-Crafted Toy Chest (${customToys.length})
                 </h3>
                 <p class="text-[10px] text-slate-300">Tap any toy to play with ${activePet?.name || 'your companion'} and boost stats!</p>
@@ -445,7 +445,7 @@ export function renderPetPenView() {
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             ${customToys.map(toy => `
               <button 
-                class="pen-custom-toy-btn bg-slate-800/80 hover:bg-slate-700 border-2 border-purple-400/30 hover:border-purple-400 rounded-2xl p-3 flex flex-col items-center text-center gap-1.5 transition-all active:scale-95 group shadow-md"
+                class="pen-custom-toy-btn bg-slate-800/80 hover:bg-slate-700 border-2 border-cyan-400/30 hover:border-cyan-400 rounded-2xl p-3 flex flex-col items-center text-center gap-1.5 transition-all active:scale-95 group shadow-md"
                 data-toy-id="${toy.id}"
                 title="${toy.desc || toy.name}"
               >
@@ -455,7 +455,7 @@ export function renderPetPenView() {
                   <div class="text-3xl group-hover:scale-115 transition-transform drop-shadow">${toy.emoji || '🎪'}</div>
                 `}
                 <span class="font-headline text-xs font-black text-white truncate max-w-full">${toy.name}</span>
-                <span class="text-[9px] font-black text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded-full border border-purple-400/30">
+                <span class="text-[9px] font-black text-cyan-300 bg-cyan-500/20 px-2 py-0.5 rounded-full border border-cyan-400/30">
                   +${toy.statRefillAmount || 30} ${(toy.statRefillTarget || 'Joy').toUpperCase()}
                 </span>
               </button>
@@ -557,10 +557,10 @@ function renderRadialActionRing(state) {
         <div class="grid grid-cols-2 gap-3 w-full pt-1">
           
           <!-- 1. Pet / Hug -->
-          <button id="radial-hug-btn" class="bg-gradient-to-r from-pink-500 to-rose-500 text-white font-headline text-xs font-black p-3.5 rounded-2xl chunky-btn flex flex-col items-center gap-1 hover:brightness-110 active:scale-95 shadow-md">
+          <button id="radial-hug-btn" class="bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-headline text-xs font-black p-3.5 rounded-2xl chunky-btn flex flex-col items-center gap-1 hover:brightness-110 active:scale-95 shadow-md">
             <span class="material-symbols-outlined text-2xl">favorite</span>
             <span>Pet & Hug</span>
-            <span class="text-[9px] font-bold text-pink-100">+20 Joy • +10 XP</span>
+            <span class="text-[9px] font-bold text-slate-900">+20 Joy • +10 XP</span>
           </button>
 
           <!-- 2. Feed Munchies Treat -->

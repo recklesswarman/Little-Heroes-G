@@ -1,9 +1,11 @@
 import { store } from '../state/store.js';
 import { speakRex } from '../services/voiceService.js';
+import { Sound } from '../audio/sfx.js';
 import { preserveScrollPosition } from '../utils/scrollPreserve.js';
 
 let selectedCategory = 'all'; // 'all', 'weapons', 'gear', 'badges', 'snacks', 'themes', 'real_life'
 let selectedSort = 'cheapest'; // 'cheapest', 'expensive'
+let inspectingShopItem = null;
 
 export function renderShopView() {
   const state = store.getState();
@@ -186,32 +188,57 @@ export function renderShopView() {
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             ${filteredDigital
               .map((item) => {
-                const isOwned = (state.inventory || []).includes(item.title);
-                const isEquipped = state.equippedPetGear === item.title;
-                const canAfford = hero.coins >= item.costCoins;
+                const heroInventory = Array.isArray(hero.inventory) ? hero.inventory : (state.inventory || []);
+                const isWeapon = item.category === 'Weapons';
+                const isFood = item.category === 'Snacks' || item.usageType === 'single_use' || item.usageType === 'multi_use';
+                
+                // Servings count for consumables
+                let servingsCount = 0;
+                if (hero.consumables && hero.consumables[item.id]) {
+                  const cons = hero.consumables[item.id];
+                  servingsCount = typeof cons === 'object' ? (cons.servingsRemaining || 0) : cons;
+                }
+
+                const isOwned = heroInventory.includes(item.id) || heroInventory.includes(item.title);
+                let isEquipped = false;
+                if (isWeapon) {
+                  isEquipped = (hero.equippedWeapon === item.id) || (hero.equippedWeapon === item.title);
+                } else if (item.targetPetSocket) {
+                  isEquipped = (hero.equippedPetGear && (hero.equippedPetGear[item.targetPetSocket] === item.id || hero.equippedPetGear[item.targetPetSocket] === item.title)) || (state.equippedPetGear === item.title);
+                } else {
+                  isEquipped = (state.equippedPetGear === item.title) || (Array.isArray(hero.equippedGear) && hero.equippedGear.includes(item.id));
+                }
+
+                const canAfford = (hero.coins || 0) >= item.costCoins;
                 const isParentCrafted = Boolean(item.isParentCrafted || item.isCustomAI);
                 const socketIconMap = { head: '👑 Head', back: '🚀 Back', chest: '🛡️ Chest', feet: '👟 Paws' };
                 const socketLabel = item.targetPetSocket ? socketIconMap[item.targetPetSocket] || item.targetPetSocket : null;
 
                 return `
                 <div data-gear-card-id="${item.id}" class="gear-card-item bg-surface-container rounded-3xl p-5 border-2 ${
-                  isParentCrafted ? 'border-amber-400/60 shadow-[0_0_15px_rgba(245,158,11,0.2)]' : 'border-surface-container-highest'
+                  isEquipped ? 'border-primary shadow-[0_0_15px_rgba(46,204,113,0.3)]' : isParentCrafted ? 'border-amber-400/60 shadow-[0_0_15px_rgba(245,158,11,0.2)]' : 'border-surface-container-highest'
                 } card-shadow flex flex-col justify-between gap-4 group hover:border-secondary transition-all cursor-pointer">
                   
                   <div class="flex items-start gap-3.5">
                     <div class="w-16 h-16 rounded-2xl bg-surface-container-high flex items-center justify-center p-2 flex-shrink-0 border border-surface-container-highest group-hover:scale-105 transition-transform relative overflow-hidden">
                       <img class="w-full h-full object-contain drop-shadow" src="${item.image}" alt="${item.title}" />
                       ${isParentCrafted ? `<div class="absolute inset-0 bg-gradient-to-tr from-amber-400/10 via-transparent to-yellow-300/20 pointer-events-none"></div>` : ''}
+                      <button class="shop-inspect-item-btn absolute bottom-0.5 right-0.5 w-6 h-6 rounded-lg bg-black/70 text-white/80 hover:text-white flex items-center justify-center text-xs" data-inspect-id="${item.id}" title="Inspect 3D">
+                        🔍
+                      </button>
                     </div>
 
                     <div class="flex flex-col flex-1 min-w-0">
                       <div class="flex items-center gap-1.5 flex-wrap">
                         <span class="text-[10px] font-black uppercase text-secondary">${item.category}</span>
                         ${
-                          isParentCrafted
-                            ? `<span class="text-[9px] font-black uppercase text-amber-300 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 px-1.5 py-0.5 rounded-full border border-amber-400/40 flex items-center gap-0.5">
-                                 <span class="material-symbols-outlined text-[10px]" style="font-variation-settings: 'FILL' 1;">auto_awesome</span> Parent Crafted
-                               </span>`
+                          isWeapon
+                            ? `<span class="text-[9px] font-black uppercase text-cyan-300 bg-cyan-950/60 px-1.5 py-0.5 rounded border border-cyan-700/60 flex items-center gap-0.5">⚔️ 1 Active / Battle</span>`
+                            : ''
+                        }
+                        ${
+                          isFood
+                            ? `<span class="text-[9px] font-bold text-amber-300 bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-600/50">${servingsCount > 0 ? `🫐 ${servingsCount} Serving${servingsCount > 1 ? 's' : ''}` : item.usageType === 'single_use' ? 'Single Use' : 'Snack Treat'}</span>`
                             : ''
                         }
                         ${
@@ -234,8 +261,8 @@ export function renderShopView() {
                       <h3 class="font-headline text-base font-black text-inverse-surface leading-tight truncate mt-1">${item.title}</h3>
                       <p class="text-xs text-on-surface-variant mt-0.5 line-clamp-2">${item.desc}</p>
                       ${
-                        item.parentNote
-                          ? `<div class="text-[10px] text-amber-300/90 italic mt-1 truncate">💌 "${item.parentNote}"</div>`
+                        item.voiceLine
+                          ? `<div class="text-[10px] text-cyan-300/90 italic mt-1 truncate">🦖 "${item.voiceLine}"</div>`
                           : ''
                       }
                     </div>
@@ -249,7 +276,57 @@ export function renderShopView() {
 
                     <div>
                       ${
-                        isEquipped
+                        isWeapon
+                          ? isEquipped
+                            ? `
+                            <span class="bg-primary/20 text-primary font-headline text-xs font-black px-3.5 py-2 rounded-xl border border-primary/40 inline-flex items-center gap-1">
+                              <span>✅</span> Equipped (1/1)
+                            </span>
+                          `
+                            : isOwned
+                            ? `
+                            <button data-equip-weapon-id="${item.id}" class="shop-equip-weapon-btn min-h-[44px] bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-headline text-xs font-black px-4 py-2 rounded-xl border border-cyan-300 chunky-btn-sm active:scale-95 shadow">
+                              Equip Weapon
+                            </button>
+                          `
+                            : canAfford
+                            ? `
+                            <button data-buy-gear-id="${item.id}" class="buy-gear-btn min-h-[44px] bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2 rounded-xl chunky-btn border-secondary-container shadow-chunky-sm hover:brightness-110 active:scale-95">
+                              Buy Weapon
+                            </button>
+                          `
+                            : `
+                            <button class="min-h-[44px] bg-surface-container-highest text-on-surface-variant font-headline text-xs font-black px-4 py-2 rounded-xl border border-surface-container-low opacity-60 cursor-not-allowed">
+                              Need ${item.costCoins - (hero.coins || 0)} more
+                            </button>
+                          `
+                          : isFood
+                          ? servingsCount > 0
+                            ? `
+                            <div class="flex items-center gap-1.5">
+                              <button data-feed-snack-id="${item.id}" class="shop-feed-snack-btn min-h-[44px] bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-headline text-xs font-black px-3.5 py-2 rounded-xl border border-emerald-300 chunky-btn-sm active:scale-95 shadow flex items-center gap-1">
+                                <span>🍽️</span>
+                                <span>Feed Rex (${servingsCount})</span>
+                              </button>
+                              ${canAfford ? `
+                                <button data-buy-gear-id="${item.id}" class="buy-gear-btn min-h-[44px] bg-surface-container-high hover:bg-surface-bright text-secondary font-headline text-xs font-black px-2.5 py-2 rounded-xl border border-secondary/40" title="Buy More Servings">
+                                  +🪙
+                                </button>
+                              ` : ''}
+                            </div>
+                          `
+                            : canAfford
+                            ? `
+                            <button data-buy-gear-id="${item.id}" class="buy-gear-btn min-h-[44px] bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2 rounded-xl chunky-btn border-secondary-container shadow-chunky-sm hover:brightness-110 active:scale-95">
+                              Buy Snack (${item.maxServings || 1}x)
+                            </button>
+                          `
+                            : `
+                            <button class="min-h-[44px] bg-surface-container-highest text-on-surface-variant font-headline text-xs font-black px-4 py-2 rounded-xl border border-surface-container-low opacity-60 cursor-not-allowed">
+                              Need ${item.costCoins - (hero.coins || 0)} more
+                            </button>
+                          `
+                          : isEquipped
                           ? `
                         <span class="bg-primary/20 text-primary font-headline text-xs font-black px-4 py-2 rounded-xl border border-primary/40 inline-block">
                           Equipped
@@ -269,7 +346,7 @@ export function renderShopView() {
                       `
                           : `
                         <button class="min-h-[44px] bg-surface-container-highest text-on-surface-variant font-headline text-xs font-black px-4 py-2 rounded-xl border border-surface-container-low opacity-60 cursor-not-allowed">
-                          Need ${item.costCoins - hero.coins} more
+                          Need ${item.costCoins - (hero.coins || 0)} more
                         </button>
                       `
                       }
@@ -449,7 +526,153 @@ export function renderShopView() {
           : ''
       }
 
+      <!-- 3D Item Inspect Modal -->
+      ${inspectingShopItem ? renderShopItemInspectModal(inspectingShopItem, hero, state) : ''}
+
     </div>
+  `;
+}
+
+function renderShopItemInspectModal(item, hero, state) {
+  const heroInventory = Array.isArray(hero?.inventory) ? hero.inventory : (state.inventory || []);
+  const isWeapon = item.category === 'Weapons';
+  const isFood = item.category === 'Snacks' || item.usageType === 'single_use' || item.usageType === 'multi_use';
+  let servingsCount = 0;
+  if (hero?.consumables && hero.consumables[item.id]) {
+    const cons = hero.consumables[item.id];
+    servingsCount = typeof cons === 'object' ? (cons.servingsRemaining || 0) : cons;
+  }
+  const isOwned = heroInventory.includes(item.id) || heroInventory.includes(item.title);
+  let isEquipped = false;
+  if (isWeapon) {
+    isEquipped = (hero?.equippedWeapon === item.id) || (hero?.equippedWeapon === item.title);
+  } else if (item.targetPetSocket) {
+    isEquipped = (hero?.equippedPetGear && (hero.equippedPetGear[item.targetPetSocket] === item.id || hero.equippedPetGear[item.targetPetSocket] === item.title)) || (state.equippedPetGear === item.title);
+  } else {
+    isEquipped = (state.equippedPetGear === item.title) || (Array.isArray(hero?.equippedGear) && hero.equippedGear.includes(item.id));
+  }
+  const canAfford = (hero?.coins || 0) >= item.costCoins;
+
+  return `
+  <div id="shop-inspect-modal-backdrop" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in font-body">
+    <div class="bg-surface-container-high border-4 border-amber-400 rounded-3xl p-6 max-w-md w-full shadow-[0_0_40px_rgba(245,158,11,0.4)] flex flex-col items-center gap-4 text-center animate-scale-up text-on-surface">
+      
+      <!-- Modal Header -->
+      <div class="w-full flex items-center justify-between border-b border-white/10 pb-3">
+        <span class="text-xs font-black uppercase text-secondary font-headline tracking-wider">${item.category}</span>
+        <button id="shop-close-inspect-btn" class="w-8 h-8 rounded-xl bg-surface-container hover:bg-surface-bright flex items-center justify-center text-white/70 hover:text-white border border-white/20">
+          <span class="material-symbols-outlined text-base">close</span>
+        </button>
+      </div>
+
+      <!-- 3D Item Showcase & Model -->
+      <div class="relative w-36 h-36 rounded-3xl bg-surface-container-lowest border-2 border-amber-400/60 p-2 flex items-center justify-center overflow-hidden shadow-inner group">
+        <div class="absolute inset-0 bg-radial from-amber-400/20 via-transparent to-transparent pointer-events-none"></div>
+        ${item.modelUrl ? `
+          <model-viewer src="${item.modelUrl}" auto-rotate camera-controls shadow-intensity="1.2" ar style="width: 100%; height: 100%; background: transparent;"></model-viewer>
+        ` : `
+          <img src="${item.image}" alt="${item.title}" class="w-28 h-28 object-contain drop-shadow-xl group-hover:scale-105 transition-transform" />
+        `}
+      </div>
+
+      <!-- Title & Stat Badge -->
+      <div class="flex flex-col gap-1 items-center">
+        <h3 class="font-headline text-xl font-black text-inverse-surface">${item.title}</h3>
+        <p class="text-xs text-on-surface-variant max-w-xs font-medium">${item.desc || ''}</p>
+        
+        <div class="flex flex-wrap items-center justify-center gap-2 mt-2">
+          ${item.statBonusLabel || item.statBonus ? `
+            <span class="text-[10px] font-black uppercase text-emerald-400 bg-emerald-500/15 px-2.5 py-1 rounded-full border border-emerald-500/30 flex items-center gap-1">
+              <span class="material-symbols-outlined text-xs">bolt</span>
+              ${item.statBonusLabel || item.statBonus}
+            </span>
+          ` : ''}
+          ${isWeapon ? `
+            <span class="text-[10px] font-black uppercase text-cyan-300 bg-cyan-950/60 px-2.5 py-1 rounded-full border border-cyan-500/40">
+              ⚔️ 1 Weapon Equipped / Battle
+            </span>
+          ` : ''}
+          ${isFood ? `
+            <span class="text-[10px] font-bold text-amber-300 bg-amber-950/60 px-2.5 py-1 rounded-full border border-amber-500/40">
+              ${servingsCount > 0 ? `🫐 ${servingsCount} Serving(s) Available` : item.usageType === 'single_use' ? 'Single Use Treat' : 'Multi-Use Servings'}
+            </span>
+          ` : ''}
+        </div>
+      </div>
+
+      <!-- Rex Companion Spoken Dialogue -->
+      <div class="w-full bg-slate-900/80 border border-cyan-400/40 p-3 rounded-2xl flex flex-col gap-1 text-left">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-headline font-black text-cyan-300 flex items-center gap-1">
+            <span>🦖</span> Rex Voice Companion
+          </span>
+          <button id="shop-replay-voice-btn" class="text-[10px] font-bold text-amber-300 hover:text-amber-200 flex items-center gap-0.5">
+            <span class="material-symbols-outlined text-xs">volume_up</span> Speak
+          </button>
+        </div>
+        <p class="text-xs text-white/90 font-medium italic">
+          "${item.voiceLine || item.companionReaction || `This ${item.title} has great heroic energy!`}"
+        </p>
+      </div>
+
+      <!-- Actions -->
+      <div class="w-full pt-2 border-t border-white/10 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-1 text-secondary font-headline text-sm font-black">
+          <span class="material-symbols-outlined text-base">monetization_on</span>
+          <span>${item.costCoins} Tokens</span>
+        </div>
+
+        <div>
+          ${isWeapon ? `
+            ${isEquipped ? `
+              <span class="bg-primary/20 text-primary font-headline text-xs font-black px-4 py-2.5 rounded-xl border border-primary/40 inline-flex items-center gap-1">
+                <span>✅</span> Equipped in Battle
+              </span>
+            ` : isOwned ? `
+              <button data-equip-weapon-id="${item.id}" class="shop-equip-weapon-btn bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-headline text-xs font-black px-5 py-2.5 rounded-xl border border-cyan-300 shadow chunky-btn-sm active:scale-95">
+                Equip Weapon
+              </button>
+            ` : canAfford ? `
+              <button data-buy-gear-id="${item.id}" class="buy-gear-btn bg-secondary text-on-secondary font-headline text-xs font-black px-5 py-2.5 rounded-xl chunky-btn border-secondary-container shadow hover:brightness-110 active:scale-95">
+                Buy Weapon
+              </button>
+            ` : `
+              <span class="text-xs text-on-surface-variant font-bold">Need ${item.costCoins - (hero?.coins || 0)} more</span>
+            `}
+          ` : isFood ? `
+            ${servingsCount > 0 ? `
+              <button data-feed-snack-id="${item.id}" class="shop-feed-snack-btn bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-headline text-xs font-black px-5 py-2.5 rounded-xl border border-emerald-300 shadow chunky-btn-sm active:scale-95 flex items-center gap-1">
+                <span>🍽️</span> Feed Rex (${servingsCount})
+              </button>
+            ` : canAfford ? `
+              <button data-buy-gear-id="${item.id}" class="buy-gear-btn bg-secondary text-on-secondary font-headline text-xs font-black px-5 py-2.5 rounded-xl chunky-btn border-secondary-container shadow hover:brightness-110 active:scale-95">
+                Buy Snack (${item.maxServings || 1}x)
+              </button>
+            ` : `
+              <span class="text-xs text-on-surface-variant font-bold">Need ${item.costCoins - (hero?.coins || 0)} more</span>
+            `}
+          ` : `
+            ${isEquipped ? `
+              <span class="bg-primary/20 text-primary font-headline text-xs font-black px-4 py-2.5 rounded-xl border border-primary/40 inline-block">
+                Equipped
+              </span>
+            ` : isOwned ? `
+              <button data-buy-gear-id="${item.id}" class="buy-gear-btn bg-surface-container-high hover:bg-surface-bright text-inverse-surface font-headline text-xs font-black px-5 py-2.5 rounded-xl border border-surface-container-highest chunky-btn-sm active:scale-95">
+                Equip
+              </button>
+            ` : canAfford ? `
+              <button data-buy-gear-id="${item.id}" class="buy-gear-btn bg-secondary text-on-secondary font-headline text-xs font-black px-5 py-2.5 rounded-xl chunky-btn border-secondary-container shadow hover:brightness-110 active:scale-95">
+                Buy Now
+              </button>
+            ` : `
+              <span class="text-xs text-on-surface-variant font-bold">Need ${item.costCoins - (hero?.coins || 0)} more</span>
+            `}
+          `}
+        </div>
+      </div>
+
+    </div>
+  </div>
   `;
 }
 
@@ -478,47 +701,127 @@ export function attachShopListeners() {
     });
   });
 
+  // Card click / inspect
   document.querySelectorAll('.gear-card-item').forEach((card) => {
     card.addEventListener('click', (e) => {
       if (e.target.closest('button')) return;
       const id = card.getAttribute('data-gear-card-id');
       const item = (store.getState().digitalGear || []).find((g) => g.id === id);
       if (item) {
-        if (item.companionReaction) {
+        inspectingShopItem = item;
+        Sound.bloop();
+        if (item.voiceLine) {
+          speakRex(item.voiceLine);
+        } else if (item.companionReaction) {
           speakRex(item.companionReaction);
         } else {
-          const text = (item.title + ' ' + (item.desc || '')).toLowerCase();
-          if (text.includes('rex') || text.includes('dino')) {
-            speakRex("Rawr! I am Rex the Dino! Let's go on an adventure!");
-          } else {
-            speakRex(`Look at this ${item.title}! Super hero power!`);
-          }
+          speakRex(`Look at this ${item.title}! Super hero power!`);
         }
+        store.notify();
       }
     });
   });
 
+  // Inspect 3D button click
+  document.querySelectorAll('.shop-inspect-item-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = btn.getAttribute('data-inspect-id');
+      const item = (store.getState().digitalGear || []).find((g) => g.id === id);
+      if (item) {
+        inspectingShopItem = item;
+        Sound.bloop();
+        if (item.voiceLine) {
+          speakRex(item.voiceLine);
+        }
+        store.notify();
+      }
+    });
+  });
+
+  // Close inspect modal
+  const closeInspectBtn = document.getElementById('shop-close-inspect-btn');
+  if (closeInspectBtn) {
+    closeInspectBtn.addEventListener('click', () => {
+      inspectingShopItem = null;
+      Sound.pop();
+      store.notify();
+    });
+  }
+  const inspectBackdrop = document.getElementById('shop-inspect-modal-backdrop');
+  if (inspectBackdrop) {
+    inspectBackdrop.addEventListener('click', (e) => {
+      if (e.target === inspectBackdrop) {
+        inspectingShopItem = null;
+        Sound.pop();
+        store.notify();
+      }
+    });
+  }
+
+  // Replay voice button in inspect modal
+  const replayVoiceBtn = document.getElementById('shop-replay-voice-btn');
+  if (replayVoiceBtn && inspectingShopItem) {
+    replayVoiceBtn.addEventListener('click', () => {
+      const voiceText = inspectingShopItem.voiceLine || inspectingShopItem.companionReaction || `This ${inspectingShopItem.title} is awesome!`;
+      speakRex(voiceText);
+    });
+  }
+
+  // Equip Weapon button
+  document.querySelectorAll('.shop-equip-weapon-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = btn.getAttribute('data-equip-weapon-id');
+      const item = (store.getState().digitalGear || []).find((g) => g.id === id);
+      store.equipHeroWeapon(id);
+      Sound.gearSnap();
+      if (item?.voiceLine) {
+        speakRex(item.voiceLine);
+      } else {
+        speakRex(`Equipped ${item?.title || 'weapon'} for battle!`);
+      }
+      inspectingShopItem = null;
+      store.notify();
+    });
+  });
+
+  // Feed Snack button
+  document.querySelectorAll('.shop-feed-snack-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = btn.getAttribute('data-feed-snack-id');
+      store.feedPetConsumableSnack(id);
+      inspectingShopItem = null;
+    });
+  });
+
+  // Buy Gear / Weapon / Snack button
   document.querySelectorAll('.buy-gear-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
       const id = btn.getAttribute('data-buy-gear-id');
       const state = store.getState();
       const item = (state.digitalGear || []).find((g) => g.id === id);
-      const isOwned = (state.inventory || []).includes(item?.title);
+      const isOwned = (state.selectedHero?.inventory || []).includes(item?.title) || (state.selectedHero?.inventory || []).includes(item?.id);
 
-      if (item && isOwned) {
+      if (item && isOwned && item.category !== 'Snacks') {
         speakRex(`Awesome! You equipped the ${item.title}! Super hero power!`);
-      } else if (item && state.selectedHero.coins >= item.costCoins) {
-        const isPet = item.id.includes('rex') || item.id.includes('pet') || (item.category && item.category.toLowerCase().includes('companion'));
-        if (isPet) {
-          speakRex("A glowing companion egg has arrived! Tap it fast to hatch it!");
+      } else if (item && (state.selectedHero?.coins || 0) >= item.costCoins) {
+        if (item.category === 'Snacks') {
+          speakRex(item.voiceLine || "Delicious pet snacks have arrived! Feed them to Rex!");
+        } else if (item.category === 'Weapons') {
+          speakRex(item.voiceLine || `Awesome! You got the ${item.title}! Ready for battle!`);
         } else {
-          speakRex("A mystery treasure chest has arrived! Tap it fast to crack it open!");
+          speakRex(item.voiceLine || "A mystery treasure chest has arrived! Tap it fast to crack it open!");
         }
       }
       store.buyDigitalGear(id);
+      inspectingShopItem = null;
     });
   });
 
+  // Theme buy/equip button
   document.querySelectorAll('.shop-theme-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       const id = btn.getAttribute('data-theme-id');

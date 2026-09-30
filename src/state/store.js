@@ -32,6 +32,8 @@ import { FORGE_BLUEPRINTS, getBlueprintById, isBlueprintUnlocked } from '../data
 import { firebaseAI } from '../services/firebaseAILogicService.js';
 import { WORLD_BIOMES, PATH_OF_VALOR_WAYPOINTS, SECRET_SHRINES, TOY_BOX_ENTITIES } from '../data/worldMapData.js';
 import { BEDTIME_MORALS, CONSTELLATION_STICKERS } from '../data/bedtimeStoryData.js';
+import { DIGITAL_REWARDS_CATALOG } from '../data/digitalRewardsCatalog.js';
+import { THREE_D_ASSETS } from '../data/threeDAssetCatalog.js';
 
 export const KID_AVATARS = [
   { id: 'avatar_dragon', label: 'Dragon Explorer', url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZfP7_Cwlp4sz41asI8ymuapAKvjmqHtvI4zcMAF_XwUmibj8IheGrS5cA5QD5gmXgVxEkZM9FlWJPRZnct3x6-9SQB7zJKqkEDjJ3m95tAy3zRqS-PbmcQ4kv_9pmIfm2Py4mh3Fw083hkDookz1w4_r50SBA1jc9igDaAPFLYBFgSP2aQBz7Q4jVE-DwhMOyUEHlxDkQk6Gwc2EAFCSKs1c0QuhUOi3tkrk5MXRARKqZcYVzyJe6gA' },
@@ -40,7 +42,7 @@ export const KID_AVATARS = [
   { id: 'avatar_space', label: 'Knight Adventurer', url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAUTWERGwaJXM82ZeJ0adcNsuOm_cR4z5CXAleJ2oKcekqKsuaZZD315RkB188DDt6fevx8guS2V20knvs93SzLKjox7deSVry-v8kiyTM-H0Kg5vmB8inoBoKz2SqYnVzUKVk9uulAHGfsUmnIs4VI7GkWcmmfE2gvPnoehqZqjhxHZuHz9Tqs_Omja5bwoX9aPmW8Xf63V9KIQsux3ucTJHZBdI2U8eRyOy7bO0XQMqe2BNGXc3SoWg' }
 ];
 
-export const STORAGE_KEY = 'little_heroes_adventure_master_v9';
+export const STORAGE_KEY = 'little_heroes_adventure_master_v10';
 
 export const ALL_24_PET_IDS = Array.from({ length: 24 }, (_, i) => String(i + 1));
 export const DEFAULT_PET_LEVEL_MAP = Object.fromEntries(ALL_24_PET_IDS.map((id) => [id, 1]));
@@ -124,6 +126,10 @@ const defaultState = {
 
   // 3D Living Pet Sanctuary & Playpark Overhaul
   petSanctuary: {
+    hunger: 60,
+    hygiene: 70,
+    joy: 75,
+    energy: 65,
     activeDrawer: null, // null | 'feed' | 'bath' | 'wardrobe' | 'evolution' | 'roster' | 'egg'
     petBondMap: {
       '1': { level: 3, xp: 180, pearlyGleamUntil: 0 },
@@ -177,10 +183,14 @@ const defaultState = {
     gameDifficulty: 'medium', // 'easy' (Toddler 3-4), 'medium' (Kids 5-6), 'hard' (Kids 7-9)
     equippedProfileTheme: 'theme_dragon_emerald',
     unlockedThemes: ['theme_dragon_emerald'],
+    equippedWeapon: 'laser_toothbrush',
+    equippedPetGear: 'cowl_hero',
     equippedPetGearMap: {},
     customGearDyesMap: {},
-    inventory: [],
-    consumables: {},
+    inventory: ['laser_toothbrush', 'cowl_hero'],
+    consumables: {
+      'flame_kibble_bowl': { servingsRemaining: 3, totalPurchased: 3, title: 'Crunchy Flame Kibble', usageType: 'multi_use' }
+    },
     savedHeroCards: [],
     screenTimeMinutes: 45,
     screenTimeUsedToday: 15,
@@ -211,10 +221,14 @@ const defaultState = {
       gameDifficulty: 'medium',
       equippedProfileTheme: 'theme_dragon_emerald',
       unlockedThemes: ['theme_dragon_emerald'],
+      equippedWeapon: 'laser_toothbrush',
+      equippedPetGear: 'cowl_hero',
       equippedPetGearMap: {},
       customGearDyesMap: {},
-      inventory: [],
-      consumables: {},
+      inventory: ['laser_toothbrush', 'cowl_hero'],
+      consumables: {
+        'flame_kibble_bowl': { servingsRemaining: 3, totalPurchased: 3, title: 'Crunchy Flame Kibble', usageType: 'multi_use' }
+      },
       savedHeroCards: [],
       screenTimeMinutes: 45,
       screenTimeUsedToday: 15,
@@ -321,170 +335,7 @@ const defaultState = {
   ],
 
   // Digital Goods Catalog (Cost Habit Tokens 🪙 - Auto-Issued & Instant Unlock)
-  digitalGear: [
-    {
-      id: 'sparkle_wand',
-      title: 'Sparkle Magic Wand',
-      desc: 'A powerful glowing weapon emitting sparkly blue particles.',
-      category: 'Weapons',
-      costCoins: 750,
-      statBonusPercent: 25,
-      statBonusType: 'xp_boost',
-      isNew: true,
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAXizgI1CeB2yKrFadDQwi_izrUzn5VC61h_Pt83vwDS7sOgRgZ3uicgT9wALkvX1ci0sh5YMVO38ne8-hC2TKHNwDELgpccHrkJ0pdzoxGd6NEOSvV0Fgn44DNrZqYpjJvtTkUY8PDAAGNwSTLlqV7gPcepURR9EiQzW4JSIsm6DC1xO8iXYAz5sSPHnXKpDJeXdMdJ3dLsOkdc3AEaYvcxiGwnPk_T_zTP2rB1AKr5xKxRl0kR873Sg'
-    },
-    {
-      id: 'hero_cape',
-      title: 'Bright Blue Hero Cape',
-      desc: 'Equip your avatar and pet companion with heroic flight style.',
-      category: 'Avatar Gear',
-      costCoins: 250,
-      statBonusPercent: 20,
-      statBonusType: 'speed_boost',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuByKpaoALsAQKloJoaflKFN3uBQW2_wFzPx91VHRs4HwEN8nq_FFMDP4x9H1iraLFT6ts1An7aMl3x0Gr_2BEpiyfAeWPb1S-OqL_MxKDDkCzvrQcAiVG14D7Wmv4XB_VViBp4TdSvN3MTRO8KLCIWL3S3WaQUqq6-a3hWGomWph08_yJ3FzxocLQjdXxKNUrzhF_Dv-d2DEfkaWLXL4No80J3RlmfBcCreSBpPWJyHEX08C3mTUvmJNw'
-    },
-    {
-      id: 'laser_toothbrush',
-      title: 'Laser Toothbrush Sword',
-      desc: 'Extra damage against Sugar Bugs in AR Toothbrush Battle Mode!',
-      category: 'Weapons',
-      costCoins: 150,
-      statBonusPercent: 30,
-      statBonusType: 'damage_boost',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD_t1oRwvE1jlA6mYuARa1kila-xbhIvpGqco4NsFrzIp3HYf-AOKXJ6h0qmz4yoUj5sGBJEGG3k47tjpVTOVVpi6PklYYznwt8FgR0WNaQsOt5pu_bL12NJJi8BhBJTz_wmenjPjkJa0Ti7OHXgZH60P9sMBw3yp1NpTX5hoSsiiyu5kNMKZFB84cQhb_qOld0uo2POD-jx_IBi8XnJx9r4ackB2pxI6pssYiWzVQgcV8_JdTOZh5KTA'
-    },
-    {
-      id: 'wizard_hat',
-      title: 'Enchanted Wizard Hat',
-      desc: 'Adds +20 Wisdom XP to all pet learning mini-games.',
-      category: 'Avatar Gear',
-      costCoins: 120,
-      statBonusPercent: 20,
-      statBonusType: 'xp_boost',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA6ACznHbNqQYrmS2NNT3AogIWVwSpwMd_e-p5JOEqTsWkMcbR3XIie3llrmdu0UVjQ4an-bSZQypLr0rQgc-ZbZMijOEnJW2hkFFTW3YvxnvMF1p_R1DeRzyPAEVOVQn7dVbGBZjMJoNDEEPm43G_Dtol7_U9W9m9iLpImUl0NJfcdAqccaoVs6sGpX3KgGErOnZi9ufcz3KQ-E1PpdUM5P2DeTeu8ePw2Jfrbh1fbQ5aY24ZDCZ3hVw'
-    },
-    {
-      id: 'rocket_badge',
-      title: 'Hero Rocket Badge',
-      desc: 'A glowing badge that speeds up daily quest completions.',
-      category: 'Badges',
-      costCoins: 80,
-      statBonusPercent: 15,
-      statBonusType: 'speed_boost',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAyH49NXeiOh-BmWLvQkk4zJRjAXmtQ7hPXJ7Dk0YZRO5CkUFz9wJZbjEKmlVlh8U79KHrKqiP4gS0bQgQ2X_vEpRpK_FsuS8WN4RWDw3xj4YlvTofyTWXlgV4nmek6g1R4NxZAaqkv8M1xvOiqIKYrKpTiEJRmk0ulv958iE5iE7ORnAiln2Uw3oaopAOg7Bs6MDXSVDpMo9YKipIHHykc6vVQgFwKQvDtNbqgY1h8N4_Ealg8wrybfA'
-    },
-    {
-      id: 'gem_trove',
-      title: 'Crystal Gem Trove',
-      desc: 'Stores bonus coins and shines with crystal power in your pen.',
-      category: 'Badges',
-      costCoins: 150,
-      statBonusPercent: 15,
-      statBonusType: 'coin_boost',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDvEPK2k2p8UTY6a_a13uuU4xIdkdywFfYuD-6hXL6loqAk-urCnUbUGdFn-Y19eBDoygO061F0aNul90Ba2JUyfsA-w-3zw4_7pYzFDr1VberTqHQfuSPj2fUJPxNonUg9kWXhB0tivkcacloQX7aSYVFI0gMGh4LxUnHMNOb8AvPWMIBgSUdWC0sxJmD4dJJcdQnnenoMiOhVddEOJO-X7gqho3jVSHQX-aholmgf88Rvee7hDkrcng'
-    },
-    {
-      id: 'mint_knight_badge',
-      title: 'Mint Knight Badge',
-      desc: 'Earned by defeating the Sugar Boss in the 2-minute Toothbrush AR Battle! Radiates minty fresh dental defense.',
-      category: 'Badges',
-      costCoins: 0,
-      statBonusPercent: 35,
-      statBonusType: 'defense_boost',
-      icon: 'military_tech',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDvEPK2k2p8UTY6a_a13uuU4xIdkdywFfYuD-6hXL6loqAk-urCnUbUGdFn-Y19eBDoygO061F0aNul90Ba2JUyfsA-w-3zw4_7pYzFDr1VberTqHQfuSPj2fUJPxNonUg9kWXhB0tivkcacloQX7aSYVFI0gMGh4LxUnHMNOb8AvPWMIBgSUdWC0sxJmD4dJJcdQnnenoMiOhVddEOJO-X7gqho3jVSHQX-aholmgf88Rvee7hDkrcng'
-    },
-    {
-      id: 'flame_kibble_bowl',
-      title: 'Flame Kibble Snack Bowl',
-      desc: 'Super tasty crunchy pet food that instantly restores +30 Hunger.',
-      category: 'Snacks',
-      costCoins: 30,
-      statBonusPercent: 30,
-      statBonusType: 'joy_boost',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB-3rOJgQurGLPwdAbopzrD38_Tt7Kx4XBDGzb8c4D6SyP_duGB00Hbl0jPDHHNgTri1r3B1Wg_bPaZcVSttkDJ_DdCvdMFpixvZL-t62idBUBkK-YIgAZkPm9aBKKV60saB8oSEyuSlPFh9OuQNa12-35vM3UJLyH9I_bnbsG-CLL_JWYco0EyWRF8eWdzRrr4Ize_vzuXlGXbaekGucbGHZI9m7USTT7cTWZ99v22UCg5FGizLHk1FQ'
-    },
-    {
-      id: 'toy_chest_vault',
-      title: 'Secret Toy Chest Vault',
-      desc: 'Stows all your hero equipment and adds +10% to toy chore payouts.',
-      category: 'Badges',
-      costCoins: 180,
-      statBonusPercent: 10,
-      statBonusType: 'coin_boost',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDy3Rfu0bcLlMPyE2iHd9P78LdbLHJNOzTdaepeadGKy-vo9vxupk8kFi7ggsSZgSTNyekoC_nPypDwUIyXCrD2-_Z96IqQYN58d5uymrFi6JV8vd3_mbXavdbQXB825ndnaEFa-xL8t9yleVWU-a8f9Cv8ehZ1dNuYJt1w-L5x05lq4gKgpqmuecxkjqj0__taxaDmJ-tSIUV6wqkf6VcM2RD4FoyEzXq6FmcZaYoeIxFG5Aa2iQtu0g'
-    },
-    {
-      id: 'golden_armor_vest',
-      title: 'Golden Dragon Armor Vest',
-      desc: '+50 Defense and sparkling gold scales for your pet companion.',
-      category: 'Avatar Gear',
-      costCoins: 180,
-      statBonusPercent: 50,
-      statBonusType: 'defense_boost',
-      image: generate3DIcon('shield', 'green', 'Dragon Armor')
-    },
-    {
-      id: 'bubble_soap_pack',
-      title: 'Mega Blueberry Bubble Soap',
-      desc: 'Extra sudsy blueberry scented bath bubbles for pet bath time.',
-      category: 'Snacks',
-      costCoins: 35,
-      statBonusPercent: 25,
-      statBonusType: 'hygiene_boost',
-      image: generate3DIcon('soap', 'blue', 'Blueberry Soap')
-    },
-    {
-      id: 'fire_berry_treat',
-      title: 'Fire Berry Snack Pack',
-      desc: 'Super tasty flame berries that instantly max Hunger to 100%!',
-      category: 'Snacks',
-      costCoins: 25,
-      statBonusPercent: 25,
-      statBonusType: 'energy_boost',
-      image: generate3DIcon('nutrition', 'orange', 'Fire Berries')
-    },
-    {
-      id: 'hero_glowing_cape',
-      title: 'Emerald Glowing Cape',
-      desc: 'A rugged hero cape that billows with emerald particles.',
-      category: 'Avatar Gear',
-      costCoins: 220,
-      statBonusPercent: 30,
-      statBonusType: 'defense_boost',
-      image: generate3DIcon('flag', 'green', 'Emerald Cape')
-    },
-    {
-      id: 'disco_star_badge',
-      title: 'Disco Master Badge',
-      desc: 'Unlocks golden spotlight mode in Dance Party.',
-      category: 'Badges',
-      costCoins: 100,
-      statBonusPercent: 20,
-      statBonusType: 'coin_boost',
-      image: generate3DIcon('stars', 'yellow', 'Disco Star')
-    },
-    {
-      id: 'rex_the_dino_companion',
-      title: 'Rex the Dino',
-      desc: 'Adopt Rex the Dino! Strong, loyal guardian who loves big adventures and cleaning toys!',
-      category: 'Avatar Gear',
-      costCoins: 200,
-      statBonusPercent: 35,
-      statBonusType: 'defense_boost',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDnxgEa6LgbgAkDctHBACUsubrRh0U8vMmbJxq4ACCWYwyxf7800JbNv-noivBha5t7iGBEgs-YsbsGmoo1xKaGtP49xpYLBxuV_-5Xeem4_4CfYg8RwvbaFbrHewRdEcY_Kqgh2Ep9mGvfKL3wxqEK9KBXuBiBTkrgdgQeIzjdJY4AMhn6WLNE-9UrpirWUPIn35lB_Z8hsegZ5dYgugCCqy5JsNgkzB8tu-dvmgFCDFLsddPsW8GwUA'
-    },
-    {
-      id: 'rex_spiked_collar',
-      title: 'Rex Heavy Spiked Collar',
-      desc: 'Rex the Dino\'s favorite gear! Adds +20 Strength to Toy Cleaning chores.',
-      category: 'Avatar Gear',
-      costCoins: 120,
-      statBonusPercent: 20,
-      statBonusType: 'strength_boost',
-      image: generate3DIcon('fitness_center', 'green', 'Rex Collar')
-    }
-  ],
+  digitalGear: [...DIGITAL_REWARDS_CATALOG],
 
   // Pet Economy: no gear is free -- everything here starts empty and is
   // only populated once a kid actually purchases an item.
@@ -747,6 +598,32 @@ class Store {
             parsed.selectedHero.activePetId = validActive ? String(validActive.id) : '1';
             parsed.selectedHero.unlockedPetIds = [parsed.selectedHero.activePetId];
             parsed.selectedHero.hasChosenStarterPet = true;
+          }
+        }
+
+        // Digital Rewards & Inventory Overhaul Migration (v10):
+        // Replaces old temporary placeholders with high-res 3D catalog and enforces per-kid inventory isolation.
+        if (!parsed.digitalRewardsOverhaulApplied) {
+          parsed.digitalRewardsOverhaulApplied = true;
+          parsed.digitalGear = [...DIGITAL_REWARDS_CATALOG];
+          if (parsed.heroes && parsed.heroes.length > 0) {
+            parsed.heroes.forEach((h) => {
+              h.inventory = ['laser_toothbrush', 'cowl_hero'];
+              h.equippedWeapon = 'laser_toothbrush';
+              h.equippedPetGear = 'cowl_hero';
+              h.consumables = {
+                'flame_kibble_bowl': { servingsRemaining: 3, totalPurchased: 3, title: 'Crunchy Flame Kibble', usageType: 'multi_use' }
+              };
+            });
+          }
+          if (parsed.selectedHero) {
+            parsed.selectedHero.inventory = ['laser_toothbrush', 'cowl_hero'];
+            parsed.selectedHero.equippedWeapon = 'laser_toothbrush';
+            parsed.selectedHero.equippedPetGear = 'cowl_hero';
+            parsed.selectedHero.consumables = {
+              'flame_kibble_bowl': { servingsRemaining: 3, totalPurchased: 3, title: 'Crunchy Flame Kibble', usageType: 'multi_use' }
+            };
+            parsed.inventory = ['laser_toothbrush', 'cowl_hero'];
           }
         }
 
@@ -1125,10 +1002,13 @@ class Store {
       equippedProfileTheme: sHero.equippedProfileTheme || 'theme_dragon_emerald',
       unlockedThemes: [...(sHero.unlockedThemes || ['theme_dragon_emerald'])],
       equippedGear: { ...(sHero.equippedGear || {}) },
+      equippedWeapon: sHero.equippedWeapon !== undefined ? sHero.equippedWeapon : null,
+      equippedPetGear: sHero.equippedPetGear !== undefined ? sHero.equippedPetGear : null,
       equippedPetGearMap: { ...(sHero.equippedPetGearMap || this.state.equippedPetGearMap || {}) },
       customGearDyesMap: { ...(sHero.customGearDyesMap || this.state.customGearDyesMap || {}) },
       savedHeroCards: [...(sHero.savedHeroCards || this.state.savedHeroCards || [])],
-      inventory: [...(sHero.inventory || [])],
+      inventory: Array.isArray(sHero.inventory) ? [...sHero.inventory] : [],
+      consumables: Array.isArray(sHero.consumables) ? [...sHero.consumables] : { ...(sHero.consumables || {}) },
       aiQuests: [...(sHero.aiQuests || this.state.heroAiQuestsMap?.[heroId] || this.state.aiQuests || [])],
       // Per-kid pet progress (training level/XP, hunger/hygiene/joy/energy,
       // bond levels, sanctuary drawer/eggs). Without flushing these back into
@@ -1185,6 +1065,16 @@ class Store {
 
   getState() {
     return this.state;
+  }
+
+  init() {
+    this.state = this.loadState();
+    this.resetHeroFieldBaseline();
+    return this.state;
+  }
+
+  getSelectedHero() {
+    return this.state?.selectedHero || (this.state?.heroes && this.state.heroes[0]) || null;
   }
 
   navigate(viewName, params = {}) {
@@ -1389,6 +1279,10 @@ class Store {
     return { level: currentLvl, xp: currentXp, leveledUp };
   }
 
+  addPetXP(petId, amount = 15) {
+    return this.addPetTrainingXp(petId, amount);
+  }
+
   getDailyCoach() {
     return getDailyRotatingPetCoach();
   }
@@ -1571,7 +1465,7 @@ class Store {
   }
 
   // 3. EDIT PRICING & INVENTORY FOR ALL ITEMS (Parent Portal)
-  updateAllPricing(realLifeMap, digitalMap, themesMap = {}, statBonusMap = {}) {
+  updateAllPricing(realLifeMap, digitalMap, themesMap = {}, statBonusMap = {}, foodSettingsMap = {}) {
     // Update real life reward points costs
     this.state.realLifeRewards.forEach(r => {
       if (realLifeMap[r.id] !== undefined) {
@@ -1579,7 +1473,7 @@ class Store {
       }
     });
 
-    // Update digital gear token costs and stat bonus percentages
+    // Update digital gear token costs and stat bonus percentages & food settings
     this.state.digitalGear.forEach(g => {
       if (digitalMap[g.id] !== undefined) {
         g.costCoins = Math.max(1, parseInt(digitalMap[g.id]) || g.costCoins);
@@ -1594,6 +1488,14 @@ class Store {
           g.statBonusPercent = Math.max(0, parseInt(statBonusMap[g.id]) || 0);
         }
       }
+      if (foodSettingsMap && foodSettingsMap[g.id]) {
+        if (foodSettingsMap[g.id].usageType) {
+          g.usageType = foodSettingsMap[g.id].usageType;
+        }
+        if (foodSettingsMap[g.id].maxServings !== undefined) {
+          g.maxServings = Math.max(1, parseInt(foodSettingsMap[g.id].maxServings) || 1);
+        }
+      }
     });
 
     // Update profile themes token costs
@@ -1605,9 +1507,9 @@ class Store {
       });
     }
 
-    this.logAction('Parent updated shop pricing & stat bonuses', 'Shop prices and stat bonus percentages updated');
+    this.logAction('Parent updated shop pricing & stat bonuses', 'Shop prices, stat bonus percentages, and food usage rules updated');
     Sound.fanfare();
-    this.showReward('Pricing & Stats Updated!', 'All reward prices and stat bonus percentages have been updated in the Hero Shop!', 0, 0, null, 'payments');
+    this.showReward('Pricing & Settings Updated!', 'All reward prices, stat bonus percentages, and food rules have been updated in the Hero Shop!', 0, 0, null, 'payments');
     this.saveState(true);
   }
 
@@ -3509,8 +3411,18 @@ class Store {
       if (!this.state.pendingGiftCrates) this.state.pendingGiftCrates = [];
       this.state.pendingGiftCrates.unshift(crate);
       this.state.activeUnboxingCrateId = crate.id;
-      // Auto-equip for active pet
-      this.equipPetStudioGear(this.state.selectedHero?.activePetId || 1, socket, gear.id);
+      // Auto-equip for active pet or equip weapon
+      if (gear.category === 'Weapons') {
+        if (this.state.selectedHero) {
+          if (!this.state.selectedHero.inventory) this.state.selectedHero.inventory = [];
+          if (!this.state.selectedHero.inventory.includes(gear.id)) {
+            this.state.selectedHero.inventory.push(gear.id);
+          }
+          this.equipHeroWeapon(gear.id);
+        }
+      } else if (socket && PET_GEAR_CATALOG[socket]) {
+        this.equipPetStudioGear(this.state.selectedHero?.activePetId || 1, socket, gear.id);
+      }
     } else if (deliveryMethod === 'habit_bounty') {
       const bounty = {
         id: `bounty_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
@@ -3527,15 +3439,15 @@ class Store {
     }
 
     this.logAction(
-      `Parent crafted 3D Pet Gear: '${gear.name}'`,
+      `Parent crafted 3D ${gear.category === 'Weapons' ? 'Battle Weapon' : 'Pet Gear'}: '${gear.name}'`,
       `Published via ${deliveryMethod.toUpperCase()} (Target: ${targetChildProfile}). (${gear.statBonusLabel})`
     );
 
     Sound.fanfare();
     confetti({ particleCount: 75, spread: 80, origin: { y: 0.6 } });
     this.showReward(
-      '✨ 3D Pet Gear Published!',
-      `"${gear.name}" is now live via ${deliveryMethod === 'instant_gift' ? 'Surprise Gift Delivery 🎁' : deliveryMethod === 'habit_bounty' ? 'Habit Bounty 🎯' : 'Hero Shop 🪙'}!\n⚡ Bonus: ${gear.statBonusLabel}\n🐾 Companion ready!`,
+      `✨ 3D ${gear.category === 'Weapons' ? 'Weapon' : 'Pet Gear'} Published!`,
+      `"${gear.name}" is now live via ${deliveryMethod === 'instant_gift' ? 'Surprise Gift Delivery 🎁' : deliveryMethod === 'habit_bounty' ? 'Habit Bounty 🎯' : 'Hero Shop 🪙'}!\n⚡ Bonus: ${gear.statBonusLabel}\n⚔️ Combat ready!`,
       0,
       0,
       gear.image,
@@ -3779,6 +3691,9 @@ class Store {
       xpBoost: Number(item.xpBoost) || 20,
       quantityPerPurchase: Number(item.quantityPerPurchase || item.quantity) || 3,
       quantity: Number(item.quantityPerPurchase || item.quantity) || 3,
+      usageType: item.usageType || (item.quantityPerPurchase === 1 ? 'single_use' : 'multi_use'),
+      maxServings: Number(item.maxServings || item.quantityPerPurchase || item.quantity) || 3,
+      voiceLine: item.voiceLine || item.cheerVoiceLine || `Munch munch! ${name} is delicious and full of pet power!`,
       createdAt: item.createdAt || new Date().toISOString()
     };
 
@@ -4493,102 +4408,217 @@ class Store {
   }
 
   buyDigitalGear(gearId) {
-    const item = this.state.digitalGear.find((i) => i.id === gearId);
-    if (!item) return;
+    const item = (this.state.digitalGear || []).find((i) => i.id === gearId) ||
+                 DIGITAL_REWARDS_CATALOG.find((i) => i.id === gearId) ||
+                 (typeof THREE_D_ASSETS !== 'undefined' ? THREE_D_ASSETS.find((i) => i.id === gearId) : null);
+    if (!item) return { success: false, reason: 'Item not found' };
 
-    // Pet Economy: Snacks are consumable and repeatably purchasable --
-    // each purchase grants stock, not a permanent one-time unlock.
-    if (item.category === 'Snacks') {
-      if ((this.state.selectedHero.coins || 0) < item.costCoins) {
+    const hero = this.state.selectedHero;
+    if (!hero) return { success: false, reason: 'No active hero' };
+    if (!hero.inventory) hero.inventory = ['laser_toothbrush', 'cowl_hero'];
+    if (!hero.consumables) hero.consumables = {};
+
+    // 1. SNACKS / PET FOOD: Consumable servings engine (single-use vs multi-use)
+    if (item.category === 'Snacks' || item.category === 'food') {
+      const cost = item.costCoins || item.defaultPrice || 35;
+      if ((hero.coins || 0) < cost) {
         Sound.deny();
         this.showReward(
           'Not Enough Habit Tokens!',
-          `You need ${item.costCoins - this.state.selectedHero.coins} more Habit Tokens for this snack pack!`,
+          `You need ${cost - (hero.coins || 0)} more Habit Tokens for ${item.title || item.name}!`,
           0,
           0,
           item.image
         );
-        return;
+        return { success: false, reason: 'Insufficient coins' };
       }
-      this.state.selectedHero.coins -= item.costCoins;
-      if (!this.state.selectedHero.consumables) this.state.selectedHero.consumables = {};
-      const qty = item.quantity || 3;
-      this.state.selectedHero.consumables[item.id] = (this.state.selectedHero.consumables[item.id] || 0) + qty;
+
+      hero.coins -= cost;
+      const isSingleUse = item.usageType === 'single_use';
+      const servingsToAdd = isSingleUse ? 1 : (item.maxServings || item.servingsMax || 3);
+      if (!hero.consumables || !Array.isArray(hero.consumables)) {
+        const oldObj = hero.consumables || {};
+        const oldKeys = Object.keys(oldObj);
+        const arr = oldKeys.map(k => {
+          const entry = oldObj[k];
+          return typeof entry === 'object' && entry !== null ? { id: k, ...entry } : { id: k, servingsRemaining: entry };
+        });
+        oldKeys.forEach(k => { arr[k] = arr.find(x => x.id === k); });
+        hero.consumables = arr;
+      }
+
+      let existing = hero.consumables.find(c => c.id === item.id);
+      if (!existing) {
+        existing = {
+          id: item.id,
+          servingsRemaining: 0,
+          totalPurchased: 0,
+          title: item.title || item.name,
+          image: item.image,
+          usageType: isSingleUse ? 'single_use' : 'multi_use',
+          maxServings: servingsToAdd,
+          servingsMax: servingsToAdd
+        };
+        hero.consumables.push(existing);
+      }
+      existing.servingsRemaining = (existing.servingsRemaining || 0) + servingsToAdd;
+      existing.totalPurchased = (existing.totalPurchased || 0) + servingsToAdd;
+      hero.consumables[item.id] = existing;
+
       Sound.fanfare();
-      confetti({ particleCount: 40, spread: 50 });
+      try { confetti({ particleCount: 40, spread: 50 }); } catch {}
+      try {
+        speakCompanion(item.voiceLine || item.defaultVoiceLine || `Yum! You got ${servingsToAdd}x ${item.title || item.name} to feed your pet companions!`);
+      } catch {}
+
       this.showReward(
-        'Snack Pack Purchased! 🧺',
-        `You bought ${qty}x ${item.title}! Feed your companions in the Pet Sanctuary.`,
+        isSingleUse ? 'Single-Use Treat Purchased! 🧺' : `${servingsToAdd}x Servings Pack Purchased! 🧺`,
+        `You bought ${item.title || item.name}! Feed your companions in the Pet Sanctuary.`,
         0,
         0,
         item.image
       );
+      this.syncSelectedHeroWithHeroes();
       this.saveState(true);
       this.notify();
-      return;
+      return { success: true, item, servingsRemaining: servingsToAdd };
     }
 
-    if (this.state.inventory.includes(item.title)) {
-      this.state.equippedPetGear = item.title;
-      Sound.sparkle();
+    // 2. WEAPONS: Equippable 1-at-a-time combat tool for AR Toothbrush / Sugar Bug Battles
+    if (item.category === 'Weapons' || item.category === 'weapon') {
+      const isOwned = hero.inventory.includes(item.id) || hero.inventory.includes(item.title) || hero.inventory.includes(item.name);
+      if (isOwned) {
+        // Toggle or equip weapon (ensuring strictly 1 equipped weapon per battle)
+        hero.equippedWeapon = item.id;
+        this.syncSelectedHeroWithHeroes();
+        Sound.sparkle();
+        try {
+          speakCompanion(`Equipped the ${item.title || item.name}! Ready to slash away sugar bugs!`);
+        } catch {}
+        this.showReward(
+          'Weapon Equipped! ⚔️',
+          `Your active hero weapon is now the ${item.title || item.name}! (+${item.statBonusPercent || 25}% Damage)`,
+          0,
+          0,
+          item.image
+        );
+        this.saveState(true);
+        this.notify();
+        return { success: true, item, equipped: true };
+      }
+
+      const cost = item.costCoins || item.defaultPrice || 50;
+      if ((hero.coins || 0) < cost) {
+        Sound.deny();
+        this.showReward(
+          'Not Enough Habit Tokens!',
+          `You need ${cost - (hero.coins || 0)} more Habit Tokens for the ${item.title || item.name}.`,
+          0,
+          0,
+          item.image
+        );
+        return { success: false, reason: 'Insufficient coins' };
+      }
+
+      hero.coins -= cost;
+      hero.inventory.push(item.id);
+      if (item.title) hero.inventory.push(item.title);
+      hero.equippedWeapon = item.id;
+      this.state.inventory = [...hero.inventory];
+
+      this.addXP(30);
       Sound.fanfare();
-      confetti({ particleCount: 40, spread: 50 });
+      try { confetti({ particleCount: 60, spread: 70 }); } catch {}
+      try {
+        speakCompanion(item.voiceLine || item.defaultVoiceLine || `Awesome! You unlocked the ${item.title || item.name}!`);
+      } catch {}
+
+      this.logAction(`${hero.name} unlocked ${item.title || item.name}`, `Cost: ${cost} Tokens 🪙`);
+      this.syncSelectedHeroWithHeroes();
+      this.saveState(true);
+
+      this.openMysterySurprise({
+        type: 'chest',
+        title: item.title || item.name,
+        image: item.image,
+        category: item.category,
+        statBonusPercent: item.statBonusPercent || 25,
+        statBonusType: item.statBonusType || 'damage_boost',
+        xpEarned: 30
+      });
+      return { success: true, item, isNew: true };
+    }
+
+    // 3. AVATAR & PET GEAR (Masks, Capes, Armor, Boots)
+    const isGearOwned = hero.inventory.includes(item.id) || hero.inventory.includes(item.title) || hero.inventory.includes(item.name);
+    if (isGearOwned) {
+      hero.equippedPetGear = item.title || item.name;
+      this.state.equippedPetGear = item.title || item.name;
+      const socket = item.targetPetSocket || item.subcategory || item.socket || 'head';
+      const activePetId = this.getActivePet()?.id || hero.activePetId || '1';
+      this.equipPetStudioGear(activePetId, socket, item.id);
+
+      Sound.sparkle();
+      try {
+        speakCompanion(`Equipped the ${item.title || item.name}! Looking heroic!`);
+      } catch {}
+
       this.showReward(
-        'Gear Equipped!',
-        `Your avatar and pet companion are now equipped with ${item.title}!`,
+        'Gear Equipped! 🛡️',
+        `Your avatar and pet companion are now equipped with ${item.title || item.name}!`,
         0,
         0,
         item.image
       );
+      this.syncSelectedHeroWithHeroes();
       this.saveState(true);
-      return;
+      this.notify();
+      return { success: true, item, equipped: true };
     }
 
-    if (this.state.selectedHero.coins < item.costCoins) {
+    const cost = item.costCoins || item.defaultPrice || 50;
+    if ((hero.coins || 0) < cost) {
       Sound.deny();
       this.showReward(
         'Not Enough Habit Tokens!',
-        `You need ${item.costCoins - this.state.selectedHero.coins} more Habit Tokens. Complete chores and play mini-games to earn more tokens!`,
+        `You need ${cost - (hero.coins || 0)} more Habit Tokens for ${item.title || item.name}.`,
         0,
         0,
         item.image
       );
-      return;
+      return { success: false, reason: 'Insufficient coins' };
     }
 
-    this.state.selectedHero.coins -= item.costCoins;
-    this.state.inventory.push(item.title);
-    this.state.equippedPetGear = item.title;
+    hero.coins -= cost;
+    hero.inventory.push(item.id);
+    if (item.title) hero.inventory.push(item.title);
+    hero.equippedPetGear = item.title || item.name;
+    this.state.inventory = [...hero.inventory];
+    this.state.equippedPetGear = item.title || item.name;
 
-    // Equip wearable pet studio gear & speak companion reaction line
-    if (item.socket || item.isParentCrafted) {
-      const activePetId = this.getActivePet()?.id || this.state.selectedHero?.activePetId || 1;
-      const targetSocket = item.socket || 'head';
+    if (item.targetPetSocket || item.subcategory || item.socket || item.isParentCrafted) {
+      const activePetId = this.getActivePet()?.id || hero.activePetId || '1';
+      const targetSocket = item.targetPetSocket || item.subcategory || item.socket || 'head';
       this.equipPetStudioGear(activePetId, targetSocket, item.id);
       if (PET_GEAR_CATALOG[targetSocket]) {
         const catItem = PET_GEAR_CATALOG[targetSocket].find(g => g.id === item.id);
         if (catItem) catItem.unlocked = true;
       }
-      if (item.petVoiceLine) {
-        try {
-          speakCompanion(item.petVoiceLine, activePetId);
-        } catch (e) {
-          console.warn("Companion voice line playback failed:", e);
-        }
-      }
     }
 
     this.addXP(25);
     Sound.coin();
-    this.logAction(`${this.state.selectedHero.name} bought ${item.title}`, `Cost: ${item.costCoins} Tokens 🪙`);
+    try {
+      speakCompanion(item.voiceLine || `Roar! You unlocked ${item.title || item.name}!`);
+    } catch {}
+
+    this.logAction(`${hero.name} bought ${item.title || item.name}`, `Cost: ${cost} Tokens 🪙`);
+    this.syncSelectedHeroWithHeroes();
     this.saveState(true);
 
-    // Mystery Surprise Unboxing Mechanics:
-    // Pets arrive in a Glowing Egg; all other digital content arrives in a Glowing Treasure Chest!
-    const isPet = item.id.includes('rex') || item.id.includes('pet') || (item.category && item.category.toLowerCase().includes('companion'));
     this.openMysterySurprise({
-      type: isPet ? 'egg' : 'chest',
-      title: item.title,
+      type: 'chest',
+      title: item.title || item.name,
       image: item.image,
       icon: item.icon,
       desc: item.desc,
@@ -4597,6 +4627,145 @@ class Store {
       statBonusType: item.statBonusType,
       xpEarned: 25
     });
+    return { success: true, item, isNew: true };
+  }
+
+  // Feed a consumable snack from kid profile's inventory to the active pet
+  feedPetConsumableSnack(snackId) {
+    const hero = this.state.selectedHero;
+    if (!hero) return { success: false, reason: 'No active hero' };
+    if (!hero.consumables) hero.consumables = [];
+
+    if (!Array.isArray(hero.consumables)) {
+      const oldObj = hero.consumables || {};
+      const oldKeys = Object.keys(oldObj);
+      const arr = oldKeys.map(k => {
+        const entry = oldObj[k];
+        return typeof entry === 'object' && entry !== null ? { id: k, ...entry } : { id: k, servingsRemaining: entry };
+      });
+      oldKeys.forEach(k => { arr[k] = arr.find(x => x.id === k); });
+      hero.consumables = arr;
+    }
+
+    const consumable = hero.consumables.find(c => c.id === snackId) || hero.consumables[snackId];
+    if (!consumable) {
+      Sound.deny();
+      return { success: false, reason: 'Out of treats' };
+    }
+
+    let remaining = 0;
+    if (typeof consumable === 'object' && consumable !== null) {
+      remaining = consumable.servingsRemaining !== undefined ? consumable.servingsRemaining : 0;
+    } else if (typeof consumable === 'number') {
+      remaining = consumable;
+    }
+
+    if (remaining <= 0) {
+      Sound.deny();
+      this.showReward('Out of Treats!', 'No servings remaining for this snack! Buy more in the Hero Shop.', 0, 0, null, 'nutrition');
+      return { success: false, reason: 'Out of treats' };
+    }
+
+    const newRemaining = Math.max(0, remaining - 1);
+    if (typeof consumable === 'object' && consumable !== null) {
+      consumable.servingsRemaining = newRemaining;
+    }
+    hero.consumables[snackId] = consumable;
+
+    // When 0 servings remain, remove from active consumables
+    if (newRemaining === 0) {
+      hero.consumables = hero.consumables.filter(c => c.id !== snackId);
+      delete hero.consumables[snackId];
+    }
+
+    const item = (this.state.digitalGear || []).find(g => g.id === snackId) ||
+                 DIGITAL_REWARDS_CATALOG.find(g => g.id === snackId) ||
+                 (typeof THREE_D_ASSETS !== 'undefined' ? THREE_D_ASSETS.find(g => g.id === snackId) : null);
+
+    // Feed active pet
+    const activePet = this.getActivePet() || { id: '1', name: 'Rex the T-Rex' };
+    const pId = String(activePet.id);
+    const stats = this.ensurePetStats(pId);
+    stats.hunger = Math.min(100, (stats.hunger || 50) + 35);
+    stats.joy = Math.min(100, (stats.joy || 50) + 20);
+    stats.energy = Math.min(100, (stats.energy || 50) + 15);
+
+    if (this.state.petSanctuary) {
+      this.state.petSanctuary.hunger = Math.min(100, (this.state.petSanctuary.hunger || 50) + 35);
+      this.state.petSanctuary.joy = Math.min(100, (this.state.petSanctuary.joy || 50) + 20);
+      this.state.petSanctuary.energy = Math.min(100, (this.state.petSanctuary.energy || 50) + 15);
+    }
+
+    this.addPetXP(pId, 15);
+    this.addXP(10);
+    Sound.snackMunch();
+    try {
+      confetti({ particleCount: 30, spread: 45, origin: { y: 0.6 } });
+    } catch {}
+
+    const voiceMsg = item?.voiceLine || item?.defaultVoiceLine || `Munch munch! ${activePet.name} loved the ${item?.title || item?.name || 'snack'}! Super tasty!`;
+    try {
+      speakCompanion(voiceMsg);
+    } catch {}
+
+    this.showReward(
+      'Yum! Snack Time! 🍎',
+      `Fed ${item?.title || item?.name || 'treat'} to ${activePet.name}! (+35 Hunger, +20 Joy, +15 Energy)\n${newRemaining} servings remaining.`,
+      0,
+      0,
+      item?.image || null,
+      'nutrition'
+    );
+
+    this.syncSelectedHeroWithHeroes();
+    this.saveState(true);
+    this.notify();
+    return { success: true, servingsRemaining: newRemaining };
+  }
+
+  // Equip a specific weapon owned by the active hero
+  equipHeroWeapon(weaponId) {
+    const hero = this.state.selectedHero;
+    if (!hero) return { success: false, reason: 'No active hero' };
+    if (!hero.inventory) hero.inventory = ['laser_toothbrush'];
+
+    const weapon = (this.state.digitalGear || []).find((g) => g.id === weaponId && (g.category === 'Weapons' || g.category === 'weapon')) ||
+      DIGITAL_REWARDS_CATALOG.find((g) => g.id === weaponId) ||
+      (typeof THREE_D_ASSETS !== 'undefined' ? THREE_D_ASSETS.find((g) => g.id === weaponId) : null);
+
+    if (!weapon) return { success: false, reason: 'Weapon not found' };
+
+    const isOwned = hero.inventory.includes(weapon.id) || hero.inventory.includes(weapon.title) || hero.inventory.includes(weapon.name);
+    if (!isOwned) return { success: false, reason: 'Weapon not owned' };
+
+    hero.equippedWeapon = weapon.id;
+    this.syncSelectedHeroWithHeroes();
+    Sound.sparkle();
+    try {
+      speakCompanion(`Equipped the ${weapon.title || weapon.name}! ${weapon.statBonusLabel || 'Ready for battle!'}`);
+    } catch {}
+    this.saveState(true);
+    this.notify();
+    return { success: true, weaponId: weapon.id };
+  }
+
+  // Get active hero's currently equipped weapon
+  getEquippedHeroWeapon(asObject = false) {
+    const hero = this.state.selectedHero;
+    const weaponId = hero?.equippedWeapon || null;
+    if (!asObject) {
+      return weaponId;
+    }
+    if (!weaponId) return null;
+    const weapon = (this.state.digitalGear || []).find((g) => g.id === weaponId && (g.category === 'Weapons' || g.category === 'weapon')) ||
+      DIGITAL_REWARDS_CATALOG.find((g) => g.id === weaponId) ||
+      (typeof THREE_D_ASSETS !== 'undefined' ? THREE_D_ASSETS.find((g) => g.id === weaponId) : null) ||
+      null;
+    return weapon;
+  }
+
+  getEquippedHeroWeaponObject() {
+    return this.getEquippedHeroWeapon(true);
   }
 
   approveParentRequest(reqId) {
@@ -5157,6 +5326,13 @@ class Store {
       this.state.selectedHero.petStatsMap = hero.petStatsMap ? { ...hero.petStatsMap } : undefined;
       this.state.selectedHero.petSanctuary = hero.petSanctuary ? { ...hero.petSanctuary } : undefined;
 
+      this.state.selectedHero.inventory = Array.isArray(hero.inventory) ? [...hero.inventory] : [];
+      this.state.selectedHero.consumables = Array.isArray(hero.consumables) ? [...hero.consumables] : { ...(hero.consumables || {}) };
+      this.state.selectedHero.equippedWeapon = hero.equippedWeapon !== undefined ? hero.equippedWeapon : null;
+      this.state.selectedHero.equippedPetGear = hero.equippedPetGear !== undefined ? hero.equippedPetGear : null;
+      this.state.inventory = [...this.state.selectedHero.inventory];
+      this.state.equippedPetGear = this.state.selectedHero.equippedPetGear;
+
       // Restore hero-specific AI Spark Quests
       this.state.aiQuests = this.getAiQuests(hero.id);
 
@@ -5187,7 +5363,10 @@ class Store {
       equippedProfileTheme: 'theme_dragon_emerald',
       unlockedThemes: ['theme_dragon_emerald'],
       equippedGear: {},
-      inventory: []
+      equippedWeapon: null,
+      equippedPetGear: null,
+      inventory: [],
+      consumables: []
     };
     if (this.state.deletedHeroIds) {
       this.state.deletedHeroIds = this.state.deletedHeroIds.filter((id) => id !== newHero.id);

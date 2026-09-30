@@ -35,10 +35,125 @@ export const THREE_D_CATEGORIES = {
     name: 'AR Quest Bosses',
     emoji: '👾',
     description: 'Formidable 3D hygiene and chore boss monsters for AR battles.'
+  },
+  weapon: {
+    id: 'weapon',
+    name: 'AR Battle Weapons',
+    emoji: '⚔️',
+    description: 'Heroic combat blasters, sabers & hammers equipped for AR boss battles.'
+  },
+  food: {
+    id: 'food',
+    name: 'Pet Treats & Snacks',
+    emoji: '🍎',
+    description: 'Consumable nutrient bites refilling companion fullness, energy and joy.'
   }
 };
 
 export const THREE_D_ASSETS = [
+  // --- WEAPONS (AR Combat Weapons) ---
+  {
+    id: 'weapon_plasma_saber',
+    category: 'weapon',
+    name: 'Star-Plasma Saber',
+    emoji: '⚡',
+    badge: 'AR Saber',
+    description: 'Crackling energy blade forged from pure starlight to defeat plaque titans!',
+    format: 'spline',
+    modelUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+    splineUrl: 'https://prod.spline.design/J3y4v4k5l6m7n8o9/scene.splinecode',
+    defaultStat: 'damage_boost',
+    defaultMultiplier: 1.25,
+    defaultPrice: 60,
+    tags: ['sword', 'saber', 'blade', 'laser', 'plasma', 'weapon'],
+    defaultVoiceLine: "Rex says: Strike true with the power of starlight, little hero!"
+  },
+  {
+    id: 'weapon_hydro_blaster',
+    category: 'weapon',
+    name: 'Turbo Hydro Blaster',
+    emoji: '🔫',
+    badge: 'AR Blaster',
+    description: 'Rapid stream water blaster dissolving tartar villains in AR battles!',
+    format: 'spline',
+    modelUrl: 'https://modelviewer.dev/shared-assets/models/RobotExpressive.glb',
+    splineUrl: 'https://prod.spline.design/qE2M7oP9a1b2c3d4/scene.splinecode',
+    defaultStat: 'damage_boost',
+    defaultMultiplier: 1.20,
+    defaultPrice: 50,
+    tags: ['blaster', 'water', 'hydro', 'cannon', 'gun', 'weapon'],
+    defaultVoiceLine: "Rex says: Clean blast engaged! Wash away that sugary tartar!"
+  },
+  {
+    id: 'weapon_meteor_hammer',
+    category: 'weapon',
+    name: 'Meteor Shockwave Hammer',
+    emoji: '🔨',
+    badge: 'AR Hammer',
+    description: 'Heavy kinetic smasher that sends tooth decay gremlins flying!',
+    format: 'spline',
+    modelUrl: 'https://modelviewer.dev/shared-assets/models/NeilArmstrong.glb',
+    splineUrl: 'https://prod.spline.design/T5u6v7w8x9y0z1a2/scene.splinecode',
+    defaultStat: 'damage_boost',
+    defaultMultiplier: 1.30,
+    defaultPrice: 75,
+    tags: ['hammer', 'smasher', 'meteor', 'shockwave', 'weapon'],
+    defaultVoiceLine: "Rex says: Boom! Big hammer smash defeats the sugar bugs!"
+  },
+  // --- FOOD (Pet Treats & Snacks) ---
+  {
+    id: 'food_stardust_apple',
+    category: 'food',
+    name: 'Stardust Golden Apple',
+    emoji: '🍎',
+    badge: 'Crisp Fruit',
+    description: 'Sun-ripened crunchy golden apple infused with orchard starlight vitamins.',
+    format: 'spline',
+    modelUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+    splineUrl: 'https://prod.spline.design/fruit-apple/scene.splinecode',
+    defaultStat: 'hunger',
+    defaultMultiplier: 1.25,
+    defaultPrice: 20,
+    tags: ['apple', 'fruit', 'snack', 'food', 'healthy', 'orchard'],
+    defaultVoiceLine: "Rex says: Crunch crunch! Sweet and healthy for big hero energy!"
+  },
+  {
+    id: 'food_jungle_honeycomb',
+    category: 'food',
+    name: 'Wild Jungle Honeycomb',
+    emoji: '🍯',
+    badge: 'Golden Treat',
+    description: 'Golden honeycomb clusters dripping with sweet wildflower nectar.',
+    format: 'spline',
+    modelUrl: 'https://modelviewer.dev/shared-assets/models/RobotExpressive.glb',
+    splineUrl: 'https://prod.spline.design/honeycomb/scene.splinecode',
+    defaultStat: 'joy',
+    defaultMultiplier: 1.20,
+    defaultPrice: 25,
+    tags: ['honey', 'comb', 'sweet', 'treat', 'snack', 'jungle'],
+    defaultVoiceLine: "Rex says: Mmm, so sweet! Pet joy levels are reaching the stars!"
+  },
+  {
+    id: 'food_starberry_bites',
+    category: 'food',
+    name: 'Cosmic Starberry Bites',
+    title: 'Cosmic Starberry Bites',
+    emoji: '🍓',
+    badge: 'Sweet Fruit',
+    description: 'Juicy glowing cosmic berries giving huge companion energy and joy.',
+    format: 'spline',
+    modelUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+    splineUrl: 'https://prod.spline.design/starberry/scene.splinecode',
+    defaultStat: 'hunger',
+    defaultMultiplier: 1.25,
+    defaultPrice: 35,
+    costCoins: 35,
+    usageType: 'multi_use',
+    maxServings: 3,
+    servingsMax: 3,
+    tags: ['berry', 'starberry', 'fruit', 'snack', 'food', 'cosmic'],
+    defaultVoiceLine: "Rex says: Starberries are super juicy and full of turbo energy!"
+  },
   // --- GEAR (Pet Wearables) ---
   {
     id: 'gear_cyber_visor',

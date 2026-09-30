@@ -468,7 +468,7 @@ Generate an exciting 3D pet playground toy. Return ONLY valid JSON:
     const { promptText = '', theme = 'orchard', defaultPrice = 20 } = options;
     const foodDefaults = {
       orchard: { name: 'Golden Orchard Fruit Basket', desc: 'Sun-ripened fruit picked fresh from the Sanctuary orchard trees!', icon: 'nutrition', emoji: '🍎', color: '#e74c3c', accent: '#f1c40f' },
-      cosmic: { name: 'Starlight Cosmic Berries', desc: 'Sparkling stardust berries bursting with joyful energy!', icon: 'auto_awesome', emoji: '🍓', color: '#a855f7', accent: '#ec4899' },
+      cosmic: { name: 'Starlight Cosmic Berries', desc: 'Sparkling stardust berries bursting with joyful energy!', icon: 'auto_awesome', emoji: '🍓', color: '#0284c7', accent: '#38bdf8' },
       jungle: { name: 'Jungle Honeycomb Feast', desc: 'Sweet wild honeycomb cluster gathered from the tallest trees!', icon: 'hive', emoji: '🍯', color: '#f39c12', accent: '#e67e22' },
       ocean: { name: 'Tidepool Kelp Crunch', desc: 'Crispy sea-kissed kelp snacks bursting with ocean minerals!', icon: 'water', emoji: '🌊', color: '#0ea5e9', accent: '#06b6d4' }
     };
@@ -536,6 +536,11 @@ Generate a fun, healthy-sounding pet snack pack. Return ONLY valid JSON (no mark
       xpBoost: 20,
       quantityPerPurchase,
       quantity: quantityPerPurchase,
+      usageType: quantityPerPurchase > 1 ? 'multi_use' : 'single_use',
+      maxServings: quantityPerPurchase,
+      servingsRemaining: quantityPerPurchase,
+      voiceLine: options.voiceLine || 'Yummy! Munch munch! Rex loves these tasty treats!',
+      petVoiceLine: options.voiceLine || 'Yummy! Munch munch! Rex loves these tasty treats!',
       costCoins,
       coinPrice: costCoins,
       icon,
@@ -639,7 +644,80 @@ Generate a fun, cartoonish villain boss for kids to defeat. Return ONLY valid JS
   }
 
   /**
-   * Unified 4-Category Generator Dispatcher
+   * Generates custom AR Combat Weapons for hero battles.
+   */
+  async generate3DWeapon(options = {}) {
+    const { promptText = '', theme = 'laser_sword', defaultPrice = 60 } = options;
+    const weaponDefaults = {
+      laser_sword: { name: 'Star-Plasma Saber', desc: 'Crackling energy blade forged from pure starlight to defeat plaque titans!', icon: 'swords', color: '#06b6d4', accent: '#3b82f6', splineUrl: 'https://prod.spline.design/J3y4v4k5l6m7n8o9/scene.splinecode', modelUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb' },
+      blaster: { name: 'Turbo Hydro Blaster', desc: 'Rapid stream water blaster dissolving tartar villains in AR battles!', icon: 'water_drop', color: '#0284c7', accent: '#00d2d3', splineUrl: 'https://prod.spline.design/qE2M7oP9a1b2c3d4/scene.splinecode', modelUrl: 'https://modelviewer.dev/shared-assets/models/RobotExpressive.glb' },
+      hammer: { name: 'Meteor Shockwave Hammer', desc: 'Heavy kinetic smasher that sends tooth decay gremlins flying!', icon: 'hardware', color: '#f59e0b', accent: '#ef4444', splineUrl: 'https://prod.spline.design/T5u6v7w8x9y0z1a2/scene.splinecode', modelUrl: 'https://modelviewer.dev/shared-assets/models/NeilArmstrong.glb' },
+      shield_blaster: { name: 'Aegis Spark Cannon', desc: 'Defensive energy barrier with high-powered counter-strike beam!', icon: 'shield', color: '#10b981', accent: '#06b6d4', splineUrl: 'https://prod.spline.design/K9l0m1n2o3p4q5r6/scene.splinecode', modelUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb' }
+    };
+
+    const def = weaponDefaults[theme] || weaponDefaults.laser_sword;
+    let name = promptText.trim() || def.name;
+    let desc = def.desc;
+    let primaryColor = def.color;
+    let statBonusType = 'damage_boost';
+    let statBonusPercent = 25;
+    let costCoins = parseInt(defaultPrice) || 60;
+    let petVoiceLine = 'Lock and load, hero! Let us blast the plaque villains together!';
+    let splineUrl = options.splineUrl || def.splineUrl;
+    let modelUrl = options.modelUrl || def.modelUrl;
+
+    if (this.isAiReady && this.model) {
+      try {
+        const aiPrompt = `You are an imaginative kid's adventure game weapon designer for "Little Heroes Adventures".
+Parent Idea: "${promptText || theme}"
+Rules: STRICTLY NO pink or purple colors (allowed: cyan, emerald green, royal blue, amber gold, flame orange).
+Generate an equippable AR battle weapon for kids (ages 3-9). Return ONLY valid JSON:
+{
+  "name": "Catchy Weapon Name (Max 4 words)",
+  "desc": "Exciting, kid-friendly backstory (1 sentence)",
+  "statBonusPercent": 25,
+  "petVoiceLine": "Spoken battle cheer by Rex the Dino (max 12 words)!"
+}`;
+        const result = await this.model.generateContent(aiPrompt);
+        const text = result.response.text().replaceAll("```json", "").replaceAll("```", "").trim();
+        const parsed = JSON.parse(text);
+        if (parsed.name) name = parsed.name;
+        if (parsed.desc) desc = parsed.desc;
+        if (parsed.statBonusPercent) statBonusPercent = Math.min(50, Math.max(10, parsed.statBonusPercent));
+        if (parsed.petVoiceLine) petVoiceLine = parsed.petVoiceLine;
+      } catch (err) {
+        console.warn("AI Weapon generation fallback:", err.message);
+      }
+    }
+
+    const uniqueId = `ai_weapon_${Date.now()}`;
+    const graphicDataUrl = generate3DIcon(def.icon, getThemeColorName(primaryColor), name.slice(0, 12));
+
+    return {
+      id: uniqueId,
+      name,
+      title: name,
+      desc,
+      category: 'Weapons',
+      costCoins,
+      coinPrice: costCoins,
+      statBonusType,
+      statBonusPercent,
+      statBonusLabel: `+${statBonusPercent}% AR Battle Damage`,
+      petVoiceLine,
+      voiceLine: petVoiceLine,
+      splineUrl,
+      modelUrl,
+      icon: def.icon,
+      image: graphicDataUrl,
+      primaryColor,
+      isParentCrafted: true,
+      isCustomAI: true
+    };
+  }
+
+  /**
+   * Unified Category Generator Dispatcher
    */
   
   /**
@@ -825,6 +903,8 @@ Return ONLY valid JSON:
       return this.generate3DPetCompanion(options);
     } else if (category === 'food') {
       return this.generate3DPetFood(options);
+    } else if (category === 'weapon') {
+      return this.generate3DWeapon(options);
     } else {
       return this.generate3DPetGear(options);
     }
@@ -832,6 +912,17 @@ Return ONLY valid JSON:
 }
 
 export const SPLINE_3D_PRESETS = {
+  weapon: [
+    { id: 'spline_plasma_saber', name: 'Star-Plasma Saber 3D', url: 'https://prod.spline.design/J3y4v4k5l6m7n8o9/scene.splinecode', splineUrl: 'https://prod.spline.design/J3y4v4k5l6m7n8o9/scene.splinecode', icon: 'swords', category: 'weapon' },
+    { id: 'spline_hydro_blaster', name: 'Turbo Hydro Blaster 3D', url: 'https://prod.spline.design/qE2M7oP9a1b2c3d4/scene.splinecode', splineUrl: 'https://prod.spline.design/qE2M7oP9a1b2c3d4/scene.splinecode', icon: 'water_drop', category: 'weapon' },
+    { id: 'spline_meteor_hammer', name: 'Meteor Shockwave Hammer 3D', url: 'https://prod.spline.design/T5u6v7w8x9y0z1a2/scene.splinecode', splineUrl: 'https://prod.spline.design/T5u6v7w8x9y0z1a2/scene.splinecode', icon: 'hardware', category: 'weapon' },
+    { id: 'spline_aegis_cannon', name: 'Aegis Spark Cannon 3D', url: 'https://prod.spline.design/K9l0m1n2o3p4q5r6/scene.splinecode', splineUrl: 'https://prod.spline.design/K9l0m1n2o3p4q5r6/scene.splinecode', icon: 'shield', category: 'weapon' }
+  ],
+  food: [
+    { id: 'spline_stardust_apple', name: 'Stardust Golden Apple 3D', url: 'https://prod.spline.design/fruit-apple/scene.splinecode', splineUrl: 'https://prod.spline.design/fruit-apple/scene.splinecode', icon: 'nutrition', category: 'food' },
+    { id: 'spline_honeycomb_cluster', name: 'Wild Jungle Honeycomb 3D', url: 'https://prod.spline.design/honeycomb/scene.splinecode', splineUrl: 'https://prod.spline.design/honeycomb/scene.splinecode', icon: 'hive', category: 'food' },
+    { id: 'spline_kelp_crisps', name: 'Tidepool Sea Kelp 3D', url: 'https://prod.spline.design/sea-kelp/scene.splinecode', splineUrl: 'https://prod.spline.design/sea-kelp/scene.splinecode', icon: 'water', category: 'food' }
+  ],
   pet: [
     { id: 'spline_pet_dragon', name: 'Baby Ember Drake 3D', url: 'https://prod.spline.design/pet-dragon/scene.splinecode', splineUrl: 'https://prod.spline.design/pet-dragon/scene.splinecode', icon: 'flight', category: 'pet', archetype: 'dragon' },
     { id: 'spline_pet_dino', name: 'Tiny Rex Brawler 3D', url: 'https://prod.spline.design/pet-dino/scene.splinecode', splineUrl: 'https://prod.spline.design/pet-dino/scene.splinecode', icon: 'pets', category: 'pet', archetype: 'dino' },
