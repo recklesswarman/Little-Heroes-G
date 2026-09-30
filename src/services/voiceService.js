@@ -485,11 +485,12 @@ async function fetchPcmTts(endpoint, cleanSpoken, petId, timeoutMs = 4500) {
  * 4. Resilient Fallback: Cartoon Speech Synthesis if offline or both network calls fail.
  *
  * Pass { instant: true } for fast-paced, real-time contexts (e.g. the
- * toothbrush battle's quadrant/event coaching) to skip both network TTS
- * tiers entirely and go straight to the zero-latency browser fallback --
- * a cloud TTS round trip (even a fast one) is the wrong tool for coaching
- * lines tied to a live countdown, and stacking two of them (ElevenLabs then
- * Gemini) before falling back is what made this feel laggy.
+ * toothbrush battle's quadrant/event coaching): tries ElevenLabs alone with
+ * a short timeout (long enough for a warm cache hit, too short to feel
+ * laggy), then falls straight through to the zero-latency browser fallback
+ * on any miss/timeout. Skips the Gemini tier entirely -- stacking two
+ * network hops (ElevenLabs then Gemini) before falling back is what made
+ * this feel laggy in the first place.
  */
 export const speakCompanion = async (text, petIdOrOptions = 'rex', onEnded = null) => {
   if (!text || typeof text !== 'string' || !text.trim()) return;
@@ -533,6 +534,25 @@ export const speakCompanion = async (text, petIdOrOptions = 'rex', onEnded = nul
   }
 
   if (instant) {
+    // Fast-paced/real-time contexts (the toothbrush battle) still deserve
+    // ElevenLabs' voice quality when it can arrive fast enough -- but only
+    // when it can. The battle's coaching lines are a small, repeating set
+    // (quadrant cues, hazard warnings, the halfway Learn Challenge question,
+    // etc.), so after the first time a line is spoken on a given server
+    // instance it's served from that server's in-memory TTS cache (see
+    // server/elevenLabsService.js) in well under this timeout; a cold/novel
+    // line simply won't make it back in time and falls straight through to
+    // the zero-latency browser voice, exactly as before this existed.
+    // Gemini's tier is skipped here -- a second network hop has no room left
+    // in this tight a budget.
+    const INSTANT_ELEVENLABS_TIMEOUT_MS = 700;
+    const fastData = await fetchPcmTts(ELEVENLABS_TTS_ENDPOINT, cleanSpoken, petId, INSTANT_ELEVENLABS_TIMEOUT_MS);
+    if (myGeneration !== speechGeneration) return;
+    if (fastData) {
+      const played = await playPcmTtsResponse(fastData, cleanSpoken, petId, callback, myGeneration);
+      if (played) return;
+      if (myGeneration !== speechGeneration) return;
+    }
     speakWithSpeechSynthesis(cleanSpoken, petId, callback);
     return;
   }

@@ -1,5 +1,32 @@
+import { createHash } from 'crypto';
 import { isRateLimited, getRequestIp } from './geminiService.js';
 import { getPetById } from '../src/data/petsData.js';
+
+// In-memory cache of generated ElevenLabs audio, keyed by the exact cleaned
+// text + voice + speed that produced it. The toothbrush battle's coaching
+// lines are a small, repeating set (5 quadrant cues, a handful of hazard
+// warnings, the halfway Learn Challenge question, etc.) spoken over and over
+// across every kid's every battle, so after the very first time each line is
+// generated on a given server instance, every later request for the exact
+// same line is served from memory instead of round-tripping to ElevenLabs --
+// fast enough for the battle's real-time "instant" voice mode to use this
+// tier instead of always skipping straight to browser speech synthesis.
+// Capped and FIFO-evicted so a stream of unique text (e.g. free-form Rex
+// chat) can't grow this unbounded; Map preserves insertion order.
+const ttsCache = new Map();
+const TTS_CACHE_MAX_ENTRIES = 200;
+
+function getTtsCacheKey(cleanText, voiceId, speed) {
+  return createHash('sha256').update(`${cleanText}|${voiceId}|${speed}`).digest('hex');
+}
+
+function cacheTtsResponse(key, payload) {
+  ttsCache.set(key, payload);
+  if (ttsCache.size > TTS_CACHE_MAX_ENTRIES) {
+    const oldestKey = ttsCache.keys().next().value;
+    ttsCache.delete(oldestKey);
+  }
+}
 
 // Maps a companion pet id to its ElevenLabs voice id. Only pets with an
 // entry here get an ElevenLabs voice -- everyone else falls through to the
@@ -72,6 +99,13 @@ export async function handleElevenLabsTTSRequest(req, res) {
       return res.status(404).json({ error: `No ElevenLabs voice configured for pet "${normalizedPetId}".` });
     }
 
+    const speechSpeed = getSpeechSpeed();
+    const cacheKey = getTtsCacheKey(cleanText, voiceId, speechSpeed);
+    const cached = ttsCache.get(cacheKey);
+    if (cached) {
+      return res.json({ ...cached, cached: true });
+    }
+
     const upstream = await fetch(ELEVENLABS_TTS_URL(voiceId), {
       method: 'POST',
       headers: {
@@ -87,7 +121,7 @@ export async function handleElevenLabsTTSRequest(req, res) {
           similarity_boost: 0.75,
           style: 0.3,
           use_speaker_boost: true,
-          speed: getSpeechSpeed()
+          speed: speechSpeed
         }
       })
     });
@@ -101,14 +135,17 @@ export async function handleElevenLabsTTSRequest(req, res) {
     const arrayBuffer = await upstream.arrayBuffer();
     const audioBase64 = Buffer.from(arrayBuffer).toString('base64');
 
-    return res.json({
+    const responsePayload = {
       success: true,
       audio: audioBase64,
       mimeType: 'audio/pcm;rate=24000',
       voice: voiceId,
       sampleRate: 24000,
       petId: normalizedPetId
-    });
+    };
+    cacheTtsResponse(cacheKey, responsePayload);
+
+    return res.json(responsePayload);
   } catch (error) {
     console.error('Server ElevenLabs TTS generation error:', error?.message || error);
     return res.status(500).json({
