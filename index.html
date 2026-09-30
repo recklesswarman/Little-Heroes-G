@@ -21,7 +21,7 @@
   <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"></script>
   <script>
     // Bulletproof PWA Cache-Buster & Service Worker Auto-Updater
-    const APP_BUILD_VERSION = 'v3.1.0-hana3d-cockpit-20260918';
+    const APP_BUILD_VERSION = 'v3.2.0-digital-rewards-20260930';
     window.__LITTLE_HEROES_VERSION__ = APP_BUILD_VERSION;
 
     window.forceAppHardRefresh = async function() {
@@ -88,11 +88,33 @@
         });
       }
     })();
+
+    // Auto-recovery for chunk loading or unexpected syntax token errors from stale caches
+    window.addEventListener('error', function(e) {
+      const msg = (e && e.message) ? String(e.message).toLowerCase() : '';
+      if (msg.includes('unexpected token') || msg.includes('loading chunk') || msg.includes('failed to fetch dynamically imported module')) {
+        console.warn('[PWA] Stale chunk error detected. Auto-refreshing...', e);
+        if (!sessionStorage.getItem('lh_auto_reload_attempted')) {
+          sessionStorage.setItem('lh_auto_reload_attempted', '1');
+          window.forceAppHardRefresh();
+        }
+      }
+    });
   </script>
 </head>
-<body class="bg-background text-on-background font-body select-none overflow-x-hidden min-h-screen antialiased">
+<body class="bg-background text-on-background font-body select-none overflow-x-hidden min-h-screen antialiased" style="background-color: #0b0f19; color: #f8fafc;">
   <div id="app" class="relative min-h-screen flex flex-col justify-between">
-    <!-- Main content loaded dynamically -->
+    <div style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #0b0f19; color: white; font-family: system-ui, -apple-system, sans-serif; text-align: center; padding: 24px;">
+      <div style="font-size: 56px; margin-bottom: 16px;">🦖</div>
+      <h1 style="font-size: 22px; font-weight: 800; margin: 0 0 8px 0; letter-spacing: -0.5px;">Little Hero Adventures</h1>
+      <p style="font-size: 14px; color: #94a3b8; margin: 0 0 20px 0;">Loading your hero headquarters...</p>
+      <div style="width: 140px; height: 6px; background: #1e293b; border-radius: 9999px; overflow: hidden; margin-bottom: 24px;">
+        <div style="width: 100%; height: 100%; background: linear-gradient(90deg, #10b981, #06b6d4); border-radius: 9999px;"></div>
+      </div>
+      <button onclick="window.forceAppHardRefresh()" style="background: #1e293b; color: #94a3b8; border: 1px solid #334155; padding: 8px 16px; border-radius: 8px; font-size: 12px; cursor: pointer;">
+        Tap to Refresh
+      </button>
+    </div>
   </div>
   <script type="module" src="/src/main.js"></script>
 </body>

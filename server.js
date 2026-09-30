@@ -28,6 +28,12 @@ app.post('/api/elevenlabs/tts', handleElevenLabsTTSRequest);
 
 // Serve static build in production with SPA fallback
 app.use(express.static(path.join(__dirname, 'dist')));
+
+// Prevent SPA fallback from serving index.html for missing static assets or stale chunks
+app.use(['/assets', '/images', '/icons', '/audio'], (req, res) => {
+  res.status(404).json({ error: 'Asset not found' });
+});
+
 app.use((req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });

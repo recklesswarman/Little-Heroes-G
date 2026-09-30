@@ -1,4 +1,4 @@
-const CACHE_NAME = 'little-heroes-v3-hana3d-cockpit-final';
+const CACHE_NAME = 'little-heroes-v3.2.0-rewards-revamp-20260930';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -67,10 +67,15 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(event.request).then((response) => {
       if (response && response.status === 200 && event.request.method === 'GET') {
-        const responseClone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseClone);
-        });
+        const isAsset = url.pathname.startsWith('/assets/');
+        const isHtml = (response.headers.get('content-type') || '').includes('text/html');
+        // Never cache HTML responses for asset endpoints
+        if (!isAsset || !isHtml) {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
+        }
       }
       return response;
     }).catch(() => {
