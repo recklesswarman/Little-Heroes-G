@@ -22,7 +22,8 @@ const testFiles = [
   'scratch/test_firebase_storage.cjs',
   'scratch/test_digital_rewards_revamp.cjs',
   'scratch/test_trophy_showcase.cjs',
-  'scratch/test_battle_visual_refresh.cjs'
+  'scratch/test_battle_visual_refresh.cjs',
+  'scratch/test_warrior_teeth_army_and_parent_rewards.cjs'
 ];
 
 let allPassed = true;

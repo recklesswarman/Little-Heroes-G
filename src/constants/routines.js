@@ -123,5 +123,17 @@ export const HABIT_ISLANDS = [
     completed: false,
     pointsApproved: false,
     desc: 'Scrub all suds clean before meals and after playing outside.'
+  },
+  {
+    id: 'toothbrush_adventure_battle',
+    title: 'Toothbrush Adventure Battle',
+    zone: 'Habit Islands',
+    icon: 'dentistry',
+    coins: 30,
+    points: 15,
+    xp: 35,
+    completed: false,
+    pointsApproved: false,
+    desc: 'Battle sugar bug villains for 2 minutes to protect your enamel and earn shiny hero tokens!'
   }
 ];

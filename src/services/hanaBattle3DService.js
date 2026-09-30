@@ -61,6 +61,19 @@ class HanaBattle3DService {
     this.deflectTimer = 0;
     this.isVictory = false;
 
+    // Equipped Weapon Synergy & Stat Multiplier
+    this.equippedWeapon = null;
+    this.weaponMultiplier = 1.0;
+
+    // Warrior Teeth Army in 3D Arena (Arched Front Line Defense)
+    this.warriorTeeth = [
+      { id: 'q2', name: 'Upper Left', label: 'Q2', angle: -0.28, xRatio: 0.16, yRatio: 0.83, cleanPct: 0, cheerTimer: 0, shieldWobble: 0, shieldRaised: false, isCaptain: false, recoil: 0, fireFlash: 0 },
+      { id: 'q4', name: 'Lower Left', label: 'Q4', angle: -0.14, xRatio: 0.33, yRatio: 0.86, cleanPct: 0, cheerTimer: 0, shieldWobble: 0, shieldRaised: false, isCaptain: false, recoil: 0, fireFlash: 0 },
+      { id: 'q5', name: 'Commander', label: 'Captain', angle: 0, xRatio: 0.50, yRatio: 0.88, cleanPct: 0, cheerTimer: 0, shieldWobble: 0, shieldRaised: false, isCaptain: true, recoil: 0, fireFlash: 0 },
+      { id: 'q3', name: 'Lower Right', label: 'Q3', angle: 0.14, xRatio: 0.67, yRatio: 0.86, cleanPct: 0, cheerTimer: 0, shieldWobble: 0, shieldRaised: false, isCaptain: false, recoil: 0, fireFlash: 0 },
+      { id: 'q1', name: 'Upper Right', label: 'Q1', angle: 0.28, xRatio: 0.84, yRatio: 0.83, cleanPct: 0, cheerTimer: 0, shieldWobble: 0, shieldRaised: false, isCaptain: false, recoil: 0, fireFlash: 0 }
+    ];
+
     // Illustrated Asset Cache & Sweet Hazard State
     this.imageCache = {};
     this.currentHazard = null;
@@ -78,6 +91,9 @@ class HanaBattle3DService {
     this.shockwaves = [];
     this.bgClouds = [];
     this.bgBubbles = [];
+    this.counterAttackProjectiles = [];
+    this.hazardImpactParticles = [];
+    this.warriorCheerParticles = [];
 
     // Initialize background floating ambient elements
     for (let i = 0; i < 16; i++) {
@@ -141,6 +157,17 @@ class HanaBattle3DService {
     this.foamParticles = [];
     this.sparkles = [];
     this.shockwaves = [];
+    this.counterAttackProjectiles = [];
+    this.hazardImpactParticles = [];
+    this.warriorCheerParticles = [];
+    this.warriorTeeth.forEach(t => {
+      t.cleanPct = 0;
+      t.cheerTimer = 0;
+      t.shieldWobble = 0;
+      t.shieldRaised = false;
+      t.recoil = 0;
+      t.fireFlash = 0;
+    });
     Object.values(this.armorPlates).forEach(p => {
       p.intact = true;
       p.cracks = 0;
@@ -159,6 +186,12 @@ class HanaBattle3DService {
       if (options.hasLaserEquipped !== undefined) this.hasLaserEquipped = Boolean(options.hasLaserEquipped);
       if (options.bossData) this.setBoss(options.bossData, options.quadrantCleanliness);
       if (options.hazard) this.setHazard(options.hazard);
+      if (options.combatWeapon) {
+        this.setEquippedWeapon(options.combatWeapon);
+      } else {
+        if (options.equippedWeapon !== undefined) this.equippedWeapon = options.equippedWeapon;
+        if (options.weaponMultiplier !== undefined) this.weaponMultiplier = options.weaponMultiplier;
+      }
       return true;
     }
 
@@ -173,6 +206,10 @@ class HanaBattle3DService {
         p.intact = false;
         p.cracks = 3;
       });
+      this.warriorTeeth.forEach(t => {
+        t.cleanPct = 100;
+        t.cheerTimer = 999;
+      });
     } else if (!options.preserveBattleState) {
       this.resetBattleState();
     }
@@ -186,8 +223,14 @@ class HanaBattle3DService {
     if (options.videoElement) {
       this.setVideoElement(options.videoElement);
     }
+    if (options.combatWeapon) {
+      this.setEquippedWeapon(options.combatWeapon);
+    } else {
+      if (options.equippedWeapon !== undefined) this.equippedWeapon = options.equippedWeapon;
+      if (options.weaponMultiplier !== undefined) this.weaponMultiplier = options.weaponMultiplier;
+    }
 
-    // Preload boss illustrations (including cleansed forms) and hazard attack textures
+    // Preload boss illustrations and all 7 high-res hazard attack textures
     try {
       if (Array.isArray(HYGIENE_BOSSES)) {
         HYGIENE_BOSSES.forEach(b => {
@@ -195,6 +238,16 @@ class HanaBattle3DService {
           if (b.cleansedImage) this.loadImage(b.cleansedImage);
         });
       }
+      const hazardAssets = [
+        '/assets/hazards/cookies.jpg',
+        '/assets/hazards/lava_cake.jpg',
+        '/assets/hazards/mint_icecream.jpg',
+        '/assets/hazards/soda.jpg',
+        '/assets/hazards/smarties.jpg',
+        '/assets/hazards/gummy_bears.svg',
+        '/assets/hazards/lollipops.svg'
+      ];
+      hazardAssets.forEach(p => this.loadImage(p));
       if (Array.isArray(SUGAR_ATTACK_HAZARDS)) {
         SUGAR_ATTACK_HAZARDS.forEach(h => {
           if (h.image) this.loadImage(h.image);
@@ -204,7 +257,7 @@ class HanaBattle3DService {
       // Non-blocking asset preload
     }
 
-    this.hasLaserEquipped = Boolean(options.hasLaserEquipped);
+    this.hasLaserEquipped = Boolean(options.hasLaserEquipped || this.equippedWeapon);
     this.dpr = Math.min((typeof window !== 'undefined' && window.devicePixelRatio) || 1, 2);
 
     this.handleResize();
@@ -306,19 +359,41 @@ class HanaBattle3DService {
     this.animId = raf(this.renderLoop);
   }
 
+  setEquippedWeapon(combatWeapon) {
+    if (!combatWeapon) {
+      this.equippedWeapon = null;
+      this.weaponMultiplier = 1.0;
+      return;
+    }
+    this.equippedWeapon = combatWeapon.weapon || combatWeapon;
+    this.weaponMultiplier = combatWeapon.multiplier || 1.0;
+    if (combatWeapon.hasWeapon || this.equippedWeapon) {
+      this.hasLaserEquipped = true;
+    }
+  }
+
   loadImage(src) {
     if (!src || typeof Image === 'undefined') return null;
     if (this.imageCache[src]) return this.imageCache[src];
     try {
       const img = new Image();
       img.onerror = () => {
-        if (typeof src === 'string' && src.startsWith('/') && !img._retried) {
+        if (typeof src === 'string' && !img._retried) {
           img._retried = true;
-          img.src = '.' + src;
+          if (src.startsWith('/')) {
+            img.src = '.' + src;
+          } else if (src.startsWith('./')) {
+            img.src = src.substring(1);
+          } else {
+            img.src = '/' + src;
+          }
         }
       };
       img.src = src;
       this.imageCache[src] = img;
+      if (typeof src === 'string' && src.startsWith('/')) {
+        this.imageCache['.' + src] = img;
+      }
       return img;
     } catch (e) {
       return null;
@@ -395,23 +470,72 @@ class HanaBattle3DService {
     hasLaser = false,
     cadenceScore = 0,
     isScrubbing = false,
-    quadrantCleanliness = null
+    quadrantCleanliness = null,
+    combatWeapon = null,
+    equippedWeapon = null,
+    weaponMultiplier = null,
+    combo = 1
   } = {}) {
     this.bossHp = bossHp;
     this.maxHp = maxHp;
     this.isShieldActive = shieldActive;
     this.activeQuadrant = activeQuadrant;
-    this.hasLaserEquipped = hasLaser;
+    this.currentCombo = combo || 1;
+    if (combatWeapon) {
+      this.setEquippedWeapon(combatWeapon);
+    } else {
+      if (hasLaser !== undefined) this.hasLaserEquipped = hasLaser;
+      if (equippedWeapon !== undefined) this.equippedWeapon = equippedWeapon;
+      if (weaponMultiplier !== undefined) this.weaponMultiplier = weaponMultiplier;
+    }
     this.cadenceScore = cadenceScore;
     this.isScrubbing = isScrubbing;
 
-    // Sync dental teeth hologram progress
+    // Sync warrior teeth army and dental hologram progress
     if (quadrantCleanliness) {
+      let sumPct = 0;
+      let count = 0;
+      this.warriorTeeth.forEach(t => {
+        if (t.id === 'q5') {
+          const prev = t.cleanPct;
+          if (quadrantCleanliness.q5 !== undefined) {
+            t.cleanPct = quadrantCleanliness.q5;
+          }
+          if (prev < 100 && t.cleanPct >= 100) {
+            t.cheerTimer = 3.5;
+            this.spawnWarriorCheerParticles(t);
+          }
+        } else if (quadrantCleanliness[t.id] !== undefined) {
+          const prev = t.cleanPct;
+          t.cleanPct = quadrantCleanliness[t.id];
+          if (prev < 100 && t.cleanPct >= 100) {
+            t.cheerTimer = 3.5;
+            this.spawnWarriorCheerParticles(t);
+          }
+          sumPct += t.cleanPct;
+          count++;
+        }
+      });
+      const captain = this.warriorTeeth.find(t => t.isCaptain);
+      if (captain && quadrantCleanliness.q5 === undefined && count > 0) {
+        const prevCap = captain.cleanPct;
+        captain.cleanPct = Math.round(sumPct / count);
+        if (prevCap < 100 && captain.cleanPct >= 100) {
+          captain.cheerTimer = 3.5;
+          this.spawnWarriorCheerParticles(captain);
+        }
+      }
+
       this.dentalTeeth.forEach(t => {
         if (quadrantCleanliness[t.id] !== undefined) {
           t.cleanPct = quadrantCleanliness[t.id];
         }
       });
+    }
+
+    // Trigger counter-attack if cadence is high, combo rising, or scrubbing
+    if (this.isScrubbing && (this.cadenceScore > 40 || (this.currentCombo && this.currentCombo > 5) || Math.random() < 0.25)) {
+      this.triggerWarriorCounterAttack(this.currentCombo || 1);
     }
 
     // Sync Spline Runtime variables if active
@@ -422,7 +546,7 @@ class HanaBattle3DService {
           this.splineApp.setVariable('ShieldActive', shieldActive);
           const qNum = parseInt(activeQuadrant.replace('q', ''), 10) || 1;
           this.splineApp.setVariable('ActiveQuadrant', qNum);
-          this.splineApp.setVariable('LaserEquipped', hasLaser);
+          this.splineApp.setVariable('LaserEquipped', Boolean(this.hasLaserEquipped || this.equippedWeapon));
         }
       } catch (e) {}
     }
@@ -601,9 +725,16 @@ class HanaBattle3DService {
     this.setDeflectActive(true);
     this.deflectTimer = 1.5;
 
+    // Raise all warrior teeth shields in defensive phalanx
+    this.warriorTeeth.forEach(t => {
+      t.shieldRaised = true;
+      t.shieldWobble = 0.6;
+    });
+
+    const multiplier = this.weaponMultiplier || 1.0;
     this.caramelBombs.forEach(bomb => {
       if (bomb.vz < 0) {
-        bomb.vz = Math.abs(bomb.vz) * 1.6;
+        bomb.vz = Math.abs(bomb.vz) * (1.6 * multiplier);
         bomb.vy = -Math.abs(bomb.vy) * 1.3;
         bomb.deflected = true;
       }
@@ -611,9 +742,9 @@ class HanaBattle3DService {
 
     this.shockwaves.push({
       x: this.width * 0.5,
-      y: this.height * 0.68,
+      y: this.height * 0.82,
       radius: 35,
-      maxRadius: 240,
+      maxRadius: 280,
       color: '#34d399',
       alpha: 1.0
     });
@@ -640,6 +771,10 @@ class HanaBattle3DService {
     });
 
     Object.keys(this.armorPlates).forEach(k => this.onArmorFracture(k));
+    this.warriorTeeth.forEach(t => {
+      t.cleanPct = 100;
+      t.cheerTimer = 4.0;
+    });
   }
 
   /**
@@ -649,7 +784,15 @@ class HanaBattle3DService {
     this.isVictory = true;
     this.bossHp = 0;
     this.caramelBombs = []; // Clear active hazard projectiles on victory
+    this.counterAttackProjectiles = [];
     Object.keys(this.armorPlates).forEach(k => this.onArmorFracture(k));
+
+    // Polish all 5 Warrior Teeth to gleaming diamond armor and start celebration cheering
+    this.warriorTeeth.forEach(t => {
+      t.cleanPct = 100;
+      t.cheerTimer = 999;
+      t.shieldRaised = true;
+    });
 
     // Spawn celebratory cleanse shockwave ring
     this.shockwaves.push({
@@ -715,16 +858,24 @@ class HanaBattle3DService {
     // 6. 3D Boss & Breakable Candy Armor
     this.render3DBossAndArmor(ctx, w, h, dt);
 
-    // 7. 3D Caramel Bomb Projectiles
+    // 7. 3D Caramel Bomb Projectiles (With Neon Motion Trails & Themed Shatters)
     this.renderCaramelBombs(ctx, w, h, dt);
 
-    // 8. Fizzy Rainbow Soap Particle Foam Cannons
+    // 8. Counter Attack Projectiles (Warrior Teeth vs Boss)
+    this.renderCounterAttackProjectiles(ctx, dt);
+
+    // 9. Arched Front Line of Animated 3D Enamel Warrior Teeth Army
+    this.renderWarriorTeethArmy(ctx, w, h, dt);
+
+    // 10. Fizzy Rainbow Soap Particle Foam Cannons
     this.renderFoamParticles(ctx, dt);
 
-    // 9. Fractured Candy Shards
+    // 11. Fractured Candy Shards, Themed Hazard Impacts & Cheer Stars
     this.renderCandyShards(ctx, dt);
+    this.renderHazardImpactParticles(ctx, dt);
+    this.renderWarriorCheerParticles(ctx, dt);
 
-    // 10. Sparkles & Stars
+    // 12. Sparkles & Stars
     this.renderSparkles(ctx, dt);
 
     // 11. Translucent 3D Enamel Shield Dome
@@ -1322,7 +1473,7 @@ class HanaBattle3DService {
   }
 
   /**
-   * 3D Sugar Attack Hazard Projectiles
+   * 3D Sugar Attack Hazard Projectiles (With Neon Motion Trails & Themed Shatters)
    */
   renderCaramelBombs(ctx, w, h, dt) {
     for (let i = this.caramelBombs.length - 1; i >= 0; i--) {
@@ -1335,6 +1486,34 @@ class HanaBattle3DService {
       const depthScale = Math.max(0.4, (120 - b.z) / 70);
       const drawRadius = b.radius * depthScale;
       const haz = b.hazard || this.currentHazard;
+
+      // Track neon motion trail
+      if (!b.trail) b.trail = [];
+      b.trail.push({ x: b.x, y: b.y, radius: drawRadius });
+      if (b.trail.length > 7) b.trail.shift();
+
+      // Render neon motion trail behind projectile
+      if (b.trail.length > 1) {
+        ctx.save();
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        const trailColor = haz?.color || b.color || '#fbbf24';
+        for (let t = 0; t < b.trail.length - 1; t++) {
+          const pt1 = b.trail[t];
+          const pt2 = b.trail[t + 1];
+          const trailAlpha = ((t + 1) / b.trail.length) * 0.45;
+          ctx.strokeStyle = trailColor;
+          ctx.globalAlpha = trailAlpha;
+          ctx.lineWidth = pt2.radius * 0.75;
+          ctx.shadowColor = trailColor;
+          ctx.shadowBlur = 10;
+          ctx.beginPath();
+          ctx.moveTo(pt1.x, pt1.y);
+          ctx.lineTo(pt2.x, pt2.y);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
 
       ctx.save();
       ctx.translate(b.x, b.y);
@@ -1356,7 +1535,7 @@ class HanaBattle3DService {
         ctx.restore();
 
         // Glowing outer candy rim
-        ctx.strokeStyle = haz.color || '#fbbf24';
+        ctx.strokeStyle = haz?.color || '#fbbf24';
         ctx.lineWidth = 3.5;
         ctx.beginPath();
         ctx.arc(0, 0, drawRadius, 0, Math.PI * 2);
@@ -1373,9 +1552,29 @@ class HanaBattle3DService {
       }
       ctx.restore();
 
+      // Threat detection: Nearest Warrior Tooth raises shield when bomb approaches (scaled by weapon defense boost)
+      const threatDist = 25 * Math.min(1.4, Math.max(1.0, this.weaponMultiplier || 1.0));
+      if (b.z <= threatDist && !b.deflected) {
+        let nearestTooth = null;
+        let minDx = Infinity;
+        this.warriorTeeth.forEach(tooth => {
+          const toothX = tooth.xRatio * w;
+          const dx = Math.abs(toothX - b.x);
+          if (dx < minDx) {
+            minDx = dx;
+            nearestTooth = tooth;
+          }
+        });
+        if (nearestTooth) {
+          nearestTooth.shieldRaised = true;
+          nearestTooth.shieldWobble = 0.35;
+        }
+      }
+
       // Deflected bomb impacts the boss!
       if (b.deflected && b.z >= 75) {
         this.damageWobble = 0.35;
+        this.spawnThemedHazardImpact(haz, b.x, b.y);
         const colors = (haz && haz.shatterColors) || [b.color, '#fbbf24', '#ffffff'];
         for (let s = 0; s < 20; s++) {
           const angle = Math.random() * Math.PI * 2;
@@ -1408,29 +1607,806 @@ class HanaBattle3DService {
         continue;
       }
 
-      // Near player collision
+      // Near player collision: Shield impact & spark deflection
       if (b.z <= 0) {
-        if (!b.deflected) {
-          const colors = (haz && haz.shatterColors) || ['#fed7aa', '#f97316'];
-          for (let s = 0; s < 10; s++) {
-            this.foamParticles.push({
-              x: b.x,
-              y: b.y,
-              z: 5,
-              vx: (Math.random() - 0.5) * 4,
-              vy: (Math.random() - 0.5) * 4,
-              vz: 1,
-              radius: 6 + Math.random() * 5,
-              alpha: 0.8,
-              isLaser: false,
-              color: colors[s % colors.length],
-              glowColor: haz?.color || '#f97316',
-              life: 0.6
-            });
+        let nearestTooth = null;
+        let minDx = Infinity;
+        this.warriorTeeth.forEach(tooth => {
+          const toothX = tooth.xRatio * w;
+          const dx = Math.abs(toothX - b.x);
+          if (dx < minDx) {
+            minDx = dx;
+            nearestTooth = tooth;
           }
+        });
+
+        if (nearestTooth) {
+          nearestTooth.shieldWobble = 0.6;
+          this.spawnShieldSparks(b.x, b.y, '#34d399');
         }
+
+        this.spawnThemedHazardImpact(haz, b.x, b.y);
+        if (typeof Sound?.hit === 'function') Sound.hit();
         this.caramelBombs.splice(i, 1);
       }
+    }
+  }
+
+  /**
+   * Unleash Warrior Teeth counter-attack projectile at boss
+   */
+  triggerWarriorCounterAttack(combo = 1) {
+    if (this.isVictory) return;
+    const firingTooth = this.warriorTeeth[Math.floor(Math.random() * this.warriorTeeth.length)];
+    if (!firingTooth) return;
+
+    firingTooth.recoil = 0.35;
+    firingTooth.fireFlash = 0.45;
+
+    const w = this.width;
+    const h = this.height;
+    const sx = firingTooth.xRatio * w;
+    const sy = firingTooth.yRatio * h - 25;
+    const tx = w * 0.5 + (Math.random() - 0.5) * 44;
+    const ty = h * 0.38 + (Math.random() - 0.5) * 28;
+
+    const dx = tx - sx;
+    const dy = ty - sy;
+    const dist = Math.hypot(dx, dy) || 1;
+    const speed = 500;
+    const vx = (dx / dist) * speed;
+    const vy = (dy / dist) * speed;
+
+    const mult = this.weaponMultiplier || 1.0;
+    const comboMultiplier = 1.0 + Math.min(2.0, (combo || 1) * 0.05);
+    const weaponTitle = (this.equippedWeapon?.title || '').toLowerCase();
+
+    let pType = 'laser_beam';
+    let pColor = '#22d3ee';
+    let pGlow = '#06b6d4';
+
+    if (weaponTitle.includes('sonic')) {
+      pType = 'sonic_blast';
+      pColor = '#fbbf24';
+      pGlow = '#f59e0b';
+    } else if (weaponTitle.includes('wand') || weaponTitle.includes('star')) {
+      pType = 'star_sparkle';
+      pColor = '#ec4899';
+      pGlow = '#f472b6';
+    } else if (weaponTitle.includes('bubble') || weaponTitle.includes('foam')) {
+      pType = 'bubble_burst';
+      pColor = '#38bdf8';
+      pGlow = '#60a5fa';
+    } else if (weaponTitle.includes('emerald') || weaponTitle.includes('mint')) {
+      pType = 'mint_crystal';
+      pColor = '#10b981';
+      pGlow = '#34d399';
+    }
+
+    this.counterAttackProjectiles.push({
+      x: sx,
+      y: sy,
+      vx: vx,
+      vy: vy,
+      targetX: tx,
+      targetY: ty,
+      type: pType,
+      color: pColor,
+      glow: pGlow,
+      damage: 3.5 * mult * comboMultiplier,
+      radius: 7 * Math.min(1.5, mult) * Math.min(1.4, Math.sqrt(comboMultiplier)),
+      trail: [],
+      life: dist / speed
+    });
+
+    // If combo is high (>= 15), unleash simultaneous Captain support blast
+    if (combo >= 15 && !firingTooth.isCaptain) {
+      const captain = this.warriorTeeth.find(t => t.isCaptain);
+      if (captain) {
+        captain.recoil = 0.3;
+        captain.fireFlash = 0.4;
+        const csx = captain.xRatio * w;
+        const csy = captain.yRatio * h - 25;
+        const cdx = tx - csx;
+        const cdy = ty - csy;
+        const cdist = Math.hypot(cdx, cdy) || 1;
+        this.counterAttackProjectiles.push({
+          x: csx,
+          y: csy,
+          vx: (cdx / cdist) * speed,
+          vy: (cdy / cdist) * speed,
+          targetX: tx,
+          targetY: ty,
+          type: pType,
+          color: pColor,
+          glow: pGlow,
+          damage: 2.5 * mult * comboMultiplier,
+          radius: 6 * Math.min(1.5, mult),
+          trail: [],
+          life: cdist / speed
+        });
+      }
+    }
+
+    if (typeof Sound?.laser === 'function') Sound.laser();
+    else if (typeof Sound?.sparkle === 'function') Sound.sparkle();
+  }
+
+  /**
+   * Render Themed Counter Attack Projectiles (Warrior Teeth vs Boss)
+   */
+  renderCounterAttackProjectiles(ctx, dt) {
+    for (let i = this.counterAttackProjectiles.length - 1; i >= 0; i--) {
+      const p = this.counterAttackProjectiles[i];
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.life -= dt;
+
+      if (!p.trail) p.trail = [];
+      p.trail.push({ x: p.x, y: p.y });
+      if (p.trail.length > 6) p.trail.shift();
+
+      // Render projectile trail
+      if (p.trail.length > 1) {
+        ctx.save();
+        ctx.lineCap = 'round';
+        for (let t = 0; t < p.trail.length - 1; t++) {
+          const pt1 = p.trail[t];
+          const pt2 = p.trail[t + 1];
+          ctx.strokeStyle = p.glow;
+          ctx.globalAlpha = ((t + 1) / p.trail.length) * 0.55;
+          ctx.lineWidth = p.radius * 0.8;
+          ctx.beginPath();
+          ctx.moveTo(pt1.x, pt1.y);
+          ctx.lineTo(pt2.x, pt2.y);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.shadowColor = p.glow;
+      ctx.shadowBlur = 14;
+
+      if (p.type === 'laser_beam') {
+        const angle = Math.atan2(p.vy, p.vx);
+        ctx.rotate(angle);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        if (typeof ctx.roundRect === 'function') {
+          ctx.roundRect(-p.radius * 1.8, -p.radius * 0.5, p.radius * 3.6, p.radius, 4);
+        } else {
+          ctx.rect(-p.radius * 1.8, -p.radius * 0.5, p.radius * 3.6, p.radius);
+        }
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        if (typeof ctx.roundRect === 'function') {
+          ctx.roundRect(-p.radius * 1.2, -p.radius * 0.25, p.radius * 2.4, p.radius * 0.5, 2);
+        } else {
+          ctx.rect(-p.radius * 1.2, -p.radius * 0.25, p.radius * 2.4, p.radius * 0.5);
+        }
+        ctx.fill();
+      } else if (p.type === 'sonic_blast') {
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(0, 0, p.radius * 1.3, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(0, 0, p.radius * 0.6, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (p.type === 'star_sparkle') {
+        ctx.fillStyle = p.color;
+        const spikes = 5;
+        const outer = p.radius * 1.4;
+        const inner = p.radius * 0.6;
+        ctx.beginPath();
+        for (let s = 0; s < spikes * 2; s++) {
+          const r = (s % 2 === 0) ? outer : inner;
+          const a = (s * Math.PI) / spikes + this.clock * 8;
+          const sx = Math.cos(a) * r;
+          const sy = Math.sin(a) * r;
+          if (s === 0) ctx.moveTo(sx, sy);
+          else ctx.lineTo(sx, sy);
+        }
+        ctx.closePath();
+        ctx.fill();
+      } else {
+        // Enamel Crystal / Bubble Burst
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(0, 0, p.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(-p.radius * 0.3, -p.radius * 0.3, p.radius * 0.35, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+
+      // Hit boss when lifetime expires or proximity reached
+      if (p.life <= 0) {
+        this.damageWobble = 0.25;
+        this.bossHp = Math.max(0, this.bossHp - p.damage);
+        this.shockwaves.push({
+          x: p.targetX || p.x,
+          y: p.targetY || p.y,
+          radius: 10,
+          maxRadius: 80,
+          color: p.color,
+          alpha: 0.9
+        });
+        for (let s = 0; s < 6; s++) {
+          const a = Math.random() * Math.PI * 2;
+          this.sparkles.push({
+            x: p.targetX || p.x,
+            y: p.targetY || p.y,
+            vx: Math.cos(a) * 3,
+            vy: Math.sin(a) * 3,
+            color: p.color,
+            size: 3 + Math.random() * 3,
+            alpha: 1.0,
+            life: 0.5
+          });
+        }
+        this.counterAttackProjectiles.splice(i, 1);
+      }
+    }
+  }
+
+  /**
+   * Arched Front Line of 5 Animated 3D Enamel Warrior Teeth Army
+   */
+  renderWarriorTeethArmy(ctx, w, h, dt) {
+    // Arched Enamel Defense Line connecting beam
+    ctx.save();
+    ctx.beginPath();
+    ctx.strokeStyle = this.isVictory ? 'rgba(52, 211, 153, 0.55)' : 'rgba(56, 189, 248, 0.35)';
+    ctx.lineWidth = 2.5;
+    ctx.shadowColor = this.isVictory ? '#34d399' : '#38bdf8';
+    ctx.shadowBlur = 8;
+    this.warriorTeeth.forEach((t, i) => {
+      const px = t.xRatio * w;
+      const py = t.yRatio * h + Math.sin(this.clock * 3 + i) * 3;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    });
+    ctx.stroke();
+    ctx.restore();
+
+    this.warriorTeeth.forEach((tooth, idx) => {
+      if (tooth.cheerTimer > 0 && !this.isVictory) {
+        tooth.cheerTimer = Math.max(0, tooth.cheerTimer - dt);
+      }
+      if (tooth.shieldWobble > 0) {
+        tooth.shieldWobble = Math.max(0, tooth.shieldWobble - dt * 2.5);
+      }
+      if (tooth.recoil > 0) {
+        tooth.recoil = Math.max(0, tooth.recoil - dt * 3.0);
+      }
+      if (tooth.fireFlash > 0) {
+        tooth.fireFlash = Math.max(0, tooth.fireFlash - dt * 3.5);
+      }
+      if (!this.isDeflectActive && tooth.shieldRaised && !this.isVictory) {
+        const anyThreat = this.caramelBombs.some(b => b.z <= 30 && !b.deflected);
+        if (!anyThreat) {
+          tooth.shieldRaised = false;
+        }
+      }
+
+      const tx = tooth.xRatio * w;
+      let ty = tooth.yRatio * h;
+
+      const isCheering = tooth.cheerTimer > 0 || this.isVictory;
+      if (isCheering) {
+        const bounce = Math.abs(Math.sin(this.clock * 10 + idx)) * 14;
+        ty -= bounce;
+      } else {
+        ty += Math.sin(this.clock * 3 + idx) * 3;
+      }
+      ty += tooth.recoil * 10;
+
+      const baseSize = Math.min(34, w * 0.075);
+      const tw = tooth.isCaptain ? baseSize * 1.25 : baseSize;
+      const th = tw * 1.25;
+
+      ctx.save();
+      ctx.translate(tx, ty);
+
+      // Gleaming pearly aura when 100% clean
+      const isPearly = tooth.cleanPct >= 100;
+      if (isPearly) {
+        ctx.save();
+        const auraPulse = 1 + Math.sin(this.clock * 5 + idx) * 0.15;
+        const auraGrad = ctx.createRadialGradient(0, -th * 0.2, 5, 0, -th * 0.2, tw * 1.6 * auraPulse);
+        auraGrad.addColorStop(0, 'rgba(56, 189, 248, 0.45)');
+        auraGrad.addColorStop(0.5, 'rgba(52, 211, 153, 0.25)');
+        auraGrad.addColorStop(1, 'transparent');
+        ctx.fillStyle = auraGrad;
+        ctx.beginPath();
+        ctx.arc(0, -th * 0.2, tw * 1.6 * auraPulse, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // Ground Drop Shadow
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+      ctx.beginPath();
+      ctx.ellipse(0, th * 0.5 + 4, tw * 0.6, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Tooth Body (Molar shape with roots)
+      ctx.save();
+      ctx.beginPath();
+      const hw = tw * 0.5;
+      const hh = th * 0.5;
+      ctx.moveTo(-hw * 0.8, -hh);
+      ctx.bezierCurveTo(-hw * 0.4, -hh * 1.15, 0, -hh * 0.9, 0, -hh * 0.9);
+      ctx.bezierCurveTo(0, -hh * 0.9, hw * 0.4, -hh * 1.15, hw * 0.8, -hh);
+      ctx.bezierCurveTo(hw * 1.05, -hh * 0.4, hw * 0.95, hh * 0.3, hw * 0.65, hh);
+      ctx.bezierCurveTo(hw * 0.45, hh * 1.05, hw * 0.2, hh * 0.5, 0, hh * 0.4);
+      ctx.bezierCurveTo(-hw * 0.2, hh * 0.5, -hw * 0.45, hh * 1.05, -hw * 0.65, hh);
+      ctx.bezierCurveTo(-hw * 0.95, hh * 0.3, -hw * 1.05, -hh * 0.4, -hw * 0.8, -hh);
+      ctx.closePath();
+
+      if (isPearly) {
+        const pearlyGrad = ctx.createLinearGradient(-hw, -hh, hw, hh);
+        pearlyGrad.addColorStop(0, '#ffffff');
+        pearlyGrad.addColorStop(0.5, '#f0f9ff');
+        pearlyGrad.addColorStop(1, '#bae6fd');
+        ctx.fillStyle = pearlyGrad;
+        ctx.shadowColor = '#38bdf8';
+        ctx.shadowBlur = 10;
+      } else {
+        const dirtyRatio = Math.max(0, 1 - (tooth.cleanPct / 100));
+        const stainGrad = ctx.createLinearGradient(-hw, -hh, hw, hh);
+        if (dirtyRatio > 0.5) {
+          stainGrad.addColorStop(0, '#fef3c7');
+          stainGrad.addColorStop(0.6, '#fde68a');
+          stainGrad.addColorStop(1, '#d97706');
+        } else {
+          stainGrad.addColorStop(0, '#ffffff');
+          stainGrad.addColorStop(0.7, '#fef9c3');
+          stainGrad.addColorStop(1, '#fde047');
+        }
+        ctx.fillStyle = stainGrad;
+        ctx.shadowBlur = 0;
+      }
+      ctx.fill();
+      ctx.strokeStyle = isPearly ? '#38bdf8' : '#d97706';
+      ctx.lineWidth = 2.2;
+      ctx.stroke();
+      ctx.restore();
+
+      // Enamel Specular Highlight
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+      ctx.beginPath();
+      ctx.ellipse(-tw * 0.22, -th * 0.28, tw * 0.16, th * 0.12, -0.4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Expressive Cartoon Eyes
+      const eyeY = -th * 0.15;
+      const eyeDist = tw * 0.22;
+      if (isCheering) {
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(-eyeDist, eyeY, 4.5, Math.PI * 1.1, Math.PI * 1.9);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(eyeDist, eyeY, 4.5, Math.PI * 1.1, Math.PI * 1.9);
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.arc(-eyeDist, eyeY, 3.2, 0, Math.PI * 2);
+        ctx.arc(eyeDist, eyeY, 3.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(-eyeDist - 1, eyeY - 1, 1.2, 0, Math.PI * 2);
+        ctx.arc(eyeDist - 1, eyeY - 1, 1.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Rosy Cheeks
+      ctx.fillStyle = 'rgba(244, 114, 182, 0.65)';
+      ctx.beginPath();
+      ctx.arc(-eyeDist - 4, eyeY + 6, 2.8, 0, Math.PI * 2);
+      ctx.arc(eyeDist + 4, eyeY + 6, 2.8, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Smiling Mouth
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 2;
+      if (isCheering) {
+        ctx.fillStyle = '#f43f5e';
+        ctx.beginPath();
+        ctx.arc(0, eyeY + 5, 5, 0.1, Math.PI - 0.1);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.arc(0, eyeY + 4, 4, 0.2, Math.PI - 0.2);
+        ctx.stroke();
+      }
+
+      // Helmet / Crown Headgear
+      if (tooth.isCaptain) {
+        ctx.fillStyle = '#fbbf24';
+        ctx.strokeStyle = '#d97706';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(-tw * 0.4, -th * 0.45);
+        ctx.lineTo(-tw * 0.35, -th * 0.75);
+        ctx.lineTo(-tw * 0.15, -th * 0.55);
+        ctx.lineTo(0, -th * 0.85);
+        ctx.lineTo(tw * 0.15, -th * 0.55);
+        ctx.lineTo(tw * 0.35, -th * 0.75);
+        ctx.lineTo(tw * 0.4, -th * 0.45);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.arc(0, -th * 0.55, 3, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        const qColor = tooth.id === 'q1' ? '#38bdf8' : tooth.id === 'q2' ? '#a78bfa' : tooth.id === 'q3' ? '#fbbf24' : '#34d399';
+        ctx.strokeStyle = qColor;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(0, -th * 0.2, tw * 0.48, Math.PI * 1.15, Math.PI * 1.85);
+        ctx.stroke();
+        ctx.fillStyle = qColor;
+        ctx.beginPath();
+        ctx.arc(0, -th * 0.48, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Bubble Shield (Raised on threat, sparks on impact)
+      const shieldRaised = tooth.shieldRaised || this.isDeflectActive;
+      const shieldWobble = Math.sin(this.clock * 20) * (tooth.shieldWobble || 0) * 6;
+      const shieldX = shieldRaised ? 0 : tw * 0.45;
+      const shieldY = shieldRaised ? -th * 0.15 + shieldWobble : th * 0.1 + shieldWobble;
+      const weaponDefBoost = Math.min(1.45, Math.max(1.0, this.weaponMultiplier || 1.0));
+      const shieldR = (shieldRaised ? tw * 0.95 : tw * 0.55) * weaponDefBoost;
+
+      ctx.save();
+      ctx.translate(shieldX, shieldY);
+
+      const shieldGrad = ctx.createRadialGradient(-shieldR * 0.2, -shieldR * 0.2, 2, 0, 0, shieldR);
+      if (shieldRaised) {
+        shieldGrad.addColorStop(0, 'rgba(255, 255, 255, 0.7)');
+        shieldGrad.addColorStop(0.4, 'rgba(52, 211, 153, 0.45)');
+        shieldGrad.addColorStop(0.85, 'rgba(34, 211, 238, 0.35)');
+        shieldGrad.addColorStop(1, 'rgba(16, 185, 129, 0.15)');
+        ctx.strokeStyle = 'rgba(52, 211, 153, 0.95)';
+        ctx.lineWidth = 2.8;
+        ctx.shadowColor = '#34d399';
+        ctx.shadowBlur = 12;
+      } else {
+        shieldGrad.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
+        shieldGrad.addColorStop(0.6, 'rgba(56, 189, 248, 0.25)');
+        shieldGrad.addColorStop(1, 'rgba(59, 130, 246, 0.1)');
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.75)';
+        ctx.lineWidth = 1.8;
+        ctx.shadowBlur = 0;
+      }
+
+      ctx.fillStyle = shieldGrad;
+      ctx.beginPath();
+      ctx.arc(0, 0, shieldR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, shieldR * 0.8, -Math.PI * 0.7, -Math.PI * 0.2);
+      ctx.stroke();
+
+      ctx.fillStyle = shieldRaised ? '#ffffff' : 'rgba(255, 255, 255, 0.8)';
+      ctx.font = `bold ${Math.round(shieldR * 0.65)}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🛡️', 0, 0);
+
+      ctx.restore();
+
+      // Weapon Wielded by Captain & Integrated Weapon Title Badge
+      if (this.equippedWeapon && (tooth.isCaptain || tooth.id === 'q5')) {
+        const fullTitle = this.equippedWeapon?.title || 'Laser Toothbrush Saber';
+        const wepLower = fullTitle.toLowerCase();
+        const wepIcon = this.equippedWeapon?.icon || (wepLower.includes('sonic') ? '🔊' : wepLower.includes('wand') ? '⭐' : '⚔️');
+
+        ctx.save();
+        ctx.translate(-tw * 0.48, th * 0.05);
+        if (tooth.fireFlash > 0) {
+          ctx.shadowColor = '#22d3ee';
+          ctx.shadowBlur = 18;
+        }
+        ctx.font = `${Math.round(tw * 0.65)}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(wepIcon, 0, 0);
+        ctx.restore();
+
+        // Integrated Weapon Title & Synergy Boost Banner above Captain
+        ctx.save();
+        ctx.translate(0, -th * 0.88);
+        const boostVal = Math.round(((this.weaponMultiplier || 1.0) - 1.0) * 100);
+        const badgeText = boostVal > 0 ? `${wepIcon} ${fullTitle} (+${boostVal}%)` : `${wepIcon} ${fullTitle}`;
+        ctx.font = 'bold 9px sans-serif';
+        const tWidth = ctx.measureText(badgeText).width + 14;
+        const tHeight = 15;
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 1.5;
+        ctx.shadowColor = '#38bdf8';
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        if (typeof ctx.roundRect === 'function') {
+          ctx.roundRect(-tWidth * 0.5, -tHeight * 0.5, tWidth, tHeight, 7);
+        } else {
+          ctx.rect(-tWidth * 0.5, -tHeight * 0.5, tWidth, tHeight);
+        }
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#38bdf8';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowBlur = 0;
+        ctx.fillText(badgeText, 0, 0);
+        ctx.restore();
+      }
+
+      // Zone Label Pill
+      ctx.save();
+      ctx.translate(0, th * 0.65);
+      const pillW = tw * 1.35;
+      const pillH = 15;
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+      ctx.strokeStyle = isPearly ? '#34d399' : '#64748b';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      if (typeof ctx.roundRect === 'function') {
+        ctx.roundRect(-pillW * 0.5, -pillH * 0.5, pillW, pillH, 8);
+      } else {
+        ctx.rect(-pillW * 0.5, -pillH * 0.5, pillW, pillH);
+      }
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = isPearly ? '#34d399' : '#f1f5f9';
+      ctx.font = 'bold 8.5px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`${tooth.label} ${tooth.cleanPct}%`, 0, 0);
+      ctx.restore();
+
+      ctx.restore();
+    });
+  }
+
+  /**
+   * Spawn Cheer Stars when Tooth Hits 100%
+   */
+  spawnWarriorCheerParticles(tooth) {
+    const tx = tooth.xRatio * this.width;
+    const ty = tooth.yRatio * this.height - 20;
+    for (let i = 0; i < 14; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 2.0 + Math.random() * 4.0;
+      this.warriorCheerParticles.push({
+        x: tx,
+        y: ty,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 2.5,
+        color: ['#fbbf24', '#38bdf8', '#34d399', '#f472b6', '#ffffff'][i % 5],
+        size: 4 + Math.random() * 5,
+        rot: Math.random() * Math.PI,
+        vRot: (Math.random() - 0.5) * 4,
+        alpha: 1.0,
+        life: 1.5
+      });
+    }
+  }
+
+  /**
+   * Spawn Shield Spark Flares on Impact
+   */
+  spawnShieldSparks(x, y, color = '#34d399') {
+    for (let i = 0; i < 15; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 3.0 + Math.random() * 5.0;
+      this.sparkles.push({
+        x: x,
+        y: y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 1.5,
+        color: color,
+        size: 3 + Math.random() * 4,
+        alpha: 1.0,
+        life: 0.8
+      });
+    }
+  }
+
+  /**
+   * Themed Particle Impacts (Fudge splatters, Crumbs, Foam spray, Candy tablets, Gummy bounce)
+   */
+  spawnThemedHazardImpact(haz, x, y) {
+    const hazId = haz?.id || 'cookies';
+    const count = 16;
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 2.5 + Math.random() * 5.0;
+      let color = '#fbbf24';
+      let type = 'crumb';
+      let size = 5 + Math.random() * 5;
+      let bounce = 0.5;
+
+      if (hazId === 'lava_cake') {
+        color = ['#451a03', '#78350f', '#92400e', '#b45309'][i % 4];
+        type = 'fudge';
+        size = 6 + Math.random() * 6;
+      } else if (hazId === 'cookies') {
+        color = ['#d97706', '#b45309', '#92400e', '#451a03'][i % 4];
+        type = 'crumb';
+        size = 4 + Math.random() * 5;
+      } else if (hazId === 'soda') {
+        color = ['#ef4444', '#f87171', '#60a5fa', '#ffffff'][i % 4];
+        type = 'foam_bubble';
+        size = 5 + Math.random() * 7;
+      } else if (hazId === 'smarties') {
+        color = ['#f472b6', '#38bdf8', '#facc15', '#a78bfa', '#34d399'][i % 5];
+        type = 'tablet';
+        size = 6 + Math.random() * 4;
+      } else if (hazId === 'gummy_bears') {
+        color = ['#ec4899', '#10b981', '#f59e0b', '#8b5cf6'][i % 4];
+        type = 'gummy';
+        size = 7 + Math.random() * 5;
+        bounce = 0.75;
+      } else if (hazId === 'mint_icecream') {
+        color = ['#6ee7b7', '#059669', '#a7f3d0', '#3b2014'][i % 4];
+        type = 'mint_drop';
+        size = 5 + Math.random() * 5;
+      } else if (hazId === 'lollipops') {
+        color = ['#f43f5e', '#facc15', '#38bdf8', '#fb7185'][i % 4];
+        type = 'candy_shard';
+        size = 6 + Math.random() * 5;
+      }
+
+      this.hazardImpactParticles.push({
+        x: x,
+        y: y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 2.0,
+        gravity: type === 'foam_bubble' ? -0.05 : 0.18,
+        bounce: bounce,
+        color: color,
+        type: type,
+        size: size,
+        rot: Math.random() * Math.PI * 2,
+        vRot: (Math.random() - 0.5) * 6,
+        alpha: 1.0,
+        life: 1.2
+      });
+    }
+  }
+
+  /**
+   * Render Themed Hazard Impact Particles
+   */
+  renderHazardImpactParticles(ctx, dt) {
+    for (let i = this.hazardImpactParticles.length - 1; i >= 0; i--) {
+      const p = this.hazardImpactParticles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += p.gravity;
+      p.rot += p.vRot * dt;
+      p.life -= dt;
+      p.alpha = Math.max(0, p.life / 1.2);
+
+      if (p.y > this.height * 0.95) {
+        p.y = this.height * 0.95;
+        p.vy = -Math.abs(p.vy) * (p.bounce || 0.4);
+      }
+
+      if (p.life <= 0) {
+        this.hazardImpactParticles.splice(i, 1);
+        continue;
+      }
+
+      ctx.save();
+      ctx.globalAlpha = p.alpha;
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillStyle = p.color;
+
+      if (p.type === 'tablet') {
+        ctx.beginPath();
+        ctx.ellipse(0, 0, p.size, p.size * 0.55, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      } else if (p.type === 'foam_bubble') {
+        ctx.beginPath();
+        ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(-p.size * 0.3, -p.size * 0.3, p.size * 0.35, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (p.type === 'gummy') {
+        ctx.beginPath();
+        ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+        ctx.beginPath();
+        ctx.ellipse(0, p.size * 0.2, p.size * 0.4, p.size * 0.3, 0, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // Crumb / fudge / shard
+        ctx.beginPath();
+        ctx.moveTo(-p.size * 0.8, -p.size * 0.6);
+        ctx.lineTo(p.size * 0.7, -p.size * 0.4);
+        ctx.lineTo(p.size * 0.5, p.size * 0.7);
+        ctx.lineTo(-p.size * 0.6, p.size * 0.5);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+  }
+
+  /**
+   * Render Cheering Stars for Warrior Teeth Army
+   */
+  renderWarriorCheerParticles(ctx, dt) {
+    for (let i = this.warriorCheerParticles.length - 1; i >= 0; i--) {
+      const p = this.warriorCheerParticles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.08;
+      p.rot += p.vRot * dt;
+      p.life -= dt;
+      p.alpha = Math.max(0, p.life / 1.5);
+
+      if (p.life <= 0) {
+        this.warriorCheerParticles.splice(i, 1);
+        continue;
+      }
+
+      ctx.save();
+      ctx.globalAlpha = p.alpha;
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillStyle = p.color;
+
+      // 5-point star
+      const spikes = 5;
+      const outer = p.size;
+      const inner = p.size * 0.45;
+      ctx.beginPath();
+      for (let s = 0; s < spikes * 2; s++) {
+        const r = (s % 2 === 0) ? outer : inner;
+        const a = (s * Math.PI) / spikes;
+        const sx = Math.cos(a) * r;
+        const sy = Math.sin(a) * r;
+        if (s === 0) ctx.moveTo(sx, sy);
+        else ctx.lineTo(sx, sy);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
     }
   }
 

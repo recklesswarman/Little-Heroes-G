@@ -1161,9 +1161,17 @@ export function renderParentPortalView() {
                       <div class="flex flex-col">
                         <span class="text-xs font-black text-inverse-surface">${t.title}</span>
                         <span class="text-[10px] text-on-surface-variant font-bold">${t.zone} • ${t.timeWindow || 'All Day'}</span>
-                        <div class="flex items-center gap-2 text-[11px] font-black mt-0.5">
-                          <span class="text-secondary">+${t.coins} 🪙</span>
-                          <span class="text-tertiary">+${t.points} ⭐</span>
+                        <div class="flex items-center gap-2 text-[11px] font-black mt-1.5 flex-wrap">
+                          <label class="flex items-center gap-1 bg-surface-container-high px-2 py-0.5 rounded-lg border border-surface-container-highest" title="Habit Token Reward (Auto-awarded)">
+                            <span class="text-secondary text-xs">🪙</span>
+                            <span class="text-[10px] text-on-surface-variant font-bold">Tokens:</span>
+                            <input type="number" min="0" max="500" value="${t.id === 'toothbrush_adventure_battle' && state.parentSettings?.toothbrushBattleTokens !== undefined ? state.parentSettings.toothbrushBattleTokens : (t.coins || 0)}" data-task-id="${t.id}" data-task-zone="${t.zone}" class="task-tokens-input w-12 bg-transparent text-secondary font-black text-[11px] text-center focus:outline-none border-b border-secondary/40 focus:border-secondary" />
+                          </label>
+                          <label class="flex items-center gap-1 bg-surface-container-high px-2 py-0.5 rounded-lg border border-surface-container-highest" title="Points (Requires Parent Approval)">
+                            <span class="text-tertiary text-xs">⭐</span>
+                            <span class="text-[10px] text-on-surface-variant font-bold">Points:</span>
+                            <input type="number" min="0" max="500" value="${t.id === 'toothbrush_adventure_battle' && state.parentSettings?.toothbrushBattlePoints !== undefined ? state.parentSettings.toothbrushBattlePoints : (t.points || 0)}" data-task-id="${t.id}" data-task-zone="${t.zone}" class="task-points-input w-12 bg-transparent text-tertiary font-black text-[11px] text-center focus:outline-none border-b border-tertiary/40 focus:border-tertiary" />
+                          </label>
                         </div>
                       </div>
                     </div>
@@ -4287,6 +4295,40 @@ export function attachParentPortalListeners() {
       const id = btn.getAttribute('data-delete-task-id');
       const zone = btn.getAttribute('data-delete-task-zone');
       store.deleteTask(id, zone);
+    });
+  });
+
+  document.querySelectorAll('.task-tokens-input').forEach((input) => {
+    input.addEventListener('change', (e) => {
+      const id = input.getAttribute('data-task-id');
+      const val = Math.max(0, parseInt(e.target.value, 10) || 0);
+      e.target.value = val;
+      const habit = (store.getState().habitIslands || []).find((h) => h.id === id);
+      const chore = (store.getState().taskForest || []).find((t) => t.id === id);
+      if (habit) habit.coins = val;
+      if (chore) chore.coins = val;
+      if (id === 'toothbrush_adventure_battle') {
+        if (!store.getState().parentSettings) store.getState().parentSettings = {};
+        store.getState().parentSettings.toothbrushBattleTokens = val;
+      }
+      store.saveState(true);
+    });
+  });
+
+  document.querySelectorAll('.task-points-input').forEach((input) => {
+    input.addEventListener('change', (e) => {
+      const id = input.getAttribute('data-task-id');
+      const val = Math.max(0, parseInt(e.target.value, 10) || 0);
+      e.target.value = val;
+      const habit = (store.getState().habitIslands || []).find((h) => h.id === id);
+      const chore = (store.getState().taskForest || []).find((t) => t.id === id);
+      if (habit) habit.points = val;
+      if (chore) chore.points = val;
+      if (id === 'toothbrush_adventure_battle') {
+        if (!store.getState().parentSettings) store.getState().parentSettings = {};
+        store.getState().parentSettings.toothbrushBattlePoints = val;
+      }
+      store.saveState(true);
     });
   });
 

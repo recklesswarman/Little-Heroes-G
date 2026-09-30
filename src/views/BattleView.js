@@ -5,6 +5,7 @@ import confetti from 'canvas-confetti';
 import { voicePrompts } from '../utils/voicePrompts.js';
 import { HYGIENE_BOSSES, DENTAL_BADGES, DENTAL_QUADRANTS, getDentalQuadrant, SUGAR_ATTACK_HAZARDS, getRandomSugarHazard } from '../data/hygieneBossesData.js';
 import { brushAudioAnalyzer } from '../audio/brushAudioAnalyzer.js';
+import { DIGITAL_REWARDS_CATALOG } from '../data/digitalRewardsCatalog.js';
 
 const sugarVillainEscapedImg = new URL('../assets/sugar_villain_escaped.jpg', import.meta.url).href;
 
@@ -28,6 +29,9 @@ function getDifficultyTier(hero) {
 // =========================================================================
 
 // Battle State Variables
+export const ROTATING_VILLAINS = ['sugar_bandit', 'plaque_kraken', 'cavity_knight', 'tartar_titan'];
+let hasExplicitBossSelection = false;
+let sessionRotatedBossId = null;
 let selectedBossId = 'sugar_bandit';
 let battleTimer = null;
 let bombTimer = null;
@@ -40,6 +44,11 @@ let isBattlePaused = false;
 let isRhythmBeatActive = true;
 let isIntroCountingDown = false;
 let currentSugarHazard = null;
+
+export function setExplicitBossSelection(val = true) {
+  hasExplicitBossSelection = val;
+  if (!val) sessionRotatedBossId = null;
+}
 
 // Helper to determine if current battle is a nighttime battle
 export function isNighttimeBattle() {
@@ -144,24 +153,55 @@ export function getBattleBoss(bossId) {
 
 // Resolve the current hero's equipped weapon and battle buff
 export function getActiveCombatWeapon() {
-  if (store.getEquippedHeroWeapon) {
-    const weapon = store.getEquippedHeroWeapon();
-    if (weapon) {
-      let multiplier = 1.25; // default 25% boost
-      if (weapon.statBonusPercent !== undefined) {
-        multiplier = 1.0 + (weapon.statBonusPercent / 100);
-      } else if (typeof weapon.statBonus === 'string') {
-        const match = weapon.statBonus.match(/\+(\d+)%/);
-        if (match) multiplier = 1.0 + (parseInt(match[1]) / 100);
-      }
-      return { weapon, multiplier, hasWeapon: true };
+  let weapon = null;
+  if (typeof store.getEquippedHeroWeaponObject === 'function') {
+    weapon = store.getEquippedHeroWeaponObject();
+  } else if (typeof store.getEquippedHeroWeapon === 'function') {
+    const raw = store.getEquippedHeroWeapon(true);
+    if (typeof raw === 'object' && raw !== null) {
+      weapon = raw;
+    } else if (typeof raw === 'string') {
+      weapon = (store.getState().digitalGear || []).find(g => g.id === raw) ||
+               DIGITAL_REWARDS_CATALOG.find(g => g.id === raw) ||
+               { id: raw, title: raw === 'laser_toothbrush' ? 'Laser Toothbrush Saber' : raw, icon: '⚔️' };
     }
   }
+
   const hero = store.getState().selectedHero;
+  if (!weapon && hero) {
+    const weaponId = hero.equippedWeapon ||
+      (Array.isArray(hero.equippedGear) && hero.equippedGear.find(g =>
+        g === 'laser_toothbrush' ||
+        (store.getState().digitalGear || []).some(dg => dg.id === g) ||
+        DIGITAL_REWARDS_CATALOG.some(c => c.id === g)
+      )) ||
+      (Array.isArray(hero.equippedGear) && hero.equippedGear[0]);
+    if (weaponId) {
+      weapon = (store.getState().digitalGear || []).find(g => g.id === weaponId) ||
+               DIGITAL_REWARDS_CATALOG.find(g => g.id === weaponId) ||
+               { id: weaponId, title: weaponId === 'laser_toothbrush' ? 'Laser Toothbrush Saber' : weaponId, icon: '⚔️' };
+    }
+  }
+
+  if (weapon) {
+    let multiplier = 1.3;
+    if (weapon.id === 'laser_toothbrush' || weapon.title?.toLowerCase().includes('laser toothbrush')) {
+      multiplier = 1.3;
+    } else if (weapon.statBonusPercent !== undefined) {
+      multiplier = 1.0 + (weapon.statBonusPercent / 100);
+    } else if (typeof weapon.statBonus === 'string') {
+      const match = weapon.statBonus.match(/\+(\d+)%/);
+      if (match) multiplier = 1.0 + (parseInt(match[1]) / 100);
+    }
+    const icon = weapon.icon || (weapon.category === 'Weapons' || weapon.id?.includes('saber') || weapon.id?.includes('toothbrush') ? '⚔️' : '⚡');
+    const title = weapon.title || weapon.name || 'Laser Toothbrush Saber';
+    return { weapon: { ...weapon, title, icon }, multiplier, hasWeapon: true };
+  }
+
   const inEquipped = Array.isArray(hero?.equippedGear) && hero.equippedGear.includes('laser_toothbrush');
   const inHeroInv = Array.isArray(hero?.inventory) && hero.inventory.includes('laser_toothbrush');
   if (inEquipped || inHeroInv) {
-    return { weapon: { title: 'Laser Toothbrush Saber', icon: '⚔️' }, multiplier: 1.3, hasWeapon: true };
+    return { weapon: { id: 'laser_toothbrush', title: 'Laser Toothbrush Saber', icon: '⚔️' }, multiplier: 1.3, hasWeapon: true };
   }
   return { weapon: null, multiplier: 1.0, hasWeapon: false };
 }
@@ -175,7 +215,18 @@ function checkLaserToothbrushEquipped() {
 // MAIN BATTLE VIEW RENDER FUNCTION: FULL-SCREEN VIBRANT 3D ARCADE VIEWPORT
 // =========================================================================
 export function renderBattleView() {
-  selectedBossId = store.getSelectedBossId ? store.getSelectedBossId() : selectedBossId;
+  if (!hasExplicitBossSelection && !isBattleRunning && !store.getBossColosseumState()?.isVictoryModalOpen) {
+    if (!sessionRotatedBossId) {
+      const randomIndex = Math.floor(Math.random() * ROTATING_VILLAINS.length);
+      sessionRotatedBossId = ROTATING_VILLAINS[randomIndex];
+    }
+    selectedBossId = sessionRotatedBossId;
+    if (store.setSelectedBossId) store.setSelectedBossId(selectedBossId);
+  } else if (hasExplicitBossSelection) {
+    selectedBossId = store.getSelectedBossId ? store.getSelectedBossId() : selectedBossId;
+  } else {
+    selectedBossId = store.getSelectedBossId ? store.getSelectedBossId() : selectedBossId;
+  }
   const currentBoss = getBattleBoss(selectedBossId);
   const colState = store.getBossColosseumState ? store.getBossColosseumState() : {};
 
@@ -257,8 +308,8 @@ export function renderBattleView() {
           <span class="hidden xs:inline">Map</span>
         </button>
 
-        <!-- Center: Giant Glowing Bubble Countdown Timer & Boss Health Meter -->
-        <div class="pointer-events-auto bg-slate-900/90 backdrop-blur-md px-3 sm:px-5 py-1.5 sm:py-2 rounded-3xl border-2 sm:border-3 ${battlePhase === 'floss' ? 'border-emerald-400/90 shadow-[0_0_30px_rgba(16,185,129,0.4)]' : 'border-cyan-400/80 shadow-[0_0_30px_rgba(6,182,212,0.4)]'} flex items-center gap-2 sm:gap-4 max-w-sm sm:max-w-md w-full justify-between">
+        <!-- Center: Giant Glowing Bubble Countdown Timer, Boss Health Meter & Active Hazard Badge -->
+        <div class="pointer-events-auto bg-slate-900/90 backdrop-blur-md px-3 sm:px-5 py-1.5 sm:py-2 rounded-3xl border-2 sm:border-3 ${battlePhase === 'floss' ? 'border-emerald-400/90 shadow-[0_0_30px_rgba(16,185,129,0.4)]' : 'border-cyan-400/80 shadow-[0_0_30px_rgba(6,182,212,0.4)]'} flex items-center gap-2 sm:gap-3 max-w-sm sm:max-w-lg w-full justify-between">
           
           ${battlePhase === 'floss' ? `
             <div class="flex items-center gap-2 min-w-0 flex-1">
@@ -302,6 +353,16 @@ export function renderBattleView() {
               ${timeStr}
             </span>
           </div>
+
+          <!-- Active Hazard Badge Integrated in Top Capsule -->
+          ${currentSugarHazard ? `
+            <div class="h-8 w-0.5 bg-white/20 hidden xs:block flex-shrink-0"></div>
+            <span id="sugar-hazard-badge" class="hidden xs:flex items-center gap-1 text-[9px] sm:text-[10px] font-black text-amber-200 bg-amber-950/85 border border-amber-400/60 px-2 sm:px-2.5 py-1 rounded-full shadow backdrop-blur-sm animate-pulse flex-shrink-0">
+              <span>${currentSugarHazard.emoji}</span>
+              <span class="hidden md:inline">Hazard:</span>
+              <span>${currentSugarHazard.name}</span>
+            </span>
+          ` : ''}
 
         </div>
 
@@ -354,46 +415,42 @@ export function renderBattleView() {
           <span id="current-zone-badge" class="text-[10px] font-bold text-amber-300 bg-amber-950/80 px-2 py-0.5 rounded-full border border-amber-500/40">${activeQuad.zone}/5</span>
         </div>
 
-        <!-- Parent-Set Floss / Mouthwash Reminder Badges & Active Sugar Hazard HUD -->
-        <div id="hygiene-reminder-hud-badges" class="absolute top-[4.75rem] sm:top-[5.75rem] left-1/2 transform -translate-x-1/2 z-20 flex items-center gap-1.5 pointer-events-none">
-          ${currentSugarHazard ? `
-            <span id="sugar-hazard-badge" class="flex items-center gap-1 text-[9px] sm:text-[10px] font-black text-amber-200 bg-amber-950/85 border border-amber-400/60 px-2 sm:px-2.5 py-0.5 rounded-full shadow backdrop-blur-sm animate-pulse">
-              <span>${currentSugarHazard.emoji}</span>
-              <span>Hazard: ${currentSugarHazard.name}</span>
-            </span>
-          ` : ''}
-          ${showFlossBadge ? `
-            <span id="floss-reminder-hud-badge" class="flex items-center gap-1 text-[9px] sm:text-[10px] font-black text-emerald-300 bg-emerald-950/80 border border-emerald-400/60 px-2 py-0.5 rounded-full shadow backdrop-blur-sm">
-              <span class="material-symbols-outlined text-xs" style="font-variation-settings: 'FILL' 1;">health_and_safety</span>
-              Floss Time! 🦷
-            </span>
-          ` : ''}
-          ${showMouthwashBadge ? `
-            <span id="mouthwash-reminder-hud-badge" class="flex items-center gap-1 text-[9px] sm:text-[10px] font-black text-secondary bg-secondary/15 border border-secondary/50 px-2 py-0.5 rounded-full shadow backdrop-blur-sm">
-              <span class="material-symbols-outlined text-xs" style="font-variation-settings: 'FILL' 1;">water_drop</span>
-              Rinse with Mouthwash after!
-            </span>
-          ` : ''}
-        </div>
+        <!-- Parent-Set Floss / Mouthwash Reminder Badges -->
+        ${(showFlossBadge || showMouthwashBadge) ? `
+          <div id="hygiene-reminder-hud-badges" class="absolute top-[4.75rem] sm:top-[5.75rem] left-1/2 transform -translate-x-1/2 z-20 flex items-center gap-1.5 pointer-events-none">
+            ${showFlossBadge ? `
+              <span id="floss-reminder-hud-badge" class="flex items-center gap-1 text-[9px] sm:text-[10px] font-black text-emerald-300 bg-emerald-950/80 border border-emerald-400/60 px-2 py-0.5 rounded-full shadow backdrop-blur-sm">
+                <span class="material-symbols-outlined text-xs" style="font-variation-settings: 'FILL' 1;">health_and_safety</span>
+                Floss Time! 🦷
+              </span>
+            ` : ''}
+            ${showMouthwashBadge ? `
+              <span id="mouthwash-reminder-hud-badge" class="flex items-center gap-1 text-[9px] sm:text-[10px] font-black text-secondary bg-secondary/15 border border-secondary/50 px-2 py-0.5 rounded-full shadow backdrop-blur-sm">
+                <span class="material-symbols-outlined text-xs" style="font-variation-settings: 'FILL' 1;">water_drop</span>
+                Rinse with Mouthwash after!
+              </span>
+            ` : ''}
+          </div>
+        ` : ''}
       `}
 
-      <!-- ================= 5. 4 GLOWING TOOTH QUADRANT GEMS (MIRRORED BATHROOM PERSPECTIVE) ================= -->
-      <!-- Q1: Upper Right (Screen Top-Right, >50% X) -->
-      <div id="gem-q1" class="absolute top-24 sm:top-28 right-3 sm:right-6 z-20 flex items-center gap-2 pointer-events-none transition-all duration-300">
+      <!-- ================= 5. TOOTH QUADRANT GEMS (HIDDEN FOR MINIMALIST CINEMATIC 3D ARENA) ================= -->
+      <!-- Q1: Upper Right -->
+      <div id="gem-q1" class="hidden pointer-events-none">
         <div class="flex flex-col items-end">
           <span class="text-[10px] sm:text-xs font-black text-white drop-shadow">Upper Right</span>
           <span class="gem-pct text-[9px] font-bold ${quadrantCleanliness.q1 >= 100 ? 'text-emerald-400' : 'text-amber-300'}">${Math.round(quadrantCleanliness.q1)}%</span>
         </div>
-        <div class="gem-box w-11 h-11 sm:w-13 sm:h-13 rounded-2xl ${activeQuad.id === 'q1' ? 'bg-cyan-500/30 border-3 border-cyan-400 ring-4 ring-cyan-400/50 animate-bounce' : quadrantCleanliness.q1 >= 100 ? 'bg-emerald-500/30 border-3 border-emerald-400' : 'bg-slate-900/80 border-2 border-slate-700'} flex items-center justify-center text-xl sm:text-2xl shadow-lg transition-all">
+        <div class="gem-box w-11 h-11 sm:w-13 sm:h-13 rounded-2xl flex items-center justify-center text-xl sm:text-2xl shadow-lg transition-all">
           ${quadrantCleanliness.q1 >= 100 ? '💎' : '🦷'}
         </div>
         <span class="gem-arrow text-cyan-400 text-xl animate-pulse" style="display: ${activeQuad.id === 'q1' ? 'inline-block' : 'none'};">👈</span>
       </div>
 
-      <!-- Q2: Upper Left (Screen Top-Left, <50% X, below mirror) -->
-      <div id="gem-q2" class="absolute top-48 sm:top-56 left-3 sm:left-6 z-20 flex items-center gap-2 pointer-events-none transition-all duration-300">
+      <!-- Q2: Upper Left -->
+      <div id="gem-q2" class="hidden pointer-events-none">
         <span class="gem-arrow text-cyan-400 text-xl animate-pulse" style="display: ${activeQuad.id === 'q2' ? 'inline-block' : 'none'};">👉</span>
-        <div class="gem-box w-11 h-11 sm:w-13 sm:h-13 rounded-2xl ${activeQuad.id === 'q2' ? 'bg-cyan-500/30 border-3 border-cyan-400 ring-4 ring-cyan-400/50 animate-bounce' : quadrantCleanliness.q2 >= 100 ? 'bg-emerald-500/30 border-3 border-emerald-400' : 'bg-slate-900/80 border-2 border-slate-700'} flex items-center justify-center text-xl sm:text-2xl shadow-lg transition-all">
+        <div class="gem-box w-11 h-11 sm:w-13 sm:h-13 rounded-2xl flex items-center justify-center text-xl sm:text-2xl shadow-lg transition-all">
           ${quadrantCleanliness.q2 >= 100 ? '💎' : '🦷'}
         </div>
         <div class="flex flex-col items-start">
@@ -402,22 +459,22 @@ export function renderBattleView() {
         </div>
       </div>
 
-      <!-- Q3: Lower Right (Screen Bottom-Right, >50% X) -->
-      <div id="gem-q3" class="absolute bottom-20 sm:bottom-24 right-3 sm:right-6 z-20 flex items-center gap-2 pointer-events-none transition-all duration-300">
+      <!-- Q3: Lower Right -->
+      <div id="gem-q3" class="hidden pointer-events-none">
         <div class="flex flex-col items-end">
           <span class="text-[10px] sm:text-xs font-black text-white drop-shadow">Lower Right</span>
           <span class="gem-pct text-[9px] font-bold ${quadrantCleanliness.q3 >= 100 ? 'text-emerald-400' : 'text-amber-300'}">${Math.round(quadrantCleanliness.q3)}%</span>
         </div>
-        <div class="gem-box w-11 h-11 sm:w-13 sm:h-13 rounded-2xl ${activeQuad.id === 'q3' ? 'bg-cyan-500/30 border-3 border-cyan-400 ring-4 ring-cyan-400/50 animate-bounce' : quadrantCleanliness.q3 >= 100 ? 'bg-emerald-500/30 border-3 border-emerald-400' : 'bg-slate-900/80 border-2 border-slate-700'} flex items-center justify-center text-xl sm:text-2xl shadow-lg transition-all">
+        <div class="gem-box w-11 h-11 sm:w-13 sm:h-13 rounded-2xl flex items-center justify-center text-xl sm:text-2xl shadow-lg transition-all">
           ${quadrantCleanliness.q3 >= 100 ? '💎' : '🦷'}
         </div>
         <span class="gem-arrow text-cyan-400 text-xl animate-pulse" style="display: ${activeQuad.id === 'q3' ? 'inline-block' : 'none'};">👈</span>
       </div>
 
-      <!-- Q4: Lower Left (Screen Bottom-Left, <50% X) -->
-      <div id="gem-q4" class="absolute bottom-20 sm:bottom-24 left-3 sm:left-6 z-20 flex items-center gap-2 pointer-events-none transition-all duration-300">
+      <!-- Q4: Lower Left -->
+      <div id="gem-q4" class="hidden pointer-events-none">
         <span class="gem-arrow text-cyan-400 text-xl animate-pulse" style="display: ${activeQuad.id === 'q4' ? 'inline-block' : 'none'};">👉</span>
-        <div class="gem-box w-11 h-11 sm:w-13 sm:h-13 rounded-2xl ${activeQuad.id === 'q4' ? 'bg-cyan-500/30 border-3 border-cyan-400 ring-4 ring-cyan-400/50 animate-bounce' : quadrantCleanliness.q4 >= 100 ? 'bg-emerald-500/30 border-3 border-emerald-400' : 'bg-slate-900/80 border-2 border-slate-700'} flex items-center justify-center text-xl sm:text-2xl shadow-lg transition-all">
+        <div class="gem-box w-11 h-11 sm:w-13 sm:h-13 rounded-2xl flex items-center justify-center text-xl sm:text-2xl shadow-lg transition-all">
           ${quadrantCleanliness.q4 >= 100 ? '💎' : '🦷'}
         </div>
         <div class="flex flex-col items-start">
@@ -453,19 +510,17 @@ export function renderBattleView() {
         </span>
       </div>
 
-      <!-- ================= 7. REX VOICE COMPANION COACHING (BOTTOM-LEFT) ================= -->
-      <div class="absolute bottom-16 sm:bottom-18 left-3 sm:left-6 z-25 flex items-end gap-2 pointer-events-none">
-        <div class="relative w-12 h-12 sm:w-14 sm:h-14 bg-slate-900/95 rounded-2xl border-2 border-emerald-400 p-1 shadow-lg flex flex-col items-center justify-center overflow-hidden">
+      <!-- ================= 7. REX VOICE COMPANION COACHING (BOTTOM COMPACT PILL) ================= -->
+      <div id="rex-companion-pill" class="absolute bottom-16 sm:bottom-18 left-3 sm:left-6 z-25 flex items-center gap-2 bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-full border-2 border-emerald-400/80 shadow-lg max-w-[240px] sm:max-w-[320px] pointer-events-none">
+        <div class="relative w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-950 border border-emerald-400 p-0.5 flex-shrink-0 flex items-center justify-center overflow-hidden">
           ${typeof activePet?.avatar === 'string' && (activePet.avatar.startsWith('http') || activePet.avatar.startsWith('data:') || activePet.avatar.startsWith('assets/') || activePet.avatar.includes('/'))
-            ? `<img src="${activePet.avatar}" alt="${activePet.name || 'Companion'}" class="w-full h-full object-contain pointer-events-none select-none" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\\'text-2xl sm:text-3xl\\'>${activePet.emoji || '🦖'}</span>';" />`
-            : `<span class="text-2xl sm:text-3xl">${activePet?.emoji || activePet?.avatar || '🦖'}</span>`
+            ? `<img src="${activePet.avatar}" alt="${activePet.name || 'Companion'}" class="w-full h-full object-contain pointer-events-none select-none" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\\'text-base\\'>${activePet.emoji || '🦖'}</span>';" />`
+            : `<span class="text-base">${activePet?.emoji || activePet?.avatar || '🦖'}</span>`
           }
         </div>
-        <div class="bg-slate-900/95 border-2 border-emerald-400/80 px-3 py-1.5 rounded-2xl rounded-bl-none shadow-2xl max-w-[200px] sm:max-w-[280px]">
-          <p id="rex-dialogue-bubble" class="font-headline font-bold text-[10px] sm:text-[11px] text-emerald-300 leading-snug">
-            ${currentRexCoachText}
-          </p>
-        </div>
+        <p id="rex-dialogue-bubble" class="font-headline font-bold text-[9px] sm:text-[10px] text-emerald-300 truncate leading-tight">
+          ${currentRexCoachText}
+        </p>
       </div>
 
       <!-- ================= 8. IN-GAME 3D VILLAIN SWITCHER DOCK (BOTTOM-CENTER) ================= -->
@@ -658,19 +713,21 @@ async function initSensors() {
 
 function handleCadenceUpdate({ isScrubbing, cadenceScore }) {
   if (isBattlePaused || !isBattleRunning) return;
-  micCadenceScore = cadenceScore;
-  cadenceSamples.push(cadenceScore);
+  const combatWeapon = getActiveCombatWeapon();
+  const boostedCadence = Math.min(100, Math.round(cadenceScore * (combatWeapon.multiplier || 1.0)));
+  micCadenceScore = boostedCadence;
+  cadenceSamples.push(boostedCadence);
   isMicActive = isScrubbing;
 
   if (isScrubbing) {
     const activeQuad = getDentalQuadrant(secondsRemaining, totalDuration);
     handleScrubHit(activeQuad, 'acoustic');
 
-    if (isDeflectFlurryActive && cadenceScore >= 45) {
+    if (isDeflectFlurryActive && boostedCadence >= 45) {
       triggerDeflectSuccess();
     }
 
-    if (isLearnChallengeActive && cadenceScore >= 55) {
+    if (isLearnChallengeActive && boostedCadence >= 55) {
       resolveLearnChallenge(true, 'cadence');
     }
   }
@@ -941,7 +998,7 @@ function resolveLearnChallenge(success, method = 'voice') {
     showComicHit('CRITICAL LEARN HIT! 🎓💥');
     if (typeof Sound?.fanfare === 'function') Sound.fanfare();
   } else if (method === 'cadence') {
-    currentRexCoachText = "VIGOROUS CADENCE! You shattered the caramel barrier!";
+    currentRexCoachText = "ENAMEL POWER SURGE! You broke the sweet treat barrier!";
     showComicHit('SCRUB SHATTER! ⚡💥');
     if (typeof Sound?.fanfare === 'function') Sound.fanfare();
   } else {
@@ -1002,8 +1059,19 @@ export function advanceToBrushPhase() {
 }
 
 export function startBattle() {
-  selectedBossId = store.getSelectedBossId ? store.getSelectedBossId() : selectedBossId;
+  if (!hasExplicitBossSelection) {
+    if (!sessionRotatedBossId) {
+      const randomIndex = Math.floor(Math.random() * ROTATING_VILLAINS.length);
+      sessionRotatedBossId = ROTATING_VILLAINS[randomIndex];
+    }
+    selectedBossId = sessionRotatedBossId;
+    if (store.setSelectedBossId) store.setSelectedBossId(selectedBossId);
+  } else {
+    selectedBossId = store.getSelectedBossId ? store.getSelectedBossId() : selectedBossId;
+  }
   const currentBoss = getBattleBoss(selectedBossId);
+  hanaBattle3DService.setBoss(currentBoss);
+  syncCockpitHUD();
   isBattleRunning = true;
   isBattlePaused = false;
   
@@ -1261,10 +1329,16 @@ function handleScrubHit(activeQuad, source = 'manual') {
     shieldActive: colState.isShieldActive,
     activeQuadrant: activeQuad.id,
     hasLaser: hasLaser,
+    combatWeapon: combatWeapon,
     cadenceScore: micCadenceScore,
+    combo: currentCombo,
     isScrubbing: true,
     quadrantCleanliness: quadrantCleanliness
   });
+
+  if (currentCombo > 0 && currentCombo % 5 === 0) {
+    hanaBattle3DService.triggerWarriorCounterAttack(currentCombo);
+  }
 
   if (source === 'manual') {
     const weaponTitle = combatWeapon.weapon?.title || 'Weapon';
@@ -1444,6 +1518,8 @@ export function quitBattle() {
 
   isBattleRunning = false;
   isBattlePaused = false;
+  hasExplicitBossSelection = false;
+  sessionRotatedBossId = null;
   battlePhase = 'brush';
   const targetView = (store.state && store.state.previousView === 'quest_map') ? 'quest_map' : 'dashboard';
   store.navigate(targetView);
@@ -1463,6 +1539,8 @@ export function abandonBattleIfRunning() {
   stopBattleSensorsAndTimers();
   isBattleRunning = false;
   isBattlePaused = false;
+  hasExplicitBossSelection = false;
+  sessionRotatedBossId = null;
   battlePhase = 'brush';
 }
 
@@ -1537,6 +1615,8 @@ export function attachBattleListeners() {
     btn.addEventListener('click', () => {
       const vId = btn.getAttribute('data-villain-id');
       if (vId && vId !== selectedBossId) {
+        hasExplicitBossSelection = true;
+        sessionRotatedBossId = vId;
         selectedBossId = vId;
         if (store.setSelectedBossId) store.setSelectedBossId(vId);
         Sound.tap();
@@ -1545,6 +1625,7 @@ export function attachBattleListeners() {
         if (currentSugarHazard) {
           hanaBattle3DService.setHazard(currentSugarHazard);
         }
+        syncCockpitHUD();
         store.notify();
       }
     });
@@ -1561,10 +1642,12 @@ export function attachBattleListeners() {
     });
 
     const currentBoss = getBattleBoss(selectedBossId);
+    const activeCombatWeapon = getActiveCombatWeapon();
     hanaBattle3DService.init(canvas, {
       bossData: currentBoss,
       hazard: currentSugarHazard,
       splineUrl: currentBoss.splineUrl || null,
+      combatWeapon: activeCombatWeapon,
       hasLaserEquipped: checkLaserToothbrushEquipped(),
       videoElement: document.getElementById('ar-camera-feed'),
       preserveBattleState: Boolean(isBattleRunning || colState.isVictoryModalOpen),
@@ -1599,10 +1682,65 @@ export function attachBattleListeners() {
   const visitHqBtn = document.getElementById('colosseum-visit-hq-btn');
   if (visitHqBtn) {
     visitHqBtn.addEventListener('click', () => {
+      if (visitHqBtn.dataset.submitting === 'true') return;
+      visitHqBtn.dataset.submitting = 'true';
+      Sound.tap();
       isBattleRunning = false;
       battlePhase = 'brush';
+      hasExplicitBossSelection = false;
+      sessionRotatedBossId = null;
       hanaBattle3DService.destroy();
+
+      // 1. Mark toothbrush_adventure_battle task completed
+      const state = store.getState();
+      const habit = state.habitIslands?.find(h => h.id === 'toothbrush_adventure_battle');
+      if (habit) {
+        habit.completed = true;
+        habit.pointsApproved = false;
+      }
+      const forestTask = state.taskForest?.find(t => t.id === 'toothbrush_adventure_battle');
+      if (forestTask) {
+        forestTask.completed = true;
+        forestTask.pointsApproved = false;
+      }
+
+      // 2. Add assigned tokens to balance without parent approval
+      const tokenReward = Number(state.parentSettings?.toothbrushBattleTokens !== undefined
+        ? state.parentSettings.toothbrushBattleTokens
+        : (habit?.coins !== undefined ? habit.coins : (habit?.rewardTokens || 30)));
+      const hero = store.getSelectedHero ? store.getSelectedHero() : state.selectedHero;
+      if (hero) {
+        hero.coins = (hero.coins || 0) + tokenReward;
+      }
+
+      // 3. Submit pending approval to store.addPendingApproval with parent-configured points
+      const parentPoints = Number(state.parentSettings?.toothbrushBattlePoints !== undefined
+        ? state.parentSettings.toothbrushBattlePoints
+        : (habit?.points !== undefined ? habit.points : 15));
+      const heroId = hero?.id || (store.getSelectedKidId ? store.getSelectedKidId() : 'hero_1');
+      const heroName = hero?.name || 'Little Hero';
+      const logId = 'task_log_tb_' + Date.now();
+      const approvalId = 'approval_tb_' + Date.now();
+
+      store.addPendingApproval({
+        id: approvalId,
+        logId: logId,
+        kidId: heroId,
+        kidName: heroName,
+        type: 'task_point_approval',
+        taskId: 'toothbrush_adventure_battle',
+        title: 'Toothbrush Adventure Battle: Defeated Boss',
+        zone: 'Hygiene AR Battle',
+        pendingPoints: parentPoints,
+        tokensAwarded: tokenReward,
+        date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        timestamp: new Date().toISOString(),
+        status: 'pending'
+      });
+
       store.closeColosseumVictoryModal();
+      store.saveState(true);
+      store.notify();
       store.navigate('hero_hq');
     });
   }

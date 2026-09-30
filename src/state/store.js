@@ -411,6 +411,8 @@ const defaultState = {
     biometricsEnabled: true,
     mathChallengeEnabled: true,
     arBattleDuration: 120,
+    toothbrushBattlePoints: 15,
+    toothbrushBattleTokens: 30,
     motionSensitivity: 'medium',
     voicePromptsEnabled: true,
     autoApproveHabits: false,
@@ -832,6 +834,20 @@ class Store {
               h.pointsApproved = false;
             }
           });
+          HABIT_ISLANDS.forEach((def) => {
+            if (!parsed.habitIslands.some((h) => h.id === def.id)) {
+              parsed.habitIslands.push({ ...def });
+            }
+          });
+          const tbHabit = parsed.habitIslands.find((h) => h.id === 'toothbrush_adventure_battle');
+          if (tbHabit && parsed.parentSettings) {
+            if (parsed.parentSettings.toothbrushBattleTokens !== undefined) {
+              tbHabit.coins = Number(parsed.parentSettings.toothbrushBattleTokens);
+            }
+            if (parsed.parentSettings.toothbrushBattlePoints !== undefined) {
+              tbHabit.points = Number(parsed.parentSettings.toothbrushBattlePoints);
+            }
+          }
         } else {
           parsed.habitIslands = HABIT_ISLANDS;
         }
@@ -2250,10 +2266,15 @@ class Store {
         eveningTask.pointsApproved = false;
       }
     }
-    const habitBrush = this.state.habitIslands ? this.state.habitIslands.find(h => h.id === 'brush_teeth' || h.id === 'brush_teeth_am' || h.id === 'brush_teeth_pm') : null;
+    const habitBrush = this.state.habitIslands ? this.state.habitIslands.find(h => h.id === 'toothbrush_adventure_battle' || h.id === 'brush_teeth' || h.id === 'brush_teeth_am' || h.id === 'brush_teeth_pm') : null;
     if (habitBrush) {
       habitBrush.completed = true;
       habitBrush.pointsApproved = false;
+    }
+    const dedicatedToothTask = this.state.habitIslands ? this.state.habitIslands.find(h => h.id === 'toothbrush_adventure_battle') : null;
+    if (dedicatedToothTask) {
+      dedicatedToothTask.completed = true;
+      dedicatedToothTask.pointsApproved = false;
     }
 
     // 4. Plaque Buster Mastery Badges Evaluation
@@ -2343,7 +2364,9 @@ class Store {
       dateString: new Date().toLocaleDateString(),
       timeString: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       coinsAwarded: finalCoinsEarned,
-      pointsAwarded: 15,
+      pointsAwarded: (this.state.habitIslands?.find(h => h.id === 'toothbrush_adventure_battle')?.points !== undefined
+        ? Number(this.state.habitIslands.find(h => h.id === 'toothbrush_adventure_battle').points)
+        : (this.state.parentSettings?.toothbrushBattlePoints !== undefined ? Number(this.state.parentSettings.toothbrushBattlePoints) : 15)),
       xpAwarded: finalXpEarned,
       sparksAwarded: sparksEarned,
       status: 'pending',
@@ -7496,6 +7519,24 @@ class Store {
   toggleColosseumPipCam(show = null) {
     const col = this.getBossColosseumState();
     col.showPipCam = (show !== null) ? Boolean(show) : !col.showPipCam;
+    this.notify();
+  }
+
+  openColosseumVictoryModal(data = {}) {
+    const col = this.getBossColosseumState();
+    col.isVictoryModalOpen = true;
+    if (data) {
+      col.victoryReward = {
+        bossId: data.bossId || col.activeBossId || 'sugar_bandit',
+        bossName: data.bossName || 'The Sugar Bandit',
+        cleansedTitle: data.cleansedTitle || 'Minty Bandit',
+        trophyId: data.trophyId || 'trophy_sugar_bandit',
+        coins: data.coins !== undefined ? data.coins : 30,
+        xp: data.xp !== undefined ? data.xp : 35,
+        sparks: data.sparks !== undefined ? data.sparks : 10,
+        ...data
+      };
+    }
     this.notify();
   }
 
