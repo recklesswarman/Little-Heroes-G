@@ -2228,7 +2228,7 @@ class Store {
     pStats.joy = Math.min(100, (pStats.joy || 80) + 20);
 
     // 3. Morning / Bedtime Habit Auto-Verification (Pending parent sign-off for Gold Points)
-    const isMorning = currentHour < 14;
+    const isMorning = !this.isNighttimeToothbrushBattle();
     if (isMorning) {
       this.state.lastBrushedMorning = todayStr;
       const morningTask = this.state.taskForest ? this.state.taskForest.find(t => t.id === 'morning_brush') : null;
@@ -5598,6 +5598,21 @@ class Store {
     const rec = this.state.hygieneReminders?.[kidId];
     if (!rec) return false;
     return rec[`${type}AckDate`] === new Date().toDateString();
+  }
+
+  // Checks if the toothbrush battle is considered an evening / nighttime battle:
+  // After 5:00 PM (17:00), before 5:00 AM, or during bedtime routines.
+  isNighttimeToothbrushBattle() {
+    const hour = new Date().getHours();
+    return hour >= 17 || hour < 5 || this.state.activeView === 'bedtime_story';
+  }
+
+  // Directly acknowledge a hygiene reminder (floss or mouthwash) for a kid.
+  acknowledgeHygieneReminder(kidId, type) {
+    if (!kidId || !type) return;
+    const rec = this.getHygieneReminderRecord(kidId);
+    rec[`${type}AckDate`] = new Date().toDateString();
+    this.saveState();
   }
 
   // True when the parent flagged this reminder for today AND the kid hasn't

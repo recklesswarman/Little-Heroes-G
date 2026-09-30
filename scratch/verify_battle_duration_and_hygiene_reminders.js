@@ -1,5 +1,5 @@
 import './setup_mock_env.js';
-import { startBattle } from '../src/views/BattleView.js';
+import { startBattle, advanceToBrushPhase } from '../src/views/BattleView.js';
 import { store } from '../src/state/store.js';
 
 let passed = 0, failed = 0;
@@ -31,6 +31,9 @@ store.state.heroes = [kidEasy, kidHard];
 store.state.parentCustomBosses = [];
 store.state.parentSettings.arBattleDuration = 60;
 
+// Daytime test (no floss)
+store.state.hygieneReminders = {};
+store.state.activeHygieneReminder = null;
 store.state.selectedHero = kidEasy;
 store.setSelectedBossId('sugar_bandit');
 store.initColosseumBattle('sugar_bandit', 60);
@@ -59,49 +62,60 @@ assert(store.getBossColosseumState().secondsRemaining === 60, `Custom boss's own
 store.state.parentCustomBosses = [];
 store.setSelectedBossId('sugar_bandit');
 
-console.log('\n--- 3. Floss reminder gates entering the battle, once per day ---');
+console.log('\n--- 3. Nighttime 2-Minute Floss Battle phase & early advance to Toothbrush Battle ---');
 
 store.state.hygieneReminders = {};
 store.state.activeHygieneReminder = null;
-store.state.activeView = 'dashboard';
+store.state.activeView = 'bedtime_story'; // triggers nighttime battle condition
+store.state.selectedHero = kidEasy;
 
+assert(store.isNighttimeToothbrushBattle() === true, 'Bedtime story context registers as nighttime battle');
 assert(store.shouldShowHygieneReminder('kid_easy', 'floss') === false, 'No floss reminder pending before the parent sets one');
 
 store.setHygieneReminder('kid_easy', 'floss', true);
 assert(store.isHygieneReminderActive('kid_easy', 'floss') === true, 'Parent turning on the floss reminder makes it active for today');
-assert(store.shouldShowHygieneReminder('kid_easy', 'floss') === true, 'It should be shown since the kid has not acknowledged it yet today');
+assert(store.shouldShowHygieneReminder('kid_easy', 'floss') === true, 'Floss reminder should show since kid has not acknowledged it yet today');
 
-store.state.selectedHero = kidEasy;
-store.openHygieneReminder('floss', { navTo: 'ar_battle' });
-assert(store.getState().activeHygieneReminder?.type === 'floss', 'openHygieneReminder puts a floss prompt on screen');
-assert(store.getState().activeView === 'dashboard', 'Navigation to the battle is held back while the floss prompt is showing');
+// Launch battle with floss active at night
+startBattle();
+assert(store.getBossColosseumState().secondsRemaining === 120, 'Starts with a 2-minute (120s) flossing battle timer');
 
-store.acknowledgeActiveHygieneReminder();
-assert(store.getState().activeHygieneReminder === null, 'Acknowledging clears the on-screen prompt');
-assert(store.getState().activeView === 'ar_battle', 'Acknowledging the floss reminder then continues into the AR battle');
-assert(store.shouldShowHygieneReminder('kid_easy', 'floss') === false, 'The same kid is not nagged again later the same day');
-assert(store.isHygieneReminderActive('kid_easy', 'floss') === true, "The parent's toggle itself stays on (still reflects as active in the Parent Panel)");
+// Kid / parent can tap "Done Flossing! 🪥" early, transitioning to parent-selected brush duration
+advanceToBrushPhase();
+assert(store.getBossColosseumState().secondsRemaining === 60, 'Advancing to brush phase loads parent-selected duration (60s)');
+assert(store.hasAcknowledgedHygieneReminderToday('kid_easy', 'floss') === true, 'Floss is marked acknowledged for today');
+assert(store.shouldShowHygieneReminder('kid_easy', 'floss') === false, 'Floss battle will not re-trigger again today');
 
-console.log('\n--- 4. Mouthwash reminder fires after victory and defers the reward credit ---');
+console.log('\n--- 4. Toothbrush battle completion immediately submits task for points and shows Mouthwash in modal ---');
 
 store.state.hygieneReminders = {};
-store.state.activeHygieneReminder = null;
 store.state.selectedHero = kidHard;
+store.state.pendingApprovals = [];
+store.state.parentSettings.arBattleDuration = 60;
 store.setHygieneReminder('kid_hard', 'mouthwash', true);
 
 store.setSelectedBossId('sugar_bandit');
 store.initColosseumBattle('sugar_bandit', 60);
+
 const battleTick = captureBattleTick();
 for (let i = 0; i < 60; i++) battleTick();
 
 const colAfterTicks = store.getBossColosseumState();
-assert(store.getState().activeHygieneReminder?.type === 'mouthwash', 'Battle completion opens the mouthwash reminder instead of crediting the win immediately');
-assert(colAfterTicks.hasAwardedVictory !== true, 'Coins/XP/badges are NOT awarded yet while the mouthwash reminder is on screen');
+assert(colAfterTicks.hasAwardedVictory === true, 'Victory is credited immediately upon countdown finish');
+assert(colAfterTicks.isVictoryModalOpen === true, 'Victory modal is open');
 
-store.acknowledgeActiveHygieneReminder();
-assert(store.getState().activeHygieneReminder === null, 'Acknowledging the mouthwash reminder clears the prompt');
-assert(store.getBossColosseumState().hasAwardedVictory === true, 'Victory is credited immediately after the mouthwash reminder is dismissed');
-assert(store.shouldShowHygieneReminder('kid_hard', 'mouthwash') === false, 'The mouthwash reminder will not re-fire again for this kid later today');
+// Verify task point submission to parent
+const pendingTask = store.state.pendingApprovals.find(p => p.type === 'task_point_approval' && p.kidId === 'kid_hard');
+assert(pendingTask !== undefined, 'Task point approval request created in pendingApprovals for parent issuance');
+assert(pendingTask?.pendingPoints === 15, 'Points set to 15 pending parent approval');
+
+// Verify mouthwash reminder in modal
+assert(store.isHygieneReminderActive('kid_hard', 'mouthwash') === true, 'Mouthwash reminder is active for tonight');
+assert(store.hasAcknowledgedHygieneReminderToday('kid_hard', 'mouthwash') === false, 'Mouthwash not yet acknowledged');
+
+// Kid taps "I Rinsed! 💧✨"
+store.acknowledgeHygieneReminder('kid_hard', 'mouthwash');
+assert(store.hasAcknowledgedHygieneReminderToday('kid_hard', 'mouthwash') === true, 'Mouthwash marked acknowledged today after kid clicks rinsed');
 
 console.log('\n=============================================');
 console.log(`TEST RESULTS: ${passed} PASSED, ${failed} FAILED`);

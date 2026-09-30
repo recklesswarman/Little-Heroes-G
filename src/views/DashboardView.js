@@ -624,18 +624,9 @@ function triggerQuestVoice(title = '', id = '', desc = '') {
   }
 }
 
-// Launches the Toothbrush AR Battle, first showing the Floss Reminder screen
-// if the parent flagged one for this kid today and it hasn't been shown yet
-// today -- flossing happens before brushing starts, so this gates entry into
-// the battle rather than firing alongside it.
+// Launches the Toothbrush AR Battle cockpit (handles Phase 1 Floss Battle if active, then Phase 2 Toothbrush Battle)
 function launchToothbrushBattle() {
   Sound.click();
-  const kidId = store.getState().selectedHero?.id;
-  if (kidId && store.shouldShowHygieneReminder(kidId, 'floss')) {
-    store.openHygieneReminder('floss', { navTo: 'ar_battle' });
-    return;
-  }
-  speakRex("3, 2, 1, BRUSH!");
   store.navigate('ar_battle');
 }
 

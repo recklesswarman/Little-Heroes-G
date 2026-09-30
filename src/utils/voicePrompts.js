@@ -97,6 +97,14 @@ class VoicePromptsService {
     this.speak(`Incredible dancing, Little Hero! You mastered the ${routineName}! You are a true dance star!`);
   }
 
+  speakFlossStart() {
+    this.speak("Time to floss, Little Hero! Clean between those teeth so the sugar villains have nowhere to hide!", null, 'rex');
+  }
+
+  speakMouthwashReminder() {
+    this.speak("Don't Forget to washwash Little Hero", null, 'rex');
+  }
+
   stop() {
     stopRex();
   }

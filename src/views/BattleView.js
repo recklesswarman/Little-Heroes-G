@@ -33,10 +33,33 @@ let battleTimer = null;
 let bombTimer = null;
 let secondsRemaining = 120;
 let totalDuration = 120;
+let battlePhase = 'brush'; // 'floss' (2-minute preliminary flossing battle) | 'brush' (toothbrush battle)
+let lastSpokenQuadId = null;
 let isBattleRunning = false;
 let isBattlePaused = false;
 let isRhythmBeatActive = true;
 let isIntroCountingDown = false;
+
+// Helper to determine if current battle is a nighttime battle
+export function isNighttimeBattle() {
+  if (typeof store.isNighttimeToothbrushBattle === 'function') {
+    return store.isNighttimeToothbrushBattle();
+  }
+  const hour = new Date().getHours();
+  return hour >= 17 || hour < 5;
+}
+
+export function shouldRunFlossBattle() {
+  const kidId = store.getState().selectedHero?.id;
+  if (!kidId) return false;
+  return isNighttimeBattle() && store.shouldShowHygieneReminder(kidId, 'floss');
+}
+
+export function shouldShowMouthwashReminder() {
+  const kidId = store.getState().selectedHero?.id;
+  if (!kidId) return false;
+  return isNighttimeBattle() && store.isHygieneReminderActive(kidId, 'mouthwash');
+}
 
 // Hardware & Multi-Modal Sensors State (Single Atomic MediaStream)
 let videoStream = null;
@@ -200,32 +223,47 @@ export function renderBattleView() {
         </button>
 
         <!-- Center: Giant Glowing Bubble Countdown Timer & Boss Health Meter -->
-        <div class="pointer-events-auto bg-slate-900/90 backdrop-blur-md px-3 sm:px-5 py-1.5 sm:py-2 rounded-3xl border-2 sm:border-3 border-cyan-400/80 shadow-[0_0_30px_rgba(6,182,212,0.4)] flex items-center gap-2 sm:gap-4 max-w-sm sm:max-w-md w-full justify-between">
+        <div class="pointer-events-auto bg-slate-900/90 backdrop-blur-md px-3 sm:px-5 py-1.5 sm:py-2 rounded-3xl border-2 sm:border-3 ${battlePhase === 'floss' ? 'border-emerald-400/90 shadow-[0_0_30px_rgba(16,185,129,0.4)]' : 'border-cyan-400/80 shadow-[0_0_30px_rgba(6,182,212,0.4)]'} flex items-center gap-2 sm:gap-4 max-w-sm sm:max-w-md w-full justify-between">
           
-          <!-- Boss Avatar & Health Heart Bar -->
-          <div class="flex items-center gap-2 min-w-0 flex-1">
-            <span class="text-2xl sm:text-3xl filter drop-shadow animate-bounce flex-shrink-0">
-              ${currentBoss.emoji || currentBoss.avatar || '🍬'}
-            </span>
-            <div class="flex flex-col min-w-0 flex-1">
-              <div class="flex items-center justify-between text-[10px] sm:text-xs font-black text-amber-300 uppercase truncate">
-                <span class="truncate">${currentBoss.name}</span>
-                <span class="text-[9px] text-rose-300 font-bold ml-1">${hpPercent}% HP</span>
-              </div>
-              <!-- Curved Boss Health Bar -->
-              <div class="w-full bg-slate-950 h-3 sm:h-3.5 rounded-full overflow-hidden border border-white/20 p-0.5 mt-0.5 shadow-inner">
-                <div id="boss-hp-bar" class="h-full bg-gradient-to-r from-rose-500 via-amber-400 to-emerald-400 rounded-full transition-all duration-300 shadow-[0_0_10px_rgba(245,158,11,0.8)]" style="width: ${hpPercent}%;"></div>
+          ${battlePhase === 'floss' ? `
+            <div class="flex items-center gap-2 min-w-0 flex-1">
+              <span class="text-2xl sm:text-3xl filter drop-shadow animate-bounce flex-shrink-0">🧵</span>
+              <div class="flex flex-col min-w-0 flex-1">
+                <div class="flex items-center justify-between text-[10px] sm:text-xs font-black text-emerald-300 uppercase truncate">
+                  <span>PHASE 1: FLOSS BATTLE</span>
+                  <span class="text-[9px] text-emerald-400 font-bold ml-1">2 MINUTE PREP</span>
+                </div>
+                <div class="w-full bg-slate-950 h-3 sm:h-3.5 rounded-full overflow-hidden border border-emerald-400/40 p-0.5 mt-0.5 shadow-inner">
+                  <div id="floss-progress-bar" class="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-300 shadow-[0_0_10px_rgba(16,185,129,0.8)]" style="width: ${Math.round(((120 - secondsRemaining) / 120) * 100)}%;"></div>
+                </div>
               </div>
             </div>
-          </div>
+          ` : `
+            <!-- Boss Avatar & Health Heart Bar -->
+            <div class="flex items-center gap-2 min-w-0 flex-1">
+              <span class="text-2xl sm:text-3xl filter drop-shadow animate-bounce flex-shrink-0">
+                ${currentBoss.emoji || currentBoss.avatar || '🍬'}
+              </span>
+              <div class="flex flex-col min-w-0 flex-1">
+                <div class="flex items-center justify-between text-[10px] sm:text-xs font-black text-amber-300 uppercase truncate">
+                  <span class="truncate">${currentBoss.name}</span>
+                  <span class="text-[9px] text-rose-300 font-bold ml-1">${hpPercent}% HP</span>
+                </div>
+                <!-- Curved Boss Health Bar -->
+                <div class="w-full bg-slate-950 h-3 sm:h-3.5 rounded-full overflow-hidden border border-white/20 p-0.5 mt-0.5 shadow-inner">
+                  <div id="boss-hp-bar" class="h-full bg-gradient-to-r from-rose-500 via-amber-400 to-emerald-400 rounded-full transition-all duration-300 shadow-[0_0_10px_rgba(245,158,11,0.8)]" style="width: ${hpPercent}%;"></div>
+                </div>
+              </div>
+            </div>
+          `}
 
           <!-- Vertical Divider -->
           <div class="h-8 w-0.5 bg-white/20 flex-shrink-0"></div>
 
           <!-- Giant Countdown Display (02:00 -> 00:00) -->
           <div class="flex items-center gap-1.5 flex-shrink-0">
-            <span class="material-symbols-outlined text-amber-400 text-xl sm:text-2xl animate-pulse">timer</span>
-            <span id="battle-timer-display" class="font-headline text-2xl sm:text-4xl font-black text-amber-300 tracking-wider drop-shadow-[0_0_12px_rgba(251,191,36,0.9)]">
+            <span class="material-symbols-outlined ${battlePhase === 'floss' ? 'text-emerald-400' : 'text-amber-400'} text-xl sm:text-2xl animate-pulse">timer</span>
+            <span id="battle-timer-display" class="font-headline text-2xl sm:text-4xl font-black ${battlePhase === 'floss' ? 'text-emerald-300 drop-shadow-[0_0_12px_rgba(16,185,129,0.9)]' : 'text-amber-300 drop-shadow-[0_0_12px_rgba(251,191,36,0.9)]'} tracking-wider">
               ${timeStr}
             </span>
           </div>
@@ -261,31 +299,38 @@ export function renderBattleView() {
         </div>
       </div>
 
-      <!-- ================= 4. ACTIVE ZONE PROMPT BANNER ================= -->
-      <div id="active-zone-banner" class="absolute top-16 sm:top-20 left-1/2 transform -translate-x-1/2 z-20 bg-slate-900/95 border-2 border-cyan-400 px-4 py-1.5 rounded-full shadow-[0_0_20px_rgba(6,182,212,0.4)] flex items-center gap-2 pointer-events-none animate-pulse">
-        <span class="text-base">🪥</span>
-        <span class="text-xs font-black text-cyan-300 uppercase tracking-wide">BRUSHING ZONE:</span>
-        <span id="current-zone-status-text" class="text-xs font-black text-white">${activeQuad.name}</span>
-        <span id="current-zone-badge" class="text-[10px] font-bold text-amber-300 bg-amber-950/80 px-2 py-0.5 rounded-full border border-amber-500/40">${activeQuad.zone}/5</span>
-      </div>
-
-      <!-- ================= 4b. PARENT-SET FLOSS/MOUTHWASH REMINDER BADGES (visible the whole battle) ================= -->
-      ${(showFlossBadge || showMouthwashBadge) ? `
-        <div id="hygiene-reminder-hud-badges" class="absolute top-[4.75rem] sm:top-[5.75rem] left-1/2 transform -translate-x-1/2 z-20 flex items-center gap-1.5 pointer-events-none">
-          ${showFlossBadge ? `
-            <span class="flex items-center gap-1 text-[9px] sm:text-[10px] font-black text-primary bg-primary/15 border border-primary/50 px-2 py-0.5 rounded-full shadow backdrop-blur-sm">
-              <span class="material-symbols-outlined text-xs" style="font-variation-settings: 'FILL' 1;">health_and_safety</span>
-              Floss Today
-            </span>
-          ` : ''}
-          ${showMouthwashBadge ? `
-            <span class="flex items-center gap-1 text-[9px] sm:text-[10px] font-black text-secondary bg-secondary/15 border border-secondary/50 px-2 py-0.5 rounded-full shadow backdrop-blur-sm">
-              <span class="material-symbols-outlined text-xs" style="font-variation-settings: 'FILL' 1;">water_drop</span>
-              Rinse After
-            </span>
-          ` : ''}
+      <!-- ================= 4. ACTIVE ZONE PROMPT / FLOSS BATTLE BANNER ================= -->
+      ${battlePhase === 'floss' ? `
+        <div id="floss-banner-container" class="absolute top-16 sm:top-20 left-1/2 transform -translate-x-1/2 z-20 flex flex-col items-center gap-2">
+          <div id="floss-active-banner" class="bg-slate-900/95 border-2 border-emerald-400 px-4 py-1.5 rounded-full shadow-[0_0_20px_rgba(16,185,129,0.5)] flex items-center gap-2 animate-pulse">
+            <span class="text-base">🧵</span>
+            <span class="text-xs font-black text-emerald-300 uppercase tracking-wide">FLOSS BATTLE:</span>
+            <span id="current-zone-status-text" class="text-xs font-black text-white">Clean between your teeth!</span>
+          </div>
+          <button id="battle-done-floss-btn" class="pointer-events-auto bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 hover:brightness-110 text-slate-950 font-headline font-black text-xs px-4 py-1.5 rounded-full shadow-lg border-2 border-white/40 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer">
+            <span class="material-symbols-outlined text-sm font-black">check_circle</span> Done Flossing! 🪥
+          </button>
         </div>
-      ` : ''}
+      ` : `
+        <div id="active-zone-banner" class="absolute top-16 sm:top-20 left-1/2 transform -translate-x-1/2 z-20 bg-slate-900/95 border-2 border-cyan-400 px-4 py-1.5 rounded-full shadow-[0_0_20px_rgba(6,182,212,0.4)] flex items-center gap-2 pointer-events-none animate-pulse">
+          <span class="text-base">🪥</span>
+          <span class="text-xs font-black text-cyan-300 uppercase tracking-wide">BRUSHING ZONE:</span>
+          <span id="current-zone-status-text" class="text-xs font-black text-white">${activeQuad.name}</span>
+          <span id="current-zone-badge" class="text-[10px] font-bold text-amber-300 bg-amber-950/80 px-2 py-0.5 rounded-full border border-amber-500/40">${activeQuad.zone}/5</span>
+        </div>
+
+        <!-- Parent-Set Floss / Mouthwash Reminder Badges -->
+        ${(showFlossBadge || showMouthwashBadge) ? `
+          <div id="hygiene-reminder-hud-badges" class="absolute top-[4.75rem] sm:top-[5.75rem] left-1/2 transform -translate-x-1/2 z-20 flex items-center gap-1.5 pointer-events-none">
+            ${showMouthwashBadge ? `
+              <span class="flex items-center gap-1 text-[9px] sm:text-[10px] font-black text-secondary bg-secondary/15 border border-secondary/50 px-2 py-0.5 rounded-full shadow backdrop-blur-sm">
+                <span class="material-symbols-outlined text-xs" style="font-variation-settings: 'FILL' 1;">water_drop</span>
+                Rinse with Mouthwash after!
+              </span>
+            ` : ''}
+          </div>
+        ` : ''}
+      `}
 
       <!-- ================= 5. 4 GLOWING TOOTH QUADRANT GEMS (MIRRORED BATHROOM PERSPECTIVE) ================= -->
       <!-- Q1: Upper Right (Screen Top-Right, >50% X) -->
@@ -422,7 +467,11 @@ function renderVictoryModal(colState, currentBoss) {
     ? "Sugar Bandit's Golden Candy Crown"
     : reward.trophyId === 'trophy_plaque_kraken'
       ? "Plaque Kraken's Pearly Goblet"
-      : "Tartar Titan's Enamel Shield Crest";
+      : "Shiny Hero Trophy";
+  const hygieneKidId = store.getState().selectedHero?.id;
+  const isNight = typeof isNighttimeBattle === 'function' ? isNighttimeBattle() : (new Date().getHours() >= 17);
+  const showMouthwashInModal = hygieneKidId && isNight && store.isHygieneReminderActive(hygieneKidId, 'mouthwash');
+  const isMouthwashAcknowledged = hygieneKidId ? store.hasAcknowledgedHygieneReminderToday(hygieneKidId, 'mouthwash') : false;
 
   return `
     <div id="colosseum-victory-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
@@ -445,7 +494,7 @@ function renderVictoryModal(colState, currentBoss) {
           <span class="text-[10px] text-slate-400">Permanently spotlighted in your Hero HQ hideout!</span>
         </div>
 
-        <div class="w-full bg-slate-950/90 rounded-2xl p-2.5 border-2 border-slate-800 flex items-center justify-around mb-4 shadow-inner">
+        <div class="w-full bg-slate-950/90 rounded-2xl p-2.5 border-2 border-slate-800 flex items-center justify-around mb-3 shadow-inner">
           <div class="flex flex-col items-center">
             <span class="text-xs text-slate-400 font-bold">COINS 🪙</span>
             <span class="font-headline font-black text-base text-amber-400">+${reward.coins}</span>
@@ -461,6 +510,21 @@ function renderVictoryModal(colState, currentBoss) {
             <span class="font-headline font-black text-base text-emerald-400">+${reward.sparks}</span>
           </div>
         </div>
+
+        ${showMouthwashInModal ? `
+          <div id="mouthwash-victory-card" class="w-full bg-secondary/15 rounded-2xl p-3 border-2 border-secondary/50 flex flex-col items-center gap-1.5 mb-3 shadow-[0_0_20px_rgba(6,182,212,0.25)] animate-pulse">
+            <div class="flex items-center gap-1.5 text-secondary font-headline font-black text-xs uppercase tracking-wider">
+              <span class="material-symbols-outlined text-base" style="font-variation-settings: 'FILL' 1;">water_drop</span>
+              DON'T FORGET TO WASHWASH LITTLE HERO! 💧🦖
+            </div>
+            <p class="text-[11px] font-bold text-slate-200">
+              Swish your mouthwash for a fresh, sparkling clean smile!
+            </p>
+            <button id="mouthwash-modal-ack-btn" class="mt-1 px-4 py-1.5 rounded-xl ${isMouthwashAcknowledged ? 'bg-emerald-600 text-white cursor-default' : 'bg-secondary text-on-secondary cursor-pointer hover:brightness-110 active:scale-95'} font-headline font-black text-xs transition-all flex items-center gap-1">
+              <span class="material-symbols-outlined text-sm">check_circle</span> ${isMouthwashAcknowledged ? 'Rinsed ✓' : 'I Rinsed! 💧✨'}
+            </button>
+          </div>
+        ` : ''}
 
         <div class="w-full flex flex-col gap-2">
           <button id="colosseum-visit-hq-btn" class="w-full py-3 min-h-[48px] rounded-2xl bg-emerald-500 text-slate-950 font-headline font-black text-sm uppercase tracking-wider shadow-[0_6px_0_0_#047857] hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-1.5">
@@ -818,6 +882,44 @@ function resolveLearnChallenge(success, method = 'voice') {
 // =========================================================================
 // BATTLE LIFECYCLE CONTROLLERS
 // =========================================================================
+
+export function advanceToBrushPhase() {
+  const kidId = store.getState().selectedHero?.id;
+  if (kidId) {
+    store.acknowledgeHygieneReminder(kidId, 'floss');
+  }
+  battlePhase = 'brush';
+  const currentBoss = getBattleBoss(selectedBossId);
+  const bossDuration = store.getState().parentSettings?.arBattleDuration || currentBoss.battleDurationSec || 120;
+  secondsRemaining = bossDuration;
+  totalDuration = bossDuration;
+  lastSpokenQuadId = null;
+
+  store.updateColosseumTimer(secondsRemaining, totalDuration);
+
+  Sound.fanfare();
+  voicePrompts.speak("Flossing complete! Now 3, 2, 1, BRUSH!", null, null, { instant: true });
+  playIntroCountdown();
+
+  // Switch HUD from floss to brush
+  const flossContainer = document.getElementById('floss-banner-container');
+  if (flossContainer) {
+    flossContainer.remove();
+  }
+  const zoneBanner = document.getElementById('active-zone-banner');
+  if (zoneBanner) {
+    zoneBanner.classList.remove('hidden');
+  }
+
+  // Update initial quadrant coaching
+  const initialQuad = getDentalQuadrant(secondsRemaining, totalDuration);
+  currentRexCoachText = initialQuad.coachMessage || 'Get ready! Scrub in gentle circles on your top right teeth!';
+  lastSpokenQuadId = initialQuad.id;
+  updateRexDialogue();
+
+  syncCockpitHUD();
+}
+
 export function startBattle() {
   selectedBossId = store.getSelectedBossId ? store.getSelectedBossId() : selectedBossId;
   const currentBoss = getBattleBoss(selectedBossId);
@@ -828,18 +930,29 @@ export function startBattle() {
   const battleCfg = BATTLE_DIFFICULTY[getDifficultyTier(hero)];
   // The Parent Panel's "Toothbrush AR Battle Duration Slider" is the single
   // source of truth for every kid's timer, so it always wins over a
-  // boss-specific default -- otherwise a custom AR villain built in the Boss
-  // Studio (which bakes in its own battleDurationSec) would silently ignore
-  // whatever duration the parent has selected, and different kids fighting
-  // different bosses would see different countdown lengths.
+  // boss-specific default.
   const bossDuration = store.getState().parentSettings?.arBattleDuration || currentBoss.battleDurationSec || 120;
-  secondsRemaining = bossDuration;
-  totalDuration = bossDuration;
+  
+  const kidId = hero?.id;
+  const isNight = typeof isNighttimeBattle === 'function' ? isNighttimeBattle() : (new Date().getHours() >= 17);
+  const needsFloss = kidId && isNight && store.shouldShowHygieneReminder(kidId, 'floss');
+
+  if (needsFloss) {
+    battlePhase = 'floss';
+    secondsRemaining = 120; // 2-minute preliminary flossing battle
+    totalDuration = 120;
+  } else {
+    battlePhase = 'brush';
+    secondsRemaining = bossDuration;
+    totalDuration = bossDuration;
+  }
+
   totalScrubHits = 0;
   currentCombo = 0;
   cadenceSamples = [];
   lastScrubTimestamp = Date.now();
   hasTriggeredLearnChallenge = false;
+  lastSpokenQuadId = null;
 
   quadrantCleanliness = { q1: 0, q2: 0, q3: 0, q4: 0, q5: 0 };
   lastProgressTimestamp = { q1: 0, q2: 0, q3: 0, q4: 0, q5: 0 };
@@ -849,8 +962,17 @@ export function startBattle() {
   Sound.startBattleRhythm();
   initSensors();
 
-  // Trigger quick "3, 2, 1, BRUSH!" visual intro overlay
-  playIntroCountdown();
+  if (battlePhase === 'floss') {
+    currentRexCoachText = "Time to floss, Little Hero! Clean between those teeth so the sugar villains have nowhere to hide!";
+    voicePrompts.speak(currentRexCoachText, null, null, { instant: true });
+    updateRexDialogue();
+  } else {
+    // Trigger quick "3, 2, 1, BRUSH!" visual intro overlay
+    playIntroCountdown();
+    const initialQuad = getDentalQuadrant(secondsRemaining, totalDuration);
+    currentRexCoachText = initialQuad.coachMessage || 'Get ready! Scrub in gentle circles on your top right teeth!';
+    lastSpokenQuadId = initialQuad.id;
+  }
 
   // Auto-Assist Fallback Pulse
   if (autoAssistInterval) clearInterval(autoAssistInterval);
@@ -865,22 +987,47 @@ export function startBattle() {
     }
   }, 1000);
 
-  // Periodic Caramel Bomb Attack Timer
+  // Periodic Caramel Bomb Attack Timer (active during brush phase)
   if (bombTimer) clearInterval(bombTimer);
   bombTimer = setInterval(() => {
-    if (isBattleRunning && !isBattlePaused && secondsRemaining > 10) {
+    if (isBattleRunning && !isBattlePaused && battlePhase === 'brush' && secondsRemaining > 10) {
       triggerDeflectFlurry();
     }
   }, battleCfg.bombIntervalMs);
-
-  const initialQuad = getDentalQuadrant(secondsRemaining, totalDuration);
-  currentRexCoachText = initialQuad.coachMessage || 'Get ready! Scrub in gentle circles on your top right teeth!';
 
   // 1 Hz Countdown Battle Loop
   if (battleTimer) clearInterval(battleTimer);
   battleTimer = setInterval(() => {
     if (isBattlePaused) return;
 
+    if (battlePhase === 'floss') {
+      secondsRemaining--;
+      store.updateColosseumTimer(secondsRemaining, totalDuration);
+
+      const mins = Math.floor(secondsRemaining / 60);
+      const secs = secondsRemaining % 60;
+      const timeStr = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+      const timerDisplay = document.getElementById('battle-timer-display');
+      if (timerDisplay) timerDisplay.textContent = timeStr;
+
+      const flossBar = document.getElementById('floss-progress-bar');
+      if (flossBar) {
+        flossBar.style.width = `${Math.round(((120 - secondsRemaining) / 120) * 100)}%`;
+      }
+
+      if (secondsRemaining === 60) {
+        currentRexCoachText = "Halfway through flossing! Make sure to get those back molars!";
+        voicePrompts.speak(currentRexCoachText, null, null, { instant: true });
+        updateRexDialogue();
+      }
+
+      if (secondsRemaining <= 0) {
+        advanceToBrushPhase();
+      }
+      return;
+    }
+
+    // Phase 2: Toothbrush Countdown Loop
     secondsRemaining--;
 
     store.updateColosseumTimer(secondsRemaining, totalDuration);
@@ -901,7 +1048,6 @@ export function startBattle() {
       triggerLearnChallenge();
     }
 
-    const ratio = secondsRemaining / totalDuration;
     const activeQuad = getDentalQuadrant(secondsRemaining, totalDuration);
 
     const zoneStatusText = document.getElementById('current-zone-status-text');
@@ -909,28 +1055,13 @@ export function startBattle() {
       zoneStatusText.textContent = `${activeQuad.name} (${activeQuad.zone}/5)`;
     }
 
-    // Voice & Dialogue quadrant switches
-    if (Math.abs(ratio - 0.75) < (1 / totalDuration)) {
-      currentRexCoachText = DENTAL_QUADRANTS[1]?.coachMessage || 'Switch to top left teeth!';
-      voicePrompts.speak(currentRexCoachText, null, null, { instant: true });
-      updateRexDialogue();
-    } else if (Math.abs(ratio - 0.50) < (1 / totalDuration)) {
-      currentRexCoachText = DENTAL_QUADRANTS[2]?.coachMessage || 'Halfway there! Bottom right teeth next!';
-      // The Learn Challenge question speaks on this exact same tick (both
-      // are keyed to the halfway mark) -- update the on-screen dialogue
-      // text either way, but only speak it if the question didn't just
-      // claim this tick's voice line, or the two talk over each other.
+    // Dynamic Quadrant Spoken Alignment on transition (5 equal zones)
+    if (activeQuad.id !== lastSpokenQuadId) {
+      lastSpokenQuadId = activeQuad.id;
+      currentRexCoachText = activeQuad.coachMessage || `Brush your ${activeQuad.name}!`;
       if (!learnChallengeTriggeredThisTick) {
         voicePrompts.speak(currentRexCoachText, null, null, { instant: true });
       }
-      updateRexDialogue();
-    } else if (Math.abs(ratio - 0.25) < (1 / totalDuration)) {
-      currentRexCoachText = DENTAL_QUADRANTS[3]?.coachMessage || 'Bottom left side! Keep scrubbing!';
-      voicePrompts.speak(currentRexCoachText, null, null, { instant: true });
-      updateRexDialogue();
-    } else if (Math.abs(ratio - 0.08) < (1 / totalDuration)) {
-      currentRexCoachText = DENTAL_QUADRANTS[4]?.coachMessage || 'Final seconds: Gentle tongue polish for fresh breath!';
-      voicePrompts.speak(currentRexCoachText, null, null, { instant: true });
       updateRexDialogue();
     }
 
@@ -1158,14 +1289,16 @@ function concludeVictory() {
 
   store.updateColosseumTimer(0, totalDuration);
 
-  // Mouthwash reminders fire after the battle completes, so if the parent
-  // flagged one for this kid today, show it before crediting the victory
-  // (coins/XP/badges) rather than alongside it.
+  // Directly complete the toothbrush battle: records task in pendingApprovals for parent issuance,
+  // awards sparks/XP/badges, opens victory modal, and saves state to Cloud Firestore immediately.
+  store.completeToothbrushBattle(selectedBossId, totalDuration, avgCadence);
+
+  // When Mouthwash reminder is active for this kid at night, Rex reminds them in the victory modal
   const kidId = store.getState().selectedHero?.id;
-  if (kidId && store.shouldShowHygieneReminder(kidId, 'mouthwash')) {
-    store.openHygieneReminder('mouthwash', { bossId: selectedBossId, durationSec: totalDuration, avgCadence });
-  } else {
-    store.completeToothbrushBattle(selectedBossId, totalDuration, avgCadence);
+  if (kidId && shouldShowMouthwashReminder()) {
+    setTimeout(() => {
+      voicePrompts.speakMouthwashReminder();
+    }, 1200);
   }
 }
 
@@ -1224,6 +1357,7 @@ export function quitBattle() {
 
   isBattleRunning = false;
   isBattlePaused = false;
+  battlePhase = 'brush';
   const targetView = (store.state && store.state.previousView === 'quest_map') ? 'quest_map' : 'dashboard';
   store.navigate(targetView);
 }
@@ -1242,6 +1376,7 @@ export function abandonBattleIfRunning() {
   stopBattleSensorsAndTimers();
   isBattleRunning = false;
   isBattlePaused = false;
+  battlePhase = 'brush';
 }
 
 function showComicHit(text) {
@@ -1346,11 +1481,33 @@ export function attachBattleListeners() {
     });
   }
 
-  // 6. Victory Modal Actions
+  // 6. Floss Phase: Done Flossing Early Advance
+  const doneFlossBtn = document.getElementById('battle-done-floss-btn');
+  if (doneFlossBtn) {
+    doneFlossBtn.addEventListener('click', () => {
+      advanceToBrushPhase();
+    });
+  }
+
+  // 7. Victory Modal Actions & Mouthwash Acknowledgment
+  const mouthwashAckBtn = document.getElementById('mouthwash-modal-ack-btn');
+  if (mouthwashAckBtn) {
+    mouthwashAckBtn.addEventListener('click', () => {
+      const kidId = store.getState().selectedHero?.id;
+      if (kidId) {
+        store.acknowledgeHygieneReminder(kidId, 'mouthwash');
+        mouthwashAckBtn.className = 'mt-1 px-4 py-1.5 rounded-xl bg-emerald-600 text-white cursor-default font-headline font-black text-xs transition-all flex items-center gap-1';
+        mouthwashAckBtn.innerHTML = '<span class="material-symbols-outlined text-sm">check_circle</span> Rinsed ✓';
+        if (typeof Sound?.fanfare === 'function') Sound.fanfare();
+      }
+    });
+  }
+
   const visitHqBtn = document.getElementById('colosseum-visit-hq-btn');
   if (visitHqBtn) {
     visitHqBtn.addEventListener('click', () => {
       isBattleRunning = false;
+      battlePhase = 'brush';
       hanaBattle3DService.destroy();
       store.closeColosseumVictoryModal();
       store.navigate('hero_hq');
@@ -1361,6 +1518,7 @@ export function attachBattleListeners() {
   if (playAgainBtn) {
     playAgainBtn.addEventListener('click', () => {
       isBattleRunning = false;
+      battlePhase = 'brush';
       hanaBattle3DService.destroy();
       store.closeColosseumVictoryModal();
       startBattle();
