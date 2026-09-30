@@ -77,6 +77,15 @@ let pendingUnlockSpeech = null;
 let audioContextUnlocked = false;
 let sharedAudioContext = null;
 
+// Bumped at the start of every speakCompanion() call. Each call captures its
+// own value and re-checks it after every await -- if a newer call has since
+// started, this one abandons rather than committing to playback, so two
+// speakCompanion() calls fired close together (a very real scenario in
+// fast-paced contexts like the toothbrush battle, where multiple coaching
+// lines can trigger within the same second) can never both end up audible
+// at once ("speaking over itself").
+let speechGeneration = 0;
+
 function dispatchSpeechEvent(eventName, detail = {}) {
   if (typeof window !== 'undefined') {
     try {
@@ -376,7 +385,7 @@ function base64ToFloat32Array(base64Data) {
  * wiring up the same speech-start/syllable/end events used for lip-sync.
  * Returns true if playback started.
  */
-async function playPcmTtsResponse(data, cleanSpoken, petId, callback) {
+async function playPcmTtsResponse(data, cleanSpoken, petId, callback, myGeneration) {
   if (!data || !data.audio) return false;
 
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -385,6 +394,16 @@ async function playPcmTtsResponse(data, cleanSpoken, petId, callback) {
   }
   if (sharedAudioContext.state === 'suspended') {
     await sharedAudioContext.resume().catch(() => {});
+  }
+
+  // A newer speakCompanion() call started while we were awaiting the
+  // AudioContext resume above -- committing to play now would talk over it
+  // (exactly the "speaking over itself" bug: two overlapping TTS fetches
+  // that each resolve at an unpredictable time, with nothing stopping a
+  // slow, stale one from starting playback after a faster, newer one
+  // already began). Abandon silently; the newer call owns playback now.
+  if (typeof myGeneration === 'number' && myGeneration !== speechGeneration) {
+    return false;
   }
 
   const float32 = base64ToFloat32Array(data.audio);
@@ -464,12 +483,20 @@ async function fetchPcmTts(endpoint, cleanSpoken, petId, timeoutMs = 4500) {
  * 2. Primary: ElevenLabs voice, where this pet has one configured (/api/elevenlabs/tts).
  * 3. Secondary: Realistic kid-friendly voice via Gemini 3.1 Flash TTS (/api/gemini/tts).
  * 4. Resilient Fallback: Cartoon Speech Synthesis if offline or both network calls fail.
+ *
+ * Pass { instant: true } for fast-paced, real-time contexts (e.g. the
+ * toothbrush battle's quadrant/event coaching) to skip both network TTS
+ * tiers entirely and go straight to the zero-latency browser fallback --
+ * a cloud TTS round trip (even a fast one) is the wrong tool for coaching
+ * lines tied to a live countdown, and stacking two of them (ElevenLabs then
+ * Gemini) before falling back is what made this feel laggy.
  */
 export const speakCompanion = async (text, petIdOrOptions = 'rex', onEnded = null) => {
   if (!text || typeof text !== 'string' || !text.trim()) return;
 
   let petId = 'rex';
   let callback = onEnded;
+  let instant = false;
 
   if (typeof petIdOrOptions === 'string') {
     petId = petIdOrOptions;
@@ -478,6 +505,7 @@ export const speakCompanion = async (text, petIdOrOptions = 'rex', onEnded = nul
   } else if (petIdOrOptions && typeof petIdOrOptions === 'object') {
     petId = petIdOrOptions.petId || 'rex';
     if (petIdOrOptions.onEnded) callback = petIdOrOptions.onEnded;
+    instant = Boolean(petIdOrOptions.instant);
   }
 
   // If no explicit petId given or default rex, check active pet in store
@@ -491,6 +519,11 @@ export const speakCompanion = async (text, petIdOrOptions = 'rex', onEnded = nul
   const cleanSpoken = cleanDialogueText(text);
   if (!cleanSpoken) return;
 
+  // Claim this as the newest call -- any earlier in-flight call (still
+  // awaiting a fetch or an AudioContext resume) checks this after every
+  // await and abandons rather than starting audio once it's no longer current.
+  const myGeneration = ++speechGeneration;
+
   // Immediately stop any prior speech output
   stopRex();
 
@@ -499,25 +532,34 @@ export const speakCompanion = async (text, petIdOrOptions = 'rex', onEnded = nul
     pendingUnlockSpeech = { text: cleanSpoken, petId, onEnded: callback };
   }
 
+  if (instant) {
+    speakWithSpeechSynthesis(cleanSpoken, petId, callback);
+    return;
+  }
+
   let ttsSucceeded = false;
 
   // 1. Primary: ElevenLabs voice (only pets with a configured voice get one;
   // the server responds 404 for anyone else, and we fall through below).
   const elevenLabsData = await fetchPcmTts(ELEVENLABS_TTS_ENDPOINT, cleanSpoken, petId);
+  if (myGeneration !== speechGeneration) return;
   if (elevenLabsData) {
-    ttsSucceeded = await playPcmTtsResponse(elevenLabsData, cleanSpoken, petId, callback);
+    ttsSucceeded = await playPcmTtsResponse(elevenLabsData, cleanSpoken, petId, callback, myGeneration);
   }
 
   // 2. Secondary: Server-Side Realistic Gemini TTS Engine (/api/gemini/tts)
   if (!ttsSucceeded) {
+    if (myGeneration !== speechGeneration) return;
     const geminiData = await fetchPcmTts(TTS_ENDPOINT, cleanSpoken, petId);
+    if (myGeneration !== speechGeneration) return;
     if (geminiData) {
-      ttsSucceeded = await playPcmTtsResponse(geminiData, cleanSpoken, petId, callback);
+      ttsSucceeded = await playPcmTtsResponse(geminiData, cleanSpoken, petId, callback, myGeneration);
     }
   }
 
   // 3. Resilient Client-Side Speech Synthesis Fallback (Daniel Voice)
   if (!ttsSucceeded) {
+    if (myGeneration !== speechGeneration) return;
     speakWithSpeechSynthesis(cleanSpoken, petId, callback);
   }
 };

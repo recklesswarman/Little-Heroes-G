@@ -655,7 +655,7 @@ export function attachWorldAdventureMapListeners() {
   if (launchBossBtn) {
     launchBossBtn.addEventListener('click', () => {
       Sound.click();
-      voicePrompts.speak("3, 2, 1, BRUSH!");
+      voicePrompts.speak("3, 2, 1, BRUSH!", null, null, { instant: true });
       store.navigate('ar_battle');
     });
   }

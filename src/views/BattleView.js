@@ -169,6 +169,14 @@ export function renderBattleView() {
   const activeQuad = getDentalQuadrant(secondsRemaining, totalDuration);
   const showPip = colState.showPipCam !== false;
 
+  // Parent Panel's per-kid, per-day Floss/Mouthwash toggles (ParentPortalView's
+  // "hygiene-reminder-toggle-btn" buttons) -- shown as a persistent badge for
+  // the whole battle, not just the pre/post blocking reminder screens, so the
+  // kid sees what's expected of them the entire time the timer is running.
+  const hygieneKidId = store.getState().selectedHero?.id;
+  const showFlossBadge = hygieneKidId ? store.isHygieneReminderActive(hygieneKidId, 'floss') : false;
+  const showMouthwashBadge = hygieneKidId ? store.isHygieneReminderActive(hygieneKidId, 'mouthwash') : false;
+
   // List of primary hygiene bosses for bottom villain dock
   const availableVillains = [
     { id: 'sugar_bandit', name: 'Sugar Bandit', emoji: '🍬', color: '#f59e0b' },
@@ -260,6 +268,24 @@ export function renderBattleView() {
         <span id="current-zone-status-text" class="text-xs font-black text-white">${activeQuad.name}</span>
         <span id="current-zone-badge" class="text-[10px] font-bold text-amber-300 bg-amber-950/80 px-2 py-0.5 rounded-full border border-amber-500/40">${activeQuad.zone}/5</span>
       </div>
+
+      <!-- ================= 4b. PARENT-SET FLOSS/MOUTHWASH REMINDER BADGES (visible the whole battle) ================= -->
+      ${(showFlossBadge || showMouthwashBadge) ? `
+        <div id="hygiene-reminder-hud-badges" class="absolute top-[4.75rem] sm:top-[5.75rem] left-1/2 transform -translate-x-1/2 z-20 flex items-center gap-1.5 pointer-events-none">
+          ${showFlossBadge ? `
+            <span class="flex items-center gap-1 text-[9px] sm:text-[10px] font-black text-primary bg-primary/15 border border-primary/50 px-2 py-0.5 rounded-full shadow backdrop-blur-sm">
+              <span class="material-symbols-outlined text-xs" style="font-variation-settings: 'FILL' 1;">health_and_safety</span>
+              Floss Today
+            </span>
+          ` : ''}
+          ${showMouthwashBadge ? `
+            <span class="flex items-center gap-1 text-[9px] sm:text-[10px] font-black text-secondary bg-secondary/15 border border-secondary/50 px-2 py-0.5 rounded-full shadow backdrop-blur-sm">
+              <span class="material-symbols-outlined text-xs" style="font-variation-settings: 'FILL' 1;">water_drop</span>
+              Rinse After
+            </span>
+          ` : ''}
+        </div>
+      ` : ''}
 
       <!-- ================= 5. 4 GLOWING TOOTH QUADRANT GEMS (MIRRORED BATHROOM PERSPECTIVE) ================= -->
       <!-- Q1: Upper Right (Screen Top-Right, >50% X) -->
@@ -645,7 +671,7 @@ function triggerDeflectFlurry() {
 
   currentRexCoachText = 'Caramel Bomb incoming! Scrub faster to raise your enamel shield!';
   updateRexDialogue();
-  voicePrompts.speak('Caramel bomb incoming! Scrub faster to deflect!');
+  voicePrompts.speak('Caramel bomb incoming! Scrub faster to deflect!', null, null, { instant: true });
 
   if (deflectFlurryTimer) clearTimeout(deflectFlurryTimer);
   deflectFlurryTimer = setTimeout(() => {
@@ -702,7 +728,7 @@ function triggerLearnChallenge() {
     }
   };
 
-  voicePrompts.speak(question, startSafeListening);
+  voicePrompts.speak(question, startSafeListening, null, { instant: true });
   setTimeout(startSafeListening, 2400);
 
   if (learnChallengeTimer) clearTimeout(learnChallengeTimer);
@@ -785,7 +811,7 @@ function resolveLearnChallenge(success, method = 'voice') {
     showComicHit('BARRIER CRACKED! ✨');
   }
   updateRexDialogue();
-  voicePrompts.speak(currentRexCoachText);
+  voicePrompts.speak(currentRexCoachText, null, null, { instant: true });
   syncCockpitHUD();
 }
 
@@ -868,8 +894,10 @@ export function startBattle() {
     syncCockpitHUD();
 
     // Spoken Rex Learn Micro-Challenge at halfway mark
+    let learnChallengeTriggeredThisTick = false;
     if (secondsRemaining === Math.floor(totalDuration / 2) && !hasTriggeredLearnChallenge) {
       hasTriggeredLearnChallenge = true;
+      learnChallengeTriggeredThisTick = true;
       triggerLearnChallenge();
     }
 
@@ -884,19 +912,25 @@ export function startBattle() {
     // Voice & Dialogue quadrant switches
     if (Math.abs(ratio - 0.75) < (1 / totalDuration)) {
       currentRexCoachText = DENTAL_QUADRANTS[1]?.coachMessage || 'Switch to top left teeth!';
-      voicePrompts.speak(currentRexCoachText);
+      voicePrompts.speak(currentRexCoachText, null, null, { instant: true });
       updateRexDialogue();
     } else if (Math.abs(ratio - 0.50) < (1 / totalDuration)) {
       currentRexCoachText = DENTAL_QUADRANTS[2]?.coachMessage || 'Halfway there! Bottom right teeth next!';
-      voicePrompts.speak(currentRexCoachText);
+      // The Learn Challenge question speaks on this exact same tick (both
+      // are keyed to the halfway mark) -- update the on-screen dialogue
+      // text either way, but only speak it if the question didn't just
+      // claim this tick's voice line, or the two talk over each other.
+      if (!learnChallengeTriggeredThisTick) {
+        voicePrompts.speak(currentRexCoachText, null, null, { instant: true });
+      }
       updateRexDialogue();
     } else if (Math.abs(ratio - 0.25) < (1 / totalDuration)) {
       currentRexCoachText = DENTAL_QUADRANTS[3]?.coachMessage || 'Bottom left side! Keep scrubbing!';
-      voicePrompts.speak(currentRexCoachText);
+      voicePrompts.speak(currentRexCoachText, null, null, { instant: true });
       updateRexDialogue();
     } else if (Math.abs(ratio - 0.08) < (1 / totalDuration)) {
       currentRexCoachText = DENTAL_QUADRANTS[4]?.coachMessage || 'Final seconds: Gentle tongue polish for fresh breath!';
-      voicePrompts.speak(currentRexCoachText);
+      voicePrompts.speak(currentRexCoachText, null, null, { instant: true });
       updateRexDialogue();
     }
 
