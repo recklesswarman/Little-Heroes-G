@@ -3,7 +3,7 @@ import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import confetti from 'canvas-confetti';
 import { voicePrompts } from '../utils/voicePrompts.js';
-import { HYGIENE_BOSSES, DENTAL_BADGES, DENTAL_QUADRANTS, getDentalQuadrant } from '../data/hygieneBossesData.js';
+import { HYGIENE_BOSSES, DENTAL_BADGES, DENTAL_QUADRANTS, getDentalQuadrant, SUGAR_ATTACK_HAZARDS, getRandomSugarHazard } from '../data/hygieneBossesData.js';
 import { brushAudioAnalyzer } from '../audio/brushAudioAnalyzer.js';
 
 const sugarVillainEscapedImg = new URL('../assets/sugar_villain_escaped.jpg', import.meta.url).href;
@@ -39,6 +39,7 @@ let isBattleRunning = false;
 let isBattlePaused = false;
 let isRhythmBeatActive = true;
 let isIntroCountingDown = false;
+let currentSugarHazard = null;
 
 // Helper to determine if current battle is a nighttime battle
 export function isNighttimeBattle() {
@@ -204,8 +205,20 @@ export function renderBattleView() {
   const availableVillains = [
     { id: 'sugar_bandit', name: 'Sugar Bandit', emoji: '🍬', color: '#f59e0b' },
     { id: 'plaque_kraken', name: 'Plaque Kraken', emoji: '🐙', color: '#06b6d4' },
+    { id: 'cavity_knight', name: 'Cavity Knight', emoji: '⚔️', color: '#8b5cf6' },
     { id: 'tartar_titan', name: 'Tartar Titan', emoji: '💎', color: '#0284c7' }
   ];
+  const parentBosses = store.getParentCustomBosses ? store.getParentCustomBosses() : [];
+  parentBosses.forEach(pb => {
+    if (!availableVillains.some(v => v.id === pb.id)) {
+      availableVillains.push({
+        id: pb.id,
+        name: pb.name,
+        emoji: pb.emoji || pb.avatar || '👾',
+        color: pb.color || '#0284c7'
+      });
+    }
+  });
 
   return `
     <div class="relative w-full h-[calc(100vh-64px)] min-h-[540px] overflow-hidden bg-gradient-to-b from-[#0f172a] via-[#1e1b4b] to-[#081a2e] text-white font-headline select-none">
@@ -319,17 +332,21 @@ export function renderBattleView() {
           <span id="current-zone-badge" class="text-[10px] font-bold text-amber-300 bg-amber-950/80 px-2 py-0.5 rounded-full border border-amber-500/40">${activeQuad.zone}/5</span>
         </div>
 
-        <!-- Parent-Set Floss / Mouthwash Reminder Badges -->
-        ${(showFlossBadge || showMouthwashBadge) ? `
-          <div id="hygiene-reminder-hud-badges" class="absolute top-[4.75rem] sm:top-[5.75rem] left-1/2 transform -translate-x-1/2 z-20 flex items-center gap-1.5 pointer-events-none">
-            ${showMouthwashBadge ? `
-              <span class="flex items-center gap-1 text-[9px] sm:text-[10px] font-black text-secondary bg-secondary/15 border border-secondary/50 px-2 py-0.5 rounded-full shadow backdrop-blur-sm">
-                <span class="material-symbols-outlined text-xs" style="font-variation-settings: 'FILL' 1;">water_drop</span>
-                Rinse with Mouthwash after!
-              </span>
-            ` : ''}
-          </div>
-        ` : ''}
+        <!-- Parent-Set Floss / Mouthwash Reminder Badges & Active Sugar Hazard HUD -->
+        <div id="hygiene-reminder-hud-badges" class="absolute top-[4.75rem] sm:top-[5.75rem] left-1/2 transform -translate-x-1/2 z-20 flex items-center gap-1.5 pointer-events-none">
+          ${currentSugarHazard ? `
+            <span id="sugar-hazard-badge" class="flex items-center gap-1 text-[9px] sm:text-[10px] font-black text-amber-200 bg-amber-950/85 border border-amber-400/60 px-2 sm:px-2.5 py-0.5 rounded-full shadow backdrop-blur-sm animate-pulse">
+              <span>${currentSugarHazard.emoji}</span>
+              <span>Hazard: ${currentSugarHazard.name}</span>
+            </span>
+          ` : ''}
+          ${showMouthwashBadge ? `
+            <span class="flex items-center gap-1 text-[9px] sm:text-[10px] font-black text-secondary bg-secondary/15 border border-secondary/50 px-2 py-0.5 rounded-full shadow backdrop-blur-sm">
+              <span class="material-symbols-outlined text-xs" style="font-variation-settings: 'FILL' 1;">water_drop</span>
+              Rinse with Mouthwash after!
+            </span>
+          ` : ''}
+        </div>
       `}
 
       <!-- ================= 5. 4 GLOWING TOOTH QUADRANT GEMS (MIRRORED BATHROOM PERSPECTIVE) ================= -->
@@ -384,8 +401,8 @@ export function renderBattleView() {
       <!-- ================= 6. DEFLECT FLURRY & SPOKEN /LEARN NOTIFICATION BANNERS ================= -->
       <div id="deflect-flurry-banner" class="absolute top-28 left-1/2 transform -translate-x-1/2 z-40 pointer-events-none transition-all duration-300 opacity-0 scale-90">
         <div class="bg-gradient-to-r from-amber-500 via-rose-500 to-amber-500 text-slate-950 font-headline font-black text-xs sm:text-sm px-6 py-2.5 rounded-full shadow-[0_0_30px_rgba(245,158,11,0.95)] border-3 border-white animate-bounce flex items-center gap-2.5">
-          <span class="text-xl">💣</span>
-          <span>CARAMEL BOMB! SCRUB FASTER TO DEFLECT!</span>
+          <span id="deflect-hazard-emoji" class="text-xl">${currentSugarHazard?.emoji || '🍬'}</span>
+          <span id="deflect-hazard-text">${currentSugarHazard ? `${currentSugarHazard.name.toUpperCase()} INCOMING! DEFLECT!` : 'SUGAR HAZARD! SCRUB TO DEFLECT!'}</span>
           <span class="text-xl">🛡️</span>
         </div>
       </div>
@@ -545,6 +562,7 @@ function renderVictoryModal(colState, currentBoss) {
 // HARDWARE SENSORS (CAMERA + MIC FUSION)
 // =========================================================================
 async function initSensors() {
+  if (typeof document === 'undefined') return;
   const video = document.getElementById('ar-camera-feed');
   const pipPlaceholder = document.getElementById('pip-placeholder');
 
@@ -725,17 +743,26 @@ function triggerDeflectFlurry() {
   if (isDeflectFlurryActive || !isBattleRunning || isBattlePaused) return;
   isDeflectFlurryActive = true;
 
-  hanaBattle3DService.spawnCaramelBomb();
+  if (!currentSugarHazard) {
+    currentSugarHazard = getRandomSugarHazard();
+    hanaBattle3DService.setHazard(currentSugarHazard);
+  }
+
+  hanaBattle3DService.spawnCaramelBomb(currentSugarHazard);
 
   const banner = document.getElementById('deflect-flurry-banner');
   if (banner) {
+    const emojiEl = document.getElementById('deflect-hazard-emoji');
+    const textEl = document.getElementById('deflect-hazard-text');
+    if (emojiEl) emojiEl.textContent = currentSugarHazard.emoji;
+    if (textEl) textEl.textContent = `${currentSugarHazard.name.toUpperCase()} INCOMING! DEFLECT!`;
     banner.classList.remove('opacity-0', 'scale-90');
     banner.classList.add('opacity-100', 'scale-100');
   }
 
-  currentRexCoachText = 'Caramel Bomb incoming! Scrub faster to raise your enamel shield!';
+  currentRexCoachText = currentSugarHazard.rexWarning || 'Sugar Hazard incoming! Scrub faster to raise your enamel shield!';
   updateRexDialogue();
-  voicePrompts.speak('Caramel bomb incoming! Scrub faster to deflect!', null, null, { instant: true });
+  voicePrompts.speak(currentRexCoachText, null, null, { instant: true });
 
   if (deflectFlurryTimer) clearTimeout(deflectFlurryTimer);
   deflectFlurryTimer = setTimeout(() => {
@@ -751,11 +778,14 @@ function triggerDeflectSuccess() {
   if (deflectFlurryTimer) clearTimeout(deflectFlurryTimer);
   hideDeflectBanner();
 
+  const boss = getBattleBoss(selectedBossId);
   hanaBattle3DService.onDeflectRicochet();
   store.triggerColosseumDeflect();
-  showComicHit('DEFLECTED! 🛡️✨');
+
+  const hazardName = currentSugarHazard ? currentSugarHazard.shortName.toUpperCase() : 'SUGAR';
+  showComicHit(`${hazardName} DEFLECTED! 🛡️✨`);
   if (typeof Sound?.fanfare === 'function') Sound.fanfare();
-  currentRexCoachText = 'Awesome deflect! The caramel bounced right back at the boss!';
+  currentRexCoachText = `Awesome deflect! The ${currentSugarHazard ? currentSugarHazard.shortName.toLowerCase() : 'sweet treat'} bounced right back at ${boss.name}!`;
   updateRexDialogue();
   syncCockpitHUD();
 }
@@ -895,6 +925,11 @@ export function advanceToBrushPhase() {
   totalDuration = bossDuration;
   lastSpokenQuadId = null;
 
+  if (!currentSugarHazard) {
+    currentSugarHazard = getRandomSugarHazard();
+  }
+  hanaBattle3DService.setHazard(currentSugarHazard);
+
   store.updateColosseumTimer(secondsRemaining, totalDuration);
 
   Sound.fanfare();
@@ -926,6 +961,10 @@ export function startBattle() {
   isBattleRunning = true;
   isBattlePaused = false;
   
+  // Pick random sugar hazard for this battle session
+  currentSugarHazard = getRandomSugarHazard();
+  hanaBattle3DService.setHazard(currentSugarHazard);
+
   const hero = store.getState().selectedHero;
   const battleCfg = BATTLE_DIFFICULTY[getDifficultyTier(hero)];
   // The Parent Panel's "Toothbrush AR Battle Duration Slider" is the single
@@ -1007,10 +1046,10 @@ export function startBattle() {
       const mins = Math.floor(secondsRemaining / 60);
       const secs = secondsRemaining % 60;
       const timeStr = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-      const timerDisplay = document.getElementById('battle-timer-display');
+      const timerDisplay = typeof document !== 'undefined' ? document.getElementById('battle-timer-display') : null;
       if (timerDisplay) timerDisplay.textContent = timeStr;
 
-      const flossBar = document.getElementById('floss-progress-bar');
+      const flossBar = typeof document !== 'undefined' ? document.getElementById('floss-progress-bar') : null;
       if (flossBar) {
         flossBar.style.width = `${Math.round(((120 - secondsRemaining) / 120) * 100)}%`;
       }
@@ -1035,7 +1074,7 @@ export function startBattle() {
     const mins = Math.floor(secondsRemaining / 60);
     const secs = secondsRemaining % 60;
     const timeStr = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    const timerDisplay = document.getElementById('battle-timer-display');
+    const timerDisplay = typeof document !== 'undefined' ? document.getElementById('battle-timer-display') : null;
     if (timerDisplay) timerDisplay.textContent = timeStr;
 
     syncCockpitHUD();
@@ -1105,6 +1144,7 @@ function playIntroCountdown() {
 }
 
 function updateRexDialogue() {
+  if (typeof document === 'undefined') return;
   const bubble = document.getElementById('rex-dialogue-bubble');
   if (bubble) bubble.textContent = currentRexCoachText;
 }
@@ -1190,6 +1230,7 @@ function handleScrubHit(activeQuad, source = 'manual') {
 }
 
 function syncCockpitHUD() {
+  if (typeof document === 'undefined') return;
   const colState = store.getBossColosseumState();
   const hpPercent = secondsRemaining <= 0
     ? 0
@@ -1455,6 +1496,9 @@ export function attachBattleListeners() {
         Sound.tap();
         const boss = getBattleBoss(vId);
         hanaBattle3DService.setBoss(boss, quadrantCleanliness);
+        if (currentSugarHazard) {
+          hanaBattle3DService.setHazard(currentSugarHazard);
+        }
         store.notify();
       }
     });
@@ -1473,6 +1517,7 @@ export function attachBattleListeners() {
     const currentBoss = getBattleBoss(selectedBossId);
     hanaBattle3DService.init(canvas, {
       bossData: currentBoss,
+      hazard: currentSugarHazard,
       splineUrl: currentBoss.splineUrl || null,
       hasLaserEquipped: checkLaserToothbrushEquipped(),
       videoElement: document.getElementById('ar-camera-feed'),

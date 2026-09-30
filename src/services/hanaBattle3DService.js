@@ -60,6 +60,11 @@ class HanaBattle3DService {
     this.deflectTimer = 0;
     this.isVictory = false;
 
+    // Illustrated Asset Cache & Sweet Hazard State
+    this.imageCache = {};
+    this.currentHazard = null;
+    this.damageWobble = 0;
+
     // 3D Simulation Clock & Math
     this.clock = 0;
     this.lastTime = 0;
@@ -152,6 +157,7 @@ class HanaBattle3DService {
       if (options.videoElement) this.setVideoElement(options.videoElement);
       if (options.hasLaserEquipped !== undefined) this.hasLaserEquipped = Boolean(options.hasLaserEquipped);
       if (options.bossData) this.setBoss(options.bossData, options.quadrantCleanliness);
+      if (options.hazard) this.setHazard(options.hazard);
       return true;
     }
 
@@ -166,6 +172,9 @@ class HanaBattle3DService {
 
     if (options.bossData) {
       this.setBoss(options.bossData, options.quadrantCleanliness);
+    }
+    if (options.hazard) {
+      this.setHazard(options.hazard);
     }
     if (options.videoElement) {
       this.setVideoElement(options.videoElement);
@@ -273,6 +282,26 @@ class HanaBattle3DService {
     this.animId = raf(this.renderLoop);
   }
 
+  loadImage(src) {
+    if (!src || typeof Image === 'undefined') return null;
+    if (this.imageCache[src]) return this.imageCache[src];
+    try {
+      const img = new Image();
+      img.src = src;
+      this.imageCache[src] = img;
+      return img;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  setHazard(hazard) {
+    this.currentHazard = hazard;
+    if (hazard && hazard.image) {
+      this.loadImage(hazard.image);
+    }
+  }
+
   setVideoElement(videoEl) {
     this.videoElement = videoEl;
   }
@@ -292,6 +321,10 @@ class HanaBattle3DService {
       bodyColor = '#7c3aed';
       armorColor = '#8b5cf6';
       bombColor = '#a855f7';
+    } else if (bId === 'cavity_knight') {
+      bodyColor = '#dc2626';
+      armorColor = '#ef4444';
+      bombColor = '#ef4444';
     } else if (bossData.color) {
       bodyColor = bossData.color;
       armorColor = bossData.color;
@@ -306,6 +339,9 @@ class HanaBattle3DService {
       armorColor,
       bombColor
     };
+
+    if (bossData.image) this.loadImage(bossData.image);
+    if (bossData.cleansedImage) this.loadImage(bossData.cleansedImage);
 
     // Set colors for armor plates based on boss, preserving completed quadrants
     Object.values(this.armorPlates).forEach(p => {
@@ -935,7 +971,10 @@ class HanaBattle3DService {
   render3DBossAndArmor(ctx, w, h, dt) {
     const bx = w * 0.5;
     const by = h * 0.40 + Math.sin(this.clock * 2.5) * 8;
-    const wobble = Math.sin(this.clock * 3.5) * 0.05;
+    if (this.damageWobble > 0) {
+      this.damageWobble = Math.max(0, this.damageWobble - dt * 2.5);
+    }
+    const wobble = Math.sin(this.clock * 3.5) * 0.05 + Math.sin(this.clock * 26) * this.damageWobble;
     const breatheScaleY = 1 + Math.sin(this.clock * 3.5) * 0.04;
     const breatheScaleX = 1 - Math.sin(this.clock * 3.5) * 0.02;
 
@@ -944,153 +983,51 @@ class HanaBattle3DService {
     ctx.rotate(wobble);
     ctx.scale(breatheScaleX, breatheScaleY);
 
-    const baseRadius = Math.min(58, w * 0.13);
+    const baseRadius = Math.min(68, w * 0.15);
 
     // Aura Glow
-    const auraGrad = ctx.createRadialGradient(0, 0, 10, 0, 0, baseRadius * 1.7);
-    auraGrad.addColorStop(0, this.isVictory ? 'rgba(74, 222, 128, 0.7)' : 'rgba(245, 158, 11, 0.4)');
+    const auraGrad = ctx.createRadialGradient(0, 0, 10, 0, 0, baseRadius * 1.6);
+    auraGrad.addColorStop(0, this.isVictory ? 'rgba(74, 222, 128, 0.7)' : (this.bossData.color ? `${this.bossData.color}66` : 'rgba(245, 158, 11, 0.4)'));
     auraGrad.addColorStop(1, 'transparent');
     ctx.fillStyle = auraGrad;
     ctx.beginPath();
-    ctx.arc(0, 0, baseRadius * 1.7, 0, Math.PI * 2);
+    ctx.arc(0, 0, baseRadius * 1.6, 0, Math.PI * 2);
     ctx.fill();
 
-    // 1. Specific Boss Geometry & Accessories
-    const bId = this.bossData.id;
+    // Check for high-res illustrated boss art
+    const bossImgSrc = this.isVictory ? this.bossData.cleansedImage : this.bossData.image;
+    const bossImg = bossImgSrc ? (this.imageCache[bossImgSrc] || this.loadImage(bossImgSrc)) : null;
 
-    if (bId === 'plaque_kraken') {
-      // Plaque Kraken wavy tentacles
-      ctx.fillStyle = this.bossData.bodyColor;
-      for (let t = 0; t < 5; t++) {
-        const tx = (t - 2) * (baseRadius * 0.4);
-        const wave = Math.sin(this.clock * 4 + t) * 8;
+    if (bossImg && bossImg.complete && bossImg.naturalWidth > 0) {
+      ctx.save();
+      // Drop shadow on platform
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+      ctx.shadowBlur = 18;
+      ctx.shadowOffsetY = 8;
+
+      ctx.beginPath();
+      ctx.arc(0, 0, baseRadius, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(bossImg, -baseRadius, -baseRadius, baseRadius * 2, baseRadius * 2);
+      ctx.restore();
+
+      // Outer glowing rim
+      ctx.strokeStyle = this.isVictory ? '#34d399' : (this.bossData.color || '#fbbf24');
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, baseRadius, 0, Math.PI * 2);
+      ctx.stroke();
+
+      if (this.isVictory) {
+        // Sparkling Victory Halo
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(tx + wave, baseRadius * 0.75, baseRadius * 0.2, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.ellipse(0, -baseRadius * 1.15, baseRadius * 0.45, 8, 0, 0, Math.PI * 2);
+        ctx.stroke();
       }
-    } else if (bId === 'tartar_titan') {
-      // Tartar Titan Crystal Horns
-      ctx.fillStyle = '#a855f7';
-      ctx.beginPath();
-      ctx.moveTo(-baseRadius * 0.6, -baseRadius * 0.6);
-      ctx.lineTo(-baseRadius * 0.9, -baseRadius * 1.3);
-      ctx.lineTo(-baseRadius * 0.3, -baseRadius * 0.8);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.beginPath();
-      ctx.moveTo(baseRadius * 0.6, -baseRadius * 0.6);
-      ctx.lineTo(baseRadius * 0.9, -baseRadius * 1.3);
-      ctx.lineTo(baseRadius * 0.3, -baseRadius * 0.8);
-      ctx.closePath();
-      ctx.fill();
     } else {
-      // Sugar Bandit Golden Candy Crown
-      ctx.fillStyle = '#fbbf24';
-      ctx.beginPath();
-      ctx.moveTo(-baseRadius * 0.45, -baseRadius * 0.85);
-      ctx.lineTo(-baseRadius * 0.3, -baseRadius * 1.35);
-      ctx.lineTo(0, -baseRadius * 1.05);
-      ctx.lineTo(baseRadius * 0.3, -baseRadius * 1.35);
-      ctx.lineTo(baseRadius * 0.45, -baseRadius * 0.85);
-      ctx.closePath();
-      ctx.fill();
-      ctx.strokeStyle = '#d97706';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    }
-
-    // Boss Core Body Mesh
-    ctx.fillStyle = this.isVictory ? '#fef08a' : this.bossData.bodyColor;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, baseRadius, baseRadius * 0.92, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = this.isVictory ? '#fbbf24' : '#b45309';
-    ctx.lineWidth = 3.5;
-    ctx.stroke();
-
-    // Expressive Cartoon Eyes
-    const eyeOffsetX = baseRadius * 0.35;
-    const eyeOffsetY = -baseRadius * 0.12;
-    const isBlinking = (Math.floor(this.clock * 0.4) % 3 === 0) && ((this.clock * 3) % 1 < 0.25);
-
-    if (this.isVictory) {
-      // Happy curved upside-down eyes (^ ^)
-      ctx.strokeStyle = '#d97706';
-      ctx.lineWidth = 3.5;
-      ctx.beginPath();
-      ctx.arc(-eyeOffsetX, eyeOffsetY, 10, Math.PI * 1.1, Math.PI * 1.9);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(eyeOffsetX, eyeOffsetY, 10, Math.PI * 1.1, Math.PI * 1.9);
-      ctx.stroke();
-
-      // Blushing cute cheeks
-      ctx.fillStyle = '#f472b6';
-      ctx.beginPath();
-      ctx.arc(-eyeOffsetX - 8, eyeOffsetY + 16, 7, 0, Math.PI * 2);
-      ctx.arc(eyeOffsetX + 8, eyeOffsetY + 16, 7, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Sweet beaming smile
-      ctx.strokeStyle = '#b45309';
-      ctx.lineWidth = 3.5;
-      ctx.beginPath();
-      ctx.arc(0, 8, 14, 0.2, Math.PI - 0.2);
-      ctx.stroke();
-
-      // Sparkling Halo
-      ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.ellipse(0, -baseRadius * 1.15, baseRadius * 0.45, 8, 0, 0, Math.PI * 2);
-      ctx.stroke();
-    } else if (isBlinking) {
-      // Closed cartoon blink lines
-      ctx.strokeStyle = '#1e293b';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(-eyeOffsetX - 8, eyeOffsetY);
-      ctx.lineTo(-eyeOffsetX + 8, eyeOffsetY);
-      ctx.moveTo(eyeOffsetX - 8, eyeOffsetY);
-      ctx.lineTo(eyeOffsetX + 8, eyeOffsetY);
-      ctx.stroke();
-    } else {
-      // Big expressive cartoon whites
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.ellipse(-eyeOffsetX, eyeOffsetY, 11, 14, -0.08, 0, Math.PI * 2);
-      ctx.ellipse(eyeOffsetX, eyeOffsetY, 11, 14, 0.08, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#1e293b';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-
-      // Big pupils tracking player
-      const lookX = Math.sin(this.clock * 2) * 2;
-      ctx.fillStyle = '#0f172a';
-      ctx.beginPath();
-      ctx.arc(-eyeOffsetX + lookX, eyeOffsetY + 1, 5.5, 0, Math.PI * 2);
-      ctx.arc(eyeOffsetX + lookX, eyeOffsetY + 1, 5.5, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Double specular sparkle highlights
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.arc(-eyeOffsetX + lookX - 2, eyeOffsetY - 1, 2.2, 0, Math.PI * 2);
-      ctx.arc(-eyeOffsetX + lookX + 1.5, eyeOffsetY + 2.5, 1.2, 0, Math.PI * 2);
-      ctx.arc(eyeOffsetX + lookX - 2, eyeOffsetY - 1, 2.2, 0, Math.PI * 2);
-      ctx.arc(eyeOffsetX + lookX + 1.5, eyeOffsetY + 2.5, 1.2, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Grumpy cartoon teeth mouth
-      ctx.fillStyle = '#ffffff';
-      ctx.strokeStyle = '#1e293b';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.rect(-14, 10, 28, 8);
-      ctx.fill();
-      ctx.stroke();
+      this.renderProceduralBossFallback(ctx, baseRadius);
     }
 
     // 4 Breakable 3D Candy Armor Plates (q1, q2, q3, q4)
@@ -1143,11 +1080,156 @@ class HanaBattle3DService {
     ctx.restore();
   }
 
+  renderProceduralBossFallback(ctx, baseRadius) {
+    const bId = this.bossData.id;
+
+    if (bId === 'plaque_kraken') {
+      ctx.fillStyle = this.bossData.bodyColor || '#0891b2';
+      for (let t = 0; t < 5; t++) {
+        const tx = (t - 2) * (baseRadius * 0.4);
+        const wave = Math.sin(this.clock * 4 + t) * 8;
+        ctx.beginPath();
+        ctx.arc(tx + wave, baseRadius * 0.75, baseRadius * 0.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (bId === 'tartar_titan') {
+      ctx.fillStyle = '#a855f7';
+      ctx.beginPath();
+      ctx.moveTo(-baseRadius * 0.6, -baseRadius * 0.6);
+      ctx.lineTo(-baseRadius * 0.9, -baseRadius * 1.3);
+      ctx.lineTo(-baseRadius * 0.3, -baseRadius * 0.8);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(baseRadius * 0.6, -baseRadius * 0.6);
+      ctx.lineTo(baseRadius * 0.9, -baseRadius * 1.3);
+      ctx.lineTo(baseRadius * 0.3, -baseRadius * 0.8);
+      ctx.closePath();
+      ctx.fill();
+    } else if (bId === 'cavity_knight') {
+      ctx.fillStyle = '#991b1b';
+      ctx.beginPath();
+      ctx.moveTo(-baseRadius * 0.5, -baseRadius * 0.7);
+      ctx.lineTo(0, -baseRadius * 1.4);
+      ctx.lineTo(baseRadius * 0.5, -baseRadius * 0.7);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      ctx.fillStyle = '#fbbf24';
+      ctx.beginPath();
+      ctx.moveTo(-baseRadius * 0.45, -baseRadius * 0.85);
+      ctx.lineTo(-baseRadius * 0.3, -baseRadius * 1.35);
+      ctx.lineTo(0, -baseRadius * 1.05);
+      ctx.lineTo(baseRadius * 0.3, -baseRadius * 1.35);
+      ctx.lineTo(baseRadius * 0.45, -baseRadius * 0.85);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#d97706';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    // Boss Core Body Mesh
+    ctx.fillStyle = this.isVictory ? '#fef08a' : (this.bossData.bodyColor || '#d97706');
+    ctx.beginPath();
+    ctx.ellipse(0, 0, baseRadius, baseRadius * 0.92, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = this.isVictory ? '#fbbf24' : '#b45309';
+    ctx.lineWidth = 3.5;
+    ctx.stroke();
+
+    // Expressive Cartoon Eyes
+    const eyeOffsetX = baseRadius * 0.35;
+    const eyeOffsetY = -baseRadius * 0.12;
+    const isBlinking = (Math.floor(this.clock * 0.4) % 3 === 0) && ((this.clock * 3) % 1 < 0.25);
+
+    if (this.isVictory) {
+      ctx.strokeStyle = '#d97706';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.arc(-eyeOffsetX, eyeOffsetY, 10, Math.PI * 1.1, Math.PI * 1.9);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(eyeOffsetX, eyeOffsetY, 10, Math.PI * 1.1, Math.PI * 1.9);
+      ctx.stroke();
+
+      ctx.fillStyle = '#f472b6';
+      ctx.beginPath();
+      ctx.arc(-eyeOffsetX - 8, eyeOffsetY + 16, 7, 0, Math.PI * 2);
+      ctx.arc(eyeOffsetX + 8, eyeOffsetY + 16, 7, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = '#b45309';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.arc(0, 8, 14, 0.2, Math.PI - 0.2);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.ellipse(0, -baseRadius * 1.15, baseRadius * 0.45, 8, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (isBlinking) {
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(-eyeOffsetX - 8, eyeOffsetY);
+      ctx.lineTo(-eyeOffsetX + 8, eyeOffsetY);
+      ctx.moveTo(eyeOffsetX - 8, eyeOffsetY);
+      ctx.lineTo(eyeOffsetX + 8, eyeOffsetY);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.ellipse(-eyeOffsetX, eyeOffsetY, 11, 14, -0.08, 0, Math.PI * 2);
+      ctx.ellipse(eyeOffsetX, eyeOffsetY, 11, 14, 0.08, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      const lookX = Math.sin(this.clock * 2) * 2;
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(-eyeOffsetX + lookX, eyeOffsetY + 1, 5.5, 0, Math.PI * 2);
+      ctx.arc(eyeOffsetX + lookX, eyeOffsetY + 1, 5.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(-eyeOffsetX + lookX - 2, eyeOffsetY - 1, 2.2, 0, Math.PI * 2);
+      ctx.arc(-eyeOffsetX + lookX + 1.5, eyeOffsetY + 2.5, 1.2, 0, Math.PI * 2);
+      ctx.arc(eyeOffsetX + lookX - 2, eyeOffsetY - 1, 2.2, 0, Math.PI * 2);
+      ctx.arc(eyeOffsetX + lookX + 1.5, eyeOffsetY + 2.5, 1.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.rect(-14, 10, 28, 8);
+      ctx.fill();
+      ctx.stroke();
+    }
+  }
+
   /**
-   * Spawn a 3D Caramel Bomb targeted at the player
+   * Spawn a 3D Sugar Attack Hazard targeted at the player
    */
-  spawnCaramelBomb() {
+  spawnCaramelBomb(hazard = null) {
     if (this.isVictory) return;
+    const haz = hazard || this.currentHazard || {
+      id: 'cookies',
+      name: 'Cookies',
+      color: '#d97706',
+      shatterType: 'cookie_crumbs',
+      shatterColors: ['#d97706', '#92400e', '#451a03'],
+      image: '/assets/hazards/cookies.jpg'
+    };
+    if (haz.image) this.loadImage(haz.image);
+
     this.caramelBombs.push({
       x: this.width * 0.5 + (Math.random() - 0.5) * 40,
       y: this.height * 0.38,
@@ -1155,14 +1237,17 @@ class HanaBattle3DService {
       vz: -32,
       vx: (Math.random() - 0.5) * 8,
       vy: 6,
-      radius: 16,
-      color: this.bossData.bombColor || '#f59e0b',
+      radius: 18,
+      rot: Math.random() * Math.PI * 2,
+      vRot: (Math.random() - 0.5) * 3,
+      color: haz.color || this.bossData.bombColor || '#f59e0b',
+      hazard: haz,
       deflected: false
     });
   }
 
   /**
-   * 3D Caramel Bomb Projectiles
+   * 3D Sugar Attack Hazard Projectiles
    */
   renderCaramelBombs(ctx, w, h, dt) {
     for (let i = this.caramelBombs.length - 1; i >= 0; i--) {
@@ -1170,28 +1255,45 @@ class HanaBattle3DService {
       b.z += b.vz * dt;
       b.x += b.vx * dt;
       b.y += b.vy * dt;
+      b.rot = (b.rot || 0) + (b.vRot || 2) * dt;
 
       const depthScale = Math.max(0.4, (120 - b.z) / 70);
       const drawRadius = b.radius * depthScale;
+      const haz = b.hazard || this.currentHazard;
 
       ctx.save();
-      ctx.fillStyle = b.color;
-      ctx.strokeStyle = '#b45309';
-      ctx.lineWidth = 2.5;
-      ctx.shadowColor = b.color;
-      ctx.shadowBlur = 14;
+      ctx.translate(b.x, b.y);
+      ctx.rotate(b.rot);
 
-      ctx.beginPath();
-      ctx.arc(b.x, b.y, drawRadius, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
+      // 3D Drop Shadow on Platform
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+      ctx.shadowBlur = 12 * depthScale;
+      ctx.shadowOffsetY = 6 * depthScale;
+
+      const img = haz?.image ? (this.imageCache[haz.image] || this.loadImage(haz.image)) : null;
+      if (img && img.complete && img.naturalWidth > 0) {
+        const size = drawRadius * 2.2;
+        ctx.beginPath();
+        ctx.arc(0, 0, drawRadius, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.drawImage(img, -size * 0.5, -size * 0.5, size, size);
+
+        // Specular 3D rim highlight
+        ctx.strokeStyle = haz.color || '#fbbf24';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+      } else {
+        this.renderProceduralHazardItem(ctx, haz?.id, drawRadius, b.color);
+      }
       ctx.restore();
 
       // Deflected bomb impacts the boss!
       if (b.deflected && b.z >= 75) {
-        for (let s = 0; s < 16; s++) {
+        this.damageWobble = 0.35;
+        const colors = (haz && haz.shatterColors) || [b.color, '#fbbf24', '#ffffff'];
+        for (let s = 0; s < 20; s++) {
           const angle = Math.random() * Math.PI * 2;
-          const speed = 2.5 + Math.random() * 5.0;
+          const speed = 2.8 + Math.random() * 6.0;
           this.candyShards.push({
             x: b.x,
             y: b.y,
@@ -1201,18 +1303,18 @@ class HanaBattle3DService {
             vz: -2,
             rotX: 0, rotY: 0, rotZ: Math.random() * Math.PI,
             vRotX: 0, vRotY: 0, vRotZ: 0.2,
-            size: 6 + Math.random() * 7,
-            color: b.color,
+            size: 6 + Math.random() * 8,
+            color: colors[s % colors.length],
             alpha: 1.0,
-            gravity: 0.15
+            gravity: 0.16
           });
         }
         this.shockwaves.push({
           x: b.x,
           y: b.y,
           radius: 20,
-          maxRadius: 180,
-          color: '#34d399',
+          maxRadius: 200,
+          color: haz?.color || '#34d399',
           alpha: 1.0
         });
         if (typeof Sound?.hit === 'function') Sound.hit();
@@ -1223,7 +1325,8 @@ class HanaBattle3DService {
       // Near player collision
       if (b.z <= 0) {
         if (!b.deflected) {
-          for (let s = 0; s < 8; s++) {
+          const colors = (haz && haz.shatterColors) || ['#fed7aa', '#f97316'];
+          for (let s = 0; s < 10; s++) {
             this.foamParticles.push({
               x: b.x,
               y: b.y,
@@ -1231,16 +1334,155 @@ class HanaBattle3DService {
               vx: (Math.random() - 0.5) * 4,
               vy: (Math.random() - 0.5) * 4,
               vz: 1,
-              radius: 6 + Math.random() * 4,
+              radius: 6 + Math.random() * 5,
               alpha: 0.8,
               isLaser: false,
-              color: '#fed7aa',
-              glowColor: '#f97316',
+              color: colors[s % colors.length],
+              glowColor: haz?.color || '#f97316',
               life: 0.6
             });
           }
         }
         this.caramelBombs.splice(i, 1);
+      }
+    }
+  }
+
+  renderProceduralHazardItem(ctx, hazardId, drawRadius, defaultColor) {
+    switch (hazardId) {
+      case 'cookies': {
+        ctx.fillStyle = '#d97706';
+        ctx.beginPath();
+        ctx.arc(0, 0, drawRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#92400e';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.fillStyle = '#451a03';
+        const chips = [
+          { x: -0.3, y: -0.3, r: 0.22 },
+          { x: 0.35, y: -0.25, r: 0.2 },
+          { x: -0.1, y: 0.2, r: 0.25 },
+          { x: 0.4, y: 0.3, r: 0.18 },
+          { x: -0.4, y: 0.15, r: 0.16 }
+        ];
+        chips.forEach(c => {
+          ctx.beginPath();
+          ctx.arc(c.x * drawRadius, c.y * drawRadius, c.r * drawRadius, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        break;
+      }
+      case 'lava_cake': {
+        ctx.fillStyle = '#451a03';
+        ctx.beginPath();
+        ctx.arc(0, 0, drawRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#78350f';
+        ctx.beginPath();
+        ctx.arc(0, 0, drawRadius * 0.65, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#b45309';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        ctx.beginPath();
+        ctx.arc(0, -drawRadius * 0.4, drawRadius * 0.15, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      }
+      case 'mint_icecream': {
+        ctx.fillStyle = '#d97706';
+        ctx.beginPath();
+        ctx.moveTo(-drawRadius * 0.6, 0);
+        ctx.lineTo(drawRadius * 0.6, 0);
+        ctx.lineTo(0, drawRadius);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#6ee7b7';
+        ctx.beginPath();
+        ctx.arc(0, -drawRadius * 0.35, drawRadius * 0.75, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#059669';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.fillStyle = '#3b2014';
+        ctx.fillRect(-drawRadius * 0.25, -drawRadius * 0.4, drawRadius * 0.15, drawRadius * 0.15);
+        ctx.fillRect(drawRadius * 0.15, -drawRadius * 0.2, drawRadius * 0.12, drawRadius * 0.12);
+        ctx.fillRect(-drawRadius * 0.05, -drawRadius * 0.6, drawRadius * 0.14, drawRadius * 0.14);
+        break;
+      }
+      case 'soda': {
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.roundRect(-drawRadius * 0.6, -drawRadius * 0.9, drawRadius * 1.2, drawRadius * 1.8, 6);
+        ctx.fill();
+        ctx.fillStyle = '#cbd5e1';
+        ctx.beginPath();
+        ctx.ellipse(0, -drawRadius * 0.85, drawRadius * 0.55, drawRadius * 0.2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.beginPath();
+        ctx.arc(0, -drawRadius * 1.1, drawRadius * 0.2, 0, Math.PI * 2);
+        ctx.arc(drawRadius * 0.3, -drawRadius * 1.25, drawRadius * 0.15, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      }
+      case 'smarties': {
+        const colors = ['#f472b6', '#38bdf8', '#facc15'];
+        colors.forEach((col, i) => {
+          ctx.fillStyle = col;
+          ctx.beginPath();
+          ctx.ellipse(0, (i - 1) * drawRadius * 0.45, drawRadius * 0.85, drawRadius * 0.35, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        });
+        break;
+      }
+      case 'gummy_bears': {
+        ctx.fillStyle = defaultColor || '#ec4899';
+        ctx.beginPath();
+        ctx.arc(-drawRadius * 0.45, -drawRadius * 0.55, drawRadius * 0.3, 0, Math.PI * 2);
+        ctx.arc(drawRadius * 0.45, -drawRadius * 0.55, drawRadius * 0.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(0, -drawRadius * 0.2, drawRadius * 0.55, 0, Math.PI * 2);
+        ctx.arc(0, drawRadius * 0.35, drawRadius * 0.65, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+        ctx.beginPath();
+        ctx.ellipse(0, drawRadius * 0.3, drawRadius * 0.35, drawRadius * 0.4, 0, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      }
+      case 'lollipops': {
+        ctx.fillStyle = '#e2e8f0';
+        ctx.fillRect(-drawRadius * 0.1, 0, drawRadius * 0.2, drawRadius * 1.2);
+        ctx.fillStyle = '#f43f5e';
+        ctx.beginPath();
+        ctx.arc(0, -drawRadius * 0.1, drawRadius * 0.75, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(0, -drawRadius * 0.1, drawRadius * 0.45, 0, Math.PI);
+        ctx.stroke();
+        ctx.strokeStyle = '#38bdf8';
+        ctx.beginPath();
+        ctx.arc(0, -drawRadius * 0.1, drawRadius * 0.25, Math.PI, Math.PI * 2);
+        ctx.stroke();
+        break;
+      }
+      default: {
+        ctx.fillStyle = defaultColor || '#f59e0b';
+        ctx.beginPath();
+        ctx.arc(0, 0, drawRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#b45309';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
       }
     }
   }

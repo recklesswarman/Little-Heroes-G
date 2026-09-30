@@ -21,7 +21,8 @@ const testFiles = [
   'scratch/test_mobile_and_avatar_fix.cjs',
   'scratch/test_firebase_storage.cjs',
   'scratch/test_digital_rewards_revamp.cjs',
-  'scratch/test_trophy_showcase.cjs'
+  'scratch/test_trophy_showcase.cjs',
+  'scratch/test_battle_visual_refresh.cjs'
 ];
 
 let allPassed = true;
