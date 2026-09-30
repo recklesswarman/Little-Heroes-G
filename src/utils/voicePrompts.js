@@ -9,11 +9,11 @@ class VoicePromptsService {
     this.isEnabled = true;
   }
 
-  async speak(text, onEndCallback = null, petId = null) {
+  async speak(text, onEndCallback = null, petId = null, options = {}) {
     if (!this.isEnabled || !text) return;
     this.stop();
     const targetPetId = petId || store.getActivePet?.()?.id || 'rex';
-    await speakCompanion(text, targetPetId, onEndCallback);
+    await speakCompanion(text, { petId: targetPetId, onEnded: onEndCallback, instant: Boolean(options.instant) });
   }
 
   speakGuidance(stepName, questionText, options = []) {
@@ -72,7 +72,9 @@ class VoicePromptsService {
   }
 
   speakBossDefeated(bossName = 'The Boss') {
-    this.speak(`Incredible job! We washed away ${bossName}! Your teeth are sparkling clean!`);
+    // Only ever called from the toothbrush battle's real-time victory beat --
+    // instant (no network TTS round trip) keeps it in sync with the moment.
+    this.speak(`Incredible job! We washed away ${bossName}! Your teeth are sparkling clean!`, null, null, { instant: true });
   }
 
   speakDanceFreezeCountdown() {
