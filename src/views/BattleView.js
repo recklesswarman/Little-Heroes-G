@@ -51,15 +51,17 @@ export function isNighttimeBattle() {
 }
 
 export function shouldRunFlossBattle() {
-  const kidId = store.getState().selectedHero?.id;
+  const hero = store.getSelectedHero ? store.getSelectedHero() : store.getState().selectedHero;
+  const kidId = hero?.id || (store.getSelectedKidId ? store.getSelectedKidId() : store.getState().selectedKidId);
   if (!kidId) return false;
-  return isNighttimeBattle() && store.shouldShowHygieneReminder(kidId, 'floss');
+  return store.shouldShowHygieneReminder(kidId, 'floss');
 }
 
 export function shouldShowMouthwashReminder() {
-  const kidId = store.getState().selectedHero?.id;
+  const hero = store.getSelectedHero ? store.getSelectedHero() : store.getState().selectedHero;
+  const kidId = hero?.id || (store.getSelectedKidId ? store.getSelectedKidId() : store.getState().selectedKidId);
   if (!kidId) return false;
-  return isNighttimeBattle() && store.isHygieneReminderActive(kidId, 'mouthwash');
+  return store.isHygieneReminderActive(kidId, 'mouthwash');
 }
 
 // Hardware & Multi-Modal Sensors State (Single Atomic MediaStream)
@@ -176,6 +178,25 @@ export function renderBattleView() {
   selectedBossId = store.getSelectedBossId ? store.getSelectedBossId() : selectedBossId;
   const currentBoss = getBattleBoss(selectedBossId);
   const colState = store.getBossColosseumState ? store.getBossColosseumState() : {};
+
+  // If a battle is not currently actively running and victory modal is not open, initialize phase & durations based on floss status
+  if (!isBattleRunning && !colState.isVictoryModalOpen) {
+    if (shouldRunFlossBattle()) {
+      battlePhase = 'floss';
+      secondsRemaining = 120;
+      totalDuration = 120;
+    } else {
+      battlePhase = 'brush';
+      const bossDuration = store.getState().parentSettings?.arBattleDuration || currentBoss.battleDurationSec || 120;
+      secondsRemaining = bossDuration;
+      totalDuration = bossDuration;
+    }
+  }
+
+  if (!currentSugarHazard) {
+    currentSugarHazard = getRandomSugarHazard();
+  }
+
   const activeCombatWeapon = getActiveCombatWeapon();
   const hasLaserSword = activeCombatWeapon.hasWeapon;
   const activePet = store.getActivePet ? store.getActivePet() : { name: 'Rex', avatar: '🦖' };
@@ -197,7 +218,8 @@ export function renderBattleView() {
   // "hygiene-reminder-toggle-btn" buttons) -- shown as a persistent badge for
   // the whole battle, not just the pre/post blocking reminder screens, so the
   // kid sees what's expected of them the entire time the timer is running.
-  const hygieneKidId = store.getState().selectedHero?.id;
+  const hygieneKid = store.getSelectedHero ? store.getSelectedHero() : store.getState().selectedHero;
+  const hygieneKidId = hygieneKid?.id || (store.getSelectedKidId ? store.getSelectedKidId() : store.getState().selectedKidId);
   const showFlossBadge = hygieneKidId ? store.isHygieneReminderActive(hygieneKidId, 'floss') : false;
   const showMouthwashBadge = hygieneKidId ? store.isHygieneReminderActive(hygieneKidId, 'mouthwash') : false;
 
@@ -340,8 +362,14 @@ export function renderBattleView() {
               <span>Hazard: ${currentSugarHazard.name}</span>
             </span>
           ` : ''}
+          ${showFlossBadge ? `
+            <span id="floss-reminder-hud-badge" class="flex items-center gap-1 text-[9px] sm:text-[10px] font-black text-emerald-300 bg-emerald-950/80 border border-emerald-400/60 px-2 py-0.5 rounded-full shadow backdrop-blur-sm">
+              <span class="material-symbols-outlined text-xs" style="font-variation-settings: 'FILL' 1;">health_and_safety</span>
+              Floss Time! 🦷
+            </span>
+          ` : ''}
           ${showMouthwashBadge ? `
-            <span class="flex items-center gap-1 text-[9px] sm:text-[10px] font-black text-secondary bg-secondary/15 border border-secondary/50 px-2 py-0.5 rounded-full shadow backdrop-blur-sm">
+            <span id="mouthwash-reminder-hud-badge" class="flex items-center gap-1 text-[9px] sm:text-[10px] font-black text-secondary bg-secondary/15 border border-secondary/50 px-2 py-0.5 rounded-full shadow backdrop-blur-sm">
               <span class="material-symbols-outlined text-xs" style="font-variation-settings: 'FILL' 1;">water_drop</span>
               Rinse with Mouthwash after!
             </span>
@@ -485,17 +513,27 @@ function renderVictoryModal(colState, currentBoss) {
     : reward.trophyId === 'trophy_plaque_kraken'
       ? "Plaque Kraken's Pearly Goblet"
       : "Shiny Hero Trophy";
-  const hygieneKidId = store.getState().selectedHero?.id;
-  const isNight = typeof isNighttimeBattle === 'function' ? isNighttimeBattle() : (new Date().getHours() >= 17);
-  const showMouthwashInModal = hygieneKidId && isNight && store.isHygieneReminderActive(hygieneKidId, 'mouthwash');
+  const hygieneKid = store.getSelectedHero ? store.getSelectedHero() : store.getState().selectedHero;
+  const hygieneKidId = hygieneKid?.id || (store.getSelectedKidId ? store.getSelectedKidId() : store.getState().selectedKidId);
+  const showMouthwashInModal = hygieneKidId && store.isHygieneReminderActive(hygieneKidId, 'mouthwash');
   const isMouthwashAcknowledged = hygieneKidId ? store.hasAcknowledgedHygieneReminderToday(hygieneKidId, 'mouthwash') : false;
 
   return `
-    <div id="colosseum-victory-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+    <div id="colosseum-victory-modal" class="fixed inset-0 z-40 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
       <div class="w-full max-w-sm bg-[#0b1320] border-4 border-emerald-400 rounded-3xl p-5 sm:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.9)] flex flex-col items-center text-center relative overflow-hidden">
         
-        <div class="w-20 h-20 rounded-full bg-emerald-500/20 border-3 border-emerald-400 flex items-center justify-center mb-3 shadow-[0_0_30px_rgba(16,185,129,0.5)] animate-bounce">
-          <span class="text-4xl">🏆</span>
+        <!-- Transformed Cleansed Boss Hero Avatar with Animated Rainbow Aura -->
+        <div class="relative mb-3 flex items-center justify-center">
+          <div class="absolute -inset-3 rounded-full bg-gradient-to-r from-pink-500 via-amber-400 via-emerald-400 via-cyan-400 to-purple-500 blur-md opacity-85 animate-pulse"></div>
+          <div class="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-emerald-400 bg-slate-900/90 overflow-hidden shadow-[0_0_35px_rgba(52,211,153,0.8)] flex items-center justify-center">
+            ${currentBoss.cleansedImage
+              ? `<img src="${currentBoss.cleansedImage}" alt="${reward.cleansedTitle}" class="w-full h-full object-cover" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\\'text-5xl\\'>${currentBoss.cleansedAvatar || currentBoss.avatar || '✨'}</span>';" />`
+              : `<span class="text-5xl animate-bounce">${currentBoss.cleansedAvatar || currentBoss.avatar || '✨'}</span>`
+            }
+          </div>
+          <div class="absolute -bottom-1 -right-1 bg-amber-400 text-slate-950 rounded-full p-1 border-2 border-white text-xs font-black shadow flex items-center justify-center">
+            ✨
+          </div>
         </div>
 
         <h2 class="font-headline font-black text-xl sm:text-2xl text-emerald-400 tracking-tight uppercase">
@@ -748,7 +786,13 @@ function triggerDeflectFlurry() {
     hanaBattle3DService.setHazard(currentSugarHazard);
   }
 
+  // Spawn primary hazard bomb and a trailing wave for an authentic arcade flurry
   hanaBattle3DService.spawnCaramelBomb(currentSugarHazard);
+  setTimeout(() => {
+    if (isBattleRunning && !isBattlePaused && isDeflectFlurryActive) {
+      hanaBattle3DService.spawnCaramelBomb(currentSugarHazard);
+    }
+  }, 450);
 
   const banner = document.getElementById('deflect-flurry-banner');
   if (banner) {
@@ -914,10 +958,6 @@ function resolveLearnChallenge(success, method = 'voice') {
 // =========================================================================
 
 export function advanceToBrushPhase() {
-  const kidId = store.getState().selectedHero?.id;
-  if (kidId) {
-    store.acknowledgeHygieneReminder(kidId, 'floss');
-  }
   battlePhase = 'brush';
   const currentBoss = getBattleBoss(selectedBossId);
   const bossDuration = store.getState().parentSettings?.arBattleDuration || currentBoss.battleDurationSec || 120;
@@ -929,6 +969,12 @@ export function advanceToBrushPhase() {
     currentSugarHazard = getRandomSugarHazard();
   }
   hanaBattle3DService.setHazard(currentSugarHazard);
+
+  const hero = store.getSelectedHero ? store.getSelectedHero() : store.getState().selectedHero;
+  const kidId = hero?.id || (store.getSelectedKidId ? store.getSelectedKidId() : store.getState().selectedKidId);
+  if (kidId) {
+    store.acknowledgeHygieneReminder(kidId, 'floss');
+  }
 
   store.updateColosseumTimer(secondsRemaining, totalDuration);
 
@@ -965,16 +1011,15 @@ export function startBattle() {
   currentSugarHazard = getRandomSugarHazard();
   hanaBattle3DService.setHazard(currentSugarHazard);
 
-  const hero = store.getState().selectedHero;
+  const hero = store.getSelectedHero ? store.getSelectedHero() : store.getState().selectedHero;
   const battleCfg = BATTLE_DIFFICULTY[getDifficultyTier(hero)];
   // The Parent Panel's "Toothbrush AR Battle Duration Slider" is the single
   // source of truth for every kid's timer, so it always wins over a
   // boss-specific default.
   const bossDuration = store.getState().parentSettings?.arBattleDuration || currentBoss.battleDurationSec || 120;
   
-  const kidId = hero?.id;
-  const isNight = typeof isNighttimeBattle === 'function' ? isNighttimeBattle() : (new Date().getHours() >= 17);
-  const needsFloss = kidId && isNight && store.shouldShowHygieneReminder(kidId, 'floss');
+  const kidId = hero?.id || (store.getSelectedKidId ? store.getSelectedKidId() : store.getState().selectedKidId);
+  const needsFloss = kidId && store.shouldShowHygieneReminder(kidId, 'floss');
 
   if (needsFloss) {
     battlePhase = 'floss';
@@ -1334,8 +1379,9 @@ function concludeVictory() {
   // awards sparks/XP/badges, opens victory modal, and saves state to Cloud Firestore immediately.
   store.completeToothbrushBattle(selectedBossId, totalDuration, avgCadence);
 
-  // When Mouthwash reminder is active for this kid at night, Rex reminds them in the victory modal
-  const kidId = store.getState().selectedHero?.id;
+  // When Mouthwash reminder is active for this kid, Rex reminds them in the victory modal
+  const hygieneKid = store.getSelectedHero ? store.getSelectedHero() : store.getState().selectedHero;
+  const kidId = hygieneKid?.id || (store.getSelectedKidId ? store.getSelectedKidId() : store.getState().selectedKidId);
   if (kidId && shouldShowMouthwashReminder()) {
     setTimeout(() => {
       voicePrompts.speakMouthwashReminder();
@@ -1521,7 +1567,8 @@ export function attachBattleListeners() {
       splineUrl: currentBoss.splineUrl || null,
       hasLaserEquipped: checkLaserToothbrushEquipped(),
       videoElement: document.getElementById('ar-camera-feed'),
-      preserveBattleState: isBattleRunning,
+      preserveBattleState: Boolean(isBattleRunning || colState.isVictoryModalOpen),
+      isVictory: Boolean(colState.isVictoryModalOpen || colState.hasAwardedVictory || hanaBattle3DService.isVictory),
       quadrantCleanliness: quadrantCleanliness
     });
   }
@@ -1538,7 +1585,8 @@ export function attachBattleListeners() {
   const mouthwashAckBtn = document.getElementById('mouthwash-modal-ack-btn');
   if (mouthwashAckBtn) {
     mouthwashAckBtn.addEventListener('click', () => {
-      const kidId = store.getState().selectedHero?.id;
+      const hero = store.getSelectedHero ? store.getSelectedHero() : store.getState().selectedHero;
+      const kidId = hero?.id || (store.getSelectedKidId ? store.getSelectedKidId() : store.getState().selectedKidId);
       if (kidId) {
         store.acknowledgeHygieneReminder(kidId, 'mouthwash');
         mouthwashAckBtn.className = 'mt-1 px-4 py-1.5 rounded-xl bg-emerald-600 text-white cursor-default font-headline font-black text-xs transition-all flex items-center gap-1';

@@ -21,6 +21,7 @@
 
 import { Application } from '@splinetool/runtime';
 import { Sound } from '../audio/sfx.js';
+import { HYGIENE_BOSSES, SUGAR_ATTACK_HAZARDS } from '../data/hygieneBossesData.js';
 
 class HanaBattle3DService {
   constructor() {
@@ -164,9 +165,15 @@ class HanaBattle3DService {
     this.canvas = canvasElement;
     this.isDestroyed = false;
     this.isInitialized = true;
-    this.showCanvasHud = Boolean(options.showCanvasHud);
-
-    if (!options.preserveBattleState) {
+    if (options.isVictory || (options.preserveBattleState && this.isVictory)) {
+      this.isVictory = true;
+      this.bossHp = 0;
+      this.caramelBombs = [];
+      Object.values(this.armorPlates).forEach(p => {
+        p.intact = false;
+        p.cracks = 3;
+      });
+    } else if (!options.preserveBattleState) {
       this.resetBattleState();
     }
 
@@ -178,6 +185,23 @@ class HanaBattle3DService {
     }
     if (options.videoElement) {
       this.setVideoElement(options.videoElement);
+    }
+
+    // Preload boss illustrations (including cleansed forms) and hazard attack textures
+    try {
+      if (Array.isArray(HYGIENE_BOSSES)) {
+        HYGIENE_BOSSES.forEach(b => {
+          if (b.image) this.loadImage(b.image);
+          if (b.cleansedImage) this.loadImage(b.cleansedImage);
+        });
+      }
+      if (Array.isArray(SUGAR_ATTACK_HAZARDS)) {
+        SUGAR_ATTACK_HAZARDS.forEach(h => {
+          if (h.image) this.loadImage(h.image);
+        });
+      }
+    } catch (e) {
+      // Non-blocking asset preload
     }
 
     this.hasLaserEquipped = Boolean(options.hasLaserEquipped);
@@ -287,6 +311,12 @@ class HanaBattle3DService {
     if (this.imageCache[src]) return this.imageCache[src];
     try {
       const img = new Image();
+      img.onerror = () => {
+        if (typeof src === 'string' && src.startsWith('/') && !img._retried) {
+          img._retried = true;
+          img.src = '.' + src;
+        }
+      };
       img.src = src;
       this.imageCache[src] = img;
       return img;
@@ -618,20 +648,31 @@ class HanaBattle3DService {
   onCleanseVictory() {
     this.isVictory = true;
     this.bossHp = 0;
+    this.caramelBombs = []; // Clear active hazard projectiles on victory
     Object.keys(this.armorPlates).forEach(k => this.onArmorFracture(k));
 
-    for (let i = 0; i < 50; i++) {
+    // Spawn celebratory cleanse shockwave ring
+    this.shockwaves.push({
+      x: this.width * 0.5,
+      y: this.height * 0.38,
+      radius: 20,
+      maxRadius: 320,
+      color: '#34d399',
+      alpha: 1.0
+    });
+
+    for (let i = 0; i < 65; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const speed = 2.5 + Math.random() * 6.5;
+      const speed = 2.5 + Math.random() * 8.0;
       this.sparkles.push({
         x: this.width * 0.5,
         y: this.height * 0.38,
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed,
-        color: ['#54e98a', '#ffb961', '#38bdf8', '#f1c40f', '#ec4899', '#a78bfa'][i % 6],
-        size: 6 + Math.random() * 6,
+        color: ['#54e98a', '#ffb961', '#38bdf8', '#f1c40f', '#ec4899', '#a78bfa', '#ffffff'][i % 7],
+        size: 6 + Math.random() * 8,
         alpha: 1.0,
-        life: 2.2
+        life: 2.6
       });
     }
   }
@@ -985,14 +1026,28 @@ class HanaBattle3DService {
 
     const baseRadius = Math.min(68, w * 0.15);
 
-    // Aura Glow
-    const auraGrad = ctx.createRadialGradient(0, 0, 10, 0, 0, baseRadius * 1.6);
-    auraGrad.addColorStop(0, this.isVictory ? 'rgba(74, 222, 128, 0.7)' : (this.bossData.color ? `${this.bossData.color}66` : 'rgba(245, 158, 11, 0.4)'));
-    auraGrad.addColorStop(1, 'transparent');
-    ctx.fillStyle = auraGrad;
-    ctx.beginPath();
-    ctx.arc(0, 0, baseRadius * 1.6, 0, Math.PI * 2);
-    ctx.fill();
+    // Dynamic Rainbow Cleanse Aura (during victory) or Boss Theme Aura (during battle)
+    if (this.isVictory) {
+      const rainbowHue = Math.floor((this.clock * 75) % 360);
+      const auraPulse = 1 + Math.sin(this.clock * 4.5) * 0.12;
+      const auraGrad = ctx.createRadialGradient(0, 0, 10, 0, 0, baseRadius * 2.3 * auraPulse);
+      auraGrad.addColorStop(0, `hsla(${rainbowHue}, 90%, 65%, 0.85)`);
+      auraGrad.addColorStop(0.35, `hsla(${(rainbowHue + 60) % 360}, 90%, 60%, 0.6)`);
+      auraGrad.addColorStop(0.7, `hsla(${(rainbowHue + 120) % 360}, 85%, 55%, 0.3)`);
+      auraGrad.addColorStop(1, 'transparent');
+      ctx.fillStyle = auraGrad;
+      ctx.beginPath();
+      ctx.arc(0, 0, baseRadius * 2.3 * auraPulse, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      const auraGrad = ctx.createRadialGradient(0, 0, 10, 0, 0, baseRadius * 1.6);
+      auraGrad.addColorStop(0, this.bossData.color ? `${this.bossData.color}66` : 'rgba(245, 158, 11, 0.4)');
+      auraGrad.addColorStop(1, 'transparent');
+      ctx.fillStyle = auraGrad;
+      ctx.beginPath();
+      ctx.arc(0, 0, baseRadius * 1.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     // Check for high-res illustrated boss art
     const bossImgSrc = this.isVictory ? this.bossData.cleansedImage : this.bossData.image;
@@ -1012,27 +1067,38 @@ class HanaBattle3DService {
       ctx.restore();
 
       // Outer glowing rim
-      ctx.strokeStyle = this.isVictory ? '#34d399' : (this.bossData.color || '#fbbf24');
-      ctx.lineWidth = 3.5;
+      if (this.isVictory) {
+        const rimHue = Math.floor((this.clock * 90) % 360);
+        ctx.strokeStyle = `hsl(${rimHue}, 95%, 65%)`;
+        ctx.lineWidth = 4.5;
+      } else {
+        ctx.strokeStyle = this.bossData.color || '#fbbf24';
+        ctx.lineWidth = 3.5;
+      }
       ctx.beginPath();
       ctx.arc(0, 0, baseRadius, 0, Math.PI * 2);
       ctx.stroke();
 
       if (this.isVictory) {
-        // Sparkling Victory Halo
-        ctx.strokeStyle = '#fbbf24';
-        ctx.lineWidth = 3;
+        // Sparkling Victory Halo with celestial gold shimmer
+        ctx.save();
+        ctx.shadowColor = 'rgba(251, 191, 36, 0.8)';
+        ctx.shadowBlur = 12;
+        ctx.strokeStyle = '#fef08a';
+        ctx.lineWidth = 3.5;
         ctx.beginPath();
-        ctx.ellipse(0, -baseRadius * 1.15, baseRadius * 0.45, 8, 0, 0, Math.PI * 2);
+        ctx.ellipse(0, -baseRadius * 1.18, baseRadius * 0.5, 9, 0, 0, Math.PI * 2);
         ctx.stroke();
+        ctx.restore();
       }
     } else {
       this.renderProceduralBossFallback(ctx, baseRadius);
     }
 
-    // 4 Breakable 3D Candy Armor Plates (q1, q2, q3, q4)
-    Object.values(this.armorPlates).forEach(plate => {
-      if (!plate.intact) return;
+    // 4 Breakable 3D Candy Armor Plates (q1, q2, q3, q4) - completely cleansed on victory
+    if (!this.isVictory) {
+      Object.values(this.armorPlates).forEach(plate => {
+        if (!plate.intact) return;
 
       const px = plate.offset.x * (baseRadius / 45);
       const py = plate.offset.y * (baseRadius / 45);
@@ -1067,6 +1133,7 @@ class HanaBattle3DService {
 
       ctx.restore();
     });
+    }
 
     // Boss Shield Barrier Sphere
     if (this.isShieldActive) {
@@ -1230,14 +1297,22 @@ class HanaBattle3DService {
     };
     if (haz.image) this.loadImage(haz.image);
 
+    // Compute dynamic trajectory: fly from boss toward the player at arena bottom
+    const startY = this.height * 0.38;
+    const targetY = this.height * 0.82;
+    const vz = -32;
+    const flightTime = 80 / Math.abs(vz); // ~2.5 seconds
+    const vy = (targetY - startY) / flightTime;
+    const spreadX = (Math.random() - 0.5) * 44;
+
     this.caramelBombs.push({
-      x: this.width * 0.5 + (Math.random() - 0.5) * 40,
-      y: this.height * 0.38,
+      x: this.width * 0.5 + (Math.random() - 0.5) * 30,
+      y: startY,
       z: 80,
-      vz: -32,
-      vx: (Math.random() - 0.5) * 8,
-      vy: 6,
-      radius: 18,
+      vz: vz,
+      vx: spreadX,
+      vy: vy,
+      radius: 26,
       rot: Math.random() * Math.PI * 2,
       vRot: (Math.random() - 0.5) * 3,
       color: haz.color || this.bossData.bombColor || '#f59e0b',
@@ -1273,14 +1348,25 @@ class HanaBattle3DService {
       const img = haz?.image ? (this.imageCache[haz.image] || this.loadImage(haz.image)) : null;
       if (img && img.complete && img.naturalWidth > 0) {
         const size = drawRadius * 2.2;
+        ctx.save();
         ctx.beginPath();
         ctx.arc(0, 0, drawRadius, 0, Math.PI * 2);
         ctx.clip();
         ctx.drawImage(img, -size * 0.5, -size * 0.5, size, size);
+        ctx.restore();
 
-        // Specular 3D rim highlight
+        // Glowing outer candy rim
         ctx.strokeStyle = haz.color || '#fbbf24';
-        ctx.lineWidth = 2.5;
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, drawRadius, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Specular shimmer highlight
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.65)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, drawRadius - 2, -Math.PI * 0.75, -Math.PI * 0.25);
         ctx.stroke();
       } else {
         this.renderProceduralHazardItem(ctx, haz?.id, drawRadius, b.color);
@@ -1415,7 +1501,11 @@ class HanaBattle3DService {
       case 'soda': {
         ctx.fillStyle = '#ef4444';
         ctx.beginPath();
-        ctx.roundRect(-drawRadius * 0.6, -drawRadius * 0.9, drawRadius * 1.2, drawRadius * 1.8, 6);
+        if (typeof ctx.roundRect === 'function') {
+          ctx.roundRect(-drawRadius * 0.6, -drawRadius * 0.9, drawRadius * 1.2, drawRadius * 1.8, 6);
+        } else {
+          ctx.rect(-drawRadius * 0.6, -drawRadius * 0.9, drawRadius * 1.2, drawRadius * 1.8);
+        }
         ctx.fill();
         ctx.fillStyle = '#cbd5e1';
         ctx.beginPath();

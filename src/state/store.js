@@ -1077,6 +1077,10 @@ class Store {
     return this.state?.selectedHero || (this.state?.heroes && this.state.heroes[0]) || null;
   }
 
+  getSelectedKidId() {
+    return this.state?.selectedKidId || this.getSelectedHero()?.id || (this.state?.heroes && this.state.heroes[0]?.id) || null;
+  }
+
   navigate(viewName, params = {}) {
     let targetView = viewName;
     if (targetView === 'learn' || targetView === '/learn') {
@@ -2187,8 +2191,8 @@ class Store {
     const parentCustomBosses = this.state.parentCustomBosses || [];
     const customMatch = parentCustomBosses.find(b => b.id === bossId);
     const boss = customMatch || getHygieneBoss(bossId) || HYGIENE_BOSSES[0];
-    const currentHero = this.state.selectedHero;
-    const heroId = currentHero?.id || 'hero_1';
+    const currentHero = this.getSelectedHero() || this.state.selectedHero || (this.state.heroes && this.state.heroes[0]);
+    const heroId = currentHero?.id || this.getSelectedKidId() || 'hero_1';
     const nowIso = new Date().toISOString();
     const todayStr = new Date().toDateString();
     const currentHour = new Date().getHours();
@@ -2207,18 +2211,20 @@ class Store {
     const xpEarned = baseXp + xpBonus;
 
     // Laser Toothbrush Shop Gear Buff (+30% boost)
-    const heroGear = currentHero.equippedGear || {};
+    const heroGear = currentHero?.equippedGear || {};
     const hasLaserToothbrush = (Array.isArray(heroGear) && heroGear.includes('laser_toothbrush')) ||
                                (typeof heroGear === 'object' && Object.values(heroGear).includes('laser_toothbrush')) ||
                                (heroGear.weapon === 'laser_toothbrush') ||
-                               (Array.isArray(currentHero.inventory) && currentHero.inventory.includes('laser_toothbrush')) ||
+                               (Array.isArray(currentHero?.inventory) && currentHero.inventory.includes('laser_toothbrush')) ||
                                (Array.isArray(this.state.inventory) && this.state.inventory.includes('laser_toothbrush'));
     const laserMult = hasLaserToothbrush ? 1.3 : 1.0;
     const finalCoinsEarned = Math.round(coinsEarned * laserMult);
     const finalXpEarned = Math.round(xpEarned * laserMult);
 
     // 1. Award Currency and Hero XP (Tokens credited immediately)
-    currentHero.coins = (currentHero.coins || 0) + finalCoinsEarned;
+    if (currentHero) {
+      currentHero.coins = (currentHero.coins || 0) + finalCoinsEarned;
+    }
     this.addXP(finalXpEarned);
 
     // 2. Active Companion Pet Sparks & Max 100% Hygiene Boost
@@ -2231,20 +2237,20 @@ class Store {
     const isMorning = !this.isNighttimeToothbrushBattle();
     if (isMorning) {
       this.state.lastBrushedMorning = todayStr;
-      const morningTask = this.state.taskForest ? this.state.taskForest.find(t => t.id === 'morning_brush') : null;
+      const morningTask = this.state.taskForest ? this.state.taskForest.find(t => t.id === 'morning_brush' || t.id === 'brush_teeth_am' || t.id === 'brush_teeth') : null;
       if (morningTask) {
         morningTask.completed = true;
         morningTask.pointsApproved = false;
       }
     } else {
       this.state.lastBrushedEvening = todayStr;
-      const eveningTask = this.state.taskForest ? this.state.taskForest.find(t => t.id === 'bedtime_brush') : null;
+      const eveningTask = this.state.taskForest ? this.state.taskForest.find(t => t.id === 'bedtime_brush' || t.id === 'night_bedtime' || t.id === 'brush_teeth_pm' || t.id === 'brush_teeth') : null;
       if (eveningTask) {
         eveningTask.completed = true;
         eveningTask.pointsApproved = false;
       }
     }
-    const habitBrush = this.state.habitIslands ? this.state.habitIslands.find(h => h.id === 'brush_teeth') : null;
+    const habitBrush = this.state.habitIslands ? this.state.habitIslands.find(h => h.id === 'brush_teeth' || h.id === 'brush_teeth_am' || h.id === 'brush_teeth_pm') : null;
     if (habitBrush) {
       habitBrush.completed = true;
       habitBrush.pointsApproved = false;
@@ -2284,9 +2290,11 @@ class Store {
     if (!this.state.inventory.includes('Mint Knight Badge')) {
       this.state.inventory.push('Mint Knight Badge');
     }
-    if (!currentHero.inventory) currentHero.inventory = [];
-    if (!currentHero.inventory.includes('Mint Knight Badge')) {
-      currentHero.inventory.push('Mint Knight Badge');
+    if (currentHero) {
+      if (!currentHero.inventory) currentHero.inventory = [];
+      if (!currentHero.inventory.includes('Mint Knight Badge')) {
+        currentHero.inventory.push('Mint Knight Badge');
+      }
     }
 
     // 5. Record Dental Battle History
@@ -2328,8 +2336,8 @@ class Store {
       durationSec: durationSec,
       avgCadence: avgCadence,
       bossId: boss.id,
-      heroId: currentHero.id,
-      heroName: currentHero.name,
+      heroId: currentHero?.id || heroId,
+      heroName: currentHero?.name || 'Little Hero',
       completedAt: nowIso,
       timestamp: Date.now(),
       dateString: new Date().toLocaleDateString(),
@@ -2360,8 +2368,8 @@ class Store {
     this.state.pendingApprovals.push({
       id: approvalReqId,
       logId: logId,
-      kidId: currentHero.id,
-      kidName: currentHero.name,
+      kidId: currentHero?.id || heroId,
+      kidName: currentHero?.name || 'Little Hero',
       type: 'task_point_approval',
       taskId: completionLog.taskId,
       title: completionLog.taskTitle,
@@ -2443,6 +2451,51 @@ class Store {
     this.notify();
 
     return col.victoryReward;
+  }
+
+  // Adds a pending parent sign-off request to the Parent Portal queue
+  addPendingApproval(approval) {
+    if (!approval) return null;
+    if (!this.state.pendingApprovals) this.state.pendingApprovals = [];
+    if (approval.id && this.state.pendingApprovals.some(p => p.id === approval.id)) {
+      return approval;
+    }
+    this.state.pendingApprovals.push(approval);
+    this.saveState(true);
+    this.notify();
+    return approval;
+  }
+
+  // Submits a completed task/chore or hygiene battle for parent point approval
+  submitTaskForApproval(taskData = {}) {
+    const currentHero = this.getSelectedHero() || this.state.selectedHero;
+    const heroId = taskData.kidId || currentHero?.id || 'hero_1';
+    const heroName = taskData.kidName || currentHero?.name || 'Little Hero';
+    const taskId = taskData.taskId || 'brush_teeth';
+    const title = taskData.title || taskData.taskTitle || 'Toothbrush AR Battle';
+    const points = taskData.points !== undefined ? taskData.points : (taskData.pendingPoints !== undefined ? taskData.pendingPoints : 15);
+    const tokens = taskData.tokens !== undefined ? taskData.tokens : (taskData.tokensAwarded !== undefined ? taskData.tokensAwarded : 30);
+    const nowIso = new Date().toISOString();
+    const logId = taskData.logId || ('log_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6));
+    const reqId = taskData.id || ('task_appr_' + taskId + '_' + Date.now());
+
+    const approval = {
+      id: reqId,
+      logId: logId,
+      kidId: heroId,
+      kidName: heroName,
+      type: 'task_point_approval',
+      taskId: taskId,
+      title: title,
+      zone: taskData.zone || 'Hygiene AR Battle',
+      pendingPoints: points,
+      tokensAwarded: tokens,
+      date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: nowIso,
+      status: 'pending'
+    };
+
+    return this.addPendingApproval(approval);
   }
 
   getDentalBadges() {
@@ -5300,6 +5353,7 @@ class Store {
         hero.habitatSlots = Math.max(1, hero.unlockedPetIds.length);
       }
 
+      this.state.selectedKidId = hero.id;
       this.state.selectedHero.id = hero.id;
       this.state.selectedHero.name = hero.name;
       this.state.selectedHero.title = hero.role;
@@ -5585,7 +5639,11 @@ class Store {
     if (!kidId || (type !== 'floss' && type !== 'mouthwash')) return;
     const rec = this.getHygieneReminderRecord(kidId);
     rec[`${type}Date`] = enabled ? new Date().toDateString() : null;
+    if (enabled) {
+      rec[`${type}AckDate`] = null;
+    }
     this.saveState();
+    this.notify();
   }
 
   isHygieneReminderActive(kidId, type) {
@@ -5613,6 +5671,7 @@ class Store {
     const rec = this.getHygieneReminderRecord(kidId);
     rec[`${type}AckDate`] = new Date().toDateString();
     this.saveState();
+    this.notify();
   }
 
   // True when the parent flagged this reminder for today AND the kid hasn't

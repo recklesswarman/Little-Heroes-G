@@ -29,7 +29,8 @@ export const HYGIENE_BOSSES = [
     meshType: 'sugar_bandit',
     bombColor: '#f39c12',
     bombName: 'Sticky Caramel Bomb',
-    cleansedTitle: 'Minty Sugar Buddy 🍬'
+    cleansedTitle: 'Minty Sugar Buddy 🍬',
+    cleansedAvatar: '🍬✨'
   },
   {
     id: "plaque_kraken",
@@ -56,7 +57,8 @@ export const HYGIENE_BOSSES = [
     meshType: 'plaque_kraken',
     bombColor: '#2ecc71',
     bombName: 'Plaque Slime Bomb',
-    cleansedTitle: 'Friendly Bubble Kraken 🐙'
+    cleansedTitle: 'Friendly Bubble Kraken 🐙',
+    cleansedAvatar: '🐙✨'
   },
   {
     id: "cavity_knight",
@@ -83,7 +85,8 @@ export const HYGIENE_BOSSES = [
     meshType: 'cavity_knight',
     bombColor: '#e74c3c',
     bombName: 'Acid Shard Bomb',
-    cleansedTitle: 'Enamel Paladin 🛡️'
+    cleansedTitle: 'Enamel Paladin 🛡️',
+    cleansedAvatar: '🛡️✨'
   },
   {
     id: "tartar_titan",
@@ -110,7 +113,8 @@ export const HYGIENE_BOSSES = [
     meshType: 'tartar_titan',
     bombColor: '#9333ea',
     bombName: 'Crystal Sugar Shard',
-    cleansedTitle: 'Gemstone Golem 💎'
+    cleansedTitle: 'Gemstone Golem 💎',
+    cleansedAvatar: '💎✨'
   }
 ];
 
