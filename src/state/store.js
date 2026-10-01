@@ -7,7 +7,7 @@ import { PROFILE_THEMES } from '../data/profileThemesData.js';
 import { generate3DIcon } from '../utils/graphicsGenerator.js';
 import { triggerInteractiveCelebration, closeInteractiveCelebration } from '../components/InteractiveCelebrationOverlay.js';
 import { ROUTINES, HABIT_ISLANDS } from '../constants/routines.js';
-import { HYGIENE_BOSSES, DENTAL_BADGES, getHygieneBoss } from '../data/hygieneBossesData.js';
+import { HYGIENE_BOSSES, DENTAL_BADGES, getHygieneBoss, SUGAR_ATTACK_HAZARDS } from '../data/hygieneBossesData.js';
 import {
   EXPEDITION_BIOMES,
   EXPEDITION_DURATIONS,
@@ -7312,6 +7312,36 @@ class Store {
   // 3D HYGIENE BOSS BLASTER COLOSSEUM METHODS
   // =========================================================================
 
+  // Draws this kid's next toothbrush-battle sugar hazard from a persisted,
+  // per-kid shuffle-bag of all 7 SUGAR_ATTACK_HAZARDS ids, so they cycle
+  // through every hazard before any repeat (instead of a flat random pick
+  // that can repeat the same hazard several battles in a row over a week).
+  // Returns a hazard id; look it up via getSugarHazardById(). Deliberately
+  // does NOT call saveState()/notify() -- this is called from inside
+  // renderBattleView() itself as a defensive fallback, and notifying
+  // subscribers synchronously mid-render would re-trigger a render pass
+  // (an infinite-loop class of bug this app already has a regression test
+  // for). The mutation still lands on the in-memory hero object immediately
+  // and rides along on whatever the next real saveState() call persists.
+  drawNextSugarHazardId(heroId) {
+    const hero = this.state.heroes.find(h => h.id === heroId) || this.state.selectedHero;
+    if (!hero.hazardRotationQueue || hero.hazardRotationQueue.length === 0) {
+      const ids = SUGAR_ATTACK_HAZARDS.map(h => h.id);
+      for (let i = ids.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [ids[i], ids[j]] = [ids[j], ids[i]];
+      }
+      // Avoid repeating the just-used hazard right across the reshuffle boundary.
+      if (hero.lastHazardId && ids[0] === hero.lastHazardId && ids.length > 1) {
+        [ids[0], ids[1]] = [ids[1], ids[0]];
+      }
+      hero.hazardRotationQueue = ids;
+    }
+    const nextId = hero.hazardRotationQueue.shift();
+    hero.lastHazardId = nextId;
+    return nextId;
+  }
+
   getBossColosseumState() {
     if (!this.state.bossColosseum) {
       this.state.bossColosseum = {
@@ -7329,6 +7359,8 @@ class Store {
         enamelCleanPercent: 0,
         isVictoryModalOpen: false,
         victoryReward: null,
+        isDefeatModalOpen: false,
+        defeatInfo: null,
         bossesDefeated: [],
         showPipCam: false
       };
@@ -7361,6 +7393,8 @@ class Store {
     col.isVictoryModalOpen = false;
     col.victoryReward = null;
     col.hasAwardedVictory = false;
+    col.isDefeatModalOpen = false;
+    col.defeatInfo = null;
     this.saveState(true);
     if (!skipNotify) this.notify();
     return col;
@@ -7543,6 +7577,28 @@ class Store {
   closeColosseumVictoryModal() {
     const col = this.getBossColosseumState();
     col.isVictoryModalOpen = false;
+    this.notify();
+  }
+
+  // Shown when a kid quits/backs out of a battle before the timer finishes --
+  // deliberately carries no reward data (no coins/xp/sparks/trophy): quitting
+  // early stays reward-free so finishing the full brush routine still means
+  // something, it just no longer silently dumps the kid back to the dashboard
+  // with a toast.
+  openColosseumDefeatModal(data = {}) {
+    const col = this.getBossColosseumState();
+    col.isDefeatModalOpen = true;
+    col.defeatInfo = {
+      bossId: data.bossId || col.activeBossId || 'sugar_bandit',
+      bossName: data.bossName || 'The Sugar Bandit',
+      bossAvatar: data.bossAvatar || '🍬'
+    };
+    this.notify();
+  }
+
+  closeColosseumDefeatModal() {
+    const col = this.getBossColosseumState();
+    col.isDefeatModalOpen = false;
     this.notify();
   }
 

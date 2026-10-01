@@ -858,14 +858,17 @@ class HanaBattle3DService {
     // 6. 3D Boss & Breakable Candy Armor
     this.render3DBossAndArmor(ctx, w, h, dt);
 
-    // 7. 3D Caramel Bomb Projectiles (With Neon Motion Trails & Themed Shatters)
-    this.renderCaramelBombs(ctx, w, h, dt);
-
-    // 8. Counter Attack Projectiles (Warrior Teeth vs Boss)
+    // 7. Counter Attack Projectiles (Warrior Teeth vs Boss)
     this.renderCounterAttackProjectiles(ctx, dt);
 
-    // 9. Arched Front Line of Animated 3D Enamel Warrior Teeth Army
+    // 8. Arched Front Line of Animated 3D Enamel Warrior Teeth Army
     this.renderWarriorTeethArmy(ctx, w, h, dt);
+
+    // 9. 3D Caramel Bomb Projectiles (With Neon Motion Trails & Themed Shatters)
+    // -- drawn AFTER the Warrior Teeth Army so an incoming hazard's high-quality
+    // graphic is visible in front of the teeth it's flying toward, not hidden
+    // behind them (both occupy the same screen band at a similar size).
+    this.renderCaramelBombs(ctx, w, h, dt);
 
     // 10. Fizzy Rainbow Soap Particle Foam Cannons
     this.renderFoamParticles(ctx, dt);

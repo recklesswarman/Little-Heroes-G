@@ -3,7 +3,7 @@ import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import confetti from 'canvas-confetti';
 import { voicePrompts } from '../utils/voicePrompts.js';
-import { HYGIENE_BOSSES, DENTAL_BADGES, DENTAL_QUADRANTS, getDentalQuadrant, SUGAR_ATTACK_HAZARDS, getRandomSugarHazard } from '../data/hygieneBossesData.js';
+import { HYGIENE_BOSSES, DENTAL_BADGES, DENTAL_QUADRANTS, getDentalQuadrant, SUGAR_ATTACK_HAZARDS, getSugarHazardById } from '../data/hygieneBossesData.js';
 import { brushAudioAnalyzer } from '../audio/brushAudioAnalyzer.js';
 import { DIGITAL_REWARDS_CATALOG } from '../data/digitalRewardsCatalog.js';
 
@@ -15,13 +15,21 @@ const sugarVillainEscapedImg = new URL('../assets/sugar_villain_escaped.jpg', im
 // tier. The battle's total countdown length never varies by kid -- it is
 // always exactly the duration the parent selected in the Parent Panel.
 const BATTLE_DIFFICULTY = {
-  easy: { bombIntervalMs: 20000, autoAssistIdleMs: 1200 },
-  medium: { bombIntervalMs: 14000, autoAssistIdleMs: 1800 },
-  hard: { bombIntervalMs: 10000, autoAssistIdleMs: 2400 }
+  easy: { bombIntervalMs: 26000, autoAssistIdleMs: 1200 },
+  medium: { bombIntervalMs: 18000, autoAssistIdleMs: 1800 },
+  hard: { bombIntervalMs: 13000, autoAssistIdleMs: 2400 }
 };
 function getDifficultyTier(hero) {
   const tier = hero?.gameDifficulty;
   return ['easy', 'medium', 'hard'].includes(tier) ? tier : 'medium';
+}
+
+// Resolves the currently-selected kid's id the same way across every call
+// site that needs it (reward crediting, hazard rotation, etc.) instead of
+// each one re-deriving it slightly differently.
+function getActiveHeroId() {
+  const hero = store.getSelectedHero ? store.getSelectedHero() : store.getState().selectedHero;
+  return hero?.id || (store.getSelectedKidId ? store.getSelectedKidId() : store.getState().selectedKidId);
 }
 
 // =========================================================================
@@ -215,7 +223,7 @@ function checkLaserToothbrushEquipped() {
 // MAIN BATTLE VIEW RENDER FUNCTION: FULL-SCREEN VIBRANT 3D ARCADE VIEWPORT
 // =========================================================================
 export function renderBattleView() {
-  if (!hasExplicitBossSelection && !isBattleRunning && !store.getBossColosseumState()?.isVictoryModalOpen) {
+  if (!hasExplicitBossSelection && !isBattleRunning && !store.getBossColosseumState()?.isVictoryModalOpen && !store.getBossColosseumState()?.isDefeatModalOpen) {
     if (!sessionRotatedBossId) {
       const randomIndex = Math.floor(Math.random() * ROTATING_VILLAINS.length);
       sessionRotatedBossId = ROTATING_VILLAINS[randomIndex];
@@ -230,8 +238,8 @@ export function renderBattleView() {
   const currentBoss = getBattleBoss(selectedBossId);
   const colState = store.getBossColosseumState ? store.getBossColosseumState() : {};
 
-  // If a battle is not currently actively running and victory modal is not open, initialize phase & durations based on floss status
-  if (!isBattleRunning && !colState.isVictoryModalOpen) {
+  // If a battle is not currently actively running and no end-of-battle modal is open, initialize phase & durations based on floss status
+  if (!isBattleRunning && !colState.isVictoryModalOpen && !colState.isDefeatModalOpen) {
     if (shouldRunFlossBattle()) {
       battlePhase = 'floss';
       secondsRemaining = 120;
@@ -245,7 +253,7 @@ export function renderBattleView() {
   }
 
   if (!currentSugarHazard) {
-    currentSugarHazard = getRandomSugarHazard();
+    currentSugarHazard = getSugarHazardById(store.drawNextSugarHazardId(getActiveHeroId()));
   }
 
   const activeCombatWeapon = getActiveCombatWeapon();
@@ -417,7 +425,7 @@ export function renderBattleView() {
 
         <!-- Parent-Set Floss / Mouthwash Reminder Badges -->
         ${(showFlossBadge || showMouthwashBadge) ? `
-          <div id="hygiene-reminder-hud-badges" class="absolute top-[4.75rem] sm:top-[5.75rem] left-1/2 transform -translate-x-1/2 z-20 flex items-center gap-1.5 pointer-events-none">
+          <div id="hygiene-reminder-hud-badges" class="absolute top-28 sm:top-32 left-1/2 transform -translate-x-1/2 z-20 flex items-center gap-1.5 pointer-events-none">
             ${showFlossBadge ? `
               <span id="floss-reminder-hud-badge" class="flex items-center gap-1 text-[9px] sm:text-[10px] font-black text-emerald-300 bg-emerald-950/80 border border-emerald-400/60 px-2 py-0.5 rounded-full shadow backdrop-blur-sm">
                 <span class="material-symbols-outlined text-xs" style="font-variation-settings: 'FILL' 1;">health_and_safety</span>
@@ -434,57 +442,8 @@ export function renderBattleView() {
         ` : ''}
       `}
 
-      <!-- ================= 5. TOOTH QUADRANT GEMS (HIDDEN FOR MINIMALIST CINEMATIC 3D ARENA) ================= -->
-      <!-- Q1: Upper Right -->
-      <div id="gem-q1" class="hidden pointer-events-none">
-        <div class="flex flex-col items-end">
-          <span class="text-[10px] sm:text-xs font-black text-white drop-shadow">Upper Right</span>
-          <span class="gem-pct text-[9px] font-bold ${quadrantCleanliness.q1 >= 100 ? 'text-emerald-400' : 'text-amber-300'}">${Math.round(quadrantCleanliness.q1)}%</span>
-        </div>
-        <div class="gem-box w-11 h-11 sm:w-13 sm:h-13 rounded-2xl flex items-center justify-center text-xl sm:text-2xl shadow-lg transition-all">
-          ${quadrantCleanliness.q1 >= 100 ? '💎' : '🦷'}
-        </div>
-        <span class="gem-arrow text-cyan-400 text-xl animate-pulse" style="display: ${activeQuad.id === 'q1' ? 'inline-block' : 'none'};">👈</span>
-      </div>
-
-      <!-- Q2: Upper Left -->
-      <div id="gem-q2" class="hidden pointer-events-none">
-        <span class="gem-arrow text-cyan-400 text-xl animate-pulse" style="display: ${activeQuad.id === 'q2' ? 'inline-block' : 'none'};">👉</span>
-        <div class="gem-box w-11 h-11 sm:w-13 sm:h-13 rounded-2xl flex items-center justify-center text-xl sm:text-2xl shadow-lg transition-all">
-          ${quadrantCleanliness.q2 >= 100 ? '💎' : '🦷'}
-        </div>
-        <div class="flex flex-col items-start">
-          <span class="text-[10px] sm:text-xs font-black text-white drop-shadow">Upper Left</span>
-          <span class="gem-pct text-[9px] font-bold ${quadrantCleanliness.q2 >= 100 ? 'text-emerald-400' : 'text-amber-300'}">${Math.round(quadrantCleanliness.q2)}%</span>
-        </div>
-      </div>
-
-      <!-- Q3: Lower Right -->
-      <div id="gem-q3" class="hidden pointer-events-none">
-        <div class="flex flex-col items-end">
-          <span class="text-[10px] sm:text-xs font-black text-white drop-shadow">Lower Right</span>
-          <span class="gem-pct text-[9px] font-bold ${quadrantCleanliness.q3 >= 100 ? 'text-emerald-400' : 'text-amber-300'}">${Math.round(quadrantCleanliness.q3)}%</span>
-        </div>
-        <div class="gem-box w-11 h-11 sm:w-13 sm:h-13 rounded-2xl flex items-center justify-center text-xl sm:text-2xl shadow-lg transition-all">
-          ${quadrantCleanliness.q3 >= 100 ? '💎' : '🦷'}
-        </div>
-        <span class="gem-arrow text-cyan-400 text-xl animate-pulse" style="display: ${activeQuad.id === 'q3' ? 'inline-block' : 'none'};">👈</span>
-      </div>
-
-      <!-- Q4: Lower Left -->
-      <div id="gem-q4" class="hidden pointer-events-none">
-        <span class="gem-arrow text-cyan-400 text-xl animate-pulse" style="display: ${activeQuad.id === 'q4' ? 'inline-block' : 'none'};">👉</span>
-        <div class="gem-box w-11 h-11 sm:w-13 sm:h-13 rounded-2xl flex items-center justify-center text-xl sm:text-2xl shadow-lg transition-all">
-          ${quadrantCleanliness.q4 >= 100 ? '💎' : '🦷'}
-        </div>
-        <div class="flex flex-col items-start">
-          <span class="text-[10px] sm:text-xs font-black text-white drop-shadow">Lower Left</span>
-          <span class="gem-pct text-[9px] font-bold ${quadrantCleanliness.q4 >= 100 ? 'text-emerald-400' : 'text-amber-300'}">${Math.round(quadrantCleanliness.q4)}%</span>
-        </div>
-      </div>
-
       <!-- ================= 6. DEFLECT FLURRY & SPOKEN /LEARN NOTIFICATION BANNERS ================= -->
-      <div id="deflect-flurry-banner" class="absolute top-28 left-1/2 transform -translate-x-1/2 z-40 pointer-events-none transition-all duration-300 opacity-0 scale-90">
+      <div id="deflect-flurry-banner" class="absolute top-36 sm:top-40 left-1/2 transform -translate-x-1/2 z-40 pointer-events-none transition-all duration-300 opacity-0 scale-90">
         <div class="bg-gradient-to-r from-amber-500 via-rose-500 to-amber-500 text-slate-950 font-headline font-black text-xs sm:text-sm px-6 py-2.5 rounded-full shadow-[0_0_30px_rgba(245,158,11,0.95)] border-3 border-white animate-bounce flex items-center gap-2.5">
           <span id="deflect-hazard-emoji" class="text-xl">${currentSugarHazard?.emoji || '🍬'}</span>
           <span id="deflect-hazard-text">${currentSugarHazard ? `${currentSugarHazard.name.toUpperCase()} INCOMING! DEFLECT!` : 'SUGAR HAZARD! SCRUB TO DEFLECT!'}</span>
@@ -492,7 +451,7 @@ export function renderBattleView() {
         </div>
       </div>
 
-      <div id="rex-learn-banner" class="absolute top-28 left-1/2 transform -translate-x-1/2 z-40 pointer-events-none transition-all duration-300 opacity-0 scale-90 max-w-sm w-[92%]">
+      <div id="rex-learn-banner" class="absolute top-36 sm:top-40 left-1/2 transform -translate-x-1/2 z-40 pointer-events-none transition-all duration-300 opacity-0 scale-90 max-w-sm w-[92%]">
         <div class="bg-slate-900/95 border-3 border-amber-400 text-white font-headline p-3.5 rounded-3xl shadow-2xl flex items-center gap-3">
           <span class="text-3xl animate-bounce flex-shrink-0">🦖</span>
           <div class="flex-1 min-w-0">
@@ -546,6 +505,9 @@ export function renderBattleView() {
 
       <!-- ================= 10. CELEBRATORY VICTORY MODAL ================= -->
       ${renderVictoryModal(colState, currentBoss)}
+
+      <!-- ================= 11. REWARD-FREE DEFEAT MODAL (QUIT BEFORE TIMER ENDS) ================= -->
+      ${renderDefeatModal(colState)}
 
     </div>
   `;
@@ -642,6 +604,49 @@ function renderVictoryModal(colState, currentBoss) {
           </button>
           
           <button id="colosseum-play-again-btn" class="w-full py-2.5 min-h-[44px] rounded-2xl bg-slate-800 text-cyan-400 border-2 border-slate-700 font-headline font-bold text-xs uppercase hover:bg-slate-700 active:scale-95 transition-all flex items-center justify-center gap-1">
+            <span class="material-symbols-outlined text-base">replay</span> BATTLE AGAIN
+          </button>
+        </div>
+
+      </div>
+    </div>
+  `;
+}
+
+// Reward-free modal shown when a kid quits/backs out of a battle before the
+// timer finishes. Deliberately has no coins/xp/sparks/trophy row and never
+// touches the task/approval system -- finishing the full brush routine is
+// what earns those, matching the existing incentive messaging. Mirrors
+// renderVictoryModal()'s card shell so the two feel like one cohesive flow.
+function renderDefeatModal(colState) {
+  if (!colState.isDefeatModalOpen) return '';
+
+  const info = colState.defeatInfo || { bossName: 'The Hygiene Boss', bossAvatar: '🍬' };
+
+  return `
+    <div id="colosseum-defeat-modal" class="fixed inset-0 z-40 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+      <div class="w-full max-w-sm bg-[#1a1207] border-4 border-amber-500 rounded-3xl p-5 sm:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.9)] flex flex-col items-center text-center relative overflow-hidden">
+
+        <div class="relative mb-3 flex items-center justify-center">
+          <div class="absolute -inset-3 rounded-full bg-amber-500/30 blur-md"></div>
+          <div class="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-amber-500 bg-slate-900/90 overflow-hidden shadow-[0_0_35px_rgba(245,158,11,0.5)] flex items-center justify-center">
+            <img src="${sugarVillainEscapedImg}" alt="${info.bossName} escaped" class="w-full h-full object-cover" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\\'text-5xl\\'>${info.bossAvatar}</span>';" />
+          </div>
+        </div>
+
+        <h2 class="font-headline font-black text-xl sm:text-2xl text-amber-400 tracking-tight uppercase">
+          ${info.bossName} Escaped!
+        </h2>
+        <p class="font-headline font-bold text-xs text-slate-300 mt-1 mb-4">
+          Brush for the full routine next time to cleanse the villain, earn your sparks, and unlock your 3D HQ trophy!
+        </p>
+
+        <div class="w-full flex flex-col gap-2">
+          <button id="colosseum-defeat-return-btn" class="w-full py-3 min-h-[48px] rounded-2xl bg-amber-500 text-slate-950 font-headline font-black text-sm uppercase tracking-wider shadow-[0_6px_0_0_#b45309] hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-1.5">
+            <span class="material-symbols-outlined text-lg font-bold">apartment</span> RETURN TO HERO HQ
+          </button>
+
+          <button id="colosseum-defeat-retry-btn" class="w-full py-2.5 min-h-[44px] rounded-2xl bg-slate-800 text-cyan-400 border-2 border-slate-700 font-headline font-bold text-xs uppercase hover:bg-slate-700 active:scale-95 transition-all flex items-center justify-center gap-1">
             <span class="material-symbols-outlined text-base">replay</span> BATTLE AGAIN
           </button>
         </div>
@@ -839,17 +844,13 @@ function triggerDeflectFlurry() {
   isDeflectFlurryActive = true;
 
   if (!currentSugarHazard) {
-    currentSugarHazard = getRandomSugarHazard();
+    currentSugarHazard = getSugarHazardById(store.drawNextSugarHazardId(getActiveHeroId()));
     hanaBattle3DService.setHazard(currentSugarHazard);
   }
 
-  // Spawn primary hazard bomb and a trailing wave for an authentic arcade flurry
+  // One hazard bomb per flurry -- a trailing second bomb 450ms later made
+  // every attack a rapid-fire double-hit, which read as overly fast pacing.
   hanaBattle3DService.spawnCaramelBomb(currentSugarHazard);
-  setTimeout(() => {
-    if (isBattleRunning && !isBattlePaused && isDeflectFlurryActive) {
-      hanaBattle3DService.spawnCaramelBomb(currentSugarHazard);
-    }
-  }, 450);
 
   const banner = document.getElementById('deflect-flurry-banner');
   if (banner) {
@@ -1023,7 +1024,7 @@ export function advanceToBrushPhase() {
   lastSpokenQuadId = null;
 
   if (!currentSugarHazard) {
-    currentSugarHazard = getRandomSugarHazard();
+    currentSugarHazard = getSugarHazardById(store.drawNextSugarHazardId(getActiveHeroId()));
   }
   hanaBattle3DService.setHazard(currentSugarHazard);
 
@@ -1092,8 +1093,9 @@ export function startBattle() {
   hanaBattle3DService.setBoss(currentBoss);
   syncCockpitHUD();
   
-  // Pick random sugar hazard for this battle session
-  currentSugarHazard = getRandomSugarHazard();
+  // Draw this battle's sugar hazard from the kid's weekly rotation (cycles
+  // through all 7 before any repeat) instead of a flat random pick.
+  currentSugarHazard = getSugarHazardById(store.drawNextSugarHazardId(getActiveHeroId()));
   hanaBattle3DService.setHazard(currentSugarHazard);
 
   const hero = store.getSelectedHero ? store.getSelectedHero() : store.getState().selectedHero;
@@ -1518,26 +1520,26 @@ function stopBattleSensorsAndTimers() {
 }
 
 export function quitBattle() {
+  const wasMidBattle = isBattleRunning && secondsRemaining > 0;
   stopBattleSensorsAndTimers();
-
-  if (isBattleRunning && secondsRemaining > 0) {
-    isBattleRunning = false;
-    Sound.hit();
-    store.showReward(
-      'Boss Escaped!',
-      'The Hygiene Boss escaped! Brush for the full routine next time to cleanse the villain, earn your sparks, and unlock your 3D HQ trophy!',
-      0,
-      0,
-      sugarVillainEscapedImg,
-      'sentiment_dissatisfied'
-    );
-  }
-
   isBattleRunning = false;
   isBattlePaused = false;
   hasExplicitBossSelection = false;
   sessionRotatedBossId = null;
   battlePhase = 'brush';
+
+  if (wasMidBattle) {
+    // Show a real defeat modal (reward-free -- quitting early stays an
+    // incentive to finish, same as before) instead of a toast that
+    // immediately dumped the kid back to the dashboard. The modal's own
+    // button handles navigation once the kid is ready to leave.
+    Sound.hit();
+    const currentBoss = getBattleBoss(selectedBossId);
+    store.openColosseumDefeatModal({ bossId: currentBoss.id, bossName: currentBoss.name, bossAvatar: currentBoss.emoji || currentBoss.avatar });
+    store.notify();
+    return;
+  }
+
   const targetView = (store.state && store.state.previousView === 'quest_map') ? 'quest_map' : 'dashboard';
   store.navigate(targetView);
 }
@@ -1583,8 +1585,8 @@ function showComicHit(text) {
 export function attachBattleListeners() {
   const colState = store.getBossColosseumState ? store.getBossColosseumState() : {};
 
-  // Auto-launch battle immediately upon entering view if not running & not victory modal
-  if (!isBattleRunning && !colState.isVictoryModalOpen) {
+  // Auto-launch battle immediately upon entering view if not running & no end-of-battle modal is open
+  if (!isBattleRunning && !colState.isVictoryModalOpen && !colState.isDefeatModalOpen) {
     startBattle();
   }
 
@@ -1674,7 +1676,7 @@ export function attachBattleListeners() {
       combatWeapon: activeCombatWeapon,
       hasLaserEquipped: checkLaserToothbrushEquipped(),
       videoElement: document.getElementById('ar-camera-feed'),
-      preserveBattleState: Boolean(isBattleRunning || colState.isVictoryModalOpen),
+      preserveBattleState: Boolean(isBattleRunning || colState.isVictoryModalOpen || colState.isDefeatModalOpen),
       isVictory: Boolean(colState.isVictoryModalOpen || colState.hasAwardedVictory || hanaBattle3DService.isVictory),
       quadrantCleanliness: quadrantCleanliness
     });
@@ -1715,56 +1717,17 @@ export function attachBattleListeners() {
       sessionRotatedBossId = null;
       hanaBattle3DService.destroy();
 
-      // 1. Mark toothbrush_adventure_battle task completed
-      const state = store.getState();
-      const habit = state.habitIslands?.find(h => h.id === 'toothbrush_adventure_battle');
-      if (habit) {
-        habit.completed = true;
-        habit.pointsApproved = false;
-      }
-      const forestTask = state.taskForest?.find(t => t.id === 'toothbrush_adventure_battle');
-      if (forestTask) {
-        forestTask.completed = true;
-        forestTask.pointsApproved = false;
-      }
-
-      // 2. Add assigned tokens to balance without parent approval
-      const tokenReward = Number(state.parentSettings?.toothbrushBattleTokens !== undefined
-        ? state.parentSettings.toothbrushBattleTokens
-        : (habit?.coins !== undefined ? habit.coins : (habit?.rewardTokens || 30)));
-      const hero = store.getSelectedHero ? store.getSelectedHero() : state.selectedHero;
-      if (hero) {
-        hero.coins = (hero.coins || 0) + tokenReward;
-      }
-
-      // 3. Submit pending approval to store.addPendingApproval with parent-configured points
-      const parentPoints = Number(state.parentSettings?.toothbrushBattlePoints !== undefined
-        ? state.parentSettings.toothbrushBattlePoints
-        : (habit?.points !== undefined ? habit.points : 15));
-      const heroId = hero?.id || (store.getSelectedKidId ? store.getSelectedKidId() : 'hero_1');
-      const heroName = hero?.name || 'Little Hero';
-      const logId = 'task_log_tb_' + Date.now();
-      const approvalId = 'approval_tb_' + Date.now();
-
-      store.addPendingApproval({
-        id: approvalId,
-        logId: logId,
-        kidId: heroId,
-        kidName: heroName,
-        type: 'task_point_approval',
-        taskId: 'toothbrush_adventure_battle',
-        title: 'Toothbrush Adventure Battle: Defeated Boss',
-        zone: 'Hygiene AR Battle',
-        pendingPoints: parentPoints,
-        tokensAwarded: tokenReward,
-        date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        timestamp: new Date().toISOString(),
-        status: 'pending'
-      });
-
+      // NOTE: completing the battle (coins/XP/sparks auto-awarded, the
+      // toothbrush_adventure_battle habit marked done, and the parent-
+      // configured points submitted for approval) already happened the
+      // instant the timer hit zero, in concludeVictory() -> store.
+      // completeToothbrushBattle() (guarded by col.hasAwardedVictory so it
+      // can never double-fire). This button only needs to close the modal
+      // and navigate -- it used to also re-run all of that reward logic
+      // inline, which silently double-credited coins and submitted a second,
+      // duplicate pending-approval entry to the Parent Portal every time a
+      // kid clicked it.
       store.closeColosseumVictoryModal();
-      store.saveState(true);
-      store.notify();
       store.navigate('hero_hq');
     });
   }
@@ -1776,6 +1739,28 @@ export function attachBattleListeners() {
       battlePhase = 'brush';
       hanaBattle3DService.destroy();
       store.closeColosseumVictoryModal();
+      startBattle();
+    });
+  }
+
+  const defeatReturnBtn = document.getElementById('colosseum-defeat-return-btn');
+  if (defeatReturnBtn) {
+    defeatReturnBtn.addEventListener('click', () => {
+      Sound.tap();
+      hanaBattle3DService.destroy();
+      store.closeColosseumDefeatModal();
+      const targetView = (store.state && store.state.previousView === 'quest_map') ? 'quest_map' : 'dashboard';
+      store.navigate(targetView);
+    });
+  }
+
+  const defeatRetryBtn = document.getElementById('colosseum-defeat-retry-btn');
+  if (defeatRetryBtn) {
+    defeatRetryBtn.addEventListener('click', () => {
+      isBattleRunning = false;
+      battlePhase = 'brush';
+      hanaBattle3DService.destroy();
+      store.closeColosseumDefeatModal();
       startBattle();
     });
   }

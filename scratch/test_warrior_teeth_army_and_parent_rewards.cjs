@@ -118,17 +118,28 @@ async function runTests() {
   assert.ok(firedP.damage > 3.5 * 1.3, `Combo 20 scales projectile damage higher than base: ${firedP.damage.toFixed(2)}`);
   console.log(`  ✅ Combo 20 and weapon multiplier boosted counter-attack damage to ${firedP.damage.toFixed(2)}`);
 
-  // --- Test 6: Final Modal (#colosseum-visit-hq-btn) Complete Reward Flow ---
+  // --- Test 6: Final Modal (#colosseum-visit-hq-btn) does NOT double-award ---
   console.log('\n--- Test 6: Final Modal "#colosseum-visit-hq-btn" Reward Flow ---');
   // Configure parent points and tokens
   state.parentSettings.toothbrushBattleTokens = 40;
   state.parentSettings.toothbrushBattlePoints = 20;
 
-  const initialCoins = hero.coins || 0;
-  const initialPendingApprovals = (state.pendingApprovals || []).length;
+  // The real reward flow (coins/XP/sparks auto-awarded, toothbrush_adventure_battle
+  // marked completed, and parent-configured points submitted for approval) happens
+  // the instant the timer hits zero, in concludeVictory() -> store.
+  // completeToothbrushBattle() -- BEFORE the victory modal's button is ever
+  // clickable. This is what actually makes the modal/button appear.
+  store.initColosseumBattle('sugar_bandit', 120);
+  store.completeToothbrushBattle('sugar_bandit', 120, 85);
 
-  // Render modal
-  store.openColosseumVictoryModal({ bossName: 'Sugar Bandit', cleansedTitle: 'Minty Bandit' });
+  const refreshedHabit = state.habitIslands.find(h => h.id === 'toothbrush_adventure_battle');
+  assert.strictEqual(refreshedHabit.completed, true, 'toothbrush_adventure_battle marked completed by completeToothbrushBattle');
+  assert.strictEqual(store.getBossColosseumState().isVictoryModalOpen, true, 'completeToothbrushBattle opens the victory modal itself');
+
+  const coinsAfterCompletion = hero.coins;
+  const pendingApprovalsAfterCompletion = state.pendingApprovals.length;
+  assert.ok(pendingApprovalsAfterCompletion > 0, 'completeToothbrushBattle already queued a pending points approval');
+
   const battleViewHtml = renderBattleView();
   assert.ok(battleViewHtml.includes('id="colosseum-visit-hq-btn"'), 'Modal must contain #colosseum-visit-hq-btn');
   assert.ok(battleViewHtml.includes('VIEW TROPHY IN HERO HQ'), 'Button text must match');
@@ -143,30 +154,17 @@ async function runTests() {
   const visitHqBtn = document.getElementById('colosseum-visit-hq-btn');
   assert.ok(visitHqBtn, 'Visit HQ button found in DOM');
 
-  // Trigger click
+  // Trigger click -- this must NOT grant a second reward. The reward already
+  // happened above; clicking this button only closes the modal and navigates.
   visitHqBtn.click();
 
-  // 1. Task marked completed
-  const refreshedHabit = state.habitIslands.find(h => h.id === 'toothbrush_adventure_battle');
-  assert.strictEqual(refreshedHabit.completed, true, 'toothbrush_adventure_battle marked completed');
+  assert.strictEqual(hero.coins, coinsAfterCompletion, 'Clicking VIEW TROPHY IN HERO HQ must not award coins a second time');
+  assert.strictEqual(state.pendingApprovals.length, pendingApprovalsAfterCompletion, 'Clicking VIEW TROPHY IN HERO HQ must not submit a second pending approval');
+  assert.strictEqual(store.getBossColosseumState().isVictoryModalOpen, false, 'Clicking the button closes the victory modal');
 
-  // 2. Tokens automatically added to hero coins without approval
-  assert.strictEqual(hero.coins, initialCoins + 40, 'Hero received 40 tokens immediately without approval');
-
-  // 3. Pending approval submitted with exact parent points (20)
-  const matchingApproval = state.pendingApprovals.find(p => p.taskId === 'toothbrush_adventure_battle');
-  assert.ok(matchingApproval, 'A pending approval for toothbrush_adventure_battle exists');
-  assert.strictEqual(matchingApproval.pendingPoints, 20, 'Pending approval has exact parent-configured points (20)');
-  assert.strictEqual(matchingApproval.tokensAwarded, 40, 'Pending approval records auto-awarded tokens (40)');
-
-  // 4. Test re-entrancy / double-click prevention
-  const coinsAfterFirstClick = hero.coins;
-  visitHqBtn.click(); // second click should be ignored by submitting guard
-  assert.strictEqual(hero.coins, coinsAfterFirstClick, 'Double-click did not duplicate token award');
-
-  // 5. Clean up DOM
+  // Clean up DOM
   document.body.removeChild(domContainer);
-  console.log('  ✅ Final modal sequence: task completed, tokens auto-awarded, pending approval queued with parent points');
+  console.log('  ✅ Reward granted exactly once by completeToothbrushBattle(); the modal button only closes/navigates, no double-award');
 
   // --- Test 7: Voice line replacement verification ---
   console.log('\n--- Test 7: Coaching Voice Line Replacement ---');

@@ -56,6 +56,9 @@ export default {
         "on-background": "#d8e4f1",
         "surface-variant": "#2b3640",
       },
+      screens: {
+        "xs": "400px",
+      },
       borderRadius: {
         "DEFAULT": "0.5rem",
         "sm": "0.25rem",
