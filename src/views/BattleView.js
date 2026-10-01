@@ -1554,6 +1554,13 @@ export function quitBattle() {
     // button handles navigation once the kid is ready to leave.
     Sound.hit();
     const currentBoss = getBattleBoss(selectedBossId);
+    // Stop the 3D render loop now, same as every other end-of-battle path
+    // (victory/retry) already does. Without this the old animation-frame
+    // chain keeps ticking behind the modal on a now-detached canvas while
+    // the next render creates a fresh one, and the two can overlap for a
+    // frame -- producing a stray stale timestamp that makes dt briefly go
+    // negative and crashes the shockwave-ring renderer (negative arc radius).
+    hanaBattle3DService.destroy();
     store.openColosseumDefeatModal({ bossId: currentBoss.id, bossName: currentBoss.name, bossAvatar: currentBoss.emoji || currentBoss.avatar });
     store.notify();
     return;

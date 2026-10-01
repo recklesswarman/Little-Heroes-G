@@ -1,9 +1,10 @@
 import './setup_mock_env.js';
 import { store } from '../src/state/store.js';
-import { renderBattleView, attachBattleListeners, startBattle, abandonBattleIfRunning } from '../src/views/BattleView.js';
+import { renderBattleView, attachBattleListeners, startBattle, quitBattle, abandonBattleIfRunning } from '../src/views/BattleView.js';
 import { renderDashboardView, attachDashboardListeners } from '../src/views/DashboardView.js';
 import { renderQuestMapView, attachQuestMapListeners } from '../src/views/QuestMapView.js';
 import { renderWorldAdventureMapView, attachWorldAdventureMapListeners } from '../src/views/WorldAdventureMapView.js';
+import { hanaBattle3DService } from '../src/services/hanaBattle3DService.js';
 
 let passed = 0;
 let failed = 0;
@@ -151,6 +152,34 @@ if (switchBtn) {
 abandonBattleIfRunning();
 unsubscribe();
 store.navigate = originalNavigate;
+
+console.log('\n--- 7. Testing Negative-dt Guard in renderLoop (quit/restart overlap regression) ---');
+
+// Live-played repro: quitting mid-battle then hitting "Battle Again" could
+// leave an old render-loop animation-frame chain overlapping briefly with a
+// freshly re-initialized one, so a stale frame delivered a timestamp EARLIER
+// than the already-advanced this.lastTime -- producing a negative dt that
+// made every dt-scaled value (shockwave ring radii, etc.) shrink instead of
+// grow, eventually going negative and throwing IndexSizeError from
+// ctx.arc(). renderLoop() now clamps dt to >= 0; this.clock (incremented by
+// dt every frame regardless of whether a real 2D context is present) must
+// never go backwards even when fed a stale/earlier timestamp.
+hanaBattle3DService.isDestroyed = false; // exercise the dt computation itself, regardless of prior test state
+const clockBefore = hanaBattle3DService.clock;
+hanaBattle3DService.lastTime = 50000;
+hanaBattle3DService.renderLoop(49500); // a stale frame, timestamp BEFORE lastTime
+assert(hanaBattle3DService.lastTime === 49500, 'lastTime still tracks the most recently seen frame timestamp (renderLoop actually ran, not short-circuited)');
+assert(hanaBattle3DService.clock >= clockBefore, 'renderLoop never lets the clock go backwards even when fed a stale/earlier timestamp (dt clamped to >= 0)');
+hanaBattle3DService.destroy(); // stop the self-rescheduling loop this direct call just started
+
+// Also confirm quitBattle() actually stops the render loop instead of leaving
+// it running behind the new defeat modal -- the root cause of the overlap.
+document.body.innerHTML = renderBattleView();
+attachBattleListeners();
+startBattle();
+quitBattle();
+assert(hanaBattle3DService.isDestroyed === true, 'quitBattle() mid-battle stops the 3D render loop (destroy()) instead of leaving a stale one running behind the defeat modal');
+abandonBattleIfRunning();
 
 console.log(`\n=============================================`);
 console.log(`TEST RESULTS: ${passed} PASSED, ${failed} FAILED`);
