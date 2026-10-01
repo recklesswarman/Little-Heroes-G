@@ -1693,15 +1693,35 @@ class Store {
   // ROUTINE & TASK QUERY HELPERS
   isTaskPendingApproval(taskId, heroId = null) {
     const kidId = heroId || this.state.selectedHero?.id;
+    const aliasGroup = (id) => {
+      if (id === 'bedtime_brush' || id === 'brush_teeth_pm' || id === 'wp_night_teeth' || id === 'sugar_fortress_night_showdown') {
+        return ['bedtime_brush', 'brush_teeth_pm', 'wp_night_teeth', 'sugar_fortress_night_showdown'];
+      }
+      if (id === 'morning_brush' || id === 'brush_teeth_am' || id === 'wp_morning_teeth') {
+        return ['morning_brush', 'brush_teeth_am', 'wp_morning_teeth'];
+      }
+      return [id];
+    };
+    const targetIds = aliasGroup(taskId);
     return (this.state.pendingApprovals || []).some(
-      (r) => r.taskId === taskId && (!kidId || r.kidId === kidId) && r.status === 'pending'
+      (r) => targetIds.includes(r.taskId) && (!kidId || r.kidId === kidId) && r.status === 'pending'
     );
   }
 
   getTaskCompletions(taskId, heroId = null) {
     const kidId = heroId || this.state.selectedHero?.id;
+    const aliasGroup = (id) => {
+      if (id === 'bedtime_brush' || id === 'brush_teeth_pm' || id === 'wp_night_teeth' || id === 'sugar_fortress_night_showdown') {
+        return ['bedtime_brush', 'brush_teeth_pm', 'wp_night_teeth', 'sugar_fortress_night_showdown'];
+      }
+      if (id === 'morning_brush' || id === 'brush_teeth_am' || id === 'wp_morning_teeth') {
+        return ['morning_brush', 'brush_teeth_am', 'wp_morning_teeth'];
+      }
+      return [id];
+    };
+    const targetIds = aliasGroup(taskId);
     return (this.state.taskCompletionLogs || []).filter(
-      (l) => l.taskId === taskId && (!kidId || l.heroId === kidId)
+      (l) => targetIds.includes(l.taskId) && (!kidId || l.heroId === kidId)
     );
   }
 
@@ -2250,21 +2270,31 @@ class Store {
     pStats.joy = Math.min(100, (pStats.joy || 80) + 20);
 
     // 3. Morning / Bedtime Habit Auto-Verification (Pending parent sign-off for Gold Points)
-    const isMorning = !this.isNighttimeToothbrushBattle();
+    const isEveningBattle = this.isNighttimeToothbrushBattle() || bossId === 'sugar_boss' || this.state.previousView === 'bedtime_story';
+    const isMorning = !isEveningBattle;
     if (isMorning) {
       this.state.lastBrushedMorning = todayStr;
-      const morningTask = this.state.taskForest ? this.state.taskForest.find(t => t.id === 'morning_brush' || t.id === 'brush_teeth_am' || t.id === 'brush_teeth') : null;
+      if (currentHero) {
+        if (!currentHero.dentalHabits) currentHero.dentalHabits = {};
+        currentHero.dentalHabits.morningBrushDate = todayStr;
+      }
+      const morningTask = this.state.taskForest ? this.state.taskForest.find(t => t.id === 'morning_brush' || t.id === 'brush_teeth_am' || t.id === 'brush_teeth' || t.id === 'wp_morning_teeth') : null;
       if (morningTask) {
         morningTask.completed = true;
         morningTask.pointsApproved = false;
       }
     } else {
       this.state.lastBrushedEvening = todayStr;
-      const eveningTask = this.state.taskForest ? this.state.taskForest.find(t => t.id === 'bedtime_brush' || t.id === 'night_bedtime' || t.id === 'brush_teeth_pm' || t.id === 'brush_teeth') : null;
+      if (currentHero) {
+        if (!currentHero.dentalHabits) currentHero.dentalHabits = {};
+        currentHero.dentalHabits.bedtimeBrushDate = todayStr;
+      }
+      const eveningTask = this.state.taskForest ? this.state.taskForest.find(t => t.id === 'bedtime_brush' || t.id === 'night_bedtime' || t.id === 'brush_teeth_pm' || t.id === 'wp_night_teeth' || t.id === 'brush_teeth') : null;
       if (eveningTask) {
         eveningTask.completed = true;
         eveningTask.pointsApproved = false;
       }
+      this.syncHabitPetCare('brush_teeth', 'daily_routine');
     }
     const habitBrush = this.state.habitIslands ? this.state.habitIslands.find(h => h.id === 'toothbrush_adventure_battle' || h.id === 'brush_teeth' || h.id === 'brush_teeth_am' || h.id === 'brush_teeth_pm') : null;
     if (habitBrush) {
@@ -2346,10 +2376,11 @@ class Store {
 
     // 6. Audit Log for Parent Portal Pillar 1 & Pillar 2 (Queued for Parent Verification of Points)
     const logId = 'brush_log_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
-    const approvalReqId = 'task_brush_' + (isMorning ? 'morning_brush' : 'bedtime_brush') + '_' + Date.now();
+    const taskIdForLog = isMorning ? 'morning_brush' : 'brush_teeth_pm';
+    const approvalReqId = 'task_brush_' + taskIdForLog + '_' + Date.now();
     const completionLog = {
       id: logId,
-      taskId: isMorning ? 'morning_brush' : 'bedtime_brush',
+      taskId: taskIdForLog,
       taskTitle: `Toothbrush AR Battle: Defeated ${boss.name}`,
       zone: 'Hygiene AR Battle',
       category: 'hygiene',
@@ -3829,6 +3860,7 @@ class Store {
 
   setSelectedBossId(bossId, skipNotify = false) {
     this.state.selectedBossId = bossId;
+    this.state.hasExplicitBossSelection = true;
     if (!skipNotify) this.notify();
   }
 
@@ -5685,7 +5717,7 @@ class Store {
   // After 5:00 PM (17:00), before 5:00 AM, or during bedtime routines.
   isNighttimeToothbrushBattle() {
     const hour = new Date().getHours();
-    return hour >= 17 || hour < 5 || this.state.activeView === 'bedtime_story';
+    return hour >= 17 || hour < 5 || this.state.activeView === 'bedtime_story' || this.state.previousView === 'bedtime_story' || this.state.selectedBossId === 'sugar_boss';
   }
 
   // Directly acknowledge a hygiene reminder (floss or mouthwash) for a kid.

@@ -25,7 +25,8 @@ const testFiles = [
   'scratch/test_battle_visual_refresh.cjs',
   'scratch/test_warrior_teeth_army_and_parent_rewards.cjs',
   'scratch/test_elevenlabs_tts_cache.cjs',
-  'scratch/verify_toothbrush_launch_and_no_freeze.mjs'
+  'scratch/verify_toothbrush_launch_and_no_freeze.mjs',
+  'scratch/verify_bedtime_quest7_sugar_fortress.mjs'
 ];
 
 let allPassed = true;

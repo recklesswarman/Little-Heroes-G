@@ -284,7 +284,7 @@ class HanaBattle3DService {
   handleResize() {
     if (!this.canvas) return;
     const parent = this.canvas.parentElement;
-    const rect = parent ? parent.getBoundingClientRect() : { width: 600, height: 420 };
+    const rect = (parent && typeof parent.getBoundingClientRect === 'function') ? parent.getBoundingClientRect() : { width: 600, height: 420 };
     this.width = Math.max(320, rect.width || 600);
     this.height = Math.max(260, rect.height || 420);
 
@@ -413,7 +413,7 @@ class HanaBattle3DService {
 
   setBoss(bossData, quadrantCleanliness = null) {
     if (!bossData) return;
-    const bId = bossData.id || 'sugar_bandit';
+    const bId = (bossData.id === 'sugar_boss' || bossData.meshType === 'sugar_bandit') ? 'sugar_bandit' : (bossData.id || 'sugar_bandit');
     let bodyColor = '#d97706';
     let armorColor = '#f59e0b';
     let bombColor = '#f59e0b';
@@ -1302,7 +1302,7 @@ class HanaBattle3DService {
   }
 
   renderProceduralBossFallback(ctx, baseRadius) {
-    const bId = this.bossData.id;
+    const bId = (this.bossData.id === 'sugar_boss' || this.bossData.meshType === 'sugar_bandit') ? 'sugar_bandit' : this.bossData.id;
 
     if (bId === 'plaque_kraken') {
       ctx.fillStyle = this.bossData.bodyColor || '#0891b2';

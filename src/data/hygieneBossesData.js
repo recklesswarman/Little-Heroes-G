@@ -324,6 +324,16 @@ export const DENTAL_QUADRANTS = [
 ];
 
 export function getHygieneBoss(bossId) {
+  if (bossId === 'sugar_boss') {
+    const bandit = HYGIENE_BOSSES.find(b => b.id === 'sugar_bandit') || HYGIENE_BOSSES[0];
+    return {
+      ...bandit,
+      id: 'sugar_boss',
+      meshType: 'sugar_bandit',
+      title: 'Sugar Fortress Night Showdown',
+      name: 'The Sugar Bandit King'
+    };
+  }
   return HYGIENE_BOSSES.find(b => b.id === bossId) || HYGIENE_BOSSES[0];
 }
 

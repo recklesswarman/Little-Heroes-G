@@ -150,7 +150,14 @@ export function renderBedtimeStoryView() {
 function renderSanctuaryHub(library, sanctuary, hero, pet, availableMorals) {
   const today = new Date().toDateString();
   const isPajamasDone = sanctuary.pajamasCompletedDate === today;
-  const isTeethDone = Boolean(hero.dentalHabits?.bedtimeBrushDate === today || hero.taskForest?.some(t => t.id === 'teeth' && t.completed));
+  const isTeethDone = Boolean(
+    hero.dentalHabits?.bedtimeBrushDate === today ||
+    store.state.lastBrushedEvening === today ||
+    store.getTaskCompletionsToday('brush_teeth_pm', hero.id).length > 0 ||
+    store.getTaskCompletionsToday('bedtime_brush', hero.id).length > 0 ||
+    store.getTaskCompletionsToday('wp_night_teeth', hero.id).length > 0 ||
+    hero.taskForest?.some(t => (t.id === 'teeth' || t.id === 'bedtime_brush' || t.id === 'brush_teeth_pm') && t.completed)
+  );
   const narrationMode = sanctuary.narrationMode || 'rex';
   const selectedMoralId = sanctuary.selectedMoralId || (availableMorals[0]?.id || 'brave_dark');
 
@@ -187,25 +194,31 @@ function renderSanctuaryHub(library, sanctuary, hero, pet, availableMorals) {
       <!-- 3-STEP EVENING WIND-DOWN PROGRESSION (Responsive: stacks neatly on phone, 3-cols on tablet) -->
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         
-        <!-- STEP 1: BRUSH TEETH -->
-        <div class="bg-[#09141e] border-2 ${isTeethDone ? 'border-[#2ecc71]/40 bg-[#081c15]' : 'border-surface-container-highest'} rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between gap-3">
+        <!-- STEP 1: BRUSH TEETH (Connected to Quest 7: Sugar Fortress Night Showdown) -->
+        <div class="bg-[#09141e] border-2 ${isTeethDone ? 'border-[#2ecc71]/40 bg-[#081c15]' : 'border-[#ffb961]/40 shadow-[0_0_15px_rgba(255,185,97,0.12)]'} rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between gap-3">
           <div class="flex items-start justify-between">
-            <div class="w-10 h-10 rounded-xl bg-[#0f2334] flex items-center justify-center text-xl">🪥</div>
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
-              isTeethDone ? 'bg-[#2ecc71]/20 text-[#2ecc71]' : 'bg-[#ffb961]/20 text-[#ffb961]'
-            }">
-              ${isTeethDone ? 'Completed ✨' : 'Step 1'}
-            </span>
+            <div class="w-10 h-10 rounded-xl bg-[#0f2334] flex items-center justify-center text-xl shadow-inner border border-surface-container-highest">🪥</div>
+            <div class="flex flex-col items-end">
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                isTeethDone ? 'bg-[#2ecc71]/20 text-[#2ecc71] border border-[#2ecc71]/30' : 'bg-[#ffb961]/20 text-[#ffb961] border border-[#ffb961]/30'
+              }">
+                ${isTeethDone ? 'Completed ✨' : 'Quest 7 • Step 1'}
+              </span>
+              <span class="text-[9px] font-extrabold text-[#ffb961] mt-0.5 uppercase tracking-wider">Map Quest 7</span>
+            </div>
           </div>
           <div>
-            <h3 class="font-headline font-black text-sm text-white">Evening Toothbrush</h3>
-            <p class="text-[11px] text-slate-300 mt-0.5">Fight sugar bugs for 2 sparkling minutes</p>
+            <div class="flex items-center gap-1.5">
+              <h3 class="font-headline font-black text-sm text-white">Evening Toothbrush</h3>
+              <span class="material-symbols-outlined text-xs text-[#ffb961]">swords</span>
+            </div>
+            <p class="text-[11px] text-slate-300 mt-0.5 font-medium">Sugar Fortress Night Showdown (2-Min Routine)</p>
           </div>
           <button id="step-launch-toothbrush-btn" class="w-full py-2.5 sm:py-2 min-h-[44px] rounded-xl ${
-            isTeethDone ? 'bg-[#0f2334] text-slate-300' : 'bg-[#2ecc71] text-black font-black'
-          } font-headline text-xs flex items-center justify-center gap-1 active:scale-95 transition-all">
-            <span class="material-symbols-outlined text-sm">${isTeethDone ? 'check_circle' : 'dentistry'}</span>
-            <span>${isTeethDone ? 'Brushed Clean' : 'Start 2-Min Routine'}</span>
+            isTeethDone ? 'bg-[#0f2334] text-slate-300 hover:text-white' : 'bg-gradient-to-r from-amber-500 to-red-500 text-white font-black shadow-[0_4px_0_0_#78350f]'
+          } font-headline text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer">
+            <span class="material-symbols-outlined text-sm">${isTeethDone ? 'check_circle' : 'swords'}</span>
+            <span>${isTeethDone ? 'Brushed Clean ✨' : 'Start 2-Min Routine'}</span>
           </button>
         </div>
 
@@ -767,10 +780,12 @@ export function setupBedtimeStoryListeners() {
     store.notify();
   });
 
-  // Routine Step 1: Launch Toothbrush routine
+  // Routine Step 1: Launch Toothbrush routine (Connected to Quest 7: Sugar Fortress Night Showdown)
   document.getElementById('step-launch-toothbrush-btn')?.addEventListener('click', () => {
     Sound.tap();
-    store.navigate('dental_battle');
+    store.state.previousView = 'bedtime_story';
+    store.setSelectedBossId('sugar_boss', true);
+    store.navigate('ar_battle');
   });
 
   // Routine Step 2: Complete Pajamas & Tidy Up

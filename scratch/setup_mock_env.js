@@ -1,6 +1,18 @@
 // setup_mock_env.js
 // Polyfills headless environment for Node.js test execution
 
+if (typeof globalThis.Image === 'undefined') {
+  globalThis.Image = class Image {
+    constructor() {
+      this.src = '';
+      this.width = 100;
+      this.height = 100;
+      this.onload = null;
+      this.onerror = null;
+    }
+  };
+}
+
 if (typeof globalThis.CustomEvent === 'undefined') {
   globalThis.CustomEvent = class CustomEvent {
     constructor(type, params = {}) {

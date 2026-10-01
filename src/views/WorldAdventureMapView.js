@@ -656,6 +656,12 @@ export function attachWorldAdventureMapListeners() {
     launchBossBtn.addEventListener('click', () => {
       Sound.click();
       voicePrompts.speak("3, 2, 1, BRUSH!", null, null, { instant: true });
+      const hero = store.getState().selectedHero;
+      const nextWaypoint = PATH_OF_VALOR_WAYPOINTS.find(w => !isWaypointDone(w, hero)) || PATH_OF_VALOR_WAYPOINTS[0];
+      if (nextWaypoint?.linkedBossId) {
+        store.setSelectedBossId(nextWaypoint.linkedBossId, true);
+      }
+      store.state.previousView = 'quest_map';
       store.navigate('ar_battle');
     });
   }
@@ -705,8 +711,13 @@ export function attachWorldAdventureMapListeners() {
   const modalBossBtn = document.getElementById('modal-boss-fight-btn');
   if (modalBossBtn) {
     modalBossBtn.addEventListener('click', () => {
+      const bossId = selectedModalWaypoint?.linkedBossId;
       selectedModalWaypoint = null;
       Sound.click();
+      if (bossId) {
+        store.setSelectedBossId(bossId, true);
+      }
+      store.state.previousView = 'quest_map';
       store.navigate('ar_battle');
     });
   }

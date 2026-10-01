@@ -155,6 +155,16 @@ export function getBattleBoss(bossId) {
       attackType: foundCustom.attackType || 'caramel_bomb'
     };
   }
+  if (currentSelectedId === 'sugar_boss') {
+    const bandit = HYGIENE_BOSSES.find(b => b.id === 'sugar_bandit') || HYGIENE_BOSSES[0];
+    return {
+      ...bandit,
+      id: 'sugar_boss',
+      meshType: 'sugar_bandit',
+      title: 'Sugar Fortress Night Showdown',
+      name: 'The Sugar Bandit King'
+    };
+  }
   const preset = HYGIENE_BOSSES.find(b => b.id === currentSelectedId);
   return preset || HYGIENE_BOSSES[0];
 }
@@ -223,17 +233,16 @@ function checkLaserToothbrushEquipped() {
 // MAIN BATTLE VIEW RENDER FUNCTION: FULL-SCREEN VIBRANT 3D ARCADE VIEWPORT
 // =========================================================================
 export function renderBattleView() {
-  if (!hasExplicitBossSelection && !isBattleRunning && !store.getBossColosseumState()?.isVictoryModalOpen && !store.getBossColosseumState()?.isDefeatModalOpen) {
+  const isExplicit = hasExplicitBossSelection || store.state?.hasExplicitBossSelection || store.state?.selectedBossId === 'sugar_boss';
+  if (!isExplicit && !isBattleRunning && !store.getBossColosseumState()?.isVictoryModalOpen && !store.getBossColosseumState()?.isDefeatModalOpen) {
     if (!sessionRotatedBossId) {
       const randomIndex = Math.floor(Math.random() * ROTATING_VILLAINS.length);
       sessionRotatedBossId = ROTATING_VILLAINS[randomIndex];
     }
     selectedBossId = sessionRotatedBossId;
     if (store.state) store.state.selectedBossId = selectedBossId;
-  } else if (hasExplicitBossSelection) {
-    selectedBossId = store.getSelectedBossId ? store.getSelectedBossId() : selectedBossId;
   } else {
-    selectedBossId = store.getSelectedBossId ? store.getSelectedBossId() : selectedBossId;
+    selectedBossId = store.getSelectedBossId ? store.getSelectedBossId() : (store.state?.selectedBossId || selectedBossId);
   }
   const currentBoss = getBattleBoss(selectedBossId);
   const colState = store.getBossColosseumState ? store.getBossColosseumState() : {};
@@ -599,11 +608,21 @@ function renderVictoryModal(colState, currentBoss) {
         ` : ''}
 
         <div class="w-full flex flex-col gap-2">
-          <button id="colosseum-visit-hq-btn" class="w-full py-3 min-h-[48px] rounded-2xl bg-emerald-500 text-slate-950 font-headline font-black text-sm uppercase tracking-wider shadow-[0_6px_0_0_#047857] hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-1.5">
+          <button id="colosseum-visit-hq-btn" class="w-full py-3 min-h-[48px] rounded-2xl bg-emerald-500 text-slate-950 font-headline font-black text-sm uppercase tracking-wider shadow-[0_6px_0_0_#047857] hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer">
             <span class="material-symbols-outlined text-lg font-bold">apartment</span> VIEW TROPHY IN HERO HQ
           </button>
+
+          ${store.state?.previousView === 'bedtime_story' ? `
+            <button id="colosseum-return-bedtime-btn" class="w-full py-3 min-h-[44px] rounded-2xl bg-gradient-to-r from-[#00d2d3] to-[#0284c7] text-[#050f18] font-headline font-black text-xs uppercase tracking-wider shadow-[0_4px_0_0_#05253b] hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+              <span class="material-symbols-outlined text-base">auto_stories</span> CONTINUE BEDTIME ROUTINE (STEP 2)
+            </button>
+          ` : store.state?.previousView === 'quest_map' ? `
+            <button id="colosseum-return-map-btn" class="w-full py-2.5 min-h-[44px] rounded-2xl bg-slate-800 text-amber-400 border border-amber-400/40 font-headline font-bold text-xs uppercase hover:bg-slate-700 active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer">
+              <span class="material-symbols-outlined text-base">explore</span> RETURN TO WORLD MAP (QUEST 7)
+            </button>
+          ` : ''}
           
-          <button id="colosseum-play-again-btn" class="w-full py-2.5 min-h-[44px] rounded-2xl bg-slate-800 text-cyan-400 border-2 border-slate-700 font-headline font-bold text-xs uppercase hover:bg-slate-700 active:scale-95 transition-all flex items-center justify-center gap-1">
+          <button id="colosseum-play-again-btn" class="w-full py-2.5 min-h-[44px] rounded-2xl bg-slate-800 text-cyan-400 border-2 border-slate-700 font-headline font-bold text-xs uppercase hover:bg-slate-700 active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer">
             <span class="material-symbols-outlined text-base">replay</span> BATTLE AGAIN
           </button>
         </div>
@@ -1079,7 +1098,8 @@ export function startBattle() {
   isBattleRunning = true;
   isBattlePaused = false;
 
-  if (!hasExplicitBossSelection) {
+  const isExplicit = hasExplicitBossSelection || store.state?.hasExplicitBossSelection || store.state?.selectedBossId === 'sugar_boss';
+  if (!isExplicit) {
     if (!sessionRotatedBossId) {
       const randomIndex = Math.floor(Math.random() * ROTATING_VILLAINS.length);
       sessionRotatedBossId = ROTATING_VILLAINS[randomIndex];
@@ -1087,7 +1107,7 @@ export function startBattle() {
     selectedBossId = sessionRotatedBossId;
     if (store.state) store.state.selectedBossId = selectedBossId;
   } else {
-    selectedBossId = store.getSelectedBossId ? store.getSelectedBossId() : selectedBossId;
+    selectedBossId = store.getSelectedBossId ? store.getSelectedBossId() : (store.state?.selectedBossId || selectedBossId);
   }
   const currentBoss = getBattleBoss(selectedBossId);
   hanaBattle3DService.setBoss(currentBoss);
@@ -1527,7 +1547,6 @@ export function quitBattle() {
   hasExplicitBossSelection = false;
   sessionRotatedBossId = null;
   battlePhase = 'brush';
-
   if (wasMidBattle) {
     // Show a real defeat modal (reward-free -- quitting early stays an
     // incentive to finish, same as before) instead of a toast that
@@ -1540,7 +1559,11 @@ export function quitBattle() {
     return;
   }
 
-  const targetView = (store.state && store.state.previousView === 'quest_map') ? 'quest_map' : 'dashboard';
+  const targetView = (store.state && store.state.previousView === 'quest_map')
+    ? 'quest_map'
+    : (store.state && store.state.previousView === 'bedtime_story')
+      ? 'bedtime_story'
+      : 'dashboard';
   store.navigate(targetView);
 }
 
@@ -1732,6 +1755,38 @@ export function attachBattleListeners() {
     });
   }
 
+  const returnBedtimeBtn = document.getElementById('colosseum-return-bedtime-btn');
+  if (returnBedtimeBtn) {
+    returnBedtimeBtn.addEventListener('click', () => {
+      if (returnBedtimeBtn.dataset.submitting === 'true') return;
+      returnBedtimeBtn.dataset.submitting = 'true';
+      Sound.tap();
+      isBattleRunning = false;
+      battlePhase = 'brush';
+      hasExplicitBossSelection = false;
+      sessionRotatedBossId = null;
+      hanaBattle3DService.destroy();
+      store.closeColosseumVictoryModal();
+      store.navigate('bedtime_story');
+    });
+  }
+
+  const returnMapBtn = document.getElementById('colosseum-return-map-btn');
+  if (returnMapBtn) {
+    returnMapBtn.addEventListener('click', () => {
+      if (returnMapBtn.dataset.submitting === 'true') return;
+      returnMapBtn.dataset.submitting = 'true';
+      Sound.tap();
+      isBattleRunning = false;
+      battlePhase = 'brush';
+      hasExplicitBossSelection = false;
+      sessionRotatedBossId = null;
+      hanaBattle3DService.destroy();
+      store.closeColosseumVictoryModal();
+      store.navigate('quest_map');
+    });
+  }
+
   const playAgainBtn = document.getElementById('colosseum-play-again-btn');
   if (playAgainBtn) {
     playAgainBtn.addEventListener('click', () => {
@@ -1749,7 +1804,11 @@ export function attachBattleListeners() {
       Sound.tap();
       hanaBattle3DService.destroy();
       store.closeColosseumDefeatModal();
-      const targetView = (store.state && store.state.previousView === 'quest_map') ? 'quest_map' : 'dashboard';
+      const targetView = (store.state && store.state.previousView === 'quest_map')
+        ? 'quest_map'
+        : (store.state && store.state.previousView === 'bedtime_story')
+          ? 'bedtime_story'
+          : 'dashboard';
       store.navigate(targetView);
     });
   }

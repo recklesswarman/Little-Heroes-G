@@ -243,6 +243,7 @@ function renderApp() {
       break;
     case 'battle':
     case 'ar_battle':
+    case 'dental_battle':
     case 'boost':
     case '/boost':
       mainContent = renderBattleView();
