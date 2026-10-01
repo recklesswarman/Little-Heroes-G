@@ -304,6 +304,8 @@ export function renderDashboardView() {
                 `;
               }
 
+              const isToothbrushHabit = h.isAR || h.id?.includes('brush') || h.id === 'toothbrush_adventure_battle';
+
               return `
               <div data-habit-card-id="${h.id}" class="habit-card-item tactile-card bg-surface-container rounded-3xl p-3.5 sm:p-4 flex items-center justify-between gap-2.5 sm:gap-3.5 border-2 ${
                 isPending
@@ -339,14 +341,26 @@ export function renderDashboardView() {
                   </div>
                 </div>
 
-                <div class="flex items-center justify-center flex-shrink-0">
-                  <button data-habit-id="${h.id}" class="habit-check-btn tactile-check-btn ${btnClass} rounded-2xl w-14 h-14 min-w-[56px] min-h-[56px] sm:w-16 sm:h-16 sm:min-w-[64px] sm:min-h-[64px] flex items-center justify-center flex-shrink-0 active:scale-95 shadow-chunky-sm relative" title="${btnTitle}">
-                    <span class="material-symbols-outlined text-2xl sm:text-3xl font-black text-white" style="font-variation-settings: 'FILL' 1;">
-                      check
-                    </span>
-                    ${pendingBadgeHtml}
-                  </button>
-                </div>
+                ${
+                  isToothbrushHabit
+                    ? `
+                  <div class="flex items-center justify-center flex-shrink-0">
+                    <button data-habit-ar-id="${h.id}" class="habit-ar-launch-btn ${isPending ? 'bg-amber-600 border-amber-800' : 'bg-error border-error-container'} text-white font-headline text-xs font-black min-h-[56px] px-4 py-2.5 rounded-2xl chunky-btn shadow-chunky-sm flex items-center gap-1.5 hover:brightness-110 active:scale-95 flex-shrink-0" title="${isPending ? 'Toothbrush Battle Submitted (Pending Parent)' : 'Launch Toothbrush AR Battle'}">
+                      <span class="material-symbols-outlined text-base">${isPending ? 'hourglass_top' : 'play_arrow'}</span> ${isPending ? 'Pending' : 'Battle'}
+                    </button>
+                  </div>
+                `
+                    : `
+                  <div class="flex items-center justify-center flex-shrink-0">
+                    <button data-habit-id="${h.id}" class="habit-check-btn tactile-check-btn ${btnClass} rounded-2xl w-14 h-14 min-w-[56px] min-h-[56px] sm:w-16 sm:h-16 sm:min-w-[64px] sm:min-h-[64px] flex items-center justify-center flex-shrink-0 active:scale-95 shadow-chunky-sm relative" title="${btnTitle}">
+                      <span class="material-symbols-outlined text-2xl sm:text-3xl font-black text-white" style="font-variation-settings: 'FILL' 1;">
+                        check
+                      </span>
+                      ${pendingBadgeHtml}
+                    </button>
+                  </div>
+                `
+                }
               </div>
             `;
             })
@@ -670,7 +684,19 @@ export function attachDashboardListeners() {
       const habitId = card.getAttribute('data-habit-card-id');
       const habit = (store.getState().habitIslands || []).find((h) => h.id === habitId);
       triggerQuestVoice(habit?.title || '', habitId || '', habit?.desc || '');
-      if (habitId) store.toggleHabitIsland(habitId);
+      const isAR = card.querySelector('.habit-ar-launch-btn');
+      if (isAR) {
+        launchToothbrushBattle();
+      } else if (habitId) {
+        store.toggleHabitIsland(habitId);
+      }
+    });
+  });
+
+  document.querySelectorAll('.habit-ar-launch-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      launchToothbrushBattle();
     });
   });
 

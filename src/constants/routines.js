@@ -134,6 +134,7 @@ export const HABIT_ISLANDS = [
     xp: 35,
     completed: false,
     pointsApproved: false,
+    isAR: true,
     desc: 'Battle sugar bug villains for 2 minutes to protect your enamel and earn shiny hero tokens!'
   }
 ];

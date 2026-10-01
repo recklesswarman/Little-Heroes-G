@@ -221,7 +221,7 @@ export function renderBattleView() {
       sessionRotatedBossId = ROTATING_VILLAINS[randomIndex];
     }
     selectedBossId = sessionRotatedBossId;
-    if (store.setSelectedBossId) store.setSelectedBossId(selectedBossId);
+    if (store.state) store.state.selectedBossId = selectedBossId;
   } else if (hasExplicitBossSelection) {
     selectedBossId = store.getSelectedBossId ? store.getSelectedBossId() : selectedBossId;
   } else {
@@ -1059,21 +1059,38 @@ export function advanceToBrushPhase() {
 }
 
 export function startBattle() {
+  if (battleTimer) {
+    clearInterval(battleTimer);
+    battleTimer = null;
+  }
+  if (bombTimer) {
+    clearInterval(bombTimer);
+    bombTimer = null;
+  }
+  if (motionCheckInterval) {
+    clearInterval(motionCheckInterval);
+    motionCheckInterval = null;
+  }
+  if (autoAssistInterval) {
+    clearInterval(autoAssistInterval);
+    autoAssistInterval = null;
+  }
+  isBattleRunning = true;
+  isBattlePaused = false;
+
   if (!hasExplicitBossSelection) {
     if (!sessionRotatedBossId) {
       const randomIndex = Math.floor(Math.random() * ROTATING_VILLAINS.length);
       sessionRotatedBossId = ROTATING_VILLAINS[randomIndex];
     }
     selectedBossId = sessionRotatedBossId;
-    if (store.setSelectedBossId) store.setSelectedBossId(selectedBossId);
+    if (store.state) store.state.selectedBossId = selectedBossId;
   } else {
     selectedBossId = store.getSelectedBossId ? store.getSelectedBossId() : selectedBossId;
   }
   const currentBoss = getBattleBoss(selectedBossId);
   hanaBattle3DService.setBoss(currentBoss);
   syncCockpitHUD();
-  isBattleRunning = true;
-  isBattlePaused = false;
   
   // Pick random sugar hazard for this battle session
   currentSugarHazard = getRandomSugarHazard();
@@ -1109,7 +1126,7 @@ export function startBattle() {
   quadrantCleanliness = { q1: 0, q2: 0, q3: 0, q4: 0, q5: 0 };
   lastProgressTimestamp = { q1: 0, q2: 0, q3: 0, q4: 0, q5: 0 };
 
-  store.initColosseumBattle(selectedBossId, totalDuration);
+  store.initColosseumBattle(selectedBossId, totalDuration, true);
 
   Sound.startBattleRhythm();
   initSensors();
@@ -1618,7 +1635,7 @@ export function attachBattleListeners() {
         hasExplicitBossSelection = true;
         sessionRotatedBossId = vId;
         selectedBossId = vId;
-        if (store.setSelectedBossId) store.setSelectedBossId(vId);
+        if (store.state) store.state.selectedBossId = vId;
         Sound.tap();
         const boss = getBattleBoss(vId);
         hanaBattle3DService.setBoss(boss, quadrantCleanliness);
@@ -1626,7 +1643,14 @@ export function attachBattleListeners() {
           hanaBattle3DService.setHazard(currentSugarHazard);
         }
         syncCockpitHUD();
-        store.notify();
+        document.querySelectorAll('.villain-switch-btn').forEach(b => {
+          const isActive = b.getAttribute('data-villain-id') === vId;
+          b.classList.toggle('ring-4', isActive);
+          b.classList.toggle('ring-amber-400', isActive);
+          b.classList.toggle('scale-105', isActive);
+        });
+        const bossNameEl = document.getElementById('battle-boss-name-hud');
+        if (bossNameEl) bossNameEl.textContent = boss.name;
       }
     });
   });

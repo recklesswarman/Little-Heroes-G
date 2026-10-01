@@ -3827,9 +3827,9 @@ class Store {
     return this.state.parentCustomBosses || [];
   }
 
-  setSelectedBossId(bossId) {
+  setSelectedBossId(bossId, skipNotify = false) {
     this.state.selectedBossId = bossId;
-    this.notify();
+    if (!skipNotify) this.notify();
   }
 
   getSelectedBossId() {
@@ -7336,7 +7336,7 @@ class Store {
     return this.state.bossColosseum;
   }
 
-  initColosseumBattle(bossId = 'sugar_bandit', durationSec = 120) {
+  initColosseumBattle(bossId = 'sugar_bandit', durationSec = 120, skipNotify = false) {
     const col = this.getBossColosseumState();
     const boss = getHygieneBoss(bossId) || HYGIENE_BOSSES[0];
     col.activeBossId = boss.id;
@@ -7362,7 +7362,7 @@ class Store {
     col.victoryReward = null;
     col.hasAwardedVictory = false;
     this.saveState(true);
-    this.notify();
+    if (!skipNotify) this.notify();
     return col;
   }
 

@@ -35,6 +35,34 @@ if (typeof globalThis.window === 'undefined') {
 }
 
 const elementsByIdMap = new Map();
+const allMockElements = [];
+
+function matchMockSelector(el, sel) {
+  if (!sel || !el) return false;
+  sel = sel.trim();
+  if (sel.startsWith('#')) return el.id === sel.slice(1);
+  if (sel.startsWith('.')) {
+    const bracketIdx = sel.indexOf('[');
+    if (bracketIdx === -1) {
+      return (el.className || '').split(/\s+/).includes(sel.slice(1));
+    }
+    const cls = sel.slice(1, bracketIdx);
+    if (!(el.className || '').split(/\s+/).includes(cls)) return false;
+    const rest = sel.slice(bracketIdx);
+    const m = rest.match(/\[([a-zA-Z0-9-_:]+)=["']?([^"']+)["']?\]/);
+    if (m) {
+      return el.getAttribute(m[1]) === m[2];
+    }
+    return true;
+  }
+  if (sel.startsWith('[')) {
+    const m = sel.match(/\[([a-zA-Z0-9-_:]+)=["']?([^"']+)["']?\]/);
+    if (m) {
+      return el.getAttribute(m[1]) === m[2];
+    }
+  }
+  return (el.tagName || '').toLowerCase() === sel.toLowerCase();
+}
 
 function createMockElement(tag = 'div') {
   const listeners = {};
@@ -67,23 +95,63 @@ function createMockElement(tag = 'div') {
     },
     click() {
       if (listeners['click']) {
-        listeners['click'].forEach(fn => fn({ type: 'click', target: el }));
+        const evt = { type: 'click', target: el, stopPropagation: () => {} };
+        listeners['click'].forEach(fn => fn(evt));
       }
+    },
+    get textContent() {
+      return el._textContent !== undefined ? el._textContent : (_innerHtml ? _innerHtml.replace(/<[^>]*>/g, '') : '');
+    },
+    set textContent(val) {
+      el._textContent = String(val);
+    },
+    querySelector(sel) {
+      if (sel && sel.startsWith('#')) {
+        return elementsByIdMap.get(sel.substring(1)) || null;
+      }
+      return allMockElements.find(e => matchMockSelector(e, sel)) || null;
+    },
+    querySelectorAll(sel) {
+      if (sel && sel.startsWith('#')) {
+        const e = elementsByIdMap.get(sel.substring(1));
+        return e ? [e] : [];
+      }
+      return allMockElements.filter(e => matchMockSelector(e, sel));
+    },
+    closest(sel) {
+      let cur = el;
+      while (cur) {
+        if (matchMockSelector(cur, sel)) return cur;
+        cur = cur.parentElement;
+      }
+      return null;
     },
     get innerHTML() {
       return _innerHtml;
     },
     set innerHTML(val) {
       _innerHtml = String(val);
-      const idMatches = [..._innerHtml.matchAll(/\bid=["']([^"']+)["']/g)];
-      for (const m of idMatches) {
-        const id = m[1];
-        if (!elementsByIdMap.has(id)) {
-          const childEl = createMockElement('div');
-          childEl.id = id;
-          childEl.parentElement = el;
-          elementsByIdMap.set(id, childEl);
+      const tagMatches = [..._innerHtml.matchAll(/<([a-zA-Z0-9-]+)\s*([^>]*?)>/g)];
+      for (const m of tagMatches) {
+        const t = m[1];
+        const attrs = m[2];
+        const childEl = createMockElement(t);
+        childEl.parentElement = el;
+        
+        const attrMatches = [...attrs.matchAll(/([a-zA-Z0-9-_:]+)=["']([^"']*)["']/g)];
+        for (const am of attrMatches) {
+          const attrName = am[1];
+          const attrVal = am[2];
+          childEl.setAttribute(attrName, attrVal);
+          if (attrName.startsWith('data-')) {
+            const camelKey = attrName.slice(5).replace(/-([a-z])/g, (_, g) => g.toUpperCase());
+            childEl.dataset[camelKey] = attrVal;
+          }
         }
+        if (childEl.id) {
+          elementsByIdMap.set(childEl.id, childEl);
+        }
+        allMockElements.push(childEl);
       }
     },
     appendChild(child) {
@@ -110,6 +178,14 @@ function createMockElement(tag = 'div') {
     setAttribute(name, val) {
       if (name === 'id') el.id = val;
       else if (name === 'class') el.className = val;
+      else if (name === 'style') {
+        if (typeof val === 'string') {
+          val.split(';').forEach(pair => {
+            const [k, v] = pair.split(':');
+            if (k && v) el.style[k.trim()] = v.trim();
+          });
+        }
+      }
       else el[name] = val;
     },
     getAttribute(name) {
@@ -201,11 +277,14 @@ if (typeof globalThis.document === 'undefined' || !globalThis.document._isEnhanc
       if (sel && sel.startsWith('#')) {
         return elementsByIdMap.get(sel.substring(1)) || null;
       }
-      return null;
+      return allMockElements.find(e => matchMockSelector(e, sel)) || null;
     },
     querySelectorAll: (sel) => {
-      const el = globalThis.document.querySelector(sel);
-      return el ? [el] : [];
+      if (sel && sel.startsWith('#')) {
+        const e = elementsByIdMap.get(sel.substring(1));
+        return e ? [e] : [];
+      }
+      return allMockElements.filter(e => matchMockSelector(e, sel));
     },
     documentElement: { clientWidth: 1024, clientHeight: 768 },
     body: createMockElement('body')
