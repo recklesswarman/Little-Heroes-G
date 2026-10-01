@@ -209,7 +209,7 @@ function renderTodaysPathTab(hero, activePet, mapState) {
               <span class="material-symbols-outlined text-base">swords</span>
               <span>BATTLE BOSS!</span>
             </button>
-          ` : nextWaypoint.id === 'wp_bedtime_sleep' ? `
+          ` : nextWaypoint.id === 'wp_bedtime' ? `
             <button id="path-launch-bedtime-story-btn" class="w-full sm:w-auto px-5 py-3 rounded-2xl bg-gradient-to-r from-[#00d2d3] to-[#0284c7] text-[#050f18] font-headline font-black text-xs sm:text-sm tracking-wide shadow-[0_4px_0_0_#05253b] active:translate-y-1 active:shadow-none flex items-center justify-center gap-2 cursor-pointer">
               <span class="text-base">📖</span>
               <span>READ BEDTIME STORY</span>
@@ -490,7 +490,7 @@ function renderWaypointModal(wp, hero) {
               <span class="material-symbols-outlined text-2xl">swords</span>
               <span>LAUNCH HYGIENE BOSS BATTLE!</span>
             </button>
-          ` : wp.id === 'wp_bedtime_sleep' ? `
+          ` : wp.id === 'wp_bedtime' ? `
             <button id="modal-open-bedtime-story-btn" class="w-full py-4 rounded-2xl bg-gradient-to-r from-[#00d2d3] to-[#0284c7] text-[#050f18] font-headline text-base font-black tracking-wide shadow-[0_6px_0_0_#05253b] active:translate-y-1 active:shadow-none flex items-center justify-center gap-2 cursor-pointer">
               <span class="text-xl">📖</span>
               <span>READ BEDTIME AI STORYBOOK</span>
@@ -660,6 +660,7 @@ export function attachWorldAdventureMapListeners() {
       const nextWaypoint = PATH_OF_VALOR_WAYPOINTS.find(w => !isWaypointDone(w, hero)) || PATH_OF_VALOR_WAYPOINTS[0];
       if (nextWaypoint?.linkedBossId) {
         store.setSelectedBossId(nextWaypoint.linkedBossId, true);
+        store.state.activeWaypointChoreKey = nextWaypoint.choreKey;
       }
       store.state.previousView = 'quest_map';
       store.navigate('ar_battle');
@@ -712,10 +713,12 @@ export function attachWorldAdventureMapListeners() {
   if (modalBossBtn) {
     modalBossBtn.addEventListener('click', () => {
       const bossId = selectedModalWaypoint?.linkedBossId;
+      const choreKey = selectedModalWaypoint?.choreKey;
       selectedModalWaypoint = null;
       Sound.click();
       if (bossId) {
         store.setSelectedBossId(bossId, true);
+        store.state.activeWaypointChoreKey = choreKey;
       }
       store.state.previousView = 'quest_map';
       store.navigate('ar_battle');
