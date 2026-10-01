@@ -2270,7 +2270,20 @@ class Store {
     pStats.joy = Math.min(100, (pStats.joy || 80) + 20);
 
     // 3. Morning / Bedtime Habit Auto-Verification (Pending parent sign-off for Gold Points)
-    const isEveningBattle = this.isNighttimeToothbrushBattle() || bossId === 'sugar_boss' || this.state.previousView === 'bedtime_story';
+    // A battle launched from a Today's Path waypoint (WorldAdventureMapView)
+    // knows its own choreKey ('brush_teeth_am' / 'brush_teeth_pm') -- trust
+    // that breadcrumb over the real-world wall-clock guess below, which
+    // otherwise mislabels a morning waypoint's battle as "evening" (and vice
+    // versa) for any kid who plays during real local hours 5pm-5am, silently
+    // logging the completion under the wrong choreKey so the waypoint can
+    // never show as done even though the boss was defeated.
+    const waypointChoreKey = this.state.activeWaypointChoreKey;
+    this.state.activeWaypointChoreKey = null;
+    const isEveningBattle = waypointChoreKey === 'brush_teeth_pm'
+      ? true
+      : waypointChoreKey === 'brush_teeth_am'
+        ? false
+        : (this.isNighttimeToothbrushBattle() || bossId === 'sugar_boss' || this.state.previousView === 'bedtime_story');
     const isMorning = !isEveningBattle;
     if (isMorning) {
       this.state.lastBrushedMorning = todayStr;
@@ -8330,12 +8343,46 @@ class Store {
     if (!waypoint) return { success: false };
 
     const hero = this.state.selectedHero;
+    const heroId = hero?.id || this.getSelectedKidId() || 'hero_1';
+
+    // isWaypointDone() (WorldAdventureMapView.js) decides whether the Next
+    // Hero Stop banner advances past this waypoint purely by checking
+    // getTaskCompletionsToday(wp.choreKey, heroId) -- without recording a
+    // completion below AND guarding against a repeat here, the "COMPLETE
+    // HABIT" button could be tapped an unlimited number of times for
+    // infinite coins/points/xp, and the Today's Path would never advance
+    // past this stop even after "completing" it.
+    if (this.getTaskCompletionsToday(waypoint.choreKey, heroId).length > 0) {
+      return { success: false, alreadyCompleted: true, waypoint };
+    }
+
     const pId = String(hero.activePetId || '1');
 
     hero.coins = (hero.coins || 0) + waypoint.rewardCoins;
     hero.points = (hero.points || 0) + Math.round(waypoint.rewardCoins / 2);
     hero.xp = (hero.xp || 0) + waypoint.rewardXp;
     this.addPetSparks(pId, waypoint.rewardSparks);
+
+    if (!this.state.taskCompletionLogs) this.state.taskCompletionLogs = [];
+    this.state.taskCompletionLogs.unshift({
+      id: 'compl_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+      taskId: waypoint.choreKey,
+      taskTitle: waypoint.title,
+      zone: "Today's Path",
+      heroId,
+      heroName: hero.name,
+      completedAt: new Date().toISOString(),
+      timestamp: Date.now(),
+      dateString: new Date().toLocaleDateString(),
+      timeString: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      coinsAwarded: waypoint.rewardCoins,
+      pointsAwarded: Math.round(waypoint.rewardCoins / 2),
+      xpAwarded: waypoint.rewardXp,
+      status: 'auto_approved',
+      approvedAt: new Date().toISOString(),
+      rejectedAt: null
+    });
+    if (this.state.taskCompletionLogs.length > 200) this.state.taskCompletionLogs.pop();
 
     // Sync habit care & pearly gleam if dental
     if (waypoint.choreKey && waypoint.choreKey.includes('brush')) {

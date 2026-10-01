@@ -166,6 +166,69 @@ async function runTests() {
     const bondState = store.getPetBondState();
     assert(bondState.isPearlyGleamActive === true, 'Pearly Gleam activated for companion on dental chore completion');
 
+    // 7b. Regression: completeWaypointChore() must not be re-grantable, and
+    // must record a completion so isWaypointDone()/Today's Path can see it.
+    // Live-played discovery: the function previously awarded coins/points/xp
+    // on every call with no guard (an unlimited reward-farming exploit) and
+    // never wrote to taskCompletionLogs, so the Next Hero Stop banner could
+    // never advance past the very first waypoint even after "completing" it.
+    console.log('\n--- 7b. Regression: Waypoint Reward Exploit & Stuck Progression ---');
+    const heroForExploitCheck = store.getState().selectedHero;
+    const coinsAfterFirstComplete = heroForExploitCheck.coins;
+    const repeatRes = store.completeWaypointChore('wp_morning_teeth');
+    assert(repeatRes.success === false, 'Completing the same waypoint again is refused, not re-granted');
+    assert(heroForExploitCheck.coins === coinsAfterFirstComplete, 'No additional coins granted on a repeat completion attempt');
+    assert(
+      store.getTaskCompletionsToday('brush_teeth_am', heroForExploitCheck.id).length > 0,
+      "completeWaypointChore() recorded the completion under the waypoint's choreKey so isWaypointDone() can see it"
+    );
+
+    // 7c. Regression: the "📖 READ BEDTIME STORY" button at the final
+    // waypoint (wp_bedtime) was gated on a typo'd 'wp_bedtime_sleep' id that
+    // never matched the real waypoint id, so the last Today's Path stop
+    // always fell through to a generic "COMPLETE HABIT" button instead.
+    console.log('\n--- 7c. Regression: Final Waypoint Bedtime Story Button ---');
+    const allChoreKeys = PATH_OF_VALOR_WAYPOINTS.filter(w => w.id !== 'wp_bedtime').map(w => w.choreKey);
+    store.state.taskCompletionLogs = allChoreKeys.map((k, i) => ({
+      id: 'regress_bedtime_' + i,
+      taskId: k,
+      heroId: heroForExploitCheck.id,
+      completedAt: new Date().toISOString(),
+      timestamp: Date.now()
+    }));
+    store.setWorldMapTab('path');
+    const finalStopHtml = renderWorldAdventureMapView();
+    assert(finalStopHtml.includes('path-launch-bedtime-story-btn'), 'Final waypoint (wp_bedtime) now correctly shows the READ BEDTIME STORY button');
+    assert(finalStopHtml.includes('Starlight Dream Slumber'), 'Next Hero Stop banner shows the final waypoint, not stuck on an earlier stop');
+
+    // 7d. Regression: a waypoint-linked boss battle must log its completion
+    // under the waypoint's OWN choreKey, not a real-wall-clock guess. Live
+    // play exposed that completeToothbrushBattle() previously inferred
+    // morning-vs-evening purely from isNighttimeToothbrushBattle() (the
+    // real device clock's hour), which mislabels the "morning" wp_morning_teeth
+    // waypoint's sugar_gremlin battle as an evening battle for any kid who
+    // plays during real local hours 5pm-5am -- logging it under
+    // 'brush_teeth_pm' instead of 'brush_teeth_am' so the waypoint can never
+    // show as done even after a real win.
+    console.log('\n--- 7d. Regression: Waypoint Boss Battle Morning/Evening Breadcrumb ---');
+    store.state.taskCompletionLogs = [];
+    const heroForBreadcrumbCheck = store.getState().selectedHero;
+    heroForBreadcrumbCheck.dentalHabits = {};
+    store.state.activeWaypointChoreKey = 'brush_teeth_am';
+    store.completeToothbrushBattle('sugar_gremlin', 90, 85);
+    assert(
+      store.getTaskCompletionsToday('brush_teeth_am', heroForBreadcrumbCheck.id).length > 0,
+      'A battle launched from the morning waypoint logs under brush_teeth_am even when the real-world clock reads night'
+    );
+    assert(
+      Boolean(heroForBreadcrumbCheck.dentalHabits?.morningBrushDate),
+      'Morning dental habit date recorded, not the evening one, thanks to the explicit waypoint breadcrumb'
+    );
+    assert(
+      store.state.activeWaypointChoreKey === null,
+      'The breadcrumb is consumed after one battle so it cannot leak into the next, unrelated battle'
+    );
+
     // 8. Time Overrides & Bedtime Lullaby
     console.log('\n--- 8. Time of Day & Bedtime Lullaby ---');
     store.setIslandTimeOverride('bedtime');
