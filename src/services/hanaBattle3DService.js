@@ -823,7 +823,13 @@ class HanaBattle3DService {
   renderLoop(timestamp) {
     if (this.isDestroyed) return;
 
-    const dt = Math.min(0.1, (timestamp - this.lastTime) / 1000 || 0.016);
+    // Clamped to [0, 0.1]: the upper bound avoids a huge catch-up jump after
+    // the tab was backgrounded; the lower bound guards against a stray stale
+    // frame (e.g. an overlapping animation-frame chain across a quit/restart
+    // transition) delivering a timestamp earlier than the last one recorded,
+    // which would otherwise make every dt-scaled value (shockwave radii,
+    // particle motion, etc.) shrink instead of grow and eventually go negative.
+    const dt = Math.max(0, Math.min(0.1, (timestamp - this.lastTime) / 1000 || 0.016));
     this.lastTime = timestamp;
     this.clock += dt;
 
