@@ -269,7 +269,11 @@ console.log('\n--- 7. Testing Subsequent Battle State Reset & Hardware Reconnect
   const battleHtml = renderBattleView();
   assert(battleHtml.includes('id="ar-camera-feed"'), 'renderBattleView: includes ar-camera-feed video element');
   assert(battleHtml.includes('id="pip-window"'), 'renderBattleView: includes pip-window Magic Mirror frame');
-  assert(battleHtml.includes('gem-arrow'), 'renderBattleView: includes gem-arrow pointer markers');
+  // The "Tooth Quadrant Gems" HUD (gem-arrow/gem-q1..4) was always `hidden`
+  // dead markup left over from before the 3D cinematic revamp and has been
+  // removed entirely as part of the toothbrush battle cleanup -- no longer
+  // asserted on here.
+  assert(!battleHtml.includes('gem-arrow'), 'renderBattleView: dead gem-arrow HUD markup has been removed');
 
   // Verify setBoss preserves cleaned quadrants when switching villains mid-battle
   hanaBattle3DService.setBoss({ id: 'plaque_kraken', name: 'Plaque Kraken' }, { q1: 100, q2: 50 });

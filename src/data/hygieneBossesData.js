@@ -215,9 +215,8 @@ export const SUGAR_ATTACK_HAZARDS = [
   }
 ];
 
-export function getRandomSugarHazard() {
-  const index = Math.floor(Math.random() * SUGAR_ATTACK_HAZARDS.length);
-  return SUGAR_ATTACK_HAZARDS[index];
+export function getSugarHazardById(id) {
+  return SUGAR_ATTACK_HAZARDS.find(h => h.id === id) || SUGAR_ATTACK_HAZARDS[0];
 }
 
 export const DENTAL_BADGES = [

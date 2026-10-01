@@ -7,7 +7,8 @@ async function runTests() {
   console.log('🧪 Running Toothbrush Battle 3D Visual Refresh & Sugar Hazard Rotation Tests...');
 
   // 1. Verify HYGIENE_BOSSES & Assets
-  const { HYGIENE_BOSSES, SUGAR_ATTACK_HAZARDS, getRandomSugarHazard } = await import('../src/data/hygieneBossesData.js');
+  const { HYGIENE_BOSSES, SUGAR_ATTACK_HAZARDS, getSugarHazardById } = await import('../src/data/hygieneBossesData.js');
+  const { store } = await import('../src/state/store.js');
 
   console.log('\n--- 1. Testing HYGIENE_BOSSES Roster & 3D Character Art ---');
   assert.strictEqual(HYGIENE_BOSSES.length >= 4, true, 'Should have at least 4 primary hygiene bosses');
@@ -47,16 +48,33 @@ async function runTests() {
     console.log(`  ✅ Hazard "${hazard.name}" (${hazard.emoji}): shatterType=${hazard.shatterType}, colors=${hazard.shatterColors.length}`);
   });
 
-  // 3. Verify getRandomSugarHazard Randomizer
-  console.log('\n--- 3. Testing getRandomSugarHazard Functionality ---');
-  const sampledHazards = new Set();
-  for (let i = 0; i < 40; i++) {
-    const h = getRandomSugarHazard();
-    assert.ok(h && h.id, 'getRandomSugarHazard must return a valid hazard object');
-    sampledHazards.add(h.id);
+  // 3. Verify the persisted weekly hazard rotation (store.drawNextSugarHazardId)
+  console.log('\n--- 3. Testing Weekly Sugar Hazard Rotation (drawNextSugarHazardId) ---');
+  const heroId = store.getState().selectedHero.id;
+
+  // First 7 draws must cover all 7 hazards exactly once each (shuffle-bag), never repeating early.
+  const firstCycle = [];
+  for (let i = 0; i < 7; i++) {
+    const id = store.drawNextSugarHazardId(heroId);
+    const hazard = getSugarHazardById(id);
+    assert.ok(hazard && hazard.id === id, 'drawNextSugarHazardId must return an id resolvable via getSugarHazardById');
+    assert.ok(!firstCycle.includes(id), `Hazard "${id}" must not repeat within the first 7 draws of a cycle`);
+    firstCycle.push(id);
   }
-  assert.ok(sampledHazards.size >= 4, 'Multiple runs of getRandomSugarHazard should produce varied hazards');
-  console.log(`  ✅ Successfully sampled ${sampledHazards.size} unique hazard types across 40 random rolls`);
+  assert.strictEqual(new Set(firstCycle).size, 7, 'All 7 hazards must appear exactly once in the first rotation cycle');
+  console.log(`  ✅ First 7 draws covered all 7 hazards with no repeats: ${firstCycle.join(', ')}`);
+
+  // The reshuffle at the start of the next cycle must not immediately repeat the last hazard used.
+  const nextId = store.drawNextSugarHazardId(heroId);
+  assert.notStrictEqual(nextId, firstCycle[firstCycle.length - 1], 'The reshuffled next cycle must not repeat the immediately-previous hazard');
+  console.log(`  ✅ Next cycle's first draw ("${nextId}") did not repeat the prior cycle's last hazard ("${firstCycle[6]}")`);
+
+  // A second kid gets their own independent rotation, unaffected by the first kid's draws.
+  const secondHeroId = 'hero_rotation_test_2';
+  store.state.heroes.push({ id: secondHeroId, coins: 0 });
+  const otherKidFirstDraw = store.drawNextSugarHazardId(secondHeroId);
+  assert.ok(SUGAR_ATTACK_HAZARDS.some(h => h.id === otherKidFirstDraw), 'A different kid must draw from their own independent rotation');
+  console.log(`  ✅ A second kid's rotation is independent of the first kid's (drew "${otherKidFirstDraw}")`);
 
   // 4. Verify hanaBattle3DService Methods
   console.log('\n--- 4. Testing hanaBattle3DService Hazard & Boss Engine APIs ---');
