@@ -12,3 +12,4 @@ setGlobalOptions({
 export { chatWithPet } from "./petCompanion";
 export { verifyChoreSubmission, generateDailyMicroQuests } from "./subagents";
 export { getParentInsights, updateCompanionSettings } from "./parentPortal";
+export { api } from "./voiceApi";
