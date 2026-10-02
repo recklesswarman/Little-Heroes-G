@@ -18,6 +18,28 @@ if (typeof globalThis.CustomEvent === 'undefined') {
     constructor(type, params = {}) {
       this.type = type;
       this.detail = params.detail || {};
+      this.bubbles = Boolean(params.bubbles);
+    }
+  };
+}
+
+if (typeof globalThis.MouseEvent === 'undefined') {
+  globalThis.MouseEvent = class MouseEvent {
+    constructor(type, params = {}) {
+      this.type = type;
+      this.clientX = params.clientX || 0;
+      this.clientY = params.clientY || 0;
+      this.bubbles = Boolean(params.bubbles);
+    }
+  };
+}
+
+if (typeof globalThis.PointerEvent === 'undefined') {
+  globalThis.PointerEvent = class PointerEvent extends (globalThis.MouseEvent || Object) {
+    constructor(type, params = {}) {
+      super(type, params);
+      this.pointerId = params.pointerId || 1;
+      this.pointerType = params.pointerType || 'touch';
     }
   };
 }

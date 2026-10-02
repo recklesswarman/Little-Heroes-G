@@ -65,13 +65,13 @@ class HanaBattle3DService {
     this.equippedWeapon = null;
     this.weaponMultiplier = 1.0;
 
-    // Warrior Teeth Army in 3D Arena (Arched Front Line Defense)
+    // Warrior Teeth Army in 3D Arena (Arched Front Line Defense - Elevated from bottom)
     this.warriorTeeth = [
-      { id: 'q2', name: 'Upper Left', label: 'Q2', angle: -0.28, xRatio: 0.16, yRatio: 0.83, cleanPct: 0, cheerTimer: 0, shieldWobble: 0, shieldRaised: false, isCaptain: false, recoil: 0, fireFlash: 0 },
-      { id: 'q4', name: 'Lower Left', label: 'Q4', angle: -0.14, xRatio: 0.33, yRatio: 0.86, cleanPct: 0, cheerTimer: 0, shieldWobble: 0, shieldRaised: false, isCaptain: false, recoil: 0, fireFlash: 0 },
-      { id: 'q5', name: 'Commander', label: 'Captain', angle: 0, xRatio: 0.50, yRatio: 0.88, cleanPct: 0, cheerTimer: 0, shieldWobble: 0, shieldRaised: false, isCaptain: true, recoil: 0, fireFlash: 0 },
-      { id: 'q3', name: 'Lower Right', label: 'Q3', angle: 0.14, xRatio: 0.67, yRatio: 0.86, cleanPct: 0, cheerTimer: 0, shieldWobble: 0, shieldRaised: false, isCaptain: false, recoil: 0, fireFlash: 0 },
-      { id: 'q1', name: 'Upper Right', label: 'Q1', angle: 0.28, xRatio: 0.84, yRatio: 0.83, cleanPct: 0, cheerTimer: 0, shieldWobble: 0, shieldRaised: false, isCaptain: false, recoil: 0, fireFlash: 0 }
+      { id: 'q2', name: 'Upper Left', label: 'Q2', angle: -0.28, xRatio: 0.16, yRatio: 0.69, cleanPct: 0, cheerTimer: 0, shieldWobble: 0, shieldRaised: false, isCaptain: false, recoil: 0, fireFlash: 0 },
+      { id: 'q4', name: 'Lower Left', label: 'Q4', angle: -0.14, xRatio: 0.33, yRatio: 0.71, cleanPct: 0, cheerTimer: 0, shieldWobble: 0, shieldRaised: false, isCaptain: false, recoil: 0, fireFlash: 0 },
+      { id: 'q5', name: 'Commander', label: 'Captain', angle: 0, xRatio: 0.50, yRatio: 0.72, cleanPct: 0, cheerTimer: 0, shieldWobble: 0, shieldRaised: false, isCaptain: true, recoil: 0, fireFlash: 0 },
+      { id: 'q3', name: 'Lower Right', label: 'Q3', angle: 0.14, xRatio: 0.67, yRatio: 0.71, cleanPct: 0, cheerTimer: 0, shieldWobble: 0, shieldRaised: false, isCaptain: false, recoil: 0, fireFlash: 0 },
+      { id: 'q1', name: 'Upper Right', label: 'Q1', angle: 0.28, xRatio: 0.84, yRatio: 0.69, cleanPct: 0, cheerTimer: 0, shieldWobble: 0, shieldRaised: false, isCaptain: false, recoil: 0, fireFlash: 0 }
     ];
 
     // Illustrated Asset Cache & Sweet Hazard State
@@ -742,7 +742,7 @@ class HanaBattle3DService {
 
     this.shockwaves.push({
       x: this.width * 0.5,
-      y: this.height * 0.82,
+      y: this.height * 0.70,
       radius: 35,
       maxRadius: 280,
       color: '#34d399',
@@ -1457,28 +1457,129 @@ class HanaBattle3DService {
     };
     if (haz.image) this.loadImage(haz.image);
 
-    // Compute dynamic trajectory: fly from boss toward the player at arena bottom
-    const startY = this.height * 0.38;
-    const targetY = this.height * 0.82;
-    const vz = -32;
-    const flightTime = 80 / Math.abs(vz); // ~2.5 seconds
+    // Compute dynamic trajectory: fall smoothly from top of screen toward the elevated Warrior Teeth Army
+    const startY = -25;
+    const startX = this.width * (0.16 + Math.random() * 0.68);
+    const targetY = this.height * 0.70;
+    const flightTime = 3.3; // gentle, readable 3.3s descent for toddlers and young heroes
     const vy = (targetY - startY) / flightTime;
-    const spreadX = (Math.random() - 0.5) * 44;
+    const vz = -24; // gentle forward depth
+    const spreadX = (Math.random() - 0.5) * 20;
 
     this.caramelBombs.push({
-      x: this.width * 0.5 + (Math.random() - 0.5) * 30,
+      x: startX,
       y: startY,
       z: 80,
       vz: vz,
       vx: spreadX,
       vy: vy,
-      radius: 26,
+      radius: 28,
       rot: Math.random() * Math.PI * 2,
-      vRot: (Math.random() - 0.5) * 3,
+      vRot: (Math.random() - 0.5) * 2.5,
       color: haz.color || this.bossData.bombColor || '#f59e0b',
       hazard: haz,
       deflected: false
     });
+  }
+
+  /**
+   * Shatters a caramel bomb into themed celebratory candy shards & sparks
+   */
+  shatterCaramelBomb(b) {
+    const haz = b.hazard || this.currentHazard;
+    const colors = (haz && haz.shatterColors) || [b.color || '#f59e0b', '#fbbf24', '#ffffff'];
+    for (let s = 0; s < 22; s++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 3.5 + Math.random() * 6.5;
+      this.candyShards.push({
+        x: b.x,
+        y: b.y,
+        z: b.z || 40,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        vz: 2 + Math.random() * 4,
+        rotX: 0, rotY: 0, rotZ: Math.random() * Math.PI,
+        vRotX: 0, vRotY: 0, vRotZ: 0.25,
+        size: 7 + Math.random() * 9,
+        color: colors[s % colors.length],
+        alpha: 1.0,
+        gravity: 0.18
+      });
+    }
+    this.shockwaves.push({
+      x: b.x,
+      y: b.y,
+      radius: 20,
+      maxRadius: 180,
+      color: haz?.color || '#38bdf8',
+      alpha: 1.0
+    });
+    this.spawnShieldSparks(b.x, b.y, haz?.color || '#34d399');
+  }
+
+  /**
+   * Check if user tapped on or near any falling sugar attack bomb
+   * Returns true if a bomb was hit and deflected
+   */
+  checkAndDeflectBombAt(tapX, tapY) {
+    if (this.isVictory || !this.caramelBombs || this.caramelBombs.length === 0) return false;
+
+    // Generous toddler-friendly touch hit radius (~55px)
+    const hitRadius = 55;
+    let hitIndex = -1;
+    let closestDist = Infinity;
+
+    for (let i = 0; i < this.caramelBombs.length; i++) {
+      const b = this.caramelBombs[i];
+      if (b.deflected) continue;
+
+      const dx = tapX - b.x;
+      const dy = tapY - b.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      const depthScale = Math.max(0.4, (120 - b.z) / 70);
+      const effectiveRadius = Math.max(hitRadius, (b.radius || 28) * depthScale + 25);
+
+      if (dist <= effectiveRadius && dist < closestDist) {
+        closestDist = dist;
+        hitIndex = i;
+      }
+    }
+
+    if (hitIndex >= 0) {
+      const b = this.caramelBombs[hitIndex];
+      const haz = b.hazard || this.currentHazard;
+
+      this.spawnThemedHazardImpact(haz, b.x, b.y);
+      this.shatterCaramelBomb(b);
+      this.onDeflectRicochet();
+
+      // Remove the deflected bomb immediately or ricochet
+      this.caramelBombs.splice(hitIndex, 1);
+
+      // Trigger cheer & shield flash on nearest tooth
+      let nearestTooth = null;
+      let minDx = Infinity;
+      const w = this.width;
+      this.warriorTeeth.forEach(tooth => {
+        const toothX = tooth.xRatio * w;
+        const dx = Math.abs(toothX - b.x);
+        if (dx < minDx) {
+          minDx = dx;
+          nearestTooth = tooth;
+        }
+      });
+      if (nearestTooth) {
+        nearestTooth.shieldRaised = true;
+        nearestTooth.shieldWobble = 0.8;
+        nearestTooth.cheerTimer = 1.2;
+        this.spawnWarriorCheerParticles(nearestTooth);
+      }
+
+      return true;
+    }
+
+    return false;
   }
 
   /**
@@ -1581,7 +1682,7 @@ class HanaBattle3DService {
       }
 
       // Deflected bomb impacts the boss!
-      if (b.deflected && b.z >= 75) {
+      if (b.deflected && (b.z >= 75 || b.y <= h * 0.38)) {
         this.damageWobble = 0.35;
         this.spawnThemedHazardImpact(haz, b.x, b.y);
         const colors = (haz && haz.shatterColors) || [b.color, '#fbbf24', '#ffffff'];
@@ -1616,8 +1717,8 @@ class HanaBattle3DService {
         continue;
       }
 
-      // Near player collision: Shield impact & spark deflection
-      if (b.z <= 0) {
+      // Near player collision: Shield impact & spark deflection at elevated teeth line
+      if (b.z <= 0 || (!b.deflected && b.y >= h * 0.72)) {
         let nearestTooth = null;
         let minDx = Infinity;
         this.warriorTeeth.forEach(tooth => {

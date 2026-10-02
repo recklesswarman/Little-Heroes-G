@@ -316,80 +316,67 @@ export function renderBattleView() {
       <!-- ================= 1. FULL VIEWPORT 3D WEBGL ARENA CANVAS ================= -->
       <canvas id="battle-webgl-canvas" class="absolute inset-0 w-full h-full z-0 block cursor-crosshair"></canvas>
 
-      <!-- ================= 2. TOP FLOATING BUBBLE BAR ================= -->
+      <!-- ================= 2A. PROMINENT CENTERED FLOATING COUNTDOWN TIMER ================= -->
+      <div class="absolute top-2 sm:top-3 left-1/2 -translate-x-1/2 z-35 pointer-events-auto">
+        <div id="battle-timer-capsule" class="bg-slate-900/95 backdrop-blur-md px-3.5 sm:px-5 py-1 sm:py-1.5 rounded-full border-2 sm:border-3 ${battlePhase === 'floss' ? 'border-emerald-400 shadow-[0_0_25px_rgba(16,185,129,0.65)]' : 'border-amber-400 shadow-[0_0_25px_rgba(251,191,36,0.65)]'} flex items-center gap-1.5 sm:gap-2">
+          <span class="material-symbols-outlined ${battlePhase === 'floss' ? 'text-emerald-400' : 'text-amber-400'} text-lg sm:text-2xl animate-pulse">timer</span>
+          <span id="battle-timer-display" class="font-headline text-xl sm:text-3xl font-black ${battlePhase === 'floss' ? 'text-emerald-300 drop-shadow-[0_0_12px_rgba(16,185,129,0.9)]' : 'text-amber-300 drop-shadow-[0_0_12px_rgba(251,191,36,0.9)]'} tracking-wider">
+            ${timeStr}
+          </span>
+        </div>
+      </div>
+
+      <!-- ================= 2B. TOP FLANKING HUD BAR (MAP QUIT, BOSS HP & CONTROLS) ================= -->
       <div class="absolute top-2 sm:top-3 left-2 right-2 sm:left-4 sm:right-4 z-30 flex items-center justify-between gap-2 pointer-events-none">
         
-        <!-- Left: Kid-friendly Map Exit Button -->
-        <button id="battle-quit-btn" class="pointer-events-auto bg-gradient-to-b from-amber-400 to-amber-500 hover:brightness-110 text-slate-950 font-black text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2.5 rounded-2xl border-2 sm:border-3 border-amber-200 shadow-[0_4px_0_0_#b45309] flex items-center gap-1 active:translate-y-1 active:shadow-none transition-all flex-shrink-0" title="Return to Map">
-          <span class="material-symbols-outlined text-lg sm:text-xl font-black">arrow_back</span>
-          <span class="hidden xs:inline">Map</span>
-        </button>
+        <!-- Left: Kid-friendly Map Exit Button & Boss Health Status -->
+        <div class="pointer-events-auto flex items-center gap-1.5 sm:gap-2 min-w-0 max-w-[44%] sm:max-w-[40%]">
+          <button id="battle-quit-btn" class="bg-gradient-to-b from-amber-400 to-amber-500 hover:brightness-110 text-slate-950 font-black text-xs sm:text-sm px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-2xl border-2 sm:border-3 border-amber-200 shadow-[0_3px_0_0_#b45309] flex items-center gap-1 active:translate-y-0.5 active:shadow-none transition-all flex-shrink-0 cursor-pointer" title="Return to Map">
+            <span class="material-symbols-outlined text-base sm:text-lg font-black">arrow_back</span>
+            <span class="hidden xs:inline">Map</span>
+          </button>
 
-        <!-- Center: Giant Glowing Bubble Countdown Timer, Boss Health Meter & Active Hazard Badge -->
-        <div class="pointer-events-auto bg-slate-900/90 backdrop-blur-md px-3 sm:px-5 py-1.5 sm:py-2 rounded-3xl border-2 sm:border-3 ${battlePhase === 'floss' ? 'border-emerald-400/90 shadow-[0_0_30px_rgba(16,185,129,0.4)]' : 'border-cyan-400/80 shadow-[0_0_30px_rgba(6,182,212,0.4)]'} flex items-center gap-2 sm:gap-3 max-w-sm sm:max-w-lg w-full justify-between">
-          
-          ${battlePhase === 'floss' ? `
-            <div class="flex items-center gap-2 min-w-0 flex-1">
-              <span class="text-2xl sm:text-3xl filter drop-shadow animate-bounce flex-shrink-0">🧵</span>
+          <!-- Boss Avatar & Health Heart Bar (or Floss Progress) -->
+          <div class="bg-slate-900/90 backdrop-blur-md px-2.5 sm:px-3.5 py-1.5 rounded-2xl border-2 border-slate-700/80 flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1 shadow">
+            ${battlePhase === 'floss' ? `
+              <span class="text-xl sm:text-2xl filter drop-shadow flex-shrink-0">🧵</span>
               <div class="flex flex-col min-w-0 flex-1">
-                <div class="flex items-center justify-between text-[10px] sm:text-xs font-black text-emerald-300 uppercase truncate">
-                  <span>PHASE 1: FLOSS BATTLE</span>
-                  <span class="text-[9px] text-emerald-400 font-bold ml-1">2 MINUTE PREP</span>
-                </div>
-                <div class="w-full bg-slate-950 h-3 sm:h-3.5 rounded-full overflow-hidden border border-emerald-400/40 p-0.5 mt-0.5 shadow-inner">
-                  <div id="floss-progress-bar" class="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-300 shadow-[0_0_10px_rgba(16,185,129,0.8)]" style="width: ${Math.round(((120 - secondsRemaining) / 120) * 100)}%;"></div>
+                <span class="text-[9px] sm:text-[10px] font-black text-emerald-300 uppercase truncate">FLOSS BATTLE</span>
+                <div class="w-full bg-slate-950 h-2 sm:h-2.5 rounded-full overflow-hidden border border-emerald-400/40 p-0.5 mt-0.5">
+                  <div id="floss-progress-bar" class="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-300 shadow-[0_0_8px_rgba(16,185,129,0.8)]" style="width: ${Math.round(((120 - secondsRemaining) / 120) * 100)}%;"></div>
                 </div>
               </div>
-            </div>
-          ` : `
-            <!-- Boss Avatar & Health Heart Bar -->
-            <div class="flex items-center gap-2 min-w-0 flex-1">
-              <span class="text-2xl sm:text-3xl filter drop-shadow animate-bounce flex-shrink-0">
+            ` : `
+              <span class="text-xl sm:text-2xl filter drop-shadow flex-shrink-0">
                 ${currentBoss.emoji || currentBoss.avatar || '🍬'}
               </span>
               <div class="flex flex-col min-w-0 flex-1">
-                <div class="flex items-center justify-between text-[10px] sm:text-xs font-black text-amber-300 uppercase truncate">
+                <div class="flex items-center justify-between text-[9px] sm:text-[10px] font-black text-amber-300 uppercase truncate">
                   <span class="truncate">${currentBoss.name}</span>
-                  <span class="text-[9px] text-rose-300 font-bold ml-1">${hpPercent}% HP</span>
+                  <span class="text-[8px] sm:text-[9px] text-rose-300 font-bold ml-1">${hpPercent}%</span>
                 </div>
-                <!-- Curved Boss Health Bar -->
-                <div class="w-full bg-slate-950 h-3 sm:h-3.5 rounded-full overflow-hidden border border-white/20 p-0.5 mt-0.5 shadow-inner">
-                  <div id="boss-hp-bar" class="h-full bg-gradient-to-r from-rose-500 via-amber-400 to-emerald-400 rounded-full transition-all duration-300 shadow-[0_0_10px_rgba(245,158,11,0.8)]" style="width: ${hpPercent}%;"></div>
+                <div class="w-full bg-slate-950 h-2 sm:h-2.5 rounded-full overflow-hidden border border-white/20 p-0.5 mt-0.5 shadow-inner">
+                  <div id="boss-hp-bar" class="h-full bg-gradient-to-r from-rose-500 via-amber-400 to-emerald-400 rounded-full transition-all duration-300 shadow-[0_0_8px_rgba(245,158,11,0.8)]" style="width: ${hpPercent}%;"></div>
                 </div>
               </div>
-            </div>
-          `}
-
-          <!-- Vertical Divider -->
-          <div class="h-8 w-0.5 bg-white/20 flex-shrink-0"></div>
-
-          <!-- Giant Countdown Display (02:00 -> 00:00) -->
-          <div class="flex items-center gap-1.5 flex-shrink-0">
-            <span class="material-symbols-outlined ${battlePhase === 'floss' ? 'text-emerald-400' : 'text-amber-400'} text-xl sm:text-2xl animate-pulse">timer</span>
-            <span id="battle-timer-display" class="font-headline text-2xl sm:text-4xl font-black ${battlePhase === 'floss' ? 'text-emerald-300 drop-shadow-[0_0_12px_rgba(16,185,129,0.9)]' : 'text-amber-300 drop-shadow-[0_0_12px_rgba(251,191,36,0.9)]'} tracking-wider">
-              ${timeStr}
-            </span>
+            `}
           </div>
+        </div>
 
-          <!-- Active Hazard Badge Integrated in Top Capsule -->
+        <!-- Right: Active Hazard Badge & Controls -->
+        <div class="pointer-events-auto flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
           ${currentSugarHazard ? `
-            <div class="h-8 w-0.5 bg-white/20 hidden xs:block flex-shrink-0"></div>
-            <span id="sugar-hazard-badge" class="hidden xs:flex items-center gap-1 text-[9px] sm:text-[10px] font-black text-amber-200 bg-amber-950/85 border border-amber-400/60 px-2 sm:px-2.5 py-1 rounded-full shadow backdrop-blur-sm animate-pulse flex-shrink-0">
+            <span id="sugar-hazard-badge" class="hidden md:flex items-center gap-1 text-[9px] sm:text-[10px] font-black text-amber-200 bg-amber-950/85 border border-amber-400/60 px-2 sm:px-2.5 py-1 rounded-full shadow backdrop-blur-sm animate-pulse flex-shrink-0">
               <span>${currentSugarHazard.emoji}</span>
-              <span class="hidden md:inline">Hazard:</span>
+              <span class="hidden lg:inline">Hazard:</span>
               <span>${currentSugarHazard.name}</span>
             </span>
           ` : ''}
-
-        </div>
-
-        <!-- Right: Audio Rhythm & Mirror Toggle -->
-        <div class="pointer-events-auto flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
-          <button id="rhythm-toggle-btn" class="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-slate-900/90 border-2 border-slate-700 text-cyan-300 flex items-center justify-center hover:bg-slate-800 active:scale-95 shadow" title="Toggle Rhythm">
-            <span class="material-symbols-outlined text-lg sm:text-xl">${isRhythmBeatActive ? 'music_note' : 'music_off'}</span>
+          <button id="rhythm-toggle-btn" class="w-8 h-8 sm:w-9 sm:h-9 rounded-2xl bg-slate-900/90 border-2 border-slate-700 text-cyan-300 flex items-center justify-center hover:bg-slate-800 active:scale-95 shadow cursor-pointer" title="Toggle Rhythm">
+            <span class="material-symbols-outlined text-base sm:text-lg">${isRhythmBeatActive ? 'music_note' : 'music_off'}</span>
           </button>
-          <button id="camera-flip-btn" class="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-slate-900/90 border-2 border-slate-700 text-amber-300 flex items-center justify-center hover:bg-slate-800 active:scale-95 shadow" title="Flip Camera">
-            <span class="material-symbols-outlined text-lg sm:text-xl">cameraswitch</span>
+          <button id="camera-flip-btn" class="w-8 h-8 sm:w-9 sm:h-9 rounded-2xl bg-slate-900/90 border-2 border-slate-700 text-amber-300 flex items-center justify-center hover:bg-slate-800 active:scale-95 shadow cursor-pointer" title="Flip Camera">
+            <span class="material-symbols-outlined text-base sm:text-lg">cameraswitch</span>
           </button>
         </div>
 
@@ -478,18 +465,7 @@ export function renderBattleView() {
         </span>
       </div>
 
-      <!-- ================= 7. REX VOICE COMPANION COACHING (BOTTOM COMPACT PILL) ================= -->
-      <div id="rex-companion-pill" class="absolute bottom-16 sm:bottom-18 left-3 sm:left-6 z-25 flex items-center gap-2 bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-full border-2 border-emerald-400/80 shadow-lg max-w-[240px] sm:max-w-[320px] pointer-events-none">
-        <div class="relative w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-950 border border-emerald-400 p-0.5 flex-shrink-0 flex items-center justify-center overflow-hidden">
-          ${typeof activePet?.avatar === 'string' && (activePet.avatar.startsWith('http') || activePet.avatar.startsWith('data:') || activePet.avatar.startsWith('assets/') || activePet.avatar.includes('/'))
-            ? `<img src="${activePet.avatar}" alt="${activePet.name || 'Companion'}" class="w-full h-full object-contain pointer-events-none select-none" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\\'text-base\\'>${activePet.emoji || '🦖'}</span>';" />`
-            : `<span class="text-base">${activePet?.emoji || activePet?.avatar || '🦖'}</span>`
-          }
-        </div>
-        <p id="rex-dialogue-bubble" class="font-headline font-bold text-[9px] sm:text-[10px] text-emerald-300 truncate leading-tight">
-          ${currentRexCoachText}
-        </p>
-      </div>
+
 
       <!-- ================= 8. IN-GAME 3D VILLAIN SWITCHER DOCK (BOTTOM-CENTER) ================= -->
       <div class="absolute bottom-3 sm:bottom-4 left-1/2 transform -translate-x-1/2 z-30 flex items-center gap-1.5 sm:gap-2 bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-3xl border-2 border-white/20 shadow-2xl">
@@ -1696,11 +1672,34 @@ export function attachBattleListeners() {
     });
   });
 
-  // 5. Interactive Canvas Tap (Manual scrub helper for younger toddlers)
+  // 5. Interactive Canvas Tap (Sugar attack tap deflection & toddler manual scrub helper)
   const canvas = document.getElementById('battle-webgl-canvas');
   if (canvas) {
-    canvas.addEventListener('pointerdown', () => {
+    canvas.addEventListener('pointerdown', (e) => {
       if (isBattleRunning && !isBattlePaused) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / (rect.width || 1);
+        const scaleY = canvas.height / (rect.height || 1);
+        const tapX = e.clientX ? (e.clientX - rect.left) * scaleX : (canvas.width * 0.5);
+        const tapY = e.clientY ? (e.clientY - rect.top) * scaleY : (canvas.height * 0.5);
+
+        // Check if user tapped on or near any falling sugar attack with generous 55px hitbox
+        const deflected = hanaBattle3DService.checkAndDeflectBombAt ? hanaBattle3DService.checkAndDeflectBombAt(tapX, tapY) : false;
+        if (deflected) {
+          if (typeof Sound?.tap === 'function') Sound.tap();
+          if (typeof Sound?.sparkle === 'function') Sound.sparkle();
+          showComicHit('TAPPED & DEFLECTED! 🛡️✨');
+
+          if (isDeflectFlurryActive) {
+            triggerDeflectSuccess();
+          } else {
+            currentCombo += 2;
+            const activeQuad = getDentalQuadrant(secondsRemaining, totalDuration);
+            handleScrubHit(activeQuad, 'manual');
+          }
+          return;
+        }
+
         const activeQuad = getDentalQuadrant(secondsRemaining, totalDuration);
         handleScrubHit(activeQuad, 'manual');
       }
