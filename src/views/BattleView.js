@@ -1547,6 +1547,11 @@ export function quitBattle() {
   hasExplicitBossSelection = false;
   sessionRotatedBossId = null;
   battlePhase = 'brush';
+  // A waypoint-launched battle stamps activeWaypointChoreKey so its eventual
+  // completeToothbrushBattle() call knows which chore it's for. Quitting
+  // before that happens must clear it too, or the breadcrumb survives to
+  // mislabel the next, unrelated toothbrush battle's morning/evening chore.
+  if (store.state) store.state.activeWaypointChoreKey = null;
   if (wasMidBattle) {
     // Show a real defeat modal (reward-free -- quitting early stays an
     // incentive to finish, same as before) instead of a toast that
@@ -1591,6 +1596,10 @@ export function abandonBattleIfRunning() {
   hasExplicitBossSelection = false;
   sessionRotatedBossId = null;
   battlePhase = 'brush';
+  // Same stale-breadcrumb risk as quitBattle() -- clearing it is not a
+  // reward/notify/navigate side effect, just resetting transient routing
+  // state, so it stays safe to call synchronously from the render cycle.
+  if (store.state) store.state.activeWaypointChoreKey = null;
 }
 
 function showComicHit(text) {
