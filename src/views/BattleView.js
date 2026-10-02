@@ -97,13 +97,9 @@ let micCadenceScore = 0;
 let cadenceSamples = [];
 let isMicActive = false;
 
-// Deflect Flurry & Spoken /learn State
+// Deflect Flurry State
 let isDeflectFlurryActive = false;
 let deflectFlurryTimer = null;
-let isLearnChallengeActive = false;
-let learnChallengeTimer = null;
-let speechRecognitionInstance = null;
-let hasTriggeredLearnChallenge = false;
 
 // Auto-Assist Pulse State
 let lastScrubTimestamp = 0;
@@ -447,16 +443,6 @@ export function renderBattleView() {
         </div>
       </div>
 
-      <div id="rex-learn-banner" class="absolute top-36 sm:top-40 left-1/2 transform -translate-x-1/2 z-40 pointer-events-none transition-all duration-300 opacity-0 scale-90 max-w-sm w-[92%]">
-        <div class="bg-slate-900/95 border-3 border-amber-400 text-white font-headline p-3.5 rounded-3xl shadow-2xl flex items-center gap-3">
-          <span class="text-3xl animate-bounce flex-shrink-0">🦖</span>
-          <div class="flex-1 min-w-0">
-            <div class="text-[9px] font-black text-amber-400 uppercase tracking-wide">REX LEARN MICRO-QUIZ</div>
-            <div id="rex-learn-question-text" class="text-xs font-bold text-slate-100 leading-snug">How many times a day do Little Heroes brush their teeth?</div>
-            <div class="text-[9px] font-extrabold text-emerald-400 mt-0.5">SAY "TWICE!" OR SCRUB FAST TO SHATTER! 💥</div>
-          </div>
-        </div>
-      </div>
 
       <!-- Comic Deflect Hit Popup -->
       <div id="comic-hit-badge" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none opacity-0 transition-all duration-300 z-35 text-center">
@@ -726,10 +712,6 @@ function handleCadenceUpdate({ isScrubbing, cadenceScore }) {
     if (isDeflectFlurryActive && boostedCadence >= 45) {
       triggerDeflectSuccess();
     }
-
-    if (isLearnChallengeActive && boostedCadence >= 55) {
-      resolveLearnChallenge(true, 'cadence');
-    }
   }
 }
 
@@ -818,10 +800,6 @@ function startOpticalMotionTracker() {
           if (isDeflectFlurryActive && (motionRatio >= 0.16 || roiRatio >= 0.16)) {
             triggerDeflectSuccess();
           }
-
-          if (isLearnChallengeActive && (motionRatio >= 0.18 || roiRatio >= 0.18)) {
-            resolveLearnChallenge(true, 'cadence');
-          }
         } else {
           isCameraMotionDetected = false;
         }
@@ -882,8 +860,9 @@ function triggerDeflectSuccess() {
   const hazardName = currentSugarHazard ? currentSugarHazard.shortName.toUpperCase() : 'SUGAR';
   showComicHit(`${hazardName} DEFLECTED! 🛡️✨`);
   if (typeof Sound?.fanfare === 'function') Sound.fanfare();
-  currentRexCoachText = `Awesome deflect! The ${currentSugarHazard ? currentSugarHazard.shortName.toLowerCase() : 'sweet treat'} bounced right back at ${boss.name}!`;
+  currentRexCoachText = "ENAMEL POWER SURGE! You broke the sweet treat barrier!";
   updateRexDialogue();
+  voicePrompts.speak(currentRexCoachText, null, null, { instant: true });
   syncCockpitHUD();
 }
 
@@ -893,117 +872,6 @@ function hideDeflectBanner() {
     banner.classList.remove('opacity-100', 'scale-100');
     banner.classList.add('opacity-0', 'scale-90');
   }
-}
-
-function triggerLearnChallenge() {
-  isLearnChallengeActive = true;
-  const colState = store.getBossColosseumState();
-  colState.isShieldActive = true;
-  hanaBattle3DService.updateState({ shieldActive: true });
-
-  const banner = document.getElementById('rex-learn-banner');
-  if (banner) {
-    banner.classList.remove('opacity-0', 'scale-90');
-    banner.classList.add('opacity-100', 'scale-100');
-  }
-
-  const question = "Rex Learn Challenge: How many times a day do Little Heroes brush their teeth? Say twice or scrub fast!";
-  currentRexCoachText = question;
-  updateRexDialogue();
-
-  let recognitionStarted = false;
-  const startSafeListening = () => {
-    if (!recognitionStarted && isLearnChallengeActive) {
-      recognitionStarted = true;
-      startSpeechRecognition();
-    }
-  };
-
-  voicePrompts.speak(question, startSafeListening, null, { instant: true });
-  setTimeout(startSafeListening, 2400);
-
-  if (learnChallengeTimer) clearTimeout(learnChallengeTimer);
-  learnChallengeTimer = setTimeout(() => {
-    resolveLearnChallenge(false, 'assist');
-  }, 8500);
-}
-
-function startSpeechRecognition() {
-  if (typeof window === 'undefined') return;
-  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRec) return;
-
-  try {
-    speechRecognitionInstance = new SpeechRec();
-    speechRecognitionInstance.continuous = false;
-    speechRecognitionInstance.interimResults = true;
-    speechRecognitionInstance.lang = 'en-US';
-
-    speechRecognitionInstance.onresult = (event) => {
-      let transcript = '';
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        transcript += event.results[i][0].transcript.toLowerCase() + ' ';
-      }
-      if (transcript.includes('two') || transcript.includes('twice') || transcript.includes('2') || transcript.includes('to') || transcript.includes('too')) {
-        resolveLearnChallenge(true, 'voice');
-      }
-    };
-
-    speechRecognitionInstance.onerror = () => {};
-    speechRecognitionInstance.onend = () => {
-      if (isLearnChallengeActive) {
-        try { speechRecognitionInstance.start(); } catch (e) {}
-      }
-    };
-    speechRecognitionInstance.start();
-  } catch (e) {}
-}
-
-function stopSpeechRecognition() {
-  if (speechRecognitionInstance) {
-    try { speechRecognitionInstance.stop(); } catch (e) {}
-    speechRecognitionInstance = null;
-  }
-}
-
-function resolveLearnChallenge(success, method = 'voice') {
-  if (!isLearnChallengeActive) return;
-  isLearnChallengeActive = false;
-  if (learnChallengeTimer) clearTimeout(learnChallengeTimer);
-  stopSpeechRecognition();
-
-  const banner = document.getElementById('rex-learn-banner');
-  if (banner) {
-    banner.classList.remove('opacity-100', 'scale-100');
-    banner.classList.add('opacity-0', 'scale-90');
-  }
-
-  const colState = store.getBossColosseumState();
-  colState.isShieldActive = false;
-  colState.shieldHp = 0;
-  if (colState.shieldMilestonesTriggered) {
-    colState.shieldMilestonesTriggered[90] = true;
-  }
-  colState.currentHp = Math.max(1, colState.currentHp - 15);
-  colState.choreSupernovaCharge = Math.min(100, (colState.choreSupernovaCharge || 0) + 15);
-  hanaBattle3DService.onArmorFracture('shield');
-  hanaBattle3DService.updateState({ shieldActive: false, bossHp: colState.currentHp });
-
-  if (method === 'voice') {
-    currentRexCoachText = "CRITICAL HIT! You brush twice a day! Barrier shattered!";
-    showComicHit('CRITICAL LEARN HIT! 🎓💥');
-    if (typeof Sound?.fanfare === 'function') Sound.fanfare();
-  } else if (method === 'cadence') {
-    currentRexCoachText = "ENAMEL POWER SURGE! You broke the sweet treat barrier!";
-    showComicHit('SCRUB SHATTER! ⚡💥');
-    if (typeof Sound?.fanfare === 'function') Sound.fanfare();
-  } else {
-    currentRexCoachText = "Rex power assist! We shattered the barrier together!";
-    showComicHit('BARRIER CRACKED! ✨');
-  }
-  updateRexDialogue();
-  voicePrompts.speak(currentRexCoachText, null, null, { instant: true });
-  syncCockpitHUD();
 }
 
 // =========================================================================
@@ -1118,7 +986,6 @@ export function startBattle() {
   currentCombo = 0;
   cadenceSamples = [];
   lastScrubTimestamp = Date.now();
-  hasTriggeredLearnChallenge = false;
   lastSpokenQuadId = null;
 
   quadrantCleanliness = { q1: 0, q2: 0, q3: 0, q4: 0, q5: 0 };
@@ -1207,12 +1074,9 @@ export function startBattle() {
 
     syncCockpitHUD();
 
-    // Spoken Rex Learn Micro-Challenge at halfway mark
-    let learnChallengeTriggeredThisTick = false;
-    if (secondsRemaining === Math.floor(totalDuration / 2) && !hasTriggeredLearnChallenge) {
-      hasTriggeredLearnChallenge = true;
-      learnChallengeTriggeredThisTick = true;
-      triggerLearnChallenge();
+    // Spoken Halfway Encouragement
+    if (secondsRemaining === Math.floor(totalDuration / 2)) {
+      voicePrompts.speak("Halfway there Little Hero! Keep up the awesome brushing!", null, null, { instant: true });
     }
 
     const activeQuad = getDentalQuadrant(secondsRemaining, totalDuration);
@@ -1226,9 +1090,7 @@ export function startBattle() {
     if (activeQuad.id !== lastSpokenQuadId) {
       lastSpokenQuadId = activeQuad.id;
       currentRexCoachText = activeQuad.coachMessage || `Brush your ${activeQuad.name}!`;
-      if (!learnChallengeTriggeredThisTick) {
-        voicePrompts.speak(currentRexCoachText, null, null, { instant: true });
-      }
+      voicePrompts.speak(currentRexCoachText, null, null, { instant: true });
       updateRexDialogue();
     }
 
@@ -1439,11 +1301,6 @@ function concludeVictory() {
     clearTimeout(deflectFlurryTimer);
     deflectFlurryTimer = null;
   }
-  if (learnChallengeTimer) {
-    clearTimeout(learnChallengeTimer);
-    learnChallengeTimer = null;
-  }
-  stopSpeechRecognition();
 
   Sound.stopBattleRhythm();
   brushAudioAnalyzer.stopListening();
@@ -1503,11 +1360,6 @@ function stopBattleSensorsAndTimers() {
     clearTimeout(deflectFlurryTimer);
     deflectFlurryTimer = null;
   }
-  if (learnChallengeTimer) {
-    clearTimeout(learnChallengeTimer);
-    learnChallengeTimer = null;
-  }
-  stopSpeechRecognition();
 
   Sound.stopBattleRhythm();
   brushAudioAnalyzer.stopListening();
