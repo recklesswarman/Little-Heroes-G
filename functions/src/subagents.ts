@@ -62,7 +62,7 @@ async function moderateSubmission(
     }
 
     const res = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.8-flash",
       contents,
       config: {
         systemInstruction: "You are the Little Heroes Safety Guardian subagent. Ensure content is 100% wholesome, safe, and family-friendly for toddlers and young children.",
@@ -116,7 +116,7 @@ async function evaluateHabitProof(
     }
 
     const res = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.8-flash",
       contents,
       config: {
         systemInstruction: "You are the Little Heroes Habit Verification Subagent. Assess honesty and effort with warm positive reinforcement.",
@@ -170,7 +170,7 @@ async function calculateRewardsAndProgression(
   try {
     const prompt = `Calculate fair gamified rewards for completing daily habit "${title}" by "${hero}". Companion pet: "${petId}". Return structured JSON with fair XP (15-50), coins (10-25), pet reaction, and parent recommendation.`;
     const res = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.8-flash",
       contents: prompt,
       config: {
         systemInstruction: "You are the Little Heroes Progression & Reward Subagent. Calculate positive reinforcement currency and companion cheers.",
@@ -351,7 +351,7 @@ Tailor the tasks to be fun, actionable, and age-appropriate (e.g. for toddlers, 
 
     try {
       const result = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.8-flash",
         contents: prompt,
         config: {
           systemInstruction: "You are the Little Heroes Autonomous Quest Architect. Generate creative, engaging micro-adventures with valid Material Symbols icon ligatures.",

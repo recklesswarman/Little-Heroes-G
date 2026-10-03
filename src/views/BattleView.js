@@ -7,6 +7,7 @@ import { voicePrompts } from '../utils/voicePrompts.js';
 import { HYGIENE_BOSSES, DENTAL_BADGES, DENTAL_QUADRANTS, getDentalQuadrant, SUGAR_ATTACK_HAZARDS, getSugarHazardById } from '../data/hygieneBossesData.js';
 import { brushAudioAnalyzer } from '../audio/brushAudioAnalyzer.js';
 import { DIGITAL_REWARDS_CATALOG } from '../data/digitalRewardsCatalog.js';
+import { getBattleCoachAdvice } from '../services/heroAgentService.js';
 
 const sugarVillainEscapedImg = new URL('../assets/sugar_villain_escaped.jpg', import.meta.url).href;
 
@@ -839,6 +840,19 @@ function triggerDeflectFlurry() {
   currentRexCoachText = currentSugarHazard.rexWarning || 'Sugar Hazard incoming! Scrub faster to raise your enamel shield!';
   updateRexDialogue();
   voicePrompts.speak(currentRexCoachText, null, null, { instant: true });
+
+  // Query AGY Battle Coach for tactical counter-move
+  const colState = store.getState().bossColosseum || {};
+  const hpPercent = colState.maxHp > 0 ? (colState.currentHp / colState.maxHp) * 100 : 80;
+  const activeQuad = getDentalQuadrant(secondsRemaining, totalDuration);
+  getBattleCoachAdvice(selectedBossId, hpPercent, activeQuad.number, micCadenceScore, getActiveCombatWeapon().id)
+    .then(advice => {
+      if (advice?.coach_text && isBattleRunning && !isBattlePaused && isDeflectFlurryActive) {
+        currentRexCoachText = advice.coach_text;
+        updateRexDialogue();
+      }
+    })
+    .catch(() => {});
 
   if (deflectFlurryTimer) clearTimeout(deflectFlurryTimer);
   deflectFlurryTimer = setTimeout(() => {

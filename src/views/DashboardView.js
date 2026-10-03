@@ -6,6 +6,7 @@ import { Sound } from '../audio/sfx.js';
 import confetti from 'canvas-confetti';
 import { requestAutonomousMicroQuests, submitDailyQuest } from '../services/questService.js';
 import { chorePhotoProofModal } from '../components/ChorePhotoProofModal.js';
+import { checkProactiveTriggerAGY } from '../services/heroAgentService.js';
 
 export function renderDashboardView() {
   const state = store.getState();
@@ -212,6 +213,9 @@ export function renderDashboardView() {
           ${pendingCount > 0 ? `<span class="text-tertiary text-[11px] font-black bg-tertiary/15 px-2.5 py-1 rounded-full border border-tertiary/30">⭐ ${pendingCount} Point Request(s) Pending</span>` : ''}
         </div>
       </div>
+
+      <!-- Rex AGY Proactive Check-In Nudge Container -->
+      <div id="rex-proactive-container" class="hidden"></div>
 
       <!-- Gentle Screen Time Pause / Bedtime Lockout Notice (Rex Toddler-Friendly) -->
       ${
@@ -663,6 +667,54 @@ export function attachDashboardListeners() {
       speakRex("Hi Little Hero! I am Rex the Dino! Tap any quest card to hear how to earn tokens and level up!");
     });
   }
+
+  // ── Proactive AGY Companion Check-In Nudge ────────────────────────────────
+  const heroObj = store.getState().selectedHero || {};
+  checkProactiveTriggerAGY({
+    triggerType: 'bedtime_checkin',
+    heroName: heroObj.name || 'Little Hero',
+    streak: heroObj.streak || 1,
+    brushedEveningToday: !!store.getState().lastBrushedEvening,
+    brushedMorningToday: !!store.getState().lastBrushedMorning,
+    completedQuestsCount: (store.getState().completedWaypointIds || []).length
+  }).then((proactiveResult) => {
+    if (proactiveResult?.should_notify && proactiveResult.rex_message?.reply) {
+      const container = document.getElementById('rex-proactive-container');
+      if (container) {
+        container.innerHTML = `
+          <div class="p-3.5 bg-gradient-to-r from-emerald-500/20 via-surface-container-high to-amber-500/20 border-2 border-emerald-400/50 rounded-2xl flex items-center justify-between gap-3 shadow-md animate-fade-in card-shadow mb-4">
+            <div class="flex items-center gap-3 min-w-0">
+              <span class="text-3xl flex-shrink-0 animate-bounce">🦖</span>
+              <div class="min-w-0">
+                <span class="text-[10px] font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1">
+                  <span>Rex Proactive Check-In</span>
+                  <span class="material-symbols-outlined text-[12px]">sparkles</span>
+                </span>
+                <p class="text-xs sm:text-sm font-bold text-inverse-surface truncate mt-0.5">${escapeHtml(proactiveResult.rex_message.reply)}</p>
+              </div>
+            </div>
+            <button id="rex-proactive-action-btn" class="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-[#00d2d3] text-slate-950 font-headline font-black text-xs flex-shrink-0 shadow-chunky-sm active:scale-95 cursor-pointer hover:brightness-110 transition-all">
+              Let's Go! ✨
+            </button>
+          </div>
+        `;
+        container.classList.remove('hidden');
+        document.getElementById('rex-proactive-action-btn')?.addEventListener('click', () => {
+          Sound.click();
+          const action = proactiveResult.rex_message.suggested_action;
+          if (action === 'launch:battle') {
+            launchToothbrushBattle();
+          } else if (action === 'navigate:quest_map') {
+            store.navigate('quest_map');
+          } else if (action === 'navigate:hero_hq') {
+            store.navigate('hero_hq');
+          } else {
+            store.navigate('bedtime_sanctuary');
+          }
+        });
+      }
+    }
+  }).catch(() => {});
 
   document.getElementById('dashboard-goto-bedtime-btn')?.addEventListener('click', () => {
     Sound.bloop();
