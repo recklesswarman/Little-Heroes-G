@@ -132,6 +132,38 @@ export const DIGITAL_REWARDS_CATALOG = [
     splineUrl: 'https://prod.spline.design/qE2M7oP9a1b2c3d4/scene.splinecode',
     voiceLine: "Rex says: Clean blast engaged! Wash away that sugary tartar!"
   },
+  {
+    id: 'comet_tail_whip',
+    name: 'Comet Tail Whip',
+    title: 'Comet Tail Whip',
+    desc: 'A blazing meteor-trail whip that cracks with shooting-star sparks on every strike.',
+    category: 'Weapons',
+    subcategory: 'weapon',
+    costCoins: 210,
+    statBonusType: 'damage_boost',
+    statBonusPercent: 30,
+    statBonusLabel: '+30% Meteor Strike Damage',
+    image: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f320.png',
+    renderGradient: 'from-indigo-900/60 via-slate-900 to-blue-950/80',
+    modelUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+    voiceLine: "Crack! The Comet Tail Whip streaks through the air like a falling star!"
+  },
+  {
+    id: 'storm_trident_lance',
+    name: 'Storm Trident Lance',
+    title: 'Storm Trident Lance',
+    desc: 'A triple-pronged lance crackling with captured storm energy for devastating team strikes.',
+    category: 'Weapons',
+    subcategory: 'weapon',
+    costCoins: 400,
+    statBonusType: 'damage_boost',
+    statBonusPercent: 50,
+    statBonusLabel: '+50% Storm Strike Damage',
+    image: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f531.png',
+    renderGradient: 'from-emerald-900/60 via-slate-900 to-cyan-950/80',
+    modelUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+    voiceLine: "Boom! The Storm Trident Lance channels the power of a thousand thunderclouds!"
+  },
 
   // =========================================================================
   // 2. AVATAR & PET GEAR (Equippable Sockets)
@@ -205,6 +237,40 @@ export const DIGITAL_REWARDS_CATALOG = [
     modelUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
     voiceLine: "Spring into action! Neon Stride Boots let us dash through chores in record time!"
   },
+  {
+    id: 'ember_ridge_helm',
+    name: 'Ember Ridge Battle Helm',
+    title: 'Ember Ridge Battle Helm',
+    desc: 'Rugged volcanic-forged helmet with a glowing ember visor for focused quest tracking.',
+    category: 'Avatar Gear',
+    subcategory: 'head',
+    targetPetSocket: 'head',
+    costCoins: 180,
+    statBonusType: 'defense_boost',
+    statBonusPercent: 25,
+    statBonusLabel: '+25% Focus & Defense',
+    image: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1fa96.png',
+    renderGradient: 'from-amber-900/60 via-slate-900 to-slate-950',
+    modelUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+    voiceLine: "Stand tall! The Ember Ridge Helm keeps your focus burning bright through any quest!"
+  },
+  {
+    id: 'phoenix_ember_wings',
+    name: 'Phoenix Ember Wings',
+    title: 'Phoenix Ember Wings',
+    desc: 'Flame-feathered wings that flare with rebirth energy, boosting quest stamina.',
+    category: 'Avatar Gear',
+    subcategory: 'back',
+    targetPetSocket: 'back',
+    costCoins: 260,
+    statBonusType: 'speed_boost',
+    statBonusPercent: 30,
+    statBonusLabel: '+30% Quest Stamina',
+    image: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f525.png',
+    renderGradient: 'from-orange-900/60 via-slate-900 to-slate-950',
+    modelUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+    voiceLine: "Rise again! Phoenix Ember Wings never run out of heroic energy!"
+  },
 
   // =========================================================================
   // 3. BADGES & TROPHIES (Persistent Perks)
@@ -256,6 +322,38 @@ export const DIGITAL_REWARDS_CATALOG = [
     renderGradient: 'from-amber-900/60 via-slate-900 to-slate-950',
     modelUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
     voiceLine: "Champions of the universe! Display this golden cup proudly on your HQ pedestal!"
+  },
+  {
+    id: 'emerald_streak_medal',
+    name: 'Emerald Streak Medal',
+    title: 'Emerald Streak Medal',
+    desc: 'Honors heroes who keep an unbroken streak of daily quests completed on time.',
+    category: 'Badges',
+    subcategory: 'trophy',
+    costCoins: 160,
+    statBonusType: 'coin_boost',
+    statBonusPercent: 20,
+    statBonusLabel: '+20% Streak Coin Bonus',
+    image: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f3c5.png',
+    renderGradient: 'from-emerald-900/60 via-slate-900 to-slate-950',
+    modelUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+    voiceLine: "Unbreakable streak! The Emerald Streak Medal proves your amazing daily dedication!"
+  },
+  {
+    id: 'cosmic_explorer_badge',
+    name: 'Cosmic Explorer Badge',
+    title: 'Cosmic Explorer Badge',
+    desc: 'Earned by heroes who uncover every secret shrine across the whole Adventure Island.',
+    category: 'Badges',
+    subcategory: 'trophy',
+    costCoins: 220,
+    statBonusType: 'xp_boost',
+    statBonusPercent: 25,
+    statBonusLabel: '+25% Exploration XP',
+    image: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f396.png',
+    renderGradient: 'from-cyan-900/60 via-slate-900 to-slate-950',
+    modelUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+    voiceLine: "Explorer extraordinaire! The Cosmic Explorer Badge marks a true island master!"
   },
 
   // =========================================================================
@@ -356,6 +454,44 @@ export const DIGITAL_REWARDS_CATALOG = [
     modelUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
     splineUrl: 'https://prod.spline.design/starberry/scene.splinecode',
     voiceLine: "Rex says: Starberries are super juicy and full of turbo energy!"
+  },
+  {
+    id: 'glowing_moon_melon',
+    name: 'Glowing Moon Melon',
+    title: 'Glowing Moon Melon',
+    desc: 'A giant softly-glowing melon slice that refills hunger and lulls companions into cozy calm.',
+    category: 'Snacks',
+    subcategory: 'food',
+    costCoins: 30,
+    statBonusType: 'energy_boost',
+    statBonusPercent: 25,
+    statBonusLabel: '+25 Energy / Hunger',
+    usageType: 'multi_use',
+    servingsMax: 4,
+    maxServings: 4,
+    image: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f349.png',
+    renderGradient: 'from-emerald-900/60 via-slate-900 to-slate-950',
+    modelUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+    voiceLine: "Mmm, so refreshing! The Glowing Moon Melon is the coziest nighttime snack!"
+  },
+  {
+    id: 'thunderclap_tonic',
+    name: 'Thunderclap Tonic',
+    title: 'Thunderclap Tonic',
+    desc: 'A fizzy, crackling potion that zaps tired companions wide awake with electric joy.',
+    category: 'Snacks',
+    subcategory: 'food',
+    costCoins: 45,
+    statBonusType: 'joy_boost',
+    statBonusPercent: 35,
+    statBonusLabel: '+35 Joy & Energy',
+    usageType: 'multi_use',
+    servingsMax: 3,
+    maxServings: 3,
+    image: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f9ea.png',
+    renderGradient: 'from-cyan-900/60 via-slate-900 to-slate-950',
+    modelUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+    voiceLine: "Zap! One sip of Thunderclap Tonic and your companion is bursting with giggles!"
   }
 ];
 
