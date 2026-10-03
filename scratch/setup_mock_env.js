@@ -173,6 +173,19 @@ function createMockElement(tag = 'div') {
       return _innerHtml;
     },
     set innerHTML(val) {
+      // Real innerHTML assignment replaces all of this element's previous
+      // children -- without this, re-rendering the same container twice in
+      // one test (render -> click -> re-render) leaves stale elements from
+      // the first render in allMockElements ahead of the fresh ones, so a
+      // later querySelector/querySelectorAll call returns the old, outdated
+      // node instead of the just-rendered one.
+      for (let i = allMockElements.length - 1; i >= 0; i--) {
+        if (allMockElements[i].parentElement === el) {
+          const removed = allMockElements[i];
+          if (removed.id) elementsByIdMap.delete(removed.id);
+          allMockElements.splice(i, 1);
+        }
+      }
       _innerHtml = String(val);
       const tagMatches = [..._innerHtml.matchAll(/<([a-zA-Z0-9-]+)\s*([^>]*?)>/g)];
       for (const m of tagMatches) {
