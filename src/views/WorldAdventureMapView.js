@@ -24,7 +24,7 @@ import {
   SEASONS_DATA
 } from '../data/worldMapData.js';
 import { WorldAdventureMapCanvas } from '../components/WorldAdventureMapCanvas.js';
-import { ADVENTURE_GAMES, getGameChallenges } from '../data/learningGamesData.js';
+import { ADVENTURE_GAMES, getGameChallenges, shuffleChallenges } from '../data/learningGamesData.js';
 import { geminiLiveService } from '../services/geminiLiveService.js';
 import { renderRexAvatarSvg } from '../components/LiveRexWidget.js';
 import { voicePrompts } from '../utils/voicePrompts.js';
@@ -33,6 +33,12 @@ import confetti from 'canvas-confetti';
 let activeCanvasInstance = null;
 let activeMiniGame = null;
 let currentMiniGameIdx = 0;
+// A shuffled copy of the active mini-game's challenge array, computed once
+// per session at launch so repeated play-throughs of the same realm/tier
+// don't show the exact same question order every time. Render and the
+// answer-click handler both read this single cached copy so their indices
+// never drift apart.
+let activeChallengeSet = null;
 let selectedModalWaypoint = null;
 let selectedModalLandmark = null;
 
@@ -47,7 +53,7 @@ export function renderWorldAdventureMapView() {
 
   // 1. IF PLAYING AN ADVENTURE MINI-GAME (Phonics, Math, etc.)
   if (activeMiniGame) {
-    const challenges = getGameChallenges(activeMiniGame, kidDifficulty);
+    const challenges = activeChallengeSet || getGameChallenges(activeMiniGame, kidDifficulty);
     const challenge = challenges[currentMiniGameIdx] || challenges[0];
 
     return `
@@ -763,8 +769,10 @@ export function attachWorldAdventureMapListeners() {
       const game = ADVENTURE_GAMES.find(g => g.id === gId);
       if (game) {
         Sound.click();
+        const kidDiff = store.getState().selectedHero?.gameDifficulty || 'medium';
         activeMiniGame = game;
         currentMiniGameIdx = 0;
+        activeChallengeSet = shuffleChallenges(getGameChallenges(game, kidDiff));
         store.notify();
       }
     });
@@ -775,6 +783,7 @@ export function attachWorldAdventureMapListeners() {
     exitMiniGameBtn.addEventListener('click', () => {
       activeMiniGame = null;
       currentMiniGameIdx = 0;
+      activeChallengeSet = null;
       store.notify();
     });
   }
@@ -782,8 +791,7 @@ export function attachWorldAdventureMapListeners() {
   document.querySelectorAll('.world-game-opt-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       if (!activeMiniGame) return;
-      const kidDiff = store.getState().selectedHero?.gameDifficulty || 'medium';
-      const challenges = getGameChallenges(activeMiniGame, kidDiff);
+      const challenges = activeChallengeSet || getGameChallenges(activeMiniGame, store.getState().selectedHero?.gameDifficulty || 'medium');
       const challenge = challenges[currentMiniGameIdx] || challenges[0];
       const optIdx = parseInt(btn.getAttribute('data-opt-idx'), 10);
 
@@ -801,6 +809,7 @@ export function attachWorldAdventureMapListeners() {
             hero.xp = (hero.xp || 0) + 20;
             activeMiniGame = null;
             currentMiniGameIdx = 0;
+            activeChallengeSet = null;
             store.showReward('Realm Challenge Cleared!', 'You earned +25 Coins & +20 XP!', 25, 10);
           }
         }, 500);

@@ -94,6 +94,12 @@ function matchMockSelector(el, sel) {
     if (m) {
       return el.getAttribute(m[1]) === m[2];
     }
+    // Presence-only attribute selector, e.g. "[data-launch-game]" with no
+    // "=value" -- matches any element that has the attribute set at all.
+    const presenceMatch = sel.match(/^\[([a-zA-Z0-9-_:]+)\]$/);
+    if (presenceMatch) {
+      return el.getAttribute(presenceMatch[1]) !== null;
+    }
   }
   return (el.tagName || '').toLowerCase() === sel.toLowerCase();
 }
