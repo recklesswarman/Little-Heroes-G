@@ -9,8 +9,6 @@ if (!getApps().length) {
   initializeApp();
 }
 
-const db = getFirestore();
-
 export interface ParentSettings {
   companionEnabled: boolean;
   maxDailyTurns: number;
@@ -30,6 +28,7 @@ export const updateCompanionSettings = onCall({ cors: true }, async (request) =>
     throw new HttpsError("invalid-argument", "Missing heroId.");
   }
 
+  const db = getFirestore();
   // Verify caller has parental permission over this hero doc
   const heroRef = db.collection("heroes").doc(heroId);
   const heroSnap = await heroRef.get();
@@ -88,7 +87,7 @@ Generate a concise, uplifting Parent Insight report in valid JSON:
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.8-flash",
       contents: prompt,
       config: {
         systemInstruction: "You are an expert pediatric psychologist and positive parenting guide. Provide encouraging, constructive, actionable family habit insights in strict structured JSON.",

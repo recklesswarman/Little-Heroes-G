@@ -210,7 +210,7 @@ You are ${pet.name}, a ${pet.personality} talking to ${childName} (ages 5–8).
 
     // 5. Query Gemini with configured persona & token limit
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.8-flash",
       contents,
       config: {
         systemInstruction: injectedSystemInstruction,
