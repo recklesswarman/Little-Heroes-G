@@ -167,11 +167,6 @@ class RexVoiceEngine {
     // 1. AR TOOTHBRUSH BATTLE VOICE COMMANDS
     const activeView = store.getState().activeView || store.getState().currentView;
     if (activeView === 'battle' || activeView === 'ar_battle') {
-      if (/\b(two|twice|2)\b/i.test(clean)) {
-        this.speak("Critical learn hit! Two times a day! Enamel barrier shattered!", activePetId);
-        window.dispatchEvent(new CustomEvent('rex-battle-learn-answer', { detail: { answer: 'twice' } }));
-        return true;
-      }
       if (/blast|foam|toothpaste|attack|laser|fire/i.test(clean)) {
         this.speak("Toothpaste Foam Cannon! Super Blast!", activePetId);
         window.dispatchEvent(

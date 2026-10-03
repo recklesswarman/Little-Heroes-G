@@ -119,7 +119,7 @@ export function renderLiveRexWidget() {
 
   return `
     <!-- Floating Mascot Container -->
-    <div id="live-rex-container" class="fixed bottom-24 right-4 sm:bottom-28 sm:right-6 z-50 flex flex-col items-end pointer-events-none select-none">
+    <div id="live-rex-container" class="fixed bottom-20 right-3 sm:bottom-24 sm:right-5 z-50 flex flex-col items-end pointer-events-none select-none">
       
       <!-- Expanded Toddler Live Voice Sheet -->
       ${
@@ -514,24 +514,24 @@ export function renderLiveRexWidget() {
             : ''
         }
 
-        <!-- Mascot Avatar Disc with Skeletal Face Mesh -->
-        <div class="w-16 h-16 sm:w-18 sm:h-18 rounded-full bg-surface-container border-4 ${
-          isSpeaking ? 'border-primary ring-4 ring-primary/40' : isListening ? 'border-emerald-400 ring-4 ring-emerald-400' : 'border-primary/50'
+        <!-- Mascot Avatar Disc with Skeletal Face Mesh (Compact ~30% Reduced Footprint) -->
+        <div class="w-12 h-12 sm:w-13 sm:h-13 rounded-full bg-surface-container border-3 ${
+          isSpeaking ? 'border-primary ring-3 ring-primary/40' : isListening ? 'border-emerald-400 ring-3 ring-emerald-400' : 'border-primary/50'
         } p-0.5 shadow-2xl flex items-center justify-center transition-all overflow-hidden pointer-events-none">
           ${renderPetSkeletalFaceViewer({
             canvasId: 'floating-mascot-skeletal-canvas',
             petId: activePetId,
-            width: 72,
-            height: 72,
+            width: 48,
+            height: 48,
             isInteractive: false
           })}
         </div>
 
         <!-- Status Pill Badge -->
-        <div class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center text-xs shadow-md border-2 border-surface ${
+        <div class="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full flex items-center justify-center text-[10px] shadow-md border-2 border-surface ${
           isSpeaking ? 'bg-primary text-on-primary animate-bounce' : isListening ? 'bg-emerald-500 text-white animate-pulse' : 'bg-primary text-on-primary'
         }">
-          <span class="material-symbols-outlined text-sm">${isSpeaking ? 'volume_up' : isListening ? 'mic' : 'smart_toy'}</span>
+          <span class="material-symbols-outlined text-xs">${isSpeaking ? 'volume_up' : isListening ? 'mic' : 'smart_toy'}</span>
         </div>
       </button>
 
