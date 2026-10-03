@@ -39,13 +39,10 @@ export function renderPetSanctuaryView() {
   const activeDrawer = sanctuaryState.activeDrawer; // null | 'feed' | 'bath' | 'wardrobe' | 'roster' | 'workout'
   const unhatchedEggs = sanctuaryState.unhatchedEggs || [];
 
-  // Active Pet Needs
-  const needs = (sanctuaryState.petNeedsMap && sanctuaryState.petNeedsMap[activePet.id]) || {
-    hunger: 75,
-    hygiene: 80,
-    joy: 85,
-    energy: 90
-  };
+  // Active Pet Needs (gentle real-time decay applied on top of the last
+  // tended values -- never mutates stored progress, just softens the
+  // display the longer a pet goes unvisited)
+  const needs = store.getPetNeedsWithDecay(activePet.id);
 
   // Equipped Forged Gear for this pet
   const equippedGear = (state.petGear && state.petGear[activePet.id]) || {};

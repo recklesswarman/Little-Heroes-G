@@ -3140,6 +3140,7 @@ class Store {
       sanct.petNeedsMap[id].joy = stats.joy;
       sanct.petNeedsMap[id].energy = stats.energy;
     }
+    this.touchPetNeeds(sanct, id);
 
     this.addXP(10);
     Sound.crunch();
@@ -3162,6 +3163,7 @@ class Store {
       sanct.petNeedsMap[id].joy = stats.joy;
       sanct.petNeedsMap[id].energy = stats.energy;
     }
+    this.touchPetNeeds(sanct, id);
 
     this.addXP(15);
     Sound.cheer();
@@ -4191,6 +4193,7 @@ class Store {
     } else {
       sanct.petNeedsMap[id].hygiene = stats.hygiene;
     }
+    this.touchPetNeeds(sanct, id);
 
     this.saveState(true);
   }
@@ -4211,6 +4214,7 @@ class Store {
       sanct.petNeedsMap[id].hygiene = 100;
       sanct.petNeedsMap[id].joy = 100;
     }
+    this.touchPetNeeds(sanct, id);
 
     if (!this.state.selectedHero) this.state.selectedHero = {};
     this.state.selectedHero.coins = (this.state.selectedHero.coins || 0) + 25;
@@ -7428,6 +7432,50 @@ class Store {
     return hero.petSanctuary;
   }
 
+  // Marks a pet's needs as freshly tended, resetting the decay clock used by
+  // getPetNeedsWithDecay(). Called by every feed/bath/play/workout method
+  // that already touches petNeedsMap, so the gentle decay always measures
+  // from the most recent real care action.
+  touchPetNeeds(sanct, petId) {
+    if (!sanct.needsLastTendedAt) sanct.needsLastTendedAt = {};
+    sanct.needsLastTendedAt[String(petId)] = Date.now();
+  }
+
+  // Read-only, gentle needs decay: the 4 pet-need meters (hunger/hygiene/
+  // joy/energy) used to be flat values that, once filled, never needed
+  // attention again. This computes a softened "current" view based on real
+  // elapsed time since the pet was last tended (same offline-elapsed-time
+  // pattern already used by claimExpeditionRewards -- a plain timestamp
+  // diff, no setInterval loop) without ever mutating the stored values, and
+  // never below a comfortable floor so a forgotten pet is never blocked
+  // from anything it already earned -- only a nudge to go say hello.
+  getPetNeedsWithDecay(petId) {
+    const sanct = this.getPetSanctuaryState();
+    const id = String(petId || this.getActivePet()?.id || '2');
+    if (!sanct.petNeedsMap[id]) {
+      sanct.petNeedsMap[id] = { hunger: 75, hygiene: 80, joy: 85, energy: 90 };
+    }
+    const raw = sanct.petNeedsMap[id];
+    if (!sanct.needsLastTendedAt) sanct.needsLastTendedAt = {};
+    if (!sanct.needsLastTendedAt[id]) {
+      // First time this pet's needs have ever been read: treat "now" as
+      // freshly tended so a pet that's simply never been visited doesn't
+      // instantly look neglected.
+      sanct.needsLastTendedAt[id] = Date.now();
+      return { ...raw };
+    }
+    const hoursSinceTended = Math.max(0, (Date.now() - sanct.needsLastTendedAt[id]) / (60 * 60 * 1000));
+    const DECAY_PER_HOUR = { hunger: 1.5, energy: 1, joy: 0.75, hygiene: 0.5 };
+    const FLOOR = 35;
+    const decayed = {};
+    for (const stat of ['hunger', 'hygiene', 'joy', 'energy']) {
+      const base = raw[stat] ?? 75;
+      const lost = DECAY_PER_HOUR[stat] * hoursSinceTended;
+      decayed[stat] = Math.max(FLOOR, Math.round(base - lost));
+    }
+    return decayed;
+  }
+
   getPetBondState(petId = null) {
     const sanct = this.getPetSanctuaryState();
     const pId = String(petId || this.getActivePet()?.id || '2');
@@ -7561,6 +7609,7 @@ class Store {
     }
 
     sanct.activePicnicSnack = treat;
+    this.touchPetNeeds(sanct, pId);
     this.ensurePetStats(pId);
     this.state.selectedHero.petStatsMap[pId] = {
       hunger: needs.hunger,
@@ -7598,6 +7647,7 @@ class Store {
     }
 
     sanct.activeBathLather = Math.min(100, (sanct.activeBathLather || 0) + 20);
+    this.touchPetNeeds(sanct, pId);
     this.ensurePetStats(pId);
     this.state.selectedHero.petStatsMap[pId] = {
       hunger: needs.hunger,
