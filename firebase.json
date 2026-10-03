@@ -74,13 +74,6 @@
         }
       },
       {
-        "source": "/api/rex/**",
-        "run": {
-          "serviceId": "little-heroes-rex-agy",
-          "region": "us-central1"
-        }
-      },
-      {
         "source": "**",
         "destination": "/index.html"
       }
