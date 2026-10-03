@@ -396,10 +396,14 @@ assert.ok(danceViewCode.includes('rex-dance-jump'), 'DancePartyView must listen 
 assert.ok(danceViewCode.includes('rex-dance-spin'), 'DancePartyView must listen to rex-dance-spin');
 assert.ok(danceViewCode.includes('rex-dance-fever'), 'DancePartyView must listen to rex-dance-fever');
 
-const advViewCode = fs.readFileSync(path.resolve('src/views/AdventuresMapView.js'), 'utf-8');
-assert.ok(advViewCode.includes('geminiLiveService.setQuestContext'), 'AdventuresMapView must sync quest context');
-assert.ok(advViewCode.includes('rex-live-hint'), 'AdventuresMapView must listen to rex-live-hint');
-assert.ok(advViewCode.includes('rex-live-eliminate'), 'AdventuresMapView must listen to rex-live-eliminate');
+// AdventuresMapView.js was an earlier, never-wired-into-main.js implementation
+// of this same Live Rex Companion quest integration -- QuestMapView.js is the
+// one main.js actually routes to, so that's what these assertions check
+// (AdventuresMapView.js was deleted as dead code; see Task #13 cleanup).
+const advViewCode = fs.readFileSync(path.resolve('src/views/QuestMapView.js'), 'utf-8');
+assert.ok(advViewCode.includes('geminiLiveService.setQuestContext'), 'QuestMapView must sync quest context');
+assert.ok(advViewCode.includes('rex-live-hint'), 'QuestMapView must listen to rex-live-hint');
+assert.ok(advViewCode.includes('rex-live-eliminate'), 'QuestMapView must listen to rex-live-eliminate');
 
 // Test quest context setting
 geminiLiveService.setQuestContext({
@@ -508,8 +512,8 @@ assert.ok(
   'QuestMapView must remove previous window listeners before re-attaching'
 );
 assert.ok(
-  advViewCode.includes('window._rexLiveHintHandler'),
-  'AdventuresMapView must store handlers on window to deduplicate event listeners'
+  questMapCode.includes('window._questRexLiveHintHandler'),
+  'QuestMapView must store the hint handler on window to deduplicate event listeners'
 );
 console.log('  ✅ PASS: Event listener deduplication in map views verified!\n');
 

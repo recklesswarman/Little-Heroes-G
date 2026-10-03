@@ -2,6 +2,7 @@ import { store, KID_AVATARS } from '../state/store.js';
 import { PETS_DATABASE, getPetById } from '../data/petsData.js';
 import { Sound } from '../audio/sfx.js';
 import { processProfilePhoto } from '../utils/photoUploader.js';
+import { escapeHtml } from '../utils/escapeHtml.js';
 
 export function renderProfileView() {
   const state = store.getState();
@@ -26,7 +27,7 @@ export function renderProfileView() {
   const activePetId = String(currentHero.activePetId || currentHero.unlockedPetIds?.[0] || '1');
   const allPets = state.pets || [];
   const activePet = allPets.find(p => String(p.id) === activePetId || p.key === activePetId) || getPetById(activePetId) || PETS_DATABASE[0];
-  const petLevel = state.petLevelMap?.[activePet.id] || 1;
+  const petLevel = store.getPetLevel(activePet.id);
   const unlockedPetsCount = (currentHero.unlockedPetIds || ['1']).length;
 
   return `
@@ -54,7 +55,7 @@ export function renderProfileView() {
         <div class="flex items-center gap-5 z-10">
           <div class="relative group flex-shrink-0">
             <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-primary overflow-hidden shadow-2xl relative bg-surface-container-high">
-              <img id="profile-avatar-display" class="w-full h-full object-cover" src="${currentHero.avatar}" alt="${currentHero.name}" />
+              <img id="profile-avatar-display" class="w-full h-full object-cover" src="${currentHero.avatar}" alt="${escapeHtml(currentHero.name)}" />
               
               <!-- Hover/Tap Overlay -->
               <label for="profile-avatar-file-input" class="absolute inset-0 bg-black/60 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white cursor-pointer" title="Upload custom photo">
@@ -74,7 +75,7 @@ export function renderProfileView() {
 
           <div class="flex flex-col text-left">
             <div class="flex items-center gap-2">
-              <h1 class="font-headline text-2xl sm:text-3xl font-black text-white">${currentHero.name}</h1>
+              <h1 class="font-headline text-2xl sm:text-3xl font-black text-white">${escapeHtml(currentHero.name)}</h1>
               <span class="bg-primary/25 text-primary text-[11px] font-black uppercase px-2.5 py-0.5 rounded-full border border-primary/40">
                 ${activeTheme.name}
               </span>
@@ -125,7 +126,7 @@ export function renderProfileView() {
       <div class="bg-surface-container rounded-4xl p-5 sm:p-6 border-3 border-secondary/40 card-shadow flex flex-col sm:flex-row items-center justify-between gap-5 relative overflow-hidden">
         <div class="flex items-center gap-4 z-10 w-full sm:w-auto">
           <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-surface-container-high border-3 border-secondary/50 flex items-center justify-center p-2 shadow-inner flex-shrink-0 relative">
-            <img class="w-full h-full object-contain drop-shadow-md" src="${activePet.avatar}" alt="${activePet.name}" />
+            <img class="w-full h-full object-contain drop-shadow-md" src="${activePet.avatar}" alt="${escapeHtml(activePet.name)}" />
             <span class="absolute -bottom-1 -right-1 bg-secondary text-on-secondary font-headline text-[10px] font-black px-2 py-0.5 rounded-full border border-surface-container-lowest shadow">
               Lvl ${petLevel}
             </span>
@@ -139,8 +140,8 @@ export function renderProfileView() {
                 ${unlockedPetsCount} Companions Unlocked
               </span>
             </div>
-            <h3 class="font-headline text-lg sm:text-xl font-black text-inverse-surface truncate mt-1">${activePet.name}</h3>
-            <p class="text-xs text-on-surface-variant line-clamp-1 italic">"${activePet.title}"</p>
+            <h3 class="font-headline text-lg sm:text-xl font-black text-inverse-surface truncate mt-1">${escapeHtml(activePet.name)}</h3>
+            <p class="text-xs text-on-surface-variant line-clamp-1 italic">"${escapeHtml(activePet.title)}"</p>
             <div class="mt-1 text-[11px] font-bold text-primary flex items-center gap-1">
               <span>⚡</span>
               <span>${activePet.habitBonus}</span>
@@ -186,11 +187,11 @@ export function renderProfileView() {
               } card-shadow flex flex-col items-center justify-center gap-2 transition-all active:scale-95 group text-center">
                 
                 <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center shadow-inner border-2 border-surface-container-highest overflow-hidden">
-                  <img class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" src="${h.avatar}" alt="${h.name}" />
+                  <img class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" src="${h.avatar}" alt="${escapeHtml(h.name)}" />
                 </div>
 
                 <div class="flex flex-col items-center">
-                  <h3 class="font-headline text-base font-black text-on-surface leading-tight">${h.name}</h3>
+                  <h3 class="font-headline text-base font-black text-on-surface leading-tight">${escapeHtml(h.name)}</h3>
                   <span class="text-[10px] text-on-surface-variant font-bold">${h.role}</span>
                 </div>
 
@@ -232,7 +233,7 @@ export function renderProfileView() {
             <span class="material-symbols-outlined text-primary text-2xl">palette</span>
             <div>
               <h2 class="font-headline text-lg font-black text-inverse-surface">Hero Profile Themes</h2>
-              <p class="text-xs text-on-surface-variant font-bold">Equip custom backgrounds and badge styles for ${currentHero.name}</p>
+              <p class="text-xs text-on-surface-variant font-bold">Equip custom backgrounds and badge styles for ${escapeHtml(currentHero.name)}</p>
             </div>
           </div>
 

@@ -5,7 +5,7 @@
 
 import { Sound } from '../audio/sfx.js';
 import { getPet3DProfile, isWebGLSupported } from './pet3DService.js';
-import confetti from 'canvas-confetti';
+import { safeConfetti } from '../utils/safeConfetti.js';
 
 export { isWebGLSupported };
 
@@ -180,16 +180,12 @@ export class Dance3DInteractiveCanvas {
       if (typeof Sound.feverHorn === 'function') {
         Sound.feverHorn();
       }
-      if (typeof confetti === 'function' && typeof document !== 'undefined' && document.body) {
-        try {
-          confetti({
-            particleCount: 50,
-            spread: 60,
-            origin: { y: 0.6 },
-            colors: ['#f43f5e', '#3b82f6', '#10b981', '#f59e0b', '#a855f7']
-          });
-        } catch (e) {}
-      }
+      safeConfetti({
+        particleCount: 50,
+        spread: 60,
+        origin: { y: 0.6 },
+        colors: ['#f43f5e', '#3b82f6', '#10b981', '#f59e0b', '#a855f7']
+      });
     }
   }
 

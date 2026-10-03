@@ -1,9 +1,11 @@
 import { renderPet3DViewer, initPet3DViewer } from '../components/Pet3DViewer.js';
+import { registerActiveCanvas } from '../utils/activeViewCanvasRegistry.js';
 import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import { speakRex } from '../services/voiceService.js';
 import confetti from 'canvas-confetti';
 import { PETS_DATABASE, getPetLevelData } from '../data/petsData.js';
+import { escapeHtml } from '../utils/escapeHtml.js';
 
 let hasSpokenPenGreeting = false;
 let selectedRadialPetId = null;
@@ -109,7 +111,7 @@ export function renderPetPenView() {
               ${roamingPets.length} ${roamingPets.length === 1 ? 'Companion' : 'Companions'} Roaming
             </span>
           </div>
-          <h1 class="font-headline text-2xl font-black text-inverse-surface text-shadow">${activePet.name}'s Paradise</h1>
+          <h1 class="font-headline text-2xl font-black text-inverse-surface text-shadow">${escapeHtml(activePet.name)}'s Paradise</h1>
         </div>
 
         <div class="flex items-center gap-2 flex-wrap">
@@ -310,7 +312,7 @@ export function renderPetPenView() {
       <section class="bg-surface-container rounded-3xl p-5 border-2 border-surface-container-highest card-shadow flex flex-col gap-3">
         <div class="flex items-center justify-between">
           <h2 class="font-headline text-xs font-black uppercase text-on-surface-variant tracking-wider">
-            ${activePet.name}'s Vital Needs
+            ${escapeHtml(activePet.name)}'s Vital Needs
           </h2>
           <span class="text-[10px] font-black text-secondary uppercase bg-surface-container-highest px-2 py-0.5 rounded-full">
             Active Companion
@@ -447,14 +449,14 @@ export function renderPetPenView() {
               <button 
                 class="pen-custom-toy-btn bg-slate-800/80 hover:bg-slate-700 border-2 border-cyan-400/30 hover:border-cyan-400 rounded-2xl p-3 flex flex-col items-center text-center gap-1.5 transition-all active:scale-95 group shadow-md"
                 data-toy-id="${toy.id}"
-                title="${toy.desc || toy.name}"
+                title="${escapeHtml(toy.desc || toy.name)}"
               >
                 ${toy.modelUrl ? `
                   <model-viewer src="${toy.modelUrl}" auto-rotate camera-controls shadow-intensity="1" ar style="width: 50px; height: 50px; background: transparent;"></model-viewer>
                 ` : `
                   <div class="text-3xl group-hover:scale-115 transition-transform drop-shadow">${toy.emoji || '🎪'}</div>
                 `}
-                <span class="font-headline text-xs font-black text-white truncate max-w-full">${toy.name}</span>
+                <span class="font-headline text-xs font-black text-white truncate max-w-full">${escapeHtml(toy.name)}</span>
                 <span class="text-[9px] font-black text-cyan-300 bg-cyan-500/20 px-2 py-0.5 rounded-full border border-cyan-400/30">
                   +${toy.statRefillAmount || 30} ${(toy.statRefillTarget || 'Joy').toUpperCase()}
                 </span>
@@ -490,7 +492,7 @@ function renderRoamingPetCard(pet, idx) {
 
       <!-- 3D Pet Avatar with Floating Effect -->
       <div id="roaming-pet-${pet.id}" class="relative w-32 h-32 sm:w-36 sm:h-36 flex items-center justify-center animate-float">
-        <img class="w-full h-full object-contain drop-shadow-[0_12px_18px_rgba(0,0,0,0.8)] group-hover:scale-110 transition-transform" src="${pet.avatar}" alt="${pet.name}" />
+        <img class="w-full h-full object-contain drop-shadow-[0_12px_18px_rgba(0,0,0,0.8)] group-hover:scale-110 transition-transform" src="${pet.avatar}" alt="${escapeHtml(pet.name)}" />
         
         <!-- Equipped Hat Badge -->
         ${hatEmoji ? `
@@ -512,7 +514,7 @@ function renderRoamingPetCard(pet, idx) {
 
       <!-- Name & Level Tag -->
       <div class="bg-surface-container-lowest/80 px-3 py-1 rounded-full border border-surface-container-highest flex items-center gap-1.5 mt-1 shadow-sm">
-        <span class="font-headline text-xs font-black text-inverse-surface">${pet.name}</span>
+        <span class="font-headline text-xs font-black text-inverse-surface">${escapeHtml(pet.name)}</span>
         <span class="text-[9px] font-black text-secondary">Lv ${pet.level}</span>
       </div>
 
@@ -542,12 +544,12 @@ function renderRadialActionRing(state) {
 
         <!-- Center Pet Avatar -->
         <div class="relative w-28 h-28 flex items-center justify-center animate-float my-1">
-          <img class="w-full h-full object-contain drop-shadow-md" src="${avatar}" alt="${pet.name}" />
+          <img class="w-full h-full object-contain drop-shadow-md" src="${avatar}" alt="${escapeHtml(pet.name)}" />
         </div>
 
         <div>
           <h3 class="font-headline text-lg font-black text-inverse-surface flex items-center justify-center gap-1.5">
-            ${pet.name}
+            ${escapeHtml(pet.name)}
             <span class="text-xs text-primary font-black bg-primary/20 px-2 py-0.5 rounded-full">Level ${petLevel}</span>
           </h3>
           <p class="text-xs font-bold text-on-surface-variant">⭐ Level ${petLevel}/25 Companion</p>
@@ -658,6 +660,12 @@ export function attachPetPenListeners() {
     stage: 1,
     mode: 'sanctuary'
   });
+  // Pet3DViewer.js only destroys a canvas instance when the SAME canvas id
+  // re-initializes on this same view, never when main.js tears down the
+  // whole view to navigate elsewhere -- registering it here lets the shared
+  // registry stop its requestAnimationFrame loop on navigate-away too,
+  // matching the pattern already used for PetSanctuaryCanvas.
+  if (meadow3DController) registerActiveCanvas(meadow3DController);
 
   if (isEasy && !hasSpokenPenGreeting && !hasNoPet) {
     hasSpokenPenGreeting = true;

@@ -1,6 +1,7 @@
 import { hanaBattle3DService } from '../services/hanaBattle3DService.js';
 import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
+import { escapeHtml } from '../utils/escapeHtml.js';
 import confetti from 'canvas-confetti';
 import { voicePrompts } from '../utils/voicePrompts.js';
 import { HYGIENE_BOSSES, DENTAL_BADGES, DENTAL_QUADRANTS, getDentalQuadrant, SUGAR_ATTACK_HAZARDS, getSugarHazardById } from '../data/hygieneBossesData.js';
@@ -349,7 +350,7 @@ export function renderBattleView() {
               </span>
               <div class="flex flex-col min-w-0 flex-1">
                 <div class="flex items-center justify-between text-[10px] sm:text-xs font-black text-amber-300 uppercase truncate">
-                  <span class="truncate">${currentBoss.name}</span>
+                  <span class="truncate">${escapeHtml(currentBoss.name)}</span>
                   <span class="text-[9px] text-rose-300 font-bold ml-1">${hpPercent}% HP</span>
                 </div>
                 <!-- Curved Boss Health Bar -->
@@ -553,7 +554,7 @@ function renderVictoryModal(colState, currentBoss) {
           <div class="absolute -inset-3 rounded-full bg-gradient-to-r from-pink-500 via-amber-400 via-emerald-400 via-cyan-400 to-purple-500 blur-md opacity-85 animate-pulse"></div>
           <div class="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-emerald-400 bg-slate-900/90 overflow-hidden shadow-[0_0_35px_rgba(52,211,153,0.8)] flex items-center justify-center">
             ${currentBoss.cleansedImage
-              ? `<img src="${currentBoss.cleansedImage}" alt="${reward.cleansedTitle}" class="w-full h-full object-cover" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\\'text-5xl\\'>${currentBoss.cleansedAvatar || currentBoss.avatar || '✨'}</span>';" />`
+              ? `<img src="${currentBoss.cleansedImage}" alt="${escapeHtml(reward.cleansedTitle)}" class="w-full h-full object-cover" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\\'text-5xl\\'>${currentBoss.cleansedAvatar || currentBoss.avatar || '✨'}</span>';" />`
               : `<span class="text-5xl animate-bounce">${currentBoss.cleansedAvatar || currentBoss.avatar || '✨'}</span>`
             }
           </div>
@@ -566,7 +567,7 @@ function renderVictoryModal(colState, currentBoss) {
           VILLAIN CLEANSED! 🎉
         </h2>
         <p class="font-headline font-bold text-xs text-slate-300 mt-1">
-          ${reward.bossName} transformed into ${reward.cleansedTitle}!
+          ${escapeHtml(reward.bossName)} transformed into ${escapeHtml(reward.cleansedTitle)}!
         </p>
 
         <div class="w-full bg-slate-950/90 rounded-2xl p-3 border-2 border-amber-400/50 flex flex-col items-center gap-1 my-3 shadow-inner">
@@ -906,7 +907,7 @@ function triggerDeflectSuccess() {
   const hazardName = currentSugarHazard ? currentSugarHazard.shortName.toUpperCase() : 'SUGAR';
   showComicHit(`${hazardName} DEFLECTED! 🛡️✨`);
   if (typeof Sound?.fanfare === 'function') Sound.fanfare();
-  currentRexCoachText = `Awesome deflect! The ${currentSugarHazard ? currentSugarHazard.shortName.toLowerCase() : 'sweet treat'} bounced right back at ${boss.name}!`;
+  currentRexCoachText = `Awesome deflect! The ${currentSugarHazard ? currentSugarHazard.shortName.toLowerCase() : 'sweet treat'} bounced right back at ${escapeHtml(boss.name)}!`;
   updateRexDialogue();
   syncCockpitHUD();
 }
@@ -1545,14 +1546,20 @@ export function quitBattle() {
   isBattleRunning = false;
   isBattlePaused = false;
   hasExplicitBossSelection = false;
+  // The synced store-side flag (set by setSelectedBossId whenever a boss is
+  // explicitly chosen from the Quest Map or a waypoint) never resets on its
+  // own and otherwise permanently overrides the rotating-villain system for
+  // every future casual battle launch, on every device, once set even once.
+  if (store.state) store.state.hasExplicitBossSelection = false;
   sessionRotatedBossId = null;
   battlePhase = 'brush';
-  // A waypoint-launched battle stamps activeWaypointChoreKey so its eventual
-  // completeToothbrushBattle() call knows which chore it's for. Quitting
-  // before that happens must clear it too, or the breadcrumb survives to
-  // mislabel the next, unrelated toothbrush battle's morning/evening chore.
-  if (store.state) store.state.activeWaypointChoreKey = null;
   if (wasMidBattle) {
+    // Don't clear activeWaypointChoreKey here -- the kid hasn't actually
+    // left the waypoint's battle yet, just hit the defeat modal. Tapping
+    // "Try Again" (defeatRetryBtn) re-launches the SAME waypoint battle via
+    // startBattle(), which needs this breadcrumb intact or the eventual
+    // victory falls back to the wall-clock guess and mislabels it. Only
+    // clear it if they actually leave via "Give Up" (defeatReturnBtn).
     // Show a real defeat modal (reward-free -- quitting early stays an
     // incentive to finish, same as before) instead of a toast that
     // immediately dumped the kid back to the dashboard. The modal's own
@@ -1570,6 +1577,10 @@ export function quitBattle() {
     store.notify();
     return;
   }
+
+  // Not mid-battle, so there's no defeat/retry modal pending -- this is a
+  // genuine exit with no chance of a "Try Again" reusing the breadcrumb.
+  if (store.state) store.state.activeWaypointChoreKey = null;
 
   const targetView = (store.state && store.state.previousView === 'quest_map')
     ? 'quest_map'
@@ -1594,6 +1605,11 @@ export function abandonBattleIfRunning() {
   isBattleRunning = false;
   isBattlePaused = false;
   hasExplicitBossSelection = false;
+  // The synced store-side flag (set by setSelectedBossId whenever a boss is
+  // explicitly chosen from the Quest Map or a waypoint) never resets on its
+  // own and otherwise permanently overrides the rotating-villain system for
+  // every future casual battle launch, on every device, once set even once.
+  if (store.state) store.state.hasExplicitBossSelection = false;
   sessionRotatedBossId = null;
   battlePhase = 'brush';
   // Same stale-breadcrumb risk as quitBattle() -- clearing it is not a
@@ -1753,6 +1769,7 @@ export function attachBattleListeners() {
       isBattleRunning = false;
       battlePhase = 'brush';
       hasExplicitBossSelection = false;
+      if (store.state) store.state.hasExplicitBossSelection = false;
       sessionRotatedBossId = null;
       hanaBattle3DService.destroy();
 
@@ -1780,6 +1797,7 @@ export function attachBattleListeners() {
       isBattleRunning = false;
       battlePhase = 'brush';
       hasExplicitBossSelection = false;
+      if (store.state) store.state.hasExplicitBossSelection = false;
       sessionRotatedBossId = null;
       hanaBattle3DService.destroy();
       store.closeColosseumVictoryModal();
@@ -1796,6 +1814,7 @@ export function attachBattleListeners() {
       isBattleRunning = false;
       battlePhase = 'brush';
       hasExplicitBossSelection = false;
+      if (store.state) store.state.hasExplicitBossSelection = false;
       sessionRotatedBossId = null;
       hanaBattle3DService.destroy();
       store.closeColosseumVictoryModal();
@@ -1819,6 +1838,9 @@ export function attachBattleListeners() {
     defeatReturnBtn.addEventListener('click', () => {
       Sound.tap();
       hanaBattle3DService.destroy();
+      // This is the real "give up" decision quitBattle() deferred -- clear
+      // the waypoint breadcrumb now that there's no retry coming.
+      if (store.state) store.state.activeWaypointChoreKey = null;
       store.closeColosseumDefeatModal();
       const targetView = (store.state && store.state.previousView === 'quest_map')
         ? 'quest_map'

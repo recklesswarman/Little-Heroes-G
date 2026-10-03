@@ -24,14 +24,20 @@ abandonBattleIfRunning();
 
 assert(store.state.activeWaypointChoreKey === null, 'Navigating away mid-battle clears activeWaypointChoreKey');
 
-console.log('\n--- 2. quitBattle() clears it on the mid-battle (defeat modal) path ---');
+console.log('\n--- 2. quitBattle() mid-battle defers the decision to the defeat modal, not clearing yet ---');
 
+// A later fix found that clearing the breadcrumb here was too eager: a
+// mid-battle quit opens a defeat modal with a "Try Again" option that
+// re-launches the SAME waypoint battle, and that retry needs the breadcrumb
+// intact (see verify_waypoint_breadcrumb_survives_retry.js for the full
+// retry-vs-give-up behavior). Only a genuine exit clears it.
 store.state.activeWaypointChoreKey = 'brush_teeth_pm';
 store.initColosseumBattle('sugar_bandit', 120);
 startBattle();
 quitBattle();
 
-assert(store.state.activeWaypointChoreKey === null, 'Tapping Quit mid-battle clears activeWaypointChoreKey');
+assert(store.state.activeWaypointChoreKey === 'brush_teeth_pm', 'Tapping Quit mid-battle (into the defeat modal) does NOT clear activeWaypointChoreKey yet');
+store.getBossColosseumState().isDefeatModalOpen = false; // close it out for the next test's clean slate
 
 console.log('\n--- 3. quitBattle() clears it even when not mid-battle ---');
 

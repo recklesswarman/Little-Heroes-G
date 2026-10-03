@@ -1,8 +1,10 @@
 import { renderPet3DViewer, initPet3DViewer, getActivePet3DInstance } from '../components/Pet3DViewer.js';
+import { registerActiveCanvas } from '../utils/activeViewCanvasRegistry.js';
 import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import confetti from 'canvas-confetti';
 import { speakRex } from '../services/voiceService.js';
+import { escapeHtml } from '../utils/escapeHtml.js';
 
 let hasSpokenBathIntro = false;
 
@@ -151,10 +153,10 @@ export function renderPetBathView() {
             <span id="bath-guidance-text" class="text-xs font-bold text-inverse-surface">
               ${
                 isBathComplete
-                  ? `Hooray! ${activePet.name} is 100% washed, blow-dried, and sparkling fresh! 🎉`
+                  ? `Hooray! ${escapeHtml(activePet.name)} is 100% washed, blow-dried, and sparkling fresh! 🎉`
                   : isFullyWashed
-                  ? `All lathered in bubbles! Now tap BLOW DRY to fluff up and warm ${activePet.name}! 💨`
-                  : `Tap SCRUB SUDS or rub ${activePet.name} to lather soapy bubbles! 🫧`
+                  ? `All lathered in bubbles! Now tap BLOW DRY to fluff up and warm ${escapeHtml(activePet.name)}! 💨`
+                  : `Tap SCRUB SUDS or rub ${escapeHtml(activePet.name)} to lather soapy bubbles! 🫧`
               }
             </span>
           </div>
@@ -359,11 +361,14 @@ function spawnWindGustStreams() {
 
 export function attachPetBathListeners() {
   // Initialize 3D Pet in Bath Tub
-  initPet3DViewer('bath-tub-3d-canvas', {
+  const bathPetController = initPet3DViewer('bath-tub-3d-canvas', {
     petId: store.getActivePet()?.id || 'rex',
     stage: 1,
     mode: 'bath'
   });
+  // See PetPenView.js's identical registration for why this is needed --
+  // Pet3DViewer.js alone never stops this canvas's RAF loop on navigate-away.
+  if (bathPetController) registerActiveCanvas(bathPetController);
 
   if (!hasSpokenBathIntro && washProgress < 100) {
     hasSpokenBathIntro = true;

@@ -1,6 +1,8 @@
 import { renderPet3DViewer, initPet3DViewer } from '../components/Pet3DViewer.js';
+import { registerActiveCanvas } from '../utils/activeViewCanvasRegistry.js';
 import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
+import { escapeHtml } from '../utils/escapeHtml.js';
 import { speakRex } from '../services/voiceService.js';
 import confetti from 'canvas-confetti';
 import { DIGITAL_REWARDS_CATALOG } from '../data/digitalRewardsCatalog.js';
@@ -228,7 +230,7 @@ export function renderHeroHQView() {
             <!-- Weapon 3D Icon & Pedestal -->
             <div class="w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-cyan-900/90 to-blue-950/90 p-1 shadow-[0_0_15px_rgba(6,182,212,0.6)] border-2 border-cyan-400 flex items-center justify-center relative overflow-hidden group-hover:border-cyan-200">
               ${equippedWeapon?.image ? `
-                <img src="${equippedWeapon.image}" alt="${equippedWeapon.title}" class="w-8 h-8 sm:w-10 sm:h-10 object-contain drop-shadow" />
+                <img src="${equippedWeapon.image}" alt="${escapeHtml(equippedWeapon.title)}" class="w-8 h-8 sm:w-10 sm:h-10 object-contain drop-shadow" />
               ` : `
                 <span class="text-xl sm:text-2xl">${equippedWeapon?.icon || '⚔️'}</span>
               `}
@@ -237,7 +239,7 @@ export function renderHeroHQView() {
             <!-- Mini Plaque -->
             <div class="mt-1.5 px-1 sm:px-2 py-0.5 rounded-lg bg-black/80 border border-cyan-400/50 text-[8px] sm:text-[10px] font-black text-cyan-200 text-center truncate max-w-[65px] sm:max-w-[85px] flex items-center gap-0.5 justify-center">
               <span>⚔️</span>
-              <span class="truncate">${equippedWeapon ? equippedWeapon.title : 'Weapon'}</span>
+              <span class="truncate">${equippedWeapon ? escapeHtml(equippedWeapon.title) : 'Weapon'}</span>
             </div>
             <span class="text-[7px] sm:text-[8px] text-cyan-300 font-bold uppercase tracking-widest mt-0.5">Weapon Slot</span>
           </div>
@@ -256,9 +258,9 @@ export function renderHeroHQView() {
         <div class="relative z-20 w-full flex-1 flex flex-col items-center justify-center my-auto py-4">
           
           <!-- Center Floor Rug (Positioned underneath elevated companion stage) -->
-          <div id="hq-slot-rug" class="absolute w-80 sm:w-96 h-36 sm:h-44 rounded-[60px] bg-gradient-to-r from-amber-500/20 via-emerald-500/20 to-cyan-500/20 border-2 border-white/20 shadow-inner flex flex-col items-center justify-end pb-3 transition-all cursor-pointer hover:scale-102 hover:border-amber-300 pointer-events-auto" title="${rugItem.name} - Tap to play!">
+          <div id="hq-slot-rug" class="absolute w-80 sm:w-96 h-36 sm:h-44 rounded-[60px] bg-gradient-to-r from-amber-500/20 via-emerald-500/20 to-cyan-500/20 border-2 border-white/20 shadow-inner flex flex-col items-center justify-end pb-3 transition-all cursor-pointer hover:scale-102 hover:border-amber-300 pointer-events-auto" title="${escapeHtml(rugItem.name)} - Tap to play!">
             <span class="text-[10px] font-headline font-black text-white/70 bg-black/40 px-3 py-0.5 rounded-full border border-white/10">
-              ${rugItem.name}
+              ${escapeHtml(rugItem.name)}
             </span>
           </div>
 
@@ -272,11 +274,11 @@ export function renderHeroHQView() {
             </div>
 
             <!-- Center: Elevated 3D Figurine Companion Pedestal -->
-            <div id="hq-roaming-pet" class="flex flex-col items-center cursor-pointer transition-transform hover:scale-105 group select-none" title="${activePet.name} - Tap to cuddle!">
+            <div id="hq-roaming-pet" class="flex flex-col items-center cursor-pointer transition-transform hover:scale-105 group select-none" title="${escapeHtml(activePet.name)} - Tap to cuddle!">
               <!-- Speech Bubble -->
               <div class="mb-1.5 bg-surface-container-highest/95 backdrop-blur-md text-on-surface text-[10px] sm:text-xs font-black px-3 py-1 rounded-full shadow-lg border-2 border-emerald-400 animate-bounce flex items-center gap-1.5 z-10">
                 <span>🐾</span>
-                <span>${isNight ? 'Nighty night, Hero! 🌙' : `${activePet.shortName || activePet.name} is ready for action! ⚡`}</span>
+                <span>${isNight ? 'Nighty night, Hero! 🌙' : `${escapeHtml(activePet.shortName || activePet.name)} is ready for action! ⚡`}</span>
               </div>
 
               <!-- Figurine & Pedestal Glow -->
@@ -287,7 +289,7 @@ export function renderHeroHQView() {
                 <!-- 3D Chunky Figurine Image -->
                 <img 
                   src="${activePet.avatar || `assets/pets/${activePet.key || 'rex'}.png`}" 
-                  alt="${activePet.name}" 
+                  alt="${escapeHtml(activePet.name)}"
                   class="w-28 h-28 sm:w-36 sm:h-36 object-contain drop-shadow-[0_12px_24px_rgba(0,0,0,0.7)] animate-float-gentle transition-transform group-hover:scale-110"
                 />
 
@@ -300,7 +302,7 @@ export function renderHeroHQView() {
               <!-- Pet Name & Level Pill -->
               <div class="mt-2 flex items-center gap-1.5 bg-surface-container-lowest/90 border border-white/20 px-3 py-1 rounded-full shadow-md">
                 <span class="text-xs">${activePet.emoji || '🐾'}</span>
-                <span class="font-headline text-xs font-black text-white">${activePet.name}</span>
+                <span class="font-headline text-xs font-black text-white">${escapeHtml(activePet.name)}</span>
                 <span class="text-[10px] font-black px-2 py-0.5 rounded-full ${petLevelData.badgeColor}">
                   Lv.${petLevel}
                 </span>
@@ -359,7 +361,7 @@ export function renderHeroHQView() {
           <div class="w-full grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4 items-end max-w-4xl mx-auto">
             
             <!-- Slot 1: BED & NAPPING POD (Left) -->
-            <div id="hq-slot-bed" class="flex flex-col items-center cursor-pointer group transition-transform hover:-translate-y-1" title="${bedItem.name} - Tap to snooze!">
+            <div id="hq-slot-bed" class="flex flex-col items-center cursor-pointer group transition-transform hover:-translate-y-1" title="${escapeHtml(bedItem.name)} - Tap to snooze!">
               <div class="relative w-full max-w-[140px] h-28 sm:h-32 rounded-3xl bg-surface-container/80 backdrop-blur-sm border-2 ${isNight ? 'border-indigo-400 shadow-[0_0_20px_rgba(99,102,241,0.3)]' : 'border-white/30'} flex flex-col items-center justify-center p-2 text-center group-hover:border-primary transition-all">
                 <!-- Zzz Sleep Bubble if napping -->
                 ${isNapping ? `
@@ -373,7 +375,7 @@ export function renderHeroHQView() {
                   </div>
                 `}
                 <div class="text-[10px] font-headline font-black text-inverse-surface truncate w-full mt-1">
-                  ${bedItem.name}
+                  ${escapeHtml(bedItem.name)}
                 </div>
                 <span class="text-[9px] text-primary font-bold bg-primary/10 px-2 py-0.5 rounded-md mt-0.5">
                   ${isNapping ? 'Snoozing... 💤' : bedItem.actionPrompt || 'Take a Snooze'}
@@ -382,7 +384,7 @@ export function renderHeroHQView() {
             </div>
 
             <!-- Slot 2: PET LOUNGE & TRAMPOLINE (Center-Left) -->
-            <div id="hq-slot-petLounge" class="flex flex-col items-center cursor-pointer group transition-transform hover:-translate-y-1" title="${petLoungeItem.name} - Tap to play!">
+            <div id="hq-slot-petLounge" class="flex flex-col items-center cursor-pointer group transition-transform hover:-translate-y-1" title="${escapeHtml(petLoungeItem.name)} - Tap to play!">
               <div class="relative w-full max-w-[140px] h-28 sm:h-32 rounded-3xl bg-surface-container/80 backdrop-blur-sm border-2 border-white/30 flex flex-col items-center justify-center p-2 text-center group-hover:border-amber-400 transition-all ${isBouncing ? 'animate-bounce border-amber-400' : ''}">
                 ${isBouncing ? `
                   <div class="absolute -top-7 text-xl animate-ping">🤸💥</div>
@@ -395,7 +397,7 @@ export function renderHeroHQView() {
                   </div>
                 `}
                 <div class="text-[10px] font-headline font-black text-inverse-surface truncate w-full mt-1">
-                  ${petLoungeItem.name}
+                  ${escapeHtml(petLoungeItem.name)}
                 </div>
                 <span class="text-[9px] text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded-md mt-0.5">
                   ${isBouncing ? 'SUPER BOING!' : petLoungeItem.actionPrompt || 'Bounce & Play'}
@@ -404,7 +406,7 @@ export function renderHeroHQView() {
             </div>
 
             <!-- Slot 3: MISSION DESK & WORKSTATION (Center-Right) -->
-            <div id="hq-slot-desk" class="flex flex-col items-center cursor-pointer group transition-transform hover:-translate-y-1" title="${deskItem.name} - Tap for hologram!">
+            <div id="hq-slot-desk" class="flex flex-col items-center cursor-pointer group transition-transform hover:-translate-y-1" title="${escapeHtml(deskItem.name)} - Tap for hologram!">
               <div class="relative w-full max-w-[140px] h-28 sm:h-32 rounded-3xl bg-surface-container/80 backdrop-blur-sm border-2 ${isHologramActive ? 'border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.4)]' : 'border-white/30'} flex flex-col items-center justify-center p-2 text-center group-hover:border-cyan-400 transition-all">
                 ${deskItem.modelUrl ? `
                   <model-viewer src="${deskItem.modelUrl}" auto-rotate camera-controls shadow-intensity="1" ar style="width: 100%; height: 60px; background: transparent;"></model-viewer>
@@ -414,7 +416,7 @@ export function renderHeroHQView() {
                   </div>
                 `}
                 <div class="text-[10px] font-headline font-black text-inverse-surface truncate w-full mt-1">
-                  ${deskItem.name}
+                  ${escapeHtml(deskItem.name)}
                 </div>
                 <span class="text-[9px] text-cyan-400 font-bold bg-cyan-500/10 px-2 py-0.5 rounded-md mt-0.5">
                   ${isHologramActive ? 'Holo Active 🌐' : deskItem.actionPrompt || 'Hologram Globe'}
@@ -423,13 +425,13 @@ export function renderHeroHQView() {
             </div>
 
             <!-- Slot 4: DECOR & NIGHTLIGHT LAMP (Right) -->
-            <div id="hq-slot-decor" class="flex flex-col items-center cursor-pointer group transition-transform hover:-translate-y-1" title="${decorItem.name} - Tap to toggle nightlight!">
+            <div id="hq-slot-decor" class="flex flex-col items-center cursor-pointer group transition-transform hover:-translate-y-1" title="${escapeHtml(decorItem.name)} - Tap to toggle nightlight!">
               <div class="relative w-full max-w-[140px] h-28 sm:h-32 rounded-3xl bg-surface-container/80 backdrop-blur-sm border-2 ${isNight ? 'border-yellow-400 shadow-[0_0_25px_rgba(250,204,21,0.5)]' : 'border-white/30'} flex flex-col items-center justify-center p-2 text-center group-hover:border-yellow-400 transition-all">
                 <div class="text-3xl sm:text-4xl transition-transform group-hover:scale-110 animate-pulse">
                   ${decorItem.icon || decorItem.emoji}
                 </div>
                 <div class="text-[10px] font-headline font-black text-inverse-surface truncate w-full mt-1">
-                  ${decorItem.name}
+                  ${escapeHtml(decorItem.name)}
                 </div>
                 <span class="text-[9px] text-yellow-300 font-bold bg-yellow-500/10 px-2 py-0.5 rounded-md mt-0.5 flex items-center gap-1">
                   <span class="material-symbols-outlined text-[11px]">power_settings_new</span>
@@ -584,12 +586,12 @@ function renderFurnitureGrid(slotId, heroHQ, userCoins) {
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-1.5">
               <h4 class="font-headline text-sm font-black text-inverse-surface truncate">
-                ${item.name}
+                ${escapeHtml(item.name)}
               </h4>
               ${isEquipped ? '<span class="bg-emerald-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full">IN ROOM</span>' : ''}
             </div>
             <p class="text-xs text-on-surface-variant line-clamp-2 mt-0.5">
-              ${item.desc}
+              ${escapeHtml(item.desc)}
             </p>
           </div>
         </div>
@@ -668,7 +670,7 @@ function renderAllTrophiesShowcaseModal(state, equippedWeapon) {
         <div class="flex items-center gap-3.5 w-full sm:w-auto">
           <div class="relative w-16 h-16 sm:w-18 sm:h-18 rounded-2xl bg-gradient-to-br from-cyan-900 to-blue-950 border-2 border-cyan-300 flex items-center justify-center flex-shrink-0 shadow-md">
             ${equippedWeapon?.image ? `
-              <img src="${equippedWeapon.image}" alt="${equippedWeapon.title}" class="w-12 h-12 object-contain drop-shadow" />
+              <img src="${equippedWeapon.image}" alt="${escapeHtml(equippedWeapon.title)}" class="w-12 h-12 object-contain drop-shadow" />
             ` : `
               <span class="text-3xl">${equippedWeapon?.icon || '⚔️'}</span>
             `}
@@ -844,7 +846,7 @@ function renderGearSlotTile(slot) {
   const halo = slot.halo;
 
   return `
-    <div class="relative flex flex-col items-center cursor-pointer hq-gear-spotlight-slot transition-transform hover:scale-108 active:scale-95 group" data-gear-category="${slot.category}" title="${item ? `${item.name} (${halo.badge}) - Tap to swap` : `Equip ${slot.label}`}">
+    <div class="relative flex flex-col items-center cursor-pointer hq-gear-spotlight-slot transition-transform hover:scale-108 active:scale-95 group" data-gear-category="${slot.category}" title="${item ? `${escapeHtml(item.name)} (${halo.badge}) - Tap to swap` : `Equip ${slot.label}`}">
       <!-- Overhead Spotlight Beam -->
       <div class="absolute -top-3 w-10 h-14 bg-gradient-to-b ${item ? halo.beam : 'from-white/10 to-transparent'} blur-[2px] pointer-events-none rounded-full"></div>
       
@@ -861,7 +863,7 @@ function renderGearSlotTile(slot) {
 
       <!-- Mini Plaque Name Pill -->
       <div class="mt-1 px-1.5 py-0.5 rounded-md bg-black/70 border border-white/10 text-[8px] sm:text-[9px] font-black ${item ? halo.text : 'text-white/60'} text-center truncate max-w-[68px]">
-        ${item ? item.name : `+ ${slot.label}`}
+        ${item ? escapeHtml(item.name) : `+ ${slot.label}`}
       </div>
     </div>
   `;
@@ -884,7 +886,7 @@ function renderQuickGearModal(category, activePet, state) {
               <span class="material-symbols-outlined text-2xl">checkroom</span>
             </div>
             <div>
-              <span class="text-[10px] font-black uppercase tracking-wider text-cyan-400 font-headline">${activePet.name}'s Wardrobe</span>
+              <span class="text-[10px] font-black uppercase tracking-wider text-cyan-400 font-headline">${escapeHtml(activePet.name)}'s Wardrobe</span>
               <h3 class="font-headline text-lg font-black text-white">${catNames[category] || 'Pet Gear'}</h3>
             </div>
           </div>
@@ -908,7 +910,7 @@ function renderQuickGearModal(category, activePet, state) {
                   </div>
                   <div class="min-w-0 flex-1">
                     <div class="flex items-center gap-1">
-                      <h4 class="font-headline text-xs font-black text-white truncate">${item.name}</h4>
+                      <h4 class="font-headline text-xs font-black text-white truncate">${escapeHtml(item.name)}</h4>
                     </div>
                     <span class="text-[9px] font-black ${halo.text} block">${halo.badge}</span>
                     <span class="text-[10px] text-emerald-300 font-bold block mt-0.5">${item.statBonusLabel || ''}</span>
@@ -975,14 +977,14 @@ function renderWeaponModal(state, equippedWeapon) {
       <div class="bg-gradient-to-r from-cyan-950/80 via-slate-900 to-blue-950/80 rounded-2xl p-4 border-2 border-cyan-400/60 shadow-lg flex items-center gap-3.5">
         <div class="w-16 h-16 rounded-2xl bg-cyan-900/60 border border-cyan-400 flex items-center justify-center flex-shrink-0 p-1">
           ${equippedWeapon?.image ? `
-            <img src="${equippedWeapon.image}" alt="${equippedWeapon.title}" class="w-full h-full object-contain drop-shadow" />
+            <img src="${equippedWeapon.image}" alt="${escapeHtml(equippedWeapon.title)}" class="w-full h-full object-contain drop-shadow" />
           ` : `
             <span class="text-3xl">${equippedWeapon?.icon || '⚔️'}</span>
           `}
         </div>
         <div class="flex flex-col flex-1 min-w-0">
           <span class="text-[10px] font-black uppercase tracking-wider text-cyan-300 font-headline">Currently Equipped in Battle</span>
-          <h4 class="font-headline text-base font-black text-white truncate">${equippedWeapon?.title || 'Laser Toothbrush Saber'}</h4>
+          <h4 class="font-headline text-base font-black text-white truncate">${escapeHtml(equippedWeapon?.title) || 'Laser Toothbrush Saber'}</h4>
           <span class="text-xs font-bold text-emerald-400 flex items-center gap-1">
             <span class="material-symbols-outlined text-sm">bolt</span>
             ${equippedWeapon?.statBonus || '+20% Battle Scrub Damage'}
@@ -1008,18 +1010,18 @@ function renderWeaponModal(state, equippedWeapon) {
                 <div class="flex items-start gap-3">
                   <div class="w-12 h-12 rounded-xl bg-surface-container-high border border-white/10 flex items-center justify-center p-1 flex-shrink-0">
                     ${weapon.image ? `
-                      <img src="${weapon.image}" alt="${weapon.title}" class="w-full h-full object-contain" />
+                      <img src="${weapon.image}" alt="${escapeHtml(weapon.title)}" class="w-full h-full object-contain" />
                     ` : `
                       <span class="text-2xl">${weapon.icon || '⚔️'}</span>
                     `}
                   </div>
                   <div class="flex flex-col flex-1 min-w-0">
                     <div class="flex items-center justify-between gap-1">
-                      <h5 class="font-headline text-xs font-black text-inverse-surface truncate">${weapon.title}</h5>
+                      <h5 class="font-headline text-xs font-black text-inverse-surface truncate">${escapeHtml(weapon.title)}</h5>
                       ${isEquipped ? '<span class="text-[9px] bg-cyan-400 text-slate-950 font-black px-1.5 py-0.5 rounded">Active</span>' : ''}
                     </div>
                     <span class="text-[10px] text-emerald-400 font-bold">${weapon.statBonus || '+20% Damage'}</span>
-                    <p class="text-[10px] text-on-surface-variant line-clamp-1 mt-0.5">${weapon.desc || ''}</p>
+                    <p class="text-[10px] text-on-surface-variant line-clamp-1 mt-0.5">${escapeHtml(weapon.desc) || ''}</p>
                   </div>
                 </div>
 
@@ -1061,6 +1063,9 @@ export function attachHeroHQListeners() {
     stage: 1,
     mode: 'hq'
   });
+  // See PetPenView.js's identical registration for why this is needed --
+  // Pet3DViewer.js alone never stops this canvas's RAF loop on navigate-away.
+  if (hqPetController) registerActiveCanvas(hqPetController);
 
   const container = document.querySelector('.hero-hq-container');
   if (!container) return;
