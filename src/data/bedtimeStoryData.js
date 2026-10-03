@@ -106,6 +106,90 @@ export const BEDTIME_MORALS = [
     moralGuidance: 'Demonstrate how honesty lifts heavy feelings off your chest, making sleep light and peaceful.',
     petAction: 'nods honestly and feels a warm golden glow surround them',
     slumberResolution: 'Sleeping with a light, happy heart full of truth and love.'
+  },
+  {
+    id: 'gratitude_heart',
+    name: 'A Grateful Heart',
+    icon: 'volunteer_activism',
+    emoji: '🙏',
+    tagline: 'Naming one good thing from today tucks happy dreams in close',
+    moralGuidance: 'Guide thinking of three small good things from the day -- a kind word, a yummy snack, a fun game -- and feeling thankful for each.',
+    petAction: 'nuzzles close and happily counts tiny twinkling thank-you stars on its paw',
+    slumberResolution: 'Drifting off warm and content, heart full of today\'s small happy moments.'
+  },
+  {
+    id: 'letting_go',
+    name: 'Letting Go of Grumpy Feelings',
+    icon: 'spa',
+    emoji: '🍃',
+    tagline: 'Grumpy feelings float away like leaves on a gentle stream',
+    moralGuidance: 'Show how it feels better to let go of a small frustration from the day rather than carry it to sleep, like releasing a leaf into a stream.',
+    petAction: 'gently blows a dry leaf off its paw and watches it drift away on the breeze',
+    slumberResolution: 'Letting worries float away, leaving only calm and lightness behind.'
+  },
+  {
+    id: 'teamwork_together',
+    name: 'Stronger Together',
+    icon: 'groups',
+    emoji: '🤲',
+    tagline: 'Two little helpers can lift what one alone cannot',
+    moralGuidance: 'Illustrate how working together with a friend or sibling to solve a small problem makes the job easier and more fun than doing it alone.',
+    petAction: 'teams up with a tiny firefly friend to roll a heavy acorn back to its den',
+    slumberResolution: 'Resting happily, remembering how much easier teamwork made the day.'
+  },
+  {
+    id: 'self_belief',
+    name: 'Believing In Yourself',
+    icon: 'military_tech',
+    emoji: '💪',
+    tagline: 'Every hero once whispered "I think I can" before they could',
+    moralGuidance: 'Encourage trusting your own abilities even when something feels hard at first, celebrating effort and practice over perfection.',
+    petAction: 'wobbles, then confidently hops across the stepping stones after a few tries',
+    slumberResolution: 'Smiling proudly, ready to try again tomorrow with a brave, confident heart.'
+  },
+  {
+    id: 'spring_new_beginnings',
+    name: 'Spring Growth & New Beginnings',
+    icon: 'eco',
+    emoji: '🌱',
+    seasonId: 'spring',
+    tagline: 'Spring only: every tiny seed believes in its own blooming',
+    moralGuidance: 'Celebrate fresh starts and gentle growth, like a seedling trusting itself to slowly become a flower, one sunny day at a time.',
+    petAction: 'gently waters a tiny green sprout and watches a new leaf unfurl overnight',
+    slumberResolution: 'Resting like a seed tucked in soft soil, ready to grow into tomorrow.'
+  },
+  {
+    id: 'summer_stargazing',
+    name: 'Summer Stargazing Wonder',
+    icon: 'nightlight',
+    emoji: '✨',
+    seasonId: 'summer',
+    tagline: 'Summer only: warm nights are made for wondering at the stars',
+    moralGuidance: 'Spark curiosity and wonder about the wide summer night sky, showing that it\'s wonderful to ask big questions about the world.',
+    petAction: 'lies back on warm grass and points a paw at a brand-new shooting star',
+    slumberResolution: 'Falling asleep under a blanket of warm summer stars, full of wonder.'
+  },
+  {
+    id: 'autumn_gratitude_harvest',
+    name: 'Autumn Gratitude Harvest',
+    icon: 'nutrition',
+    emoji: '🍁',
+    seasonId: 'autumn',
+    tagline: 'Autumn only: a full basket starts with gathering one thing at a time',
+    moralGuidance: 'Show the joy of gathering and sharing the harvest with friends, celebrating patience and teamwork as the season changes.',
+    petAction: 'carefully gathers crunchy golden leaves into a cozy pile to share',
+    slumberResolution: 'Snuggling into a pile of warm blankets, thankful for the autumn harvest.'
+  },
+  {
+    id: 'winter_cozy_together',
+    name: 'Winter Cozy Togetherness',
+    icon: 'ac_unit',
+    emoji: '☃️',
+    seasonId: 'winter',
+    tagline: 'Winter only: the coldest nights feel warmest held close together',
+    moralGuidance: 'Show how snuggling close with family or a companion on a chilly winter night makes everyone feel warm, safe, and loved.',
+    petAction: 'curls up in a warm blanket fort, sharing its cozy spot with a shivering friend',
+    slumberResolution: 'Drifting off snug and warm, wrapped in blankets and winter togetherness.'
   }
 ];
 
