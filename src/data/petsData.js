@@ -664,7 +664,7 @@ export const PETS_DATABASE = [
   // 22. Shadow the Panther (Wild Beasts)
   {
     id: '22',
-    key: 'shadow',
+    key: 'shadow-sm',
     name: 'Shadow the Panther',
     shortName: 'Shadow',
     title: 'The Silent Sweeper',

@@ -52,7 +52,7 @@ export function renderPet3DViewer({
 
       <!-- Drag to Rotate 3D Hint Badge -->
       <div class="absolute bottom-2 inset-x-0 flex justify-center pointer-events-none opacity-80 group-hover:opacity-100 transition-opacity">
-        <span class="bg-black/50 backdrop-blur-sm text-white/90 text-[10px] font-headline font-black px-2.5 py-0.5 rounded-full border border-white/20 flex items-center gap-1 shadow">
+        <span class="bg-black/50 backdrop-blur-xs text-white/90 text-[10px] font-headline font-black px-2.5 py-0.5 rounded-full border border-white/20 flex items-center gap-1 shadow-sm">
           <span class="material-symbols-outlined text-[12px] animate-spin">360</span> Drag to rotate 3D
         </span>
       </div>
@@ -68,15 +68,15 @@ export function renderPet3DViewer({
     <!-- Tactile Micro-Interaction Quick Tray (Petting, Tickles, Treats) -->
     ${showControls ? `
       <div class="flex items-center gap-2 mt-3 z-10">
-        <button id="${canvasId}-scratch-btn" class="bg-surface-container-high hover:bg-surface-bright text-pink-300 hover:text-pink-200 px-3 py-1.5 rounded-2xl font-headline text-xs font-black border border-pink-400/40 flex items-center gap-1 shadow transition-all active:scale-95 chunky-btn-sm" title="Scratch behind ears!">
+        <button id="${canvasId}-scratch-btn" class="bg-surface-container-high hover:bg-surface-bright text-pink-300 hover:text-pink-200 px-3 py-1.5 rounded-2xl font-headline text-xs font-black border border-pink-400/40 flex items-center gap-1 shadow-sm transition-all active:scale-95 chunky-btn-sm" title="Scratch behind ears!">
           <span>❤️</span> Pet Head
         </button>
 
-        <button id="${canvasId}-tickle-btn" class="bg-surface-container-high hover:bg-surface-bright text-amber-300 hover:text-amber-200 px-3 py-1.5 rounded-2xl font-headline text-xs font-black border border-amber-400/40 flex items-center gap-1 shadow transition-all active:scale-95 chunky-btn-sm" title="Tickle belly for backflip!">
+        <button id="${canvasId}-tickle-btn" class="bg-surface-container-high hover:bg-surface-bright text-amber-300 hover:text-amber-200 px-3 py-1.5 rounded-2xl font-headline text-xs font-black border border-amber-400/40 flex items-center gap-1 shadow-sm transition-all active:scale-95 chunky-btn-sm" title="Tickle belly for backflip!">
           <span>🤸</span> Tickle Belly
         </button>
 
-        <button id="${canvasId}-feed-btn" class="bg-surface-container-high hover:bg-surface-bright text-emerald-300 hover:text-emerald-200 px-3 py-1.5 rounded-2xl font-headline text-xs font-black border border-emerald-400/40 flex items-center gap-1 shadow transition-all active:scale-95 chunky-btn-sm" title="Feed a healthy treat!">
+        <button id="${canvasId}-feed-btn" class="bg-surface-container-high hover:bg-surface-bright text-emerald-300 hover:text-emerald-200 px-3 py-1.5 rounded-2xl font-headline text-xs font-black border border-emerald-400/40 flex items-center gap-1 shadow-sm transition-all active:scale-95 chunky-btn-sm" title="Feed a healthy treat!">
           <span>🍎</span> Feed Treat
         </button>
       </div>

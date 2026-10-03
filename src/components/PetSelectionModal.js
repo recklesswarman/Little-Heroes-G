@@ -58,9 +58,9 @@ export function renderPetSelectionModal() {
       <div class="bg-surface-container border-4 border-primary/50 rounded-3xl p-4 sm:p-6 max-w-3xl w-full h-[90vh] max-h-[92vh] card-shadow-lg flex flex-col gap-3 sm:gap-4 relative overflow-hidden">
         
         <!-- Header -->
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b-2 border-surface-container-highest pb-3 flex-shrink-0">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b-2 border-surface-container-highest pb-3 shrink-0">
           <div class="flex items-center gap-3">
-            <div class="w-12 h-12 rounded-2xl bg-primary text-on-primary flex items-center justify-center text-2xl shadow-md flex-shrink-0">
+            <div class="w-12 h-12 rounded-2xl bg-primary text-on-primary flex items-center justify-center text-2xl shadow-md shrink-0">
               <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">pets</span>
             </div>
             <div>
@@ -86,14 +86,14 @@ export function renderPetSelectionModal() {
         </div>
 
         <!-- Element Filter Chips -->
-        <div id="pet-select-elem-bar" class="flex gap-2 overflow-x-auto pb-1 flex-shrink-0">
+        <div id="pet-select-elem-bar" class="flex gap-2 overflow-x-auto pb-1 shrink-0">
           ${elements
             .map((elem) => {
               const isActive = activeElementFilter === elem;
               return `
-              <button data-select-elem="${elem}" class="pet-select-elem-btn flex-shrink-0 px-3 py-1.5 rounded-xl font-headline text-xs font-black whitespace-nowrap transition-all ${
+              <button data-select-elem="${elem}" class="pet-select-elem-btn shrink-0 px-3 py-1.5 rounded-xl font-headline text-xs font-black whitespace-nowrap transition-all ${
                 isActive
-                  ? 'bg-primary text-on-primary chunky-btn-sm border-primary-container shadow-sm'
+                  ? 'bg-primary text-on-primary chunky-btn-sm border-primary-container shadow-xs'
                   : 'bg-surface-container-high hover:bg-surface-bright text-on-surface-variant border border-surface-container-highest'
               }">
                 ${elem}
@@ -147,7 +147,7 @@ export function renderPetSelectionModal() {
                   <button data-choose-pet-id="${pet.id}" class="choose-pet-btn w-full ${
                     isCurrentActive
                       ? 'bg-surface-container-highest text-slate-300 border-surface-bright cursor-default'
-                      : 'bg-primary text-on-primary hover:brightness-110 active:scale-95 border-primary-container shadow-sm'
+                      : 'bg-primary text-on-primary hover:brightness-110 active:scale-95 border-primary-container shadow-xs'
                   } font-headline text-xs font-black py-2.5 px-3 rounded-xl chunky-btn flex items-center justify-center gap-1.5 transition-all">
                     <span class="material-symbols-outlined text-base">pets</span>
                     <span>${isCurrentActive ? 'Active Companion' : isAlreadyUnlocked ? 'Equip This Pet!' : 'Adopt This Pet!'}</span>
@@ -161,7 +161,7 @@ export function renderPetSelectionModal() {
         </div>
 
         <!-- Footer Guidance -->
-        <div class="bg-surface-container-high rounded-2xl p-2.5 border border-surface-container-highest flex items-center justify-between text-[11px] text-on-surface-variant flex-shrink-0">
+        <div class="bg-surface-container-high rounded-2xl p-2.5 border border-surface-container-highest flex items-center justify-between text-[11px] text-on-surface-variant shrink-0">
           <span class="flex items-center gap-1.5 font-bold">
             <span class="material-symbols-outlined text-sm text-primary">verified</span>
             All companions start at Stage 1 and grow into legendary Titans as you complete habits and AR battles!

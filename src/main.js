@@ -188,10 +188,10 @@ function renderApp() {
     app.innerHTML = `
       <div class="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-center select-none animate-fade-in font-body">
         <div class="relative mb-5">
-          <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-gradient-to-br from-primary via-emerald-500 to-teal-400 p-1 shadow-xl shadow-primary/30 flex items-center justify-center animate-bounce">
+          <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-linear-to-br from-primary via-emerald-500 to-teal-400 p-1 shadow-xl shadow-primary/30 flex items-center justify-center animate-bounce">
             <span class="text-4xl sm:text-5xl" role="img" aria-label="Rex">🦖</span>
           </div>
-          <span class="absolute -bottom-2 -right-2 bg-amber-400 text-slate-950 font-headline font-black text-[10px] px-2.5 py-0.5 rounded-full border-2 border-slate-900 shadow">
+          <span class="absolute -bottom-2 -right-2 bg-amber-400 text-slate-950 font-headline font-black text-[10px] px-2.5 py-0.5 rounded-full border-2 border-slate-900 shadow-sm">
             CONNECTING
           </span>
         </div>
@@ -202,7 +202,7 @@ function renderApp() {
           Waking up Rex and restoring your family headquarters...
         </p>
         <div class="mt-6 w-32 h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
-          <div class="h-full bg-gradient-to-r from-primary to-emerald-400 rounded-full animate-pulse w-full"></div>
+          <div class="h-full bg-linear-to-r from-primary to-emerald-400 rounded-full animate-pulse w-full"></div>
         </div>
       </div>
     `;

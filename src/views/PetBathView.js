@@ -47,7 +47,7 @@ export function renderPetBathView() {
       
       <!-- Top Navigation & Status Bar -->
       <div class="flex items-center justify-between z-20">
-        <button id="bath-exit-btn" class="bg-surface-container hover:bg-surface-bright text-on-surface-variant font-headline text-xs font-bold px-3.5 py-2.5 rounded-2xl border-2 border-surface-container-highest flex items-center gap-1.5 chunky-btn-sm active:scale-95 shadow-sm">
+        <button id="bath-exit-btn" class="bg-surface-container hover:bg-surface-bright text-on-surface-variant font-headline text-xs font-bold px-3.5 py-2.5 rounded-2xl border-2 border-surface-container-highest flex items-center gap-1.5 chunky-btn-sm active:scale-95 shadow-xs">
           <span class="material-symbols-outlined text-base">arrow_back</span>
           <span>Back to Sanctuary</span>
         </button>
@@ -59,7 +59,7 @@ export function renderPetBathView() {
           </div>
           ${
             isBathComplete
-              ? `<span class="bg-primary/20 text-primary border border-primary/50 text-xs font-black px-3 py-1.5 rounded-full flex items-center gap-1 shadow-sm animate-pulse">
+              ? `<span class="bg-primary/20 text-primary border border-primary/50 text-xs font-black px-3 py-1.5 rounded-full flex items-center gap-1 shadow-xs animate-pulse">
                    <span class="material-symbols-outlined text-sm">stars</span> Squeaky Clean & Fluffy!
                  </span>`
               : ''
@@ -84,7 +84,7 @@ export function renderPetBathView() {
             </span>
           </div>
           <div class="w-full h-3.5 bg-surface-container-lowest rounded-full overflow-hidden p-0.5 border border-surface-container-highest shadow-inner">
-            <div class="h-full bg-gradient-to-r from-tertiary via-cyan-400 to-primary rounded-full transition-all duration-300 relative" style="width: ${washProgress}%;">
+            <div class="h-full bg-linear-to-r from-tertiary via-cyan-400 to-primary rounded-full transition-all duration-300 relative" style="width: ${washProgress}%;">
               <div class="absolute inset-0 bg-white/20 animate-pulse"></div>
             </div>
           </div>
@@ -108,7 +108,7 @@ export function renderPetBathView() {
             </span>
           </div>
           <div class="w-full h-3.5 bg-surface-container-lowest rounded-full overflow-hidden p-0.5 border border-surface-container-highest shadow-inner">
-            <div class="h-full bg-gradient-to-r from-secondary via-sky-400 to-primary rounded-full transition-all duration-300 relative" style="width: ${dryProgress}%;">
+            <div class="h-full bg-linear-to-r from-secondary via-sky-400 to-primary rounded-full transition-all duration-300 relative" style="width: ${dryProgress}%;">
               <div class="absolute inset-0 bg-white/20 animate-pulse"></div>
             </div>
           </div>
@@ -125,10 +125,10 @@ export function renderPetBathView() {
         <img class="absolute inset-0 w-full h-full object-cover opacity-75 pointer-events-none z-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuChCspQJaFH62vAmvxMah1FV4FgomNnC8x3Tnh67gupQHMYn0IYswagfoUX4wVhG4PzCe6LiuaedtoZCzRE56GXk2W-pMRmjPBVBtyuv6EAmkHp8WsmHe9jR2dktxmxVOqHg4slRh8MPUpU6q8OMVQT4ON4aguf7H0uB0ekBz8nY7ZeOrxg2JjAWTWsSAR6PfsCaJr69gNykFdz99qlR4J50p3KlYhK1MiPDgaZWWFe4yq4b18oRRPlWA" alt="Bathtub Stage" />
         
         <!-- Vignette & Water Ambient Glow -->
-        <div class="absolute inset-0 bg-gradient-to-t from-[#09141e] via-transparent to-[#09141e]/60 pointer-events-none z-0"></div>
+        <div class="absolute inset-0 bg-linear-to-t from-[#09141e] via-transparent to-[#09141e]/60 pointer-events-none z-0"></div>
 
         <!-- Animated Water Ripples at the bottom of the tub -->
-        <div class="absolute bottom-0 left-0 right-0 h-44 bg-gradient-to-t from-cyan-600/35 via-blue-500/20 to-transparent border-t-2 border-cyan-400/30 pointer-events-none z-1 animate-water-ripple"></div>
+        <div class="absolute bottom-0 left-0 right-0 h-44 bg-linear-to-t from-cyan-600/35 via-blue-500/20 to-transparent border-t-2 border-cyan-400/30 pointer-events-none z-1 animate-water-ripple"></div>
 
         <!-- Interactive Floating Bath Toys -->
         <!-- 1. Squeaky Rubber Ducky -->
@@ -218,7 +218,7 @@ export function renderPetBathView() {
             }
 
             <!-- Pet Tap Ripple Hint -->
-            <div class="absolute -bottom-4 bg-surface-container-lowest/80 backdrop-blur-sm text-[10px] font-black text-white/90 px-2.5 py-0.5 rounded-full border border-white/20 shadow pointer-events-none">
+            <div class="absolute -bottom-4 bg-surface-container-lowest/80 backdrop-blur-xs text-[10px] font-black text-white/90 px-2.5 py-0.5 rounded-full border border-white/20 shadow-sm pointer-events-none">
               Tap Pet to ${isFullyWashed ? 'Fluff' : 'Scrub'}
             </div>
           </div>
@@ -346,8 +346,8 @@ function spawnWindGustStreams() {
 
     // Glowing wind stream streak with warm breeze particles
     stream.innerHTML = `
-      <div class="w-full h-full bg-gradient-to-r from-transparent via-cyan-200/90 to-transparent rounded-full filter blur-[0.4px] shadow-[0_0_12px_rgba(255,255,255,0.9)] flex items-center justify-end">
-        <span class="text-[10px] text-white/80 filter drop-shadow">~</span>
+      <div class="w-full h-full bg-linear-to-r from-transparent via-cyan-200/90 to-transparent rounded-full filter blur-[0.4px] shadow-[0_0_12px_rgba(255,255,255,0.9)] flex items-center justify-end">
+        <span class="text-[10px] text-white/80 filter drop-shadow-sm">~</span>
       </div>
     `;
 

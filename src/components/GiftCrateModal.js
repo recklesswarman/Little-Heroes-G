@@ -26,7 +26,7 @@ export function renderGiftCrateWidget() {
     <div id="floating-gift-crate-banner" 
       class="fixed bottom-20 left-4 sm:bottom-24 sm:left-6 z-50 animate-bounce cursor-pointer group"
       onclick="window.openActiveGiftCrate && window.openActiveGiftCrate('${activeCrate.id}')">
-      <div class="bg-gradient-to-r from-amber-500 via-yellow-400 to-orange-500 p-1 rounded-2xl shadow-2xl shadow-amber-500/50 flex items-center gap-3 pr-4 pl-3 py-2 border-2 border-white/80 hover:scale-105 transition-transform">
+      <div class="bg-linear-to-r from-amber-500 via-yellow-400 to-orange-500 p-1 rounded-2xl shadow-2xl shadow-amber-500/50 flex items-center gap-3 pr-4 pl-3 py-2 border-2 border-white/80 hover:scale-105 transition-transform">
         <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center text-3xl animate-pulse">
           🎁
         </div>
@@ -70,8 +70,8 @@ export function renderGiftCrateModal() {
   }
 
   return `
-    <div id="gift-crate-modal-backdrop" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
-      <div class="relative w-full max-w-md max-h-[90vh] overflow-y-auto my-auto bg-gradient-to-b from-slate-900 to-slate-950 border-2 border-amber-400/50 rounded-3xl p-6 text-center text-white shadow-2xl">
+    <div id="gift-crate-modal-backdrop" class="fixed inset-0 z-100 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
+      <div class="relative w-full max-w-md max-h-[90vh] overflow-y-auto my-auto bg-linear-to-b from-slate-900 to-slate-950 border-2 border-amber-400/50 rounded-3xl p-6 text-center text-white shadow-2xl">
         
         <!-- Background Glowing Ray Aura -->
         <div class="absolute -top-24 -left-24 w-72 h-72 bg-amber-500/20 rounded-full blur-3xl pointer-events-none"></div>
@@ -86,7 +86,7 @@ export function renderGiftCrateModal() {
         ` : ''}
 
         <!-- Header -->
-        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r ${categoryColor} text-white text-xs font-bold uppercase tracking-wider mb-3 shadow-lg">
+        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-linear-to-r ${categoryColor} text-white text-xs font-bold uppercase tracking-wider mb-3 shadow-lg">
           ${categoryBadge}
         </div>
 
@@ -95,7 +95,7 @@ export function renderGiftCrateModal() {
           <div class="py-6 flex flex-col items-center">
             <div class="relative cursor-pointer group" onclick="window.unboxGiftCrate && window.unboxGiftCrate('${crate.id}')">
               <!-- Golden Chest -->
-              <div class="w-40 h-40 bg-gradient-to-tr from-amber-600 via-yellow-400 to-amber-500 rounded-3xl border-4 border-yellow-200 shadow-2xl flex items-center justify-center text-7xl shadow-amber-500/50 transform group-hover:scale-105 group-hover:rotate-1 transition-all duration-300 animate-pulse">
+              <div class="w-40 h-40 bg-linear-to-tr from-amber-600 via-yellow-400 to-amber-500 rounded-3xl border-4 border-yellow-200 shadow-2xl flex items-center justify-center text-7xl shadow-amber-500/50 transform group-hover:scale-105 group-hover:rotate-1 transition-all duration-300 animate-pulse">
                 🎁
               </div>
               <div class="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-black px-2 py-0.5 rounded-full shadow-md animate-bounce">
@@ -111,7 +111,7 @@ export function renderGiftCrateModal() {
             </p>
 
             <button onclick="window.unboxGiftCrate && window.unboxGiftCrate('${crate.id}')"
-              class="w-full py-4 px-6 min-h-[50px] rounded-2xl bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-black text-lg shadow-xl shadow-amber-500/30 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2">
+              class="w-full py-4 px-6 min-h-[50px] rounded-2xl bg-linear-to-r from-amber-400 to-yellow-500 text-slate-950 font-black text-lg shadow-xl shadow-amber-500/30 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2">
               <span>✨ Open Gift Box ✨</span>
             </button>
           </div>
@@ -185,7 +185,7 @@ export function renderGiftCrateModal() {
 
             <!-- Action Button -->
             <button onclick="window.claimAndNavigateItem && window.claimAndNavigateItem('${category}')"
-              class="w-full py-3.5 px-6 min-h-[50px] rounded-2xl bg-gradient-to-r from-emerald-400 to-green-500 text-slate-950 font-black text-sm shadow-xl shadow-green-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2">
+              class="w-full py-3.5 px-6 min-h-[50px] rounded-2xl bg-linear-to-r from-emerald-400 to-green-500 text-slate-950 font-black text-sm shadow-xl shadow-green-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2">
               <span>🚀 Use My New 3D ${category.toUpperCase()}!</span>
             </button>
           </div>

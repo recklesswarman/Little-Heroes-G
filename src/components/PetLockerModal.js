@@ -138,7 +138,7 @@ export function renderPetLockerModal() {
         <!-- Header -->
         <div class="flex items-center justify-between border-b-2 border-surface-container-highest pb-3">
           <div class="flex items-center gap-3">
-            <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-300 text-on-primary flex items-center justify-center text-2xl shadow-md flex-shrink-0">
+            <div class="w-12 h-12 rounded-2xl bg-linear-to-tr from-amber-500 to-amber-300 text-on-primary flex items-center justify-center text-2xl shadow-md shrink-0">
               <span class="material-symbols-outlined text-3xl text-black">checkroom</span>
             </div>
             <div>
@@ -160,14 +160,14 @@ export function renderPetLockerModal() {
         <!-- Companion Switcher (if child has multiple companions) -->
         ${unlockedIds.length > 1 ? `
           <div id="pet-locker-companion-switcher" class="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-            <span class="text-xs font-black text-on-surface-variant uppercase tracking-wider whitespace-nowrap flex-shrink-0">Companion:</span>
+            <span class="text-xs font-black text-on-surface-variant uppercase tracking-wider whitespace-nowrap shrink-0">Companion:</span>
             ${unlockedIds.map(uId => {
               const uPet = state.pets?.find(p => p.id === uId) || PETS_DATABASE.find(p => p.id === uId);
               const isCurrent = String(uId) === String(petId);
               return `
-                <button data-switch-pet="${uId}" class="flex-shrink-0 px-3 py-1.5 rounded-xl font-headline text-xs font-black flex items-center gap-1.5 transition-all ${
+                <button data-switch-pet="${uId}" class="shrink-0 px-3 py-1.5 rounded-xl font-headline text-xs font-black flex items-center gap-1.5 transition-all ${
                   isCurrent
-                    ? 'bg-amber-500 text-black shadow-sm scale-105'
+                    ? 'bg-amber-500 text-black shadow-xs scale-105'
                     : 'bg-surface-container-high text-on-surface-variant hover:bg-surface-bright'
                 }">
                   <span>${escapeHtml(uPet?.name) || 'Companion'}</span>
@@ -181,7 +181,7 @@ export function renderPetLockerModal() {
         <div class="grid grid-cols-1 md:grid-cols-12 gap-4 flex-1 overflow-y-auto">
           
           <!-- Left Column: Live Pet 3D Pedestal Stage -->
-          <div class="md:col-span-5 bg-gradient-to-b from-[#18232c] via-[#121c24] to-[#0a131b] rounded-3xl p-4 border-2 border-amber-500/30 flex flex-col items-center justify-between relative overflow-hidden min-h-[260px]">
+          <div class="md:col-span-5 bg-linear-to-b from-[#18232c] via-[#121c24] to-[#0a131b] rounded-3xl p-4 border-2 border-amber-500/30 flex flex-col items-center justify-between relative overflow-hidden min-h-[260px]">
             
             <!-- Aura Glow Backlight if aura is equipped -->
             ${equipped.aura ? `
@@ -201,28 +201,28 @@ export function renderPetLockerModal() {
               
               <!-- Floating Hat Emoji Overlay -->
               ${equipped.hat ? `
-                <div class="absolute -top-1 text-3xl animate-bounce drop-shadow" title="${equipped.hat}">
+                <div class="absolute -top-1 text-3xl animate-bounce drop-shadow-sm" title="${equipped.hat}">
                   ${(PET_GEAR_CATALOG.hat.find(h => h.title === equipped.hat)?.emoji) || '🎩'}
                 </div>
               ` : ''}
 
               <!-- Floating Cape Emoji Overlay -->
               ${equipped.cape ? `
-                <div class="absolute -right-2 top-10 text-3xl animate-pulse drop-shadow" title="${equipped.cape}">
+                <div class="absolute -right-2 top-10 text-3xl animate-pulse drop-shadow-sm" title="${equipped.cape}">
                   ${(PET_GEAR_CATALOG.cape.find(c => c.title === equipped.cape)?.emoji) || '🦸'}
                 </div>
               ` : ''}
 
               <!-- Floating Aura Emoji Overlay -->
               ${equipped.aura ? `
-                <div class="absolute -left-2 top-10 text-3xl animate-spin-slow drop-shadow" title="${equipped.aura}">
+                <div class="absolute -left-2 top-10 text-3xl animate-spin-slow drop-shadow-sm" title="${equipped.aura}">
                   ${(PET_GEAR_CATALOG.aura.find(a => a.title === equipped.aura)?.emoji) || '✨'}
                 </div>
               ` : ''}
             </div>
 
             <!-- Pedestal Base -->
-            <div class="w-40 h-4 bg-gradient-to-r from-surface-container-highest via-amber-500/40 to-surface-container-highest rounded-full border border-amber-500/40 shadow-sm z-10"></div>
+            <div class="w-40 h-4 bg-linear-to-r from-surface-container-highest via-amber-500/40 to-surface-container-highest rounded-full border border-amber-500/40 shadow-xs z-10"></div>
 
             <!-- Equipped Slots Summary Pills -->
             <div class="w-full grid grid-cols-3 gap-1.5 z-10 mt-2">
@@ -276,12 +276,12 @@ export function renderPetLockerModal() {
                 return `
                   <div class="bg-surface-container-high p-3 rounded-2xl border-2 ${
                     isEquipped
-                      ? 'border-amber-400 bg-amber-500/10 shadow-sm'
+                      ? 'border-amber-400 bg-amber-500/10 shadow-xs'
                       : 'border-surface-container-highest hover:border-surface-bright'
                   } flex items-center justify-between gap-3 transition-all">
                     
                     <div class="flex items-center gap-3">
-                      <div class="w-12 h-12 rounded-2xl bg-surface-container flex items-center justify-center text-2xl border border-surface-container-highest flex-shrink-0">
+                      <div class="w-12 h-12 rounded-2xl bg-surface-container flex items-center justify-center text-2xl border border-surface-container-highest shrink-0">
                         <span>${item.emoji}</span>
                       </div>
                       <div class="flex flex-col">
@@ -296,10 +296,10 @@ export function renderPetLockerModal() {
                       </div>
                     </div>
 
-                    <button data-equip-item="${item.title}" data-slot="${activeTab}" class="px-4 py-2 rounded-xl font-headline text-xs font-black chunky-btn-sm flex-shrink-0 transition-all ${
+                    <button data-equip-item="${item.title}" data-slot="${activeTab}" class="px-4 py-2 rounded-xl font-headline text-xs font-black chunky-btn-sm shrink-0 transition-all ${
                       isEquipped
                         ? 'bg-error/20 hover:bg-error/30 text-error border-2 border-error/40'
-                        : 'bg-gradient-to-r from-amber-500 to-amber-400 text-black shadow-sm hover:brightness-110'
+                        : 'bg-linear-to-r from-amber-500 to-amber-400 text-black shadow-xs hover:brightness-110'
                     }">
                       ${isEquipped ? 'Unequip' : 'Equip'}
                     </button>

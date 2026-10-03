@@ -760,7 +760,7 @@ export class PetSanctuaryCanvas {
       ctx.save();
       // Apply subtle procedural head/torso tilt from touch & workout physics
       ctx.rotate(this.petHeadRot * 0.4);
-      // Center image right on top of the drop-shadow
+      // Center image right on top of the drop-shadow-sm
       ctx.drawImage(img, -imgSize / 2, -imgSize + 28, imgSize, imgSize);
       ctx.restore();
       return;

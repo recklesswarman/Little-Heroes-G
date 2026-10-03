@@ -1669,7 +1669,7 @@ class Store {
           primaryColor: '#2ecc71',
           accentColor: '#54e98a',
           bgGradient: 'from-[#081c15] via-[#0d281e] to-[#040e0b]',
-          cardBorder: 'border-[#2ecc71]/50',
+          cardBorder: 'border-primary-container/50',
           badgeIcon: 'palette',
           bannerPattern: '🎨'
         });

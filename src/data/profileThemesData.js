@@ -10,7 +10,7 @@ export const PROFILE_THEMES = [
     primaryColor: '#2ecc71',
     accentColor: '#54e98a',
     bgGradient: 'from-[#081c15] via-[#0d281e] to-[#040e0b]',
-    cardBorder: 'border-[#2ecc71]/50',
+    cardBorder: 'border-primary-container/50',
     badgeIcon: 'shield',
     bannerPattern: '🐉'
   },
@@ -46,7 +46,7 @@ export const PROFILE_THEMES = [
     primaryColor: '#e89300',
     accentColor: '#ffb961',
     bgGradient: 'from-[#291700] via-[#4a2b00] to-[#120a00]',
-    cardBorder: 'border-[#e89300]/50',
+    cardBorder: 'border-secondary-container/50',
     badgeIcon: 'rocket_launch',
     bannerPattern: '🚀'
   },

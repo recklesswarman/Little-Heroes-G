@@ -309,7 +309,7 @@ export function renderBattleView() {
   });
 
   return `
-    <div class="relative w-full h-[calc(100vh-64px)] min-h-[540px] overflow-hidden bg-gradient-to-b from-[#0f172a] via-[#1e1b4b] to-[#081a2e] text-white font-headline select-none">
+    <div class="relative w-full h-[calc(100vh-64px)] min-h-[540px] overflow-hidden bg-linear-to-b from-[#0f172a] via-[#1e1b4b] to-[#081a2e] text-white font-headline select-none">
       
       <!-- ================= 1. FULL VIEWPORT 3D WEBGL ARENA CANVAS ================= -->
       <canvas id="battle-webgl-canvas" class="absolute inset-0 w-full h-full z-0 block cursor-crosshair"></canvas>
@@ -329,23 +329,23 @@ export function renderBattleView() {
         
         <!-- Left: Kid-friendly Map Exit Button & Boss Health Status -->
         <div class="pointer-events-auto flex items-center gap-1.5 sm:gap-2 min-w-0 max-w-[44%] sm:max-w-[40%]">
-          <button id="battle-quit-btn" class="bg-gradient-to-b from-amber-400 to-amber-500 hover:brightness-110 text-slate-950 font-black text-xs sm:text-sm px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-2xl border-2 sm:border-3 border-amber-200 shadow-[0_3px_0_0_#b45309] flex items-center gap-1 active:translate-y-0.5 active:shadow-none transition-all flex-shrink-0 cursor-pointer" title="Return to Map">
+          <button id="battle-quit-btn" class="bg-linear-to-b from-amber-400 to-amber-500 hover:brightness-110 text-slate-950 font-black text-xs sm:text-sm px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-2xl border-2 sm:border-3 border-amber-200 shadow-[0_3px_0_0_#b45309] flex items-center gap-1 active:translate-y-0.5 active:shadow-none transition-all shrink-0 cursor-pointer" title="Return to Map">
             <span class="material-symbols-outlined text-base sm:text-lg font-black">arrow_back</span>
             <span class="hidden xs:inline">Map</span>
           </button>
 
           <!-- Boss Avatar & Health Heart Bar (or Floss Progress) -->
-          <div class="bg-slate-900/90 backdrop-blur-md px-2.5 sm:px-3.5 py-1.5 rounded-2xl border-2 border-slate-700/80 flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1 shadow">
+          <div class="bg-slate-900/90 backdrop-blur-md px-2.5 sm:px-3.5 py-1.5 rounded-2xl border-2 border-slate-700/80 flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1 shadow-sm">
             ${battlePhase === 'floss' ? `
-              <span class="text-xl sm:text-2xl filter drop-shadow flex-shrink-0">🧵</span>
+              <span class="text-xl sm:text-2xl filter drop-shadow-sm shrink-0">🧵</span>
               <div class="flex flex-col min-w-0 flex-1">
                 <span class="text-[9px] sm:text-[10px] font-black text-emerald-300 uppercase truncate">FLOSS BATTLE</span>
                 <div class="w-full bg-slate-950 h-2 sm:h-2.5 rounded-full overflow-hidden border border-emerald-400/40 p-0.5 mt-0.5">
-                  <div id="floss-progress-bar" class="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-300 shadow-[0_0_8px_rgba(16,185,129,0.8)]" style="width: ${Math.round(((120 - secondsRemaining) / 120) * 100)}%;"></div>
+                  <div id="floss-progress-bar" class="h-full bg-linear-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-300 shadow-[0_0_8px_rgba(16,185,129,0.8)]" style="width: ${Math.round(((120 - secondsRemaining) / 120) * 100)}%;"></div>
                 </div>
               </div>
             ` : `
-              <span class="text-xl sm:text-2xl filter drop-shadow flex-shrink-0">
+              <span class="text-xl sm:text-2xl filter drop-shadow-sm shrink-0">
                 ${currentBoss.emoji || currentBoss.avatar || '🍬'}
               </span>
               <div class="flex flex-col min-w-0 flex-1">
@@ -354,7 +354,7 @@ export function renderBattleView() {
                   <span class="text-[8px] sm:text-[9px] text-rose-300 font-bold ml-1">${hpPercent}%</span>
                 </div>
                 <div class="w-full bg-slate-950 h-2 sm:h-2.5 rounded-full overflow-hidden border border-white/20 p-0.5 mt-0.5 shadow-inner">
-                  <div id="boss-hp-bar" class="h-full bg-gradient-to-r from-rose-500 via-amber-400 to-emerald-400 rounded-full transition-all duration-300 shadow-[0_0_8px_rgba(245,158,11,0.8)]" style="width: ${hpPercent}%;"></div>
+                  <div id="boss-hp-bar" class="h-full bg-linear-to-r from-rose-500 via-amber-400 to-emerald-400 rounded-full transition-all duration-300 shadow-[0_0_8px_rgba(245,158,11,0.8)]" style="width: ${hpPercent}%;"></div>
                 </div>
               </div>
             `}
@@ -362,18 +362,18 @@ export function renderBattleView() {
         </div>
 
         <!-- Right: Active Hazard Badge & Controls -->
-        <div class="pointer-events-auto flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
+        <div class="pointer-events-auto flex items-center gap-1 sm:gap-1.5 shrink-0">
           ${currentSugarHazard ? `
-            <span id="sugar-hazard-badge" class="hidden md:flex items-center gap-1 text-[9px] sm:text-[10px] font-black text-amber-200 bg-amber-950/85 border border-amber-400/60 px-2 sm:px-2.5 py-1 rounded-full shadow backdrop-blur-sm animate-pulse flex-shrink-0">
+            <span id="sugar-hazard-badge" class="hidden md:flex items-center gap-1 text-[9px] sm:text-[10px] font-black text-amber-200 bg-amber-950/85 border border-amber-400/60 px-2 sm:px-2.5 py-1 rounded-full shadow-sm backdrop-blur-xs animate-pulse shrink-0">
               <span>${currentSugarHazard.emoji}</span>
               <span class="hidden lg:inline">Hazard:</span>
               <span>${currentSugarHazard.name}</span>
             </span>
           ` : ''}
-          <button id="rhythm-toggle-btn" class="w-8 h-8 sm:w-9 sm:h-9 rounded-2xl bg-slate-900/90 border-2 border-slate-700 text-cyan-300 flex items-center justify-center hover:bg-slate-800 active:scale-95 shadow cursor-pointer" title="Toggle Rhythm">
+          <button id="rhythm-toggle-btn" class="w-8 h-8 sm:w-9 sm:h-9 rounded-2xl bg-slate-900/90 border-2 border-slate-700 text-cyan-300 flex items-center justify-center hover:bg-slate-800 active:scale-95 shadow-sm cursor-pointer" title="Toggle Rhythm">
             <span class="material-symbols-outlined text-base sm:text-lg">${isRhythmBeatActive ? 'music_note' : 'music_off'}</span>
           </button>
-          <button id="camera-flip-btn" class="w-8 h-8 sm:w-9 sm:h-9 rounded-2xl bg-slate-900/90 border-2 border-slate-700 text-amber-300 flex items-center justify-center hover:bg-slate-800 active:scale-95 shadow cursor-pointer" title="Flip Camera">
+          <button id="camera-flip-btn" class="w-8 h-8 sm:w-9 sm:h-9 rounded-2xl bg-slate-900/90 border-2 border-slate-700 text-amber-300 flex items-center justify-center hover:bg-slate-800 active:scale-95 shadow-sm cursor-pointer" title="Flip Camera">
             <span class="material-symbols-outlined text-base sm:text-lg">cameraswitch</span>
           </button>
         </div>
@@ -405,7 +405,7 @@ export function renderBattleView() {
             <span class="text-xs font-black text-emerald-300 uppercase tracking-wide">FLOSS BATTLE:</span>
             <span id="current-zone-status-text" class="text-xs font-black text-white">Clean between your teeth!</span>
           </div>
-          <button id="battle-done-floss-btn" class="pointer-events-auto bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 hover:brightness-110 text-slate-950 font-headline font-black text-xs px-4 py-1.5 rounded-full shadow-lg border-2 border-white/40 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer">
+          <button id="battle-done-floss-btn" class="pointer-events-auto bg-linear-to-r from-emerald-400 via-teal-400 to-cyan-400 hover:brightness-110 text-slate-950 font-headline font-black text-xs px-4 py-1.5 rounded-full shadow-lg border-2 border-white/40 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer">
             <span class="material-symbols-outlined text-sm font-black">check_circle</span> Done Flossing! 🪥
           </button>
         </div>
@@ -421,13 +421,13 @@ export function renderBattleView() {
         ${(showFlossBadge || showMouthwashBadge) ? `
           <div id="hygiene-reminder-hud-badges" class="absolute top-28 sm:top-32 left-1/2 transform -translate-x-1/2 z-20 flex items-center gap-1.5 pointer-events-none">
             ${showFlossBadge ? `
-              <span id="floss-reminder-hud-badge" class="flex items-center gap-1 text-[9px] sm:text-[10px] font-black text-emerald-300 bg-emerald-950/80 border border-emerald-400/60 px-2 py-0.5 rounded-full shadow backdrop-blur-sm">
+              <span id="floss-reminder-hud-badge" class="flex items-center gap-1 text-[9px] sm:text-[10px] font-black text-emerald-300 bg-emerald-950/80 border border-emerald-400/60 px-2 py-0.5 rounded-full shadow-sm backdrop-blur-xs">
                 <span class="material-symbols-outlined text-xs" style="font-variation-settings: 'FILL' 1;">health_and_safety</span>
                 Floss Time! 🦷
               </span>
             ` : ''}
             ${showMouthwashBadge ? `
-              <span id="mouthwash-reminder-hud-badge" class="flex items-center gap-1 text-[9px] sm:text-[10px] font-black text-secondary bg-secondary/15 border border-secondary/50 px-2 py-0.5 rounded-full shadow backdrop-blur-sm">
+              <span id="mouthwash-reminder-hud-badge" class="flex items-center gap-1 text-[9px] sm:text-[10px] font-black text-secondary bg-secondary/15 border border-secondary/50 px-2 py-0.5 rounded-full shadow-sm backdrop-blur-xs">
                 <span class="material-symbols-outlined text-xs" style="font-variation-settings: 'FILL' 1;">water_drop</span>
                 Rinse with Mouthwash after!
               </span>
@@ -438,7 +438,7 @@ export function renderBattleView() {
 
       <!-- ================= 6. DEFLECT FLURRY & SPOKEN /LEARN NOTIFICATION BANNERS ================= -->
       <div id="deflect-flurry-banner" class="absolute top-36 sm:top-40 left-1/2 transform -translate-x-1/2 z-40 pointer-events-none transition-all duration-300 opacity-0 scale-90">
-        <div class="bg-gradient-to-r from-amber-500 via-rose-500 to-amber-500 text-slate-950 font-headline font-black text-xs sm:text-sm px-6 py-2.5 rounded-full shadow-[0_0_30px_rgba(245,158,11,0.95)] border-3 border-white animate-bounce flex items-center gap-2.5">
+        <div class="bg-linear-to-r from-amber-500 via-rose-500 to-amber-500 text-slate-950 font-headline font-black text-xs sm:text-sm px-6 py-2.5 rounded-full shadow-[0_0_30px_rgba(245,158,11,0.95)] border-3 border-white animate-bounce flex items-center gap-2.5">
           <span id="deflect-hazard-emoji" class="text-xl">${currentSugarHazard?.emoji || '🍬'}</span>
           <span id="deflect-hazard-text">${currentSugarHazard ? `${currentSugarHazard.name.toUpperCase()} INCOMING! DEFLECT!` : 'SUGAR HAZARD! SCRUB TO DEFLECT!'}</span>
           <span class="text-xl">🛡️</span>
@@ -448,7 +448,7 @@ export function renderBattleView() {
 
       <!-- Comic Deflect Hit Popup -->
       <div id="comic-hit-badge" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none opacity-0 transition-all duration-300 z-35 text-center">
-        <span class="bg-gradient-to-r from-emerald-400 via-cyan-400 to-emerald-400 text-slate-950 font-headline text-base sm:text-lg font-black px-6 py-2.5 rounded-full shadow-2xl border-3 border-white scale-125">
+        <span class="bg-linear-to-r from-emerald-400 via-cyan-400 to-emerald-400 text-slate-950 font-headline text-base sm:text-lg font-black px-6 py-2.5 rounded-full shadow-2xl border-3 border-white scale-125">
           DEFLECTED! 🛡️✨
         </span>
       </div>
@@ -461,7 +461,7 @@ export function renderBattleView() {
         ${availableVillains.map(v => {
           const isSelected = v.id === selectedBossId;
           return `
-            <button data-villain-id="${v.id}" class="villain-switch-btn flex items-center gap-1 px-2.5 py-1 rounded-2xl text-xs font-black transition-all ${isSelected ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 shadow-[0_2px_0_0_#b45309] scale-105' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}">
+            <button data-villain-id="${v.id}" class="villain-switch-btn flex items-center gap-1 px-2.5 py-1 rounded-2xl text-xs font-black transition-all ${isSelected ? 'bg-linear-to-r from-amber-400 to-amber-500 text-slate-950 shadow-[0_2px_0_0_#b45309] scale-105' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}">
               <span>${v.emoji}</span>
               <span class="hidden xs:inline text-[10px]">${v.name}</span>
             </button>
@@ -470,7 +470,7 @@ export function renderBattleView() {
       </div>
 
       <!-- ================= 9. COUNTDOWN INTRO OVERLAY ("3... 2... 1... BRUSH!") ================= -->
-      <div id="battle-intro-countdown" class="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm pointer-events-none transition-opacity duration-500 opacity-0 hidden">
+      <div id="battle-intro-countdown" class="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs pointer-events-none transition-opacity duration-500 opacity-0 hidden">
         <div id="intro-countdown-text" class="text-7xl sm:text-9xl font-black text-amber-300 drop-shadow-[0_0_40px_rgba(251,191,36,0.95)] animate-bounce">
           3
         </div>
@@ -509,19 +509,19 @@ function renderVictoryModal(colState, currentBoss) {
   const isMouthwashAcknowledged = hygieneKidId ? store.hasAcknowledgedHygieneReminderToday(hygieneKidId, 'mouthwash') : false;
 
   return `
-    <div id="colosseum-victory-modal" class="fixed inset-0 z-40 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+    <div id="colosseum-victory-modal" class="fixed inset-0 z-40 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
       <div class="w-full max-w-sm bg-[#0b1320] border-4 border-emerald-400 rounded-3xl p-5 sm:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.9)] flex flex-col items-center text-center relative overflow-hidden">
         
         <!-- Transformed Cleansed Boss Hero Avatar with Animated Rainbow Aura -->
         <div class="relative mb-3 flex items-center justify-center">
-          <div class="absolute -inset-3 rounded-full bg-gradient-to-r from-pink-500 via-amber-400 via-emerald-400 via-cyan-400 to-purple-500 blur-md opacity-85 animate-pulse"></div>
+          <div class="absolute -inset-3 rounded-full bg-linear-to-r from-pink-500 via-amber-400 via-emerald-400 via-cyan-400 to-purple-500 blur-md opacity-85 animate-pulse"></div>
           <div class="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-emerald-400 bg-slate-900/90 overflow-hidden shadow-[0_0_35px_rgba(52,211,153,0.8)] flex items-center justify-center">
             ${currentBoss.cleansedImage
               ? `<img src="${currentBoss.cleansedImage}" alt="${escapeHtml(reward.cleansedTitle)}" class="w-full h-full object-cover" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\\'text-5xl\\'>${currentBoss.cleansedAvatar || currentBoss.avatar || '✨'}</span>';" />`
               : `<span class="text-5xl animate-bounce">${currentBoss.cleansedAvatar || currentBoss.avatar || '✨'}</span>`
             }
           </div>
-          <div class="absolute -bottom-1 -right-1 bg-amber-400 text-slate-950 rounded-full p-1 border-2 border-white text-xs font-black shadow flex items-center justify-center">
+          <div class="absolute -bottom-1 -right-1 bg-amber-400 text-slate-950 rounded-full p-1 border-2 border-white text-xs font-black shadow-sm flex items-center justify-center">
             ✨
           </div>
         </div>
@@ -577,7 +577,7 @@ function renderVictoryModal(colState, currentBoss) {
           </button>
 
           ${store.state?.previousView === 'bedtime_story' ? `
-            <button id="colosseum-return-bedtime-btn" class="w-full py-3 min-h-[44px] rounded-2xl bg-gradient-to-r from-[#00d2d3] to-[#0284c7] text-[#050f18] font-headline font-black text-xs uppercase tracking-wider shadow-[0_4px_0_0_#05253b] hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+            <button id="colosseum-return-bedtime-btn" class="w-full py-3 min-h-[44px] rounded-2xl bg-linear-to-r from-[#00d2d3] to-[#0284c7] text-surface-container-lowest font-headline font-black text-xs uppercase tracking-wider shadow-[0_4px_0_0_#05253b] hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer">
               <span class="material-symbols-outlined text-base">auto_stories</span> CONTINUE BEDTIME ROUTINE (STEP 2)
             </button>
           ` : store.state?.previousView === 'quest_map' ? `
@@ -607,7 +607,7 @@ function renderDefeatModal(colState) {
   const info = colState.defeatInfo || { bossName: 'The Hygiene Boss', bossAvatar: '🍬' };
 
   return `
-    <div id="colosseum-defeat-modal" class="fixed inset-0 z-40 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+    <div id="colosseum-defeat-modal" class="fixed inset-0 z-40 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
       <div class="w-full max-w-sm bg-[#1a1207] border-4 border-amber-500 rounded-3xl p-5 sm:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.9)] flex flex-col items-center text-center relative overflow-hidden">
 
         <div class="relative mb-3 flex items-center justify-center">

@@ -65,7 +65,7 @@ export function renderDinoWorkoutView() {
 
         <button 
           id="btn-close-workout" 
-          class="w-11 h-11 rounded-2xl bg-surface-container hover:bg-surface-bright text-on-surface border-2 border-surface-container-highest flex items-center justify-center shadow-sm active:scale-95 transition-all" 
+          class="w-11 h-11 rounded-2xl bg-surface-container hover:bg-surface-bright text-on-surface border-2 border-surface-container-highest flex items-center justify-center shadow-xs active:scale-95 transition-all" 
           aria-label="Exit Workout"
         >
           <span class="material-symbols-outlined text-xl">close</span>
@@ -77,8 +77,8 @@ export function renderDinoWorkoutView() {
         
         <!-- Daily Coach Header Banner -->
         <div class="flex items-center gap-3 bg-surface-container-lowest/80 px-4 py-2.5 rounded-2xl border border-amber-400/40 w-full mb-3 shadow-inner">
-          <div class="w-12 h-12 rounded-xl bg-surface-container border border-amber-400/60 flex items-center justify-center p-1 flex-shrink-0">
-            <img src="${coach.avatar || `assets/pets/${coach.key || 'rex'}.png`}" alt="${coach.name}" class="w-full h-full object-contain filter drop-shadow">
+          <div class="w-12 h-12 rounded-xl bg-surface-container border border-amber-400/60 flex items-center justify-center p-1 shrink-0">
+            <img src="${coach.avatar || `assets/pets/${coach.key || 'rex'}.png`}" alt="${coach.name}" class="w-full h-full object-contain filter drop-shadow-sm">
           </div>
           <div class="flex flex-col text-left min-w-0">
             <div class="flex items-center gap-1.5">
@@ -91,7 +91,7 @@ export function renderDinoWorkoutView() {
 
         <!-- Exercise Title & Movement Instruction -->
         <div class="text-center my-2">
-          <h3 class="font-headline font-black text-xl sm:text-2xl text-amber-300 mb-1.5 drop-shadow">
+          <h3 class="font-headline font-black text-xl sm:text-2xl text-amber-300 mb-1.5 drop-shadow-sm">
             ${signature}
           </h3>
           <p class="text-on-surface-variant text-sm font-medium max-w-sm mx-auto leading-relaxed">
@@ -120,7 +120,7 @@ export function renderDinoWorkoutView() {
         <div class="w-full flex justify-center mt-2">
           <button 
             id="btn-start-workout" 
-            class="w-full sm:w-80 py-4 px-8 rounded-2xl bg-gradient-to-r from-primary to-emerald-400 hover:opacity-95 text-slate-950 font-headline font-black text-lg tracking-wider uppercase border-b-4 border-[#1b7a43] active:translate-y-1 active:border-b-0 transition-all shadow-xl flex items-center justify-center gap-2"
+            class="w-full sm:w-80 py-4 px-8 rounded-2xl bg-linear-to-r from-primary to-emerald-400 hover:opacity-95 text-slate-950 font-headline font-black text-lg tracking-wider uppercase border-b-4 border-[#1b7a43] active:translate-y-1 active:border-b-0 transition-all shadow-xl flex items-center justify-center gap-2"
           >
             <span class="material-symbols-outlined text-2xl">play_arrow</span>
             <span>START COACH WORKOUT</span>
@@ -128,7 +128,7 @@ export function renderDinoWorkoutView() {
 
           <button 
             id="btn-finish-workout" 
-            class="w-full sm:w-80 py-4 px-8 rounded-2xl bg-gradient-to-r from-amber-400 to-yellow-300 hover:opacity-95 text-slate-950 font-headline font-black text-lg tracking-wider uppercase border-b-4 border-amber-600 active:translate-y-1 active:border-b-0 transition-all shadow-xl hidden flex items-center justify-center gap-2"
+            class="w-full sm:w-80 py-4 px-8 rounded-2xl bg-linear-to-r from-amber-400 to-yellow-300 hover:opacity-95 text-slate-950 font-headline font-black text-lg tracking-wider uppercase border-b-4 border-amber-600 active:translate-y-1 active:border-b-0 transition-all shadow-xl hidden flex items-center justify-center gap-2"
           >
             <span class="material-symbols-outlined text-2xl">military_tech</span>
             <span>CLAIM WORKOUT REWARDS</span>

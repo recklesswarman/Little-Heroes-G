@@ -61,7 +61,7 @@ export function renderParentLockModal() {
         <!-- Header -->
         <div class="flex justify-between items-center border-b-2 border-surface-container-highest pb-3">
           <div class="flex items-center gap-2.5">
-            <div class="w-10 h-10 rounded-2xl bg-secondary/20 text-secondary border border-secondary/40 flex items-center justify-center text-xl shadow-sm">
+            <div class="w-10 h-10 rounded-2xl bg-secondary/20 text-secondary border border-secondary/40 flex items-center justify-center text-xl shadow-xs">
               <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">shield_person</span>
             </div>
             <div>
@@ -84,7 +84,7 @@ export function renderParentLockModal() {
                 (tab) => `
               <button data-auth-tab="${tab.id}" class="parent-auth-tab-btn min-h-[44px] flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl font-headline text-xs font-black transition-all ${
                 activeAuthTab === tab.id
-                  ? 'bg-secondary text-on-secondary shadow-sm'
+                  ? 'bg-secondary text-on-secondary shadow-xs'
                   : 'text-on-surface-variant hover:text-secondary'
               }">
                 <span class="material-symbols-outlined text-base">${tab.icon}</span>
@@ -121,7 +121,7 @@ export function renderParentLockModal() {
               <p class="text-xs text-on-surface-variant mt-1">Scan your fingerprint, Touch ID, Face ID, or Windows Hello.</p>
             </div>
 
-            <button id="parent-biometric-trigger-btn" class="w-full bg-gradient-to-r from-secondary to-primary text-on-secondary font-headline text-sm font-black py-4 px-6 rounded-2xl chunky-btn border-secondary-container shadow-md hover:brightness-110 active:scale-95 flex items-center justify-center gap-2.5">
+            <button id="parent-biometric-trigger-btn" class="w-full bg-linear-to-r from-secondary to-primary text-on-secondary font-headline text-sm font-black py-4 px-6 rounded-2xl chunky-btn border-secondary-container shadow-md hover:brightness-110 active:scale-95 flex items-center justify-center gap-2.5">
               <span class="material-symbols-outlined text-2xl">fingerprint</span>
               <span>Scan Fingerprint / Face ID</span>
             </button>
@@ -149,7 +149,7 @@ export function renderParentLockModal() {
             <div class="flex flex-col gap-2 w-full max-w-xs">
               <input id="parent-pin-input" type="password" maxlength="8" placeholder="••••" class="bg-surface-container-high border-2 ${
                 pinError ? 'border-error ring-2 ring-error/50' : 'border-surface-container-highest focus:border-secondary'
-              } rounded-2xl px-4 py-3.5 text-center text-2xl font-headline tracking-widest text-inverse-surface w-full focus:outline-none transition-all shadow-inner" autofocus />
+              } rounded-2xl px-4 py-3.5 text-center text-2xl font-headline tracking-widest text-inverse-surface w-full focus:outline-hidden transition-all shadow-inner" autofocus />
 
               <button id="parent-pin-submit" class="w-full bg-secondary text-on-secondary font-headline text-sm font-black py-3.5 rounded-2xl chunky-btn border-secondary-container shadow-md hover:brightness-110 active:scale-95 flex items-center justify-center gap-2">
                 <span class="material-symbols-outlined text-lg">lock_open</span>
@@ -184,7 +184,7 @@ export function renderParentLockModal() {
             <div class="flex flex-col gap-2 w-full max-w-xs">
               <input id="parent-math-input" type="number" placeholder="Enter answer" class="bg-surface-container-high border-2 ${
                 mathError ? 'border-error ring-2 ring-error/50' : 'border-surface-container-highest focus:border-secondary'
-              } rounded-2xl px-4 py-3 text-center text-xl font-headline font-bold text-inverse-surface w-full focus:outline-none transition-all shadow-inner" />
+              } rounded-2xl px-4 py-3 text-center text-xl font-headline font-bold text-inverse-surface w-full focus:outline-hidden transition-all shadow-inner" />
 
               <button id="parent-math-submit" class="w-full bg-secondary text-on-secondary font-headline text-sm font-black py-3.5 rounded-2xl chunky-btn border-secondary-container shadow-md hover:brightness-110 active:scale-95 flex items-center justify-center gap-2">
                 <span class="material-symbols-outlined text-lg">verified_user</span>
@@ -221,7 +221,7 @@ export function renderParentLockModal() {
                 ? `
               <div class="bg-surface-container-high border-2 border-secondary/40 rounded-2xl p-3.5 w-full flex items-center justify-between gap-3 text-left">
                 <div class="flex items-center gap-2.5 min-w-0">
-                  <div class="w-9 h-9 rounded-full bg-secondary text-on-secondary flex items-center justify-center font-black text-sm flex-shrink-0">
+                  <div class="w-9 h-9 rounded-full bg-secondary text-on-secondary flex items-center justify-center font-black text-sm shrink-0">
                     ${(store.getState().household.parentUser.displayName || 'P')[0].toUpperCase()}
                   </div>
                   <div class="min-w-0">
@@ -229,7 +229,7 @@ export function renderParentLockModal() {
                     <p class="text-[10px] text-on-surface-variant truncate">${store.getState().household.parentUser.email || 'Authenticated Admin'}</p>
                   </div>
                 </div>
-                <span class="bg-secondary/20 text-secondary text-[10px] font-black px-2 py-0.5 rounded-md border border-secondary/30 flex-shrink-0">Verified</span>
+                <span class="bg-secondary/20 text-secondary text-[10px] font-black px-2 py-0.5 rounded-md border border-secondary/30 shrink-0">Verified</span>
               </div>
 
               <button id="parent-account-enter-btn" class="w-full bg-secondary text-on-secondary font-headline text-sm font-black py-3.5 rounded-2xl chunky-btn border-secondary-container shadow-md hover:brightness-110 active:scale-95 flex items-center justify-center gap-2">
@@ -239,7 +239,7 @@ export function renderParentLockModal() {
             `
                 : `
               <div class="flex flex-col gap-2.5 w-full">
-                <button id="parent-google-signin-btn" class="w-full bg-white text-gray-800 font-headline text-xs sm:text-sm font-black py-3 px-4 rounded-2xl border border-gray-300 shadow-sm hover:bg-gray-50 active:scale-95 flex items-center justify-center gap-2.5 transition-all">
+                <button id="parent-google-signin-btn" class="w-full bg-white text-gray-800 font-headline text-xs sm:text-sm font-black py-3 px-4 rounded-2xl border border-gray-300 shadow-xs hover:bg-gray-50 active:scale-95 flex items-center justify-center gap-2.5 transition-all">
                   <svg class="w-4 h-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
                   <span>Sign In with Parent Google Account</span>
                 </button>

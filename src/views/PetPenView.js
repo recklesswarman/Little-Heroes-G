@@ -51,7 +51,7 @@ export function renderPetPenView() {
       </div>
 
       <!-- Summoning State -->
-      <div class="relative bg-gradient-to-b from-[#16212b] via-[#121d26] to-[#09141e] rounded-3xl p-8 border-4 border-surface-container-highest min-h-[380px] card-shadow flex flex-col items-center justify-center gap-5 overflow-hidden text-center">
+      <div class="relative bg-linear-to-b from-surface-container via-surface-container-low to-[#09141e] rounded-3xl p-8 border-4 border-surface-container-highest min-h-[380px] card-shadow flex flex-col items-center justify-center gap-5 overflow-hidden text-center">
         <div class="absolute inset-0 bg-radial from-primary/20 via-transparent to-transparent pointer-events-none"></div>
 
         <div class="z-10 flex flex-col items-center gap-2 max-w-md">
@@ -67,14 +67,14 @@ export function renderPetPenView() {
         </div>
 
         <div id="pen-choose-starter-trigger" class="relative z-10 w-44 h-44 flex flex-col items-center justify-center cursor-pointer group my-2">
-          <div class="w-36 h-36 rounded-full bg-gradient-to-tr from-primary/25 to-secondary/25 border-3 border-dashed border-primary flex items-center justify-center text-6xl text-primary animate-pulse shadow-xl group-hover:scale-105 transition-transform">
+          <div class="w-36 h-36 rounded-full bg-linear-to-tr from-primary/25 to-secondary/25 border-3 border-dashed border-primary flex items-center justify-center text-6xl text-primary animate-pulse shadow-xl group-hover:scale-105 transition-transform">
             <span class="material-symbols-outlined text-7xl" style="font-variation-settings: 'FILL' 1;">egg</span>
           </div>
           <span class="mt-2 text-[11px] font-black uppercase tracking-wider text-secondary">Tap to Choose Companion</span>
         </div>
 
         <div class="z-10">
-          <button id="pen-choose-starter-btn" class="bg-gradient-to-r from-primary to-secondary text-on-primary font-headline text-sm sm:text-base font-black px-8 py-4 rounded-2xl chunky-btn shadow-chunky-sm flex items-center gap-2.5 hover:brightness-110 active:scale-95">
+          <button id="pen-choose-starter-btn" class="bg-linear-to-r from-primary to-secondary text-on-primary font-headline text-sm sm:text-base font-black px-8 py-4 rounded-2xl chunky-btn shadow-chunky-sm flex items-center gap-2.5 hover:brightness-110 active:scale-95">
             <span class="material-symbols-outlined text-2xl">pets</span> CHOOSE YOUR FIRST COMPANION
           </button>
         </div>
@@ -121,28 +121,28 @@ export function renderPetPenView() {
           </button>
 
           <!-- Pet Expeditions Camp Button -->
-          <button id="pen-open-expeditions-btn" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:brightness-110 text-white font-headline text-xs font-black px-3.5 py-2 rounded-2xl border-2 border-emerald-400 flex items-center gap-1.5 chunky-btn-sm shadow-md active:scale-95">
+          <button id="pen-open-expeditions-btn" class="bg-linear-to-r from-emerald-600 to-teal-600 hover:brightness-110 text-white font-headline text-xs font-black px-3.5 py-2 rounded-2xl border-2 border-emerald-400 flex items-center gap-1.5 chunky-btn-sm shadow-md active:scale-95">
             <span class="material-symbols-outlined text-base">explore</span> 🧭 Expeditions
           </button>
 
           <!-- Heroic Runway Showcase Button -->
-          <button id="pen-open-runway-btn" class="bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 hover:brightness-110 text-slate-950 font-headline text-xs font-black px-3.5 py-2 rounded-2xl border-2 border-white/40 flex items-center gap-1.5 chunky-btn-sm shadow-md active:scale-95">
+          <button id="pen-open-runway-btn" class="bg-linear-to-r from-amber-400 via-orange-500 to-rose-500 hover:brightness-110 text-slate-950 font-headline text-xs font-black px-3.5 py-2 rounded-2xl border-2 border-white/40 flex items-center gap-1.5 chunky-btn-sm shadow-md active:scale-95">
             <span>🌟</span> <span>Runway Show</span>
           </button>
 
           <!-- Group Treat Picnic Button -->
-          <button id="pen-group-picnic-btn" class="bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 text-black font-headline text-xs font-black px-4 py-2 rounded-2xl border-2 border-amber-400 flex items-center gap-1.5 chunky-btn-sm shadow-md active:scale-95">
+          <button id="pen-group-picnic-btn" class="bg-linear-to-r from-amber-500 to-orange-500 hover:brightness-110 text-black font-headline text-xs font-black px-4 py-2 rounded-2xl border-2 border-amber-400 flex items-center gap-1.5 chunky-btn-sm shadow-md active:scale-95">
             <span class="material-symbols-outlined text-base">shopping_basket</span> 🧺 Group Picnic (15 🪙)
           </button>
         </div>
       </div>
 
       <!-- Companion Level & Pet Streak Shield Banner -->
-      <div class="bg-gradient-to-r from-surface-container-high via-surface-container to-surface-container-high rounded-3xl p-4 border-2 border-primary/40 card-shadow flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="bg-linear-to-r from-surface-container-high via-surface-container to-surface-container-high rounded-3xl p-4 border-2 border-primary/40 card-shadow flex flex-col sm:flex-row items-center justify-between gap-4">
 
         <!-- Left: Companion Level Progress -->
         <div class="flex items-center gap-3 w-full sm:w-auto flex-1">
-          <div class="w-12 h-12 rounded-2xl bg-primary/20 border border-primary/50 text-primary flex items-center justify-center text-2xl flex-shrink-0">
+          <div class="w-12 h-12 rounded-2xl bg-primary/20 border border-primary/50 text-primary flex items-center justify-center text-2xl shrink-0">
             <span class="material-symbols-outlined text-3xl">military_tech</span>
           </div>
           <div class="flex flex-col flex-1 max-w-sm">
@@ -154,7 +154,7 @@ export function renderPetPenView() {
               <span class="text-[10px] text-secondary font-bold">Level ${petLevel}/25</span>
             </div>
             <div class="w-full h-3.5 bg-surface-container-lowest rounded-full overflow-hidden p-0.5 border border-surface-container-highest mt-1">
-              <div class="h-full bg-gradient-to-r from-primary to-secondary rounded-full transition-all duration-500" style="width: ${Math.min(100, Math.round((petXp / xpNeeded) * 100))}%;"></div>
+              <div class="h-full bg-linear-to-r from-primary to-secondary rounded-full transition-all duration-500" style="width: ${Math.min(100, Math.round((petXp / xpNeeded) * 100))}%;"></div>
             </div>
           </div>
         </div>
@@ -174,7 +174,7 @@ export function renderPetPenView() {
       </div>
 
       <!-- MULTI-HABITAT FREE-ROAMING SANCTUARY (4 Interactive Zones) -->
-      <div class="relative bg-gradient-to-b from-[#14261e] via-[#10202a] to-[#0a141c] rounded-3xl p-5 sm:p-6 border-4 border-primary/30 card-shadow flex flex-col gap-4 overflow-hidden min-h-[460px]">
+      <div class="relative bg-linear-to-b from-[#14261e] via-[#10202a] to-[#0a141c] rounded-3xl p-5 sm:p-6 border-4 border-primary/30 card-shadow flex flex-col gap-4 overflow-hidden min-h-[460px]">
         
         <!-- Ambient Habitat Glow -->
         <div class="absolute inset-0 bg-radial from-primary/10 via-transparent to-transparent pointer-events-none"></div>
@@ -183,7 +183,7 @@ export function renderPetPenView() {
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10 flex-1">
           
           <!-- Zone 1: Sunny Meadow -->
-          <div id="zone-meadow" class="bg-gradient-to-br from-[#1a3826]/80 to-[#122419]/80 rounded-2xl p-4 border-2 border-primary/30 relative overflow-hidden min-h-[200px] flex flex-col justify-between">
+          <div id="zone-meadow" class="bg-linear-to-br from-[#1a3826]/80 to-[#122419]/80 rounded-2xl p-4 border-2 border-primary/30 relative overflow-hidden min-h-[200px] flex flex-col justify-between">
             <div class="flex items-center justify-between text-xs font-black text-primary">
               <span class="flex items-center gap-1.5">
                 <span class="material-symbols-outlined text-base">park</span> 🌿 Sunny Meadow
@@ -214,7 +214,7 @@ export function renderPetPenView() {
           </div>
 
           <!-- Zone 2: Bubble Bath Lagoon -->
-          <div id="zone-lagoon" class="bg-gradient-to-br from-[#123040]/80 to-[#0c1f2b]/80 rounded-2xl p-4 border-2 border-tertiary/30 relative overflow-hidden min-h-[200px] flex flex-col justify-between">
+          <div id="zone-lagoon" class="bg-linear-to-br from-[#123040]/80 to-[#0c1f2b]/80 rounded-2xl p-4 border-2 border-tertiary/30 relative overflow-hidden min-h-[200px] flex flex-col justify-between">
             <div class="flex items-center justify-between text-xs font-black text-tertiary">
               <span class="flex items-center gap-1.5">
                 <span class="material-symbols-outlined text-base">water_drop</span> 🛁 Bubble Bath Lagoon
@@ -247,7 +247,7 @@ export function renderPetPenView() {
           </div>
 
           <!-- Zone 3: Treat Picnic Clearing -->
-          <div id="zone-picnic" class="bg-gradient-to-br from-[#3b2d18]/80 to-[#261c0d]/80 rounded-2xl p-4 border-2 border-amber-500/30 relative overflow-hidden min-h-[200px] flex flex-col justify-between">
+          <div id="zone-picnic" class="bg-linear-to-br from-[#3b2d18]/80 to-[#261c0d]/80 rounded-2xl p-4 border-2 border-amber-500/30 relative overflow-hidden min-h-[200px] flex flex-col justify-between">
             <div class="flex items-center justify-between text-xs font-black text-amber-400">
               <span class="flex items-center gap-1.5">
                 <span class="material-symbols-outlined text-base">restaurant</span> 🍎 Treat Picnic Clearing
@@ -275,7 +275,7 @@ export function renderPetPenView() {
           </div>
 
           <!-- Zone 4: Training & Sparring Arena -->
-          <div id="zone-arena" class="bg-gradient-to-br from-[#381c1c]/80 to-[#241010]/80 rounded-2xl p-4 border-2 border-secondary/30 relative overflow-hidden min-h-[200px] flex flex-col justify-between">
+          <div id="zone-arena" class="bg-linear-to-br from-[#381c1c]/80 to-[#241010]/80 rounded-2xl p-4 border-2 border-secondary/30 relative overflow-hidden min-h-[200px] flex flex-col justify-between">
             <div class="flex items-center justify-between text-xs font-black text-secondary">
               <span class="flex items-center gap-1.5">
                 <span class="material-symbols-outlined text-base">sports_kabaddi</span> ⚔️ Training & Sparring Arena
@@ -430,7 +430,7 @@ export function renderPetPenView() {
         const customToys = store.getParentCustomToys ? store.getParentCustomToys() : [];
         if (customToys.length === 0) return '';
         return `
-        <section class="bg-gradient-to-r from-emerald-950/80 via-slate-900/90 to-cyan-950/80 rounded-3xl p-4 border-2 border-cyan-400/40 shadow-xl flex flex-col gap-3">
+        <section class="bg-linear-to-r from-emerald-950/80 via-slate-900/90 to-cyan-950/80 rounded-3xl p-4 border-2 border-cyan-400/40 shadow-xl flex flex-col gap-3">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
               <span class="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-400/30 flex items-center justify-center text-lg">🎾</span>
@@ -454,7 +454,7 @@ export function renderPetPenView() {
                 ${toy.modelUrl ? `
                   <model-viewer src="${toy.modelUrl}" auto-rotate camera-controls shadow-intensity="1" ar style="width: 50px; height: 50px; background: transparent;"></model-viewer>
                 ` : `
-                  <div class="text-3xl group-hover:scale-115 transition-transform drop-shadow">${toy.emoji || '🎪'}</div>
+                  <div class="text-3xl group-hover:scale-115 transition-transform drop-shadow-sm">${toy.emoji || '🎪'}</div>
                 `}
                 <span class="font-headline text-xs font-black text-white truncate max-w-full">${escapeHtml(toy.name)}</span>
                 <span class="text-[9px] font-black text-cyan-300 bg-cyan-500/20 px-2 py-0.5 rounded-full border border-cyan-400/30">
@@ -496,12 +496,12 @@ function renderRoamingPetCard(pet, idx) {
         
         <!-- Equipped Hat Badge -->
         ${hatEmoji ? `
-          <span class="absolute -top-1 -right-1 text-2xl drop-shadow animate-bounce" title="Equipped Hat">${hatEmoji}</span>
+          <span class="absolute -top-1 -right-1 text-2xl drop-shadow-sm animate-bounce" title="Equipped Hat">${hatEmoji}</span>
         ` : ''}
 
         <!-- Equipped Cape Badge -->
         ${capeEmoji ? `
-          <span class="absolute bottom-2 -left-1 text-xl drop-shadow" title="Equipped Cape">${capeEmoji}</span>
+          <span class="absolute bottom-2 -left-1 text-xl drop-shadow-sm" title="Equipped Cape">${capeEmoji}</span>
         ` : ''}
 
         <!-- Active Companion Star Indicator -->
@@ -513,7 +513,7 @@ function renderRoamingPetCard(pet, idx) {
       </div>
 
       <!-- Name & Level Tag -->
-      <div class="bg-surface-container-lowest/80 px-3 py-1 rounded-full border border-surface-container-highest flex items-center gap-1.5 mt-1 shadow-sm">
+      <div class="bg-surface-container-lowest/80 px-3 py-1 rounded-full border border-surface-container-highest flex items-center gap-1.5 mt-1 shadow-xs">
         <span class="font-headline text-xs font-black text-inverse-surface">${escapeHtml(pet.name)}</span>
         <span class="text-[9px] font-black text-secondary">Lv ${pet.level}</span>
       </div>
@@ -534,7 +534,7 @@ function renderRadialActionRing(state) {
   const isActive = pet.id === state.selectedHero?.activePetId;
 
   return `
-    <div id="pet-radial-ring-overlay" class="fixed inset-0 bg-background/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in select-none">
+    <div id="pet-radial-ring-overlay" class="fixed inset-0 bg-background/85 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in select-none">
       <div class="relative bg-surface-container border-4 border-primary/60 rounded-3xl p-6 max-w-sm w-full card-shadow-lg flex flex-col items-center gap-4 text-center">
         
         <!-- Close Button -->
@@ -559,28 +559,28 @@ function renderRadialActionRing(state) {
         <div class="grid grid-cols-2 gap-3 w-full pt-1">
           
           <!-- 1. Pet / Hug -->
-          <button id="radial-hug-btn" class="bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-headline text-xs font-black p-3.5 rounded-2xl chunky-btn flex flex-col items-center gap-1 hover:brightness-110 active:scale-95 shadow-md">
+          <button id="radial-hug-btn" class="bg-linear-to-r from-amber-500 to-yellow-500 text-slate-950 font-headline text-xs font-black p-3.5 rounded-2xl chunky-btn flex flex-col items-center gap-1 hover:brightness-110 active:scale-95 shadow-md">
             <span class="material-symbols-outlined text-2xl">favorite</span>
             <span>Pet & Hug</span>
             <span class="text-[9px] font-bold text-slate-900">+20 Joy • +10 XP</span>
           </button>
 
           <!-- 2. Feed Munchies Treat -->
-          <button id="radial-feed-btn" class="bg-gradient-to-r from-amber-500 to-orange-500 text-black font-headline text-xs font-black p-3.5 rounded-2xl chunky-btn flex flex-col items-center gap-1 hover:brightness-110 active:scale-95 shadow-md">
+          <button id="radial-feed-btn" class="bg-linear-to-r from-amber-500 to-orange-500 text-black font-headline text-xs font-black p-3.5 rounded-2xl chunky-btn flex flex-col items-center gap-1 hover:brightness-110 active:scale-95 shadow-md">
             <span class="material-symbols-outlined text-2xl">nutrition</span>
             <span>Feed Snack (5 🪙)</span>
             <span class="text-[9px] font-bold text-black/80">+25 Fullness • +10 XP</span>
           </button>
 
           <!-- 3. Pet Locker -->
-          <button id="radial-locker-btn" class="bg-surface-container-high hover:bg-surface-bright text-amber-400 font-headline text-xs font-black p-3.5 rounded-2xl border-2 border-amber-500/50 chunky-btn flex flex-col items-center gap-1 active:scale-95 shadow-sm">
+          <button id="radial-locker-btn" class="bg-surface-container-high hover:bg-surface-bright text-amber-400 font-headline text-xs font-black p-3.5 rounded-2xl border-2 border-amber-500/50 chunky-btn flex flex-col items-center gap-1 active:scale-95 shadow-xs">
             <span class="material-symbols-outlined text-2xl">checkroom</span>
             <span>Pet Locker</span>
             <span class="text-[9px] font-bold text-amber-300">Dress-Up Gear</span>
           </button>
 
           <!-- 4. Make Active Companion -->
-          <button id="radial-active-btn" class="bg-surface-container-high hover:bg-surface-bright text-secondary font-headline text-xs font-black p-3.5 rounded-2xl border-2 border-secondary/50 chunky-btn flex flex-col items-center gap-1 active:scale-95 shadow-sm ${
+          <button id="radial-active-btn" class="bg-surface-container-high hover:bg-surface-bright text-secondary font-headline text-xs font-black p-3.5 rounded-2xl border-2 border-secondary/50 chunky-btn flex flex-col items-center gap-1 active:scale-95 shadow-xs ${
             isActive ? 'opacity-50 cursor-default' : ''
           }">
             <span class="material-symbols-outlined text-2xl">star</span>

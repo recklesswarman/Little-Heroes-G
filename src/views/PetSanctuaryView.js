@@ -62,7 +62,7 @@ export function renderPetSanctuaryView() {
         <div class="flex items-center gap-2.5">
           <button 
             id="sanctuary-back-btn" 
-            class="w-11 h-11 rounded-2xl bg-surface hover:bg-surface-bright text-on-surface flex items-center justify-center border-2 border-surface-container-highest active:scale-95 transition-all shadow-sm"
+            class="w-11 h-11 rounded-2xl bg-surface hover:bg-surface-bright text-on-surface flex items-center justify-center border-2 border-surface-container-highest active:scale-95 transition-all shadow-xs"
             aria-label="Back to Hero HQ"
           >
             <span class="material-symbols-outlined text-xl">arrow_back</span>
@@ -92,7 +92,7 @@ export function renderPetSanctuaryView() {
           </div>
           <div class="w-28 h-3.5 bg-surface-container-high rounded-full overflow-hidden p-0.5 border border-surface-container-highest flex">
             <div 
-              class="h-full bg-gradient-to-r from-cyan-400 to-emerald-400 rounded-full transition-all duration-500 shadow-sm"
+              class="h-full bg-linear-to-r from-cyan-400 to-emerald-400 rounded-full transition-all duration-500 shadow-xs"
               style="width: ${Math.min(100, Math.floor((petXp / xpNeeded) * 100))}%"
             ></div>
           </div>
@@ -133,7 +133,7 @@ export function renderPetSanctuaryView() {
         </div>
         <div class="flex-1 mx-3 h-3 bg-surface-container-high rounded-full overflow-hidden border border-surface-container-highest">
           <div 
-            class="h-full bg-gradient-to-r from-secondary to-secondary-fixed rounded-full transition-all"
+            class="h-full bg-linear-to-r from-secondary to-secondary-fixed rounded-full transition-all"
             style="width: ${Math.min(100, (bondState.xp % 100))}%"
           ></div>
         </div>
@@ -163,7 +163,7 @@ export function renderPetSanctuaryView() {
           ` : ''}
 
           <!-- Habit Synergy Tag -->
-          <div class="pointer-events-auto px-3 py-1 rounded-xl bg-surface-container/80 backdrop-blur-md border border-surface-container-highest text-on-surface text-[11px] font-bold flex items-center gap-1.5 shadow">
+          <div class="pointer-events-auto px-3 py-1 rounded-xl bg-surface-container/80 backdrop-blur-md border border-surface-container-highest text-on-surface text-[11px] font-bold flex items-center gap-1.5 shadow-sm">
             <span class="material-symbols-outlined text-xs text-secondary">verified</span>
             <span>${activePet.perk || archetype.habitBonus || 'Bravery Boost: +10% Quest XP'}</span>
           </div>
@@ -280,7 +280,7 @@ export function renderPetSanctuaryView() {
             id="action-roster-dock-btn" 
             class="sanctuary-dock-btn min-h-[48px] flex flex-col items-center justify-center p-1.5 sm:p-2.5 rounded-2xl font-headline font-black text-xs transition-all active:translate-y-1 active:border-b-0 border-b-4 ${
               activeDrawer === 'roster'
-                ? 'bg-gradient-to-r from-secondary to-primary text-slate-950 border-[#1b7a43] shadow-md ring-2 ring-primary/60'
+                ? 'bg-linear-to-r from-secondary to-primary text-slate-950 border-[#1b7a43] shadow-md ring-2 ring-primary/60'
                 : 'bg-surface-container-high hover:bg-surface-bright text-on-surface border-surface-container-highest'
             }"
             aria-label="24 Pet Companions Roster"
@@ -333,7 +333,7 @@ function renderActiveDrawer(drawer, activePet, archetype, needs, petLevel, petLe
 
   return `
     <!-- Drawer Overlay Backdrop -->
-    <div id="drawer-backdrop" class="fixed inset-0 z-40 bg-slate-950/70 backdrop-blur-sm animate-fade-in"></div>
+    <div id="drawer-backdrop" class="fixed inset-0 z-40 bg-slate-950/70 backdrop-blur-xs animate-fade-in"></div>
 
     <!-- Drawer Content Sheet -->
     <div 
@@ -415,7 +415,7 @@ function renderFeedDrawer(pet, needs) {
             const outOfStock = !isFree && stock <= 0;
             return `
             <button
-              class="${outOfStock ? 'buy-treat-pack-btn' : 'feed-treat-btn'} flex flex-col items-center text-center p-3.5 rounded-2xl ${outOfStock ? 'bg-amber-950/40 border-amber-500/40 hover:bg-amber-950/60' : 'bg-surface-container-high hover:bg-surface-bright border-surface-container-highest'} border-2 active:scale-95 transition-all shadow group"
+              class="${outOfStock ? 'buy-treat-pack-btn' : 'feed-treat-btn'} flex flex-col items-center text-center p-3.5 rounded-2xl ${outOfStock ? 'bg-amber-950/40 border-amber-500/40 hover:bg-amber-950/60' : 'bg-surface-container-high hover:bg-surface-bright border-surface-container-highest'} border-2 active:scale-95 transition-all shadow-sm group"
               data-treat-id="${treat.id}"
             >
               <span class="text-3xl sm:text-4xl group-hover:scale-110 transition-transform ${outOfStock ? 'grayscale opacity-60' : ''}">${outOfStock ? '🔒' : treat.emoji}</span>
@@ -451,7 +451,7 @@ function renderBathDrawer(pet, needs) {
           <span class="text-tertiary font-black">${needs.hygiene}%</span>
         </div>
         <div class="w-full h-4 bg-surface-container-high rounded-full overflow-hidden p-0.5 border border-surface-container-highest">
-          <div class="h-full bg-gradient-to-r from-tertiary to-primary rounded-full transition-all" style="width: ${needs.hygiene}%"></div>
+          <div class="h-full bg-linear-to-r from-tertiary to-primary rounded-full transition-all" style="width: ${needs.hygiene}%"></div>
         </div>
       </div>
 
@@ -604,7 +604,7 @@ function renderWardrobeDrawer(pet, equippedGear) {
                 isEquipped ? `${halo.border} ${halo.bg} shadow-md` : !isOwned ? 'border-surface-container-highest opacity-80' : 'border-surface-container-highest hover:border-primary/50'
               }">
                 <div class="flex items-center gap-3 min-w-0">
-                  <div class="w-12 h-12 rounded-2xl flex-shrink-0 flex items-center justify-center ${halo.bg} border-2 ${halo.border} ${halo.haloShadow}">
+                  <div class="w-12 h-12 rounded-2xl shrink-0 flex items-center justify-center ${halo.bg} border-2 ${halo.border} ${halo.haloShadow}">
                     <span class="material-symbols-outlined text-xl ${halo.text}">${!isOwned ? 'lock' : (item.icon || 'shield')}</span>
                   </div>
                   <div class="flex flex-col min-w-0">
@@ -621,7 +621,7 @@ function renderWardrobeDrawer(pet, equippedGear) {
 
                 ${!isOwned ? `
                   <button
-                    class="buy-wardrobe-gear-btn px-3 py-2 rounded-xl font-headline font-black text-xs flex-shrink-0 active:scale-95 transition-all bg-amber-500 text-slate-950 border-b-2 border-amber-700 hover:brightness-110 shadow-sm"
+                    class="buy-wardrobe-gear-btn px-3 py-2 rounded-xl font-headline font-black text-xs shrink-0 active:scale-95 transition-all bg-amber-500 text-slate-950 border-b-2 border-amber-700 hover:brightness-110 shadow-xs"
                     data-category="${activeCategory}"
                     data-gear-id="${item.id}"
                   >
@@ -629,10 +629,10 @@ function renderWardrobeDrawer(pet, equippedGear) {
                   </button>
                 ` : `
                   <button
-                    class="${isEquipped ? 'wardrobe-unequip-btn' : 'wardrobe-equip-btn'} px-3 py-2 rounded-xl font-headline font-black text-xs flex-shrink-0 active:scale-95 transition-all ${
+                    class="${isEquipped ? 'wardrobe-unequip-btn' : 'wardrobe-equip-btn'} px-3 py-2 rounded-xl font-headline font-black text-xs shrink-0 active:scale-95 transition-all ${
                       isEquipped
                         ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30'
-                        : 'bg-primary text-slate-950 border-b-2 border-[#1b7a43] hover:bg-emerald-400 shadow-sm'
+                        : 'bg-primary text-slate-950 border-b-2 border-[#1b7a43] hover:bg-emerald-400 shadow-xs'
                     }"
                     data-category="${activeCategory}"
                     data-gear-id="${item.id}"
@@ -708,9 +708,9 @@ function renderWorkoutDrawer(pet) {
   return `
     <div class="flex flex-col gap-5">
       <!-- Daily Coach Hero Spotlight Card -->
-      <div class="p-4 rounded-3xl bg-gradient-to-br from-surface-container-high to-surface-container-lowest border-2 border-amber-400/50 shadow-xl flex items-center gap-4">
-        <div class="w-20 h-20 rounded-2xl bg-surface-container-lowest border-2 border-amber-400/60 flex items-center justify-center p-1.5 shadow-md flex-shrink-0">
-          <img src="${dailyCoach.avatar || `assets/pets/${dailyCoach.key || 'rex'}.png`}" alt="${dailyCoach.name}" class="w-full h-full object-contain filter drop-shadow">
+      <div class="p-4 rounded-3xl bg-linear-to-br from-surface-container-high to-surface-container-lowest border-2 border-amber-400/50 shadow-xl flex items-center gap-4">
+        <div class="w-20 h-20 rounded-2xl bg-surface-container-lowest border-2 border-amber-400/60 flex items-center justify-center p-1.5 shadow-md shrink-0">
+          <img src="${dailyCoach.avatar || `assets/pets/${dailyCoach.key || 'rex'}.png`}" alt="${dailyCoach.name}" class="w-full h-full object-contain filter drop-shadow-sm">
         </div>
         <div class="flex flex-col min-w-0">
           <div class="flex items-center gap-2">
@@ -759,7 +759,7 @@ function renderWorkoutDrawer(pet) {
       <!-- Start Workout Action Button -->
       <button 
         id="start-coach-workout-btn"
-        class="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-amber-400 via-emerald-400 to-cyan-400 hover:opacity-95 text-slate-950 font-headline font-black text-sm flex items-center justify-center gap-2 border-b-4 border-amber-600 active:translate-y-1 active:border-b-0 transition-all shadow-xl"
+        class="w-full py-4 px-6 rounded-2xl bg-linear-to-r from-amber-400 via-emerald-400 to-cyan-400 hover:opacity-95 text-slate-950 font-headline font-black text-sm flex items-center justify-center gap-2 border-b-4 border-amber-600 active:translate-y-1 active:border-b-0 transition-all shadow-xl"
       >
         <span class="material-symbols-outlined text-xl">fitness_center</span>
         <span>TRAIN WITH COACH ${dailyCoach.name.toUpperCase()} (+50 PET XP)</span>
@@ -804,7 +804,7 @@ function renderRosterDrawer(activePet) {
       <div id="sanctuary-roster-filter-bar" class="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
         ${filterTabs.map(tab => `
           <button 
-            class="roster-filter-btn flex-shrink-0 px-3 py-1.5 rounded-xl font-headline font-black text-xs flex items-center gap-1.5 transition-all ${
+            class="roster-filter-btn shrink-0 px-3 py-1.5 rounded-xl font-headline font-black text-xs flex items-center gap-1.5 transition-all ${
               filter === tab.id
                 ? 'bg-primary text-slate-950 shadow-md'
                 : 'bg-surface-container-high hover:bg-surface-bright text-on-surface-variant border border-surface-container-highest'
@@ -838,11 +838,11 @@ function renderRosterDrawer(activePet) {
               <div class="flex items-center gap-3">
                 <div class="w-16 h-16 rounded-2xl bg-surface-container-lowest border-2 ${
                   isActive ? 'border-primary' : 'border-surface-container-highest'
-                } flex items-center justify-center p-1 shadow-inner flex-shrink-0">
+                } flex items-center justify-center p-1 shadow-inner shrink-0">
                   <img 
                     src="${petImg}"
                     alt="${escapeHtml(pet.name)}"
-                    class="w-full h-full object-contain filter drop-shadow hover:scale-105 transition-transform"
+                    class="w-full h-full object-contain filter drop-shadow-sm hover:scale-105 transition-transform"
                     loading="lazy"
                     onerror="this.onerror=null; this.src='assets/pets/${pet.key || 'rex'}.png';"
                   >
@@ -864,7 +864,7 @@ function renderRosterDrawer(activePet) {
                   ${pet.signatureMove || 'Hero Stomp'}
                 </span>
                 ${isActive ? `
-                  <span class="px-3 py-1 rounded-xl bg-primary text-slate-950 font-black text-[11px] uppercase tracking-wider flex items-center gap-1 shadow-sm">
+                  <span class="px-3 py-1 rounded-xl bg-primary text-slate-950 font-black text-[11px] uppercase tracking-wider flex items-center gap-1 shadow-xs">
                     <span class="material-symbols-outlined text-xs">check_circle</span>
                     <span>ACTIVE</span>
                   </span>

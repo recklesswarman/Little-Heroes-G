@@ -171,7 +171,7 @@ export function triggerInteractiveCelebration(particleCount = 50) {
           <span class="font-headline text-xs sm:text-sm font-black text-primary">
             Swipe & Pop the Stars!
           </span>
-          <span id="pop-counter-badge" class="bg-primary text-on-primary font-black text-xs px-2 py-0.5 rounded-full shadow">
+          <span id="pop-counter-badge" class="bg-primary text-on-primary font-black text-xs px-2 py-0.5 rounded-full shadow-sm">
             ${poppedStarsCount} Popped
           </span>
         </div>
@@ -183,7 +183,7 @@ export function triggerInteractiveCelebration(particleCount = 50) {
         </div>
       </div>
 
-      <button id="interactive-celebration-close-btn" class="pointer-events-auto bg-surface-container-highest hover:bg-surface-bright text-on-surface font-headline text-xs font-black px-3.5 py-2 rounded-xl border border-surface-bright chunky-btn-sm active:scale-95 shadow">
+      <button id="interactive-celebration-close-btn" class="pointer-events-auto bg-surface-container-highest hover:bg-surface-bright text-on-surface font-headline text-xs font-black px-3.5 py-2 rounded-xl border border-surface-bright chunky-btn-sm active:scale-95 shadow-sm">
         Done ✨
       </button>
     </div>

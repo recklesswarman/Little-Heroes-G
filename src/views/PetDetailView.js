@@ -50,7 +50,7 @@ export function renderPetDetailView() {
           ${
             isEquipped
               ? `
-            <div class="bg-primary/20 text-primary font-headline text-xs font-black px-5 py-3 rounded-2xl border-2 border-primary/40 flex items-center gap-1.5 shadow-sm min-h-[48px]">
+            <div class="bg-primary/20 text-primary font-headline text-xs font-black px-5 py-3 rounded-2xl border-2 border-primary/40 flex items-center gap-1.5 shadow-xs min-h-[48px]">
               <span class="material-symbols-outlined text-lg">check_circle</span> CURRENT COMPANION
             </div>
           `
@@ -64,7 +64,7 @@ export function renderPetDetailView() {
       </div>
 
       <!-- Avatar Stage: Glowing 3D Pedestal with Floating Animation -->
-      <div class="relative bg-gradient-to-b from-[#16212b] via-[#121d26] to-[#09141e] rounded-3xl p-6 border-4 border-surface-container-highest min-h-[300px] card-shadow flex flex-col items-center justify-center overflow-hidden">
+      <div class="relative bg-linear-to-b from-surface-container via-surface-container-low to-[#09141e] rounded-3xl p-6 border-4 border-surface-container-highest min-h-[300px] card-shadow flex flex-col items-center justify-center overflow-hidden">
         
         <!-- Glowing Pedestal Radial Aura -->
         <div class="absolute inset-0 bg-radial from-primary/20 via-transparent to-transparent pointer-events-none"></div>
@@ -81,7 +81,7 @@ export function renderPetDetailView() {
         </div>
 
         <!-- 3D Crystal Pedestal Base -->
-        <div class="w-48 h-6 bg-gradient-to-r from-surface-container-highest via-surface-bright to-surface-container-highest rounded-full border-2 border-primary/40 shadow-[0_0_25px_rgba(84,233,138,0.3)] mt-2"></div>
+        <div class="w-48 h-6 bg-linear-to-r from-surface-container-highest via-surface-bright to-surface-container-highest rounded-full border-2 border-primary/40 shadow-[0_0_25px_rgba(84,233,138,0.3)] mt-2"></div>
       </div>
 
       <!-- Story Scroll: Dark Inset Text Box with Backstory -->
@@ -96,8 +96,8 @@ export function renderPetDetailView() {
       </section>
 
       <!-- Habit Bonus Badge -->
-      <div class="bg-gradient-to-r from-primary-container/20 to-primary/10 rounded-3xl p-4 border-2 border-primary/40 shadow-sm flex items-center gap-3.5">
-        <div class="w-12 h-12 rounded-2xl bg-primary text-slate-950 flex items-center justify-center flex-shrink-0 shadow-md">
+      <div class="bg-linear-to-r from-primary-container/20 to-primary/10 rounded-3xl p-4 border-2 border-primary/40 shadow-xs flex items-center gap-3.5">
+        <div class="w-12 h-12 rounded-2xl bg-primary text-slate-950 flex items-center justify-center shrink-0 shadow-md">
           <span class="material-symbols-outlined text-2xl">military_tech</span>
         </div>
         <div class="flex flex-col">

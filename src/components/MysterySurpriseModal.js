@@ -109,14 +109,14 @@ export function renderMysterySurpriseModal() {
               
               <!-- Radiant Aura Rings -->
               <div class="absolute inset-0 rounded-full ${
-                isEgg ? 'bg-gradient-to-tr from-primary/30 to-cyan-400/20' : 'bg-gradient-to-tr from-secondary/30 to-amber-300/20'
+                isEgg ? 'bg-linear-to-tr from-primary/30 to-cyan-400/20' : 'bg-linear-to-tr from-secondary/30 to-amber-300/20'
               } blur-xl animate-pulse pointer-events-none"></div>
 
               <!-- Main Visual Icon / Graphic -->
               <div id="mystery-target-core" class="relative z-10 w-40 h-40 sm:w-48 sm:h-48 rounded-3xl ${
                 isEgg
-                  ? 'bg-gradient-to-b from-primary/35 via-emerald-950 to-primary/20 border-4 border-primary/60'
-                  : 'bg-gradient-to-b from-secondary/35 via-amber-950 to-secondary/20 border-4 border-secondary/60'
+                  ? 'bg-linear-to-b from-primary/35 via-emerald-950 to-primary/20 border-4 border-primary/60'
+                  : 'bg-linear-to-b from-secondary/35 via-amber-950 to-secondary/20 border-4 border-secondary/60'
               } flex flex-col items-center justify-center shadow-2xl transition-all duration-150 group-hover:scale-105 select-none">
                 
                 <span class="material-symbols-outlined ${
