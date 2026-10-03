@@ -64,3 +64,28 @@ export function isExistingActiveHousehold(state) {
     hasCustomName
   );
 }
+
+// A new household's sync code is its only access control -- Firestore's
+// rules intentionally allow any device that knows a household's code to
+// read/write it (so a kid's device, which never gets its own Firebase Auth
+// identity, can join just by typing the code a parent shares). That design
+// means the code's entropy IS the security boundary. The old 4-digit code
+// (1000-9999, ~9000 possibilities) was practical to guess by brute force;
+// this generates a much larger space so guessing becomes infeasible, while
+// staying plain alphanumeric so it's still easy to read aloud/type on a
+// second device. Existing households keep their current (shorter) code --
+// this only affects newly created ones going forward.
+const HOUSEHOLD_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I to avoid misreads
+export function generateHouseholdCodeSuffix(length = 8) {
+  const bytes = new Uint32Array(length);
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    crypto.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < length; i++) bytes[i] = Math.floor(Math.random() * 0xffffffff);
+  }
+  let code = '';
+  for (let i = 0; i < length; i++) {
+    code += HOUSEHOLD_CODE_CHARS[bytes[i] % HOUSEHOLD_CODE_CHARS.length];
+  }
+  return code;
+}

@@ -2,6 +2,7 @@ import { store, ALL_24_PET_IDS } from '../state/store.js';
 import { PETS_DATABASE, getPetById } from '../data/petsData.js';
 import { Sound } from '../audio/sfx.js';
 import { speakRex } from '../services/voiceService.js';
+import { escapeHtml } from '../utils/escapeHtml.js';
 import { preserveScrollPosition } from '../utils/scrollPreserve.js';
 
 export const PET_GEAR_CATALOG = {
@@ -146,7 +147,7 @@ export function renderPetLockerModal() {
                 <span class="bg-amber-500/20 text-amber-400 text-xs font-black uppercase px-2.5 py-0.5 rounded-full border border-amber-500/40">3-Slot Gear</span>
               </h2>
               <p class="text-xs font-bold text-on-surface-variant">
-                Equip stylish hats, heroic capes, and sparkling glow auras for ${pet.name}!
+                Equip stylish hats, heroic capes, and sparkling glow auras for ${escapeHtml(pet.name)}!
               </p>
             </div>
           </div>
@@ -169,7 +170,7 @@ export function renderPetLockerModal() {
                     ? 'bg-amber-500 text-black shadow-sm scale-105'
                     : 'bg-surface-container-high text-on-surface-variant hover:bg-surface-bright'
                 }">
-                  <span>${uPet?.name || 'Companion'}</span>
+                  <span>${escapeHtml(uPet?.name) || 'Companion'}</span>
                 </button>
               `;
             }).join('')}
@@ -190,13 +191,13 @@ export function renderPetLockerModal() {
             `}
 
             <div class="w-full flex justify-between items-center z-10 text-[10px] font-black uppercase">
-              <span class="text-amber-400 font-bold">${pet.name}</span>
+              <span class="text-amber-400 font-bold">${escapeHtml(pet.name)}</span>
               <span class="text-secondary">Level ${petLevel}</span>
             </div>
 
             <!-- Pet Character & Gear Badges Overlay -->
             <div class="relative z-10 w-44 h-44 flex items-center justify-center animate-float my-1">
-              <img class="w-full h-full object-contain drop-shadow-[0_15px_20px_rgba(0,0,0,0.8)]" src="${petImg}" alt="${pet.name}" />
+              <img class="w-full h-full object-contain drop-shadow-[0_15px_20px_rgba(0,0,0,0.8)]" src="${petImg}" alt="${escapeHtml(pet.name)}" />
               
               <!-- Floating Hat Emoji Overlay -->
               ${equipped.hat ? `

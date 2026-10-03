@@ -1,6 +1,7 @@
 import { store } from '../state/store.js';
 import { PETS_DATABASE } from '../data/petsData.js';
 import { Sound } from '../audio/sfx.js';
+import { escapeHtml } from '../utils/escapeHtml.js';
 import { speakRex } from '../services/voiceService.js';
 import { preserveScrollPosition } from '../utils/scrollPreserve.js';
 
@@ -37,7 +38,7 @@ export function renderPetSelectionModal() {
 
   if (modalType === 'switch') {
     title = 'Choose Companion Pet';
-    subtitle = `Pick which magical companion joins ${hero.name || 'your hero'} on daily quests!`;
+    subtitle = `Pick which magical companion joins ${escapeHtml(hero.name) || 'your hero'} on daily quests!`;
     badgeText = '🐾 COMPANION SELECTION';
     badgeColor = 'bg-primary/20 text-primary border-primary/40';
   } else if (modalType === 'second_pet') {
@@ -126,14 +127,14 @@ export function renderPetSelectionModal() {
 
                     <!-- Pet Avatar -->
                     <div class="w-24 h-24 rounded-full bg-surface-container-lowest border-2 border-surface-container-highest flex items-center justify-center p-2 shadow-inner group-hover:scale-105 transition-transform relative">
-                      <img class="w-full h-full object-contain drop-shadow-md" src="${pet.avatar}" alt="${pet.name}" />
+                      <img class="w-full h-full object-contain drop-shadow-md" src="${pet.avatar}" alt="${escapeHtml(pet.name)}" />
                     </div>
 
                     <!-- Name & Lore -->
                     <div>
-                      <h3 class="font-headline text-base font-black text-inverse-surface">${pet.name}</h3>
-                      <p class="text-[11px] font-bold text-secondary">${pet.title}</p>
-                      <p class="text-[10px] text-on-surface-variant font-medium mt-1 line-clamp-2 italic">"${pet.backstory}"</p>
+                      <h3 class="font-headline text-base font-black text-inverse-surface">${escapeHtml(pet.name)}</h3>
+                      <p class="text-[11px] font-bold text-secondary">${escapeHtml(pet.title)}</p>
+                      <p class="text-[10px] text-on-surface-variant font-medium mt-1 line-clamp-2 italic">"${escapeHtml(pet.backstory)}"</p>
                     </div>
 
                     <!-- Habit Buff Tag -->

@@ -1,5 +1,6 @@
 import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
+import { escapeHtml } from '../utils/escapeHtml.js';
 import { firebaseAuth } from '../services/firebaseAuthService.js';
 import { firestoreSync, isQuotaExhaustedGlobal } from '../services/firestoreSyncService.js';
 import { persistentLink } from '../services/persistentLinkService.js';
@@ -116,7 +117,7 @@ export function renderHouseholdLinkModal() {
         <!-- Household Sync Code Box -->
         <div class="flex flex-col items-center text-center gap-3 py-1">
           <div class="w-full bg-surface-container-lowest p-3.5 rounded-2xl border-2 border-primary/40 flex flex-col items-center gap-1 shadow-inner">
-            <span class="text-[10px] font-black uppercase text-secondary tracking-widest">${household.name} Sync Code</span>
+            <span class="text-[10px] font-black uppercase text-secondary tracking-widest">${escapeHtml(household.name)} Sync Code</span>
             <span class="font-headline text-2xl font-black text-primary tracking-widest">${household.syncCode}</span>
             <span class="text-[10px] text-on-surface-variant font-bold">Use on other family tablets or phones to sync this household</span>
           </div>

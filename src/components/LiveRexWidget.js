@@ -7,6 +7,7 @@
 // 5. Interactive Chat & Hints Tab with Model Speed Toggle and Spoken Read-Aloud
 
 import { store } from '../state/store.js';
+import { escapeHtml } from '../utils/escapeHtml.js';
 import { geminiLiveService } from '../services/geminiLiveService.js';
 import { rexEngine } from '../services/rexCompanionEngine.js';
 import { speakCompanion, stopRex, isRexSpeaking } from '../services/voiceService.js';
@@ -113,7 +114,7 @@ export function renderLiveRexWidget() {
   const activePet = store?.getActivePet?.() || { id: 'rex', name: 'Rex the Dino' };
   const activePetId = String(activePet.id || 'rex').toLowerCase();
   const faceProfile = getPetFaceProfile(activePetId);
-  const petName = activePet.name || faceProfile.name || 'Rex the Dino';
+  const petName = escapeHtml(activePet.name) || escapeHtml(faceProfile.name) || 'Rex the Dino';
   const petEmoji = activePet.emoji || (faceProfile.id === 'aqua' ? '🐬' : faceProfile.id === 'bella' ? '🐰' : faceProfile.id === 'barnaby' ? '🐻' : faceProfile.id === 'pip' ? '🐥' : '🦖');
 
   return `
@@ -1227,7 +1228,7 @@ function attachListenButtons() {
 
 async function handleSendChatMessage(text) {
   const activePet = store?.getActivePet?.() || { id: 'rex', name: 'Rex the Dino' };
-  const petName = activePet.name || 'Rex the Dino';
+  const petName = escapeHtml(activePet.name) || 'Rex the Dino';
   const petEmoji = activePet.emoji || '🦖';
   const thread = document.getElementById('rex-chat-thread');
 

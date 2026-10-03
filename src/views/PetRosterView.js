@@ -1,6 +1,7 @@
 import { store, PET_PRICE_COINS } from '../state/store.js';
 import { PETS_DATABASE, getPetArchetype, getPetLevelData, calculatePetStatBonus } from '../data/petsData.js';
 import { Sound } from '../audio/sfx.js';
+import { escapeHtml } from '../utils/escapeHtml.js';
 import { preserveScrollPosition } from '../utils/scrollPreserve.js';
 
 let activeArchetypeFilter = 'all';
@@ -115,7 +116,7 @@ export function renderPetRosterView() {
                 <img
                   class="w-full h-full object-contain group-hover:scale-110 transition-transform duration-300 drop-shadow-md ${!isOwned ? 'grayscale opacity-60' : ''}"
                   src="${petImg}"
-                  alt="${pet.name}"
+                  alt="${escapeHtml(pet.name)}"
                   loading="lazy"
                   onerror="this.onerror=null; this.src='assets/pets/${pet.key || 'rex'}.png';"
                 />
@@ -124,8 +125,8 @@ export function renderPetRosterView() {
 
               <!-- Pet Info -->
               <div class="flex flex-col items-center w-full">
-                <h3 class="font-headline text-base font-black text-inverse-surface leading-tight truncate max-w-full">${pet.name}</h3>
-                <span class="text-[11px] font-bold text-on-surface-variant mt-0.5 truncate max-w-full">${pet.title}</span>
+                <h3 class="font-headline text-base font-black text-inverse-surface leading-tight truncate max-w-full">${escapeHtml(pet.name)}</h3>
+                <span class="text-[11px] font-bold text-on-surface-variant mt-0.5 truncate max-w-full">${escapeHtml(pet.title)}</span>
                 <span class="text-[10px] font-black text-emerald-400 mt-1">${statBonus.label} ${pet.habitBonus ? `• ${pet.habitBonus.split(':')[0]}` : ''}</span>
               </div>
 
