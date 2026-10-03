@@ -7825,6 +7825,9 @@ class Store {
     }
     const shrine = SECRET_SHRINES.find(s => s.id === shrineId);
     if (!shrine) return { success: false };
+    if (shrine.seasonId && shrine.seasonId !== this.getEffectiveSeason()) {
+      return { success: false, outOfSeason: true };
+    }
 
     mapState.discoveredSecrets.push(shrineId);
 

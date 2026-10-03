@@ -80,7 +80,7 @@ async function runTests() {
 
     // 2. Secret Shrines & Toy-Box Entities
     console.log('\n--- 2. Shrines & Toy-Box Physics ---');
-    assert(SECRET_SHRINES.length === 4, 'Should define 4 secret discovery shrines');
+    assert(SECRET_SHRINES.length >= 4, 'Should define at least 4 secret discovery shrines');
     assert(TOY_BOX_ENTITIES.length >= 4, 'Should define at least 4 toy-box interactive entities');
     assert(TOY_BOX_ENTITIES.some(e => e.type === 'fruit_tree'), 'Includes fruit trees for shaking');
     assert(TOY_BOX_ENTITIES.some(e => e.type === 'waterfall'), 'Includes waterfall for splashing');

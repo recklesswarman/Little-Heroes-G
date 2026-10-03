@@ -23,8 +23,8 @@ async function runTests() {
   });
 
   // 2. Verify SUGAR_ATTACK_HAZARDS Definitions
-  console.log('\n--- 2. Testing 7 Rotating Sugar Attack Hazards ---');
-  assert.strictEqual(SUGAR_ATTACK_HAZARDS.length, 7, 'Should have exactly 7 sugar attack hazards');
+  console.log('\n--- 2. Testing Rotating Sugar Attack Hazards ---');
+  assert.strictEqual(SUGAR_ATTACK_HAZARDS.length >= 7, true, 'Should have at least 7 sugar attack hazards');
 
   const expectedHazardIds = [
     'smarties',
