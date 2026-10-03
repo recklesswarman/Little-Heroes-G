@@ -111,7 +111,66 @@ class AIDevelopmentalReportService {
     const expeditionLogs = logs.filter(l => l.zone === 'Pet Expeditions' || l.category === 'companion_exploration');
     const totalExpeditions = expeditionLogs.length;
 
-    // Try cloud function parent insights if available
+    // 1. Try Google Antigravity (AGY) Parent Intelligence Agent
+    try {
+      const agyEndpoint = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_AGY_REX_URL)
+        ? `${import.meta.env.VITE_AGY_REX_URL}/api/rex/parent-report`
+        : '/api/rex/parent-report';
+
+      const res = await fetch(agyEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          childName,
+          weekLabel,
+          metricsSummary: {
+            totalChores,
+            approvedChores,
+            morningRoutines,
+            hygieneBattles,
+            totalGames,
+            totalGameStars,
+            totalMovementMinutes,
+            totalMovementSessions,
+            petJoy,
+            petHygiene
+          }
+        }),
+        signal: AbortSignal.timeout(8000)
+      });
+
+      if (res.ok) {
+        const agyReport = await res.json();
+        if (agyReport && agyReport.executive_summary) {
+          return this.formatFourPillarReport({
+            childName,
+            weekKey,
+            weekLabel,
+            totalChores,
+            approvedChores,
+            morningRoutines,
+            hygieneBattles,
+            totalGames,
+            totalGameStars,
+            uniqueSubjects,
+            totalMovementMinutes,
+            totalMovementSessions,
+            feverBursts,
+            totalExpeditions,
+            petJoy,
+            petHygiene,
+            executiveSummary: agyReport.executive_summary,
+            praisePoints: [agyReport.standout_milestone, agyReport.routine_mastery_pillar?.key_achievement].filter(Boolean),
+            tips: [agyReport.coach_recommendation_for_next_week, agyReport.hygiene_pillar?.actionable_tip].filter(Boolean),
+            recommendedReward: agyReport.standout_milestone || 'Special Weekend Adventure Pass'
+          });
+        }
+      }
+    } catch (agyErr) {
+      console.warn('AGY Parent Intelligence report attempt fell back:', agyErr?.message || agyErr);
+    }
+
+    // 2. Try legacy cloud function parent insights if available
     try {
       if (typeof navigator !== 'undefined' && navigator.onLine) {
         const cloudData = await cloudFunctionsService.getParentInsights({

@@ -93,8 +93,7 @@ console.log('  ✅ PASS: heroAgentService has robust buildAppState and fetch tim
 // ── 4. Test Live JS Fallback Execution in Node environment ──────────────────
 console.log('\n--- 4. Testing Fallback Execution (Offline Resilience) ---');
 
-// Dynamically import heroAgentService to verify it executes without crashing
-const { getBattleCoachAdvice, getQuestGuideDirections, talkToRexAGY } = await import('../src/services/heroAgentService.js');
+const { getBattleCoachAdvice, getQuestGuideDirections, talkToRexAGY, checkProactiveTriggerAGY } = await import('../src/services/heroAgentService.js');
 
 const coachAdvice = await getBattleCoachAdvice('sugar_bandit', 80, 1, 95);
 assert(coachAdvice && coachAdvice.coach_text, 'getBattleCoachAdvice must return coach_text on fallback');
@@ -107,6 +106,26 @@ console.log(`  ✅ PASS: getQuestGuideDirections fallback output: "${questDirect
 const rexResp = await talkToRexAGY('Hello Rex!', 'hero_test');
 assert(rexResp && rexResp.reply, 'talkToRexAGY must return structured reply on fallback');
 console.log(`  ✅ PASS: talkToRexAGY fallback output: "${rexResp.reply}"`);
+
+// ── 5. Validate UI Views Integration ─────────────────────────────────────────
+console.log('\n--- 5. Validating UI View Integrations ---');
+
+const battleViewContent = fs.readFileSync('src/views/BattleView.js', 'utf8');
+assert(battleViewContent.includes('getBattleCoachAdvice'), 'BattleView.js must wire getBattleCoachAdvice');
+console.log('  ✅ PASS: BattleView.js integrates AGY Battle Coach tactical advice');
+
+const bedtimeServiceContent = fs.readFileSync('src/services/bedtimeStoryService.js', 'utf8');
+assert(bedtimeServiceContent.includes('generateBedtimeChapterAGY'), 'bedtimeStoryService.js must wire generateBedtimeChapterAGY');
+console.log('  ✅ PASS: bedtimeStoryService.js integrates AGY Bedtime Story Narrator');
+
+const devReportContent = fs.readFileSync('src/services/aiDevelopmentalReportService.js', 'utf8');
+assert(devReportContent.includes('/api/rex/parent-report'), 'aiDevelopmentalReportService.js must wire AGY parent-report endpoint');
+console.log('  ✅ PASS: aiDevelopmentalReportService.js integrates AGY Parent Intelligence Agent');
+
+const dashboardContent = fs.readFileSync('src/views/DashboardView.js', 'utf8');
+assert(dashboardContent.includes('checkProactiveTriggerAGY'), 'DashboardView.js must wire checkProactiveTriggerAGY');
+assert(dashboardContent.includes('rex-proactive-container'), 'DashboardView.js must include rex-proactive-container');
+console.log('  ✅ PASS: DashboardView.js integrates AGY Proactive Trigger check-in capsule');
 
 console.log('\n=============================================');
 console.log('TEST RESULTS: ALL AGY ARCHITECTURE CHECKS PASSED!');

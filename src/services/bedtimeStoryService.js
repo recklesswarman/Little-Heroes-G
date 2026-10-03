@@ -18,6 +18,7 @@ import {
   generateFallbackSvg,
   generateProceduralBedtimeStory
 } from '../data/bedtimeStoryData.js';
+import { generateBedtimeChapterAGY } from './heroAgentService.js';
 
 class BedtimeStoryService {
   constructor() {
@@ -299,8 +300,43 @@ class BedtimeStoryService {
 
     let generatedAct = null;
 
-    // If Gemini AI Logic is ready, attempt rich dynamic generation (~120-150 words per chapter)
-    if (firebaseAI.isAiReady && firebaseAI.model) {
+    // 1. Try Google Antigravity (AGY) Bedtime Story Narrator Agent
+    try {
+      this.isGenerating = true;
+      const agyChapter = await generateBedtimeChapterAGY({
+        heroName,
+        petName,
+        realmName: realm.name,
+        moralName: moral.name,
+        moralGuidance: moral.moralGuidance || moral.tagline,
+        actNumber,
+        previousChoice: previousChoice || '',
+        customWish: customWish || '',
+        pastTitles: pastStories.map(s => s.title).slice(0, 15)
+      });
+
+      if (agyChapter && agyChapter.text) {
+        const fallbackSvg = generateFallbackSvg(realm.id, actNumber, previousChoice || (agyChapter.suggestion_chips && agyChapter.suggestion_chips[0]) || '');
+        generatedAct = {
+          actNumber,
+          title: agyChapter.title || `Chapter ${actNumber}: ${realm.name}`,
+          text: agyChapter.text,
+          promptQuestion: agyChapter.prompt_question || (actNumber < 4 ? 'What should we do next?' : 'Sleep tight, little hero.'),
+          suggestionChips: Array.isArray(agyChapter.suggestion_chips) && agyChapter.suggestion_chips.length > 0
+            ? agyChapter.suggestion_chips.map(c => typeof c === 'string' ? { text: c, icon: 'stars' } : c)
+            : (actNumber === 1 ? realm.act1DefaultChips : actNumber === 2 ? realm.act2DefaultChips : realm.act3DefaultChips),
+          svgArt: fallbackSvg,
+          isSleepingEnd: actNumber === 4
+        };
+      }
+    } catch (agyErr) {
+      console.warn('AGY Bedtime Narrator attempt fell back to Firebase AI:', agyErr);
+    } finally {
+      this.isGenerating = false;
+    }
+
+    // 2. If AGY unavailable, fall back to Firebase AI Logic (Gemini API)
+    if (!generatedAct && firebaseAI.isAiReady && firebaseAI.model) {
       try {
         this.isGenerating = true;
         const prompt = `You are ${petName}, a sweet, gentle cartoon companion narrating a children's (ages 3-7) bedtime story.
