@@ -8170,9 +8170,12 @@ class Store {
       }
     });
 
-    const available = BEDTIME_MORALS.filter(m => !recentMoralIds.has(m.id));
+    const currentSeason = this.getEffectiveSeason();
+    const inSeasonMorals = BEDTIME_MORALS.filter(m => !m.seasonId || m.seasonId === currentSeason);
+
+    const available = inSeasonMorals.filter(m => !recentMoralIds.has(m.id));
     if (available.length > 0) return available;
-    return BEDTIME_MORALS;
+    return inSeasonMorals;
   }
 
   getBedtimeStoryLibrary() {

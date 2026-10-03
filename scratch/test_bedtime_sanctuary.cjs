@@ -58,8 +58,8 @@ async function runAll() {
     });
   });
 
-  await it('BEDTIME_MORALS contains 10 child-development moral themes', () => {
-    assert.strictEqual(BEDTIME_MORALS.length, 10);
+  await it('BEDTIME_MORALS contains at least 10 child-development moral themes', () => {
+    assert(BEDTIME_MORALS.length >= 10);
     BEDTIME_MORALS.forEach(moral => {
       assert(moral.id, 'Moral must have id');
       assert(moral.name, 'Moral must have name');
@@ -142,7 +142,9 @@ async function runAll() {
     assert(!availableIds.includes('brave_dark'), 'brave_dark must be locked out (used 2 days ago)');
     assert(!availableIds.includes('kindness_sharing'), 'kindness_sharing must be locked out (used 10 days ago)');
     assert(availableIds.includes('first_day_school'), 'first_day_school must be available');
-    assert.strictEqual(available.length, 8, '8 morals remaining out of 10');
+    const currentSeason = store.getEffectiveSeason();
+    const expectedInSeasonCount = BEDTIME_MORALS.filter(m => !m.seasonId || m.seasonId === currentSeason).length;
+    assert.strictEqual(available.length, expectedInSeasonCount - 2, `${expectedInSeasonCount - 2} in-season morals remaining after excluding the 2 used`);
   });
 
   await it('store.getAvailableBedtimeMorals falls back to all morals if all are exhausted in 30 days', () => {
@@ -154,7 +156,9 @@ async function runAll() {
     }));
 
     const available = store.getAvailableBedtimeMorals(hero.id);
-    assert.strictEqual(available.length, 10, 'Fallback returns all morals when all are exhausted');
+    const currentSeason = store.getEffectiveSeason();
+    const expectedInSeasonCount = BEDTIME_MORALS.filter(m => !m.seasonId || m.seasonId === currentSeason).length;
+    assert.strictEqual(available.length, expectedInSeasonCount, 'Fallback returns all in-season morals when all are exhausted');
   });
 
   console.log('\n--- 5. 4-Chapter Bedtime Story Progression (~4-5 mins) ---');

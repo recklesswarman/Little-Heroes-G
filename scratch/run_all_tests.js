@@ -43,7 +43,8 @@ const testFiles = [
   'scratch/verify_agy_multi_agent_architecture.mjs',
   'scratch/verify_learning_realms_question_banks.mjs',
   'scratch/verify_boss_and_hazard_expansion.mjs',
-  'scratch/verify_shrine_expansion_and_seasons.mjs'
+  'scratch/verify_shrine_expansion_and_seasons.mjs',
+  'scratch/verify_bedtime_moral_expansion.mjs'
 ];
 
 let allPassed = true;
