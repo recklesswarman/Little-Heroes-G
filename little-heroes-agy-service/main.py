@@ -228,4 +228,5 @@ async def proactive_checkin(req: ProactiveCheckinRequest):
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
-    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
+    is_dev = os.environ.get("ENVIRONMENT", "production") == "development"
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=is_dev)
