@@ -995,8 +995,11 @@ export class WorldAdventureMapCanvas {
       });
     });
 
-    // Draw Secret Discovery Shrines
-    SECRET_SHRINES.forEach((shrine) => {
+    // Draw Secret Discovery Shrines (season-exclusive shrines only render
+    // when the current effective season matches, same signal already used
+    // elsewhere in this file for the island's seasonal theming)
+    const currentSeasonForShrines = store.getEffectiveSeason();
+    SECRET_SHRINES.filter(shrine => !shrine.seasonId || shrine.seasonId === currentSeasonForShrines).forEach((shrine) => {
       const p = this.project3D(shrine.coordinates.x, shrine.coordinates.y + 0.8, shrine.coordinates.z);
       const isDiscovered = (mapState.discoveredSecrets || []).includes(shrine.id);
 

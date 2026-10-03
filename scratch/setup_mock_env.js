@@ -117,6 +117,9 @@ function createMockElement(tag = 'div') {
     parentElement: null,
     width: 600,
     height: 420,
+    getBoundingClientRect() {
+      return { x: 0, y: 0, top: 0, left: 0, right: el.width, bottom: el.height, width: el.width, height: el.height };
+    },
     addEventListener(event, fn) {
       if (!listeners[event]) listeners[event] = [];
       listeners[event].push(fn);

@@ -623,9 +623,10 @@ export function attachWorldAdventureMapListeners() {
     if (secretsBtn) {
       secretsBtn.addEventListener('click', () => {
         Sound.tap();
-        const shrines = SECRET_SHRINES;
+        const currentSeason = store.getEffectiveSeason();
+        const shrines = SECRET_SHRINES.filter(s => !s.seasonId || s.seasonId === currentSeason);
         const msg = shrines.map((s, i) => `${i + 1}. ${s.name}: ${s.hint}`).join('\n\n');
-        store.showReward('4 Secret Island Shrines', msg, 0, 0);
+        store.showReward(`${shrines.length} Secret Island Shrines`, msg, 0, 0);
       });
     }
   }
