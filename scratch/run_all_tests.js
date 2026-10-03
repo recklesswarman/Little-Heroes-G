@@ -42,7 +42,8 @@ const testFiles = [
   'scratch/verify_toothbrush_enhancements_and_sky_attacks.mjs',
   'scratch/verify_agy_multi_agent_architecture.mjs',
   'scratch/verify_learning_realms_question_banks.mjs',
-  'scratch/verify_boss_and_hazard_expansion.mjs'
+  'scratch/verify_boss_and_hazard_expansion.mjs',
+  'scratch/verify_shrine_expansion_and_seasons.mjs'
 ];
 
 let allPassed = true;
