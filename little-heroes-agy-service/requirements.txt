@@ -5,3 +5,11 @@ firebase-admin
 python-dotenv
 pydantic>=2.0
 httpx
+
+# Not a direct dependency of this service -- setuptools is pulled in
+# incidentally as Python bootstrap tooling, not used by any app code here.
+# Pinned only to clear a Dependabot alert for PYSEC-2026-3447 (a sdist-build
+# MANIFEST.in bypass on macOS that can't trigger in this Linux container,
+# since this service never builds/publishes a package), since the fix is a
+# trivial, non-breaking version bump.
+setuptools>=83.0.0
