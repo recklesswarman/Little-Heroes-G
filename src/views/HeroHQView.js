@@ -141,7 +141,7 @@ export function renderHeroHQView() {
         </button>
 
         <!-- Redecorate Studio Button -->
-        <button id="hq-open-redecorate-btn" class="bg-gradient-to-r from-primary to-emerald-500 hover:from-primary/90 hover:to-emerald-400 text-on-primary px-4 py-2 min-h-[44px] rounded-2xl font-headline text-xs font-black border-2 border-emerald-300 shadow-md flex items-center gap-1.5 chunky-btn-sm">
+        <button id="hq-open-redecorate-btn" class="bg-linear-to-r from-primary to-emerald-500 hover:from-primary/90 hover:to-emerald-400 text-on-primary px-4 py-2 min-h-[44px] rounded-2xl font-headline text-xs font-black border-2 border-emerald-300 shadow-md flex items-center gap-1.5 chunky-btn-sm">
           <span class="material-symbols-outlined text-base">palette</span>
           <span>Redecorate</span>
         </button>
@@ -155,7 +155,7 @@ export function renderHeroHQView() {
     </div>
 
     <!-- 2.5D Isometric Bedroom & Superhero Hideout Stage -->
-    <div id="hq-stage-wrapper" class="relative w-full rounded-3xl overflow-hidden border-4 ${currentTheme.floorColor} shadow-2xl transition-all duration-700 min-h-[520px] sm:min-h-[580px] flex flex-col justify-between ${isNight ? 'bg-gradient-to-b from-slate-950 via-indigo-950 to-slate-900' : 'bg-gradient-to-b ' + currentTheme.bgGradient}">
+    <div id="hq-stage-wrapper" class="relative w-full rounded-3xl overflow-hidden border-4 ${currentTheme.floorColor} shadow-2xl transition-all duration-700 min-h-[520px] sm:min-h-[580px] flex flex-col justify-between ${isNight ? 'bg-linear-to-b from-slate-950 via-indigo-950 to-slate-900' : 'bg-linear-to-b ' + currentTheme.bgGradient}">
       
       <!-- Night Mode Starlight Constellation Overlay -->
       <div class="absolute inset-0 pointer-events-none transition-opacity duration-700 ${isNight ? 'opacity-100' : 'opacity-0'}">
@@ -182,7 +182,7 @@ export function renderHeroHQView() {
         <div class="flex items-center justify-between border-b border-white/10 pb-1.5">
           <div class="flex items-center gap-2">
             <span class="text-sm">🏆</span>
-            <h3 class="font-headline text-xs font-black uppercase tracking-wider text-amber-300 drop-shadow">
+            <h3 class="font-headline text-xs font-black uppercase tracking-wider text-amber-300 drop-shadow-sm">
               Trophy Showcase & Spotlights
             </h3>
           </div>
@@ -199,9 +199,9 @@ export function renderHeroHQView() {
               return `
                 <div class="group relative flex flex-col items-center cursor-pointer transition-transform hover:scale-105" data-inspect-trophy-id="${trophy.id}">
                   <!-- Spotlight Beam -->
-                  <div class="absolute -top-4 w-10 sm:w-12 h-16 bg-gradient-to-b from-yellow-300/20 to-transparent blur-[2px] pointer-events-none rounded-full"></div>
+                  <div class="absolute -top-4 w-10 sm:w-12 h-16 bg-linear-to-b from-yellow-300/20 to-transparent blur-[2px] pointer-events-none rounded-full"></div>
                   <!-- Trophy 3D Icon & Pedestal -->
-                  <div class="w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br ${trophy.iconColor} p-0.5 shadow-[0_0_15px_rgba(234,179,8,0.4)] border-2 border-yellow-200 flex items-center justify-center text-xl sm:text-3xl animate-pulse">
+                  <div class="w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-linear-to-br ${trophy.iconColor} p-0.5 shadow-[0_0_15px_rgba(234,179,8,0.4)] border-2 border-yellow-200 flex items-center justify-center text-xl sm:text-3xl animate-pulse">
                     ${trophy.emoji}
                   </div>
                   <!-- Mini Plaque -->
@@ -226,15 +226,15 @@ export function renderHeroHQView() {
           <!-- 5th Pedestal: Dedicated Equipped Weapon Spotlight -->
           <div id="hq-weapon-spotlight-pedestal" class="group relative flex flex-col items-center cursor-pointer transition-transform hover:scale-105" title="Equipped Combat Weapon - Tap to view & switch weapons!">
             <!-- Spotlight Beam -->
-            <div class="absolute -top-4 w-10 sm:w-12 h-16 bg-gradient-to-b from-cyan-400/30 to-transparent blur-[2px] pointer-events-none rounded-full"></div>
+            <div class="absolute -top-4 w-10 sm:w-12 h-16 bg-linear-to-b from-cyan-400/30 to-transparent blur-[2px] pointer-events-none rounded-full"></div>
             <!-- Weapon 3D Icon & Pedestal -->
-            <div class="w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-cyan-900/90 to-blue-950/90 p-1 shadow-[0_0_15px_rgba(6,182,212,0.6)] border-2 border-cyan-400 flex items-center justify-center relative overflow-hidden group-hover:border-cyan-200">
+            <div class="w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-linear-to-br from-cyan-900/90 to-blue-950/90 p-1 shadow-[0_0_15px_rgba(6,182,212,0.6)] border-2 border-cyan-400 flex items-center justify-center relative overflow-hidden group-hover:border-cyan-200">
               ${equippedWeapon?.image ? `
-                <img src="${equippedWeapon.image}" alt="${escapeHtml(equippedWeapon.title)}" class="w-8 h-8 sm:w-10 sm:h-10 object-contain drop-shadow" />
+                <img src="${equippedWeapon.image}" alt="${escapeHtml(equippedWeapon.title)}" class="w-8 h-8 sm:w-10 sm:h-10 object-contain drop-shadow-sm" />
               ` : `
                 <span class="text-xl sm:text-2xl">${equippedWeapon?.icon || '⚔️'}</span>
               `}
-              <span class="absolute top-0.5 right-0.5 text-[7px] bg-cyan-400 text-slate-950 font-black px-1 rounded-sm shadow">1/1</span>
+              <span class="absolute top-0.5 right-0.5 text-[7px] bg-cyan-400 text-slate-950 font-black px-1 rounded-xs shadow-sm">1/1</span>
             </div>
             <!-- Mini Plaque -->
             <div class="mt-1.5 px-1 sm:px-2 py-0.5 rounded-lg bg-black/80 border border-cyan-400/50 text-[8px] sm:text-[10px] font-black text-cyan-200 text-center truncate max-w-[65px] sm:max-w-[85px] flex items-center gap-0.5 justify-center">
@@ -250,7 +250,7 @@ export function renderHeroHQView() {
       <div class="relative w-full flex-1 flex flex-col justify-between min-h-[540px] sm:min-h-[580px] px-3 sm:px-6 pt-2 pb-5">
 
         <!-- Wall Shadows & Floor Perspective Gradient -->
-        <div class="absolute inset-x-0 bottom-0 h-4/5 bg-gradient-to-t from-black/60 via-black/25 to-transparent pointer-events-none"></div>
+        <div class="absolute inset-x-0 bottom-0 h-4/5 bg-linear-to-t from-black/60 via-black/25 to-transparent pointer-events-none"></div>
 
         <!-- ================================================================= -->
         <!-- UPPER TIER: Companion Figurine Showcase & 4-Category Gear Spotlights -->
@@ -258,7 +258,7 @@ export function renderHeroHQView() {
         <div class="relative z-20 w-full flex-1 flex flex-col items-center justify-center my-auto py-4">
           
           <!-- Center Floor Rug (Positioned underneath elevated companion stage) -->
-          <div id="hq-slot-rug" class="absolute w-80 sm:w-96 h-36 sm:h-44 rounded-[60px] bg-gradient-to-r from-amber-500/20 via-emerald-500/20 to-cyan-500/20 border-2 border-white/20 shadow-inner flex flex-col items-center justify-end pb-3 transition-all cursor-pointer hover:scale-102 hover:border-amber-300 pointer-events-auto" title="${escapeHtml(rugItem.name)} - Tap to play!">
+          <div id="hq-slot-rug" class="absolute w-80 sm:w-96 h-36 sm:h-44 rounded-[60px] bg-linear-to-r from-amber-500/20 via-emerald-500/20 to-cyan-500/20 border-2 border-white/20 shadow-inner flex flex-col items-center justify-end pb-3 transition-all cursor-pointer hover:scale-102 hover:border-amber-300 pointer-events-auto" title="${escapeHtml(rugItem.name)} - Tap to play!">
             <span class="text-[10px] font-headline font-black text-white/70 bg-black/40 px-3 py-0.5 rounded-full border border-white/10">
               ${escapeHtml(rugItem.name)}
             </span>
@@ -307,7 +307,7 @@ export function renderHeroHQView() {
                   Lv.${petLevel}
                 </span>
               </div>
-              <span class="text-[9px] font-bold text-amber-300 mt-0.5 drop-shadow">
+              <span class="text-[9px] font-bold text-amber-300 mt-0.5 drop-shadow-sm">
                 ${petStatBonus.label} ${activePet.habitBonus ? `• ${activePet.habitBonus.split(':')[0]}` : ''}
               </span>
             </div>
@@ -362,7 +362,7 @@ export function renderHeroHQView() {
             
             <!-- Slot 1: BED & NAPPING POD (Left) -->
             <div id="hq-slot-bed" class="flex flex-col items-center cursor-pointer group transition-transform hover:-translate-y-1" title="${escapeHtml(bedItem.name)} - Tap to snooze!">
-              <div class="relative w-full max-w-[140px] h-28 sm:h-32 rounded-3xl bg-surface-container/80 backdrop-blur-sm border-2 ${isNight ? 'border-indigo-400 shadow-[0_0_20px_rgba(99,102,241,0.3)]' : 'border-white/30'} flex flex-col items-center justify-center p-2 text-center group-hover:border-primary transition-all">
+              <div class="relative w-full max-w-[140px] h-28 sm:h-32 rounded-3xl bg-surface-container/80 backdrop-blur-xs border-2 ${isNight ? 'border-indigo-400 shadow-[0_0_20px_rgba(99,102,241,0.3)]' : 'border-white/30'} flex flex-col items-center justify-center p-2 text-center group-hover:border-primary transition-all">
                 <!-- Zzz Sleep Bubble if napping -->
                 ${isNapping ? `
                   <div class="absolute -top-6 text-xl animate-bounce">💤💤💤</div>
@@ -385,7 +385,7 @@ export function renderHeroHQView() {
 
             <!-- Slot 2: PET LOUNGE & TRAMPOLINE (Center-Left) -->
             <div id="hq-slot-petLounge" class="flex flex-col items-center cursor-pointer group transition-transform hover:-translate-y-1" title="${escapeHtml(petLoungeItem.name)} - Tap to play!">
-              <div class="relative w-full max-w-[140px] h-28 sm:h-32 rounded-3xl bg-surface-container/80 backdrop-blur-sm border-2 border-white/30 flex flex-col items-center justify-center p-2 text-center group-hover:border-amber-400 transition-all ${isBouncing ? 'animate-bounce border-amber-400' : ''}">
+              <div class="relative w-full max-w-[140px] h-28 sm:h-32 rounded-3xl bg-surface-container/80 backdrop-blur-xs border-2 border-white/30 flex flex-col items-center justify-center p-2 text-center group-hover:border-amber-400 transition-all ${isBouncing ? 'animate-bounce border-amber-400' : ''}">
                 ${isBouncing ? `
                   <div class="absolute -top-7 text-xl animate-ping">🤸💥</div>
                 ` : ''}
@@ -407,7 +407,7 @@ export function renderHeroHQView() {
 
             <!-- Slot 3: MISSION DESK & WORKSTATION (Center-Right) -->
             <div id="hq-slot-desk" class="flex flex-col items-center cursor-pointer group transition-transform hover:-translate-y-1" title="${escapeHtml(deskItem.name)} - Tap for hologram!">
-              <div class="relative w-full max-w-[140px] h-28 sm:h-32 rounded-3xl bg-surface-container/80 backdrop-blur-sm border-2 ${isHologramActive ? 'border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.4)]' : 'border-white/30'} flex flex-col items-center justify-center p-2 text-center group-hover:border-cyan-400 transition-all">
+              <div class="relative w-full max-w-[140px] h-28 sm:h-32 rounded-3xl bg-surface-container/80 backdrop-blur-xs border-2 ${isHologramActive ? 'border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.4)]' : 'border-white/30'} flex flex-col items-center justify-center p-2 text-center group-hover:border-cyan-400 transition-all">
                 ${deskItem.modelUrl ? `
                   <model-viewer src="${deskItem.modelUrl}" auto-rotate camera-controls shadow-intensity="1" ar style="width: 100%; height: 60px; background: transparent;"></model-viewer>
                 ` : `
@@ -426,7 +426,7 @@ export function renderHeroHQView() {
 
             <!-- Slot 4: DECOR & NIGHTLIGHT LAMP (Right) -->
             <div id="hq-slot-decor" class="flex flex-col items-center cursor-pointer group transition-transform hover:-translate-y-1" title="${escapeHtml(decorItem.name)} - Tap to toggle nightlight!">
-              <div class="relative w-full max-w-[140px] h-28 sm:h-32 rounded-3xl bg-surface-container/80 backdrop-blur-sm border-2 ${isNight ? 'border-yellow-400 shadow-[0_0_25px_rgba(250,204,21,0.5)]' : 'border-white/30'} flex flex-col items-center justify-center p-2 text-center group-hover:border-yellow-400 transition-all">
+              <div class="relative w-full max-w-[140px] h-28 sm:h-32 rounded-3xl bg-surface-container/80 backdrop-blur-xs border-2 ${isNight ? 'border-yellow-400 shadow-[0_0_25px_rgba(250,204,21,0.5)]' : 'border-white/30'} flex flex-col items-center justify-center p-2 text-center group-hover:border-yellow-400 transition-all">
                 <div class="text-3xl sm:text-4xl transition-transform group-hover:scale-110 animate-pulse">
                   ${decorItem.icon || decorItem.emoji}
                 </div>
@@ -474,7 +474,7 @@ function renderRedecorateDrawer(state) {
   const coins = state.selectedHero?.coins || 0;
 
   return `
-  <div id="hq-redecorate-backdrop" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex flex-col justify-end animate-fade-in">
+  <div id="hq-redecorate-backdrop" class="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex flex-col justify-end animate-fade-in">
     <div id="hq-redecorate-panel" class="bg-surface-container-high border-t-4 border-primary rounded-t-[36px] p-5 max-w-4xl mx-auto w-full max-h-[85vh] flex flex-col gap-4 shadow-2xl overflow-hidden animate-slide-up">
       
       <!-- Drawer Header -->
@@ -504,11 +504,11 @@ function renderRedecorateDrawer(state) {
 
       <!-- Category Filter Tabs -->
       <div id="hq-cat-tab-bar" class="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-        <button class="hq-cat-tab flex-shrink-0 px-3.5 py-2 rounded-2xl font-headline text-xs font-black transition-all flex items-center gap-1.5 whitespace-nowrap chunky-btn-sm ${activeCategory === 'themes' ? 'bg-primary text-on-primary shadow-md' : 'bg-surface-bright text-on-surface-variant hover:bg-surface-container-highest'}" data-category="themes">
+        <button class="hq-cat-tab shrink-0 px-3.5 py-2 rounded-2xl font-headline text-xs font-black transition-all flex items-center gap-1.5 whitespace-nowrap chunky-btn-sm ${activeCategory === 'themes' ? 'bg-primary text-on-primary shadow-md' : 'bg-surface-bright text-on-surface-variant hover:bg-surface-container-highest'}" data-category="themes">
           <span>🏛️</span> Themes
         </button>
         ${FURNITURE_SLOTS.map(slot => `
-          <button class="hq-cat-tab flex-shrink-0 px-3.5 py-2 rounded-2xl font-headline text-xs font-black transition-all flex items-center gap-1.5 whitespace-nowrap chunky-btn-sm ${activeCategory === slot.id ? 'bg-primary text-on-primary shadow-md' : 'bg-surface-bright text-on-surface-variant hover:bg-surface-container-highest'}" data-category="${slot.id}">
+          <button class="hq-cat-tab shrink-0 px-3.5 py-2 rounded-2xl font-headline text-xs font-black transition-all flex items-center gap-1.5 whitespace-nowrap chunky-btn-sm ${activeCategory === slot.id ? 'bg-primary text-on-primary shadow-md' : 'bg-surface-bright text-on-surface-variant hover:bg-surface-container-highest'}" data-category="${slot.id}">
             <span>${slot.emoji}</span> ${slot.name}
           </button>
         `).join('')}
@@ -557,7 +557,7 @@ function renderThemesGrid(heroHQ) {
               Equipped ✅
             </button>
           ` : `
-            <button class="hq-select-theme-btn bg-primary hover:bg-primary/90 text-on-primary text-xs font-black px-4 py-1.5 rounded-xl shadow chunky-btn-sm" data-theme-id="${theme.id}">
+            <button class="hq-select-theme-btn bg-primary hover:bg-primary/90 text-on-primary text-xs font-black px-4 py-1.5 rounded-xl shadow-sm chunky-btn-sm" data-theme-id="${theme.id}">
               Apply Theme 🪄
             </button>
           `}
@@ -613,7 +613,7 @@ function renderFurnitureGrid(slotId, heroHQ, userCoins) {
                 Equipped ✅
               </button>
             ` : isUnlocked ? `
-              <button class="hq-equip-item-btn bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-black px-4 py-1.5 rounded-xl shadow chunky-btn-sm" data-slot="${item.slot}" data-item-id="${item.id}">
+              <button class="hq-equip-item-btn bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-black px-4 py-1.5 rounded-xl shadow-sm chunky-btn-sm" data-slot="${item.slot}" data-item-id="${item.id}">
                 Place in Room 🪄
               </button>
             ` : `
@@ -647,7 +647,7 @@ function renderAllTrophiesShowcaseModal(state, equippedWeapon) {
       <!-- Modal Header -->
       <div class="flex items-center justify-between border-b border-white/10 pb-3">
         <div class="flex items-center gap-2.5">
-          <div class="w-11 h-11 rounded-2xl bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-2xl shadow">
+          <div class="w-11 h-11 rounded-2xl bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-2xl shadow-sm">
             🏆
           </div>
           <div>
@@ -666,15 +666,15 @@ function renderAllTrophiesShowcaseModal(state, equippedWeapon) {
       </div>
 
       <!-- HIGHLIGHT SLOT: Dedicated Equipped Combat Weapon -->
-      <div class="bg-gradient-to-r from-cyan-950/90 via-slate-900 to-blue-950/90 rounded-2xl p-4 border-2 border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.3)] flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div class="bg-linear-to-r from-cyan-950/90 via-slate-900 to-blue-950/90 rounded-2xl p-4 border-2 border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.3)] flex flex-col sm:flex-row items-center justify-between gap-3">
         <div class="flex items-center gap-3.5 w-full sm:w-auto">
-          <div class="relative w-16 h-16 sm:w-18 sm:h-18 rounded-2xl bg-gradient-to-br from-cyan-900 to-blue-950 border-2 border-cyan-300 flex items-center justify-center flex-shrink-0 shadow-md">
+          <div class="relative w-16 h-16 sm:w-18 sm:h-18 rounded-2xl bg-linear-to-br from-cyan-900 to-blue-950 border-2 border-cyan-300 flex items-center justify-center shrink-0 shadow-md">
             ${equippedWeapon?.image ? `
-              <img src="${equippedWeapon.image}" alt="${escapeHtml(equippedWeapon.title)}" class="w-12 h-12 object-contain drop-shadow" />
+              <img src="${equippedWeapon.image}" alt="${escapeHtml(equippedWeapon.title)}" class="w-12 h-12 object-contain drop-shadow-sm" />
             ` : `
               <span class="text-3xl">${equippedWeapon?.icon || '⚔️'}</span>
             `}
-            <span class="absolute -top-1.5 -right-1.5 text-[8px] bg-cyan-400 text-slate-950 font-black px-1.5 py-0.5 rounded-md shadow">
+            <span class="absolute -top-1.5 -right-1.5 text-[8px] bg-cyan-400 text-slate-950 font-black px-1.5 py-0.5 rounded-md shadow-sm">
               1/1 EQUIPPED
             </span>
           </div>
@@ -692,7 +692,7 @@ function renderAllTrophiesShowcaseModal(state, equippedWeapon) {
           </div>
         </div>
 
-        <button id="hq-showcase-switch-weapon-btn" class="w-full sm:w-auto flex-shrink-0 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-headline text-xs font-black px-4 py-2.5 rounded-xl shadow-lg flex items-center justify-center gap-1.5 active:scale-95 transition-all">
+        <button id="hq-showcase-switch-weapon-btn" class="w-full sm:w-auto shrink-0 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-headline text-xs font-black px-4 py-2.5 rounded-xl shadow-lg flex items-center justify-center gap-1.5 active:scale-95 transition-all">
           <span class="material-symbols-outlined text-base">swords</span>
           <span>Switch Weapon</span>
         </button>
@@ -745,7 +745,7 @@ function renderAllTrophiesShowcaseModal(state, equippedWeapon) {
           ${trophies.map(trophy => `
             <div class="bg-surface-container border border-white/10 hover:border-amber-400/60 rounded-2xl p-3 flex items-center justify-between gap-2.5 transition-all">
               <div class="flex items-center gap-2.5 min-w-0 cursor-pointer hq-inspect-from-showcase-btn" data-trophy-id="${trophy.id}">
-                <div class="w-12 h-12 rounded-xl bg-gradient-to-br ${trophy.iconColor} border border-amber-200 flex items-center justify-center text-2xl flex-shrink-0 shadow">
+                <div class="w-12 h-12 rounded-xl bg-linear-to-br ${trophy.iconColor} border border-amber-200 flex items-center justify-center text-2xl shrink-0 shadow-sm">
                   ${trophy.emoji}
                 </div>
                 <div class="flex flex-col min-w-0">
@@ -753,7 +753,7 @@ function renderAllTrophiesShowcaseModal(state, equippedWeapon) {
                   <span class="text-[10px] text-amber-300/90 font-bold">${trophy.category} • ${trophy.dateEarned}</span>
                 </div>
               </div>
-              <button class="hq-showcase-inspect-btn bg-surface-bright hover:bg-amber-400 hover:text-slate-950 text-white text-[11px] font-black px-2.5 py-1.5 rounded-xl border border-white/20 transition-all flex items-center gap-1 flex-shrink-0" data-trophy-id="${trophy.id}">
+              <button class="hq-showcase-inspect-btn bg-surface-bright hover:bg-amber-400 hover:text-slate-950 text-white text-[11px] font-black px-2.5 py-1.5 rounded-xl border border-white/20 transition-all flex items-center gap-1 shrink-0" data-trophy-id="${trophy.id}">
                 <span class="material-symbols-outlined text-sm">visibility</span>
                 <span>Inspect</span>
               </button>
@@ -778,7 +778,7 @@ function renderTrophyModal(trophy, state) {
       <!-- Trophy 3D Icon & Glow -->
       <div class="relative">
         <div class="absolute -inset-3 bg-radial from-amber-400/40 via-transparent to-transparent rounded-full blur-md"></div>
-        <div class="relative w-24 h-24 rounded-3xl bg-gradient-to-br ${trophy.iconColor} p-1 shadow-2xl border-4 border-amber-200 flex items-center justify-center text-6xl">
+        <div class="relative w-24 h-24 rounded-3xl bg-linear-to-br ${trophy.iconColor} p-1 shadow-2xl border-4 border-amber-200 flex items-center justify-center text-6xl">
           ${trophy.emoji}
         </div>
       </div>
@@ -823,7 +823,7 @@ function renderTrophyModal(trophy, state) {
           ${[0, 1, 2, 3].map(slotIdx => {
             const isPinnedHere = featuredIds[slotIdx] === trophy.id;
             return `
-              <button class="hq-pin-trophy-btn px-2 py-1.5 rounded-xl font-headline text-xs font-black border transition-all chunky-btn-sm ${isPinnedHere ? 'bg-amber-400 text-slate-950 border-amber-300 shadow' : 'bg-surface-bright text-on-surface border-white/10 hover:border-amber-400'}" data-slot="${slotIdx}" data-trophy-id="${trophy.id}">
+              <button class="hq-pin-trophy-btn px-2 py-1.5 rounded-xl font-headline text-xs font-black border transition-all chunky-btn-sm ${isPinnedHere ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-sm' : 'bg-surface-bright text-on-surface border-white/10 hover:border-amber-400'}" data-slot="${slotIdx}" data-trophy-id="${trophy.id}">
                 #${slotIdx + 1} ${isPinnedHere ? '★' : ''}
               </button>
             `;
@@ -848,12 +848,12 @@ function renderGearSlotTile(slot) {
   return `
     <div class="relative flex flex-col items-center cursor-pointer hq-gear-spotlight-slot transition-transform hover:scale-108 active:scale-95 group" data-gear-category="${slot.category}" title="${item ? `${escapeHtml(item.name)} (${halo.badge}) - Tap to swap` : `Equip ${slot.label}`}">
       <!-- Overhead Spotlight Beam -->
-      <div class="absolute -top-3 w-10 h-14 bg-gradient-to-b ${item ? halo.beam : 'from-white/10 to-transparent'} blur-[2px] pointer-events-none rounded-full"></div>
+      <div class="absolute -top-3 w-10 h-14 bg-linear-to-b ${item ? halo.beam : 'from-white/10 to-transparent'} blur-[2px] pointer-events-none rounded-full"></div>
       
       <!-- Squircle Rounded-Corner Gear Tile -->
       <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl ${item ? `${halo.bg} border-2 ${halo.border} ${halo.haloShadow}` : 'bg-surface-container/70 border-2 border-dashed border-white/25 hover:border-cyan-400/80'} flex flex-col items-center justify-center relative overflow-hidden transition-all">
         ${item ? `
-          <span class="material-symbols-outlined text-2xl sm:text-3xl ${halo.text} drop-shadow">${item.icon || slot.icon}</span>
+          <span class="material-symbols-outlined text-2xl sm:text-3xl ${halo.text} drop-shadow-sm">${item.icon || slot.icon}</span>
           <span class="absolute bottom-0.5 text-[8px] font-black px-1 rounded bg-black/80 ${halo.text}">L${item.level || 1}</span>
         ` : `
           <span class="material-symbols-outlined text-xl sm:text-2xl text-white/40 group-hover:text-cyan-300 transition-colors">${slot.icon}</span>
@@ -923,11 +923,11 @@ function renderQuickGearModal(category, activePet, state) {
                       Unequip ✕
                     </button>
                   ` : !isOwned ? `
-                    <button class="hq-buy-gear-piece-btn bg-amber-500 hover:bg-amber-400 text-slate-950 text-[10px] font-black px-3 py-1.5 rounded-xl shadow w-full active:scale-95 flex items-center justify-center gap-1" data-category="${category}" data-gear-id="${item.id}">
+                    <button class="hq-buy-gear-piece-btn bg-amber-500 hover:bg-amber-400 text-slate-950 text-[10px] font-black px-3 py-1.5 rounded-xl shadow-sm w-full active:scale-95 flex items-center justify-center gap-1" data-category="${category}" data-gear-id="${item.id}">
                       <span>🪙 ${price}</span>
                     </button>
                   ` : `
-                    <button class="hq-equip-gear-piece-btn bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-[10px] font-black px-3 py-1.5 rounded-xl shadow w-full active:scale-95 flex items-center justify-center gap-1" data-category="${category}" data-gear-id="${item.id}">
+                    <button class="hq-equip-gear-piece-btn bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-[10px] font-black px-3 py-1.5 rounded-xl shadow-sm w-full active:scale-95 flex items-center justify-center gap-1" data-category="${category}" data-gear-id="${item.id}">
                       <span>Equip</span>
                       <span class="material-symbols-outlined text-xs">arrow_forward</span>
                     </button>
@@ -957,7 +957,7 @@ function renderWeaponModal(state, equippedWeapon) {
       <!-- Header -->
       <div class="flex items-center justify-between border-b border-white/10 pb-3">
         <div class="flex items-center gap-2.5">
-          <div class="w-10 h-10 rounded-2xl bg-cyan-950/80 border-2 border-cyan-400 flex items-center justify-center text-2xl shadow">
+          <div class="w-10 h-10 rounded-2xl bg-cyan-950/80 border-2 border-cyan-400 flex items-center justify-center text-2xl shadow-sm">
             ⚔️
           </div>
           <div>
@@ -974,10 +974,10 @@ function renderWeaponModal(state, equippedWeapon) {
       </div>
 
       <!-- Currently Equipped Weapon Feature Card -->
-      <div class="bg-gradient-to-r from-cyan-950/80 via-slate-900 to-blue-950/80 rounded-2xl p-4 border-2 border-cyan-400/60 shadow-lg flex items-center gap-3.5">
-        <div class="w-16 h-16 rounded-2xl bg-cyan-900/60 border border-cyan-400 flex items-center justify-center flex-shrink-0 p-1">
+      <div class="bg-linear-to-r from-cyan-950/80 via-slate-900 to-blue-950/80 rounded-2xl p-4 border-2 border-cyan-400/60 shadow-lg flex items-center gap-3.5">
+        <div class="w-16 h-16 rounded-2xl bg-cyan-900/60 border border-cyan-400 flex items-center justify-center shrink-0 p-1">
           ${equippedWeapon?.image ? `
-            <img src="${equippedWeapon.image}" alt="${escapeHtml(equippedWeapon.title)}" class="w-full h-full object-contain drop-shadow" />
+            <img src="${equippedWeapon.image}" alt="${escapeHtml(equippedWeapon.title)}" class="w-full h-full object-contain drop-shadow-sm" />
           ` : `
             <span class="text-3xl">${equippedWeapon?.icon || '⚔️'}</span>
           `}
@@ -1008,7 +1008,7 @@ function renderWeaponModal(state, equippedWeapon) {
             return `
               <div class="bg-surface-container rounded-2xl p-3.5 border-2 ${isEquipped ? 'border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)]' : isOwned ? 'border-surface-container-highest hover:border-cyan-500/50' : 'border-surface-container-highest/40 opacity-70'} flex flex-col justify-between gap-3">
                 <div class="flex items-start gap-3">
-                  <div class="w-12 h-12 rounded-xl bg-surface-container-high border border-white/10 flex items-center justify-center p-1 flex-shrink-0">
+                  <div class="w-12 h-12 rounded-xl bg-surface-container-high border border-white/10 flex items-center justify-center p-1 shrink-0">
                     ${weapon.image ? `
                       <img src="${weapon.image}" alt="${escapeHtml(weapon.title)}" class="w-full h-full object-contain" />
                     ` : `
@@ -1036,7 +1036,7 @@ function renderWeaponModal(state, equippedWeapon) {
                       Equipped
                     </span>
                   ` : isOwned ? `
-                    <button class="hq-equip-specific-weapon-btn bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-headline text-xs font-black px-3.5 py-1.5 rounded-xl border border-cyan-300 shadow chunky-btn-sm active:scale-95" data-weapon-id="${weapon.id}">
+                    <button class="hq-equip-specific-weapon-btn bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-headline text-xs font-black px-3.5 py-1.5 rounded-xl border border-cyan-300 shadow-sm chunky-btn-sm active:scale-95" data-weapon-id="${weapon.id}">
                       Equip for Battle
                     </button>
                   ` : `

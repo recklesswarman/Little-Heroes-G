@@ -37,9 +37,9 @@ function renderHeroWithPetBadge(hero, pet) {
   const isPetImg = typeof petAvatar === 'string' && (petAvatar.startsWith('http') || petAvatar.startsWith('data:') || petAvatar.startsWith('assets/') || petAvatar.includes('/'));
 
   return `
-    <div class="relative w-14 h-14 sm:w-18 sm:h-18 flex-shrink-0">
+    <div class="relative w-14 h-14 sm:w-18 sm:h-18 shrink-0">
       <!-- Kid Hero Avatar -->
-      <div class="w-14 h-14 sm:w-18 sm:h-18 rounded-2xl overflow-hidden border-2 border-[#00d2d3] bg-[#050f18] shadow-md flex items-center justify-center">
+      <div class="w-14 h-14 sm:w-18 sm:h-18 rounded-2xl overflow-hidden border-2 border-[#00d2d3] bg-surface-container-lowest shadow-md flex items-center justify-center">
         <img 
           src="${heroAvatar}" 
           alt="${heroName}" 
@@ -70,29 +70,29 @@ export function renderBedtimeStoryView() {
   const availableMorals = store.getAvailableBedtimeMorals(hero.id);
 
   return `
-    <div class="min-h-screen bg-[#050f18] text-slate-100 flex flex-col justify-start selection:bg-[#00d2d3] selection:text-black relative overflow-x-hidden">
+    <div class="min-h-screen bg-surface-container-lowest text-slate-100 flex flex-col justify-start selection:bg-[#00d2d3] selection:text-black relative overflow-x-hidden">
       
       <!-- Ambient Night Sky Background with Soft Twinkling Stars -->
       <div class="fixed inset-0 pointer-events-none z-0 overflow-hidden">
         <div class="absolute -top-40 -left-40 w-96 h-96 bg-[#00d2d3]/10 rounded-full blur-3xl"></div>
         <div class="absolute top-1/3 -right-40 w-96 h-96 bg-[#ffb961]/10 rounded-full blur-3xl"></div>
-        <div class="absolute -bottom-40 left-1/3 w-96 h-96 bg-[#2ecc71]/10 rounded-full blur-3xl"></div>
+        <div class="absolute -bottom-40 left-1/3 w-96 h-96 bg-primary-container/10 rounded-full blur-3xl"></div>
       </div>
 
       <!-- TOP NIGHT-MODE HEADER -->
       <header class="relative z-10 bg-[#09141e]/90 backdrop-blur-md border-b-2 border-surface-container-highest px-3 py-2.5 sm:px-6 sm:py-3 flex items-center justify-between gap-2">
         <div class="flex items-center gap-2 sm:gap-3 min-w-0">
-          <button id="bedtime-back-btn" class="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-[#0f2334] hover:bg-[#1a3850] text-slate-300 hover:text-white flex items-center justify-center border border-surface-container-highest active:scale-95 transition-all flex-shrink-0" title="Back">
+          <button id="bedtime-back-btn" class="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-[#0f2334] hover:bg-[#1a3850] text-slate-300 hover:text-white flex items-center justify-center border border-surface-container-highest active:scale-95 transition-all shrink-0" title="Back">
             <span class="material-symbols-outlined text-lg sm:text-xl">arrow_back</span>
           </button>
           <div class="flex items-center gap-1.5 sm:gap-2 min-w-0">
-            <span class="text-xl sm:text-2xl flex-shrink-0">🌙</span>
+            <span class="text-xl sm:text-2xl shrink-0">🌙</span>
             <div class="min-w-0">
               <h1 class="font-headline font-black text-xs sm:text-base text-white tracking-wide truncate">
                 Bedtime AI Storybook
               </h1>
               <p class="text-[10px] sm:text-[11px] font-bold text-slate-300 flex items-center gap-1 sm:gap-1.5 truncate">
-                <span class="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-[#00d2d3] animate-pulse flex-shrink-0"></span>
+                <span class="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-[#00d2d3] animate-pulse shrink-0"></span>
                 <span class="truncate max-w-[110px] sm:max-w-none">Companion: ${escapeHtml(pet.name)}</span>
                 <span class="text-slate-500 hidden xs:inline">•</span>
                 <span class="text-[#ffb961] hidden xs:inline">Sanctuary</span>
@@ -101,9 +101,9 @@ export function renderBedtimeStoryView() {
           </div>
         </div>
 
-        <div class="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+        <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <!-- Bedtime Lullaby Toggle -->
-          <button id="toggle-story-lullaby-btn" class="px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-xl border border-surface-container-highest text-xs font-black flex items-center gap-1.5 transition-all flex-shrink-0 ${
+          <button id="toggle-story-lullaby-btn" class="px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-xl border border-surface-container-highest text-xs font-black flex items-center gap-1.5 transition-all shrink-0 ${
             isLullabyOn ? 'bg-[#00d2d3]/20 text-[#00d2d3] border-[#00d2d3]/40 animate-pulse' : 'bg-[#0f2334] text-slate-400'
           }">
             <span class="material-symbols-outlined text-sm">music_note</span>
@@ -113,7 +113,7 @@ export function renderBedtimeStoryView() {
           <!-- Bookshelf Tab Button -->
           <button id="view-bookshelf-tab-btn" class="px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-xl ${
             activeViewMode === 'bookshelf' ? 'bg-[#ffb961] text-black' : 'bg-[#0f2334] text-[#ffb961] hover:bg-[#1a3850]'
-          } border border-surface-container-highest text-xs font-black flex items-center gap-1.5 active:scale-95 transition-all flex-shrink-0">
+          } border border-surface-container-highest text-xs font-black flex items-center gap-1.5 active:scale-95 transition-all shrink-0">
             <span class="material-symbols-outlined text-sm">auto_stories</span>
             <span class="hidden sm:inline">Bookshelf (${library.length})</span>
             <span class="sm:hidden font-black">${library.length}</span>
@@ -166,7 +166,7 @@ function renderSanctuaryHub(library, sanctuary, hero, pet, availableMorals) {
     <div class="flex flex-col gap-6 animate-fade-in text-left">
       
       <!-- HERO WELCOME BANNER (With Kid Avatar + Companion Badge, Never Raw Tokens) -->
-      <div class="relative bg-gradient-to-r from-[#091e2b] via-[#0f2d40] to-[#091e2b] border-2 border-[#00d2d3]/30 rounded-3xl p-4 sm:p-6 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div class="relative bg-linear-to-r from-[#091e2b] via-[#0f2d40] to-[#091e2b] border-2 border-[#00d2d3]/30 rounded-3xl p-4 sm:p-6 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div class="flex items-start sm:items-center gap-3.5 sm:gap-4 text-left w-full sm:w-auto min-w-0">
           ${renderHeroWithPetBadge(hero, pet)}
           <div class="min-w-0 flex-1">
@@ -176,7 +176,7 @@ function renderSanctuaryHub(library, sanctuary, hero, pet, availableMorals) {
               </span>
               <span class="text-[11px] sm:text-xs text-slate-300 font-bold">• 4-5 Min Adventure</span>
             </div>
-            <h2 class="font-headline font-black text-xl sm:text-2xl text-white mt-1 break-words">
+            <h2 class="font-headline font-black text-xl sm:text-2xl text-white mt-1 wrap-break-word">
               Good evening, ${escapeHtml(hero.name)}!
             </h2>
             <p class="text-xs text-slate-300 max-w-md mt-0.5 leading-relaxed">
@@ -186,7 +186,7 @@ function renderSanctuaryHub(library, sanctuary, hero, pet, availableMorals) {
         </div>
 
         <!-- Bookshelf Preview Pill -->
-        <button id="hub-open-bookshelf-btn" class="w-full sm:w-auto px-4 py-2.5 rounded-2xl bg-[#050f18] hover:bg-[#0c1f2d] border border-surface-container-highest text-[#ffb961] font-headline font-black text-xs flex items-center justify-center gap-2 active:scale-95 transition-all flex-shrink-0 min-h-[44px]">
+        <button id="hub-open-bookshelf-btn" class="w-full sm:w-auto px-4 py-2.5 rounded-2xl bg-surface-container-lowest hover:bg-[#0c1f2d] border border-surface-container-highest text-[#ffb961] font-headline font-black text-xs flex items-center justify-center gap-2 active:scale-95 transition-all shrink-0 min-h-[44px]">
           <span class="material-symbols-outlined text-base">auto_stories</span>
           <span>Bookshelf (${library.length} Stories)</span>
         </button>
@@ -196,12 +196,12 @@ function renderSanctuaryHub(library, sanctuary, hero, pet, availableMorals) {
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         
         <!-- STEP 1: BRUSH TEETH (Connected to Quest 7: Sugar Fortress Night Showdown) -->
-        <div class="bg-[#09141e] border-2 ${isTeethDone ? 'border-[#2ecc71]/40 bg-[#081c15]' : 'border-[#ffb961]/40 shadow-[0_0_15px_rgba(255,185,97,0.12)]'} rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between gap-3">
+        <div class="bg-[#09141e] border-2 ${isTeethDone ? 'border-primary-container/40 bg-[#081c15]' : 'border-[#ffb961]/40 shadow-[0_0_15px_rgba(255,185,97,0.12)]'} rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between gap-3">
           <div class="flex items-start justify-between">
             <div class="w-10 h-10 rounded-xl bg-[#0f2334] flex items-center justify-center text-xl shadow-inner border border-surface-container-highest">🪥</div>
             <div class="flex flex-col items-end">
               <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
-                isTeethDone ? 'bg-[#2ecc71]/20 text-[#2ecc71] border border-[#2ecc71]/30' : 'bg-[#ffb961]/20 text-[#ffb961] border border-[#ffb961]/30'
+                isTeethDone ? 'bg-primary-container/20 text-primary-container border border-primary-container/30' : 'bg-[#ffb961]/20 text-[#ffb961] border border-[#ffb961]/30'
               }">
                 ${isTeethDone ? 'Completed ✨' : 'Quest 7 • Step 1'}
               </span>
@@ -216,7 +216,7 @@ function renderSanctuaryHub(library, sanctuary, hero, pet, availableMorals) {
             <p class="text-[11px] text-slate-300 mt-0.5 font-medium">Sugar Fortress Night Showdown (2-Min Routine)</p>
           </div>
           <button id="step-launch-toothbrush-btn" class="w-full py-2.5 sm:py-2 min-h-[44px] rounded-xl ${
-            isTeethDone ? 'bg-[#0f2334] text-slate-300 hover:text-white' : 'bg-gradient-to-r from-amber-500 to-red-500 text-white font-black shadow-[0_4px_0_0_#78350f]'
+            isTeethDone ? 'bg-[#0f2334] text-slate-300 hover:text-white' : 'bg-linear-to-r from-amber-500 to-red-500 text-white font-black shadow-[0_4px_0_0_#78350f]'
           } font-headline text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer">
             <span class="material-symbols-outlined text-sm">${isTeethDone ? 'check_circle' : 'swords'}</span>
             <span>${isTeethDone ? 'Brushed Clean ✨' : 'Start 2-Min Routine'}</span>
@@ -224,11 +224,11 @@ function renderSanctuaryHub(library, sanctuary, hero, pet, availableMorals) {
         </div>
 
         <!-- STEP 2: PAJAMAS & TIDY UP -->
-        <div class="bg-[#09141e] border-2 ${isPajamasDone ? 'border-[#2ecc71]/40 bg-[#081c15]' : 'border-surface-container-highest'} rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between gap-3">
+        <div class="bg-[#09141e] border-2 ${isPajamasDone ? 'border-primary-container/40 bg-[#081c15]' : 'border-surface-container-highest'} rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between gap-3">
           <div class="flex items-start justify-between">
             <div class="w-10 h-10 rounded-xl bg-[#0f2334] flex items-center justify-center text-xl">🧸</div>
             <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
-              isPajamasDone ? 'bg-[#2ecc71]/20 text-[#2ecc71]' : 'bg-[#00d2d3]/20 text-[#00d2d3]'
+              isPajamasDone ? 'bg-primary-container/20 text-primary-container' : 'bg-[#00d2d3]/20 text-[#00d2d3]'
             }">
               ${isPajamasDone ? 'Completed ✨' : 'Step 2'}
             </span>
@@ -281,7 +281,7 @@ function renderSanctuaryHub(library, sanctuary, hero, pet, availableMorals) {
           </div>
 
           <!-- Dual Narration Toggle -->
-          <div class="flex items-center gap-1.5 bg-[#050f18] p-1.5 rounded-2xl border border-surface-container-highest self-start sm:self-auto flex-wrap">
+          <div class="flex items-center gap-1.5 bg-surface-container-lowest p-1.5 rounded-2xl border border-surface-container-highest self-start sm:self-auto flex-wrap">
             <button id="toggle-narration-rex" class="px-3 py-1.5 rounded-xl text-xs font-headline font-black flex items-center gap-1.5 transition-all min-h-[36px] ${
               narrationMode === 'rex' ? 'bg-[#00d2d3] text-black' : 'text-slate-400 hover:text-white'
             }">
@@ -335,7 +335,7 @@ function renderSanctuaryHub(library, sanctuary, hero, pet, availableMorals) {
             <label class="block text-xs font-headline font-black uppercase text-slate-300 tracking-wider">
               2. Today's Bedtime Moral & Growth Lesson:
             </label>
-            <span class="text-[10px] sm:text-[11px] font-bold text-[#2ecc71] flex items-center gap-1">
+            <span class="text-[10px] sm:text-[11px] font-bold text-primary-container flex items-center gap-1">
               <span class="material-symbols-outlined text-xs">lock_clock</span>
               <span>30-Day Anti-Repetition Active</span>
             </span>
@@ -379,14 +379,14 @@ function renderSanctuaryHub(library, sanctuary, hero, pet, availableMorals) {
               maxlength="90"
               placeholder="e.g. Liam was brave at swimming today, or lost his cozy blue socks..." 
               value="${sanctuary.customBedtimeWish || ''}" 
-              class="w-full px-4 py-3 min-h-[48px] rounded-2xl bg-[#050f18] border-2 border-surface-container-highest text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#00d2d3] transition-all"
+              class="w-full px-4 py-3 min-h-[48px] rounded-2xl bg-surface-container-lowest border-2 border-surface-container-highest text-sm text-white placeholder-slate-500 focus:outline-hidden focus:border-[#00d2d3] transition-all"
             />
             <span class="absolute right-3.5 top-3.5 text-xs text-slate-500">✨</span>
           </div>
         </div>
 
         <!-- LAUNCH BUTTON -->
-        <button id="start-custom-story-btn" class="w-full py-3.5 sm:py-4 min-h-[52px] rounded-2xl bg-gradient-to-r from-[#00d2d3] via-[#2ecc71] to-[#ffb961] text-[#050f18] font-headline font-black text-sm sm:text-base tracking-wide shadow-[0_6px_0_0_#050f18] active:translate-y-1 active:shadow-none transition-all flex items-center justify-center gap-2 cursor-pointer">
+        <button id="start-custom-story-btn" class="w-full py-3.5 sm:py-4 min-h-[52px] rounded-2xl bg-linear-to-r from-[#00d2d3] via-primary-container to-[#ffb961] text-surface-container-lowest font-headline font-black text-sm sm:text-base tracking-wide shadow-[0_6px_0_0_#050f18] active:translate-y-1 active:shadow-none transition-all flex items-center justify-center gap-2 cursor-pointer">
           <span class="material-symbols-outlined text-2xl">auto_stories</span>
           <span>LAUNCH 4-CHAPTER BEDTIME STORY (~4–5 MINS)</span>
         </button>
@@ -412,7 +412,7 @@ function renderStoryStage(session, pet, hero) {
       <!-- CHAPTER PROGRESS HEADER (Responsive) -->
       <div class="flex items-center justify-between bg-[#09141e] px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-2xl border border-surface-container-highest gap-2">
         <div class="flex items-center gap-2 min-w-0">
-          <span class="text-xl flex-shrink-0">${session.realmEmoji || '📖'}</span>
+          <span class="text-xl shrink-0">${session.realmEmoji || '📖'}</span>
           <div class="min-w-0">
             <h3 class="font-headline font-black text-xs text-white truncate">
               ${session.realmName} • Chapter ${currentActNumber} of 4
@@ -424,21 +424,21 @@ function renderStoryStage(session, pet, hero) {
         </div>
 
         <!-- Progress Dots & Auto-Advance Badge -->
-        <div class="flex items-center gap-2 flex-shrink-0">
+        <div class="flex items-center gap-2 shrink-0">
           <div class="flex items-center gap-1 sm:gap-1.5">
             ${[1, 2, 3, 4].map(step => `
               <div class="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full transition-all ${
                 step === currentActNumber
                   ? 'bg-[#00d2d3] scale-125 shadow-[0_0_8px_#00d2d3]'
                   : step < currentActNumber
-                    ? 'bg-[#2ecc71]'
+                    ? 'bg-primary-container'
                     : 'bg-surface-container-highest'
               }"></div>
             `).join('')}
           </div>
 
           <!-- Sleep Auto-Advance Indicator -->
-          <div id="autoadvance-pill" class="px-2 py-1 rounded-xl bg-[#050f18] border border-surface-container-highest text-[10px] font-black text-[#ffb961] flex items-center gap-1">
+          <div id="autoadvance-pill" class="px-2 py-1 rounded-xl bg-surface-container-lowest border border-surface-container-highest text-[10px] font-black text-[#ffb961] flex items-center gap-1">
             <span class="material-symbols-outlined text-xs animate-spin">timelapse</span>
             <span id="autoadvance-text" class="hidden xs:inline">Auto-Advance (${autoAdvanceSeconds}s)</span>
             <span class="xs:hidden">${autoAdvanceSeconds}s</span>
@@ -447,7 +447,7 @@ function renderStoryStage(session, pet, hero) {
       </div>
 
       <!-- INTERACTIVE ILLUSTRATION STAGE (Responsive min-height & max-height) -->
-      <div id="interactive-illustration-container" class="relative bg-[#050f18] rounded-3xl sm:rounded-4xl border-3 sm:border-4 border-surface-container-highest shadow-[0_12px_0_0_#030910] min-h-[220px] sm:min-h-[340px] md:min-h-[400px] max-h-[48vh] overflow-hidden flex items-center justify-center transition-all cursor-pointer" title="Tap stars or scenery for gentle lullaby chimes!">
+      <div id="interactive-illustration-container" class="relative bg-surface-container-lowest rounded-3xl sm:rounded-4xl border-3 sm:border-4 border-surface-container-highest shadow-[0_12px_0_0_#030910] min-h-[220px] sm:min-h-[340px] md:min-h-[400px] max-h-[48vh] overflow-hidden flex items-center justify-center transition-all cursor-pointer" title="Tap stars or scenery for gentle lullaby chimes!">
         
         <!-- Rendered SVG Art -->
         <div class="w-full h-full flex items-center justify-center select-none pointer-events-auto">
@@ -455,18 +455,18 @@ function renderStoryStage(session, pet, hero) {
         </div>
 
         <!-- Tap-To-Chime Hint Overlay -->
-        <div class="absolute top-2.5 left-2.5 sm:top-3 sm:left-3 bg-[#09141e]/85 backdrop-blur-sm px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-bold text-[#00d2d3] border border-[#00d2d3]/30 pointer-events-none flex items-center gap-1">
+        <div class="absolute top-2.5 left-2.5 sm:top-3 sm:left-3 bg-[#09141e]/85 backdrop-blur-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-bold text-[#00d2d3] border border-[#00d2d3]/30 pointer-events-none flex items-center gap-1">
           <span>✨</span>
           <span>Tap for chimes!</span>
         </div>
 
         <!-- Narration Mode Watermark -->
-        <div class="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 bg-[#09141e]/85 backdrop-blur-sm px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-bold text-[#ffb961] border border-[#ffb961]/30 pointer-events-none flex items-center gap-1">
+        <div class="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 bg-[#09141e]/85 backdrop-blur-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-bold text-[#ffb961] border border-[#ffb961]/30 pointer-events-none flex items-center gap-1">
           <span>${isParentMode ? '📖 Parent Mode' : '🦖 Rex Narrating'}</span>
         </div>
 
         ${isGeneratingScene ? `
-          <div class="absolute inset-0 bg-[#050f18]/85 backdrop-blur-sm flex flex-col items-center justify-center gap-3 z-20">
+          <div class="absolute inset-0 bg-surface-container-lowest/85 backdrop-blur-xs flex flex-col items-center justify-center gap-3 z-20">
             <div class="w-12 h-12 rounded-full border-4 border-[#00d2d3] border-t-transparent animate-spin"></div>
             <p class="font-headline font-black text-sm text-[#00d2d3] animate-pulse">
               Rex is whispering Chapter ${currentActNumber}...
@@ -497,7 +497,7 @@ function renderStoryStage(session, pet, hero) {
 
         ${currentAct.promptQuestion ? `
           <div class="bg-[#0c2233] p-3 rounded-2xl border border-[#00d2d3]/30 text-xs sm:text-sm text-[#ffb961] font-headline font-bold flex items-center gap-2">
-            <span class="text-lg flex-shrink-0">❓</span>
+            <span class="text-lg shrink-0">❓</span>
             <span>${currentAct.promptQuestion}</span>
           </div>
         ` : ''}
@@ -510,7 +510,7 @@ function renderStoryStage(session, pet, hero) {
             <button id="story-mic-btn" class="w-full sm:w-auto px-5 py-3 sm:px-6 sm:py-3.5 min-h-[48px] rounded-2xl font-headline font-black text-xs sm:text-sm tracking-wide shadow-[0_4px_0_0_#050f18] active:translate-y-1 active:shadow-none flex items-center justify-center gap-2 cursor-pointer transition-all ${
               isMicListening
                 ? 'bg-red-500 text-white animate-pulse border-2 border-white'
-                : 'bg-gradient-to-r from-[#00d2d3] to-[#0284c7] text-[#050f18]'
+                : 'bg-linear-to-r from-[#00d2d3] to-[#0284c7] text-surface-container-lowest'
             }">
               <span class="material-symbols-outlined text-xl">${isMicListening ? 'mic' : 'mic_none'}</span>
               <span>${isMicListening ? 'LISTENING... SPEAK!' : 'SPEAK TO REX'}</span>
@@ -519,7 +519,7 @@ function renderStoryStage(session, pet, hero) {
             <!-- Quick Suggestion Chips -->
             <div class="flex items-center gap-2 flex-wrap w-full sm:w-auto justify-start">
               ${(currentAct.suggestionChips || []).map((chip) => `
-                <button data-select-chip="${chip.text || chip}" class="px-3 py-2 min-h-[40px] rounded-xl bg-[#1b3d58] hover:bg-[#255073] text-white border border-surface-container-highest text-xs font-bold active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer">
+                <button data-select-chip="${chip.text || chip}" class="px-3 py-2 min-h-lg rounded-xl bg-[#1b3d58] hover:bg-[#255073] text-white border border-surface-container-highest text-xs font-bold active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer">
                   <span>${chip.text || chip}</span>
                 </button>
               `).join('')}
@@ -533,13 +533,13 @@ function renderStoryStage(session, pet, hero) {
           </div>
         ` : `
           <!-- CHAPTER 4 SLUMBER CONCLUSION & STAMPED STICKER -->
-          <div class="bg-gradient-to-r from-[#081c15] via-[#0b241c] to-[#0f2334] p-4 sm:p-5 rounded-2xl border-2 border-[#2ecc71]/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-left">
+          <div class="bg-linear-to-r from-[#081c15] via-[#0b241c] to-[#0f2334] p-4 sm:p-5 rounded-2xl border-2 border-primary-container/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-left">
             <div class="flex items-center gap-3">
-              <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-[#050f18] border-2 border-[#ffb961] flex items-center justify-center text-2xl sm:text-3xl shadow-[0_0_15px_rgba(255,185,97,0.4)] flex-shrink-0 animate-bounce">
+              <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-surface-container-lowest border-2 border-[#ffb961] flex items-center justify-center text-2xl sm:text-3xl shadow-[0_0_15px_rgba(255,185,97,0.4)] shrink-0 animate-bounce">
                 ${session.constellationStickerEmoji || '✨'}
               </div>
               <div>
-                <span class="text-[10px] font-black uppercase text-[#2ecc71] flex items-center gap-1">
+                <span class="text-[10px] font-black uppercase text-primary-container flex items-center gap-1">
                   <span class="material-symbols-outlined text-xs">verified</span>
                   <span>Bedtime Slumber Complete!</span>
                 </span>
@@ -597,7 +597,7 @@ function renderBookshelfLibrary(library) {
           </div>
         </div>
 
-        <div class="relative bg-[#050f18] rounded-3xl sm:rounded-4xl border-4 border-surface-container-highest shadow-[0_16px_0_0_#030910] min-h-[300px] overflow-hidden flex items-center justify-center">
+        <div class="relative bg-surface-container-lowest rounded-3xl sm:rounded-4xl border-4 border-surface-container-highest shadow-[0_16px_0_0_#030910] min-h-[300px] overflow-hidden flex items-center justify-center">
           ${act.svgArt || ''}
         </div>
 
@@ -652,7 +652,7 @@ function renderBookshelfLibrary(library) {
             </button>
           </div>
 
-          <button id="bookshelf-new-adventure-btn" class="px-3.5 py-1.5 rounded-xl bg-[#2ecc71] text-black font-headline font-black text-xs flex items-center gap-1.5 active:scale-95 shadow">
+          <button id="bookshelf-new-adventure-btn" class="px-3.5 py-1.5 rounded-xl bg-primary-container text-black font-headline font-black text-xs flex items-center gap-1.5 active:scale-95 shadow-sm">
             <span class="material-symbols-outlined text-sm">add</span>
             <span>New Story</span>
           </button>
@@ -666,7 +666,7 @@ function renderBookshelfLibrary(library) {
           <p class="text-xs text-slate-400 max-w-sm">
             ${activeBookshelfFilter === 'favorites' ? 'You have not favorited any bedtime stories yet!' : 'Complete your first bedtime adventure to store your illustrated storybook here!'}
           </p>
-          <button id="empty-bookshelf-start-btn" class="mt-2 px-5 py-2.5 rounded-xl bg-[#00d2d3] text-black font-headline font-black text-xs shadow active:scale-95">
+          <button id="empty-bookshelf-start-btn" class="mt-2 px-5 py-2.5 rounded-xl bg-[#00d2d3] text-black font-headline font-black text-xs shadow-sm active:scale-95">
             Start a Bedtime Story
           </button>
         </div>
@@ -694,7 +694,7 @@ function renderBookshelfLibrary(library) {
 
                   <!-- Constellation Badge Ribbon -->
                   ${sticker ? `
-                    <div class="mt-2 flex items-center gap-1.5 px-2 py-1 rounded-lg bg-[#050f18] border border-[#ffb961]/30 w-fit">
+                    <div class="mt-2 flex items-center gap-1.5 px-2 py-1 rounded-lg bg-surface-container-lowest border border-[#ffb961]/30 w-fit">
                       <span class="text-sm">${sticker.emoji}</span>
                       <span class="text-[10px] font-bold text-[#ffb961]">${sticker.name}</span>
                     </div>

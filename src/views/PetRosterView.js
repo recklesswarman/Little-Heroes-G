@@ -42,7 +42,7 @@ export function renderPetRosterView() {
       <!-- Habitat Overview Banner -->
       <div class="bg-surface-container rounded-3xl p-4 sm:p-5 border-2 border-primary/40 card-shadow flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div class="flex items-center gap-3">
-          <div class="w-12 h-12 rounded-2xl bg-secondary/20 text-secondary border border-secondary/40 flex items-center justify-center text-2xl shadow-sm flex-shrink-0">
+          <div class="w-12 h-12 rounded-2xl bg-secondary/20 text-secondary border border-secondary/40 flex items-center justify-center text-2xl shadow-xs shrink-0">
             <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">holiday_village</span>
           </div>
           <div>
@@ -67,7 +67,7 @@ export function renderPetRosterView() {
           .map((tab) => {
             const isActive = activeArchetypeFilter === tab.id;
             return `
-            <button data-archetype="${tab.id}" class="archetype-filter-btn flex-shrink-0 px-4 py-2 rounded-2xl font-headline text-xs font-black whitespace-nowrap transition-all min-h-[44px] inline-flex items-center justify-center gap-1.5 ${
+            <button data-archetype="${tab.id}" class="archetype-filter-btn shrink-0 px-4 py-2 rounded-2xl font-headline text-xs font-black whitespace-nowrap transition-all min-h-[44px] inline-flex items-center justify-center gap-1.5 ${
               isActive
                 ? 'bg-primary text-slate-950 font-black shadow-md'
                 : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border border-surface-container-highest'
@@ -106,7 +106,7 @@ export function renderPetRosterView() {
                 <span class="text-cyan-300 bg-cyan-950/60 px-2 py-0.5 rounded-full border border-cyan-400/30">
                   Lv.${level} • ${levelData.title}
                 </span>
-                ${isEquipped ? `<span class="text-slate-950 bg-primary px-2.5 py-0.5 rounded-full font-black shadow-sm">ACTIVE</span>` : !isOwned ? `<span class="text-amber-300 bg-amber-950/60 px-2 py-0.5 rounded-full border border-amber-400/30 flex items-center gap-0.5"><span class="material-symbols-outlined text-[11px]">lock</span> Locked</span>` : `<span class="text-secondary bg-secondary/20 px-2 py-0.5 rounded-full border border-secondary/40">${archetype.name}</span>`}
+                ${isEquipped ? `<span class="text-slate-950 bg-primary px-2.5 py-0.5 rounded-full font-black shadow-xs">ACTIVE</span>` : !isOwned ? `<span class="text-amber-300 bg-amber-950/60 px-2 py-0.5 rounded-full border border-amber-400/30 flex items-center gap-0.5"><span class="material-symbols-outlined text-[11px]">lock</span> Locked</span>` : `<span class="text-secondary bg-secondary/20 px-2 py-0.5 rounded-full border border-secondary/40">${archetype.name}</span>`}
               </div>
 
               <!-- Avatar 3D Toy Figurine Stage -->
@@ -141,12 +141,12 @@ export function renderPetRosterView() {
                 `
                     : isOwned
                     ? `
-                  <button data-equip-pet-id="${pet.id}" class="equip-roster-pet-btn w-full bg-primary text-slate-950 font-headline text-[11px] font-black py-2.5 rounded-xl chunky-btn-sm border-b-2 border-[#1b7a43] shadow-sm hover:brightness-110 active:scale-95 min-h-[44px] flex items-center justify-center gap-1">
+                  <button data-equip-pet-id="${pet.id}" class="equip-roster-pet-btn w-full bg-primary text-slate-950 font-headline text-[11px] font-black py-2.5 rounded-xl chunky-btn-sm border-b-2 border-[#1b7a43] shadow-xs hover:brightness-110 active:scale-95 min-h-[44px] flex items-center justify-center gap-1">
                     <span class="material-symbols-outlined text-sm">pets</span> Equip Companion
                   </button>
                 `
                     : `
-                  <button data-buy-pet-id="${pet.id}" class="buy-roster-pet-btn w-full bg-amber-500 text-slate-950 font-headline text-[11px] font-black py-2.5 rounded-xl chunky-btn-sm border-b-2 border-amber-700 shadow-sm hover:brightness-110 active:scale-95 min-h-[44px] flex items-center justify-center gap-1">
+                  <button data-buy-pet-id="${pet.id}" class="buy-roster-pet-btn w-full bg-amber-500 text-slate-950 font-headline text-[11px] font-black py-2.5 rounded-xl chunky-btn-sm border-b-2 border-amber-700 shadow-xs hover:brightness-110 active:scale-95 min-h-[44px] flex items-center justify-center gap-1">
                     <span class="material-symbols-outlined text-sm">lock_open</span> Unlock: ${PET_PRICE_COINS} 🪙
                   </button>
                 `

@@ -48,7 +48,7 @@ export function renderQuestMapView() {
               <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">record_voice_over</span>
               <span>Toddler Easy Voice Guide: Listen and follow along!</span>
             </div>
-            <button id="map-voice-replay-btn" class="bg-secondary text-on-secondary font-headline text-[11px] font-black px-3.5 py-1.5 rounded-xl chunky-btn-sm flex items-center gap-1 hover:brightness-110 active:scale-95 shadow">
+            <button id="map-voice-replay-btn" class="bg-secondary text-on-secondary font-headline text-[11px] font-black px-3.5 py-1.5 rounded-xl chunky-btn-sm flex items-center gap-1 hover:brightness-110 active:scale-95 shadow-sm">
               <span class="material-symbols-outlined text-sm">volume_up</span> Hear Aloud
             </button>
           </div>
@@ -57,14 +57,14 @@ export function renderQuestMapView() {
         }
 
         <!-- INTEGRATED REX MASCOT ARENA HUD -->
-        <div id="rex-arena-hud" class="bg-gradient-to-r from-emerald-500/15 via-surface-container to-emerald-500/10 border-3 border-emerald-500/40 rounded-3xl p-4 flex flex-col gap-3 shadow-md animate-fade-in relative overflow-hidden">
+        <div id="rex-arena-hud" class="bg-linear-to-r from-emerald-500/15 via-surface-container to-emerald-500/10 border-3 border-emerald-500/40 rounded-3xl p-4 flex flex-col gap-3 shadow-md animate-fade-in relative overflow-hidden">
           
           <div class="flex items-center justify-between gap-3">
             <!-- Rex Avatar & Real-time Dino Face -->
             <div class="flex items-center gap-3">
               <div id="arena-rex-face" class="w-14 h-14 rounded-2xl bg-surface-container-high border-2 border-primary flex items-center justify-center p-1 shadow-md relative transition-transform ${geminiLiveService.isSpeaking ? 'scale-105 ring-4 ring-emerald-400' : geminiLiveService.isListening ? 'ring-2 ring-emerald-300' : ''}">
                 ${renderRexAvatarSvg({ isListening: geminiLiveService.isListening, isSpeaking: geminiLiveService.isSpeaking, isThinking: false })}
-                <div class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px] shadow border border-surface ${geminiLiveService.isConnected ? 'bg-emerald-500 text-white animate-pulse' : 'bg-surface-container-highest text-on-surface-variant'}">
+                <div class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px] shadow-sm border border-surface ${geminiLiveService.isConnected ? 'bg-emerald-500 text-white animate-pulse' : 'bg-surface-container-highest text-on-surface-variant'}">
                   <span class="material-symbols-outlined text-xs">${geminiLiveService.isConnected ? 'mic' : 'mic_off'}</span>
                 </div>
               </div>
@@ -94,22 +94,22 @@ export function renderQuestMapView() {
 
           <!-- Dynamic Rex Speech Bubble (Pops up when Rex speaks or gives hints) -->
           <div id="rex-arena-speech-bubble" class="bg-surface-container-lowest border-2 border-primary/40 rounded-2xl p-2.5 text-xs font-bold text-inverse-surface flex items-start gap-2 shadow-inner transition-all duration-300 ${store.getState().liveRex?.lastRexTranscript ? '' : 'hidden'}">
-            <span class="text-base flex-shrink-0">💬</span>
+            <span class="text-base shrink-0">💬</span>
             <span id="rex-arena-speech-text" class="flex-1">${store.getState().liveRex?.lastRexTranscript || 'Rex is ready to guide you!'}</span>
           </div>
 
           <!-- Action Chips: Hint, Dino Stomp (50/50), Read Aloud, Mic Toggle -->
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 border-t border-surface-container-highest">
-            <button id="map-rex-hint-btn" class="bg-surface-container-high hover:bg-surface-bright text-secondary font-headline text-xs font-black py-2 px-2.5 min-h-[44px] rounded-xl border-2 border-secondary/30 flex items-center justify-center gap-1.5 chunky-btn-sm active:scale-95 shadow-sm" title="Ask Rex for a toddler hint">
+            <button id="map-rex-hint-btn" class="bg-surface-container-high hover:bg-surface-bright text-secondary font-headline text-xs font-black py-2 px-2.5 min-h-[44px] rounded-xl border-2 border-secondary/30 flex items-center justify-center gap-1.5 chunky-btn-sm active:scale-95 shadow-xs" title="Ask Rex for a toddler hint">
               <span class="text-sm">💡</span> <span>Rex Hint</span>
             </button>
-            <button id="map-rex-stomp-btn" class="bg-surface-container-high hover:bg-surface-bright text-emerald-400 font-headline text-xs font-black py-2 px-2.5 min-h-[44px] rounded-xl border-2 border-emerald-500/30 flex items-center justify-center gap-1.5 chunky-btn-sm active:scale-95 shadow-sm" title="Rex stomps out one wrong answer">
+            <button id="map-rex-stomp-btn" class="bg-surface-container-high hover:bg-surface-bright text-emerald-400 font-headline text-xs font-black py-2 px-2.5 min-h-[44px] rounded-xl border-2 border-emerald-500/30 flex items-center justify-center gap-1.5 chunky-btn-sm active:scale-95 shadow-xs" title="Rex stomps out one wrong answer">
               <span class="text-sm">🦶</span> <span>Dino Stomp</span>
             </button>
-            <button id="map-speak-question-btn" class="bg-surface-container-high hover:bg-surface-bright text-sky-400 font-headline text-xs font-black py-2 px-2.5 min-h-[44px] rounded-xl border-2 border-sky-500/30 flex items-center justify-center gap-1.5 chunky-btn-sm active:scale-95 shadow-sm" title="Read the challenge aloud">
+            <button id="map-speak-question-btn" class="bg-surface-container-high hover:bg-surface-bright text-sky-400 font-headline text-xs font-black py-2 px-2.5 min-h-[44px] rounded-xl border-2 border-sky-500/30 flex items-center justify-center gap-1.5 chunky-btn-sm active:scale-95 shadow-xs" title="Read the challenge aloud">
               <span class="material-symbols-outlined text-sm">volume_up</span> <span>Read Aloud</span>
             </button>
-            <button id="map-rex-talk-btn" class="font-headline text-xs font-black py-2 px-2.5 min-h-[44px] rounded-xl border-2 flex items-center justify-center gap-1.5 chunky-btn-sm active:scale-95 shadow-sm ${geminiLiveService.isConnected ? 'bg-emerald-500 text-white border-emerald-600' : 'bg-primary text-on-primary border-primary-container'}" title="Toggle Rex Live Voice">
+            <button id="map-rex-talk-btn" class="font-headline text-xs font-black py-2 px-2.5 min-h-[44px] rounded-xl border-2 flex items-center justify-center gap-1.5 chunky-btn-sm active:scale-95 shadow-xs ${geminiLiveService.isConnected ? 'bg-emerald-500 text-white border-emerald-600' : 'bg-primary text-on-primary border-primary-container'}" title="Toggle Rex Live Voice">
               <span class="material-symbols-outlined text-sm">${geminiLiveService.isConnected ? 'mic' : 'mic_none'}</span>
               <span>${geminiLiveService.isConnected ? 'Live Active' : 'Wake Rex'}</span>
             </button>
@@ -438,11 +438,11 @@ export function renderQuestMapView() {
                 <button data-map-game-id="${stop.gameId}" class="map-game-stop-btn group bg-surface-container/95 hover:bg-surface-container-high rounded-3xl p-4 sm:p-5 border-3 card-shadow flex items-center gap-4 active:scale-95 transition-all text-left max-w-sm sm:max-w-md w-full" style="border-color: ${stop.color}80; box-shadow: 0 8px 0 0 ${stop.color}40;">
                   
                   <!-- Stop Number Badge & Game Icon -->
-                  <div class="relative flex-shrink-0">
+                  <div class="relative shrink-0">
                     <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-3xl shadow-inner border-2 border-surface-bright transition-transform group-hover:scale-105" style="background-color: ${stop.color}25; color: ${stop.color};">
                       <span class="material-symbols-outlined text-3xl sm:text-4xl" style="font-variation-settings: 'FILL' 1;">${stop.icon}</span>
                     </div>
-                    <span class="absolute -top-2 -left-2 bg-secondary text-on-secondary font-headline text-[10px] font-black px-2 py-0.5 rounded-full border border-secondary-container shadow">
+                    <span class="absolute -top-2 -left-2 bg-secondary text-on-secondary font-headline text-[10px] font-black px-2 py-0.5 rounded-full border border-secondary-container shadow-sm">
                       Stop ${stop.stopNumber}
                     </span>
                   </div>
@@ -475,7 +475,7 @@ export function renderQuestMapView() {
                     </div>
                   </div>
 
-                  <div class="w-10 h-10 rounded-xl bg-primary/20 text-primary flex items-center justify-center flex-shrink-0 group-hover:bg-primary group-hover:text-on-primary transition-colors border border-primary/40">
+                  <div class="w-10 h-10 rounded-xl bg-primary/20 text-primary flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-on-primary transition-colors border border-primary/40">
                     <span class="material-symbols-outlined text-xl">play_arrow</span>
                   </div>
 
@@ -491,7 +491,7 @@ export function renderQuestMapView() {
         <!-- Map Bottom Starting Camp -->
         <div class="relative z-10 bg-surface-container/90 rounded-3xl p-4 border-2 border-surface-container-highest flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-primary text-on-primary flex items-center justify-center text-xl shadow">
+            <div class="w-10 h-10 rounded-xl bg-primary text-on-primary flex items-center justify-center text-xl shadow-sm">
               <span class="material-symbols-outlined">flag</span>
             </div>
             <div class="flex flex-col">
@@ -672,7 +672,7 @@ export function attachQuestMapListeners() {
         btn.classList.add('opacity-40', 'line-through', 'pointer-events-none', 'relative');
         const stamp = document.createElement('div');
         stamp.className = 'absolute inset-0 bg-red-500/15 rounded-2xl flex items-center justify-center gap-2 border-2 border-red-500/50 animate-bounce pointer-events-none z-10';
-        stamp.innerHTML = `<span class="text-3xl">🦶</span><span class="font-headline font-black text-xs uppercase text-red-400 bg-surface-container/90 px-2.5 py-1 rounded-lg shadow">STOMPED!</span>`;
+        stamp.innerHTML = `<span class="text-3xl">🦶</span><span class="font-headline font-black text-xs uppercase text-red-400 bg-surface-container/90 px-2.5 py-1 rounded-lg shadow-sm">STOMPED!</span>`;
         btn.appendChild(stamp);
 
         const bubble = document.getElementById('rex-arena-speech-bubble');

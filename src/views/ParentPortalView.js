@@ -159,7 +159,7 @@ export function renderParentPortalView() {
 
         <!-- Lock & Return to Kids Button -->
         <div class="flex items-center gap-2">
-          <button id="admin-lock-exit-btn" class="bg-error/20 hover:bg-error/30 text-error border-2 border-error/40 font-headline text-xs font-black px-4 py-2.5 rounded-xl flex items-center gap-1.5 chunky-btn-sm active:scale-95 shadow-sm min-h-[44px]" title="Lock Parent Dashboard and return to Kid Mode">
+          <button id="admin-lock-exit-btn" class="bg-error/20 hover:bg-error/30 text-error border-2 border-error/40 font-headline text-xs font-black px-4 py-2.5 rounded-xl flex items-center gap-1.5 chunky-btn-sm active:scale-95 shadow-xs min-h-[44px]" title="Lock Parent Dashboard and return to Kid Mode">
             <span class="material-symbols-outlined text-base">lock</span>
             <span>Lock & Exit to Kids</span>
           </button>
@@ -191,9 +191,9 @@ export function renderParentPortalView() {
           .map((tab) => {
             const isTabActive = activeAdminTab === tab.id;
             return `
-            <button data-admin-tab="${tab.id}" class="admin-tab-btn flex-shrink-0 px-4 py-2.5 rounded-2xl font-headline text-xs font-black flex items-center gap-2 whitespace-nowrap transition-all min-h-[44px] ${
+            <button data-admin-tab="${tab.id}" class="admin-tab-btn shrink-0 px-4 py-2.5 rounded-2xl font-headline text-xs font-black flex items-center gap-2 whitespace-nowrap transition-all min-h-[44px] ${
               isTabActive
-                ? 'bg-secondary text-on-secondary chunky-btn-sm border-secondary-container shadow-sm'
+                ? 'bg-secondary text-on-secondary chunky-btn-sm border-secondary-container shadow-xs'
                 : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border border-surface-container-highest'
             }">
               <span class="material-symbols-outlined text-base">${tab.icon}</span>
@@ -224,7 +224,7 @@ export function renderParentPortalView() {
               ${
                 pending.length > 0
                   ? `
-                <button id="admin-approve-all-btn" class="flex-1 sm:flex-none bg-primary text-on-primary font-headline text-xs font-black px-4 py-2.5 rounded-xl border border-primary-container chunky-btn-sm active:scale-95 shadow-sm flex items-center gap-1.5 hover:brightness-110 min-h-[44px]">
+                <button id="admin-approve-all-btn" class="flex-1 sm:flex-none bg-primary text-on-primary font-headline text-xs font-black px-4 py-2.5 rounded-xl border border-primary-container chunky-btn-sm active:scale-95 shadow-xs flex items-center gap-1.5 hover:brightness-110 min-h-[44px]">
                   <span class="material-symbols-outlined text-base">done_all</span>
                   <span>Approve All (${pending.length})</span>
                 </button>
@@ -232,7 +232,7 @@ export function renderParentPortalView() {
                   : ''
               }
 
-              <button id="admin-clear-all-pending-btn" class="flex-1 sm:flex-none bg-surface-container-high hover:bg-error/20 text-error font-headline text-xs font-black px-4 py-2.5 rounded-xl border border-error/30 chunky-btn-sm active:scale-95 shadow-sm flex items-center gap-1.5 min-h-[44px]" title="Clear all pending parent approval notifications off buttons">
+              <button id="admin-clear-all-pending-btn" class="flex-1 sm:flex-none bg-surface-container-high hover:bg-error/20 text-error font-headline text-xs font-black px-4 py-2.5 rounded-xl border border-error/30 chunky-btn-sm active:scale-95 shadow-xs flex items-center gap-1.5 min-h-[44px]" title="Clear all pending parent approval notifications off buttons">
                 <span class="material-symbols-outlined text-base">cleaning_services</span>
                 <span>Clear All Pending Button Notifications</span>
               </button>
@@ -247,7 +247,7 @@ export function renderParentPortalView() {
               <h3 class="font-headline text-lg font-black text-inverse-surface">Inbox is Clear!</h3>
               <p class="text-xs text-on-surface-variant">All completed chores have been verified and rewards signed off.</p>
               <div class="pt-2">
-                <button id="admin-clear-all-pending-empty-btn" class="bg-surface-container-high hover:bg-error/20 text-error font-headline text-xs font-black px-4 py-2.5 rounded-xl border border-error/30 chunky-btn-sm active:scale-95 flex items-center gap-1.5 shadow-sm min-h-[44px]">
+                <button id="admin-clear-all-pending-empty-btn" class="bg-surface-container-high hover:bg-error/20 text-error font-headline text-xs font-black px-4 py-2.5 rounded-xl border border-error/30 chunky-btn-sm active:scale-95 flex items-center gap-1.5 shadow-xs min-h-[44px]">
                   <span class="material-symbols-outlined text-base">cleaning_services</span>
                   <span>Clear All Pending Button Notifications</span>
                 </button>
@@ -267,7 +267,7 @@ export function renderParentPortalView() {
                   return `
                   <div class="bg-surface-container rounded-3xl p-5 border-2 ${isTaskPointApproval ? 'border-tertiary-container/80' : 'border-secondary-container/80'} card-shadow flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div class="flex items-start gap-3.5 flex-1">
-                      <div class="w-14 h-14 rounded-2xl ${isTaskPointApproval ? 'bg-tertiary-container/20 text-tertiary border-2 border-tertiary-container' : 'bg-secondary-container/20 text-secondary border-2 border-secondary-container'} flex items-center justify-center text-2xl flex-shrink-0 mt-0.5">
+                      <div class="w-14 h-14 rounded-2xl ${isTaskPointApproval ? 'bg-tertiary-container/20 text-tertiary border-2 border-tertiary-container' : 'bg-secondary-container/20 text-secondary border-2 border-secondary-container'} flex items-center justify-center text-2xl shrink-0 mt-0.5">
                         <span class="material-symbols-outlined">${isTaskPointApproval ? 'stars' : 'card_giftcard'}</span>
                       </div>
                       <div class="flex flex-col flex-1">
@@ -298,10 +298,10 @@ export function renderParentPortalView() {
                           req.photoUrl
                             ? `
                         <div class="mt-3 flex flex-col sm:flex-row items-start sm:items-center gap-3 bg-surface-container-high/60 p-3 rounded-2xl border border-secondary-container/30">
-                          <div class="relative w-24 h-18 sm:w-28 sm:h-20 rounded-xl overflow-hidden border-2 border-primary/50 cursor-pointer hover:scale-105 active:scale-95 transition-transform flex-shrink-0 shadow-sm admin-proof-thumb" data-full-img="${req.photoUrl}" title="Click to view full photo proof">
+                          <div class="relative w-24 h-18 sm:w-28 sm:h-20 rounded-xl overflow-hidden border-2 border-primary/50 cursor-pointer hover:scale-105 active:scale-95 transition-transform shrink-0 shadow-xs admin-proof-thumb" data-full-img="${req.photoUrl}" title="Click to view full photo proof">
                             <img src="${req.photoUrl}" alt="Proof Thumbnail" class="w-full h-full object-cover" />
                             <div class="absolute inset-0 bg-black/25 hover:bg-transparent flex items-center justify-center transition-colors">
-                              <span class="material-symbols-outlined text-white text-base drop-shadow">zoom_in</span>
+                              <span class="material-symbols-outlined text-white text-base drop-shadow-sm">zoom_in</span>
                             </div>
                           </div>
 
@@ -309,11 +309,11 @@ export function renderParentPortalView() {
                             <div class="flex items-center gap-2 flex-wrap">
                               ${
                                 req.aiConfidence
-                                  ? `<span class="inline-flex items-center gap-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-black px-2.5 py-0.5 rounded-full shadow-sm">
+                                  ? `<span class="inline-flex items-center gap-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-black px-2.5 py-0.5 rounded-full shadow-xs">
                                       <span class="material-symbols-outlined text-xs">auto_awesome</span>
                                       ✨ AI Check: ${req.aiConfidence}% Confidence
                                     </span>`
-                                  : `<span class="inline-flex items-center gap-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-black px-2.5 py-0.5 rounded-full shadow-sm">
+                                  : `<span class="inline-flex items-center gap-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-black px-2.5 py-0.5 rounded-full shadow-xs">
                                       <span class="material-symbols-outlined text-xs">visibility</span>
                                       👀 Manual Review Needed
                                     </span>`
@@ -339,7 +339,7 @@ export function renderParentPortalView() {
                         ✕ Reject (0 Points)
                       </button>
                       
-                      <button data-approve-id="${req.id}" class="admin-approve-btn flex-1 sm:flex-none ${isTaskPointApproval ? 'bg-tertiary text-on-tertiary border-tertiary-container' : 'bg-primary text-on-primary border-primary-container'} font-headline text-xs font-black px-5 py-3 rounded-xl chunky-btn shadow-sm hover:brightness-110 active:scale-95 min-h-[44px]">
+                      <button data-approve-id="${req.id}" class="admin-approve-btn flex-1 sm:flex-none ${isTaskPointApproval ? 'bg-tertiary text-on-tertiary border-tertiary-container' : 'bg-primary text-on-primary border-primary-container'} font-headline text-xs font-black px-5 py-3 rounded-xl chunky-btn shadow-xs hover:brightness-110 active:scale-95 min-h-[44px]">
                         ${isTaskPointApproval ? `✓ Issue +${pointsAmount} ⭐ (+${earnedMinutes}m ⏱️)` : `✓ Fulfill & Deduct (-${req.costPoints} ⭐)`}
                       </button>
                     </div>
@@ -364,7 +364,7 @@ export function renderParentPortalView() {
           <!-- Header Banner -->
           <div class="bg-surface-container rounded-3xl p-5 sm:p-6 border-2 border-sky-500/40 card-shadow flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div class="flex items-center gap-3.5">
-              <div class="w-12 h-12 rounded-2xl bg-sky-500/20 text-sky-400 border border-sky-500/30 flex items-center justify-center text-2xl shadow flex-shrink-0">
+              <div class="w-12 h-12 rounded-2xl bg-sky-500/20 text-sky-400 border border-sky-500/30 flex items-center justify-center text-2xl shadow-sm shrink-0">
                 <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">schedule</span>
               </div>
               <div>
@@ -382,9 +382,9 @@ export function renderParentPortalView() {
 
           <!-- Multi-Kid Selector Pills -->
           <div id="screentime-kid-pill-bar" class="flex items-center gap-2 overflow-x-auto pb-1 hide-scrollbar">
-            <button data-screentime-kid="all" class="screentime-kid-pill flex-shrink-0 px-4 py-2.5 rounded-2xl text-xs font-headline font-black transition-all ${
+            <button data-screentime-kid="all" class="screentime-kid-pill shrink-0 px-4 py-2.5 rounded-2xl text-xs font-headline font-black transition-all ${
               selectedScreenTimeKidId === 'all'
-                ? 'bg-sky-500 text-white chunky-btn-sm shadow-sm'
+                ? 'bg-sky-500 text-white chunky-btn-sm shadow-xs'
                 : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border border-surface-container-highest'
             }">
               👨‍👩‍👧‍👦 All Kids (${heroes.length})
@@ -392,9 +392,9 @@ export function renderParentPortalView() {
             ${heroes
               .map(
                 (h) => `
-              <button data-screentime-kid="${h.id}" class="screentime-kid-pill flex-shrink-0 px-4 py-2.5 rounded-2xl text-xs font-headline font-black transition-all flex items-center gap-2 ${
+              <button data-screentime-kid="${h.id}" class="screentime-kid-pill shrink-0 px-4 py-2.5 rounded-2xl text-xs font-headline font-black transition-all flex items-center gap-2 ${
                 selectedScreenTimeKidId === h.id
-                  ? 'bg-sky-500 text-white chunky-btn-sm shadow-sm'
+                  ? 'bg-sky-500 text-white chunky-btn-sm shadow-xs'
                   : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border border-surface-container-highest'
               }">
                 <img src="${h.avatar}" class="w-5 h-5 rounded-full object-cover border border-white/40" />
@@ -485,15 +485,15 @@ export function renderParentPortalView() {
 
                   <!-- Quick 1-Tap Parental Actions -->
                   <div class="grid grid-cols-3 gap-2 pt-1 border-t border-surface-container-highest">
-                    <button data-screentime-bonus="${h.id}" class="admin-screentime-bonus-btn bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 font-headline text-xs font-black py-2 rounded-xl border border-emerald-500/40 active:scale-95 flex items-center justify-center gap-1 shadow-sm" title="Add 15 bonus minutes">
+                    <button data-screentime-bonus="${h.id}" class="admin-screentime-bonus-btn bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 font-headline text-xs font-black py-2 rounded-xl border border-emerald-500/40 active:scale-95 flex items-center justify-center gap-1 shadow-xs" title="Add 15 bonus minutes">
                       <span class="material-symbols-outlined text-sm">add_circle</span> +15m Bonus
                     </button>
-                    <button data-screentime-deduct="${h.id}" class="admin-screentime-deduct-btn bg-error/15 hover:bg-error/25 text-error font-headline text-xs font-black py-2 rounded-xl border border-error/30 active:scale-95 flex items-center justify-center gap-1 shadow-sm" title="Deduct 15 minutes">
+                    <button data-screentime-deduct="${h.id}" class="admin-screentime-deduct-btn bg-error/15 hover:bg-error/25 text-error font-headline text-xs font-black py-2 rounded-xl border border-error/30 active:scale-95 flex items-center justify-center gap-1 shadow-xs" title="Deduct 15 minutes">
                       <span class="material-symbols-outlined text-sm">remove_circle</span> -15m
                     </button>
                     <button data-screentime-toggle="${h.id}" class="admin-screentime-toggle-btn ${
                       isPaused ? 'bg-sky-500/20 text-sky-300 border-sky-500/40' : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                    } font-headline text-xs font-black py-2 rounded-xl border active:scale-95 flex items-center justify-center gap-1 shadow-sm" title="${isPaused ? 'Resume screen time' : 'Pause screen time'}">
+                    } font-headline text-xs font-black py-2 rounded-xl border active:scale-95 flex items-center justify-center gap-1 shadow-xs" title="${isPaused ? 'Resume screen time' : 'Pause screen time'}">
                       <span class="material-symbols-outlined text-sm">${isPaused ? 'play_arrow' : 'lock'}</span> ${isPaused ? 'Resume' : 'Pause'}
                     </button>
                   </div>
@@ -520,7 +520,7 @@ export function renderParentPortalView() {
                   <span class="material-symbols-outlined text-sm text-tertiary">star</span>
                   Conversion Rate (Minutes per Point)
                 </label>
-                <select id="screentime-rate-select" class="bg-surface-container-lowest border-2 border-surface-container-highest rounded-xl px-3 py-2.5 text-xs font-bold text-inverse-surface focus:border-primary outline-none">
+                <select id="screentime-rate-select" class="bg-surface-container-lowest border-2 border-surface-container-highest rounded-xl px-3 py-2.5 text-xs font-bold text-inverse-surface focus:border-primary outline-hidden">
                   <option value="1">1 Point ⭐ = 1 Minute</option>
                   <option value="2" selected>1 Point ⭐ = 2 Minutes (Recommended)</option>
                   <option value="3">1 Point ⭐ = 3 Minutes</option>
@@ -534,7 +534,7 @@ export function renderParentPortalView() {
                   <span class="material-symbols-outlined text-sm text-sky-400">timer</span>
                   Daily Maximum Cap
                 </label>
-                <select id="screentime-cap-select" class="bg-surface-container-lowest border-2 border-surface-container-highest rounded-xl px-3 py-2.5 text-xs font-bold text-inverse-surface focus:border-primary outline-none">
+                <select id="screentime-cap-select" class="bg-surface-container-lowest border-2 border-surface-container-highest rounded-xl px-3 py-2.5 text-xs font-bold text-inverse-surface focus:border-primary outline-hidden">
                   <option value="30">30 Minutes / Day</option>
                   <option value="45">45 Minutes / Day</option>
                   <option value="60" selected>60 Minutes / Day (Recommended)</option>
@@ -549,7 +549,7 @@ export function renderParentPortalView() {
                   <span class="material-symbols-outlined text-sm text-amber-400">bedtime</span>
                   Bedtime Curfew Lock
                 </label>
-                <input type="time" id="screentime-curfew-input" value="20:00" class="bg-surface-container-lowest border-2 border-surface-container-highest rounded-xl px-3 py-2 text-xs font-bold text-inverse-surface focus:border-primary outline-none" />
+                <input type="time" id="screentime-curfew-input" value="20:00" class="bg-surface-container-lowest border-2 border-surface-container-highest rounded-xl px-3 py-2 text-xs font-bold text-inverse-surface focus:border-primary outline-hidden" />
               </div>
             </div>
 
@@ -559,11 +559,11 @@ export function renderParentPortalView() {
                 <span class="material-symbols-outlined text-sm text-primary">chat_bubble</span>
                 Rex Gentle Curfew & Pause Message (Shown to Child)
               </label>
-              <input type="text" id="screentime-lockout-msg" value="Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙" class="bg-surface-container-lowest border-2 border-surface-container-highest rounded-xl px-3.5 py-2.5 text-xs font-bold text-inverse-surface focus:border-primary outline-none" />
+              <input type="text" id="screentime-lockout-msg" value="Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙" class="bg-surface-container-lowest border-2 border-surface-container-highest rounded-xl px-3.5 py-2.5 text-xs font-bold text-inverse-surface focus:border-primary outline-hidden" />
             </div>
 
             <div class="flex justify-end pt-2">
-              <button id="screentime-save-settings-btn" class="bg-secondary text-on-secondary font-headline text-xs font-black px-6 py-2.5 rounded-xl chunky-btn-sm active:scale-95 shadow-sm flex items-center gap-1.5 hover:brightness-110">
+              <button id="screentime-save-settings-btn" class="bg-secondary text-on-secondary font-headline text-xs font-black px-6 py-2.5 rounded-xl chunky-btn-sm active:scale-95 shadow-xs flex items-center gap-1.5 hover:brightness-110">
                 <span class="material-symbols-outlined text-sm">save</span>
                 <span>Save Screen Time Policy</span>
               </button>
@@ -584,7 +584,7 @@ export function renderParentPortalView() {
           <!-- Header Banner -->
           <div class="bg-surface-container rounded-3xl p-5 sm:p-6 border-2 border-primary/40 card-shadow flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div class="flex items-center gap-3.5">
-              <div class="w-12 h-12 rounded-2xl bg-primary/20 text-primary border border-primary/30 flex items-center justify-center text-2xl shadow flex-shrink-0">
+              <div class="w-12 h-12 rounded-2xl bg-primary/20 text-primary border border-primary/30 flex items-center justify-center text-2xl shadow-sm shrink-0">
                 <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">psychology</span>
               </div>
               <div>
@@ -597,7 +597,7 @@ export function renderParentPortalView() {
             </div>
 
             <div class="flex items-center gap-2 w-full sm:w-auto">
-              <button id="report-regenerate-btn" class="flex-1 sm:flex-none bg-primary text-on-primary font-headline text-xs font-black px-4 py-2.5 rounded-xl chunky-btn-sm border border-primary-container shadow-sm flex items-center justify-center gap-1.5 hover:brightness-110 active:scale-95">
+              <button id="report-regenerate-btn" class="flex-1 sm:flex-none bg-primary text-on-primary font-headline text-xs font-black px-4 py-2.5 rounded-xl chunky-btn-sm border border-primary-container shadow-xs flex items-center justify-center gap-1.5 hover:brightness-110 active:scale-95">
                 <span class="material-symbols-outlined text-sm ${isLoadingReport ? 'animate-spin' : ''}">refresh</span>
                 <span>${isLoadingReport ? 'Analyzing...' : 'Regenerate Analysis'}</span>
               </button>
@@ -612,9 +612,9 @@ export function renderParentPortalView() {
           <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <!-- Multi-Kid Pills -->
             <div id="report-kid-pill-bar" class="flex items-center gap-2 overflow-x-auto pb-1 hide-scrollbar w-full sm:w-auto">
-              <button data-report-kid="all" class="report-kid-pill flex-shrink-0 px-4 py-2 rounded-2xl text-xs font-headline font-black transition-all ${
+              <button data-report-kid="all" class="report-kid-pill shrink-0 px-4 py-2 rounded-2xl text-xs font-headline font-black transition-all ${
                 selectedReportKidId === 'all'
-                  ? 'bg-primary text-on-primary chunky-btn-sm shadow-sm'
+                  ? 'bg-primary text-on-primary chunky-btn-sm shadow-xs'
                   : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border border-surface-container-highest'
               }">
                 👨‍👩‍👧‍👦 All Kids
@@ -622,9 +622,9 @@ export function renderParentPortalView() {
               ${heroes
                 .map(
                   (h) => `
-                <button data-report-kid="${h.id}" class="report-kid-pill flex-shrink-0 px-4 py-2 rounded-2xl text-xs font-headline font-black transition-all flex items-center gap-2 ${
+                <button data-report-kid="${h.id}" class="report-kid-pill shrink-0 px-4 py-2 rounded-2xl text-xs font-headline font-black transition-all flex items-center gap-2 ${
                   selectedReportKidId === h.id
-                    ? 'bg-primary text-on-primary chunky-btn-sm shadow-sm'
+                    ? 'bg-primary text-on-primary chunky-btn-sm shadow-xs'
                     : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border border-surface-container-highest'
                 }">
                   <img src="${h.avatar}" class="w-5 h-5 rounded-full object-cover border border-white/40" />
@@ -638,7 +638,7 @@ export function renderParentPortalView() {
             <!-- Week Selector -->
             <div class="flex items-center gap-2 self-end sm:self-auto">
               <label class="text-xs font-bold text-on-surface-variant">Timeframe:</label>
-              <select id="report-week-select" class="bg-surface-container border border-surface-container-highest rounded-xl px-3 py-1.5 text-xs font-bold text-inverse-surface outline-none">
+              <select id="report-week-select" class="bg-surface-container border border-surface-container-highest rounded-xl px-3 py-1.5 text-xs font-bold text-inverse-surface outline-hidden">
                 <option value="0" ${selectedReportWeekOffset === 0 ? 'selected' : ''}>This Week (Current)</option>
                 <option value="1" ${selectedReportWeekOffset === 1 ? 'selected' : ''}>Last Week</option>
                 <option value="2" ${selectedReportWeekOffset === 2 ? 'selected' : ''}>2 Weeks Ago</option>
@@ -686,7 +686,7 @@ export function renderParentPortalView() {
 
             return `
             <!-- Overall Summary Banner -->
-            <div class="bg-gradient-to-r from-secondary/15 via-surface-container to-primary/15 rounded-3xl p-5 border-2 border-secondary-container/60 card-shadow flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div class="bg-linear-to-r from-secondary/15 via-surface-container to-primary/15 rounded-3xl p-5 border-2 border-secondary-container/60 card-shadow flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div class="flex items-center gap-3">
                 <span class="text-3xl">🌟</span>
                 <div>
@@ -779,7 +779,7 @@ export function renderParentPortalView() {
           <!-- Household Management Card -->
           <div class="bg-surface-container rounded-3xl p-5 sm:p-6 border-2 border-secondary-container card-shadow flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div class="flex items-center gap-3.5">
-              <div class="w-12 h-12 rounded-2xl bg-secondary text-on-secondary flex items-center justify-center text-2xl shadow flex-shrink-0">
+              <div class="w-12 h-12 rounded-2xl bg-secondary text-on-secondary flex items-center justify-center text-2xl shadow-sm shrink-0">
                 <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
               </div>
               <div>
@@ -794,11 +794,11 @@ export function renderParentPortalView() {
             </div>
 
             <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-              <button id="admin-create-household-btn" class="bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2.5 rounded-xl chunky-btn-sm border-secondary-container flex items-center gap-1.5 active:scale-95 hover:brightness-110 shadow-sm">
+              <button id="admin-create-household-btn" class="bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2.5 rounded-xl chunky-btn-sm border-secondary-container flex items-center gap-1.5 active:scale-95 hover:brightness-110 shadow-xs">
                 <span class="material-symbols-outlined text-sm">add_home</span>
                 Create New Household
               </button>
-              <button id="admin-sync-now-btn" class="bg-primary/20 hover:bg-primary/30 text-primary border border-primary/40 font-headline text-xs font-black px-3.5 py-2.5 rounded-xl flex items-center gap-1.5 active:scale-95 transition-all shadow-sm" title="Perform a real-time data pull to verify device data is synced across all family devices">
+              <button id="admin-sync-now-btn" class="bg-primary/20 hover:bg-primary/30 text-primary border border-primary/40 font-headline text-xs font-black px-3.5 py-2.5 rounded-xl flex items-center gap-1.5 active:scale-95 transition-all shadow-xs" title="Perform a real-time data pull to verify device data is synced across all family devices">
                 <span class="material-symbols-outlined text-sm">sync</span>
                 Sync Now
               </button>
@@ -810,7 +810,7 @@ export function renderParentPortalView() {
                 <span class="material-symbols-outlined text-sm">mop</span>
                 Remove Test Kids
               </button>
-              <button id="admin-signout-household-btn" class="bg-error/20 hover:bg-error/30 text-error border border-error/40 font-headline text-xs font-black px-3.5 py-2.5 rounded-xl flex items-center gap-1.5 active:scale-95 transition-all shadow-sm" title="Disconnect device from household and return to Google sign-in">
+              <button id="admin-signout-household-btn" class="bg-error/20 hover:bg-error/30 text-error border border-error/40 font-headline text-xs font-black px-3.5 py-2.5 rounded-xl flex items-center gap-1.5 active:scale-95 transition-all shadow-xs" title="Disconnect device from household and return to Google sign-in">
                 <span class="material-symbols-outlined text-sm">logout</span>
                 Sign Out / Switch Family
               </button>
@@ -821,7 +821,7 @@ export function renderParentPortalView() {
           <div class="bg-surface-container rounded-3xl p-5 sm:p-6 border-2 border-secondary-container card-shadow flex flex-col gap-4">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-surface-container-highest pb-3">
               <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-2xl bg-secondary/20 text-secondary border border-secondary/40 flex items-center justify-center text-xl shadow-sm flex-shrink-0">
+                <div class="w-10 h-10 rounded-2xl bg-secondary/20 text-secondary border border-secondary/40 flex items-center justify-center text-xl shadow-xs shrink-0">
                   <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">shield_person</span>
                 </div>
                 <div>
@@ -833,7 +833,7 @@ export function renderParentPortalView() {
                 </div>
               </div>
 
-              <button id="admin-add-parent-btn" class="bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2.5 rounded-xl chunky-btn-sm border-secondary-container flex items-center gap-1.5 active:scale-95 hover:brightness-110 shadow-sm">
+              <button id="admin-add-parent-btn" class="bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2.5 rounded-xl chunky-btn-sm border-secondary-container flex items-center gap-1.5 active:scale-95 hover:brightness-110 shadow-xs">
                 <span class="material-symbols-outlined text-sm">person_add</span>
                 Add Parent User
               </button>
@@ -848,7 +848,7 @@ export function renderParentPortalView() {
                 return `
                   <div class="bg-surface-container-high rounded-2xl p-3.5 border-2 border-surface-container-highest flex items-center justify-between gap-3 shadow-inner">
                     <div class="flex items-center gap-2.5 min-w-0">
-                      <div class="w-10 h-10 rounded-full bg-secondary text-on-secondary flex items-center justify-center font-black text-sm flex-shrink-0 shadow-sm">
+                      <div class="w-10 h-10 rounded-full bg-secondary text-on-secondary flex items-center justify-center font-black text-sm shrink-0 shadow-xs">
                         ${(p.displayName || p.email || 'P')[0].toUpperCase()}
                       </div>
                       <div class="flex flex-col min-w-0">
@@ -876,7 +876,7 @@ export function renderParentPortalView() {
           <div class="bg-surface-container rounded-3xl p-5 sm:p-6 border-2 border-secondary-container card-shadow flex flex-col gap-4">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-surface-container-highest pb-3">
               <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-2xl bg-primary/20 text-primary border border-primary/40 flex items-center justify-center text-xl shadow-sm flex-shrink-0">
+                <div class="w-10 h-10 rounded-2xl bg-primary/20 text-primary border border-primary/40 flex items-center justify-center text-xl shadow-xs shrink-0">
                   <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">devices</span>
                 </div>
                 <div>
@@ -924,10 +924,10 @@ export function renderParentPortalView() {
                   }
 
                   return `
-                    <div class="bg-surface-container-high rounded-2xl p-4 border-2 ${isThisDevice ? 'border-primary/60 shadow-sm ring-1 ring-primary/30' : 'border-surface-container-highest'} flex flex-col justify-between gap-3 shadow-inner">
+                    <div class="bg-surface-container-high rounded-2xl p-4 border-2 ${isThisDevice ? 'border-primary/60 shadow-xs ring-1 ring-primary/30' : 'border-surface-container-highest'} flex flex-col justify-between gap-3 shadow-inner">
                       <div class="flex items-start justify-between gap-2 min-w-0">
                         <div class="flex items-center gap-3 min-w-0">
-                          <div class="w-10 h-10 rounded-xl ${isThisDevice ? 'bg-primary text-slate-950' : 'bg-surface-container-highest text-on-surface'} flex items-center justify-center text-xl flex-shrink-0 shadow-sm">
+                          <div class="w-10 h-10 rounded-xl ${isThisDevice ? 'bg-primary text-slate-950' : 'bg-surface-container-highest text-on-surface'} flex items-center justify-center text-xl shrink-0 shadow-xs">
                             <span class="material-symbols-outlined">${devIcon}</span>
                           </div>
                           <div class="flex flex-col min-w-0">
@@ -988,7 +988,7 @@ export function renderParentPortalView() {
               <p class="text-xs text-on-surface-variant font-bold">Manage each child's name, role, avatar, learning difficulty, and reward balances.</p>
             </div>
 
-            <button id="admin-open-add-kid-btn" class="bg-primary text-on-primary font-headline text-xs font-black px-4 py-2.5 rounded-xl chunky-btn border-primary-container flex items-center gap-1.5 active:scale-95 hover:brightness-110 shadow">
+            <button id="admin-open-add-kid-btn" class="bg-primary text-on-primary font-headline text-xs font-black px-4 py-2.5 rounded-xl chunky-btn border-primary-container flex items-center gap-1.5 active:scale-95 hover:brightness-110 shadow-sm">
               <span class="material-symbols-outlined text-base">person_add</span>
               Add New Kid
             </button>
@@ -1004,12 +1004,12 @@ export function renderParentPortalView() {
                   
                   <!-- Top: Avatar & Info -->
                   <div class="flex items-start gap-3.5">
-                    <div class="relative flex-shrink-0">
+                    <div class="relative shrink-0">
                       <div class="w-14 h-14 rounded-full overflow-hidden border-3 border-primary bg-surface-variant flex items-center justify-center shadow-inner">
                         <img class="w-full h-full object-cover" src="${h.avatar}" alt="${escapeHtml(h.name)}" />
                       </div>
                       ${isActiveHero ? `
-                        <div class="absolute -bottom-1 -right-1 bg-primary text-on-primary text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full shadow">
+                        <div class="absolute -bottom-1 -right-1 bg-primary text-on-primary text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full shadow-sm">
                           Active
                         </div>
                       ` : ''}
@@ -1101,12 +1101,12 @@ export function renderParentPortalView() {
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div class="sm:col-span-2">
                 <label class="text-[10px] uppercase font-black text-on-surface-variant">Task / Routine Title</label>
-                <input id="new-task-title" type="text" placeholder="e.g. Put Away Laundry & Clothes" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-3 text-xs font-bold text-inverse-surface focus:outline-none focus:border-primary" />
+                <input id="new-task-title" type="text" placeholder="e.g. Put Away Laundry & Clothes" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-3 text-xs font-bold text-inverse-surface focus:outline-hidden focus:border-primary" />
               </div>
 
               <div>
                 <label class="text-[10px] uppercase font-black text-on-surface-variant">Zone Assignment</label>
-                <select id="new-task-zone" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-3 text-xs font-bold text-inverse-surface focus:outline-none focus:border-primary">
+                <select id="new-task-zone" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-3 text-xs font-bold text-inverse-surface focus:outline-hidden focus:border-primary">
                   <option value="Task Forest">Task Forest (Scheduled Chores)</option>
                   <option value="Habit Islands">Habit Islands (Daily Habits)</option>
                 </select>
@@ -1114,27 +1114,27 @@ export function renderParentPortalView() {
 
               <div>
                 <label class="text-[10px] uppercase font-black text-on-surface-variant">Time Window / Schedule</label>
-                <input id="new-task-time" type="text" placeholder="e.g. Afternoon 4:00 PM" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-3 text-xs font-bold text-inverse-surface focus:outline-none focus:border-primary" />
+                <input id="new-task-time" type="text" placeholder="e.g. Afternoon 4:00 PM" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-3 text-xs font-bold text-inverse-surface focus:outline-hidden focus:border-primary" />
               </div>
 
               <div>
                 <label class="text-[10px] uppercase font-black text-on-surface-variant">Tokens (🪙 Auto-Issued)</label>
-                <input id="new-task-tokens" type="number" value="25" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-3 text-xs font-bold text-secondary focus:outline-none focus:border-secondary" />
+                <input id="new-task-tokens" type="number" value="25" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-3 text-xs font-bold text-secondary focus:outline-hidden focus:border-secondary" />
               </div>
 
               <div>
                 <label class="text-[10px] uppercase font-black text-on-surface-variant">Points (⭐ Parent-Approved)</label>
-                <input id="new-task-points" type="number" value="10" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-3 text-xs font-bold text-tertiary focus:outline-none focus:border-tertiary" />
+                <input id="new-task-points" type="number" value="10" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-3 text-xs font-bold text-tertiary focus:outline-hidden focus:border-tertiary" />
               </div>
 
               <div class="sm:col-span-2 lg:col-span-2">
                 <label class="text-[10px] uppercase font-black text-on-surface-variant">Description & Guidance</label>
-                <input id="new-task-desc" type="text" placeholder="e.g. Fold shirts and put socks into drawer neatly." class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-3 text-xs font-bold text-inverse-surface focus:outline-none focus:border-primary" />
+                <input id="new-task-desc" type="text" placeholder="e.g. Fold shirts and put socks into drawer neatly." class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-3 text-xs font-bold text-inverse-surface focus:outline-hidden focus:border-primary" />
               </div>
 
               <div>
                 <label class="text-[10px] uppercase font-black text-on-surface-variant">Icon Style</label>
-                <select id="new-task-icon" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-3 text-xs font-bold text-inverse-surface focus:outline-none focus:border-primary">
+                <select id="new-task-icon" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-3 text-xs font-bold text-inverse-surface focus:outline-hidden focus:border-primary">
                   <option value="checkroom">👕 Checkroom / Laundry</option>
                   <option value="menu_book">📚 Reading / Homework</option>
                   <option value="toys">🧸 Toys & Blocks</option>
@@ -1161,7 +1161,7 @@ export function renderParentPortalView() {
                   return `
                   <div class="bg-surface-container rounded-2xl p-4 border border-surface-container-highest flex items-center justify-between card-shadow">
                     <div class="flex items-center gap-3.5">
-                      <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-slate-800 text-emerald-400 border border-slate-700/50 shadow-inner flex-shrink-0">
+                      <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-slate-800 text-emerald-400 border border-slate-700/50 shadow-inner shrink-0">
                         <span class="material-symbols-outlined text-2xl select-none" style="font-variation-settings: 'FILL' 1;">
                           ${t.icon || 'star'}
                         </span>
@@ -1173,12 +1173,12 @@ export function renderParentPortalView() {
                           <label class="flex items-center gap-1 bg-surface-container-high px-2 py-0.5 rounded-lg border border-surface-container-highest" title="Habit Token Reward (Auto-awarded)">
                             <span class="text-secondary text-xs">🪙</span>
                             <span class="text-[10px] text-on-surface-variant font-bold">Tokens:</span>
-                            <input type="number" min="0" max="500" value="${t.id === 'toothbrush_adventure_battle' && state.parentSettings?.toothbrushBattleTokens !== undefined ? state.parentSettings.toothbrushBattleTokens : (t.coins || 0)}" data-task-id="${t.id}" data-task-zone="${t.zone}" class="task-tokens-input w-12 bg-transparent text-secondary font-black text-[11px] text-center focus:outline-none border-b border-secondary/40 focus:border-secondary" />
+                            <input type="number" min="0" max="500" value="${t.id === 'toothbrush_adventure_battle' && state.parentSettings?.toothbrushBattleTokens !== undefined ? state.parentSettings.toothbrushBattleTokens : (t.coins || 0)}" data-task-id="${t.id}" data-task-zone="${t.zone}" class="task-tokens-input w-12 bg-transparent text-secondary font-black text-[11px] text-center focus:outline-hidden border-b border-secondary/40 focus:border-secondary" />
                           </label>
                           <label class="flex items-center gap-1 bg-surface-container-high px-2 py-0.5 rounded-lg border border-surface-container-highest" title="Points (Requires Parent Approval)">
                             <span class="text-tertiary text-xs">⭐</span>
                             <span class="text-[10px] text-on-surface-variant font-bold">Points:</span>
-                            <input type="number" min="0" max="500" value="${t.id === 'toothbrush_adventure_battle' && state.parentSettings?.toothbrushBattlePoints !== undefined ? state.parentSettings.toothbrushBattlePoints : (t.points || 0)}" data-task-id="${t.id}" data-task-zone="${t.zone}" class="task-points-input w-12 bg-transparent text-tertiary font-black text-[11px] text-center focus:outline-none border-b border-tertiary/40 focus:border-tertiary" />
+                            <input type="number" min="0" max="500" value="${t.id === 'toothbrush_adventure_battle' && state.parentSettings?.toothbrushBattlePoints !== undefined ? state.parentSettings.toothbrushBattlePoints : (t.points || 0)}" data-task-id="${t.id}" data-task-zone="${t.zone}" class="task-points-input w-12 bg-transparent text-tertiary font-black text-[11px] text-center focus:outline-hidden border-b border-tertiary/40 focus:border-tertiary" />
                           </label>
                         </div>
                       </div>
@@ -1223,17 +1223,17 @@ export function renderParentPortalView() {
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <label class="text-[10px] uppercase font-black text-on-surface-variant">Reward Title</label>
-                <input id="new-reward-title" type="text" placeholder="e.g. 1 Hour Trampoline Park" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-3 text-xs font-bold text-inverse-surface focus:outline-none focus:border-tertiary" />
+                <input id="new-reward-title" type="text" placeholder="e.g. 1 Hour Trampoline Park" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-3 text-xs font-bold text-inverse-surface focus:outline-hidden focus:border-tertiary" />
               </div>
 
               <div>
                 <label class="text-[10px] uppercase font-black text-on-surface-variant">Gold Points Cost (⭐)</label>
-                <input id="new-reward-cost" type="number" placeholder="60" value="60" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-3 text-xs font-bold text-tertiary focus:outline-none focus:border-tertiary" />
+                <input id="new-reward-cost" type="number" placeholder="60" value="60" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-3 text-xs font-bold text-tertiary focus:outline-hidden focus:border-tertiary" />
               </div>
 
               <div>
                 <label class="text-[10px] uppercase font-black text-on-surface-variant">Category</label>
-                <select id="new-reward-category" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-3 text-xs font-bold text-inverse-surface focus:outline-none focus:border-tertiary">
+                <select id="new-reward-category" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-3 text-xs font-bold text-inverse-surface focus:outline-hidden focus:border-tertiary">
                   <option value="Experience">Experience</option>
                   <option value="Outing">Outing</option>
                   <option value="Treat">Treat / Food</option>
@@ -1243,12 +1243,12 @@ export function renderParentPortalView() {
 
               <div class="sm:col-span-2">
                 <label class="text-[10px] uppercase font-black text-on-surface-variant">Description & Terms</label>
-                <input id="new-reward-desc" type="text" placeholder="e.g. Visit the local trampoline park on Saturday afternoon." class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-3 text-xs font-bold text-inverse-surface focus:outline-none focus:border-tertiary" />
+                <input id="new-reward-desc" type="text" placeholder="e.g. Visit the local trampoline park on Saturday afternoon." class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-3 text-xs font-bold text-inverse-surface focus:outline-hidden focus:border-tertiary" />
               </div>
 
               <div>
                 <label class="text-[10px] uppercase font-black text-on-surface-variant">3D Graphic Motif</label>
-                <select id="new-reward-icon" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-3 text-xs font-bold text-inverse-surface focus:outline-none focus:border-tertiary">
+                <select id="new-reward-icon" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-3 text-xs font-bold text-inverse-surface focus:outline-hidden focus:border-tertiary">
                   <option value="park">🌳 Park / Adventure</option>
                   <option value="icecream">🍦 Ice Cream / Treat</option>
                   <option value="tv">🎮 Screen Time / Gaming</option>
@@ -1333,7 +1333,7 @@ export function renderParentPortalView() {
                   <div class="flex items-center gap-2 truncate">
                     <span class="text-xs font-bold text-inverse-surface truncate">${escapeHtml(r.title)}</span>
                   </div>
-                  <div class="flex items-center gap-1 flex-shrink-0">
+                  <div class="flex items-center gap-1 shrink-0">
                     <input type="number" data-pricing-reallife-id="${r.id}" value="${r.costPoints}" class="w-16 bg-surface-container-lowest border border-tertiary/40 rounded-lg p-1.5 text-xs font-black text-tertiary text-center" />
                     <span class="text-xs text-tertiary font-bold">⭐</span>
                   </div>
@@ -1364,13 +1364,13 @@ export function renderParentPortalView() {
                     const bonusType = g.statBonusType || 'coin_boost';
 
                     return `
-                <div class="bg-surface-container-high rounded-2xl p-4 border border-surface-container-highest flex flex-col justify-between gap-3 shadow-sm">
+                <div class="bg-surface-container-high rounded-2xl p-4 border border-surface-container-highest flex flex-col justify-between gap-3 shadow-xs">
                   <div class="flex items-start justify-between gap-2">
                     <div class="flex flex-col truncate">
                       <span class="font-headline text-xs font-black text-inverse-surface truncate">${escapeHtml(g.title)}</span>
                       <span class="text-[10px] text-on-surface-variant line-clamp-1">${escapeHtml(g.desc)}</span>
                     </div>
-                    <span class="text-[9px] font-black uppercase text-secondary bg-secondary/15 px-2 py-0.5 rounded-md flex-shrink-0">${g.category || 'Gear'}</span>
+                    <span class="text-[9px] font-black uppercase text-secondary bg-secondary/15 px-2 py-0.5 rounded-md shrink-0">${g.category || 'Gear'}</span>
                   </div>
 
                   <!-- Price & Stat Bonus Settings -->
@@ -1379,7 +1379,7 @@ export function renderParentPortalView() {
                     <div class="flex flex-col gap-1">
                       <label class="text-[9px] font-black uppercase text-on-surface-variant">Price (🪙 Tokens)</label>
                       <div class="flex items-center gap-1">
-                        <input type="number" data-pricing-digital-id="${g.id}" value="${g.costCoins}" min="1" max="5000" class="w-full bg-surface-container-lowest border border-secondary/40 rounded-lg p-1.5 text-xs font-black text-secondary text-center focus:border-secondary focus:outline-none" />
+                        <input type="number" data-pricing-digital-id="${g.id}" value="${g.costCoins}" min="1" max="5000" class="w-full bg-surface-container-lowest border border-secondary/40 rounded-lg p-1.5 text-xs font-black text-secondary text-center focus:border-secondary focus:outline-hidden" />
                         <span class="text-xs text-secondary font-bold">🪙</span>
                       </div>
                     </div>
@@ -1388,7 +1388,7 @@ export function renderParentPortalView() {
                     <div class="flex flex-col gap-1">
                       <label class="text-[9px] font-black uppercase text-on-surface-variant">Stat Bonus (%)</label>
                       <div class="flex items-center gap-1">
-                        <input type="number" data-statbonus-digital-id="${g.id}" value="${bonusPercent}" min="0" max="200" step="5" class="w-full bg-surface-container-lowest border border-tertiary/40 rounded-lg p-1.5 text-xs font-black text-tertiary text-center focus:border-tertiary focus:outline-none" />
+                        <input type="number" data-statbonus-digital-id="${g.id}" value="${bonusPercent}" min="0" max="200" step="5" class="w-full bg-surface-container-lowest border border-tertiary/40 rounded-lg p-1.5 text-xs font-black text-tertiary text-center focus:border-tertiary focus:outline-hidden" />
                         <span class="text-xs text-tertiary font-bold">%</span>
                       </div>
                     </div>
@@ -1397,7 +1397,7 @@ export function renderParentPortalView() {
                   <!-- Stat Boost Type Selector -->
                   <div class="flex flex-col gap-1">
                     <label class="text-[9px] font-black uppercase text-on-surface-variant">Bonus Benefit</label>
-                    <select data-statbonus-type-id="${g.id}" class="w-full bg-surface-container-lowest border border-surface-container-highest rounded-lg p-1.5 text-[10px] font-bold text-inverse-surface focus:outline-none">
+                    <select data-statbonus-type-id="${g.id}" class="w-full bg-surface-container-lowest border border-surface-container-highest rounded-lg p-1.5 text-[10px] font-bold text-inverse-surface focus:outline-hidden">
                       <option value="coin_boost" ${bonusType === 'coin_boost' ? 'selected' : ''}>🪙 Extra Token Drops</option>
                       <option value="xp_boost" ${bonusType === 'xp_boost' ? 'selected' : ''}>⭐ Adventure XP Multiplier</option>
                       <option value="defense_boost" ${bonusType === 'defense_boost' ? 'selected' : ''}>🛡️ Defense & Armor</option>
@@ -1433,7 +1433,7 @@ export function renderParentPortalView() {
                     <span class="material-symbols-outlined text-sm" style="color: ${t.primaryColor}">${t.badgeIcon}</span>
                     <span class="text-xs font-bold text-inverse-surface truncate">${t.name}</span>
                   </div>
-                  <div class="flex items-center gap-1 flex-shrink-0">
+                  <div class="flex items-center gap-1 shrink-0">
                     <input type="number" data-pricing-theme-id="${t.id}" value="${t.costCoins}" class="w-20 bg-surface-container-lowest border border-primary/40 rounded-lg p-1.5 text-xs font-black text-secondary text-center" />
                     <span class="text-xs text-secondary font-bold">🪙</span>
                   </div>
@@ -1538,9 +1538,9 @@ export function renderParentPortalView() {
 <section class="flex flex-col gap-5 animate-fade-in font-body">
           
           <!-- Top Studio Header Banner -->
-          <div class="bg-gradient-to-r from-slate-900 via-cyan-950/50 to-slate-900 rounded-3xl p-5 border-2 border-cyan-400/40 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-white">
+          <div class="bg-linear-to-r from-slate-900 via-cyan-950/50 to-slate-900 rounded-3xl p-5 border-2 border-cyan-400/40 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-white">
             <div class="flex items-center gap-3.5">
-              <div class="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 text-slate-950 flex items-center justify-center text-3xl shadow-lg border-2 border-white/20 flex-shrink-0">
+              <div class="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-linear-to-br from-cyan-400 to-blue-600 text-slate-950 flex items-center justify-center text-3xl shadow-lg border-2 border-white/20 shrink-0">
                 ✨
               </div>
               <div>
@@ -1559,7 +1559,7 @@ export function renderParentPortalView() {
             </div>
 
             <!-- Published Summary Badge -->
-            <div class="flex items-center gap-2 self-end sm:self-auto bg-slate-800/90 px-3.5 py-1.5 rounded-2xl border border-cyan-400/30 shadow">
+            <div class="flex items-center gap-2 self-end sm:self-auto bg-slate-800/90 px-3.5 py-1.5 rounded-2xl border border-cyan-400/30 shadow-sm">
               <span class="material-symbols-outlined text-cyan-400 text-sm">inventory_2</span>
               <span class="text-xs font-headline font-black text-cyan-200">
                 ${publishedCustomWeapons.length + publishedCustomGear.length + publishedCustomFurniture.length + publishedCustomToys.length + publishedCustomBosses.length + publishedCustomFood.length} Published
@@ -1568,7 +1568,7 @@ export function renderParentPortalView() {
           </div>
 
           <!-- STEP 1: Choose Reward Category -->
-          <div class="bg-surface-container/90 rounded-3xl p-4 border border-surface-container-highest shadow-sm flex flex-col gap-3">
+          <div class="bg-surface-container/90 rounded-3xl p-4 border border-surface-container-highest shadow-xs flex flex-col gap-3">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
                 <span class="w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-400 text-xs font-black flex items-center justify-center border border-cyan-400/40">1</span>
@@ -1588,7 +1588,7 @@ export function renderParentPortalView() {
                   type="button"
                   class="studio-category-pill p-2.5 rounded-2xl font-headline text-xs font-black transition-all active:scale-95 flex flex-col items-center justify-center gap-1 border-2 text-center ${
                     isSelected 
-                      ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 border-white shadow-lg ring-2 ring-cyan-400' 
+                      ? 'bg-linear-to-r from-cyan-500 to-blue-600 text-slate-950 border-white shadow-lg ring-2 ring-cyan-400' 
                       : 'bg-surface-container-high hover:bg-surface-bright text-inverse-surface border-surface-container-highest'
                   }"
                   data-category="${tab.id}"
@@ -1612,37 +1612,37 @@ export function renderParentPortalView() {
               <div class="flex flex-wrap items-center gap-1.5 flex-1 sm:justify-end">
                 ${studioActiveCategory === 'weapon' ?
                   weaponThemes.map(t => `
-                    <button type="button" class="studio-spark-chip px-2.5 py-1 rounded-xl text-xs font-black transition-all active:scale-95 flex items-center gap-1 border ${studioSelectedTheme === t.key ? 'bg-amber-400 text-slate-950 border-amber-300 shadow' : 'bg-surface-container hover:bg-surface-bright text-inverse-surface border-white/10'}" data-spark="${t.key}" data-category="weapon" title="${t.desc}">
+                    <button type="button" class="studio-spark-chip px-2.5 py-1 rounded-xl text-xs font-black transition-all active:scale-95 flex items-center gap-1 border ${studioSelectedTheme === t.key ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-sm' : 'bg-surface-container hover:bg-surface-bright text-inverse-surface border-white/10'}" data-spark="${t.key}" data-category="weapon" title="${t.desc}">
                       <span>${t.label}</span>
                     </button>
                   `).join('')
                 : studioActiveCategory === 'gear' ? 
                   gearThemes.map(t => `
-                    <button type="button" class="studio-spark-chip px-2.5 py-1 rounded-xl text-xs font-black transition-all active:scale-95 flex items-center gap-1 border ${studioSelectedTheme === t.key ? 'bg-amber-400 text-slate-950 border-amber-300 shadow' : 'bg-surface-container hover:bg-surface-bright text-inverse-surface border-white/10'}" data-spark="${t.key}" data-category="gear" title="${t.desc}">
+                    <button type="button" class="studio-spark-chip px-2.5 py-1 rounded-xl text-xs font-black transition-all active:scale-95 flex items-center gap-1 border ${studioSelectedTheme === t.key ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-sm' : 'bg-surface-container hover:bg-surface-bright text-inverse-surface border-white/10'}" data-spark="${t.key}" data-category="gear" title="${t.desc}">
                       <span>${t.label}</span>
                     </button>
                   `).join('')
                 : studioActiveCategory === 'furniture' ?
                   furnitureThemes.map(t => `
-                    <button type="button" class="studio-spark-chip px-2.5 py-1 rounded-xl text-xs font-black transition-all active:scale-95 flex items-center gap-1 border ${studioFurnitureType === t.type ? 'bg-amber-400 text-slate-950 border-amber-300 shadow' : 'bg-surface-container hover:bg-surface-bright text-inverse-surface border-white/10'}" data-spark="${t.key}" data-category="furniture" title="${t.desc}">
+                    <button type="button" class="studio-spark-chip px-2.5 py-1 rounded-xl text-xs font-black transition-all active:scale-95 flex items-center gap-1 border ${studioFurnitureType === t.type ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-sm' : 'bg-surface-container hover:bg-surface-bright text-inverse-surface border-white/10'}" data-spark="${t.key}" data-category="furniture" title="${t.desc}">
                       <span>${t.label}</span>
                     </button>
                   `).join('')
                 : studioActiveCategory === 'toy' ?
                   toyThemes.map(t => `
-                    <button type="button" class="studio-spark-chip px-2.5 py-1 rounded-xl text-xs font-black transition-all active:scale-95 flex items-center gap-1 border ${studioToyType === t.type ? 'bg-amber-400 text-slate-950 border-amber-300 shadow' : 'bg-surface-container hover:bg-surface-bright text-inverse-surface border-white/10'}" data-spark="${t.key}" data-category="toy" title="${t.desc}">
+                    <button type="button" class="studio-spark-chip px-2.5 py-1 rounded-xl text-xs font-black transition-all active:scale-95 flex items-center gap-1 border ${studioToyType === t.type ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-sm' : 'bg-surface-container hover:bg-surface-bright text-inverse-surface border-white/10'}" data-spark="${t.key}" data-category="toy" title="${t.desc}">
                       <span>${t.label}</span>
                     </button>
                   `).join('')
                 : studioActiveCategory === 'food' ?
                   foodThemes.map(t => `
-                    <button type="button" class="studio-spark-chip px-2.5 py-1 rounded-xl text-xs font-black transition-all active:scale-95 flex items-center gap-1 border ${studioFoodTheme === t.type ? 'bg-amber-400 text-slate-950 border-amber-300 shadow' : 'bg-surface-container hover:bg-surface-bright text-inverse-surface border-white/10'}" data-spark="${t.key}" data-category="food" title="${t.desc}">
+                    <button type="button" class="studio-spark-chip px-2.5 py-1 rounded-xl text-xs font-black transition-all active:scale-95 flex items-center gap-1 border ${studioFoodTheme === t.type ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-sm' : 'bg-surface-container hover:bg-surface-bright text-inverse-surface border-white/10'}" data-spark="${t.key}" data-category="food" title="${t.desc}">
                       <span>${t.label}</span>
                     </button>
                   `).join('')
                 :
                   bossThemes.map(t => `
-                    <button type="button" class="studio-spark-chip px-2.5 py-1 rounded-xl text-xs font-black transition-all active:scale-95 flex items-center gap-1 border ${studioBossDomain === t.domain ? 'bg-amber-400 text-slate-950 border-amber-300 shadow' : 'bg-surface-container hover:bg-surface-bright text-inverse-surface border-white/10'}" data-spark="${t.key}" data-category="boss" title="${t.desc}">
+                    <button type="button" class="studio-spark-chip px-2.5 py-1 rounded-xl text-xs font-black transition-all active:scale-95 flex items-center gap-1 border ${studioBossDomain === t.domain ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-sm' : 'bg-surface-container hover:bg-surface-bright text-inverse-surface border-white/10'}" data-spark="${t.key}" data-category="boss" title="${t.desc}">
                       <span>${t.label}</span>
                     </button>
                   `).join('')
@@ -1652,7 +1652,7 @@ export function renderParentPortalView() {
           </div>
 
           <!-- STEP 2: AI Prompt & Concept Generator -->
-          <div class="bg-surface-container/90 rounded-3xl p-4 sm:p-5 border border-surface-container-highest shadow-sm flex flex-col gap-3">
+          <div class="bg-surface-container/90 rounded-3xl p-4 sm:p-5 border border-surface-container-highest shadow-xs flex flex-col gap-3">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
                 <span class="w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-400 text-xs font-black flex items-center justify-center border border-cyan-400/40">2</span>
@@ -1669,7 +1669,7 @@ export function renderParentPortalView() {
             <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
               
               <!-- Left Inputs: Voice & Photo -->
-              <div class="flex items-center gap-2 flex-shrink-0">
+              <div class="flex items-center gap-2 shrink-0">
                 <button 
                   type="button"
                   id="studio-voice-mic-btn"
@@ -1688,11 +1688,11 @@ export function renderParentPortalView() {
 
                 ${studioUploadedImageBase64 ? `
                   <div class="flex items-center gap-1.5">
-                    <img src="${studioUploadedImageBase64}" class="w-8 h-8 rounded-xl object-cover border border-cyan-400 shadow" alt="Drawing Preview" />
+                    <img src="${studioUploadedImageBase64}" class="w-8 h-8 rounded-xl object-cover border border-cyan-400 shadow-sm" alt="Drawing Preview" />
                     <button 
                       type="button"
                       id="studio-vision-generate-btn"
-                      class="px-2.5 py-1.5 rounded-xl text-[10px] font-black bg-gradient-to-r from-cyan-500 to-blue-500 text-slate-950 hover:scale-105 active:scale-95 transition-all shadow"
+                      class="px-2.5 py-1.5 rounded-xl text-[10px] font-black bg-linear-to-r from-cyan-500 to-blue-500 text-slate-950 hover:scale-105 active:scale-95 transition-all shadow-sm"
                     >
                       Turn 3D
                     </button>
@@ -1706,7 +1706,7 @@ export function renderParentPortalView() {
                 type="text" 
                 value="${studioItemName}"
                 placeholder="${studioActiveCategory === 'weapon' ? 'e.g. Star-Plasma Saber or Hydro Blaster...' : studioActiveCategory === 'gear' ? 'e.g. Phoenix Flame Tiara or Cyber Jetpack...' : studioActiveCategory === 'furniture' ? 'e.g. Starlight Canopy Bed or Holo Gaming Desk...' : studioActiveCategory === 'toy' ? 'e.g. Super Trampoline or Laser Mouse...' : studioActiveCategory === 'food' ? 'e.g. Starberry Bites or Jungle Honeycomb...' : 'e.g. Sugar Plaque Overlord or Bedtime Gremlin...'}"
-                class="flex-1 bg-surface-container-high border border-surface-container-highest rounded-2xl px-4 py-2.5 text-xs font-bold text-inverse-surface focus:outline-none focus:border-cyan-400 shadow-inner"
+                class="flex-1 bg-surface-container-high border border-surface-container-highest rounded-2xl px-4 py-2.5 text-xs font-bold text-inverse-surface focus:outline-hidden focus:border-cyan-400 shadow-inner"
               />
 
               <!-- Right: AI Generate Button -->
@@ -1714,7 +1714,7 @@ export function renderParentPortalView() {
                 type="button"
                 id="studio-gear-ai-btn" 
                 data-studio-ai-btn="true"
-                class="bg-gradient-to-r from-cyan-500 via-blue-600 to-emerald-500 text-slate-950 font-headline text-xs font-black px-5 py-2.5 min-h-[44px] rounded-2xl shadow-lg hover:brightness-110 active:scale-95 flex items-center justify-center gap-1.5 shrink-0 border border-white/20 ${
+                class="bg-linear-to-r from-cyan-500 via-blue-600 to-emerald-500 text-slate-950 font-headline text-xs font-black px-5 py-2.5 min-h-[44px] rounded-2xl shadow-lg hover:brightness-110 active:scale-95 flex items-center justify-center gap-1.5 shrink-0 border border-white/20 ${
                   isStudioGenerating ? 'opacity-70 cursor-wait' : ''
                 }"
               >
@@ -1729,7 +1729,7 @@ export function renderParentPortalView() {
           <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
             
             <!-- Left Column: 3D Stage & Visualizer (5 cols) -->
-            <div class="lg:col-span-5 bg-gradient-to-b from-slate-900/95 via-slate-950 to-slate-900/95 rounded-3xl p-4 sm:p-5 border-2 border-cyan-400/40 shadow-2xl flex flex-col items-center gap-3.5 text-white">
+            <div class="lg:col-span-5 bg-linear-to-b from-slate-900/95 via-slate-950 to-slate-900/95 rounded-3xl p-4 sm:p-5 border-2 border-cyan-400/40 shadow-2xl flex flex-col items-center gap-3.5 text-white">
               
               <!-- Viewport Switcher -->
               <div class="w-full flex items-center justify-between border-b border-cyan-400/20 pb-2.5">
@@ -1741,7 +1741,7 @@ export function renderParentPortalView() {
                   <button 
                     type="button"
                     id="studio-mode-canvas-btn" 
-                    class="px-2.5 py-1 rounded-lg text-xs font-black transition-all ${studioViewportMode === 'canvas' ? 'bg-amber-400 text-slate-950 shadow' : 'text-slate-300 hover:text-white'}"
+                    class="px-2.5 py-1 rounded-lg text-xs font-black transition-all ${studioViewportMode === 'canvas' ? 'bg-amber-400 text-slate-950 shadow-sm' : 'text-slate-300 hover:text-white'}"
                     title="Switch to Procedural 3D Canvas"
                   >
                     Canvas
@@ -1749,7 +1749,7 @@ export function renderParentPortalView() {
                   <button 
                     type="button"
                     id="studio-mode-modelviewer-btn" 
-                    class="px-2.5 py-1 rounded-lg text-xs font-black transition-all ${studioViewportMode === 'modelviewer' ? 'bg-cyan-500 text-slate-950 shadow' : 'text-slate-300 hover:text-white'}"
+                    class="px-2.5 py-1 rounded-lg text-xs font-black transition-all ${studioViewportMode === 'modelviewer' ? 'bg-cyan-500 text-slate-950 shadow-sm' : 'text-slate-300 hover:text-white'}"
                     title="Switch to 3D GLB Model Viewer"
                   >
                     3D GLB
@@ -1757,7 +1757,7 @@ export function renderParentPortalView() {
                   <button 
                     type="button"
                     id="studio-mode-spline-btn" 
-                    class="px-2.5 py-1 rounded-lg text-xs font-black transition-all ${studioViewportMode === 'spline' ? 'bg-cyan-400 text-slate-950 shadow' : 'text-slate-300 hover:text-white'}"
+                    class="px-2.5 py-1 rounded-lg text-xs font-black transition-all ${studioViewportMode === 'spline' ? 'bg-cyan-400 text-slate-950 shadow-sm' : 'text-slate-300 hover:text-white'}"
                     title="Switch to Spline 3D Scene"
                   >
                     Spline
@@ -1846,7 +1846,7 @@ export function renderParentPortalView() {
                 </div>
 
                 <!-- Stage Floor Reflection -->
-                <div class="absolute bottom-3 left-1/2 -translate-x-1/2 w-36 h-2 rounded-full bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent blur-xs pointer-events-none"></div>
+                <div class="absolute bottom-3 left-1/2 -translate-x-1/2 w-36 h-2 rounded-full bg-linear-to-r from-transparent via-cyan-400/40 to-transparent blur-xs pointer-events-none"></div>
               </div>
 
               <!-- Curated 3D Asset Carousel -->
@@ -1862,7 +1862,7 @@ export function renderParentPortalView() {
                   ${getThreeDAssetsByCategory(studioActiveCategory).map(asset => `
                     <button 
                       type="button"
-                      class="studio-3d-asset-card p-1.5 rounded-xl text-left transition-all border ${studioActive3DAssetId === asset.id ? 'bg-cyan-500/20 border-cyan-400 shadow-sm' : 'bg-slate-900/80 border-slate-700 hover:border-slate-500'}"
+                      class="studio-3d-asset-card p-1.5 rounded-xl text-left transition-all border ${studioActive3DAssetId === asset.id ? 'bg-cyan-500/20 border-cyan-400 shadow-xs' : 'bg-slate-900/80 border-slate-700 hover:border-slate-500'}"
                       data-asset-id="${asset.id}"
                       data-model-url="${asset.modelUrl || ''}"
                       data-spline-url="${asset.splineUrl || ''}"
@@ -1887,7 +1887,7 @@ export function renderParentPortalView() {
                   <span>Spline 3D Presets</span>
                   <span class="text-[10px] text-slate-400">High-Res</span>
                 </div>
-                <select id="studio-spline-preset-select" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs font-bold text-amber-300 focus:outline-none focus:border-cyan-400">
+                <select id="studio-spline-preset-select" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs font-bold text-amber-300 focus:outline-hidden focus:border-cyan-400">
                   <option value="">Choose Spline 3D Preset...</option>
                   ${presetsForCategory.map(p => `
                     <option value="${p.splineUrl}" ${studioActiveSplineUrl === p.splineUrl ? 'selected' : ''}>
@@ -1901,12 +1901,12 @@ export function renderParentPortalView() {
                     type="url" 
                     value="${studioActiveSplineUrl}" 
                     placeholder="Custom Spline URL..." 
-                    class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-2 py-1 text-[11px] text-white focus:outline-none focus:border-cyan-400"
+                    class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-2 py-1 text-[11px] text-white focus:outline-hidden focus:border-cyan-400"
                   />
                   <button 
                     type="button"
                     id="studio-spline-load-btn" 
-                    class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-black px-2.5 py-1 rounded-xl transition-all active:scale-95 shadow shrink-0"
+                    class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-black px-2.5 py-1 rounded-xl transition-all active:scale-95 shadow-sm shrink-0"
                   >
                     Load
                   </button>
@@ -1922,7 +1922,7 @@ export function renderParentPortalView() {
                     ${socketPills.map(s => `
                       <button 
                         type="button"
-                        class="studio-socket-btn px-1.5 py-1 rounded-xl text-[10px] font-black transition-all active:scale-95 flex items-center justify-center gap-0.5 border ${studioSelectedSocket === s.key ? 'bg-cyan-400 text-slate-950 border-white shadow scale-102' : 'bg-slate-800/80 hover:bg-slate-700 text-slate-200 border-white/20'}"
+                        class="studio-socket-btn px-1.5 py-1 rounded-xl text-[10px] font-black transition-all active:scale-95 flex items-center justify-center gap-0.5 border ${studioSelectedSocket === s.key ? 'bg-cyan-400 text-slate-950 border-white shadow-sm scale-102' : 'bg-slate-800/80 hover:bg-slate-700 text-slate-200 border-white/20'}"
                         data-socket="${s.key}"
                       >
                         <span>${s.emoji}</span>
@@ -1941,7 +1941,7 @@ export function renderParentPortalView() {
                       return `
                       <button 
                         type="button"
-                        class="studio-dye-btn w-5 h-5 rounded-full border transition-transform hover:scale-115 active:scale-95 shadow flex items-center justify-center ${isDyeActive ? 'border-white ring-2 ring-cyan-400 scale-110' : 'border-white/30'}"
+                        class="studio-dye-btn w-5 h-5 rounded-full border transition-transform hover:scale-115 active:scale-95 shadow-sm flex items-center justify-center ${isDyeActive ? 'border-white ring-2 ring-cyan-400 scale-110' : 'border-white/30'}"
                         style="background-color: ${dye.hex};"
                         data-hex="${dye.hex}"
                         title="${dye.name}"
@@ -1967,16 +1967,16 @@ export function renderParentPortalView() {
                 <div class="w-full">
                   <label class="text-[10px] font-bold text-cyan-300 uppercase tracking-wider mb-1 block">Room Zone</label>
                   <div class="grid grid-cols-2 gap-1.5">
-                    <button type="button" class="studio-zone-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioFurnitureZone === 'bedroom' ? 'bg-cyan-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-zone="bedroom">
+                    <button type="button" class="studio-zone-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioFurnitureZone === 'bedroom' ? 'bg-cyan-400 text-slate-950 border-white shadow-sm' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-zone="bedroom">
                       <span>🛏️</span><span>Bedroom</span>
                     </button>
-                    <button type="button" class="studio-zone-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioFurnitureZone === 'command_deck' ? 'bg-cyan-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-zone="command_deck">
+                    <button type="button" class="studio-zone-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioFurnitureZone === 'command_deck' ? 'bg-cyan-400 text-slate-950 border-white shadow-sm' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-zone="command_deck">
                       <span>💻</span><span>Command</span>
                     </button>
-                    <button type="button" class="studio-zone-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioFurnitureZone === 'lounge' ? 'bg-cyan-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-zone="lounge">
+                    <button type="button" class="studio-zone-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioFurnitureZone === 'lounge' ? 'bg-cyan-400 text-slate-950 border-white shadow-sm' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-zone="lounge">
                       <span>🛋️</span><span>Lounge</span>
                     </button>
-                    <button type="button" class="studio-zone-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioFurnitureZone === 'trophy_hall' ? 'bg-cyan-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-zone="trophy_hall">
+                    <button type="button" class="studio-zone-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioFurnitureZone === 'trophy_hall' ? 'bg-cyan-400 text-slate-950 border-white shadow-sm' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-zone="trophy_hall">
                       <span>🏆</span><span>Trophy Hall</span>
                     </button>
                   </div>
@@ -1986,16 +1986,16 @@ export function renderParentPortalView() {
                 <div class="w-full">
                   <label class="text-[10px] font-bold text-cyan-300 uppercase tracking-wider mb-1 block">Pet Need Refill</label>
                   <div class="grid grid-cols-2 gap-1.5">
-                    <button type="button" class="studio-toy-stat-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioToyStat === 'joy' ? 'bg-cyan-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-stat="joy">
+                    <button type="button" class="studio-toy-stat-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioToyStat === 'joy' ? 'bg-cyan-400 text-slate-950 border-white shadow-sm' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-stat="joy">
                       <span>💖</span><span>Joy</span>
                     </button>
-                    <button type="button" class="studio-toy-stat-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioToyStat === 'energy' ? 'bg-cyan-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-stat="energy">
+                    <button type="button" class="studio-toy-stat-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioToyStat === 'energy' ? 'bg-cyan-400 text-slate-950 border-white shadow-sm' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-stat="energy">
                       <span>⚡</span><span>Energy</span>
                     </button>
-                    <button type="button" class="studio-toy-stat-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioToyStat === 'hunger' ? 'bg-cyan-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-stat="hunger">
+                    <button type="button" class="studio-toy-stat-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioToyStat === 'hunger' ? 'bg-cyan-400 text-slate-950 border-white shadow-sm' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-stat="hunger">
                       <span>🍎</span><span>Hunger</span>
                     </button>
-                    <button type="button" class="studio-toy-stat-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioToyStat === 'all' ? 'bg-cyan-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-stat="all">
+                    <button type="button" class="studio-toy-stat-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioToyStat === 'all' ? 'bg-cyan-400 text-slate-950 border-white shadow-sm' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-stat="all">
                       <span>✨</span><span>All Needs</span>
                     </button>
                   </div>
@@ -2005,16 +2005,16 @@ export function renderParentPortalView() {
                 <div class="w-full">
                   <label class="text-[10px] font-bold text-cyan-300 uppercase tracking-wider mb-1 block">Snack Theme</label>
                   <div class="grid grid-cols-2 gap-1.5">
-                    <button type="button" class="studio-food-theme-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioFoodTheme === 'orchard' ? 'bg-cyan-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-theme="orchard">
+                    <button type="button" class="studio-food-theme-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioFoodTheme === 'orchard' ? 'bg-cyan-400 text-slate-950 border-white shadow-sm' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-theme="orchard">
                       <span>🍎</span><span>Orchard</span>
                     </button>
-                    <button type="button" class="studio-food-theme-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioFoodTheme === 'cosmic' ? 'bg-cyan-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-theme="cosmic">
+                    <button type="button" class="studio-food-theme-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioFoodTheme === 'cosmic' ? 'bg-cyan-400 text-slate-950 border-white shadow-sm' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-theme="cosmic">
                       <span>🍓</span><span>Cosmic</span>
                     </button>
-                    <button type="button" class="studio-food-theme-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioFoodTheme === 'jungle' ? 'bg-cyan-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-theme="jungle">
+                    <button type="button" class="studio-food-theme-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioFoodTheme === 'jungle' ? 'bg-cyan-400 text-slate-950 border-white shadow-sm' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-theme="jungle">
                       <span>🍯</span><span>Jungle</span>
                     </button>
-                    <button type="button" class="studio-food-theme-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioFoodTheme === 'ocean' ? 'bg-cyan-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-theme="ocean">
+                    <button type="button" class="studio-food-theme-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioFoodTheme === 'ocean' ? 'bg-cyan-400 text-slate-950 border-white shadow-sm' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-theme="ocean">
                       <span>🌊</span><span>Ocean</span>
                     </button>
                   </div>
@@ -2024,16 +2024,16 @@ export function renderParentPortalView() {
                 <div class="w-full">
                   <label class="text-[10px] font-bold text-cyan-300 uppercase tracking-wider mb-1 block">Habit Domain</label>
                   <div class="grid grid-cols-2 gap-1.5">
-                    <button type="button" class="studio-boss-domain-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioBossDomain === 'dental' ? 'bg-cyan-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-domain="dental">
+                    <button type="button" class="studio-boss-domain-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioBossDomain === 'dental' ? 'bg-cyan-400 text-slate-950 border-white shadow-sm' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-domain="dental">
                       <span>🪥</span><span>Dental Care</span>
                     </button>
-                    <button type="button" class="studio-boss-domain-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioBossDomain === 'bedtime' ? 'bg-cyan-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-domain="bedtime">
+                    <button type="button" class="studio-boss-domain-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioBossDomain === 'bedtime' ? 'bg-cyan-400 text-slate-950 border-white shadow-sm' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-domain="bedtime">
                       <span>🌙</span><span>Bedtime</span>
                     </button>
-                    <button type="button" class="studio-boss-domain-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioBossDomain === 'screens' ? 'bg-cyan-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-domain="screens">
+                    <button type="button" class="studio-boss-domain-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioBossDomain === 'screens' ? 'bg-cyan-400 text-slate-950 border-white shadow-sm' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-domain="screens">
                       <span>📱</span><span>Screens</span>
                     </button>
-                    <button type="button" class="studio-boss-domain-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioBossDomain === 'nutrition' ? 'bg-cyan-400 text-slate-950 border-white shadow' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-domain="nutrition">
+                    <button type="button" class="studio-boss-domain-btn p-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${studioBossDomain === 'nutrition' ? 'bg-cyan-400 text-slate-950 border-white shadow-sm' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-domain="nutrition">
                       <span>🥦</span><span>Nutrition</span>
                     </button>
                   </div>
@@ -2060,7 +2060,7 @@ export function renderParentPortalView() {
             </div>
 
             <!-- Right Column: Reward Settings & Publishing (7 cols) -->
-            <div class="lg:col-span-7 bg-surface-container/90 rounded-3xl p-5 border-2 border-surface-container-highest shadow-sm flex flex-col gap-4">
+            <div class="lg:col-span-7 bg-surface-container/90 rounded-3xl p-5 border-2 border-surface-container-highest shadow-xs flex flex-col gap-4">
               
               <!-- Item Details Header -->
               <div class="flex items-center justify-between border-b border-surface-container-highest pb-2.5">
@@ -2082,21 +2082,21 @@ export function renderParentPortalView() {
                     id="studio-item-name" 
                     type="text" 
                     value="${studioItemName}"
-                    class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-none focus:border-cyan-400" 
+                    class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-hidden focus:border-cyan-400" 
                   />
                 </div>
 
                 <div>
                   <label class="text-[10px] font-black uppercase text-on-surface-variant block mb-1">Archetype / Slot</label>
                   ${studioActiveCategory === 'weapon' ? `
-                    <select id="studio-weapon-archetype" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-none focus:border-cyan-400">
+                    <select id="studio-weapon-archetype" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-hidden focus:border-cyan-400">
                       <option value="laser_sword" ${studioItemArchetype === 'laser_sword' ? 'selected' : ''}>⚡ Star-Plasma Saber (Energy Blade)</option>
                       <option value="blaster" ${studioItemArchetype === 'blaster' ? 'selected' : ''}>🔫 Turbo Hydro Blaster (Plaque Dissolver)</option>
                       <option value="hammer" ${studioItemArchetype === 'hammer' ? 'selected' : ''}>🔨 Meteor Shockwave Hammer (Smasher)</option>
                       <option value="shield_blaster" ${studioItemArchetype === 'shield_blaster' ? 'selected' : ''}>🛡️ Aegis Spark Cannon (Counter-Beam)</option>
                     </select>
                   ` : studioActiveCategory === 'gear' ? `
-                    <select id="studio-gear-archetype" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-none focus:border-cyan-400">
+                    <select id="studio-gear-archetype" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-hidden focus:border-cyan-400">
                       ${studioSelectedSocket === 'head' ? `
                         <option value="visor" ${studioItemArchetype === 'visor' ? 'selected' : ''}>Cyber HUD Visor (Glow Bar)</option>
                         <option value="crown" ${studioItemArchetype === 'crown' ? 'selected' : ''}>Golden Horn Crown (Spikes)</option>
@@ -2118,7 +2118,7 @@ export function renderParentPortalView() {
                       `}
                     </select>
                   ` : studioActiveCategory === 'furniture' ? `
-                    <select id="studio-furniture-type-select" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-none focus:border-cyan-400">
+                    <select id="studio-furniture-type-select" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-hidden focus:border-cyan-400">
                       <option value="bed" ${studioFurnitureType === 'bed' ? 'selected' : ''}>🛏️ Hero Sleeping Bed</option>
                       <option value="desk" ${studioFurnitureType === 'desk' ? 'selected' : ''}>💻 Mission Study Desk</option>
                       <option value="petLounge" ${studioFurnitureType === 'petLounge' ? 'selected' : ''}>🛋️ Pet Lounge / Beanbag</option>
@@ -2126,21 +2126,21 @@ export function renderParentPortalView() {
                       <option value="rug" ${studioFurnitureType === 'rug' ? 'selected' : ''}>🌈 Room Adventure Rug</option>
                     </select>
                   ` : studioActiveCategory === 'toy' ? `
-                    <select id="studio-toy-type-select" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-none focus:border-cyan-400">
+                    <select id="studio-toy-type-select" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-hidden focus:border-cyan-400">
                       <option value="trampoline" ${studioToyType === 'trampoline' ? 'selected' : ''}>🎪 Anti-Gravity Trampoline</option>
                       <option value="ball" ${studioToyType === 'ball' ? 'selected' : ''}>🚀 Turbo Ball Launcher</option>
                       <option value="laser" ${studioToyType === 'laser' ? 'selected' : ''}>✨ Starlight Laser Pointer</option>
                       <option value="puzzle" ${studioToyType === 'puzzle' ? 'selected' : ''}>🧩 Treat Puzzle Box</option>
                     </select>
                   ` : studioActiveCategory === 'food' ? `
-                    <select id="studio-food-theme-select" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-none focus:border-cyan-400">
+                    <select id="studio-food-theme-select" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-hidden focus:border-cyan-400">
                       <option value="orchard" ${studioFoodTheme === 'orchard' ? 'selected' : ''}>🍎 Orchard Harvest</option>
                       <option value="cosmic" ${studioFoodTheme === 'cosmic' ? 'selected' : ''}>🍓 Cosmic Stardust Berries</option>
                       <option value="jungle" ${studioFoodTheme === 'jungle' ? 'selected' : ''}>🍯 Jungle Honeycomb Feast</option>
                       <option value="ocean" ${studioFoodTheme === 'ocean' ? 'selected' : ''}>🌊 Tidepool Kelp Crunch</option>
                     </select>
                   ` : `
-                    <select id="studio-boss-domain-select" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-none focus:border-cyan-400">
+                    <select id="studio-boss-domain-select" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-hidden focus:border-cyan-400">
                       <option value="dental" ${studioBossDomain === 'dental' ? 'selected' : ''}>🪥 Dental & Tooth Brushing</option>
                       <option value="bedtime" ${studioBossDomain === 'bedtime' ? 'selected' : ''}>🌙 Sleep & Bedtime Routine</option>
                       <option value="screens" ${studioBossDomain === 'screens' ? 'selected' : ''}>📱 Screen Time Management</option>
@@ -2170,7 +2170,7 @@ export function renderParentPortalView() {
 
                 <div>
                   <label class="text-[10px] font-black uppercase text-on-surface-variant block mb-1">Visual Aura</label>
-                  <select id="studio-item-aura" class="w-full bg-surface-container border border-surface-container-highest rounded-xl p-2 text-xs font-bold text-inverse-surface focus:outline-none focus:border-cyan-400">
+                  <select id="studio-item-aura" class="w-full bg-surface-container border border-surface-container-highest rounded-xl p-2 text-xs font-bold text-inverse-surface focus:outline-hidden focus:border-cyan-400">
                     <option value="none" ${studioItemAura === 'none' ? 'selected' : ''}>None (Metallic)</option>
                     <option value="electric" ${studioItemAura === 'electric' ? 'selected' : ''}>⚡ Electric Spark (Cyan)</option>
                     <option value="fire" ${studioItemAura === 'fire' ? 'selected' : ''}>🔥 Blazing Fire (Orange)</option>
@@ -2195,7 +2195,7 @@ export function renderParentPortalView() {
 
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <select id="studio-gear-stat-type" class="w-full bg-surface-container border border-surface-container-highest rounded-xl p-2 text-xs font-bold text-inverse-surface focus:outline-none focus:border-cyan-400">
+                      <select id="studio-gear-stat-type" class="w-full bg-surface-container border border-surface-container-highest rounded-xl p-2 text-xs font-bold text-inverse-surface focus:outline-hidden focus:border-cyan-400">
                         <option value="damage_boost" ${studioStatType === 'damage_boost' ? 'selected' : ''}>⚔️ +Boss Battle Damage</option>
                         ${studioActiveCategory === 'gear' ? `
                           <option value="coin_boost" ${studioStatType === 'coin_boost' ? 'selected' : ''}>🪙 +Habit Tokens</option>
@@ -2307,10 +2307,10 @@ export function renderParentPortalView() {
                   </div>
 
                   <div class="grid grid-cols-2 gap-2 bg-[#09141e] p-1 rounded-xl border border-surface-container-highest">
-                    <button type="button" class="studio-world-mode-btn py-1.5 px-3 rounded-lg text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer ${studioWorldStashMode === 'landmark' ? 'bg-[#2ecc71] text-[#050f18] shadow' : 'text-slate-400 hover:text-white'}" data-mode="landmark">
+                    <button type="button" class="studio-world-mode-btn py-1.5 px-3 rounded-lg text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer ${studioWorldStashMode === 'landmark' ? 'bg-primary-container text-surface-container-lowest shadow-sm' : 'text-slate-400 hover:text-white'}" data-mode="landmark">
                       <span>🏰</span><span>3D Landmark</span>
                     </button>
-                    <button type="button" class="studio-world-mode-btn py-1.5 px-3 rounded-lg text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer ${studioWorldStashMode === 'mystery_stash' ? 'bg-[#f39c12] text-[#050f18] shadow' : 'text-slate-400 hover:text-white'}" data-mode="mystery_stash">
+                    <button type="button" class="studio-world-mode-btn py-1.5 px-3 rounded-lg text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer ${studioWorldStashMode === 'mystery_stash' ? 'bg-[#f39c12] text-surface-container-lowest shadow-sm' : 'text-slate-400 hover:text-white'}" data-mode="mystery_stash">
                       <span>📦</span><span>Streak Crate</span>
                     </button>
                   </div>
@@ -2318,13 +2318,13 @@ export function renderParentPortalView() {
                   ${studioWorldStashMode === 'landmark' ? `
                     <div class="grid grid-cols-4 gap-1.5 mt-1">
                       ${LANDMARK_ARCHETYPES.map(arch => `
-                        <button type="button" class="studio-landmark-arch-btn p-1.5 rounded-xl border flex flex-col items-center gap-0.5 text-[10px] font-black transition-all cursor-pointer ${studioLandmarkArchetype === arch.type ? 'bg-[#2ecc71]/20 border-[#2ecc71] text-white' : 'bg-surface-container border-surface-container-highest text-slate-400 hover:text-white'}" data-arch="${arch.type}">
+                        <button type="button" class="studio-landmark-arch-btn p-1.5 rounded-xl border flex flex-col items-center gap-0.5 text-[10px] font-black transition-all cursor-pointer ${studioLandmarkArchetype === arch.type ? 'bg-primary-container/20 border-primary-container text-white' : 'bg-surface-container border-surface-container-highest text-slate-400 hover:text-white'}" data-arch="${arch.type}">
                           <span>${arch.emoji}</span>
                           <span class="truncate w-full text-center">${arch.name.split(' ')[0]}</span>
                         </button>
                       `).join('')}
                     </div>
-                    <select id="studio-landmark-preset-select" class="w-full bg-surface-container border border-surface-container-highest rounded-xl p-2 text-xs font-bold text-inverse-surface mt-1 focus:outline-none focus:border-cyan-400">
+                    <select id="studio-landmark-preset-select" class="w-full bg-surface-container border border-surface-container-highest rounded-xl p-2 text-xs font-bold text-inverse-surface mt-1 focus:outline-hidden focus:border-cyan-400">
                       ${BIOME_PLACEMENT_PRESETS.map(preset => `
                         <option value="${preset.id}" ${studioLandmarkPreset === preset.id ? 'selected' : ''}>
                           ${preset.name} (${preset.biomeId.replace('_', ' ')})
@@ -2353,7 +2353,7 @@ export function renderParentPortalView() {
                       <span id="studio-stash-streak-val">🔥 ${studioBountyStreakDays}-Day Streak</span>
                     </div>
                     <input id="studio-stash-streak-slider" type="range" min="1" max="14" step="1" value="${studioBountyStreakDays}" class="w-full accent-amber-400" />
-                    <select id="studio-stash-biome-select" class="w-full bg-surface-container border border-surface-container-highest rounded-xl p-2 text-xs font-bold text-inverse-surface focus:outline-none focus:border-cyan-400">
+                    <select id="studio-stash-biome-select" class="w-full bg-surface-container border border-surface-container-highest rounded-xl p-2 text-xs font-bold text-inverse-surface focus:outline-hidden focus:border-cyan-400">
                       <option value="whispering_meadows">Whispering Meadows (Morning)</option>
                       <option value="sunken_lagoon">Sunken Lagoon (Afternoon)</option>
                       <option value="molten_volcano">Molten Volcano (Evening)</option>
@@ -2392,7 +2392,7 @@ export function renderParentPortalView() {
                     type="text" 
                     value="${studioItemDesc}"
                     placeholder="e.g. Forged from starlight for extra courage!"
-                    class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-none focus:border-cyan-400" 
+                    class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-hidden focus:border-cyan-400" 
                   />
                 </div>
 
@@ -2406,7 +2406,7 @@ export function renderParentPortalView() {
                     type="text" 
                     value="${studioActiveCategory === 'boss' ? studioBossTaunt : studioPetVoiceLine}"
                     placeholder="e.g. Woohoo! Super hero power!"
-                    class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-cyan-300 focus:outline-none focus:border-cyan-400" 
+                    class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-cyan-300 focus:outline-hidden focus:border-cyan-400" 
                   />
                 </div>
               </div>
@@ -2477,7 +2477,7 @@ export function renderParentPortalView() {
                 <button 
                   type="button" 
                   id="studio-test-as-child-btn"
-                  class="w-full sm:w-auto py-2.5 px-4 min-h-[44px] rounded-2xl bg-surface-container-high border border-surface-container-highest text-inverse-surface hover:bg-surface-bright font-headline text-xs font-black shadow active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                  class="w-full sm:w-auto py-2.5 px-4 min-h-[44px] rounded-2xl bg-surface-container-high border border-surface-container-highest text-inverse-surface hover:bg-surface-bright font-headline text-xs font-black shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1.5"
                 >
                   <span>👀</span>
                   <span>Test as Child</span>
@@ -2487,7 +2487,7 @@ export function renderParentPortalView() {
                   type="button" 
                   id="studio-gear-publish-btn" 
                   data-studio-publish="true"
-                  class="w-full sm:w-auto bg-gradient-to-r from-cyan-500 via-blue-600 to-emerald-500 text-slate-950 font-headline text-xs sm:text-sm font-black py-3 px-6 min-h-[44px] rounded-2xl shadow-xl hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 border-2 border-white/30"
+                  class="w-full sm:w-auto bg-linear-to-r from-cyan-500 via-blue-600 to-emerald-500 text-slate-950 font-headline text-xs sm:text-sm font-black py-3 px-6 min-h-[44px] rounded-2xl shadow-xl hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 border-2 border-white/30"
                 >
                   <span class="text-base">🚀</span>
                   <span>Publish Reward Live</span>
@@ -2500,7 +2500,7 @@ export function renderParentPortalView() {
 
 
           <!-- Published Custom Creations Galleries -->
-          <div class="bg-surface-container rounded-3xl p-6 border border-surface-container-highest shadow-sm flex flex-col gap-6">
+          <div class="bg-surface-container rounded-3xl p-6 border border-surface-container-highest shadow-xs flex flex-col gap-6">
             <div class="flex items-center justify-between border-b border-surface-container-highest pb-3">
               <div>
                 <h3 class="font-headline text-base sm:text-lg font-black text-inverse-surface flex items-center gap-2">
@@ -2523,7 +2523,7 @@ export function renderParentPortalView() {
                   ${publishedCustomGear.map(item => `
                     <div class="p-3.5 rounded-2xl bg-surface-container-high border-2 border-amber-400/30 shadow-md flex flex-col justify-between gap-2.5">
                       <div class="flex items-start gap-3">
-                        <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow shrink-0" style="background-color: ${item.primaryColor || '#06b6d4'};">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-sm shrink-0" style="background-color: ${item.primaryColor || '#06b6d4'};">
                           ${item.image ? `<img src="${item.image}" class="w-8 h-8 object-contain" />` : `<span class="material-symbols-outlined text-white">${item.icon || 'shield'}</span>`}
                         </div>
                         <div class="min-w-0 flex-1">
@@ -2558,7 +2558,7 @@ export function renderParentPortalView() {
                   ${publishedCustomFurniture.map(item => `
                     <div class="p-3.5 rounded-2xl bg-surface-container-high border-2 border-emerald-400/30 shadow-md flex flex-col justify-between gap-2.5">
                       <div class="flex items-start gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 flex items-center justify-center text-xl shadow shrink-0">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 flex items-center justify-center text-xl shadow-sm shrink-0">
                           ${item.icon || '🛋️'}
                         </div>
                         <div class="min-w-0 flex-1">
@@ -2593,7 +2593,7 @@ export function renderParentPortalView() {
                   ${publishedCustomToys.map(item => `
                     <div class="p-3.5 rounded-2xl bg-surface-container-high border-2 border-purple-400/30 shadow-md flex flex-col justify-between gap-2.5">
                       <div class="flex items-start gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-400/40 flex items-center justify-center text-xl shadow shrink-0">
+                        <div class="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-400/40 flex items-center justify-center text-xl shadow-sm shrink-0">
                           ${item.emoji || '🎪'}
                         </div>
                         <div class="min-w-0 flex-1">
@@ -2628,7 +2628,7 @@ export function renderParentPortalView() {
                   ${publishedCustomBosses.map(item => `
                     <div class="p-3.5 rounded-2xl bg-surface-container-high border-2 border-rose-400/30 shadow-md flex flex-col justify-between gap-2.5">
                       <div class="flex items-start gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-rose-500/20 text-rose-300 border border-rose-400/40 flex items-center justify-center text-xl shadow shrink-0">
+                        <div class="w-10 h-10 rounded-xl bg-rose-500/20 text-rose-300 border border-rose-400/40 flex items-center justify-center text-xl shadow-sm shrink-0">
                           ${item.emoji || '👾'}
                         </div>
                         <div class="min-w-0 flex-1">
@@ -2642,7 +2642,7 @@ export function renderParentPortalView() {
                       <div class="flex items-center justify-between pt-1.5 border-t border-surface-container-highest">
                         <span class="text-[10px] font-black text-rose-300">Reward: ${item.rewardCoins || 50} 🪙</span>
                         <div class="flex items-center gap-1.5">
-                          <button class="test-custom-boss-btn bg-primary text-on-primary px-2.5 py-1 rounded-xl text-[10px] font-black flex items-center gap-1 hover:brightness-110 active:scale-95 shadow-sm" data-boss-id="${item.id}" title="Test in Toothbrush Battle">
+                          <button class="test-custom-boss-btn bg-primary text-on-primary px-2.5 py-1 rounded-xl text-[10px] font-black flex items-center gap-1 hover:brightness-110 active:scale-95 shadow-xs" data-boss-id="${item.id}" title="Test in Toothbrush Battle">
                             <span class="material-symbols-outlined text-xs">swords</span> Battle
                           </button>
                           <button class="delete-custom-boss-btn text-error hover:bg-error/15 p-1 rounded-lg" data-boss-id="${item.id}" title="Delete Boss">
@@ -2668,7 +2668,7 @@ export function renderParentPortalView() {
                   ${publishedCustomFood.map(item => `
                     <div class="p-3.5 rounded-2xl bg-surface-container-high border-2 border-lime-400/30 shadow-md flex flex-col justify-between gap-2.5">
                       <div class="flex items-start gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-lime-500/20 text-lime-300 border border-lime-400/40 flex items-center justify-center text-xl shadow shrink-0">
+                        <div class="w-10 h-10 rounded-xl bg-lime-500/20 text-lime-300 border border-lime-400/40 flex items-center justify-center text-xl shadow-sm shrink-0">
                           ${item.emoji || '🍎'}
                         </div>
                         <div class="min-w-0 flex-1">
@@ -2707,7 +2707,7 @@ export function renderParentPortalView() {
                   ${(store.getWorldAdventureMapState().parentHiddenChests || []).map(chest => `
                     <div class="p-3.5 rounded-2xl bg-surface-container-high border-2 border-amber-400/30 shadow-md flex flex-col justify-between gap-2.5">
                       <div class="flex items-start gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-400/40 flex items-center justify-center text-xl shadow shrink-0">
+                        <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-400/40 flex items-center justify-center text-xl shadow-sm shrink-0">
                           📦
                         </div>
                         <div class="min-w-0 flex-1">
@@ -2734,7 +2734,7 @@ export function renderParentPortalView() {
                     return `
                       <div class="p-3.5 rounded-2xl bg-surface-container-high border-2 border-emerald-400/30 shadow-md flex flex-col justify-between gap-2.5">
                         <div class="flex items-start gap-3">
-                          <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 flex items-center justify-center text-xl shadow shrink-0">
+                          <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 flex items-center justify-center text-xl shadow-sm shrink-0">
                             ${arch.emoji}
                           </div>
                           <div class="min-w-0 flex-1">
@@ -2815,7 +2815,7 @@ export function renderParentPortalView() {
           `
               : activeParentInsights
               ? `
-            <div class="bg-gradient-to-br from-primary/15 via-surface-container to-secondary/10 rounded-3xl p-6 border-2 border-primary/50 card-shadow flex flex-col gap-4 animate-fade-in">
+            <div class="bg-linear-to-br from-primary/15 via-surface-container to-secondary/10 rounded-3xl p-6 border-2 border-primary/50 card-shadow flex flex-col gap-4 animate-fade-in">
               <div class="flex items-center justify-between border-b border-surface-container-highest pb-3">
                 <div class="flex items-center gap-2.5">
                   <span class="text-2xl">✨</span>
@@ -2824,7 +2824,7 @@ export function renderParentPortalView() {
                     <p class="text-[11px] text-on-surface-variant font-bold">Personalized psychological feedback powered by Gemini 3.7 Flash</p>
                   </div>
                 </div>
-                <button id="admin-refresh-insights-btn" class="bg-surface-container-high hover:bg-surface-bright text-primary border border-primary/30 font-headline text-xs font-black px-3 py-1.5 rounded-xl chunky-btn-sm active:scale-95 flex items-center gap-1.5 shadow-sm">
+                <button id="admin-refresh-insights-btn" class="bg-surface-container-high hover:bg-surface-bright text-primary border border-primary/30 font-headline text-xs font-black px-3 py-1.5 rounded-xl chunky-btn-sm active:scale-95 flex items-center gap-1.5 shadow-xs">
                   <span class="material-symbols-outlined text-sm">refresh</span>
                   <span>Refresh Analysis</span>
                 </button>
@@ -2873,7 +2873,7 @@ export function renderParentPortalView() {
             </div>
           `
               : `
-            <div class="bg-gradient-to-r from-primary/10 via-surface-container to-secondary/10 rounded-3xl p-6 border-2 border-primary/30 card-shadow flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="bg-linear-to-r from-primary/10 via-surface-container to-secondary/10 rounded-3xl p-6 border-2 border-primary/30 card-shadow flex flex-col sm:flex-row items-center justify-between gap-4">
               <div class="flex items-center gap-3.5">
                 <div class="w-12 h-12 rounded-2xl bg-primary/20 text-primary flex items-center justify-center text-2xl shadow-inner">
                   <span class="material-symbols-outlined text-3xl">psychology</span>
@@ -3011,7 +3011,7 @@ export function renderParentPortalView() {
           <!-- Mini Games Difficulty Configuration Individually for Each Kid -->
           <div class="bg-surface-container rounded-3xl p-6 border-2 border-secondary-container card-shadow flex flex-col gap-5">
             <div class="flex items-center gap-3">
-              <div class="w-12 h-12 rounded-2xl bg-secondary text-on-secondary flex items-center justify-center text-2xl shadow">
+              <div class="w-12 h-12 rounded-2xl bg-secondary text-on-secondary flex items-center justify-center text-2xl shadow-sm">
                 <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">psychology</span>
               </div>
               <div>
@@ -3045,21 +3045,21 @@ export function renderParentPortalView() {
                     <!-- 3 Difficulty Toggle Buttons for this Child -->
                     <div class="grid grid-cols-3 gap-2 text-center">
                       <button data-kid-id="${h.id}" data-diff-level="easy" class="kid-diff-btn rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 border-2 transition-all ${
-                        currentDiff === 'easy' ? 'bg-primary text-on-primary border-primary-container shadow-sm font-black' : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border-surface-container-highest'
+                        currentDiff === 'easy' ? 'bg-primary text-on-primary border-primary-container shadow-xs font-black' : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border-surface-container-highest'
                       }">
                         <span class="text-xs font-headline font-black">Easy</span>
                         <span class="text-[9px] leading-tight ${currentDiff === 'easy' ? 'text-on-primary/90' : 'text-on-surface-variant'}">Age 3–4 (Voice Prompts)</span>
                       </button>
 
                       <button data-kid-id="${h.id}" data-diff-level="medium" class="kid-diff-btn rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 border-2 transition-all ${
-                        currentDiff === 'medium' ? 'bg-secondary text-on-secondary border-secondary-container shadow-sm font-black' : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border-surface-container-highest'
+                        currentDiff === 'medium' ? 'bg-secondary text-on-secondary border-secondary-container shadow-xs font-black' : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border-surface-container-highest'
                       }">
                         <span class="text-xs font-headline font-black">Medium</span>
                         <span class="text-[9px] leading-tight ${currentDiff === 'medium' ? 'text-on-secondary/90' : 'text-on-surface-variant'}">Age 5–6 (Reading)</span>
                       </button>
 
                       <button data-kid-id="${h.id}" data-diff-level="hard" class="kid-diff-btn rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 border-2 transition-all ${
-                        currentDiff === 'hard' ? 'bg-error text-on-error border-error-container shadow-sm font-black' : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border-surface-container-highest'
+                        currentDiff === 'hard' ? 'bg-error text-on-error border-error-container shadow-xs font-black' : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border-surface-container-highest'
                       }">
                         <span class="text-xs font-headline font-black">Hard</span>
                         <span class="text-[9px] leading-tight ${currentDiff === 'hard' ? 'text-on-error/90' : 'text-on-surface-variant'}">Age 7–9 (Advanced)</span>
@@ -3105,7 +3105,7 @@ export function renderParentPortalView() {
           <!-- Floss & Mouthwash Daily Reminders (Per Kid) -->
           <div class="bg-surface-container rounded-3xl p-6 border-2 border-surface-container-highest card-shadow flex flex-col gap-5">
             <div class="flex items-center gap-3">
-              <div class="w-12 h-12 rounded-2xl bg-primary/20 text-primary border border-primary/40 flex items-center justify-center text-2xl shadow-sm">
+              <div class="w-12 h-12 rounded-2xl bg-primary/20 text-primary border border-primary/40 flex items-center justify-center text-2xl shadow-xs">
                 <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">health_and_safety</span>
               </div>
               <div>
@@ -3130,14 +3130,14 @@ export function renderParentPortalView() {
 
                     <div class="grid grid-cols-2 gap-2">
                       <button data-kid-id="${h.id}" data-reminder-type="floss" class="hygiene-reminder-toggle-btn rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 border-2 transition-all ${
-                        flossOn ? 'bg-primary text-on-primary border-primary-container shadow-sm font-black' : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border-surface-container-highest'
+                        flossOn ? 'bg-primary text-on-primary border-primary-container shadow-xs font-black' : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border-surface-container-highest'
                       }">
                         <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">health_and_safety</span>
                         <span class="text-[11px] font-headline font-black">Floss${flossOn ? ' ✓' : ''}</span>
                       </button>
 
                       <button data-kid-id="${h.id}" data-reminder-type="mouthwash" class="hygiene-reminder-toggle-btn rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 border-2 transition-all ${
-                        mouthwashOn ? 'bg-secondary text-on-secondary border-secondary-container shadow-sm font-black' : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border-surface-container-highest'
+                        mouthwashOn ? 'bg-secondary text-on-secondary border-secondary-container shadow-xs font-black' : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border-surface-container-highest'
                       }">
                         <span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">water_drop</span>
                         <span class="text-[11px] font-headline font-black">Mouthwash${mouthwashOn ? ' ✓' : ''}</span>
@@ -3152,7 +3152,7 @@ export function renderParentPortalView() {
           <!-- Rex AI Companion Voice Persona & Live Settings -->
           <div class="bg-surface-container rounded-3xl p-6 border-2 border-primary/30 card-shadow flex flex-col gap-5">
             <div class="flex items-center gap-3">
-              <div class="w-12 h-12 rounded-2xl bg-primary/20 text-primary border border-primary/40 flex items-center justify-center text-2xl shadow-sm">
+              <div class="w-12 h-12 rounded-2xl bg-primary/20 text-primary border border-primary/40 flex items-center justify-center text-2xl shadow-xs">
                 🦖
               </div>
               <div>
@@ -3173,7 +3173,7 @@ export function renderParentPortalView() {
                 const isSelected = currentVoice.toLowerCase() === v.id.toLowerCase();
                 return `
                   <button data-voice-id="${v.id}" class="rex-voice-select-btn rounded-2xl p-3 flex flex-col items-center justify-center gap-1.5 border-2 transition-all active:scale-95 ${
-                    isSelected ? 'bg-primary text-on-primary border-primary-container shadow-sm font-black' : 'bg-surface-container-high hover:bg-surface-bright text-inverse-surface border-surface-container-highest'
+                    isSelected ? 'bg-primary text-on-primary border-primary-container shadow-xs font-black' : 'bg-surface-container-high hover:bg-surface-bright text-inverse-surface border-surface-container-highest'
                   }">
                     <span class="material-symbols-outlined text-2xl">${v.icon}</span>
                     <span class="font-headline text-xs font-black">${v.label}</span>
@@ -3188,7 +3188,7 @@ export function renderParentPortalView() {
           <div class="bg-surface-container rounded-3xl p-6 border-2 border-secondary-container card-shadow flex flex-col gap-5">
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div class="flex items-center gap-3">
-                <div class="w-12 h-12 rounded-2xl bg-secondary/20 text-secondary border border-secondary/40 flex items-center justify-center text-2xl shadow-sm">
+                <div class="w-12 h-12 rounded-2xl bg-secondary/20 text-secondary border border-secondary/40 flex items-center justify-center text-2xl shadow-xs">
                   <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">security</span>
                 </div>
                 <div>
@@ -3198,7 +3198,7 @@ export function renderParentPortalView() {
               </div>
 
               <!-- Quick Status Badge -->
-              <span class="text-[10px] font-black uppercase px-3 py-1.5 rounded-full bg-secondary/15 text-secondary border border-secondary/30 flex items-center gap-1.5 shadow-sm">
+              <span class="text-[10px] font-black uppercase px-3 py-1.5 rounded-full bg-secondary/15 text-secondary border border-secondary/30 flex items-center gap-1.5 shadow-xs">
                 <span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
                 ${[settings.biometricsEnabled !== false ? 'Biometrics' : '', settings.pinLockEnabled !== false ? 'PIN' : '', settings.mathChallengeEnabled !== false ? 'Math' : ''].filter(Boolean).length} of 3 Gates Active
               </span>
@@ -3210,7 +3210,7 @@ export function renderParentPortalView() {
               <!-- OPTION 1: Biometric Authentication (Touch ID / Face ID / Windows Hello) -->
               <div class="bg-surface-container-high rounded-2xl p-4.5 border-2 ${
                 settings.biometricsEnabled !== false
-                  ? 'border-primary/60 bg-primary/5 shadow-sm'
+                  ? 'border-primary/60 bg-primary/5 shadow-xs'
                   : 'border-surface-container-highest opacity-70'
               } flex flex-col justify-between gap-4 transition-all">
                 <div class="flex flex-col gap-2">
@@ -3223,7 +3223,7 @@ export function renderParentPortalView() {
                     <!-- Toggle Button -->
                     <button data-lock-toggle="biometrics" class="lock-option-toggle-btn px-3 py-1 rounded-full text-[10px] font-black uppercase transition-all chunky-btn-sm ${
                       settings.biometricsEnabled !== false
-                        ? 'bg-primary text-on-primary border-primary-container shadow-sm'
+                        ? 'bg-primary text-on-primary border-primary-container shadow-xs'
                         : 'bg-surface-container-lowest text-on-surface-variant border-surface-container'
                     }">
                       ${settings.biometricsEnabled !== false ? '✓ Active' : 'Off'}
@@ -3248,7 +3248,7 @@ export function renderParentPortalView() {
               <!-- OPTION 2: 4-Digit Security PIN -->
               <div class="bg-surface-container-high rounded-2xl p-4.5 border-2 ${
                 settings.pinLockEnabled !== false
-                  ? 'border-secondary/60 bg-secondary/5 shadow-sm'
+                  ? 'border-secondary/60 bg-secondary/5 shadow-xs'
                   : 'border-surface-container-highest opacity-70'
               } flex flex-col justify-between gap-4 transition-all">
                 <div class="flex flex-col gap-2">
@@ -3261,7 +3261,7 @@ export function renderParentPortalView() {
                     <!-- Toggle Button -->
                     <button data-lock-toggle="pin" class="lock-option-toggle-btn px-3 py-1 rounded-full text-[10px] font-black uppercase transition-all chunky-btn-sm ${
                       settings.pinLockEnabled !== false
-                        ? 'bg-secondary text-on-secondary border-secondary-container shadow-sm'
+                        ? 'bg-secondary text-on-secondary border-secondary-container shadow-xs'
                         : 'bg-surface-container-lowest text-on-surface-variant border-surface-container'
                     }">
                       ${settings.pinLockEnabled !== false ? '✓ Active' : 'Off'}
@@ -3272,7 +3272,7 @@ export function renderParentPortalView() {
 
                 <div class="flex flex-col gap-2 pt-2 border-t border-surface-container-highest/60">
                   <div class="flex items-center gap-2">
-                    <input type="text" id="parent-setting-pin-input" maxlength="8" value="${settings.pin || '1234'}" ${settings.pinLockEnabled === false ? 'disabled' : ''} class="w-full bg-surface-container border-2 border-surface-container-highest rounded-xl px-3 py-2 text-sm font-headline font-black text-secondary tracking-widest text-center focus:border-secondary focus:outline-none ${settings.pinLockEnabled === false ? 'opacity-50 cursor-not-allowed' : ''}" />
+                    <input type="text" id="parent-setting-pin-input" maxlength="8" value="${settings.pin || '1234'}" ${settings.pinLockEnabled === false ? 'disabled' : ''} class="w-full bg-surface-container border-2 border-surface-container-highest rounded-xl px-3 py-2 text-sm font-headline font-black text-secondary tracking-widest text-center focus:border-secondary focus:outline-hidden ${settings.pinLockEnabled === false ? 'opacity-50 cursor-not-allowed' : ''}" />
                     <button id="save-parent-pin-btn" ${settings.pinLockEnabled === false ? 'disabled' : ''} class="${
                       settings.pinLockEnabled !== false
                         ? 'bg-secondary text-on-secondary border-secondary-container active:scale-95'
@@ -3288,7 +3288,7 @@ export function renderParentPortalView() {
               <!-- OPTION 3: Adult Math Challenge -->
               <div class="bg-surface-container-high rounded-2xl p-4.5 border-2 ${
                 settings.mathChallengeEnabled !== false
-                  ? 'border-tertiary/60 bg-tertiary/5 shadow-sm'
+                  ? 'border-tertiary/60 bg-tertiary/5 shadow-xs'
                   : 'border-surface-container-highest opacity-70'
               } flex flex-col justify-between gap-4 transition-all">
                 <div class="flex flex-col gap-2">
@@ -3301,7 +3301,7 @@ export function renderParentPortalView() {
                     <!-- Toggle Button -->
                     <button data-lock-toggle="math" class="lock-option-toggle-btn px-3 py-1 rounded-full text-[10px] font-black uppercase transition-all chunky-btn-sm ${
                       settings.mathChallengeEnabled !== false
-                        ? 'bg-tertiary text-on-tertiary border-tertiary-container shadow-sm'
+                        ? 'bg-tertiary text-on-tertiary border-tertiary-container shadow-xs'
                         : 'bg-surface-container-lowest text-on-surface-variant border-surface-container'
                     }">
                       ${settings.mathChallengeEnabled !== false ? '✓ Active' : 'Off'}
@@ -3325,7 +3325,7 @@ export function renderParentPortalView() {
           <!-- Task & Button Diagnostics & Clearing Stuck Approvals -->
           <div class="bg-surface-container rounded-3xl p-6 border-2 border-secondary-container card-shadow flex flex-col gap-4">
             <div class="flex items-center gap-3">
-              <div class="w-12 h-12 rounded-2xl bg-secondary text-on-secondary flex items-center justify-center text-2xl shadow">
+              <div class="w-12 h-12 rounded-2xl bg-secondary text-on-secondary flex items-center justify-center text-2xl shadow-sm">
                 <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">cleaning_services</span>
               </div>
               <div>
@@ -3339,7 +3339,7 @@ export function renderParentPortalView() {
                 <h4 class="font-headline text-sm font-black text-inverse-surface">Clear Stuck Pending Approvals</h4>
                 <p class="text-xs text-on-surface-variant font-medium">Instantly clears all pending approval badges off buttons and returns all habits and chores to ready status across all child accounts.</p>
               </div>
-              <button id="admin-settings-clear-pending-btn" class="bg-error text-on-error font-headline text-xs font-black px-4 py-3 rounded-xl chunky-btn-sm active:scale-95 whitespace-nowrap shadow-sm flex items-center gap-1.5 hover:brightness-110">
+              <button id="admin-settings-clear-pending-btn" class="bg-error text-on-error font-headline text-xs font-black px-4 py-3 rounded-xl chunky-btn-sm active:scale-95 whitespace-nowrap shadow-xs flex items-center gap-1.5 hover:brightness-110">
                 <span class="material-symbols-outlined text-base">mop</span>
                 <span>Clear All Pending Approvals</span>
               </button>
@@ -3350,7 +3350,7 @@ export function renderParentPortalView() {
           <div class="bg-surface-container rounded-3xl p-6 border-2 border-primary/40 card-shadow flex flex-col gap-5">
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div class="flex items-center gap-3">
-                <div class="w-12 h-12 rounded-2xl bg-primary/20 text-primary border-2 border-primary flex items-center justify-center text-2xl shadow">
+                <div class="w-12 h-12 rounded-2xl bg-primary/20 text-primary border-2 border-primary flex items-center justify-center text-2xl shadow-sm">
                   🦖
                 </div>
                 <div>
@@ -3360,7 +3360,7 @@ export function renderParentPortalView() {
               </div>
 
               <!-- Status Pill -->
-              <span class="text-[10px] font-black uppercase px-3 py-1.5 rounded-full bg-primary/20 text-primary border border-primary/40 flex items-center gap-1.5 shadow-sm">
+              <span class="text-[10px] font-black uppercase px-3 py-1.5 rounded-full bg-primary/20 text-primary border border-primary/40 flex items-center gap-1.5 shadow-xs">
                 <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
                 Cloud Secret Protection Active
               </span>
@@ -3396,7 +3396,7 @@ export function renderParentPortalView() {
                     return `
                     <button data-rex-voice="${v.id}" class="rex-voice-select-btn rounded-xl p-3 flex flex-col items-center justify-center gap-1 border-2 transition-all ${
                       isSelected
-                        ? 'bg-primary text-on-primary border-primary-container shadow-sm font-black'
+                        ? 'bg-primary text-on-primary border-primary-container shadow-xs font-black'
                         : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border-surface-container-highest'
                     }">
                       <span class="text-xs font-headline font-black">${v.label}</span>
@@ -3416,7 +3416,7 @@ export function renderParentPortalView() {
               </div>
               <button id="admin-rex-autolisten-toggle" class="px-3.5 py-1.5 rounded-full text-xs font-black uppercase transition-all chunky-btn-sm ${
                 state.liveRex?.autoListenInQuests !== false
-                  ? 'bg-primary text-on-primary border-primary-container shadow-sm'
+                  ? 'bg-primary text-on-primary border-primary-container shadow-xs'
                   : 'bg-surface-container-lowest text-on-surface-variant border-surface-container'
               }">
                 ${state.liveRex?.autoListenInQuests !== false ? '✓ Enabled' : 'Disabled'}
@@ -3433,7 +3433,7 @@ export function renderParentPortalView() {
                     <p class="text-[10px] text-on-surface-variant font-bold">Enforced by Rex before every chat prompt</p>
                   </div>
                 </div>
-                <button id="admin-save-companion-rules-btn" class="bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2 rounded-xl chunky-btn-sm active:scale-95 shadow-sm hover:brightness-110 flex items-center gap-1.5">
+                <button id="admin-save-companion-rules-btn" class="bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2 rounded-xl chunky-btn-sm active:scale-95 shadow-xs hover:brightness-110 flex items-center gap-1.5">
                   <span class="material-symbols-outlined text-sm">verified_user</span>
                   <span>Save Rules</span>
                 </button>
@@ -3452,7 +3452,7 @@ export function renderParentPortalView() {
                     return `
                     <button data-companion-bedtime="${hour}" class="companion-bedtime-btn py-2 px-1 rounded-xl text-xs font-headline font-black transition-all border ${
                       isSelected
-                        ? 'bg-secondary text-on-secondary border-secondary-container shadow-sm'
+                        ? 'bg-secondary text-on-secondary border-secondary-container shadow-xs'
                         : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border-surface-container-highest'
                     }">
                       ${label}
@@ -3476,7 +3476,7 @@ export function renderParentPortalView() {
                     return `
                     <button data-companion-tone="${t.id}" class="companion-tone-btn p-2 rounded-xl text-left border flex flex-col gap-0.5 transition-all ${
                       isSelected
-                        ? 'bg-primary text-on-primary border-primary-container shadow-sm'
+                        ? 'bg-primary text-on-primary border-primary-container shadow-xs'
                         : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border-surface-container-highest'
                     }">
                       <span class="text-xs font-headline font-black">${t.label}</span>
@@ -3497,7 +3497,7 @@ export function renderParentPortalView() {
                     return `
                     <button data-companion-turns="${limit}" class="companion-turns-btn py-2 px-1 rounded-xl text-xs font-headline font-black transition-all border ${
                       isSelected
-                        ? 'bg-secondary text-on-secondary border-secondary-container shadow-sm'
+                        ? 'bg-secondary text-on-secondary border-secondary-container shadow-xs'
                         : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border-surface-container-highest'
                     }">
                       ${label}
@@ -3524,7 +3524,7 @@ export function renderParentPortalView() {
                     return `
                     <button data-focus-area="${item.id}" class="companion-focus-tag-btn p-2 rounded-xl text-xs font-headline font-black border flex items-center justify-between transition-all ${
                       isChecked
-                        ? 'bg-primary/20 text-primary border-primary/50 shadow-sm'
+                        ? 'bg-primary/20 text-primary border-primary/50 shadow-xs'
                         : 'bg-surface-container text-on-surface-variant border-surface-container-highest opacity-70'
                     }">
                       <span>${item.label}</span>
@@ -3543,7 +3543,7 @@ export function renderParentPortalView() {
                   id="admin-restricted-topics-input"
                   placeholder="e.g. scary monsters, sweets, sugar bugs"
                   value="${(settings.restrictedTopics || []).join(', ')}"
-                  class="bg-surface-container-lowest border-2 border-surface-container-highest rounded-xl px-3.5 py-2.5 text-xs text-inverse-surface focus:outline-none focus:border-secondary font-medium"
+                  class="bg-surface-container-lowest border-2 border-surface-container-highest rounded-xl px-3.5 py-2.5 text-xs text-inverse-surface focus:outline-hidden focus:border-secondary font-medium"
                 />
                 <span class="text-[10px] text-on-surface-variant">Separate topics with commas. Rex is strictly prohibited from mentioning these.</span>
               </div>
@@ -3552,7 +3552,7 @@ export function renderParentPortalView() {
             <!-- Diagnostics / Test Button -->
             <div class="flex items-center justify-between pt-1">
               <span class="text-[11px] text-on-surface-variant italic">Test bidirectional voice audio to ensure microphone and speakers are functioning.</span>
-              <button id="admin-test-rex-voice-btn" class="bg-secondary/20 hover:bg-secondary/30 text-secondary border border-secondary/40 font-headline text-xs font-black px-4 py-2.5 rounded-xl flex items-center gap-1.5 chunky-btn-sm active:scale-95 shadow-sm">
+              <button id="admin-test-rex-voice-btn" class="bg-secondary/20 hover:bg-secondary/30 text-secondary border border-secondary/40 font-headline text-xs font-black px-4 py-2.5 rounded-xl flex items-center gap-1.5 chunky-btn-sm active:scale-95 shadow-xs">
                 <span class="material-symbols-outlined text-base">record_voice_over</span>
                 <span>Test Live Rex Voice</span>
               </button>
@@ -3581,7 +3581,7 @@ function renderPhotoProofZoomModal() {
   return `
     <div id="admin-proof-zoom-backdrop" class="fixed inset-0 bg-[#09141e]/90 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in select-none">
       <div class="bg-surface-container border-4 border-primary rounded-4xl max-w-xl w-full card-shadow-lg flex flex-col overflow-hidden animate-scale-up">
-        <div class="bg-gradient-to-r from-primary to-emerald-600 p-4 text-white flex items-center justify-between">
+        <div class="bg-linear-to-r from-primary to-emerald-600 p-4 text-white flex items-center justify-between">
           <div class="flex items-center gap-2.5">
             <span class="material-symbols-outlined text-xl">photo_camera</span>
             <h3 class="font-headline text-base font-black">Chore Proof Verification Photo</h3>
@@ -3597,7 +3597,7 @@ function renderPhotoProofZoomModal() {
 
         <div class="p-4 bg-surface-container flex items-center justify-between border-t border-surface-container-highest">
           <span class="text-xs text-on-surface-variant font-bold">✨ High resolution proof captured by hero</span>
-          <button id="admin-proof-zoom-dismiss-btn" class="bg-secondary text-on-secondary font-headline text-xs font-black px-5 py-2.5 rounded-xl chunky-btn-sm active:scale-95 shadow">
+          <button id="admin-proof-zoom-dismiss-btn" class="bg-secondary text-on-secondary font-headline text-xs font-black px-5 py-2.5 rounded-xl chunky-btn-sm active:scale-95 shadow-sm">
             Done Inspecting
           </button>
         </div>
@@ -3625,18 +3625,18 @@ function renderAddParentModal() {
         <div class="flex flex-col gap-4">
           <div>
             <label class="block text-xs font-black text-on-surface-variant uppercase mb-1">Parent Email Address *</label>
-            <input type="email" id="new-parent-email" placeholder="e.g. parent@family.com" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-4 py-3 text-sm font-bold text-inverse-surface focus:border-secondary focus:outline-none" />
+            <input type="email" id="new-parent-email" placeholder="e.g. parent@family.com" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-4 py-3 text-sm font-bold text-inverse-surface focus:border-secondary focus:outline-hidden" />
             <span class="text-[10px] text-on-surface-variant font-medium mt-1 block">Used for Google Sign-In and adult authorization permissions</span>
           </div>
 
           <div>
             <label class="block text-xs font-black text-on-surface-variant uppercase mb-1">Parent Name / Nickname</label>
-            <input type="text" id="new-parent-name" placeholder="e.g. Mom, Dad, Grandma" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-4 py-3 text-sm font-bold text-inverse-surface focus:border-secondary focus:outline-none" />
+            <input type="text" id="new-parent-name" placeholder="e.g. Mom, Dad, Grandma" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-4 py-3 text-sm font-bold text-inverse-surface focus:border-secondary focus:outline-hidden" />
           </div>
 
           <div>
             <label class="block text-xs font-black text-on-surface-variant uppercase mb-1">Administrator Role</label>
-            <select id="new-parent-role" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-4 py-2.5 text-sm font-bold text-inverse-surface focus:border-secondary focus:outline-none">
+            <select id="new-parent-role" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-4 py-2.5 text-sm font-bold text-inverse-surface focus:border-secondary focus:outline-hidden">
               <option value="admin">Co-Parent Admin (Approvals, Balances & Settings)</option>
               <option value="owner">Household Co-Owner (Full Authority)</option>
             </select>
@@ -3647,7 +3647,7 @@ function renderAddParentModal() {
           <button id="add-parent-cancel-btn" class="flex-1 bg-surface-container-high hover:bg-surface-bright text-inverse-surface font-headline text-xs font-black py-3 rounded-xl border border-surface-container-highest chunky-btn-sm active:scale-95">
             Cancel
           </button>
-          <button id="add-parent-submit-btn" class="flex-1 bg-secondary text-on-secondary font-headline text-xs font-black py-3 rounded-xl chunky-btn border-secondary-container shadow hover:brightness-110 active:scale-95">
+          <button id="add-parent-submit-btn" class="flex-1 bg-secondary text-on-secondary font-headline text-xs font-black py-3 rounded-xl chunky-btn border-secondary-container shadow-sm hover:brightness-110 active:scale-95">
             Authorize Parent
           </button>
         </div>
@@ -3676,24 +3676,24 @@ function renderAddKidModal() {
         <div class="flex flex-col gap-4">
           <div>
             <label class="block text-xs font-black text-on-surface-variant uppercase mb-1">Child's Name</label>
-            <input type="text" id="new-kid-name" placeholder="e.g. Liam, Leo, Noah" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-4 py-3 text-sm font-bold text-inverse-surface focus:border-primary focus:outline-none" />
+            <input type="text" id="new-kid-name" placeholder="e.g. Liam, Leo, Noah" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-4 py-3 text-sm font-bold text-inverse-surface focus:border-primary focus:outline-hidden" />
           </div>
 
           <div>
             <label class="block text-xs font-black text-on-surface-variant uppercase mb-1">Adventurer Title / Role</label>
-            <input type="text" id="new-kid-role" placeholder="e.g. Dragon Explorer, Cyber Knight" value="Dragon Explorer" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-4 py-3 text-sm font-bold text-inverse-surface focus:border-primary focus:outline-none" />
+            <input type="text" id="new-kid-role" placeholder="e.g. Dragon Explorer, Cyber Knight" value="Dragon Explorer" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-4 py-3 text-sm font-bold text-inverse-surface focus:border-primary focus:outline-hidden" />
           </div>
 
           <!-- Photo Upload Option -->
           <div class="flex items-center gap-3 p-3 bg-surface-container-high rounded-2xl border-2 border-surface-container-highest">
-            <div class="w-14 h-14 rounded-full border-2 border-primary overflow-hidden flex-shrink-0 bg-surface-variant relative shadow-inner">
+            <div class="w-14 h-14 rounded-full border-2 border-primary overflow-hidden shrink-0 bg-surface-variant relative shadow-inner">
               <img id="new-kid-avatar-preview" src="${selectedAvatarUrl}" class="w-full h-full object-cover" />
             </div>
             <div class="flex flex-col flex-1 min-w-0">
               <span class="text-xs font-headline font-black text-inverse-surface">Upload Child's Photo</span>
               <span class="text-[10px] text-on-surface-variant font-bold">Upload a photo or pick an avatar below</span>
             </div>
-            <label for="new-kid-photo-input" class="bg-primary text-on-primary font-headline text-xs font-black px-3.5 py-2.5 rounded-xl chunky-btn-sm border-primary-container cursor-pointer hover:brightness-110 active:scale-95 flex items-center gap-1.5 shadow-sm">
+            <label for="new-kid-photo-input" class="bg-primary text-on-primary font-headline text-xs font-black px-3.5 py-2.5 rounded-xl chunky-btn-sm border-primary-container cursor-pointer hover:brightness-110 active:scale-95 flex items-center gap-1.5 shadow-xs">
               <span class="material-symbols-outlined text-sm">photo_camera</span>
               Upload
             </label>
@@ -3737,11 +3737,11 @@ function renderAddKidModal() {
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-xs font-black text-on-surface-variant uppercase mb-1">Starting Tokens 🪙</label>
-              <input type="number" id="new-kid-coins" value="50" min="0" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-4 py-2.5 text-sm font-bold text-secondary focus:border-secondary focus:outline-none" />
+              <input type="number" id="new-kid-coins" value="50" min="0" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-4 py-2.5 text-sm font-bold text-secondary focus:border-secondary focus:outline-hidden" />
             </div>
             <div>
               <label class="block text-xs font-black text-on-surface-variant uppercase mb-1">Starting Points ⭐</label>
-              <input type="number" id="new-kid-points" value="0" min="0" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-4 py-2.5 text-sm font-bold text-tertiary focus:border-tertiary focus:outline-none" />
+              <input type="number" id="new-kid-points" value="0" min="0" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-4 py-2.5 text-sm font-bold text-tertiary focus:border-tertiary focus:outline-hidden" />
             </div>
           </div>
         </div>
@@ -3750,7 +3750,7 @@ function renderAddKidModal() {
           <button id="add-kid-cancel-btn" class="flex-1 bg-surface-container-high hover:bg-surface-bright text-inverse-surface font-headline text-xs font-black py-3 rounded-xl border border-surface-container-highest chunky-btn-sm active:scale-95">
             Cancel
           </button>
-          <button id="add-kid-submit-btn" class="flex-1 bg-primary text-on-primary font-headline text-xs font-black py-3 rounded-xl chunky-btn border-primary-container shadow hover:brightness-110 active:scale-95">
+          <button id="add-kid-submit-btn" class="flex-1 bg-primary text-on-primary font-headline text-xs font-black py-3 rounded-xl chunky-btn border-primary-container shadow-sm hover:brightness-110 active:scale-95">
             Create Adventurer
           </button>
         </div>
@@ -3779,24 +3779,24 @@ function renderEditKidModal() {
         <div class="flex flex-col gap-4">
           <div>
             <label class="block text-xs font-black text-on-surface-variant uppercase mb-1">Child's Name</label>
-            <input type="text" id="edit-kid-name" value="${escapeHtml(editingKid.name)}" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-4 py-3 text-sm font-bold text-inverse-surface focus:border-secondary focus:outline-none" />
+            <input type="text" id="edit-kid-name" value="${escapeHtml(editingKid.name)}" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-4 py-3 text-sm font-bold text-inverse-surface focus:border-secondary focus:outline-hidden" />
           </div>
 
           <div>
             <label class="block text-xs font-black text-on-surface-variant uppercase mb-1">Adventurer Title / Role</label>
-            <input type="text" id="edit-kid-role" value="${editingKid.role}" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-4 py-3 text-sm font-bold text-inverse-surface focus:border-secondary focus:outline-none" />
+            <input type="text" id="edit-kid-role" value="${editingKid.role}" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-4 py-3 text-sm font-bold text-inverse-surface focus:border-secondary focus:outline-hidden" />
           </div>
 
           <!-- Photo Upload Option -->
           <div class="flex items-center gap-3 p-3 bg-surface-container-high rounded-2xl border-2 border-surface-container-highest">
-            <div class="w-14 h-14 rounded-full border-2 border-secondary overflow-hidden flex-shrink-0 bg-surface-variant relative shadow-inner">
+            <div class="w-14 h-14 rounded-full border-2 border-secondary overflow-hidden shrink-0 bg-surface-variant relative shadow-inner">
               <img id="edit-kid-avatar-preview" src="${editingKid.avatar}" class="w-full h-full object-cover" />
             </div>
             <div class="flex flex-col flex-1 min-w-0">
               <span class="text-xs font-headline font-black text-inverse-surface">Custom Profile Photo</span>
               <span class="text-[10px] text-on-surface-variant font-bold">Upload a photo of your child from this device</span>
             </div>
-            <label for="edit-kid-photo-input" class="bg-secondary text-on-secondary font-headline text-xs font-black px-3.5 py-2.5 rounded-xl chunky-btn-sm border-secondary-container cursor-pointer hover:brightness-110 active:scale-95 flex items-center gap-1.5 shadow-sm">
+            <label for="edit-kid-photo-input" class="bg-secondary text-on-secondary font-headline text-xs font-black px-3.5 py-2.5 rounded-xl chunky-btn-sm border-secondary-container cursor-pointer hover:brightness-110 active:scale-95 flex items-center gap-1.5 shadow-xs">
               <span class="material-symbols-outlined text-sm">photo_camera</span>
               Upload
             </label>
@@ -3840,15 +3840,15 @@ function renderEditKidModal() {
           <div class="grid grid-cols-3 gap-3">
             <div>
               <label class="block text-xs font-black text-on-surface-variant uppercase mb-1">Level ★</label>
-              <input type="number" id="edit-kid-level" value="${editingKid.level}" min="1" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-3 py-2 text-sm font-bold text-inverse-surface focus:border-secondary focus:outline-none" />
+              <input type="number" id="edit-kid-level" value="${editingKid.level}" min="1" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-3 py-2 text-sm font-bold text-inverse-surface focus:border-secondary focus:outline-hidden" />
             </div>
             <div>
               <label class="block text-xs font-black text-on-surface-variant uppercase mb-1">Tokens 🪙</label>
-              <input type="number" id="edit-kid-coins" value="${editingKid.coins || 0}" min="0" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-3 py-2 text-sm font-bold text-secondary focus:border-secondary focus:outline-none" />
+              <input type="number" id="edit-kid-coins" value="${editingKid.coins || 0}" min="0" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-3 py-2 text-sm font-bold text-secondary focus:border-secondary focus:outline-hidden" />
             </div>
             <div>
               <label class="block text-xs font-black text-on-surface-variant uppercase mb-1">Points ⭐</label>
-              <input type="number" id="edit-kid-points" value="${editingKid.points || 0}" min="0" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-3 py-2 text-sm font-bold text-tertiary focus:border-tertiary focus:outline-none" />
+              <input type="number" id="edit-kid-points" value="${editingKid.points || 0}" min="0" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-3 py-2 text-sm font-bold text-tertiary focus:border-tertiary focus:outline-hidden" />
             </div>
           </div>
         </div>
@@ -3857,7 +3857,7 @@ function renderEditKidModal() {
           <button id="edit-kid-cancel-btn" class="flex-1 bg-surface-container-high hover:bg-surface-bright text-inverse-surface font-headline text-xs font-black py-3 rounded-xl border border-surface-container-highest chunky-btn-sm active:scale-95">
             Cancel
           </button>
-          <button id="edit-kid-submit-btn" class="flex-1 bg-secondary text-on-secondary font-headline text-xs font-black py-3 rounded-xl chunky-btn border-secondary-container shadow hover:brightness-110 active:scale-95">
+          <button id="edit-kid-submit-btn" class="flex-1 bg-secondary text-on-secondary font-headline text-xs font-black py-3 rounded-xl chunky-btn border-secondary-container shadow-sm hover:brightness-110 active:scale-95">
             Save Changes
           </button>
         </div>
@@ -3873,7 +3873,7 @@ function renderDeleteKidModal() {
     <div id="delete-kid-modal-backdrop" class="fixed inset-0 bg-[#09141e]/90 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in select-none">
       <div class="bg-surface-container border-4 border-error rounded-4xl p-6 max-w-md w-full card-shadow-lg flex flex-col items-center text-center gap-4 animate-scale-up">
         
-        <div class="w-16 h-16 rounded-3xl bg-error/20 text-error flex items-center justify-center text-3xl border-2 border-error/40 shadow">
+        <div class="w-16 h-16 rounded-3xl bg-error/20 text-error flex items-center justify-center text-3xl border-2 border-error/40 shadow-sm">
           <span class="material-symbols-outlined text-4xl">delete_forever</span>
         </div>
 
@@ -3888,7 +3888,7 @@ function renderDeleteKidModal() {
           <button id="delete-kid-cancel-btn" class="flex-1 bg-surface-container-high hover:bg-surface-bright text-inverse-surface font-headline text-xs font-black py-3 rounded-xl border border-surface-container-highest chunky-btn-sm active:scale-95">
             Keep Kid
           </button>
-          <button id="delete-kid-confirm-btn" class="flex-1 bg-error text-on-error font-headline text-xs font-black py-3 rounded-xl chunky-btn border-error-container shadow hover:brightness-110 active:scale-95">
+          <button id="delete-kid-confirm-btn" class="flex-1 bg-error text-on-error font-headline text-xs font-black py-3 rounded-xl chunky-btn border-error-container shadow-sm hover:brightness-110 active:scale-95">
             Yes, Delete
           </button>
         </div>
@@ -3921,7 +3921,7 @@ function renderNewHouseholdModal() {
 
           <div>
             <label class="block text-xs font-black text-on-surface-variant uppercase mb-1">Family Household Name</label>
-            <input type="text" id="new-household-name-input" placeholder="e.g. The Miller Family" value="The Hero Family" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-4 py-3 text-sm font-bold text-inverse-surface focus:border-secondary focus:outline-none" />
+            <input type="text" id="new-household-name-input" placeholder="e.g. The Miller Family" value="The Hero Family" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-4 py-3 text-sm font-bold text-inverse-surface focus:border-secondary focus:outline-hidden" />
           </div>
         </div>
 
@@ -3929,7 +3929,7 @@ function renderNewHouseholdModal() {
           <button id="new-household-cancel-btn" class="flex-1 bg-surface-container-high hover:bg-surface-bright text-inverse-surface font-headline text-xs font-black py-3 rounded-xl border border-surface-container-highest chunky-btn-sm active:scale-95">
             Cancel
           </button>
-          <button id="new-household-submit-btn" class="flex-1 bg-secondary text-on-secondary font-headline text-xs font-black py-3 rounded-xl chunky-btn border-secondary-container shadow hover:brightness-110 active:scale-95">
+          <button id="new-household-submit-btn" class="flex-1 bg-secondary text-on-secondary font-headline text-xs font-black py-3 rounded-xl chunky-btn border-secondary-container shadow-sm hover:brightness-110 active:scale-95">
             Create Household
           </button>
         </div>
@@ -5406,7 +5406,7 @@ export function attachParentPortalListeners() {
             studioBossHp = 220;
             studioBossCoins = 45;
             studioItemName = 'Brocc-O-Hater Ghoul';
-            studioItemDesc = 'Grumpy shadow that whispers excuses to skip nutritious vegetables!';
+            studioItemDesc = 'Grumpy shadow-sm that whispers excuses to skip nutritious vegetables!';
             studioBossTaunt = 'Green veggies are boring! Eat junk food!';
             studioBossRally = 'Crunch down on vitamins to unleash unstoppable superhero energy!';
           }
@@ -5460,7 +5460,7 @@ export function attachParentPortalListeners() {
         });
         btn.classList.remove('border-white/30');
         btn.classList.add('border-white', 'ring-2', 'ring-amber-400', 'scale-110');
-        btn.innerHTML = '<span class="text-white text-[10px] font-black drop-shadow">✓</span>';
+        btn.innerHTML = '<span class="text-white text-[10px] font-black drop-shadow-sm">✓</span>';
       });
     });
 

@@ -28,11 +28,11 @@ export function renderDashboardView() {
         <!-- Left: Kid Profile Info -->
         <div class="flex items-center gap-3.5 sm:gap-4 w-full md:w-auto relative min-w-0">
           <!-- Playful Fluttering Butterfly -->
-          <div class="absolute -top-3 -left-2 text-base animate-butterfly pointer-events-none select-none drop-shadow z-20" title="Fluttering Butterfly">🦋</div>
+          <div class="absolute -top-3 -left-2 text-base animate-butterfly pointer-events-none select-none drop-shadow-sm z-20" title="Fluttering Butterfly">🦋</div>
 
-          <div id="dash-hero-avatar-trigger" class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-surface-container-high border-4 border-primary overflow-hidden flex items-center justify-center shadow-inner flex-shrink-0 relative cursor-pointer hover:scale-105 active:scale-95 transition-transform animate-idle-bob" title="Tap your hero to giggle or do a backflip!">
+          <div id="dash-hero-avatar-trigger" class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-surface-container-high border-4 border-primary overflow-hidden flex items-center justify-center shadow-inner shrink-0 relative cursor-pointer hover:scale-105 active:scale-95 transition-transform animate-idle-bob" title="Tap your hero to giggle or do a backflip!">
             <img id="dash-hero-avatar-img" class="w-full h-full object-cover select-none" src="${hero.avatar}" alt="${escapeHtml(hero.name)}" />
-            <div class="absolute -bottom-1 -right-1 bg-secondary text-on-secondary font-headline text-[10px] font-black px-1.5 py-0.2 rounded-md shadow">
+            <div class="absolute -bottom-1 -right-1 bg-secondary text-on-secondary font-headline text-[10px] font-black px-1.5 py-0.2 rounded-md shadow-sm">
               LV ${hero.level}
             </div>
           </div>
@@ -49,7 +49,7 @@ export function renderDashboardView() {
 
             <!-- Hero XP Progress Bar -->
             <div class="w-full max-w-[200px] sm:max-w-[224px] bg-surface-container-lowest h-3 rounded-full overflow-hidden border border-surface-container-highest mt-2 relative shadow-inner">
-              <div class="bg-gradient-to-r from-primary to-primary-container h-full rounded-full transition-all duration-500" style="width: ${(hero.xp / hero.xpNext) * 100}%;"></div>
+              <div class="bg-linear-to-r from-primary to-primary-container h-full rounded-full transition-all duration-500" style="width: ${(hero.xp / hero.xpNext) * 100}%;"></div>
             </div>
             <span class="text-[9px] text-on-surface-variant font-black mt-0.5">${hero.xp} / ${hero.xpNext} XP to Level ${hero.level + 1}</span>
           </div>
@@ -59,8 +59,8 @@ export function renderDashboardView() {
         ${
           hero.hasChosenStarterPet && hero.unlockedPetIds && hero.unlockedPetIds.length > 0
             ? `
-        <div class="w-full md:w-auto bg-surface-container-high p-3 sm:p-3.5 rounded-2xl border-2 border-secondary-container/40 flex items-center justify-between md:justify-start gap-3 sm:gap-4 flex-shrink-0">
-          <div class="w-14 h-14 rounded-2xl bg-surface-container overflow-hidden border-2 border-secondary flex items-center justify-center flex-shrink-0 relative cursor-pointer active:scale-95 transition-transform animate-idle-bob" id="dash-active-pet-trigger" title="Tap your pet to giggle or do a backflip!">
+        <div class="w-full md:w-auto bg-surface-container-high p-3 sm:p-3.5 rounded-2xl border-2 border-secondary-container/40 flex items-center justify-between md:justify-start gap-3 sm:gap-4 shrink-0">
+          <div class="w-14 h-14 rounded-2xl bg-surface-container overflow-hidden border-2 border-secondary flex items-center justify-center shrink-0 relative cursor-pointer active:scale-95 transition-transform animate-idle-bob" id="dash-active-pet-trigger" title="Tap your pet to giggle or do a backflip!">
             <img id="dash-active-pet-img" class="w-full h-full object-contain p-1 select-none" src="${activePet.avatar}" alt="${escapeHtml(activePet.name)}" />
             <div class="absolute -top-1 -right-1 bg-primary text-on-primary text-[8px] font-black px-1 rounded">Lv${store.getPetLevel(activePet.id)}</div>
           </div>
@@ -85,14 +85,14 @@ export function renderDashboardView() {
             </div>
           </div>
 
-          <button id="dash-to-pen-btn" class="bg-primary text-on-primary font-headline text-xs font-black px-3.5 py-2.5 min-h-[44px] rounded-xl chunky-btn-sm border-primary-container ml-auto hover:brightness-110 active:scale-95 flex-shrink-0">
+          <button id="dash-to-pen-btn" class="bg-primary text-on-primary font-headline text-xs font-black px-3.5 py-2.5 min-h-[44px] rounded-xl chunky-btn-sm border-primary-container ml-auto hover:brightness-110 active:scale-95 shrink-0">
             Sanctuary
           </button>
         </div>
         `
             : `
-        <div class="w-full md:w-auto bg-surface-container-high p-3 sm:p-3.5 rounded-2xl border-2 border-secondary-container/40 flex items-center justify-between md:justify-start gap-3 sm:gap-4 flex-shrink-0">
-          <div class="w-14 h-14 rounded-2xl bg-secondary-container/20 border-2 border-secondary flex items-center justify-center flex-shrink-0 text-2xl animate-pulse cursor-pointer active:scale-95 transition-transform" id="dash-active-pet-trigger">
+        <div class="w-full md:w-auto bg-surface-container-high p-3 sm:p-3.5 rounded-2xl border-2 border-secondary-container/40 flex items-center justify-between md:justify-start gap-3 sm:gap-4 shrink-0">
+          <div class="w-14 h-14 rounded-2xl bg-secondary-container/20 border-2 border-secondary flex items-center justify-center shrink-0 text-2xl animate-pulse cursor-pointer active:scale-95 transition-transform" id="dash-active-pet-trigger">
             <span class="material-symbols-outlined text-secondary text-3xl" style="font-variation-settings: 'FILL' 1;">pets</span>
           </div>
 
@@ -104,7 +104,7 @@ export function renderDashboardView() {
             <span class="text-[10px] text-on-surface-variant font-bold">Visit Sanctuary to meet companions</span>
           </div>
 
-          <button id="dash-to-pen-btn" class="bg-gradient-to-r from-primary to-secondary text-on-primary font-headline text-xs font-black px-4 py-2.5 min-h-[44px] rounded-xl chunky-btn-sm border-primary-container ml-auto hover:brightness-110 active:scale-95 flex items-center gap-1 flex-shrink-0">
+          <button id="dash-to-pen-btn" class="bg-linear-to-r from-primary to-secondary text-on-primary font-headline text-xs font-black px-4 py-2.5 min-h-[44px] rounded-xl chunky-btn-sm border-primary-container ml-auto hover:brightness-110 active:scale-95 flex items-center gap-1 shrink-0">
             <span class="material-symbols-outlined text-base">pets</span> Sanctuary
           </button>
         </div>
@@ -114,9 +114,9 @@ export function renderDashboardView() {
 
       <!-- Active Expeditions Mini-Tracker -->
       ${state.activeExpeditions && state.activeExpeditions.length > 0 ? `
-        <div class="bg-gradient-to-r from-emerald-950/70 via-surface-container to-teal-950/70 border-2 border-emerald-500/50 rounded-2xl p-3 flex items-center justify-between gap-3 shadow-md w-full max-w-full min-w-0">
+        <div class="bg-linear-to-r from-emerald-950/70 via-surface-container to-teal-950/70 border-2 border-emerald-500/50 rounded-2xl p-3 flex items-center justify-between gap-3 shadow-md w-full max-w-full min-w-0">
           <div class="flex items-center gap-2.5 min-w-0 flex-1">
-            <span class="text-2xl animate-bounce flex-shrink-0">🎒🧭</span>
+            <span class="text-2xl animate-bounce shrink-0">🎒🧭</span>
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-1.5 flex-wrap">
                 <span class="font-headline text-xs font-black text-emerald-300 truncate">Companion Pet Exploring</span>
@@ -129,17 +129,17 @@ export function renderDashboardView() {
               </div>
             </div>
           </div>
-          <button id="dash-open-expeditions-btn" class="bg-primary text-on-primary font-headline text-xs font-black px-3.5 py-2.5 min-h-[44px] rounded-xl chunky-btn-sm border-primary-container hover:brightness-110 active:scale-95 flex items-center gap-1 flex-shrink-0">
+          <button id="dash-open-expeditions-btn" class="bg-primary text-on-primary font-headline text-xs font-black px-3.5 py-2.5 min-h-[44px] rounded-xl chunky-btn-sm border-primary-container hover:brightness-110 active:scale-95 flex items-center gap-1 shrink-0">
             <span class="material-symbols-outlined text-sm">explore</span> Camp
           </button>
         </div>
       ` : ''}
 
       <!-- HERO HQ & SUPERHERO HIDEOUT STUDIO QUICK LAUNCH CARD -->
-      <section class="bg-gradient-to-r from-emerald-950/80 via-slate-900/90 to-cyan-950/80 rounded-3xl p-4 sm:p-5 border-2 border-emerald-400/40 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4 relative overflow-hidden group w-full max-w-full min-w-0">
+      <section class="bg-linear-to-r from-emerald-950/80 via-slate-900/90 to-cyan-950/80 rounded-3xl p-4 sm:p-5 border-2 border-emerald-400/40 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4 relative overflow-hidden group w-full max-w-full min-w-0">
         <div class="absolute -right-10 -bottom-10 w-48 h-48 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none"></div>
         <div class="flex items-center gap-3.5 sm:gap-4 w-full sm:w-auto z-10 min-w-0 flex-1">
-          <div class="w-14 h-14 sm:w-18 sm:h-18 rounded-2xl bg-surface-container border-2 border-emerald-400 flex items-center justify-center flex-shrink-0 text-3xl sm:text-4xl shadow-[0_0_20px_rgba(16,185,129,0.3)] group-hover:scale-105 transition-transform animate-pulse">
+          <div class="w-14 h-14 sm:w-18 sm:h-18 rounded-2xl bg-surface-container border-2 border-emerald-400 flex items-center justify-center shrink-0 text-3xl sm:text-4xl shadow-[0_0_20px_rgba(16,185,129,0.3)] group-hover:scale-105 transition-transform animate-pulse">
             🏠✨
           </div>
           <div class="flex flex-col min-w-0 flex-1">
@@ -160,7 +160,7 @@ export function renderDashboardView() {
           </div>
         </div>
 
-        <button id="dash-to-hero-hq-btn" class="w-full sm:w-auto bg-gradient-to-r from-primary to-emerald-500 hover:from-primary/90 hover:to-emerald-400 text-on-primary font-headline text-xs sm:text-sm font-black px-5 py-3 min-h-[48px] rounded-2xl shadow-lg border-2 border-emerald-300 flex items-center justify-center gap-2 chunky-btn flex-shrink-0 z-10 active:scale-95">
+        <button id="dash-to-hero-hq-btn" class="w-full sm:w-auto bg-linear-to-r from-primary to-emerald-500 hover:from-primary/90 hover:to-emerald-400 text-on-primary font-headline text-xs sm:text-sm font-black px-5 py-3 min-h-[48px] rounded-2xl shadow-lg border-2 border-emerald-300 flex items-center justify-center gap-2 chunky-btn shrink-0 z-10 active:scale-95">
           <span class="material-symbols-outlined text-base sm:text-lg">cottage</span> Enter Hero HQ
         </button>
       </section>
@@ -169,9 +169,9 @@ export function renderDashboardView() {
       ${
         isEasyMode
           ? `
-      <div class="bg-gradient-to-r from-primary/15 via-secondary/15 to-transparent border-2 border-primary/40 rounded-2xl p-3 sm:p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs animate-fade-in card-shadow w-full max-w-full min-w-0">
+      <div class="bg-linear-to-r from-primary/15 via-secondary/15 to-transparent border-2 border-primary/40 rounded-2xl p-3 sm:p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs animate-fade-in card-shadow w-full max-w-full min-w-0">
         <div class="flex items-center gap-2.5 min-w-0 flex-1">
-          <div class="w-9 h-9 rounded-xl bg-primary text-on-primary flex items-center justify-center text-lg flex-shrink-0 shadow-sm">
+          <div class="w-9 h-9 rounded-xl bg-primary text-on-primary flex items-center justify-center text-lg shrink-0 shadow-xs">
             <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">volume_up</span>
           </div>
           <div class="min-w-0 flex-1">
@@ -182,7 +182,7 @@ export function renderDashboardView() {
             <span class="text-[11px] text-on-surface-variant font-bold block truncate">Tap any quest card to hear Rex explain and guide you through it!</span>
           </div>
         </div>
-        <button id="dash-voice-welcome-btn" class="w-full sm:w-auto bg-gradient-to-r from-primary to-emerald-500 text-on-primary font-headline text-xs font-black px-4 py-2.5 min-h-[44px] rounded-xl chunky-btn flex items-center justify-center gap-1.5 hover:brightness-110 active:scale-95 shadow-md flex-shrink-0 animate-pulse border-2 border-primary-container" title="Listen to Rex's daily guidance">
+        <button id="dash-voice-welcome-btn" class="w-full sm:w-auto bg-linear-to-r from-primary to-emerald-500 text-on-primary font-headline text-xs font-black px-4 py-2.5 min-h-[44px] rounded-xl chunky-btn flex items-center justify-center gap-1.5 hover:brightness-110 active:scale-95 shadow-md shrink-0 animate-pulse border-2 border-primary-container" title="Listen to Rex's daily guidance">
           <span class="material-symbols-outlined text-base animate-bounce">record_voice_over</span> Hear Rex!
         </button>
       </div>
@@ -221,8 +221,8 @@ export function renderDashboardView() {
       ${
         hero.isScreenTimePaused
           ? `
-      <div class="bg-gradient-to-r from-amber-500/20 via-orange-500/15 to-transparent border-2 border-amber-500/50 rounded-2xl p-4 flex items-center gap-3.5 animate-fade-in card-shadow">
-        <div class="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center justify-center text-2xl flex-shrink-0">
+      <div class="bg-linear-to-r from-amber-500/20 via-orange-500/15 to-transparent border-2 border-amber-500/50 rounded-2xl p-4 flex items-center gap-3.5 animate-fade-in card-shadow">
+        <div class="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center justify-center text-2xl shrink-0">
           🦖🌙
         </div>
         <div class="flex flex-col">
@@ -240,9 +240,9 @@ export function renderDashboardView() {
       }
 
       <!-- Evening Wind-Down Sanctuary Banner -->
-      <div id="dashboard-evening-sanctuary-banner" class="bg-gradient-to-r from-[#091e2b] via-[#0f2d40] to-[#091e2b] border-2 border-[#00d2d3]/50 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fade-in card-shadow">
+      <div id="dashboard-evening-sanctuary-banner" class="bg-linear-to-r from-[#091e2b] via-[#0f2d40] to-[#091e2b] border-2 border-[#00d2d3]/50 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fade-in card-shadow">
         <div class="flex items-center gap-3">
-          <div class="w-12 h-12 rounded-2xl bg-[#050f18] text-[#00d2d3] border-2 border-[#00d2d3] flex items-center justify-center text-2xl flex-shrink-0 shadow-inner">
+          <div class="w-12 h-12 rounded-2xl bg-surface-container-lowest text-[#00d2d3] border-2 border-[#00d2d3] flex items-center justify-center text-2xl shrink-0 shadow-inner">
             🌙
           </div>
           <div>
@@ -261,7 +261,7 @@ export function renderDashboardView() {
           </div>
         </div>
 
-        <button id="dashboard-goto-bedtime-btn" class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#00d2d3] to-[#2ecc71] text-[#050f18] font-headline font-black text-xs flex items-center justify-center gap-1.5 shadow active:scale-95 transition-all flex-shrink-0 cursor-pointer">
+        <button id="dashboard-goto-bedtime-btn" class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-linear-to-r from-[#00d2d3] to-primary-container text-surface-container-lowest font-headline font-black text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all shrink-0 cursor-pointer">
           <span class="material-symbols-outlined text-sm">auto_stories</span>
           <span>Open Bedtime Sanctuary 🌙</span>
         </button>
@@ -271,7 +271,7 @@ export function renderDashboardView() {
       <section class="flex flex-col gap-3.5">
         <div class="flex justify-between items-center px-1">
           <div class="flex items-center gap-2.5">
-            <span class="text-2xl leading-none flex items-center justify-center select-none drop-shadow-sm" role="img" aria-label="Habit Islands">🏝️</span>
+            <span class="text-2xl leading-none flex items-center justify-center select-none drop-shadow-xs" role="img" aria-label="Habit Islands">🏝️</span>
             <h2 class="font-headline text-xl font-black text-inverse-surface">Habit Islands</h2>
           </div>
           <span class="text-xs font-bold text-on-surface-variant">Daily Positive Habits</span>
@@ -292,18 +292,18 @@ export function renderDashboardView() {
               if (isPending) {
                 btnClass = 'tactile-check-pending animate-pulse';
                 btnTitle = 'Waiting for Parent Approval';
-                pendingBadgeHtml = `<span class="absolute -top-1.5 -right-1.5 bg-amber-400 text-slate-900 rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black shadow border border-amber-200" title="Pending Parent Approval">⏳</span>`;
+                pendingBadgeHtml = `<span class="absolute -top-1.5 -right-1.5 bg-amber-400 text-slate-900 rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black shadow-sm border border-amber-200" title="Pending Parent Approval">⏳</span>`;
                 statusBadge = `
-                  <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1 shadow-sm whitespace-nowrap">
+                  <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1 shadow-xs whitespace-nowrap">
                     <span class="material-symbols-outlined text-[11px] animate-spin">hourglass_empty</span> Pending Parent ⭐
                   </span>
                 `;
               } else if (completedTodayCount > 0) {
                 btnClass = 'tactile-check-ready';
                 btnTitle = `Completed ${completedTodayCount}x today • Tap to complete again`;
-                pendingBadgeHtml = `<span class="absolute -top-1.5 -right-1.5 bg-primary text-slate-900 rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black shadow border border-emerald-200" title="Completed Today">⭐</span>`;
+                pendingBadgeHtml = `<span class="absolute -top-1.5 -right-1.5 bg-primary text-slate-900 rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black shadow-sm border border-emerald-200" title="Completed Today">⭐</span>`;
                 statusBadge = `
-                  <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/40 flex items-center gap-1 shadow-sm whitespace-nowrap">
+                  <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/40 flex items-center gap-1 shadow-xs whitespace-nowrap">
                     <span class="material-symbols-outlined text-[11px]">verified</span> Done ${completedTodayCount}x today ⭐
                   </span>
                 `;
@@ -321,7 +321,7 @@ export function renderDashboardView() {
               } w-full max-w-full min-w-0 transition-all cursor-pointer">
                 <div class="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0">
                   <!-- Dedicated Material Symbol Container -->
-                  <div class="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-slate-800 text-amber-400 border border-slate-700/50 shadow-inner flex-shrink-0">
+                  <div class="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-slate-800 text-amber-400 border border-slate-700/50 shadow-inner shrink-0">
                     <span class="material-symbols-outlined text-2xl select-none" style="font-variation-settings: 'FILL' 1;">
                       ${h.icon || 'star'}
                     </span>
@@ -337,7 +337,7 @@ export function renderDashboardView() {
                       <span class="text-tertiary flex items-center gap-0.5 whitespace-nowrap">
                         <span class="material-symbols-outlined text-sm">star</span> +${h.points} Points
                       </span>
-                      <button data-habit-proof-id="${h.id}" class="habit-proof-btn inline-flex items-center gap-1 ${isPending ? 'bg-amber-500/25 border-amber-500/50 text-amber-300' : 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border-amber-500/40'} border font-headline text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-xl min-h-[36px] active:scale-95 shadow-sm transition-all flex-shrink-0" title="Snap photo proof for +5 bonus tokens!">
+                      <button data-habit-proof-id="${h.id}" class="habit-proof-btn inline-flex items-center gap-1 ${isPending ? 'bg-amber-500/25 border-amber-500/50 text-amber-300' : 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border-amber-500/40'} border font-headline text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-xl min-h-[36px] active:scale-95 shadow-xs transition-all shrink-0" title="Snap photo proof for +5 bonus tokens!">
                         <span class="material-symbols-outlined text-sm">photo_camera</span>
                         <span>${isPending ? 'Photo Added 📸' : 'Photo +5🪙'}</span>
                       </button>
@@ -349,15 +349,15 @@ export function renderDashboardView() {
                 ${
                   isToothbrushHabit
                     ? `
-                  <div class="flex items-center justify-center flex-shrink-0">
-                    <button data-habit-ar-id="${h.id}" class="habit-ar-launch-btn ${isPending ? 'bg-amber-600 border-amber-800' : 'bg-error border-error-container'} text-white font-headline text-xs font-black min-h-[56px] px-4 py-2.5 rounded-2xl chunky-btn shadow-chunky-sm flex items-center gap-1.5 hover:brightness-110 active:scale-95 flex-shrink-0" title="${isPending ? 'Toothbrush Battle Submitted (Pending Parent)' : 'Launch Toothbrush AR Battle'}">
+                  <div class="flex items-center justify-center shrink-0">
+                    <button data-habit-ar-id="${h.id}" class="habit-ar-launch-btn ${isPending ? 'bg-amber-600 border-amber-800' : 'bg-error border-error-container'} text-white font-headline text-xs font-black min-h-[56px] px-4 py-2.5 rounded-2xl chunky-btn shadow-chunky-sm flex items-center gap-1.5 hover:brightness-110 active:scale-95 shrink-0" title="${isPending ? 'Toothbrush Battle Submitted (Pending Parent)' : 'Launch Toothbrush AR Battle'}">
                       <span class="material-symbols-outlined text-base">${isPending ? 'hourglass_top' : 'play_arrow'}</span> ${isPending ? 'Pending' : 'Battle'}
                     </button>
                   </div>
                 `
                     : `
-                  <div class="flex items-center justify-center flex-shrink-0">
-                    <button data-habit-id="${h.id}" class="habit-check-btn tactile-check-btn ${btnClass} rounded-2xl w-14 h-14 min-w-[56px] min-h-[56px] sm:w-16 sm:h-16 sm:min-w-[64px] sm:min-h-[64px] flex items-center justify-center flex-shrink-0 active:scale-95 shadow-chunky-sm relative" title="${btnTitle}">
+                  <div class="flex items-center justify-center shrink-0">
+                    <button data-habit-id="${h.id}" class="habit-check-btn tactile-check-btn ${btnClass} rounded-2xl w-14 h-14 min-w-[56px] min-h-[56px] sm:w-16 sm:h-16 sm:min-w-xl sm:min-h-xl flex items-center justify-center shrink-0 active:scale-95 shadow-chunky-sm relative" title="${btnTitle}">
                       <span class="material-symbols-outlined text-2xl sm:text-3xl font-black text-white" style="font-variation-settings: 'FILL' 1;">
                         check
                       </span>
@@ -398,18 +398,18 @@ export function renderDashboardView() {
               if (isPending) {
                 btnClass = 'tactile-check-pending animate-pulse';
                 btnTitle = 'Waiting for Parent Approval';
-                pendingBadgeHtml = `<span class="absolute -top-1.5 -right-1.5 bg-amber-400 text-slate-900 rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black shadow border border-amber-200" title="Pending Parent Approval">⏳</span>`;
+                pendingBadgeHtml = `<span class="absolute -top-1.5 -right-1.5 bg-amber-400 text-slate-900 rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black shadow-sm border border-amber-200" title="Pending Parent Approval">⏳</span>`;
                 statusBadge = `
-                  <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1 shadow-sm whitespace-nowrap">
+                  <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1 shadow-xs whitespace-nowrap">
                     <span class="material-symbols-outlined text-[11px] animate-spin">hourglass_empty</span> Pending Parent ⭐
                   </span>
                 `;
               } else if (completedTodayCount > 0) {
                 btnClass = 'tactile-check-ready';
                 btnTitle = `Completed ${completedTodayCount}x today • Tap to complete again`;
-                pendingBadgeHtml = `<span class="absolute -top-1.5 -right-1.5 bg-primary text-slate-900 rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black shadow border border-emerald-200" title="Completed Today">⭐</span>`;
+                pendingBadgeHtml = `<span class="absolute -top-1.5 -right-1.5 bg-primary text-slate-900 rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black shadow-sm border border-emerald-200" title="Completed Today">⭐</span>`;
                 statusBadge = `
-                  <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/40 flex items-center gap-1 shadow-sm whitespace-nowrap">
+                  <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/40 flex items-center gap-1 shadow-xs whitespace-nowrap">
                     <span class="material-symbols-outlined text-[11px]">verified</span> Done ${completedTodayCount}x today ⭐
                   </span>
                 `;
@@ -425,7 +425,7 @@ export function renderDashboardView() {
               } w-full max-w-full min-w-0 transition-all cursor-pointer">
                 <div class="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0">
                   <!-- Dedicated Material Symbol Container -->
-                  <div class="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-slate-800 text-emerald-400 border border-slate-700/50 shadow-inner flex-shrink-0">
+                  <div class="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-slate-800 text-emerald-400 border border-slate-700/50 shadow-inner shrink-0">
                     <span class="material-symbols-outlined text-2xl select-none" style="font-variation-settings: 'FILL' 1;">
                       ${t.icon || 'star'}
                     </span>
@@ -445,7 +445,7 @@ export function renderDashboardView() {
                         <span class="material-symbols-outlined text-sm">star</span> +${t.points} Points
                       </span>
                       ${!t.isAR ? `
-                        <button data-task-proof-id="${t.id}" class="task-proof-btn inline-flex items-center gap-1 ${isPending ? 'bg-amber-500/25 border-amber-500/50 text-amber-300' : 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border-amber-500/40'} border font-headline text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-xl min-h-[36px] active:scale-95 shadow-sm transition-all flex-shrink-0" title="Snap photo proof for +5 bonus tokens!">
+                        <button data-task-proof-id="${t.id}" class="task-proof-btn inline-flex items-center gap-1 ${isPending ? 'bg-amber-500/25 border-amber-500/50 text-amber-300' : 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border-amber-500/40'} border font-headline text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-xl min-h-[36px] active:scale-95 shadow-xs transition-all shrink-0" title="Snap photo proof for +5 bonus tokens!">
                           <span class="material-symbols-outlined text-sm">photo_camera</span>
                           <span>${isPending ? 'Photo Added 📸' : 'Photo +5🪙'}</span>
                         </button>
@@ -458,15 +458,15 @@ export function renderDashboardView() {
                 ${
                   t.isAR
                     ? `
-                  <div class="flex items-center justify-center flex-shrink-0">
-                    <button data-task-ar-id="${t.id}" class="task-ar-launch-btn ${isPending ? 'bg-amber-600 border-amber-800' : 'bg-error border-error-container'} text-white font-headline text-xs font-black min-h-[56px] px-4 py-2.5 rounded-2xl chunky-btn shadow-chunky-sm flex items-center gap-1.5 hover:brightness-110 active:scale-95 flex-shrink-0" title="${isPending ? 'Toothbrush Battle Submitted (Pending Parent)' : 'Launch Toothbrush AR Battle'}">
+                  <div class="flex items-center justify-center shrink-0">
+                    <button data-task-ar-id="${t.id}" class="task-ar-launch-btn ${isPending ? 'bg-amber-600 border-amber-800' : 'bg-error border-error-container'} text-white font-headline text-xs font-black min-h-[56px] px-4 py-2.5 rounded-2xl chunky-btn shadow-chunky-sm flex items-center gap-1.5 hover:brightness-110 active:scale-95 shrink-0" title="${isPending ? 'Toothbrush Battle Submitted (Pending Parent)' : 'Launch Toothbrush AR Battle'}">
                       <span class="material-symbols-outlined text-base">${isPending ? 'hourglass_top' : 'play_arrow'}</span> ${isPending ? 'Pending' : 'Battle'}
                     </button>
                   </div>
                 `
                     : `
-                  <div class="flex items-center justify-center flex-shrink-0">
-                    <button data-task-id="${t.id}" class="task-check-btn tactile-check-btn ${btnClass} rounded-2xl w-14 h-14 min-w-[56px] min-h-[56px] sm:w-16 sm:h-16 sm:min-w-[64px] sm:min-h-[64px] flex items-center justify-center flex-shrink-0 active:scale-95 shadow-chunky-sm relative" title="${btnTitle}">
+                  <div class="flex items-center justify-center shrink-0">
+                    <button data-task-id="${t.id}" class="task-check-btn tactile-check-btn ${btnClass} rounded-2xl w-14 h-14 min-w-[56px] min-h-[56px] sm:w-16 sm:h-16 sm:min-w-xl sm:min-h-xl flex items-center justify-center shrink-0 active:scale-95 shadow-chunky-sm relative" title="${btnTitle}">
                       <span class="material-symbols-outlined text-2xl sm:text-3xl font-black text-white" style="font-variation-settings: 'FILL' 1;">
                         check
                       </span>
@@ -490,7 +490,7 @@ export function renderDashboardView() {
             <h2 class="font-headline text-xl font-black text-inverse-surface">AI Spark Quests</h2>
             <span class="bg-tertiary/20 text-tertiary text-[9px] font-black uppercase px-2 py-0.5 rounded-full border border-tertiary/40">Subagent Powered</span>
           </div>
-          <button id="dash-generate-ai-quests-btn" class="bg-gradient-to-r from-tertiary to-amber-500 text-slate-900 font-headline text-xs font-black px-3.5 py-2 min-h-[44px] rounded-xl chunky-btn-sm border border-tertiary shadow-sm hover:brightness-110 active:scale-95 flex items-center gap-1.5 transition-transform flex-shrink-0" title="Use Gemini 2.5 Flash to generate custom daily micro-quests tailored to your hero">
+          <button id="dash-generate-ai-quests-btn" class="bg-linear-to-r from-tertiary to-amber-500 text-slate-900 font-headline text-xs font-black px-3.5 py-2 min-h-[44px] rounded-xl chunky-btn-sm border border-tertiary shadow-xs hover:brightness-110 active:scale-95 flex items-center gap-1.5 transition-transform shrink-0" title="Use Gemini 2.5 Flash to generate custom daily micro-quests tailored to your hero">
             <span id="ai-quest-btn-icon" class="material-symbols-outlined text-sm">sparkles</span>
             <span id="ai-quest-btn-text">Generate Quests</span>
           </button>
@@ -519,18 +519,18 @@ export function renderDashboardView() {
               if (isPending) {
                 btnClass = 'tactile-check-pending animate-pulse';
                 btnTitle = 'Waiting for Parent Approval';
-                pendingBadgeHtml = `<span class="absolute -top-1.5 -right-1.5 bg-amber-400 text-slate-900 rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black shadow border border-amber-200" title="Pending Parent Approval">⏳</span>`;
+                pendingBadgeHtml = `<span class="absolute -top-1.5 -right-1.5 bg-amber-400 text-slate-900 rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black shadow-sm border border-amber-200" title="Pending Parent Approval">⏳</span>`;
                 statusBadge = `
-                  <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1 shadow-sm whitespace-nowrap">
+                  <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1 shadow-xs whitespace-nowrap">
                     <span class="material-symbols-outlined text-[11px] animate-spin">hourglass_empty</span> Pending Parent ⭐
                   </span>
                 `;
               } else if (isCompleted) {
                 btnClass = 'tactile-check-ready';
                 btnTitle = 'Completed today • Tap to log again';
-                pendingBadgeHtml = `<span class="absolute -top-1.5 -right-1.5 bg-primary text-slate-900 rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black shadow border border-emerald-200" title="Completed Today">⭐</span>`;
+                pendingBadgeHtml = `<span class="absolute -top-1.5 -right-1.5 bg-primary text-slate-900 rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black shadow-sm border border-emerald-200" title="Completed Today">⭐</span>`;
                 statusBadge = `
-                  <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/40 flex items-center gap-1 shadow-sm whitespace-nowrap">
+                  <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/40 flex items-center gap-1 shadow-xs whitespace-nowrap">
                     <span class="material-symbols-outlined text-[11px]">verified</span> Verified ⭐
                   </span>
                 `;
@@ -545,7 +545,7 @@ export function renderDashboardView() {
                     : 'border-tertiary/40 bg-surface-container'
                 } w-full max-w-full min-w-0 transition-all cursor-pointer">
                   <div class="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0">
-                    <div class="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-slate-800 text-tertiary border border-slate-700/50 shadow-inner flex-shrink-0">
+                    <div class="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-slate-800 text-tertiary border border-slate-700/50 shadow-inner shrink-0">
                       <span class="material-symbols-outlined text-2xl select-none" style="font-variation-settings: 'FILL' 1;">
                         ${q.icon || 'auto_awesome'}
                       </span>
@@ -570,8 +570,8 @@ export function renderDashboardView() {
                     </div>
                   </div>
 
-                  <div class="flex items-center justify-center flex-shrink-0">
-                    <button data-ai-quest-id="${q.id}" class="ai-quest-check-btn tactile-check-btn ${btnClass} rounded-2xl w-14 h-14 min-w-[56px] min-h-[56px] sm:w-16 sm:h-16 sm:min-w-[64px] sm:min-h-[64px] flex items-center justify-center flex-shrink-0 active:scale-95 shadow-chunky-sm relative" title="${btnTitle}">
+                  <div class="flex items-center justify-center shrink-0">
+                    <button data-ai-quest-id="${q.id}" class="ai-quest-check-btn tactile-check-btn ${btnClass} rounded-2xl w-14 h-14 min-w-[56px] min-h-[56px] sm:w-16 sm:h-16 sm:min-w-xl sm:min-h-xl flex items-center justify-center shrink-0 active:scale-95 shadow-chunky-sm relative" title="${btnTitle}">
                       <span class="material-symbols-outlined text-2xl sm:text-3xl font-black text-white" style="font-variation-settings: 'FILL' 1;">
                         check
                       </span>
@@ -586,9 +586,9 @@ export function renderDashboardView() {
       </section>
 
       <!-- MINI ADVENTURE MAP QUICK LAUNCHER -->
-      <section class="bg-gradient-to-r from-surface-container to-surface-container-high rounded-3xl p-4 sm:p-5 border-2 border-secondary-container flex flex-col sm:flex-row items-center justify-between gap-4 card-shadow w-full max-w-full min-w-0">
+      <section class="bg-linear-to-r from-surface-container to-surface-container-high rounded-3xl p-4 sm:p-5 border-2 border-secondary-container flex flex-col sm:flex-row items-center justify-between gap-4 card-shadow w-full max-w-full min-w-0">
         <div class="flex items-center gap-3.5 sm:gap-4 w-full sm:w-auto min-w-0 flex-1">
-          <div class="w-14 h-14 rounded-2xl bg-secondary text-on-secondary flex items-center justify-center text-3xl shadow-md flex-shrink-0">
+          <div class="w-14 h-14 rounded-2xl bg-secondary text-on-secondary flex items-center justify-center text-3xl shadow-md shrink-0">
             <span class="material-symbols-outlined">map</span>
           </div>
           <div class="min-w-0 flex-1">
@@ -597,7 +597,7 @@ export function renderDashboardView() {
             <p class="text-xs text-on-surface-variant line-clamp-1">Phonics, counting, colors & geometry quests for bonus tokens!</p>
           </div>
         </div>
-        <button id="dash-to-adventures-btn" class="w-full sm:w-auto bg-secondary text-on-secondary font-headline text-xs sm:text-sm font-black px-5 py-3 min-h-[48px] rounded-xl chunky-btn border-secondary-container shadow-chunky-sm hover:brightness-110 active:scale-95 flex-shrink-0">
+        <button id="dash-to-adventures-btn" class="w-full sm:w-auto bg-secondary text-on-secondary font-headline text-xs sm:text-sm font-black px-5 py-3 min-h-[48px] rounded-xl chunky-btn border-secondary-container shadow-chunky-sm hover:brightness-110 active:scale-95 shrink-0">
           Open Map
         </button>
       </section>
@@ -682,9 +682,9 @@ export function attachDashboardListeners() {
       const container = document.getElementById('rex-proactive-container');
       if (container) {
         container.innerHTML = `
-          <div class="p-3.5 bg-gradient-to-r from-emerald-500/20 via-surface-container-high to-amber-500/20 border-2 border-emerald-400/50 rounded-2xl flex items-center justify-between gap-3 shadow-md animate-fade-in card-shadow mb-4">
+          <div class="p-3.5 bg-linear-to-r from-emerald-500/20 via-surface-container-high to-amber-500/20 border-2 border-emerald-400/50 rounded-2xl flex items-center justify-between gap-3 shadow-md animate-fade-in card-shadow mb-4">
             <div class="flex items-center gap-3 min-w-0">
-              <span class="text-3xl flex-shrink-0 animate-bounce">🦖</span>
+              <span class="text-3xl shrink-0 animate-bounce">🦖</span>
               <div class="min-w-0">
                 <span class="text-[10px] font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1">
                   <span>Rex Proactive Check-In</span>
@@ -693,7 +693,7 @@ export function attachDashboardListeners() {
                 <p class="text-xs sm:text-sm font-bold text-inverse-surface truncate mt-0.5">${escapeHtml(proactiveResult.rex_message.reply)}</p>
               </div>
             </div>
-            <button id="rex-proactive-action-btn" class="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-[#00d2d3] text-slate-950 font-headline font-black text-xs flex-shrink-0 shadow-chunky-sm active:scale-95 cursor-pointer hover:brightness-110 transition-all">
+            <button id="rex-proactive-action-btn" class="px-4 py-2 rounded-xl bg-linear-to-r from-emerald-500 to-[#00d2d3] text-slate-950 font-headline font-black text-xs shrink-0 shadow-chunky-sm active:scale-95 cursor-pointer hover:brightness-110 transition-all">
               Let's Go! ✨
             </button>
           </div>

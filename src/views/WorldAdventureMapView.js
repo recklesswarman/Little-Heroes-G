@@ -85,14 +85,14 @@ export function renderWorldAdventureMapView() {
           </div>
 
           <div class="bg-[#0f2334] rounded-3xl p-6 border-2 border-surface-container-highest shadow-inner">
-            <p class="font-headline text-xl sm:text-2xl font-black text-[#2ecc71] leading-snug">
+            <p class="font-headline text-xl sm:text-2xl font-black text-primary-container leading-snug">
               ${challenge.question}
             </p>
           </div>
 
           <div class="grid grid-cols-1 gap-3" id="world-mini-game-options">
             ${challenge.options.map((opt, idx) => `
-              <button data-opt-idx="${idx}" class="world-game-opt-btn bg-[#162a3b] hover:bg-[#1f384d] text-white font-headline text-base font-black py-4 px-6 rounded-2xl border-2 border-surface-container-highest flex items-center justify-between active:scale-98 transition-all hover:border-[#2ecc71]">
+              <button data-opt-idx="${idx}" class="world-game-opt-btn bg-[#162a3b] hover:bg-[#1f384d] text-white font-headline text-base font-black py-4 px-6 rounded-2xl border-2 border-surface-container-highest flex items-center justify-between active:scale-98 transition-all hover:border-primary-container">
                 <span>${opt}</span>
                 <span class="w-7 h-7 rounded-full bg-[#09141e] flex items-center justify-center text-xs text-slate-300">${String.fromCharCode(65 + idx)}</span>
               </button>
@@ -112,7 +112,7 @@ export function renderWorldAdventureMapView() {
         <div>
           <div class="flex items-center gap-2">
             <h1 class="font-headline text-2xl sm:text-3xl font-black text-white flex items-center gap-2">
-              <span class="material-symbols-outlined text-[#2ecc71] text-3xl" style="font-variation-settings: 'FILL' 1;">explore</span>
+              <span class="material-symbols-outlined text-primary-container text-3xl" style="font-variation-settings: 'FILL' 1;">explore</span>
               World Adventure Map
             </h1>
             <span class="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border bg-primary/20 text-primary border-primary/30">
@@ -124,8 +124,8 @@ export function renderWorldAdventureMapView() {
 
         <div class="flex items-center gap-2.5 self-end sm:self-auto">
           <!-- Active Companion Badge -->
-          <div class="bg-[#0f2334] px-3.5 py-1.5 rounded-2xl border-2 border-primary/30 flex items-center gap-2 shadow-sm">
-            <img src="${activePet.avatar}" class="w-7 h-7 rounded-full border-2 border-[#2ecc71] object-cover" />
+          <div class="bg-[#0f2334] px-3.5 py-1.5 rounded-2xl border-2 border-primary/30 flex items-center gap-2 shadow-xs">
+            <img src="${activePet.avatar}" class="w-7 h-7 rounded-full border-2 border-primary-container object-cover" />
             <div class="flex flex-col">
               <span class="text-[9px] font-black uppercase text-slate-300">${escapeHtml(activePet.name)}</span>
               <span class="font-headline text-[11px] font-black text-[#f39c12] flex items-center gap-0.5">
@@ -135,7 +135,7 @@ export function renderWorldAdventureMapView() {
           </div>
 
           <!-- Total Stars -->
-          <div class="bg-[#0f2334] px-3.5 py-1.5 rounded-2xl border-2 border-surface-container-highest flex items-center gap-1.5 shadow-sm">
+          <div class="bg-[#0f2334] px-3.5 py-1.5 rounded-2xl border-2 border-surface-container-highest flex items-center gap-1.5 shadow-xs">
             <span class="text-[#ffb961] text-base">⭐</span>
             <span class="font-headline text-xs font-black text-white">${hero.stars || 14} Stars</span>
           </div>
@@ -146,7 +146,7 @@ export function renderWorldAdventureMapView() {
       <div class="grid grid-cols-2 gap-2 bg-[#09141e] p-1.5 rounded-3xl border-3 border-surface-container-highest shadow-md">
         <button id="tab-btn-path" class="py-3 px-4 rounded-2xl font-headline text-xs sm:text-sm font-black flex items-center justify-center gap-2 transition-all cursor-pointer ${
           activeTab === 'path'
-            ? 'bg-gradient-to-r from-[#2ecc71] to-[#27ae60] text-[#050f18] shadow-[0_4px_0_0_#145237] -translate-y-0.5'
+            ? 'bg-linear-to-r from-primary-container to-[#27ae60] text-surface-container-lowest shadow-[0_4px_0_0_#145237] -translate-y-0.5'
             : 'text-slate-300 hover:text-white hover:bg-surface-container-high/40'
         }">
           <span class="material-symbols-outlined text-base sm:text-lg" style="font-variation-settings: 'FILL' 1;">route</span>
@@ -155,7 +155,7 @@ export function renderWorldAdventureMapView() {
 
         <button id="tab-btn-island" class="py-3 px-4 rounded-2xl font-headline text-xs sm:text-sm font-black flex items-center justify-center gap-2 transition-all cursor-pointer ${
           activeTab === 'island'
-            ? 'bg-gradient-to-r from-[#00d2d3] to-[#01a3a4] text-[#050f18] shadow-[0_4px_0_0_#065261] -translate-y-0.5'
+            ? 'bg-linear-to-r from-[#00d2d3] to-[#01a3a4] text-surface-container-lowest shadow-[0_4px_0_0_#065261] -translate-y-0.5'
             : 'text-slate-300 hover:text-white hover:bg-surface-container-high/40'
         }">
           <span class="material-symbols-outlined text-base sm:text-lg" style="font-variation-settings: 'FILL' 1;">public</span>
@@ -195,9 +195,9 @@ function renderTodaysPathTab(hero, activePet, mapState) {
     <div class="flex flex-col gap-5 animate-fade-in">
       
       <!-- NEXT UP BANNER (CHUNKY CALLOUT) -->
-      <div class="bg-gradient-to-r from-[#122838] via-[#0b1b26] to-[#09141e] border-3 border-[#2ecc71]/60 rounded-3xl p-5 shadow-[0_8px_0_0_#050f18] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div class="bg-linear-to-r from-[#122838] via-[#0b1b26] to-[#09141e] border-3 border-primary-container/60 rounded-3xl p-5 shadow-[0_8px_0_0_#050f18] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div class="flex items-center gap-3.5">
-          <div class="w-14 h-14 rounded-2xl bg-[#2ecc71]/20 border-2 border-[#2ecc71] flex items-center justify-center text-[#2ecc71] shrink-0 shadow-inner">
+          <div class="w-14 h-14 rounded-2xl bg-primary-container/20 border-2 border-primary-container flex items-center justify-center text-primary-container shrink-0 shadow-inner">
             <span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'FILL' 1;">${nextWaypoint.icon}</span>
           </div>
           <div class="flex flex-col">
@@ -212,17 +212,17 @@ function renderTodaysPathTab(hero, activePet, mapState) {
 
         <div class="flex items-center gap-2 w-full sm:w-auto">
           ${nextWaypoint.linkedBossId ? `
-            <button id="path-launch-boss-btn" class="w-full sm:w-auto px-5 py-3 rounded-2xl bg-gradient-to-r from-red-600 to-amber-600 text-white font-headline font-black text-xs sm:text-sm tracking-wide shadow-[0_4px_0_0_#4a0008] active:translate-y-1 active:shadow-none flex items-center justify-center gap-2 cursor-pointer animate-pulse">
+            <button id="path-launch-boss-btn" class="w-full sm:w-auto px-5 py-3 rounded-2xl bg-linear-to-r from-red-600 to-amber-600 text-white font-headline font-black text-xs sm:text-sm tracking-wide shadow-[0_4px_0_0_#4a0008] active:translate-y-1 active:shadow-none flex items-center justify-center gap-2 cursor-pointer animate-pulse">
               <span class="material-symbols-outlined text-base">swords</span>
               <span>BATTLE BOSS!</span>
             </button>
           ` : nextWaypoint.id === 'wp_bedtime' ? `
-            <button id="path-launch-bedtime-story-btn" class="w-full sm:w-auto px-5 py-3 rounded-2xl bg-gradient-to-r from-[#00d2d3] to-[#0284c7] text-[#050f18] font-headline font-black text-xs sm:text-sm tracking-wide shadow-[0_4px_0_0_#05253b] active:translate-y-1 active:shadow-none flex items-center justify-center gap-2 cursor-pointer">
+            <button id="path-launch-bedtime-story-btn" class="w-full sm:w-auto px-5 py-3 rounded-2xl bg-linear-to-r from-[#00d2d3] to-[#0284c7] text-surface-container-lowest font-headline font-black text-xs sm:text-sm tracking-wide shadow-[0_4px_0_0_#05253b] active:translate-y-1 active:shadow-none flex items-center justify-center gap-2 cursor-pointer">
               <span class="text-base">📖</span>
               <span>READ BEDTIME STORY</span>
             </button>
           ` : `
-            <button data-complete-waypoint="${nextWaypoint.id}" class="w-full sm:w-auto px-5 py-3 rounded-2xl bg-gradient-to-r from-[#2ecc71] to-[#27ae60] text-[#050f18] font-headline font-black text-xs sm:text-sm tracking-wide shadow-[0_4px_0_0_#145237] active:translate-y-1 active:shadow-none flex items-center justify-center gap-2 cursor-pointer">
+            <button data-complete-waypoint="${nextWaypoint.id}" class="w-full sm:w-auto px-5 py-3 rounded-2xl bg-linear-to-r from-primary-container to-[#27ae60] text-surface-container-lowest font-headline font-black text-xs sm:text-sm tracking-wide shadow-[0_4px_0_0_#145237] active:translate-y-1 active:shadow-none flex items-center justify-center gap-2 cursor-pointer">
               <span class="material-symbols-outlined text-base">check_circle</span>
               <span>COMPLETE HABIT</span>
             </button>
@@ -235,10 +235,10 @@ function renderTodaysPathTab(hero, activePet, mapState) {
         ${waypoints.map((wp) => {
           const isDone = isWaypointDone(wp, hero);
           return `
-            <div class="bg-[#0f2334] rounded-3xl p-4 border-2 ${isDone ? 'border-[#2ecc71]/40 opacity-90' : 'border-surface-container-highest'} shadow-[0_4px_0_0_#050f18] flex items-center justify-between gap-3 hover:border-primary/50 transition-all">
+            <div class="bg-[#0f2334] rounded-3xl p-4 border-2 ${isDone ? 'border-primary-container/40 opacity-90' : 'border-surface-container-highest'} shadow-[0_4px_0_0_#050f18] flex items-center justify-between gap-3 hover:border-primary/50 transition-all">
               <div class="flex items-center gap-3">
                 <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shrink-0 ${
-                  isDone ? 'bg-[#2ecc71] text-[#050f18]' : 'bg-[#1a3850] text-[#ffb961]'
+                  isDone ? 'bg-primary-container text-surface-container-lowest' : 'bg-[#1a3850] text-[#ffb961]'
                 }">
                   ${isDone ? '<span class="material-symbols-outlined font-black">check</span>' : `<span class="font-headline font-black">${wp.stepNumber}</span>`}
                 </div>
@@ -275,7 +275,7 @@ function renderTodaysPathTab(hero, activePet, mapState) {
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
           ${ADVENTURE_GAMES.slice(0, 3).map(g => `
             <button data-launch-game="${g.id}" class="bg-[#0f2334] hover:bg-[#16334a] p-3 rounded-2xl border-2 border-surface-container-highest flex items-center gap-2.5 text-left active:scale-95 transition-all">
-              <span class="material-symbols-outlined text-2xl text-[#2ecc71]">${g.icon}</span>
+              <span class="material-symbols-outlined text-2xl text-primary-container">${g.icon}</span>
               <div class="flex flex-col min-w-0">
                 <span class="font-headline text-xs font-black text-white truncate">${g.title}</span>
                 <span class="text-[10px] text-slate-400 font-bold">${g.subject}</span>
@@ -306,7 +306,7 @@ function renderIslandSandboxTab(hero, activePet, mapState, timeOfDay) {
           <span class="text-xs font-black px-2.5 py-0.5 rounded-full ${
             timeOfDay === 'bedtime' ? 'bg-[#ffb961]/20 text-[#ffb961] border border-[#ffb961]/40' :
             timeOfDay === 'sunset' ? 'bg-[#f39c12]/20 text-[#f39c12] border border-[#f39c12]/40' :
-            timeOfDay === 'morning' ? 'bg-[#2ecc71]/20 text-[#2ecc71] border border-[#2ecc71]/40' :
+            timeOfDay === 'morning' ? 'bg-primary-container/20 text-primary-container border border-primary-container/40' :
             'bg-[#00d2d3]/20 text-[#00d2d3] border border-[#00d2d3]/40'
           }">
             ${timeOfDay === 'bedtime' ? '🌙 Bedtime Twilight' :
@@ -324,7 +324,7 @@ function renderIslandSandboxTab(hero, activePet, mapState, timeOfDay) {
 
           <!-- Bedtime Lullaby Toggle Button -->
           <button id="island-toggle-lullaby-btn" class="px-3 py-1.5 rounded-xl font-headline text-xs font-black flex items-center gap-1.5 chunky-btn-sm transition-all ${
-            isLullabyActive ? 'bg-[#ffb961] text-[#050f18] shadow' : 'bg-surface-container-high text-slate-300 hover:text-white'
+            isLullabyActive ? 'bg-[#ffb961] text-surface-container-lowest shadow-sm' : 'bg-surface-container-high text-slate-300 hover:text-white'
           }">
             <span class="material-symbols-outlined text-sm">music_note</span>
             <span>${isLullabyActive ? 'Lullaby Playing' : 'Play Lullaby'}</span>
@@ -345,20 +345,20 @@ function renderIslandSandboxTab(hero, activePet, mapState, timeOfDay) {
       </div>
 
       <!-- MAIN 3D FLOATING ISLAND CANVAS VIEWPORT -->
-      <div class="relative bg-[#050f18] rounded-4xl border-4 border-surface-container-highest shadow-[0_16px_0_0_#030910] min-h-[560px] overflow-hidden flex flex-col justify-between">
+      <div class="relative bg-surface-container-lowest rounded-4xl border-4 border-surface-container-highest shadow-[0_16px_0_0_#030910] min-h-[560px] overflow-hidden flex flex-col justify-between">
         
         <canvas id="world-adventure-canvas" class="w-full h-[560px] block cursor-grab active:cursor-grabbing touch-none select-none"></canvas>
 
         <!-- FLOATING OVERLAY HINTS -->
-        <div class="absolute top-4 left-4 pointer-events-none bg-[#09141e]/85 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-surface-container-highest text-xs text-slate-300 font-bold flex items-center gap-2 shadow">
-          <span class="text-[#2ecc71] animate-pulse">●</span>
+        <div class="absolute top-4 left-4 pointer-events-none bg-[#09141e]/85 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-surface-container-highest text-xs text-slate-300 font-bold flex items-center gap-2 shadow-sm">
+          <span class="text-primary-container animate-pulse">●</span>
           <span>Drag to orbit 360° • Pinch to zoom • Tap landmarks & props!</span>
         </div>
 
         <!-- BOTTOM TOY-BOX STATS STRIP -->
         <div class="absolute bottom-4 left-4 right-4 bg-[#09141e]/90 backdrop-blur-md p-3 rounded-2xl border-2 border-surface-container-highest flex flex-wrap items-center justify-between gap-3 shadow-lg">
           <div class="flex items-center gap-3.5 text-xs font-black flex-wrap">
-            <span class="text-[#2ecc71] flex items-center gap-1">
+            <span class="text-primary-container flex items-center gap-1">
               🍎 ${interactions.applesHarvested} Apples
             </span>
             <span class="text-[#00d2d3] flex items-center gap-1">
@@ -431,7 +431,7 @@ function renderLandmarkModal(landmark, hero) {
         </div>
 
         <!-- Bounty Rewards Strip -->
-        <div class="grid grid-cols-2 gap-2 bg-[#050f18] p-3 rounded-2xl border border-surface-container-highest">
+        <div class="grid grid-cols-2 gap-2 bg-surface-container-lowest p-3 rounded-2xl border border-surface-container-highest">
           <div class="flex flex-col items-center">
             <span class="text-[10px] text-slate-400 font-black uppercase">Explorer Tokens</span>
             <span class="font-headline text-base font-black text-[#ffb961]">🪙 +${coinsReward}</span>
@@ -442,7 +442,7 @@ function renderLandmarkModal(landmark, hero) {
           </div>
         </div>
 
-        <button id="modal-claim-landmark-btn" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#2ecc71] to-[#27ae60] text-[#050f18] font-headline font-black text-sm tracking-wide shadow-[0_4px_0_0_#145237] active:translate-y-1 active:shadow-none flex items-center justify-center gap-2 cursor-pointer">
+        <button id="modal-claim-landmark-btn" class="w-full py-3.5 rounded-2xl bg-linear-to-r from-primary-container to-[#27ae60] text-surface-container-lowest font-headline font-black text-sm tracking-wide shadow-[0_4px_0_0_#145237] active:translate-y-1 active:shadow-none flex items-center justify-center gap-2 cursor-pointer">
           <span class="material-symbols-outlined text-lg">celebration</span>
           <span>EXPLORE & CLAIM BOUNTY</span>
         </button>
@@ -478,7 +478,7 @@ function renderWaypointModal(wp, hero) {
         <div class="grid grid-cols-3 gap-2 bg-[#0f2334] p-3 rounded-2xl border border-surface-container-highest">
           <div class="flex flex-col items-center">
             <span class="text-[10px] uppercase font-black text-slate-400">Tokens</span>
-            <span class="text-sm font-black text-[#2ecc71]">+${wp.rewardCoins} 🪙</span>
+            <span class="text-sm font-black text-primary-container">+${wp.rewardCoins} 🪙</span>
           </div>
           <div class="flex flex-col items-center">
             <span class="text-[10px] uppercase font-black text-slate-400">Hero XP</span>
@@ -493,12 +493,12 @@ function renderWaypointModal(wp, hero) {
         <!-- Action Buttons -->
         <div class="flex flex-col gap-2 pt-2">
           ${wp.linkedBossId ? `
-            <button id="modal-boss-fight-btn" class="w-full py-4 rounded-2xl bg-gradient-to-r from-red-600 to-amber-600 text-white font-headline text-base font-black tracking-wide shadow-[0_6px_0_0_#4a0008] active:translate-y-1 active:shadow-none flex items-center justify-center gap-2 cursor-pointer animate-pulse">
+            <button id="modal-boss-fight-btn" class="w-full py-4 rounded-2xl bg-linear-to-r from-red-600 to-amber-600 text-white font-headline text-base font-black tracking-wide shadow-[0_6px_0_0_#4a0008] active:translate-y-1 active:shadow-none flex items-center justify-center gap-2 cursor-pointer animate-pulse">
               <span class="material-symbols-outlined text-2xl">swords</span>
               <span>LAUNCH HYGIENE BOSS BATTLE!</span>
             </button>
           ` : wp.id === 'wp_bedtime' ? `
-            <button id="modal-open-bedtime-story-btn" class="w-full py-4 rounded-2xl bg-gradient-to-r from-[#00d2d3] to-[#0284c7] text-[#050f18] font-headline text-base font-black tracking-wide shadow-[0_6px_0_0_#05253b] active:translate-y-1 active:shadow-none flex items-center justify-center gap-2 cursor-pointer">
+            <button id="modal-open-bedtime-story-btn" class="w-full py-4 rounded-2xl bg-linear-to-r from-[#00d2d3] to-[#0284c7] text-surface-container-lowest font-headline text-base font-black tracking-wide shadow-[0_6px_0_0_#05253b] active:translate-y-1 active:shadow-none flex items-center justify-center gap-2 cursor-pointer">
               <span class="text-xl">📖</span>
               <span>READ BEDTIME AI STORYBOOK</span>
             </button>
@@ -507,7 +507,7 @@ function renderWaypointModal(wp, hero) {
               <span>${isDone ? 'COMPLETED TODAY' : 'MARK CHORE COMPLETE WITHOUT STORY'}</span>
             </button>
           ` : `
-            <button id="modal-complete-chore-btn" class="w-full py-4 rounded-2xl bg-gradient-to-r from-[#2ecc71] to-[#27ae60] text-[#050f18] font-headline text-base font-black tracking-wide shadow-[0_6px_0_0_#145237] active:translate-y-1 active:shadow-none flex items-center justify-center gap-2 cursor-pointer">
+            <button id="modal-complete-chore-btn" class="w-full py-4 rounded-2xl bg-linear-to-r from-primary-container to-[#27ae60] text-surface-container-lowest font-headline text-base font-black tracking-wide shadow-[0_6px_0_0_#145237] active:translate-y-1 active:shadow-none flex items-center justify-center gap-2 cursor-pointer">
               <span class="material-symbols-outlined text-2xl">check_circle</span>
               <span>${isDone ? 'COMPLETED TODAY' : 'MARK CHORE COMPLETE'}</span>
             </button>

@@ -82,9 +82,10 @@ async function run() {
 
   console.log('\n--- 3. Testing TopHeader Responsiveness & Anti-Squash ---');
   const headerHtml = renderTopHeader();
-  assert(headerHtml.includes('flex-shrink-0'), 'Profile button must have flex-shrink-0');
+  // Tailwind v4 renamed flex-shrink-0 -> shrink-0 (same CSS, new utility name).
+  assert(headerHtml.includes('shrink-0'), 'Profile button must have shrink-0');
   assert(headerHtml.includes('hidden md:flex'), 'Hero HQ button is hidden on narrow mobile screens to prevent avatar overlap');
-  console.log('  ✅ PASS: TopHeader profile button is protected from squash (flex-shrink-0)');
+  console.log('  ✅ PASS: TopHeader profile button is protected from squash (shrink-0)');
   console.log('  ✅ PASS: TopHeader hides HQ button on small phone screens (hidden md:flex)');
 
   console.log('\n=========================================');

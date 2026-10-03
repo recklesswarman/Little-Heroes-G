@@ -203,23 +203,23 @@ export function renderDancePartyView() {
         </button>
 
         <div class="flex items-center gap-2">
-          <div class="bg-surface-container-high px-4 py-1.5 rounded-full border-2 border-primary-container text-xs font-black text-primary flex items-center gap-1.5 shadow-sm">
+          <div class="bg-surface-container-high px-4 py-1.5 rounded-full border-2 border-primary-container text-xs font-black text-primary flex items-center gap-1.5 shadow-xs">
             <span class="material-symbols-outlined text-base animate-pulse">fitness_center</span>
             <span>HERO MOVEMENT & DANCE</span>
           </div>
         </div>
 
-        <div class="flex items-center gap-2 bg-surface-container-high px-3.5 py-1.5 rounded-full border-2 border-secondary-container shadow-sm">
+        <div class="flex items-center gap-2 bg-surface-container-high px-3.5 py-1.5 rounded-full border-2 border-secondary-container shadow-xs">
           <span class="material-symbols-outlined text-secondary text-base animate-coin" style="font-variation-settings: 'FILL' 1;">monetization_on</span>
           <span class="font-headline text-xs font-black text-secondary">${(hero.coins || 0).toLocaleString()} 🪙</span>
         </div>
       </div>
 
       <!-- PET DANCE PARTNER SPOTLIGHT -->
-      <section class="relative bg-gradient-to-b from-[#152233] via-[#0f1b29] to-[#07111b] rounded-3xl p-5 sm:p-6 border-3 border-secondary/40 card-shadow flex flex-col items-center gap-5 overflow-hidden">
+      <section class="relative bg-linear-to-b from-[#152233] via-[#0f1b29] to-[#07111b] rounded-3xl p-5 sm:p-6 border-3 border-secondary/40 card-shadow flex flex-col items-center gap-5 overflow-hidden">
         
         <!-- Glowing Background -->
-        <div class="absolute inset-0 bg-gradient-to-t from-primary/10 via-transparent to-secondary/15 pointer-events-none"></div>
+        <div class="absolute inset-0 bg-linear-to-t from-primary/10 via-transparent to-secondary/15 pointer-events-none"></div>
         <div class="absolute -top-12 left-1/2 -translate-x-1/2 w-64 h-32 bg-primary/20 blur-3xl pointer-events-none"></div>
 
         <!-- Header Badges -->
@@ -245,7 +245,7 @@ export function renderDancePartyView() {
 
           <!-- Pet Avatar Actor -->
           <div id="arcade-pet-actor" class="relative cursor-pointer group select-none">
-            <div class="w-32 h-32 sm:w-36 sm:h-36 rounded-full bg-gradient-to-b from-primary/20 to-surface-container-highest/80 border-4 border-primary p-2 flex items-center justify-center shadow-[0_0_30px_rgba(46,204,113,0.35)] transition-transform group-hover:scale-105 active:scale-95 ${petAnimation}">
+            <div class="w-32 h-32 sm:w-36 sm:h-36 rounded-full bg-linear-to-b from-primary/20 to-surface-container-highest/80 border-4 border-primary p-2 flex items-center justify-center shadow-[0_0_30px_rgba(46,204,113,0.35)] transition-transform group-hover:scale-105 active:scale-95 ${petAnimation}">
               <img src="${petAvatarUrl}" alt="${petName}" class="w-full h-full object-contain drop-shadow-xl" />
             </div>
 
@@ -256,7 +256,7 @@ export function renderDancePartyView() {
                 : ''
             }
 
-            <div class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 bg-surface-container-high px-2.5 py-0.5 rounded-full border border-primary/40 text-[9px] font-black uppercase text-primary tracking-wider shadow">
+            <div class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 bg-surface-container-high px-2.5 py-0.5 rounded-full border border-primary/40 text-[9px] font-black uppercase text-primary tracking-wider shadow-sm">
               Tap to Warm Up!
             </div>
           </div>
@@ -292,7 +292,7 @@ export function renderDancePartyView() {
             <div class="tactile-card bg-surface-container rounded-3xl p-5 border-3 ${routine.accentBg} flex flex-col justify-between gap-4 shadow-md hover:scale-[1.01] transition-transform">
               
               <div class="flex items-start gap-4">
-                <div class="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl shadow-inner border-2 border-surface-container-highest flex-shrink-0" style="background-color: ${routine.color}25; color: ${routine.color};">
+                <div class="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl shadow-inner border-2 border-surface-container-highest shrink-0" style="background-color: ${routine.color}25; color: ${routine.color};">
                   <span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'FILL' 1;">${routine.icon}</span>
                 </div>
                 <div class="flex flex-col">
@@ -310,7 +310,7 @@ export function renderDancePartyView() {
                 <span class="text-[11px] font-bold text-on-surface-variant">Poses:</span>
                 <div class="flex items-center gap-1.5 flex-wrap">
                   ${routine.poses.map(p => `
-                    <span class="text-sm bg-surface-container px-2 py-0.5 rounded-lg border border-surface-container-highest shadow-sm" title="${p.name}">${p.emoji} ${p.name.split(' ')[0]}</span>
+                    <span class="text-sm bg-surface-container px-2 py-0.5 rounded-lg border border-surface-container-highest shadow-xs" title="${p.name}">${p.emoji} ${p.name.split(' ')[0]}</span>
                   `).join('')}
                 </div>
               </div>
@@ -348,7 +348,7 @@ export function renderDancePartyView() {
           
           <!-- Berry Popper -->
           <button id="launch-treat-catch-btn" class="bg-surface-container hover:bg-surface-bright rounded-2xl p-4 border-2 border-secondary/40 flex items-center gap-3 text-left chunky-btn-sm active:scale-95">
-            <div class="w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-2xl flex-shrink-0">
+            <div class="w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-2xl shrink-0">
               🎯
             </div>
             <div class="flex flex-col">
@@ -359,7 +359,7 @@ export function renderDancePartyView() {
 
           <!-- Memory Match -->
           <button id="launch-memory-match-btn" class="bg-surface-container hover:bg-surface-bright rounded-2xl p-4 border-2 border-primary/40 flex items-center gap-3 text-left chunky-btn-sm active:scale-95">
-            <div class="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center text-2xl flex-shrink-0">
+            <div class="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center text-2xl shrink-0">
               🃏
             </div>
             <div class="flex flex-col">
@@ -370,7 +370,7 @@ export function renderDancePartyView() {
 
           <!-- Freestyle Disco Dance Floor -->
           <button id="launch-disco-party-btn" class="bg-surface-container hover:bg-surface-bright rounded-2xl p-4 border-2 border-cyan-500/40 flex items-center gap-3 text-left chunky-btn-sm active:scale-95">
-            <div class="w-12 h-12 rounded-xl bg-cyan-500/20 border border-cyan-500/50 flex items-center justify-center text-2xl flex-shrink-0">
+            <div class="w-12 h-12 rounded-xl bg-cyan-500/20 border border-cyan-500/50 flex items-center justify-center text-2xl shrink-0">
               🪩
             </div>
             <div class="flex flex-col">
@@ -381,7 +381,7 @@ export function renderDancePartyView() {
 
           <!-- Color Dash -->
           <button id="launch-color-dash-btn" class="bg-surface-container hover:bg-surface-bright rounded-2xl p-4 border-2 border-rose-500/40 flex items-center gap-3 text-left chunky-btn-sm active:scale-95">
-            <div class="w-12 h-12 rounded-xl bg-rose-500/20 border border-rose-500/50 flex items-center justify-center text-2xl flex-shrink-0">
+            <div class="w-12 h-12 rounded-xl bg-rose-500/20 border border-rose-500/50 flex items-center justify-center text-2xl shrink-0">
               🎨
             </div>
             <div class="flex flex-col">
@@ -392,7 +392,7 @@ export function renderDancePartyView() {
 
           <!-- Echo Match -->
           <button id="launch-echo-match-btn" class="bg-surface-container hover:bg-surface-bright rounded-2xl p-4 border-2 border-violet-500/40 flex items-center gap-3 text-left chunky-btn-sm active:scale-95">
-            <div class="w-12 h-12 rounded-xl bg-violet-500/20 border border-violet-500/50 flex items-center justify-center text-2xl flex-shrink-0">
+            <div class="w-12 h-12 rounded-xl bg-violet-500/20 border border-violet-500/50 flex items-center justify-center text-2xl shrink-0">
               🎵
             </div>
             <div class="flex flex-col">
@@ -496,20 +496,20 @@ function renderMovementSession(hero, activePet, petAvatarUrl, petName) {
       </div>
 
       <!-- MAIN INTERACTIVE ARENA -->
-      <div class="relative bg-gradient-to-b from-[#132233] via-[#0c1a26] to-[#040e17] rounded-3xl p-5 sm:p-7 border-4 ${isFreezeActive ? 'border-cyan-400 shadow-[0_0_35px_rgba(34,211,238,0.5)]' : 'border-secondary/40'} min-h-[460px] card-shadow flex flex-col justify-between items-center overflow-hidden transition-all duration-300">
+      <div class="relative bg-linear-to-b from-[#132233] via-[#0c1a26] to-[#040e17] rounded-3xl p-5 sm:p-7 border-4 ${isFreezeActive ? 'border-cyan-400 shadow-[0_0_35px_rgba(34,211,238,0.5)]' : 'border-secondary/40'} min-h-[460px] card-shadow flex flex-col justify-between items-center overflow-hidden transition-all duration-300">
         
         <!-- Ambient Stage Glow -->
-        <div class="absolute inset-0 bg-gradient-to-t from-primary/10 via-transparent to-secondary/15 pointer-events-none"></div>
+        <div class="absolute inset-0 bg-linear-to-t from-primary/10 via-transparent to-secondary/15 pointer-events-none"></div>
 
         <!-- FREEZE DANCE OVERLAY (Active only during freeze moments) -->
         ${isFreezeActive ? `
-          <div class="absolute inset-0 bg-cyan-950/80 backdrop-blur-sm z-30 flex flex-col items-center justify-center p-6 text-center animate-fade-in">
+          <div class="absolute inset-0 bg-cyan-950/80 backdrop-blur-xs z-30 flex flex-col items-center justify-center p-6 text-center animate-fade-in">
             <div class="w-24 h-24 rounded-full bg-cyan-400/30 border-4 border-cyan-300 flex items-center justify-center text-5xl mb-3 animate-pulse shadow-[0_0_50px_rgba(34,211,238,0.7)]">
               🧊
             </div>
             <h2 class="font-headline text-3xl font-black text-cyan-200 tracking-wider animate-bounce">FREEZE LIKE ICE!</h2>
             <p class="text-sm font-bold text-cyan-100 mt-2 max-w-xs">Don't move a single muscle! Hold your hero pose until Rex says GO!</p>
-            <button id="freeze-resume-btn" class="mt-4 bg-cyan-400 text-cyan-950 font-headline text-xs font-black px-6 py-2.5 rounded-xl chunky-btn shadow active:scale-95">
+            <button id="freeze-resume-btn" class="mt-4 bg-cyan-400 text-cyan-950 font-headline text-xs font-black px-6 py-2.5 rounded-xl chunky-btn shadow-sm active:scale-95">
               UNFREEZE & DANCE! ⚡
             </button>
           </div>
@@ -542,7 +542,7 @@ function renderMovementSession(hero, activePet, petAvatarUrl, petName) {
           
           <!-- Pose Countdown Bar -->
           <div class="w-full bg-surface-container-lowest h-2.5 rounded-full overflow-hidden mt-3 border border-surface-container-highest">
-            <div id="pose-timer-bar" class="bg-gradient-to-r from-amber-400 to-orange-500 h-full transition-all duration-300 rounded-full" style="width: ${Math.max(5, (poseTimeLeft / (currentPose.duration || 20)) * 100)}%;"></div>
+            <div id="pose-timer-bar" class="bg-linear-to-r from-amber-400 to-orange-500 h-full transition-all duration-300 rounded-full" style="width: ${Math.max(5, (poseTimeLeft / (currentPose.duration || 20)) * 100)}%;"></div>
           </div>
           <span id="pose-timer-val" class="text-[10px] font-black text-amber-400 uppercase tracking-wider block mt-1">Pose Timer: ${poseTimeLeft}s</span>
         </div>
@@ -591,28 +591,28 @@ function renderMovementSession(hero, activePet, petAvatarUrl, petName) {
             </span>
           </div>
           <div class="w-full bg-surface-container-lowest h-4 rounded-full overflow-hidden border-2 border-surface-container-highest p-0.5">
-            <div class="${isFeverActive ? 'bg-gradient-to-r from-amber-400 via-yellow-300 to-orange-500 animate-pulse' : 'bg-gradient-to-r from-primary to-secondary'} h-full rounded-full transition-all duration-300" style="width: ${grooveCombo}%;"></div>
+            <div class="${isFeverActive ? 'bg-linear-to-r from-amber-400 via-yellow-300 to-orange-500 animate-pulse' : 'bg-linear-to-r from-primary to-secondary'} h-full rounded-full transition-all duration-300" style="width: ${grooveCombo}%;"></div>
           </div>
         </div>
 
         <!-- 4 TACTILE RHYTHM BEAT PADS -->
         <div class="w-full max-w-lg grid grid-cols-4 gap-2 sm:gap-3 z-10 pt-3">
-          <button data-rhythm-pad="bounce" class="rhythm-pad-btn h-14 rounded-2xl bg-gradient-to-b from-emerald-500 to-emerald-700 border-b-4 border-emerald-900 text-white font-headline text-xs font-black shadow-md active:translate-y-1 active:border-b-0 flex flex-col items-center justify-center">
+          <button data-rhythm-pad="bounce" class="rhythm-pad-btn h-14 rounded-2xl bg-linear-to-b from-emerald-500 to-emerald-700 border-b-4 border-emerald-900 text-white font-headline text-xs font-black shadow-md active:translate-y-1 active:border-b-0 flex flex-col items-center justify-center">
             <span class="text-base">🟢</span>
             <span>BOUNCE</span>
           </button>
           
-          <button data-rhythm-pad="spin" class="rhythm-pad-btn h-14 rounded-2xl bg-gradient-to-b from-blue-500 to-blue-700 border-b-4 border-blue-900 text-white font-headline text-xs font-black shadow-md active:translate-y-1 active:border-b-0 flex flex-col items-center justify-center">
+          <button data-rhythm-pad="spin" class="rhythm-pad-btn h-14 rounded-2xl bg-linear-to-b from-blue-500 to-blue-700 border-b-4 border-blue-900 text-white font-headline text-xs font-black shadow-md active:translate-y-1 active:border-b-0 flex flex-col items-center justify-center">
             <span class="text-base">🔵</span>
             <span>TWIRL</span>
           </button>
           
-          <button data-rhythm-pad="pose" class="rhythm-pad-btn h-14 rounded-2xl bg-gradient-to-b from-amber-400 to-amber-600 border-b-4 border-amber-800 text-amber-950 font-headline text-xs font-black shadow-md active:translate-y-1 active:border-b-0 flex flex-col items-center justify-center">
+          <button data-rhythm-pad="pose" class="rhythm-pad-btn h-14 rounded-2xl bg-linear-to-b from-amber-400 to-amber-600 border-b-4 border-amber-800 text-amber-950 font-headline text-xs font-black shadow-md active:translate-y-1 active:border-b-0 flex flex-col items-center justify-center">
             <span class="text-base">🟡</span>
             <span>POSE</span>
           </button>
 
-          <button data-rhythm-pad="fever" class="rhythm-pad-btn h-14 rounded-2xl bg-gradient-to-b from-purple-500 to-purple-700 border-b-4 border-purple-900 text-white font-headline text-xs font-black shadow-md active:translate-y-1 active:border-b-0 flex flex-col items-center justify-center">
+          <button data-rhythm-pad="fever" class="rhythm-pad-btn h-14 rounded-2xl bg-linear-to-b from-purple-500 to-purple-700 border-b-4 border-purple-900 text-white font-headline text-xs font-black shadow-md active:translate-y-1 active:border-b-0 flex flex-col items-center justify-center">
             <span class="text-base animate-pulse">⚡</span>
             <span>FEVER!</span>
           </button>
@@ -667,18 +667,18 @@ function renderTreatCatchGame(hero, activePet, petAvatarUrl, petName) {
       </div>
 
       <!-- Play Arena -->
-      <div class="relative bg-gradient-to-b from-[#112435] via-[#0b1b29] to-[#040e17] rounded-3xl p-6 border-4 border-secondary/50 min-h-[420px] card-shadow flex flex-col justify-between items-center overflow-hidden">
+      <div class="relative bg-linear-to-b from-[#112435] via-[#0b1b29] to-[#040e17] rounded-3xl p-6 border-4 border-secondary/50 min-h-[420px] card-shadow flex flex-col justify-between items-center overflow-hidden">
         
-        <div class="absolute inset-0 bg-gradient-to-t from-primary/10 via-transparent to-secondary/15 pointer-events-none"></div>
+        <div class="absolute inset-0 bg-linear-to-t from-primary/10 via-transparent to-secondary/15 pointer-events-none"></div>
 
-        <div class="z-10 bg-surface-container-highest/90 backdrop-blur-md px-4 py-2 rounded-2xl border border-secondary/40 text-xs font-black text-secondary text-center shadow">
+        <div class="z-10 bg-surface-container-highest/90 backdrop-blur-md px-4 py-2 rounded-2xl border border-secondary/40 text-xs font-black text-secondary text-center shadow-sm">
           Tap the floating bubbles to feed treats to ${petName}! 🍓 ⭐ 🪙
         </div>
 
         <!-- Floating Bubbles Playfield -->
         <div id="bubbles-field" class="w-full flex-1 relative my-4 min-h-[220px]">
           ${treatItems.map((item, idx) => `
-            <button data-bubble-idx="${idx}" class="treat-bubble-btn absolute rounded-full bg-gradient-to-br from-surface-bright to-surface-container-high border-3 border-secondary/70 p-3 text-3xl sm:text-4xl shadow-lg flex items-center justify-center active:scale-125 transition-transform hover:scale-110" style="left: ${item.x}%; top: ${item.y}%;">
+            <button data-bubble-idx="${idx}" class="treat-bubble-btn absolute rounded-full bg-linear-to-br from-surface-bright to-surface-container-high border-3 border-secondary/70 p-3 text-3xl sm:text-4xl shadow-lg flex items-center justify-center active:scale-125 transition-transform hover:scale-110" style="left: ${item.x}%; top: ${item.y}%;">
               ${item.icon}
             </button>
           `).join('')}
@@ -687,7 +687,7 @@ function renderTreatCatchGame(hero, activePet, petAvatarUrl, petName) {
         <!-- Pet at Bottom Waiting for Food -->
         <div class="z-10 flex flex-col items-center gap-2">
           <div id="treat-catcher-pet" class="w-24 h-24 rounded-full bg-surface-container-high border-3 border-primary p-2 flex items-center justify-center shadow-lg transition-transform ${petAnimation}">
-            <img src="${petAvatarUrl}" alt="${petName}" class="w-full h-full object-contain drop-shadow" />
+            <img src="${petAvatarUrl}" alt="${petName}" class="w-full h-full object-contain drop-shadow-sm" />
           </div>
         </div>
 
@@ -725,7 +725,7 @@ function renderMemoryMatchGame(hero, activePet, petAvatarUrl, petName) {
       </div>
 
       <!-- Memory Grid -->
-      <div class="bg-gradient-to-b from-[#131b26] to-[#0a111a] rounded-3xl p-6 border-3 border-primary/40 card-shadow flex flex-col items-center gap-4">
+      <div class="bg-linear-to-b from-[#131b26] to-[#0a111a] rounded-3xl p-6 border-3 border-primary/40 card-shadow flex flex-col items-center gap-4">
         
         <div class="w-full text-center text-xs font-black text-primary bg-surface-container-highest/80 px-4 py-2 rounded-xl">
           ${memoryWon ? '🎉 All Companion Pairs Matched! +25 Coins & +25 Pet XP Awarded!' : `Find all ${memoryPairsTarget} matching pairs of 3D companion figurines!`}
@@ -741,7 +741,7 @@ function renderMemoryMatchGame(hero, activePet, petAvatarUrl, petName) {
                   : 'bg-surface-container border-surface-container-highest text-2xl text-primary font-black hover:border-primary/50'
               } flex flex-col items-center justify-center p-1.5 shadow-md active:scale-95 transition-all overflow-hidden">
                 ${isFlipped ? `
-                  <img src="${card.img}" alt="${card.name}" class="w-12 h-12 sm:w-14 sm:h-14 object-contain filter drop-shadow animate-fade-in" loading="lazy">
+                  <img src="${card.img}" alt="${card.name}" class="w-12 h-12 sm:w-14 sm:h-14 object-contain filter drop-shadow-sm animate-fade-in" loading="lazy">
                   <span class="text-[10px] font-black text-on-surface truncate mt-1 max-w-[70px]">${card.name}</span>
                 ` : `
                   <span class="text-2xl opacity-70">🐾</span>
@@ -774,7 +774,7 @@ function renderColorDashGame(hero, activePet, petAvatarUrl, petName) {
         </div>
       </div>
 
-      <div class="relative bg-gradient-to-b from-[#152233] via-[#0f1b29] to-[#07111b] rounded-3xl p-6 border-4 border-rose-500/40 min-h-[380px] card-shadow flex flex-col items-center justify-center gap-5">
+      <div class="relative bg-linear-to-b from-[#152233] via-[#0f1b29] to-[#07111b] rounded-3xl p-6 border-4 border-rose-500/40 min-h-[380px] card-shadow flex flex-col items-center justify-center gap-5">
         ${!colorDashActive && !colorDashWon ? `
           <span class="text-5xl">🎨</span>
           <h2 class="font-headline text-xl font-black text-inverse-surface text-center">Tap the color Rex calls out!</h2>
@@ -791,7 +791,7 @@ function renderColorDashGame(hero, activePet, petAvatarUrl, petName) {
             <span class="font-headline text-lg font-black" style="color: ${colorDashTarget.hex};">${colorDashTarget.name.toUpperCase()}</span>
           </div>
           <div class="bg-surface-container-lowest h-2.5 w-full max-w-xs rounded-full overflow-hidden border border-surface-container-highest">
-            <div class="bg-gradient-to-r from-rose-400 to-amber-400 h-full rounded-full transition-all" style="width: ${(colorDashTimeLeft / cfg.roundSeconds) * 100}%;"></div>
+            <div class="bg-linear-to-r from-rose-400 to-amber-400 h-full rounded-full transition-all" style="width: ${(colorDashTimeLeft / cfg.roundSeconds) * 100}%;"></div>
           </div>
           <div class="grid grid-cols-3 gap-3 w-full max-w-sm">
             ${colorDashChoices.map((c) => `
@@ -822,7 +822,7 @@ function renderEchoMatchGame(hero, activePet, petAvatarUrl, petName) {
         </div>
       </div>
 
-      <div class="relative bg-gradient-to-b from-[#1a1530] via-[#120e24] to-[#080614] rounded-3xl p-6 border-4 border-violet-500/40 min-h-[380px] card-shadow flex flex-col items-center justify-center gap-5">
+      <div class="relative bg-linear-to-b from-[#1a1530] via-[#120e24] to-[#080614] rounded-3xl p-6 border-4 border-violet-500/40 min-h-[380px] card-shadow flex flex-col items-center justify-center gap-5">
         ${!echoActive && !echoWon && !echoLost ? `
           <span class="text-5xl">🎵</span>
           <h2 class="font-headline text-xl font-black text-inverse-surface text-center">Watch, Listen, Repeat!</h2>
@@ -870,9 +870,9 @@ function renderDiscoParty(hero, activePet, petAvatarUrl, petName, state) {
       </div>
 
       <!-- Disco Dance Floor Arena -->
-      <div id="disco-arena" class="relative bg-gradient-to-b from-[#131b26] via-[#10202e] to-[#09141e] rounded-3xl p-6 border-4 border-secondary/40 min-h-[380px] card-shadow flex flex-col justify-between items-center overflow-hidden">
+      <div id="disco-arena" class="relative bg-linear-to-b from-[#131b26] via-[#10202e] to-[#09141e] rounded-3xl p-6 border-4 border-secondary/40 min-h-[380px] card-shadow flex flex-col justify-between items-center overflow-hidden">
         
-        <div class="absolute inset-0 bg-gradient-to-t from-secondary/15 via-transparent to-primary/10 pointer-events-none"></div>
+        <div class="absolute inset-0 bg-linear-to-t from-secondary/15 via-transparent to-primary/10 pointer-events-none"></div>
 
         <div class="w-full flex justify-between items-center z-10">
           <span class="bg-surface-container-highest/80 backdrop-blur-md px-3 py-1 rounded-full text-xs font-black text-primary flex items-center gap-1">
@@ -894,19 +894,19 @@ function renderDiscoParty(hero, activePet, petAvatarUrl, petName, state) {
           <div id="disco-pet-actor" class="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-tertiary-container/30 border-4 border-tertiary p-2 flex items-center justify-center shadow-2xl ${
             isDancing ? 'animate-bounce' : 'animate-float'
           }">
-            <img src="${petAvatarUrl}" alt="${petName}" class="w-full h-full object-contain drop-shadow" />
+            <img src="${petAvatarUrl}" alt="${petName}" class="w-full h-full object-contain drop-shadow-sm" />
           </div>
         </div>
 
         <!-- Interactive 3D Light-Up Dance Floor Pads -->
         <div class="w-full max-w-md grid grid-cols-3 gap-3 z-10 p-2 bg-surface-container-lowest/80 rounded-2xl border-2 border-surface-container-highest">
-          <button data-dance-pad="green" class="dance-pad-btn h-14 rounded-xl bg-gradient-to-b from-[#2ecc71] to-[#1e8449] border-b-4 border-[#145a32] text-white font-headline text-xs font-black shadow-md active:translate-y-1 active:border-b-0 flex items-center justify-center gap-1">
+          <button data-dance-pad="green" class="dance-pad-btn h-14 rounded-xl bg-linear-to-b from-primary-container to-[#1e8449] border-b-4 border-[#145a32] text-white font-headline text-xs font-black shadow-md active:translate-y-1 active:border-b-0 flex items-center justify-center gap-1">
             🟢 JUMP!
           </button>
-          <button data-dance-pad="blue" class="dance-pad-btn h-14 rounded-xl bg-gradient-to-b from-[#3498db] to-[#21618c] border-b-4 border-[#154360] text-white font-headline text-xs font-black shadow-md active:translate-y-1 active:border-b-0 flex items-center justify-center gap-1">
+          <button data-dance-pad="blue" class="dance-pad-btn h-14 rounded-xl bg-linear-to-b from-[#3498db] to-[#21618c] border-b-4 border-[#154360] text-white font-headline text-xs font-black shadow-md active:translate-y-1 active:border-b-0 flex items-center justify-center gap-1">
             🔵 SPIN!
           </button>
-          <button data-dance-pad="yellow" class="dance-pad-btn h-14 rounded-xl bg-gradient-to-b from-[#f1c40f] to-[#b7950b] border-b-4 border-[#7d6608] text-[#1a1200] font-headline text-xs font-black shadow-md active:translate-y-1 active:border-b-0 flex items-center justify-center gap-1">
+          <button data-dance-pad="yellow" class="dance-pad-btn h-14 rounded-xl bg-linear-to-b from-[#f1c40f] to-[#b7950b] border-b-4 border-[#7d6608] text-[#1a1200] font-headline text-xs font-black shadow-md active:translate-y-1 active:border-b-0 flex items-center justify-center gap-1">
             🟡 SHINE!
           </button>
         </div>
@@ -919,7 +919,7 @@ function renderDiscoParty(hero, activePet, petAvatarUrl, petName, state) {
               <span class="text-amber-400">⏱ ${discoChallengeTimeLeft}s</span>
             </div>
             <div class="w-full bg-surface-container-lowest h-3 rounded-full overflow-hidden border border-surface-container-highest">
-              <div class="bg-gradient-to-r from-primary to-secondary h-full rounded-full transition-all" style="width: ${Math.min(100, (discoChallengeHits / discoChallengeGoal) * 100)}%;"></div>
+              <div class="bg-linear-to-r from-primary to-secondary h-full rounded-full transition-all" style="width: ${Math.min(100, (discoChallengeHits / discoChallengeGoal) * 100)}%;"></div>
             </div>
             <span class="text-[10px] text-on-surface-variant">${discoChallengeHits} / ${discoChallengeGoal} hits</span>
           ` : discoChallengeWon ? `

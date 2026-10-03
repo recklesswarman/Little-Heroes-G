@@ -210,15 +210,15 @@ class ChorePhotoProofModal {
       <div class="bg-surface-container rounded-3xl border-4 border-primary max-w-lg w-full overflow-hidden shadow-2xl flex flex-col relative">
         
         <!-- Header with Cheering Rex Frame -->
-        <div class="bg-gradient-to-r from-primary to-emerald-600 p-4 text-white flex items-center justify-between relative">
+        <div class="bg-linear-to-r from-primary to-emerald-600 p-4 text-white flex items-center justify-between relative">
           <div class="flex items-center gap-3">
-            <div class="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center text-3xl border border-white/30 shadow">
+            <div class="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center text-3xl border border-white/30 shadow-sm">
               📸
             </div>
             <div>
               <div class="flex items-center gap-1.5">
                 <h2 class="font-headline text-lg font-black tracking-wide">Snap Chore Proof</h2>
-                <span class="bg-amber-400 text-slate-900 text-[10px] font-black uppercase px-2 py-0.5 rounded-full shadow-sm">
+                <span class="bg-amber-400 text-slate-900 text-[10px] font-black uppercase px-2 py-0.5 rounded-full shadow-xs">
                   +5 Bonus 🪙
                 </span>
               </div>
@@ -234,7 +234,7 @@ class ChorePhotoProofModal {
         <!-- Camera / Preview Viewport -->
         <div class="p-4 flex flex-col items-center gap-4 bg-surface-container-lowest/50">
           
-          <div class="relative w-full aspect-[4/3] bg-black rounded-2xl overflow-hidden border-2 border-primary/40 shadow-inner flex items-center justify-center">
+          <div class="relative w-full aspect-4/3 bg-black rounded-2xl overflow-hidden border-2 border-primary/40 shadow-inner flex items-center justify-center">
             
             <!-- Video Stream -->
             <div id="chore-stream-container" class="w-full h-full relative flex items-center justify-center">
@@ -242,10 +242,10 @@ class ChorePhotoProofModal {
               
               <!-- Rex Cheering Camera Overlay Frame -->
               <div class="absolute inset-0 pointer-events-none border-4 border-dashed border-primary/50 rounded-2xl flex flex-col justify-between p-3">
-                <div class="flex justify-between items-center text-xs font-black text-primary bg-surface-container/90 px-2.5 py-1 rounded-full w-max shadow">
+                <div class="flex justify-between items-center text-xs font-black text-primary bg-surface-container/90 px-2.5 py-1 rounded-full w-max shadow-sm">
                   <span>🦖 Rex: Point camera at your chore!</span>
                 </div>
-                <div class="self-end bg-amber-400 text-slate-900 text-[10px] font-black px-2 py-0.5 rounded-full shadow">
+                <div class="self-end bg-amber-400 text-slate-900 text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm">
                   Proof = +5 Extra Tokens 🪙
                 </div>
               </div>
@@ -254,7 +254,7 @@ class ChorePhotoProofModal {
             <!-- Captured Image Preview -->
             <div id="chore-preview-container" class="w-full h-full hidden relative">
               <img id="chore-preview-img" class="w-full h-full object-cover" alt="Proof Preview" />
-              <div class="absolute bottom-2 left-2 bg-emerald-500 text-white text-xs font-black px-3 py-1 rounded-xl flex items-center gap-1 shadow">
+              <div class="absolute bottom-2 left-2 bg-emerald-500 text-white text-xs font-black px-3 py-1 rounded-xl flex items-center gap-1 shadow-sm">
                 <span class="material-symbols-outlined text-sm">check_circle</span> Ready to Send!
               </div>
             </div>
@@ -263,7 +263,7 @@ class ChorePhotoProofModal {
             <div id="chore-file-fallback-prompt" class="hidden w-full h-full flex flex-col items-center justify-center p-6 text-center gap-3 bg-surface-container-high">
               <span class="material-symbols-outlined text-4xl text-secondary">photo_library</span>
               <p class="text-xs text-on-surface-variant font-bold">Camera preview not available. Choose a photo from your library:</p>
-              <label class="bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2.5 min-h-[44px] rounded-2xl cursor-pointer hover:brightness-110 active:scale-95 shadow-sm inline-flex items-center justify-center">
+              <label class="bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2.5 min-h-[44px] rounded-2xl cursor-pointer hover:brightness-110 active:scale-95 shadow-xs inline-flex items-center justify-center">
                 Browse Photos
                 <input type="file" id="chore-file-input-fallback" accept="image/*" class="hidden" />
               </label>
@@ -274,7 +274,7 @@ class ChorePhotoProofModal {
           <!-- Controls Bar -->
           <div class="w-full flex items-center justify-between gap-3">
             <!-- Gallery Upload Button -->
-            <label class="bg-surface-container hover:bg-surface-bright text-on-surface-variant border border-surface-container-highest font-headline text-xs font-bold px-3 py-2.5 min-h-[44px] rounded-2xl flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-sm" title="Choose from gallery">
+            <label class="bg-surface-container hover:bg-surface-bright text-on-surface-variant border border-surface-container-highest font-headline text-xs font-bold px-3 py-2.5 min-h-[44px] rounded-2xl flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-xs" title="Choose from gallery">
               <span class="material-symbols-outlined text-lg text-primary">add_photo_alternate</span>
               <span class="hidden sm:inline">Upload</span>
               <input type="file" id="chore-file-input" accept="image/*" class="hidden" />
@@ -282,7 +282,7 @@ class ChorePhotoProofModal {
 
             <!-- Snap / Retake Center Button -->
             <div class="flex items-center gap-2">
-              <button id="chore-snap-btn" class="bg-gradient-to-r from-primary to-emerald-500 text-white font-headline text-sm font-black px-6 py-3 min-h-[48px] rounded-2xl chunky-btn shadow-lg flex items-center gap-2 hover:brightness-110 active:scale-95">
+              <button id="chore-snap-btn" class="bg-linear-to-r from-primary to-emerald-500 text-white font-headline text-sm font-black px-6 py-3 min-h-[48px] rounded-2xl chunky-btn shadow-lg flex items-center gap-2 hover:brightness-110 active:scale-95">
                 <span class="material-symbols-outlined text-xl">photo_camera</span>
                 <span>Snap Photo!</span>
               </button>
@@ -293,7 +293,7 @@ class ChorePhotoProofModal {
             </div>
 
             <!-- Submit Button -->
-            <button id="chore-submit-proof-btn" class="opacity-50 pointer-events-none bg-gradient-to-r from-amber-400 to-amber-500 text-slate-900 font-headline text-xs font-black px-4 py-3 min-h-[48px] rounded-2xl chunky-btn shadow flex items-center gap-1.5 hover:brightness-110 active:scale-95">
+            <button id="chore-submit-proof-btn" class="opacity-50 pointer-events-none bg-linear-to-r from-amber-400 to-amber-500 text-slate-900 font-headline text-xs font-black px-4 py-3 min-h-[48px] rounded-2xl chunky-btn shadow-sm flex items-center gap-1.5 hover:brightness-110 active:scale-95">
               <span>Send</span>
               <span class="material-symbols-outlined text-base">send</span>
             </button>

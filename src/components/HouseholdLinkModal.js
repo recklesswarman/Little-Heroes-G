@@ -53,7 +53,7 @@ export function renderHouseholdLinkModal() {
             <div class="flex flex-col gap-2.5">
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary shadow-sm flex-shrink-0">
+                  <div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary shadow-xs shrink-0">
                     ${
                       parentUser.photoURL
                         ? `<img class="w-full h-full object-cover" src="${parentUser.photoURL}" alt="User Avatar" />`
@@ -66,7 +66,7 @@ export function renderHouseholdLinkModal() {
                   </div>
                 </div>
 
-                <button id="auth-signout-btn" class="bg-surface-container-lowest text-error font-headline text-[10px] font-bold px-3 py-1.5 rounded-lg border border-error/30 hover:bg-error/10 active:scale-95 flex-shrink-0">
+                <button id="auth-signout-btn" class="bg-surface-container-lowest text-error font-headline text-[10px] font-bold px-3 py-1.5 rounded-lg border border-error/30 hover:bg-error/10 active:scale-95 shrink-0">
                   Sign Out
                 </button>
               </div>
@@ -100,7 +100,7 @@ export function renderHouseholdLinkModal() {
               </p>
               
               <!-- Google Sign In Button -->
-              <button id="auth-google-signin-btn" class="w-full bg-[#ffffff] hover:bg-[#f1f5f9] text-[#1e293b] font-headline text-xs font-black py-3 rounded-xl flex items-center justify-center gap-2 shadow-sm border border-[#cbd5e1] active:scale-98 transition-all">
+              <button id="auth-google-signin-btn" class="w-full bg-[#ffffff] hover:bg-[#f1f5f9] text-[#1e293b] font-headline text-xs font-black py-3 rounded-xl flex items-center justify-center gap-2 shadow-xs border border-[#cbd5e1] active:scale-98 transition-all">
                 <svg class="w-4 h-4" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
                   <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
@@ -124,7 +124,7 @@ export function renderHouseholdLinkModal() {
 
           ${isQuotaExhaustedGlobal() ? `
             <div class="w-full bg-amber-500/15 border border-amber-500/40 rounded-xl p-2.5 text-[11px] text-amber-200 flex items-start gap-2">
-              <span class="material-symbols-outlined text-sm text-amber-400 flex-shrink-0 mt-0.5">shield</span>
+              <span class="material-symbols-outlined text-sm text-amber-400 shrink-0 mt-0.5">shield</span>
               <span><strong>Local Mode Active:</strong> Cloud daily free write limit reached. All hero progress, coins, chores, and pets are safely preserved on this device.</span>
             </div>
           ` : ''}
@@ -137,7 +137,7 @@ export function renderHouseholdLinkModal() {
             </span>
             
             <div class="flex items-center gap-2">
-              <button id="household-force-sync-btn" class="bg-surface-container-lowest hover:bg-surface-bright text-secondary border border-secondary/30 font-headline text-[10px] font-black px-2.5 py-1 rounded-lg flex items-center gap-1 active:scale-95 transition-all shadow-sm">
+              <button id="household-force-sync-btn" class="bg-surface-container-lowest hover:bg-surface-bright text-secondary border border-secondary/30 font-headline text-[10px] font-black px-2.5 py-1 rounded-lg flex items-center gap-1 active:scale-95 transition-all shadow-xs">
                 <span class="material-symbols-outlined text-xs">refresh</span>
                 Sync Now
               </button>
@@ -152,7 +152,7 @@ export function renderHouseholdLinkModal() {
           <div class="w-full bg-surface-container-lowest p-3 rounded-2xl border border-surface-container-highest flex flex-col gap-2">
             <span class="text-[10px] font-black uppercase text-on-surface-variant tracking-wider text-left">Join Another Household</span>
             <div class="flex gap-2">
-              <input type="text" id="household-join-input" placeholder="e.g. HERO-1234" class="flex-1 bg-surface-container-high border border-surface-container-highest rounded-xl px-3 py-2 text-xs font-black uppercase tracking-wider text-inverse-surface focus:border-secondary focus:outline-none" />
+              <input type="text" id="household-join-input" placeholder="e.g. HERO-1234" class="flex-1 bg-surface-container-high border border-surface-container-highest rounded-xl px-3 py-2 text-xs font-black uppercase tracking-wider text-inverse-surface focus:border-secondary focus:outline-hidden" />
               <button id="household-join-btn" class="bg-secondary hover:brightness-110 text-on-secondary font-headline text-xs font-black px-3 py-2 rounded-xl chunky-btn-sm active:scale-95">
                 Join
               </button>

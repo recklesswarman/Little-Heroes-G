@@ -1,32 +1,158 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
 
-@layer utilities {
-  .text-shadow {
-    text-shadow: 0 2px 0 rgba(0, 0, 0, 0.6);
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  /* Tailwind v4 resolves max-w-{name} against --spacing-{name} when a key of
+     that name exists there, before falling back to its own built-in
+     --container-{name} scale -- our custom spacing scale below reuses the
+     same xs/sm/md/lg/xl names (intentionally, so p-lg/gap-md/etc. pick up
+     these project-specific values), which silently hijacked max-w-xs
+     through max-w-xl to those spacing values instead of Tailwind's standard
+     max-width sizes. Pin max-width's own scale back explicitly so it isn't
+     shadowed by the spacing one.
+     (min-w-lg/min-h-lg etc. are NOT re-pinned here: this project's buttons
+     intentionally rely on those resolving through the same spacing scale
+     for a "40px base / 44px at sm:" minimum tap-target pattern.) */
+  --max-width-xs: 20rem;
+  --max-width-sm: 24rem;
+  --max-width-md: 28rem;
+  --max-width-lg: 32rem;
+  --max-width-xl: 36rem;
+
+  --color-surface: #09141e;
+  --color-surface-dim: #09141e;
+  --color-surface-bright: #2f3a45;
+  --color-surface-container-lowest: #050f18;
+  --color-surface-container-low: #121d26;
+  --color-surface-container: #16212b;
+  --color-surface-container-high: #202b35;
+  --color-surface-container-highest: #2b3640;
+  --color-on-surface: #d8e4f1;
+  --color-on-surface-variant: #bbcbbb;
+  --color-inverse-surface: #d8e4f1;
+  --color-inverse-on-surface: #27323c;
+  --color-outline: #869486;
+  --color-outline-variant: #3d4a3e;
+  --color-surface-tint: #4ae183;
+  --color-primary: #54e98a;
+  --color-on-primary: #003919;
+  --color-primary-container: #2ecc71;
+  --color-on-primary-container: #005027;
+  --color-inverse-primary: #006d37;
+  --color-secondary: #ffb961;
+  --color-on-secondary: #472a00;
+  --color-secondary-container: #e89300;
+  --color-on-secondary-container: #563400;
+  --color-tertiary: #a3d3ff;
+  --color-on-tertiary: #003351;
+  --color-tertiary-container: #5fbaff;
+  --color-on-tertiary-container: #004970;
+  --color-error: #ffb4ab;
+  --color-on-error: #690005;
+  --color-error-container: #93000a;
+  --color-on-error-container: #ffdad6;
+  --color-primary-fixed: #6bfe9c;
+  --color-primary-fixed-dim: #4ae183;
+  --color-on-primary-fixed: #00210c;
+  --color-on-primary-fixed-variant: #005228;
+  --color-secondary-fixed: #ffddb9;
+  --color-secondary-fixed-dim: #ffb961;
+  --color-on-secondary-fixed: #2b1700;
+  --color-on-secondary-fixed-variant: #663e00;
+  --color-tertiary-fixed: #cce5ff;
+  --color-tertiary-fixed-dim: #92ccff;
+  --color-on-tertiary-fixed: #001d31;
+  --color-on-tertiary-fixed-variant: #004b73;
+  --color-background: #09141e;
+  --color-on-background: #d8e4f1;
+  --color-surface-variant: #2b3640;
+
+  --breakpoint-xs: 400px;
+
+  --radius: 0.5rem;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-2xl: 1.75rem;
+  --radius-3xl: 2rem;
+  --radius-full: 9999px;
+
+  --spacing-base: 8px;
+  --spacing-xs: 4px;
+  --spacing-sm: 12px;
+  --spacing-md: 24px;
+  --spacing-lg: 40px;
+  --spacing-xl: 64px;
+  --spacing-gutter: 16px;
+  --spacing-margin-mobile: 20px;
+
+  --font-sans: Quicksand, sans-serif;
+  --font-headline: 'Plus Jakarta Sans', sans-serif;
+  --font-body: Quicksand, sans-serif;
+  --font-display-lg: 'Plus Jakarta Sans', sans-serif;
+  --font-headline-lg: 'Plus Jakarta Sans', sans-serif;
+  --font-headline-lg-mobile: 'Plus Jakarta Sans', sans-serif;
+  --font-body-lg: Quicksand, sans-serif;
+  --font-body-md: Quicksand, sans-serif;
+  --font-label-xl: Quicksand, sans-serif;
+
+  --shadow-chunky-sm: 0 4px 0 0 rgba(0, 0, 0, 0.3);
+  --shadow-chunky-md: 0 8px 0 0 rgba(0, 0, 0, 0.4);
+  --shadow-chunky-lg: 0 12px 0 0 rgba(0, 0, 0, 0.5);
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
   }
-  .text-shadow-lg {
-    text-shadow: 0 3px 0 rgba(0, 0, 0, 0.8), 0 0 12px rgba(84, 233, 138, 0.4);
-  }
-  .card-shadow {
-    box-shadow: 0 8px 0 0 rgba(0, 0, 0, 0.45);
-  }
-  .card-shadow-lg {
-    box-shadow: 0 12px 0 0 rgba(0, 0, 0, 0.55);
-  }
-  .card-shadow-sm {
-    box-shadow: 0 4px 0 0 rgba(0, 0, 0, 0.35);
-  }
-  .glow-primary {
-    filter: drop-shadow(0 0 16px rgba(84, 233, 138, 0.5));
-  }
-  .glow-secondary {
-    filter: drop-shadow(0 0 16px rgba(255, 185, 97, 0.5));
-  }
-  .glow-tertiary {
-    filter: drop-shadow(0 0 16px rgba(163, 211, 255, 0.5));
-  }
+}
+
+@utility text-shadow {
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.6);
+}
+
+@utility text-shadow-lg {
+  text-shadow:
+    0 3px 0 rgba(0, 0, 0, 0.8),
+    0 0 12px rgba(84, 233, 138, 0.4);
+}
+
+@utility card-shadow {
+  box-shadow: 0 8px 0 0 rgba(0, 0, 0, 0.45);
+}
+
+@utility card-shadow-lg {
+  box-shadow: 0 12px 0 0 rgba(0, 0, 0, 0.55);
+}
+
+@utility card-shadow-sm {
+  box-shadow: 0 4px 0 0 rgba(0, 0, 0, 0.35);
+}
+
+@utility glow-primary {
+  filter: drop-shadow(0 0 16px rgba(84, 233, 138, 0.5));
+}
+
+@utility glow-secondary {
+  filter: drop-shadow(0 0 16px rgba(255, 185, 97, 0.5));
+}
+
+@utility glow-tertiary {
+  filter: drop-shadow(0 0 16px rgba(163, 211, 255, 0.5));
 }
 
 /* Chunky Tactile 3D Buttons & Physical Play Elements */

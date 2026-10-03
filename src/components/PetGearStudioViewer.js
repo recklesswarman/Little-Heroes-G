@@ -60,12 +60,12 @@ export function renderPetGearStudioViewer({
   const currentGearList = getAllGearForSocket(activeSocket);
 
   return `
-  <div id="${containerId}" class="pet-gear-studio-wrapper relative bg-gradient-to-b from-slate-900/95 via-indigo-950/90 to-slate-900/95 border-2 border-amber-400/40 rounded-3xl p-4 sm:p-6 shadow-2xl backdrop-blur-xl text-white select-none ${className}" data-pet-id="${petId}" data-active-socket="${activeSocket}">
+  <div id="${containerId}" class="pet-gear-studio-wrapper relative bg-linear-to-b from-slate-900/95 via-indigo-950/90 to-slate-900/95 border-2 border-amber-400/40 rounded-3xl p-4 sm:p-6 shadow-2xl backdrop-blur-xl text-white select-none ${className}" data-pet-id="${petId}" data-active-socket="${activeSocket}">
     
     <!-- Top Header Bar -->
     <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-amber-400/20">
       <div class="flex items-center gap-3">
-        <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-2xl shadow-lg border-2 border-white/20">
+        <div class="w-12 h-12 rounded-2xl bg-linear-to-br from-amber-400 to-orange-500 flex items-center justify-center text-2xl shadow-lg border-2 border-white/20">
           ${petProfile.emoji || '🦖'}
         </div>
         <div>
@@ -79,11 +79,11 @@ export function renderPetGearStudioViewer({
 
       <!-- Studio Quick Controls: Wind & Reset -->
       <div class="flex items-center gap-2">
-        <button id="gear-studio-wind-btn" class="px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-cyan-300 border border-cyan-400/30 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 shadow" title="Toggle Cape Wind Breeze">
+        <button id="gear-studio-wind-btn" class="px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-cyan-300 border border-cyan-400/30 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 shadow-sm" title="Toggle Cape Wind Breeze">
           <span class="material-symbols-outlined text-sm">air</span>
           <span id="gear-wind-label">Wind: Turbo</span>
         </button>
-        <button id="gear-studio-reset-btn" class="px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-600 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 shadow" title="Reset Colors to Default">
+        <button id="gear-studio-reset-btn" class="px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-600 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 shadow-sm" title="Reset Colors to Default">
           <span class="material-symbols-outlined text-sm">palette</span>
           <span>Reset Dyes</span>
         </button>
@@ -110,7 +110,7 @@ export function renderPetGearStudioViewer({
           ></canvas>
 
           <!-- Stage Floor Reflection line -->
-          <div class="absolute bottom-4 left-1/2 -translate-x-1/2 w-48 h-3 rounded-full bg-gradient-to-r from-transparent via-amber-400/40 to-transparent blur-xs pointer-events-none"></div>
+          <div class="absolute bottom-4 left-1/2 -translate-x-1/2 w-48 h-3 rounded-full bg-linear-to-r from-transparent via-amber-400/40 to-transparent blur-xs pointer-events-none"></div>
         </div>
 
         <!-- Heroic Pose Buttons Bar -->
@@ -155,7 +155,7 @@ export function renderPetGearStudioViewer({
             return `
             <button class="gear-socket-tab flex-1 min-w-[90px] px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
               isTabActive 
-                ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-900 shadow-md font-black scale-102' 
+                ? 'bg-linear-to-r from-amber-500 to-orange-500 text-slate-900 shadow-md font-black scale-102' 
                 : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
             }" data-socket="${tab.key}">
               <span>${tab.emoji}</span>
@@ -181,13 +181,13 @@ export function renderPetGearStudioViewer({
               const isSelected = currentSocketDye === dye.hex;
               return `
               <button 
-                class="gear-dye-btn w-8 h-8 rounded-full border-2 transition-transform hover:scale-115 active:scale-95 shadow flex items-center justify-center ${isSelected ? 'border-white ring-2 ring-amber-400 scale-110' : 'border-white/30'}"
+                class="gear-dye-btn w-8 h-8 rounded-full border-2 transition-transform hover:scale-115 active:scale-95 shadow-sm flex items-center justify-center ${isSelected ? 'border-white ring-2 ring-amber-400 scale-110' : 'border-white/30'}"
                 style="background-color: ${dye.hex};"
                 data-hex="${dye.hex}"
                 data-dye-id="${dye.id}"
                 title="${dye.name}"
               >
-                ${isSelected ? '<span class="text-white text-xs font-black drop-shadow">✓</span>' : ''}
+                ${isSelected ? '<span class="text-white text-xs font-black drop-shadow-sm">✓</span>' : ''}
               </button>
               `;
             }).join('')}
@@ -217,7 +217,7 @@ export function renderPetGearStudioViewer({
               }" data-gear-id="${item.id}" data-socket="${activeSocket}">
                 
                 <div class="flex items-start gap-2.5">
-                  <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 shadow border border-white/20" style="background-color: ${itemColor};">
+                  <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 shadow-sm border border-white/20" style="background-color: ${itemColor};">
                     <span class="material-symbols-outlined text-white text-xl">${item.icon || 'shield'}</span>
                   </div>
                   <div class="min-w-0 flex-1">
@@ -239,7 +239,7 @@ export function renderPetGearStudioViewer({
                     <button class="gear-equip-btn px-3 py-1 rounded-xl text-xs font-bold transition-all active:scale-95 ${
                       isEquipped 
                         ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30' 
-                        : 'bg-amber-500 text-slate-950 font-black hover:bg-amber-400 shadow'
+                        : 'bg-amber-500 text-slate-950 font-black hover:bg-amber-400 shadow-sm'
                     }" data-gear-id="${item.id}" data-socket="${activeSocket}">
                       ${isEquipped ? 'Unequip' : 'Equip'}
                     </button>
@@ -260,7 +260,7 @@ export function renderPetGearStudioViewer({
 
         <!-- Launch Heroic Runway Showcase Portal Button -->
         <div class="mt-2 pt-3 border-t border-slate-700/60">
-          <button id="gear-studio-launch-runway-btn" class="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 text-slate-950 font-black text-sm tracking-wide shadow-xl hover:shadow-amber-400/25 transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 border-2 border-white/30">
+          <button id="gear-studio-launch-runway-btn" class="w-full py-3 px-4 rounded-2xl bg-linear-to-r from-amber-400 via-orange-500 to-rose-500 text-slate-950 font-black text-sm tracking-wide shadow-xl hover:shadow-amber-400/25 transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 border-2 border-white/30">
             <span class="text-xl">🌟</span>
             <span>Launch Heroic Runway Showcase & Photo Booth</span>
             <span class="material-symbols-outlined text-base">arrow_forward</span>
@@ -372,7 +372,7 @@ export function initPetGearStudioViewer(containerId = 'pet-gear-studio-container
       });
       btn.classList.remove('border-white/30');
       btn.classList.add('border-white', 'ring-2', 'ring-amber-400', 'scale-110');
-      btn.innerHTML = '<span class="text-white text-xs font-black drop-shadow">✓</span>';
+      btn.innerHTML = '<span class="text-white text-xs font-black drop-shadow-sm">✓</span>';
     });
   });
 

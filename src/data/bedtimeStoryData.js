@@ -205,7 +205,7 @@ export const BEDTIME_REALMS = [
     emoji: '🚀',
     accentColor: '#00d2d3',
     glowColor: '#38bdf8',
-    bgGradient: 'from-[#050f18] via-[#09141e] to-[#0c1e2c]',
+    bgGradient: 'from-surface-container-lowest via-[#09141e] to-[#0c1e2c]',
     ambientSound: 'space_drone',
     subBiomes: [
       'The Moonlit Asteroid Meadow',

@@ -88,7 +88,7 @@ export function renderRewardModal() {
     : 'text-primary-fixed';
     
   const btnClass = isEscaped 
-    ? 'bg-secondary text-on-secondary border-b-8 border-[#663e00]' 
+    ? 'bg-secondary text-on-secondary border-b-8 border-on-secondary-fixed-variant' 
     : isDeclined 
     ? 'bg-surface-container-highest text-on-surface border-b-6 border-surface-container' 
     : 'bg-primary text-on-primary chunky-button-primary';
@@ -119,7 +119,7 @@ export function renderRewardModal() {
           <div class="absolute top-4 left-4 text-secondary rotate-12 pointer-events-none">
             <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1; font-size: 32px;">star</span>
           </div>
-          <div class="absolute top-10 right-6 text-primary rotate-[25deg] pointer-events-none">
+          <div class="absolute top-10 right-6 text-primary rotate-25 pointer-events-none">
             <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1; font-size: 24px;">arrow_back_ios_new</span>
           </div>
           <div class="absolute bottom-20 left-6 text-tertiary -rotate-12 pointer-events-none">
@@ -135,7 +135,7 @@ export function renderRewardModal() {
           </h1>
 
           <!-- 3D Celebration Portal Circle with Generated Task / Reward Icon -->
-          <div class="relative w-44 h-44 sm:w-48 sm:h-48 mb-6 animate-float glow-effect rounded-full bg-surface-container flex items-center justify-center overflow-hidden flex-shrink-0">
+          <div class="relative w-44 h-44 sm:w-48 sm:h-48 mb-6 animate-float glow-effect rounded-full bg-surface-container flex items-center justify-center overflow-hidden shrink-0">
             <!-- Inner highlight/bevel for sticker container -->
             <div class="absolute inset-0 rounded-full border-4 border-surface-bright shadow-inner z-0 pointer-events-none"></div>
             
@@ -152,7 +152,7 @@ export function renderRewardModal() {
           ${
             reward.coins > 0 || reward.xp > 0
               ? `
-            <div class="glass-pill rounded-full px-5 sm:px-6 py-2.5 flex items-center justify-center gap-3 mb-6 border border-secondary/30 flex-shrink-0">
+            <div class="glass-pill rounded-full px-5 sm:px-6 py-2.5 flex items-center justify-center gap-3 mb-6 border border-secondary/30 shrink-0">
               <div class="bg-secondary text-on-secondary rounded-full p-1 flex items-center justify-center shadow-inner">
                 <span class="material-symbols-outlined text-base sm:text-lg" style="font-variation-settings: 'FILL' 1;">generating_tokens</span>
               </div>
@@ -176,7 +176,7 @@ export function renderRewardModal() {
 
           <div class="flex flex-col gap-3 w-full">
             <!-- Interactive Celebration Star Popping Mini-Game -->
-            <button id="reward-modal-stars-btn" class="w-full bg-gradient-to-r from-amber-400 to-amber-500 text-amber-950 font-headline text-xs sm:text-sm font-black rounded-xl py-2.5 min-h-[44px] uppercase tracking-wider flex items-center justify-center gap-1.5 chunky-btn-sm hover:brightness-110 active:scale-95 shadow-md">
+            <button id="reward-modal-stars-btn" class="w-full bg-linear-to-r from-amber-400 to-amber-500 text-amber-950 font-headline text-xs sm:text-sm font-black rounded-xl py-2.5 min-h-[44px] uppercase tracking-wider flex items-center justify-center gap-1.5 chunky-btn-sm hover:brightness-110 active:scale-95 shadow-md">
               <span>✨</span> Pop Floating Stars & Confetti! <span>✨</span>
             </button>
 
@@ -185,7 +185,7 @@ export function renderRewardModal() {
               <span class="relative z-10">${btnText}</span>
               <span id="reward-timer-countdown" class="relative z-10 text-xs bg-black/25 px-2 py-0.5 rounded-full font-bold">15s</span>
               <!-- Button shine effect -->
-              <div class="absolute top-0 left-[-100%] w-1/2 h-full bg-white/20 skew-x-[-20deg] group-hover:left-[200%] transition-all duration-700 ease-in-out"></div>
+              <div class="absolute top-0 -left-full w-1/2 h-full bg-white/20 skew-x-[-20deg] group-hover:left-[200%] transition-all duration-700 ease-in-out"></div>
             </button>
           </div>
 

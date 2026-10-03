@@ -74,10 +74,10 @@ function renderWelcomeAuthScreen() {
     <!-- Top Mascot & Title -->
     <div class="flex flex-col items-center text-center gap-3">
       <div class="relative">
-        <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-gradient-to-br from-primary via-emerald-500 to-teal-400 p-1 shadow-lg shadow-primary/30 flex items-center justify-center animate-bounce">
+        <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-linear-to-br from-primary via-emerald-500 to-teal-400 p-1 shadow-lg shadow-primary/30 flex items-center justify-center animate-bounce">
           <span class="text-4xl sm:text-5xl select-none" role="img" aria-label="Rex">🦖</span>
         </div>
-        <span class="absolute -bottom-2 -right-2 bg-amber-400 text-slate-950 font-headline font-black text-[10px] px-2.5 py-0.5 rounded-full border-2 border-slate-900 shadow">
+        <span class="absolute -bottom-2 -right-2 bg-amber-400 text-slate-950 font-headline font-black text-[10px] px-2.5 py-0.5 rounded-full border-2 border-slate-900 shadow-sm">
           FAMILY SAFE
         </span>
       </div>
@@ -95,7 +95,7 @@ function renderWelcomeAuthScreen() {
     <!-- Feature Pillars -->
     <div class="grid grid-cols-1 gap-2.5 bg-surface-container-high/60 p-3.5 sm:p-4 rounded-2xl border border-surface-container-highest/60 text-left">
       <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-xl bg-primary/20 text-primary flex items-center justify-center flex-shrink-0 text-lg">
+        <div class="w-9 h-9 rounded-xl bg-primary/20 text-primary flex items-center justify-center shrink-0 text-lg">
           🛡️
         </div>
         <div class="flex flex-col min-w-0">
@@ -105,7 +105,7 @@ function renderWelcomeAuthScreen() {
       </div>
 
       <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-xl bg-secondary/20 text-secondary flex items-center justify-center flex-shrink-0 text-lg">
+        <div class="w-9 h-9 rounded-xl bg-secondary/20 text-secondary flex items-center justify-center shrink-0 text-lg">
           📱
         </div>
         <div class="flex flex-col min-w-0">
@@ -115,7 +115,7 @@ function renderWelcomeAuthScreen() {
       </div>
 
       <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-xl bg-amber-400/20 text-amber-300 flex items-center justify-center flex-shrink-0 text-lg">
+        <div class="w-9 h-9 rounded-xl bg-amber-400/20 text-amber-300 flex items-center justify-center shrink-0 text-lg">
           🪥
         </div>
         <div class="flex flex-col min-w-0">
@@ -128,7 +128,7 @@ function renderWelcomeAuthScreen() {
     <!-- Revocation Notice if device was logged out by parent -->
     ${isDeviceRevoked ? `
       <div class="bg-amber-500/20 border-2 border-amber-500/50 rounded-2xl p-3.5 text-amber-300 text-xs font-bold flex items-center gap-2.5 animate-pulse">
-        <span class="material-symbols-outlined text-xl flex-shrink-0">phonelink_erase</span>
+        <span class="material-symbols-outlined text-xl shrink-0">phonelink_erase</span>
         <span><strong class="font-headline font-black">Device Logged Out by Parent:</strong> This device was logged out of the household by a parent. Please enter your family sync code below or sign in to reconnect.</span>
       </div>
     ` : ''}
@@ -145,7 +145,7 @@ function renderWelcomeAuthScreen() {
       <!-- Active Household Detected: 1-Click Resume Button -->
       <button 
         id="auth-resume-household-btn" 
-        class="w-full bg-gradient-to-r from-emerald-500 via-teal-500 to-primary hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-headline text-base sm:text-lg font-black py-4 px-6 min-h-[56px] rounded-2xl shadow-xl flex items-center justify-center gap-2.5 border-b-4 border-emerald-700 active:translate-y-1 active:border-b-0 transition-all cursor-pointer ring-2 ring-emerald-400/40"
+        class="w-full bg-linear-to-r from-emerald-500 via-teal-500 to-primary hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-headline text-base sm:text-lg font-black py-4 px-6 min-h-[56px] rounded-2xl shadow-xl flex items-center justify-center gap-2.5 border-b-4 border-emerald-700 active:translate-y-1 active:border-b-0 transition-all cursor-pointer ring-2 ring-emerald-400/40"
       >
         <span class="text-xl">🏠</span>
         <span>Resume ${existingName} (${displayCode})</span>
@@ -167,7 +167,7 @@ function renderWelcomeAuthScreen() {
         ${isAuthLoading ? 'disabled' : ''}
       >
         <!-- Official Google 'G' SVG Logo -->
-        <svg class="w-6 h-6 flex-shrink-0" viewBox="0 0 24 24">
+        <svg class="w-6 h-6 shrink-0" viewBox="0 0 24 24">
           <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
           <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
           <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
@@ -204,7 +204,7 @@ function renderWelcomeAuthScreen() {
 function renderHouseholdChoiceScreen(parentDisplayName) {
   return `
     <div class="flex flex-col items-center text-center gap-2">
-      <div class="w-14 h-14 rounded-2xl bg-secondary/20 text-secondary border border-secondary/40 flex items-center justify-center text-2xl shadow-sm">
+      <div class="w-14 h-14 rounded-2xl bg-secondary/20 text-secondary border border-secondary/40 flex items-center justify-center text-2xl shadow-xs">
         👋
       </div>
       <h2 class="font-headline text-xl sm:text-2xl font-black text-white">
@@ -223,7 +223,7 @@ function renderHouseholdChoiceScreen(parentDisplayName) {
         id="choice-create-new-btn"
         class="bg-surface-container-high hover:bg-surface-bright border-2 border-primary/50 hover:border-primary rounded-3xl p-4 sm:p-5 flex items-center gap-4 text-left transition-all active:scale-98 group card-shadow cursor-pointer min-h-[90px]"
       >
-        <div class="w-14 h-14 rounded-2xl bg-primary/20 text-primary flex items-center justify-center text-3xl flex-shrink-0 group-hover:scale-105 transition-transform border border-primary/30">
+        <div class="w-14 h-14 rounded-2xl bg-primary/20 text-primary flex items-center justify-center text-3xl shrink-0 group-hover:scale-105 transition-transform border border-primary/30">
           🏰
         </div>
         <div class="flex flex-col min-w-0 flex-1">
@@ -246,7 +246,7 @@ function renderHouseholdChoiceScreen(parentDisplayName) {
         id="choice-join-existing-btn"
         class="bg-surface-container-high hover:bg-surface-bright border-2 border-secondary/50 hover:border-secondary rounded-3xl p-4 sm:p-5 flex items-center gap-4 text-left transition-all active:scale-98 group card-shadow cursor-pointer min-h-[90px]"
       >
-        <div class="w-14 h-14 rounded-2xl bg-secondary/20 text-secondary flex items-center justify-center text-3xl flex-shrink-0 group-hover:scale-105 transition-transform border border-secondary/30">
+        <div class="w-14 h-14 rounded-2xl bg-secondary/20 text-secondary flex items-center justify-center text-3xl shrink-0 group-hover:scale-105 transition-transform border border-secondary/30">
           🔗
         </div>
         <div class="flex flex-col min-w-0 flex-1">
@@ -306,7 +306,7 @@ function renderCreateHouseholdScreen(parentDisplayName) {
           value="${defaultFamilyName}" 
           placeholder="e.g. The Hero Family"
           required
-          class="bg-surface-container-high border-2 border-surface-container-highest focus:border-primary rounded-2xl px-4 py-3 text-sm font-bold text-white w-full focus:outline-none transition-all shadow-inner min-h-[50px]"
+          class="bg-surface-container-high border-2 border-surface-container-highest focus:border-primary rounded-2xl px-4 py-3 text-sm font-bold text-white w-full focus:outline-hidden transition-all shadow-inner min-h-[50px]"
         />
       </div>
 
@@ -320,7 +320,7 @@ function renderCreateHouseholdScreen(parentDisplayName) {
           type="text" 
           placeholder="e.g. Leo or Kaleb" 
           required
-          class="bg-surface-container-high border-2 border-surface-container-highest focus:border-primary rounded-2xl px-4 py-3 text-sm font-bold text-white w-full focus:outline-none transition-all shadow-inner min-h-[50px]"
+          class="bg-surface-container-high border-2 border-surface-container-highest focus:border-primary rounded-2xl px-4 py-3 text-sm font-bold text-white w-full focus:outline-hidden transition-all shadow-inner min-h-[50px]"
         />
       </div>
 
@@ -336,12 +336,12 @@ function renderCreateHouseholdScreen(parentDisplayName) {
               <button 
                 type="button" 
                 data-avatar-url="${av.url}" 
-                class="landing-avatar-btn relative rounded-2xl p-1 border-3 transition-all active:scale-95 min-h-[64px] flex items-center justify-center ${isSelected ? 'border-primary bg-primary/20 scale-105 shadow-md ring-2 ring-primary/50' : 'border-surface-container-highest bg-surface-container-high hover:border-surface-bright'}"
+                class="landing-avatar-btn relative rounded-2xl p-1 border-3 transition-all active:scale-95 min-h-xl flex items-center justify-center ${isSelected ? 'border-primary bg-primary/20 scale-105 shadow-md ring-2 ring-primary/50' : 'border-surface-container-highest bg-surface-container-high hover:border-surface-bright'}"
                 title="${av.label}"
               >
                 <img src="${av.url}" alt="${av.label}" class="w-12 h-12 rounded-xl object-cover" />
                 ${isSelected ? `
-                  <div class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-primary text-slate-950 flex items-center justify-center text-xs font-black shadow">
+                  <div class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-primary text-slate-950 flex items-center justify-center text-xs font-black shadow-sm">
                     ✓
                   </div>
                 ` : ''}
@@ -369,7 +369,7 @@ function renderCreateHouseholdScreen(parentDisplayName) {
       <button 
         type="submit" 
         id="btn-launch-family"
-        class="w-full bg-gradient-to-r from-primary to-emerald-500 hover:from-primary/90 hover:to-emerald-400 text-slate-950 font-headline text-base sm:text-lg font-black py-4 px-6 min-h-[56px] rounded-2xl shadow-xl flex items-center justify-center gap-2 border-b-4 border-emerald-600 active:translate-y-1 active:border-b-0 transition-all cursor-pointer mt-1"
+        class="w-full bg-linear-to-r from-primary to-emerald-500 hover:from-primary/90 hover:to-emerald-400 text-slate-950 font-headline text-base sm:text-lg font-black py-4 px-6 min-h-[56px] rounded-2xl shadow-xl flex items-center justify-center gap-2 border-b-4 border-emerald-600 active:translate-y-1 active:border-b-0 transition-all cursor-pointer mt-1"
       >
         <span>Launch Family Adventure!</span>
         <span class="text-xl">🚀</span>
@@ -414,7 +414,7 @@ function renderJoinHouseholdScreen() {
           placeholder="HERO-XXXX" 
           required
           maxlength="12"
-          class="bg-surface-container-high border-2 border-surface-container-highest focus:border-secondary rounded-2xl px-4 py-3 text-center text-xl sm:text-2xl font-headline tracking-widest font-black text-secondary uppercase w-full focus:outline-none transition-all shadow-inner min-h-[56px]"
+          class="bg-surface-container-high border-2 border-surface-container-highest focus:border-secondary rounded-2xl px-4 py-3 text-center text-xl sm:text-2xl font-headline tracking-widest font-black text-secondary uppercase w-full focus:outline-hidden transition-all shadow-inner min-h-[56px]"
         />
         <p class="text-[11px] text-slate-400 font-medium text-center mt-1">
           Example format: <span class="text-secondary font-bold font-mono">HERO-8842</span>
@@ -425,7 +425,7 @@ function renderJoinHouseholdScreen() {
       <button 
         type="submit" 
         id="btn-join-family"
-        class="w-full bg-gradient-to-r from-secondary to-amber-500 hover:from-secondary/90 hover:to-amber-400 text-slate-950 font-headline text-base sm:text-lg font-black py-4 px-6 min-h-[56px] rounded-2xl shadow-xl flex items-center justify-center gap-2 border-b-4 border-amber-600 active:translate-y-1 active:border-b-0 transition-all cursor-pointer mt-2"
+        class="w-full bg-linear-to-r from-secondary to-amber-500 hover:from-secondary/90 hover:to-amber-400 text-slate-950 font-headline text-base sm:text-lg font-black py-4 px-6 min-h-[56px] rounded-2xl shadow-xl flex items-center justify-center gap-2 border-b-4 border-amber-600 active:translate-y-1 active:border-b-0 transition-all cursor-pointer mt-2"
       >
         <span>Connect & Sync Device</span>
         <span class="text-xl">🚀</span>

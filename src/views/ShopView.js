@@ -50,7 +50,7 @@ export function renderShopView() {
         <!-- Currency Display -->
         <div class="flex items-center gap-3 w-full sm:w-auto">
           <!-- Habit Coins (Digital) -->
-          <div class="flex-1 sm:flex-none flex items-center bg-surface-container/90 backdrop-blur-md px-4 py-2.5 rounded-full border-2 border-secondary-container gap-2.5 shadow-sm">
+          <div class="flex-1 sm:flex-none flex items-center bg-surface-container/90 backdrop-blur-md px-4 py-2.5 rounded-full border-2 border-secondary-container gap-2.5 shadow-xs">
             <div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center border-b-2 border-on-secondary-container shadow-inner">
               <span class="material-symbols-outlined text-secondary text-xl animate-coin" style="font-variation-settings: 'FILL' 1;">monetization_on</span>
             </div>
@@ -61,7 +61,7 @@ export function renderShopView() {
           </div>
 
           <!-- Gold Points (Real Life) -->
-          <div class="flex-1 sm:flex-none flex items-center bg-surface-container/90 backdrop-blur-md px-4 py-2.5 rounded-full border-2 border-tertiary-container gap-2.5 shadow-sm">
+          <div class="flex-1 sm:flex-none flex items-center bg-surface-container/90 backdrop-blur-md px-4 py-2.5 rounded-full border-2 border-tertiary-container gap-2.5 shadow-xs">
             <div class="w-8 h-8 rounded-full bg-tertiary-container flex items-center justify-center border-b-2 border-on-tertiary-container shadow-inner">
               <span class="material-symbols-outlined text-tertiary text-xl" style="font-variation-settings: 'FILL' 1;">star</span>
             </div>
@@ -84,8 +84,8 @@ export function renderShopView() {
           ${recentlyUnlocked
             .map(
               (item) => `
-            <div class="flex-shrink-0 w-32 h-36 bg-surface-container rounded-2xl p-3 flex flex-col items-center justify-between border-2 border-surface-container-highest card-shadow relative overflow-hidden group hover:border-secondary transition-all">
-              <div class="absolute inset-0 bg-gradient-to-br from-secondary/15 to-transparent pointer-events-none"></div>
+            <div class="shrink-0 w-32 h-36 bg-surface-container rounded-2xl p-3 flex flex-col items-center justify-between border-2 border-surface-container-highest card-shadow relative overflow-hidden group hover:border-secondary transition-all">
+              <div class="absolute inset-0 bg-linear-to-br from-secondary/15 to-transparent pointer-events-none"></div>
               <span class="text-[9px] font-black uppercase text-secondary bg-surface-container-high px-2 py-0.5 rounded-full z-10 self-start border border-secondary/20">${item.type}</span>
               
               <div class="w-16 h-16 relative flex items-center justify-center z-10 my-auto">
@@ -105,7 +105,7 @@ export function renderShopView() {
         
         <!-- Filter Pills -->
         <div id="shop-category-pill-bar" class="flex overflow-x-auto gap-2 pb-1 hide-scrollbar w-full sm:w-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-          <button data-cat="all" class="cat-pill-btn flex-shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all min-h-[44px] inline-flex items-center justify-center ${
+          <button data-cat="all" class="cat-pill-btn shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all min-h-[44px] inline-flex items-center justify-center ${
             selectedCategory === 'all'
               ? 'bg-primary text-on-primary border-primary-container shadow-md'
               : 'bg-surface-container-low text-on-surface-variant border-surface-container hover:bg-surface-variant'
@@ -113,7 +113,7 @@ export function renderShopView() {
             All Items
           </button>
           
-          <button data-cat="weapons" class="cat-pill-btn flex-shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all min-h-[44px] inline-flex items-center justify-center ${
+          <button data-cat="weapons" class="cat-pill-btn shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all min-h-[44px] inline-flex items-center justify-center ${
             selectedCategory === 'weapons'
               ? 'bg-primary text-on-primary border-primary-container shadow-md'
               : 'bg-surface-container-low text-on-surface-variant border-surface-container hover:bg-surface-variant'
@@ -121,7 +121,7 @@ export function renderShopView() {
             ⚔️ Weapons
           </button>
 
-          <button data-cat="gear" class="cat-pill-btn flex-shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all min-h-[44px] inline-flex items-center justify-center ${
+          <button data-cat="gear" class="cat-pill-btn shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all min-h-[44px] inline-flex items-center justify-center ${
             selectedCategory === 'gear'
               ? 'bg-primary text-on-primary border-primary-container shadow-md'
               : 'bg-surface-container-low text-on-surface-variant border-surface-container hover:bg-surface-variant'
@@ -129,7 +129,7 @@ export function renderShopView() {
             🛡️ Avatar & Pet Gear
           </button>
 
-          <button data-cat="badges" class="cat-pill-btn flex-shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all min-h-[44px] inline-flex items-center justify-center ${
+          <button data-cat="badges" class="cat-pill-btn shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all min-h-[44px] inline-flex items-center justify-center ${
             selectedCategory === 'badges'
               ? 'bg-primary text-on-primary border-primary-container shadow-md'
               : 'bg-surface-container-low text-on-surface-variant border-surface-container hover:bg-surface-variant'
@@ -137,7 +137,7 @@ export function renderShopView() {
             🏆 Badges & Loot
           </button>
 
-          <button data-cat="snacks" class="cat-pill-btn flex-shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all min-h-[44px] inline-flex items-center justify-center ${
+          <button data-cat="snacks" class="cat-pill-btn shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all min-h-[44px] inline-flex items-center justify-center ${
             selectedCategory === 'snacks'
               ? 'bg-primary text-on-primary border-primary-container shadow-md'
               : 'bg-surface-container-low text-on-surface-variant border-surface-container hover:bg-surface-variant'
@@ -145,7 +145,7 @@ export function renderShopView() {
             🫐 Snacks & Soaps
           </button>
 
-          <button data-cat="themes" class="cat-pill-btn flex-shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all min-h-[44px] inline-flex items-center justify-center ${
+          <button data-cat="themes" class="cat-pill-btn shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all min-h-[44px] inline-flex items-center justify-center ${
             selectedCategory === 'themes'
               ? 'bg-primary text-on-primary border-primary-container shadow-md'
               : 'bg-surface-container-low text-on-surface-variant border-surface-container hover:bg-surface-variant'
@@ -153,7 +153,7 @@ export function renderShopView() {
             🎨 Profile Themes
           </button>
 
-          <button data-cat="real_life" class="cat-pill-btn flex-shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all min-h-[44px] inline-flex items-center justify-center ${
+          <button data-cat="real_life" class="cat-pill-btn shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all min-h-[44px] inline-flex items-center justify-center ${
             selectedCategory === 'real_life'
               ? 'bg-tertiary text-on-tertiary border-tertiary-container shadow-md'
               : 'bg-surface-container-low text-tertiary border-surface-container hover:bg-surface-variant'
@@ -165,7 +165,7 @@ export function renderShopView() {
         <!-- Sort Control -->
         <div class="flex items-center gap-2 bg-surface-container-low px-3 py-1.5 rounded-2xl border-2 border-surface-container self-end sm:self-auto min-h-[44px]">
           <span class="material-symbols-outlined text-on-surface-variant text-sm">sort</span>
-          <select id="shop-sort-select" class="bg-transparent text-xs font-black text-inverse-surface focus:outline-none cursor-pointer">
+          <select id="shop-sort-select" class="bg-transparent text-xs font-black text-inverse-surface focus:outline-hidden cursor-pointer">
             <option value="cheapest" ${selectedSort === 'cheapest' ? 'selected' : ''}>Cheapest</option>
             <option value="expensive" ${selectedSort === 'expensive' ? 'selected' : ''}>Most Expensive</option>
           </select>
@@ -221,9 +221,9 @@ export function renderShopView() {
                 } card-shadow flex flex-col justify-between gap-4 group hover:border-secondary transition-all cursor-pointer">
                   
                   <div class="flex items-start gap-3.5">
-                    <div class="w-16 h-16 rounded-2xl bg-surface-container-high flex items-center justify-center p-2 flex-shrink-0 border border-surface-container-highest group-hover:scale-105 transition-transform relative overflow-hidden">
-                      <img class="w-full h-full object-contain drop-shadow" src="${item.image}" alt="${escapeHtml(item.title)}" />
-                      ${isParentCrafted ? `<div class="absolute inset-0 bg-gradient-to-tr from-amber-400/10 via-transparent to-yellow-300/20 pointer-events-none"></div>` : ''}
+                    <div class="w-16 h-16 rounded-2xl bg-surface-container-high flex items-center justify-center p-2 shrink-0 border border-surface-container-highest group-hover:scale-105 transition-transform relative overflow-hidden">
+                      <img class="w-full h-full object-contain drop-shadow-sm" src="${item.image}" alt="${escapeHtml(item.title)}" />
+                      ${isParentCrafted ? `<div class="absolute inset-0 bg-linear-to-tr from-amber-400/10 via-transparent to-yellow-300/20 pointer-events-none"></div>` : ''}
                       <button class="shop-inspect-item-btn absolute bottom-0.5 right-0.5 w-6 h-6 rounded-lg bg-black/70 text-white/80 hover:text-white flex items-center justify-center text-xs" data-inspect-id="${item.id}" title="Inspect 3D">
                         🔍
                       </button>
@@ -286,7 +286,7 @@ export function renderShopView() {
                           `
                             : isOwned
                             ? `
-                            <button data-equip-weapon-id="${item.id}" class="shop-equip-weapon-btn min-h-[44px] bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-headline text-xs font-black px-4 py-2 rounded-xl border border-cyan-300 chunky-btn-sm active:scale-95 shadow">
+                            <button data-equip-weapon-id="${item.id}" class="shop-equip-weapon-btn min-h-[44px] bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-headline text-xs font-black px-4 py-2 rounded-xl border border-cyan-300 chunky-btn-sm active:scale-95 shadow-sm">
                               Equip Weapon
                             </button>
                           `
@@ -305,7 +305,7 @@ export function renderShopView() {
                           ? servingsCount > 0
                             ? `
                             <div class="flex items-center gap-1.5">
-                              <button data-feed-snack-id="${item.id}" class="shop-feed-snack-btn min-h-[44px] bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-headline text-xs font-black px-3.5 py-2 rounded-xl border border-emerald-300 chunky-btn-sm active:scale-95 shadow flex items-center gap-1">
+                              <button data-feed-snack-id="${item.id}" class="shop-feed-snack-btn min-h-[44px] bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-headline text-xs font-black px-3.5 py-2 rounded-xl border border-emerald-300 chunky-btn-sm active:scale-95 shadow-sm flex items-center gap-1">
                                 <span>🍽️</span>
                                 <span>Feed Rex (${servingsCount})</span>
                               </button>
@@ -385,17 +385,17 @@ export function renderShopView() {
                 const canAfford = hero.coins >= theme.costCoins;
 
                 return `
-                <div class="bg-gradient-to-br ${theme.bgGradient} rounded-3xl p-5 border-2 ${
+                <div class="bg-linear-to-br ${theme.bgGradient} rounded-3xl p-5 border-2 ${
                   isEquipped ? 'border-primary shadow-[0_0_20px_rgba(46,204,113,0.4)]' : theme.cardBorder || 'border-surface-container-highest'
                 } flex flex-col justify-between gap-4 card-shadow relative overflow-hidden">
                   <div class="flex items-start justify-between">
-                    <div class="w-12 h-12 rounded-2xl bg-surface-container/60 backdrop-blur-md flex items-center justify-center text-2xl shadow border border-surface-bright" style="color: ${theme.primaryColor};">
+                    <div class="w-12 h-12 rounded-2xl bg-surface-container/60 backdrop-blur-md flex items-center justify-center text-2xl shadow-sm border border-surface-bright" style="color: ${theme.primaryColor};">
                       <span class="material-symbols-outlined">${theme.badgeIcon}</span>
                     </div>
                     ${
                       isEquipped
                         ? `
-                      <span class="bg-primary text-on-primary font-headline text-[10px] font-black px-2.5 py-1 rounded-full uppercase shadow">
+                      <span class="bg-primary text-on-primary font-headline text-[10px] font-black px-2.5 py-1 rounded-full uppercase shadow-sm">
                         Equipped
                       </span>
                     `
@@ -479,7 +479,7 @@ export function renderShopView() {
                 <div class="bg-surface-container rounded-3xl p-5 border-2 border-surface-container-highest card-shadow flex flex-col justify-between gap-4 group hover:border-tertiary/60 transition-all">
                   
                   <div class="flex items-start gap-3.5">
-                    <div class="w-16 h-16 rounded-2xl bg-tertiary/15 text-tertiary flex items-center justify-center text-3xl shadow-inner border border-tertiary/30 flex-shrink-0">
+                    <div class="w-16 h-16 rounded-2xl bg-tertiary/15 text-tertiary flex items-center justify-center text-3xl shadow-inner border border-tertiary/30 shrink-0">
                       ${
                         reward.image?.startsWith('data:image') || reward.image?.startsWith('http')
                           ? `<img src="${reward.image}" class="w-12 h-12 object-contain" />`
@@ -630,11 +630,11 @@ function renderShopItemInspectModal(item, hero, state) {
                 <span>✅</span> Equipped in Battle
               </span>
             ` : isOwned ? `
-              <button data-equip-weapon-id="${item.id}" class="shop-equip-weapon-btn bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-headline text-xs font-black px-5 py-2.5 rounded-xl border border-cyan-300 shadow chunky-btn-sm active:scale-95">
+              <button data-equip-weapon-id="${item.id}" class="shop-equip-weapon-btn bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-headline text-xs font-black px-5 py-2.5 rounded-xl border border-cyan-300 shadow-sm chunky-btn-sm active:scale-95">
                 Equip Weapon
               </button>
             ` : canAfford ? `
-              <button data-buy-gear-id="${item.id}" class="buy-gear-btn bg-secondary text-on-secondary font-headline text-xs font-black px-5 py-2.5 rounded-xl chunky-btn border-secondary-container shadow hover:brightness-110 active:scale-95">
+              <button data-buy-gear-id="${item.id}" class="buy-gear-btn bg-secondary text-on-secondary font-headline text-xs font-black px-5 py-2.5 rounded-xl chunky-btn border-secondary-container shadow-sm hover:brightness-110 active:scale-95">
                 Buy Weapon
               </button>
             ` : `
@@ -642,11 +642,11 @@ function renderShopItemInspectModal(item, hero, state) {
             `}
           ` : isFood ? `
             ${servingsCount > 0 ? `
-              <button data-feed-snack-id="${item.id}" class="shop-feed-snack-btn bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-headline text-xs font-black px-5 py-2.5 rounded-xl border border-emerald-300 shadow chunky-btn-sm active:scale-95 flex items-center gap-1">
+              <button data-feed-snack-id="${item.id}" class="shop-feed-snack-btn bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-headline text-xs font-black px-5 py-2.5 rounded-xl border border-emerald-300 shadow-sm chunky-btn-sm active:scale-95 flex items-center gap-1">
                 <span>🍽️</span> Feed Rex (${servingsCount})
               </button>
             ` : canAfford ? `
-              <button data-buy-gear-id="${item.id}" class="buy-gear-btn bg-secondary text-on-secondary font-headline text-xs font-black px-5 py-2.5 rounded-xl chunky-btn border-secondary-container shadow hover:brightness-110 active:scale-95">
+              <button data-buy-gear-id="${item.id}" class="buy-gear-btn bg-secondary text-on-secondary font-headline text-xs font-black px-5 py-2.5 rounded-xl chunky-btn border-secondary-container shadow-sm hover:brightness-110 active:scale-95">
                 Buy Snack (${item.maxServings || 1}x)
               </button>
             ` : `
@@ -662,7 +662,7 @@ function renderShopItemInspectModal(item, hero, state) {
                 Equip
               </button>
             ` : canAfford ? `
-              <button data-buy-gear-id="${item.id}" class="buy-gear-btn bg-secondary text-on-secondary font-headline text-xs font-black px-5 py-2.5 rounded-xl chunky-btn border-secondary-container shadow hover:brightness-110 active:scale-95">
+              <button data-buy-gear-id="${item.id}" class="buy-gear-btn bg-secondary text-on-secondary font-headline text-xs font-black px-5 py-2.5 rounded-xl chunky-btn border-secondary-container shadow-sm hover:brightness-110 active:scale-95">
                 Buy Now
               </button>
             ` : `

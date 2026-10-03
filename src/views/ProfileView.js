@@ -47,13 +47,13 @@ export function renderProfileView() {
       </div>
 
       <!-- ACTIVE HERO IDENTITY CARD (Styled with Equipped Profile Theme) -->
-      <div class="bg-gradient-to-br ${activeTheme.bgGradient} rounded-4xl p-6 sm:p-8 border-3 border-primary/50 shadow-[0_12px_24px_rgba(0,0,0,0.6)] flex flex-col sm:flex-row items-center justify-between gap-6 relative overflow-hidden">
+      <div class="bg-linear-to-br ${activeTheme.bgGradient} rounded-4xl p-6 sm:p-8 border-3 border-primary/50 shadow-[0_12px_24px_rgba(0,0,0,0.6)] flex flex-col sm:flex-row items-center justify-between gap-6 relative overflow-hidden">
         <!-- Ambient Decorative Glow -->
         <div class="absolute -top-10 -right-10 w-48 h-48 bg-primary/20 rounded-full blur-3xl pointer-events-none"></div>
         <div class="absolute -bottom-10 -left-10 w-48 h-48 bg-secondary/20 rounded-full blur-3xl pointer-events-none"></div>
 
         <div class="flex items-center gap-5 z-10">
-          <div class="relative group flex-shrink-0">
+          <div class="relative group shrink-0">
             <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-primary overflow-hidden shadow-2xl relative bg-surface-container-high">
               <img id="profile-avatar-display" class="w-full h-full object-cover" src="${currentHero.avatar}" alt="${escapeHtml(currentHero.name)}" />
               
@@ -99,7 +99,7 @@ export function renderProfileView() {
 
             <!-- Profile Photo Upload & Options Buttons -->
             <div class="flex flex-wrap items-center gap-2 mt-3">
-              <label for="profile-avatar-file-input" class="bg-white/20 hover:bg-white/30 text-white text-xs font-black px-3.5 py-1.5 rounded-xl border border-white/30 inline-flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all shadow-sm min-h-[44px]">
+              <label for="profile-avatar-file-input" class="bg-white/20 hover:bg-white/30 text-white text-xs font-black px-3.5 py-1.5 rounded-xl border border-white/30 inline-flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all shadow-xs min-h-[44px]">
                 <span class="material-symbols-outlined text-sm">photo_camera</span>
                 <span>Upload Photo</span>
               </label>
@@ -125,9 +125,9 @@ export function renderProfileView() {
       <!-- ACTIVE COMPANION PET SHOWCASE (Saved to Kid's Profile) -->
       <div class="bg-surface-container rounded-4xl p-5 sm:p-6 border-3 border-secondary/40 card-shadow flex flex-col sm:flex-row items-center justify-between gap-5 relative overflow-hidden">
         <div class="flex items-center gap-4 z-10 w-full sm:w-auto">
-          <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-surface-container-high border-3 border-secondary/50 flex items-center justify-center p-2 shadow-inner flex-shrink-0 relative">
+          <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-surface-container-high border-3 border-secondary/50 flex items-center justify-center p-2 shadow-inner shrink-0 relative">
             <img class="w-full h-full object-contain drop-shadow-md" src="${activePet.avatar}" alt="${escapeHtml(activePet.name)}" />
-            <span class="absolute -bottom-1 -right-1 bg-secondary text-on-secondary font-headline text-[10px] font-black px-2 py-0.5 rounded-full border border-surface-container-lowest shadow">
+            <span class="absolute -bottom-1 -right-1 bg-secondary text-on-secondary font-headline text-[10px] font-black px-2 py-0.5 rounded-full border border-surface-container-lowest shadow-sm">
               Lvl ${petLevel}
             </span>
           </div>
@@ -149,12 +149,12 @@ export function renderProfileView() {
           </div>
         </div>
 
-        <div class="flex items-center gap-2.5 w-full sm:w-auto flex-shrink-0 z-10">
-          <button id="profile-choose-pet-btn" class="flex-1 sm:flex-initial bg-primary text-on-primary font-headline text-xs font-black px-4 py-2.5 rounded-xl chunky-btn-sm inline-flex items-center justify-center gap-1.5 active:scale-95 shadow min-h-[44px]">
+        <div class="flex items-center gap-2.5 w-full sm:w-auto shrink-0 z-10">
+          <button id="profile-choose-pet-btn" class="flex-1 sm:flex-initial bg-primary text-on-primary font-headline text-xs font-black px-4 py-2.5 rounded-xl chunky-btn-sm inline-flex items-center justify-center gap-1.5 active:scale-95 shadow-sm min-h-[44px]">
             <span class="material-symbols-outlined text-sm">pets</span>
             <span>Switch Pet</span>
           </button>
-          <button id="profile-goto-sanctuary-btn" class="flex-1 sm:flex-initial bg-surface-container-high hover:bg-surface-bright text-on-surface font-headline text-xs font-black px-4 py-2.5 rounded-xl border border-surface-container-highest inline-flex items-center justify-center gap-1.5 active:scale-95 shadow-sm min-h-[44px]">
+          <button id="profile-goto-sanctuary-btn" class="flex-1 sm:flex-initial bg-surface-container-high hover:bg-surface-bright text-on-surface font-headline text-xs font-black px-4 py-2.5 rounded-xl border border-surface-container-highest inline-flex items-center justify-center gap-1.5 active:scale-95 shadow-xs min-h-[44px]">
             <span class="material-symbols-outlined text-sm">cabin</span>
             <span>Pet Sanctuary</span>
           </button>
@@ -237,7 +237,7 @@ export function renderProfileView() {
             </div>
           </div>
 
-          <button id="profile-shop-themes-btn" class="bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2 rounded-xl chunky-btn-sm inline-flex items-center justify-center gap-1.5 active:scale-95 hover:brightness-110 shadow min-h-[44px]">
+          <button id="profile-shop-themes-btn" class="bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2 rounded-xl chunky-btn-sm inline-flex items-center justify-center gap-1.5 active:scale-95 hover:brightness-110 shadow-sm min-h-[44px]">
             <span class="material-symbols-outlined text-sm">storefront</span>
             Shop Themes
           </button>
@@ -249,14 +249,14 @@ export function renderProfileView() {
             const isEquipped = currentHero.equippedProfileTheme === theme.id;
 
             return `
-              <div class="bg-gradient-to-br ${theme.bgGradient} rounded-3xl p-4 border-2 ${isEquipped ? 'border-primary shadow-[0_0_16px_rgba(46,204,113,0.5)] ring-2 ring-primary' : 'border-white/10'} flex flex-col justify-between gap-3 text-left">
+              <div class="bg-linear-to-br ${theme.bgGradient} rounded-3xl p-4 border-2 ${isEquipped ? 'border-primary shadow-[0_0_16px_rgba(46,204,113,0.5)] ring-2 ring-primary' : 'border-white/10'} flex flex-col justify-between gap-3 text-left">
                 <div class="flex items-start justify-between">
-                  <div class="w-10 h-10 rounded-xl bg-surface-container/60 backdrop-blur-md flex items-center justify-center text-xl shadow" style="color: ${theme.primaryColor};">
+                  <div class="w-10 h-10 rounded-xl bg-surface-container/60 backdrop-blur-md flex items-center justify-center text-xl shadow-sm" style="color: ${theme.primaryColor};">
                     <span class="material-symbols-outlined">${theme.badgeIcon}</span>
                   </div>
                   
                   ${isEquipped ? `
-                    <span class="bg-primary text-on-primary font-headline text-[9px] font-black px-2 py-0.5 rounded-full uppercase shadow">
+                    <span class="bg-primary text-on-primary font-headline text-[9px] font-black px-2 py-0.5 rounded-full uppercase shadow-sm">
                       Active Theme
                     </span>
                   ` : isUnlocked ? `
@@ -283,11 +283,11 @@ export function renderProfileView() {
                       Equipped
                     </button>
                   ` : isUnlocked ? `
-                    <button data-equip-theme-id="${theme.id}" class="profile-equip-theme-btn bg-primary text-on-primary font-headline text-xs font-black px-4 py-1.5 rounded-xl chunky-btn-sm hover:brightness-110 active:scale-95 shadow min-h-[44px] inline-flex items-center justify-center">
+                    <button data-equip-theme-id="${theme.id}" class="profile-equip-theme-btn bg-primary text-on-primary font-headline text-xs font-black px-4 py-1.5 rounded-xl chunky-btn-sm hover:brightness-110 active:scale-95 shadow-sm min-h-[44px] inline-flex items-center justify-center">
                       Equip
                     </button>
                   ` : `
-                    <button data-buy-theme-id="${theme.id}" class="profile-buy-theme-btn bg-secondary text-on-secondary font-headline text-xs font-black px-3.5 py-1.5 rounded-xl chunky-btn-sm hover:brightness-110 active:scale-95 shadow inline-flex items-center justify-center gap-1 min-h-[44px]">
+                    <button data-buy-theme-id="${theme.id}" class="profile-buy-theme-btn bg-secondary text-on-secondary font-headline text-xs font-black px-3.5 py-1.5 rounded-xl chunky-btn-sm hover:brightness-110 active:scale-95 shadow-sm inline-flex items-center justify-center gap-1 min-h-[44px]">
                       <span>Unlock</span>
                       <span class="text-[10px]">🪙 ${theme.costCoins}</span>
                     </button>
