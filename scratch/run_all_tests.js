@@ -41,7 +41,8 @@ const testFiles = [
   'scratch/verify_bedtime_quest7_sugar_fortress.mjs',
   'scratch/verify_toothbrush_enhancements_and_sky_attacks.mjs',
   'scratch/verify_agy_multi_agent_architecture.mjs',
-  'scratch/verify_learning_realms_question_banks.mjs'
+  'scratch/verify_learning_realms_question_banks.mjs',
+  'scratch/verify_boss_and_hazard_expansion.mjs'
 ];
 
 let allPassed = true;

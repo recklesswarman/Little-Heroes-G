@@ -294,7 +294,10 @@ export function renderBattleView() {
     { id: 'sugar_bandit', name: 'Sugar Bandit', emoji: '🍬', color: '#f59e0b' },
     { id: 'plaque_kraken', name: 'Plaque Kraken', emoji: '🐙', color: '#06b6d4' },
     { id: 'cavity_knight', name: 'Cavity Knight', emoji: '⚔️', color: '#8b5cf6' },
-    { id: 'tartar_titan', name: 'Tartar Titan', emoji: '💎', color: '#0284c7' }
+    { id: 'tartar_titan', name: 'Tartar Titan', emoji: '💎', color: '#0284c7' },
+    { id: 'fizz_serpent', name: 'Fizz Serpent', emoji: '🥤', color: '#0ea5e9' },
+    { id: 'cookie_colossus', name: 'Cookie Colossus', emoji: '🍪', color: '#b45309' },
+    { id: 'gummy_ghost', name: 'Gummy Ghost', emoji: '👻', color: '#14b8a6' }
   ];
   const parentBosses = store.getParentCustomBosses ? store.getParentCustomBosses() : [];
   parentBosses.forEach(pb => {
