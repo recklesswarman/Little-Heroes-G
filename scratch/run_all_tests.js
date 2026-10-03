@@ -45,7 +45,8 @@ const testFiles = [
   'scratch/verify_boss_and_hazard_expansion.mjs',
   'scratch/verify_shrine_expansion_and_seasons.mjs',
   'scratch/verify_bedtime_moral_expansion.mjs',
-  'scratch/verify_pet_sanctuary_treats_and_decay.mjs'
+  'scratch/verify_pet_sanctuary_treats_and_decay.mjs',
+  'scratch/verify_shop_catalog_expansion.mjs'
 ];
 
 let allPassed = true;

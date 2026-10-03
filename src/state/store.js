@@ -1555,6 +1555,12 @@ class Store {
       return;
     }
 
+    if (theme.seasonId && theme.seasonId !== this.getEffectiveSeason()) {
+      // Defense in depth: never trust client-side visibility alone to gate
+      // a purchase -- a season-exclusive theme can't be bought out of season.
+      return;
+    }
+
     if (this.state.selectedHero.coins < theme.costCoins) {
       Sound.hit();
       this.showReward('Need More Tokens!', `You need ${theme.costCoins - this.state.selectedHero.coins} more Habit Tokens to unlock this profile theme!`, 0, 0, null, 'palette');

@@ -73,5 +73,57 @@ export const PROFILE_THEMES = [
     cardBorder: 'border-[#00a896]/50',
     badgeIcon: 'scuba_diving',
     bannerPattern: '🌊'
+  },
+  {
+    id: 'theme_spring_sprout_ranger',
+    name: 'Spring Sprout Ranger',
+    desc: 'Fresh meadow-green armor dotted with budding leaves -- only grows in during Spring.',
+    costCoins: 280,
+    primaryColor: '#54e98a',
+    accentColor: '#a8ffcf',
+    bgGradient: 'from-[#07210f] via-[#0e3a1c] to-[#040e08]',
+    cardBorder: 'border-[#54e98a]/50',
+    badgeIcon: 'eco',
+    bannerPattern: '🌱',
+    seasonId: 'spring'
+  },
+  {
+    id: 'theme_solstice_surf_hero',
+    name: 'Solstice Surf Hero',
+    desc: 'Bright sun-bleached surf armor with blazing solar trim -- only rides in during Summer.',
+    costCoins: 280,
+    primaryColor: '#00d2d3',
+    accentColor: '#ffe28a',
+    bgGradient: 'from-[#001f20] via-[#073c3d] to-[#000f0f]',
+    cardBorder: 'border-[#00d2d3]/50',
+    badgeIcon: 'surfing',
+    bannerPattern: '🏄',
+    seasonId: 'summer'
+  },
+  {
+    id: 'theme_harvest_ember_warden',
+    name: 'Harvest Ember Warden',
+    desc: 'Rugged amber-and-crimson armor wrapped in falling-leaf motifs -- only falls in during Autumn.',
+    costCoins: 280,
+    primaryColor: '#e67e22',
+    accentColor: '#ffb961',
+    bgGradient: 'from-[#241100] via-[#432200] to-[#120900]',
+    cardBorder: 'border-[#e67e22]/50',
+    badgeIcon: 'park',
+    bannerPattern: '🍂',
+    seasonId: 'autumn'
+  },
+  {
+    id: 'theme_frostpeak_guardian',
+    name: 'Frostpeak Guardian',
+    desc: 'Glacial silver-blue plate armor rimmed with sparkling frost -- only freezes in during Winter.',
+    costCoins: 280,
+    primaryColor: '#3498db',
+    accentColor: '#d6f1ff',
+    bgGradient: 'from-[#051826] via-[#0a2c42] to-[#030d14]',
+    cardBorder: 'border-[#3498db]/50',
+    badgeIcon: 'ac_unit',
+    bannerPattern: '❄️',
+    seasonId: 'winter'
   }
 ];

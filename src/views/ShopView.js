@@ -13,7 +13,8 @@ export function renderShopView() {
   const hero = state.selectedHero;
   const recentlyUnlocked = state.recentlyUnlocked || [];
   const digitalGear = state.digitalGear || [];
-  const profileThemes = state.profileThemes || [];
+  const currentShopSeason = store.getEffectiveSeason();
+  const profileThemes = (state.profileThemes || []).filter((t) => !t.seasonId || t.seasonId === currentShopSeason);
   const realLifeRewards = state.realLifeRewards || [];
 
   // Filter digital items
