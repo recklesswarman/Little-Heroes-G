@@ -1,0 +1,48 @@
+name: Deploy Firebase Functions
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "functions/**"
+      - "firebase.json"
+      - ".firebaserc"
+  workflow_dispatch:
+
+concurrency:
+  group: "firebase-functions"
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: functions/package-lock.json
+
+      - name: Install function dependencies
+        working-directory: functions
+        run: npm ci
+
+      - name: Lint
+        working-directory: functions
+        run: npm run lint
+
+      - name: Build
+        working-directory: functions
+        run: npm run build
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_FUNCTIONS }}"
+
+      - name: Deploy to Firebase Functions
+        run: npx firebase-tools@latest deploy --only functions --project little-heroes-quest-8842 --non-interactive
