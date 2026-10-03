@@ -1,6 +1,8 @@
 // Hero HQ & Superhero Hideout Studio Data Catalog
 // Contains Room Themes, Furniture across 5 placement slots, and Trophy generation logic.
 
+import { SECRET_SHRINES } from './worldMapData.js';
+
 export const ROOM_THEMES = [
   {
     id: 'dino_treehouse',
@@ -586,6 +588,46 @@ export function getTrophiesForDisplay(storeState = {}) {
       dateEarned: `${completedExp.length || 1} Expeditions`,
       lore: 'Earned by dispatching companion pets across the Whispering Woods and Crystal Caverns to find rare treasures.',
       rexPraise: 'A true explorer! You and your pets have uncovered secrets across the whole kingdom!'
+    });
+  }
+
+  // 5b. World Map Exploration Trophy: every (non-seasonal) shrine found in at least one biome
+  const discoveredSecrets = storeState.worldAdventureMap?.discoveredSecrets || [];
+  const shrinesByBiome = {};
+  SECRET_SHRINES.filter(s => !s.seasonId).forEach((s) => {
+    if (!shrinesByBiome[s.biomeId]) shrinesByBiome[s.biomeId] = [];
+    shrinesByBiome[s.biomeId].push(s.id);
+  });
+  const hasFullyExploredBiome = Object.values(shrinesByBiome).some(
+    (ids) => ids.length > 0 && ids.every((id) => discoveredSecrets.includes(id))
+  );
+  if (hasFullyExploredBiome) {
+    trophies.push({
+      id: 'trophy_biome_cartographer',
+      title: 'Island Cartographer Starlight Map',
+      category: 'World Map Exploration',
+      emoji: '🗺️',
+      iconColor: 'from-emerald-400 to-cyan-500',
+      dateEarned: 'Biome Fully Mapped',
+      lore: 'Awarded for uncovering every single Secret Shrine hidden across an entire Adventure Island biome.',
+      rexPraise: 'You found every secret shrine in that whole biome! Nothing escapes a true island cartographer!'
+    });
+  }
+
+  // 5c. Learning Realms Hard-Tier Mastery Trophy
+  const gameMastery = storeState.gameMasteryMap || {};
+  const hasHardTierMastery = storeState.selectedHero?.gameDifficulty === 'hard'
+    && Object.values(gameMastery).some((g) => (g?.stars || 0) >= 3);
+  if (hasHardTierMastery) {
+    trophies.push({
+      id: 'trophy_realm_mastermind',
+      title: 'Realm Mastermind Diamond Brain',
+      category: 'Learning Realm',
+      emoji: '🧠',
+      iconColor: 'from-indigo-400 to-purple-500',
+      dateEarned: 'Hard Tier Mastered',
+      lore: 'Earned by achieving a perfect 3-star score in a Learning Realm at the toughest Hard difficulty tier.',
+      rexPraise: 'Whoa, the HARD tier?! Your brain is officially a diamond-powered supercomputer!'
     });
   }
 
