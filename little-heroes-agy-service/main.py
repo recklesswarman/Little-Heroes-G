@@ -129,6 +129,7 @@ class ProactiveCheckinRequest(BaseModel):
 # ── Routes ───────────────────────────────────────────────────────────────────
 
 @app.get("/health")
+@app.get("/api/rex/health")
 async def health():
     return {"status": "ok", "service": "little-heroes-rex-agy", "version": "2.0.0"}
 
