@@ -18,6 +18,16 @@ export function renderDashboardView() {
   const pendingCount = state.pendingApprovals.filter(r => r.kidId === hero.id).length;
   const isEasyMode = store.isEasyMode();
 
+  // Gentle Pet Needs Nudge: surfaces only when a need has quietly decayed
+  // below a friendly threshold since the pet was last tended -- never
+  // blocks anything, just a nudge to go say hello in the Sanctuary.
+  const petNeeds = activePet ? store.getPetNeedsWithDecay(activePet.id) : null;
+  const NEED_NUDGE_LABELS = { hunger: 'hungry', hygiene: 'a little grubby', joy: 'missing playtime', energy: 'low on energy' };
+  const neediestStat = petNeeds
+    ? Object.entries(petNeeds).sort((a, b) => a[1] - b[1])[0]
+    : null;
+  const showPetNeedsNudge = Boolean(neediestStat && neediestStat[1] < 55);
+
   return `
     <div class="max-w-4xl mx-auto px-3 sm:px-4 pt-3 sm:pt-4 pb-28 flex flex-col gap-5 sm:gap-6 animate-fade-in w-full max-w-full min-w-0 overflow-x-hidden">
       
@@ -216,6 +226,30 @@ export function renderDashboardView() {
 
       <!-- Rex AGY Proactive Check-In Nudge Container -->
       <div id="rex-proactive-container" class="hidden"></div>
+
+      <!-- Gentle Pet Needs Nudge (Sanctuary) -->
+      ${
+        showPetNeedsNudge
+          ? `
+      <div class="bg-gradient-to-r from-primary/15 via-emerald-500/10 to-transparent border-2 border-primary/40 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fade-in card-shadow">
+        <div class="flex items-center gap-3.5">
+          <div class="w-12 h-12 rounded-2xl bg-primary/15 text-primary border border-primary/40 flex items-center justify-center text-2xl flex-shrink-0">
+            ${escapeHtml(activePet?.avatar || '🦖')}
+          </div>
+          <div class="flex flex-col">
+            <span class="font-headline text-xs font-black text-primary uppercase tracking-wide">Sanctuary Check-In</span>
+            <p class="text-xs sm:text-sm font-bold text-inverse-surface mt-0.5 leading-snug">
+              ${escapeHtml(activePet?.name || 'Your companion')} is feeling ${NEED_NUDGE_LABELS[neediestStat[0]] || 'a bit low'}! Swing by the Pet Sanctuary to say hello. 🦖
+            </p>
+          </div>
+        </div>
+        <button id="dash-pet-needs-nudge-btn" class="w-full sm:w-auto bg-primary text-on-primary font-headline text-xs font-black px-4 py-2.5 min-h-[44px] rounded-xl chunky-btn flex items-center justify-center gap-1.5 hover:brightness-110 active:scale-95 shadow-md flex-shrink-0">
+          <span class="material-symbols-outlined text-base">pets</span> Visit Sanctuary
+        </button>
+      </div>
+      `
+          : ''
+      }
 
       <!-- Gentle Screen Time Pause / Bedtime Lockout Notice (Rex Toddler-Friendly) -->
       ${
@@ -841,6 +875,14 @@ export function attachDashboardListeners() {
   const toPenBtn = document.getElementById('dash-to-pen-btn');
   if (toPenBtn) {
     toPenBtn.addEventListener('click', () => store.navigate('pet_sanctuary'));
+  }
+
+  const petNeedsNudgeBtn = document.getElementById('dash-pet-needs-nudge-btn');
+  if (petNeedsNudgeBtn) {
+    petNeedsNudgeBtn.addEventListener('click', () => {
+      Sound.tap();
+      store.navigate('pet_sanctuary');
+    });
   }
 
   const activePetTrigger = document.getElementById('dash-active-pet-trigger');
