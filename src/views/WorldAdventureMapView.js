@@ -14,6 +14,7 @@
 
 import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
+import { escapeHtml } from '../utils/escapeHtml.js';
 import {
   WORLD_BIOMES,
   PATH_OF_VALOR_WAYPOINTS,
@@ -112,7 +113,7 @@ export function renderWorldAdventureMapView() {
               ${kidDifficulty === 'easy' ? 'Audio Guided (3-4)' : kidDifficulty === 'hard' ? 'Hero Master (7-9)' : 'Explorer (5-6)'}
             </span>
           </div>
-          <p class="text-xs font-bold text-slate-300">Conquer your daily routine stops and explore the 3D Floating Realm with ${activePet.name}!</p>
+          <p class="text-xs font-bold text-slate-300">Conquer your daily routine stops and explore the 3D Floating Realm with ${escapeHtml(activePet.name)}!</p>
         </div>
 
         <div class="flex items-center gap-2.5 self-end sm:self-auto">
@@ -120,7 +121,7 @@ export function renderWorldAdventureMapView() {
           <div class="bg-[#0f2334] px-3.5 py-1.5 rounded-2xl border-2 border-primary/30 flex items-center gap-2 shadow-sm">
             <img src="${activePet.avatar}" class="w-7 h-7 rounded-full border-2 border-[#2ecc71] object-cover" />
             <div class="flex flex-col">
-              <span class="text-[9px] font-black uppercase text-slate-300">${activePet.name}</span>
+              <span class="text-[9px] font-black uppercase text-slate-300">${escapeHtml(activePet.name)}</span>
               <span class="font-headline text-[11px] font-black text-[#f39c12] flex items-center gap-0.5">
                 <span class="material-symbols-outlined text-xs">bolt</span> ${activePet.energy || 85}%
               </span>
@@ -399,10 +400,10 @@ function renderLandmarkModal(landmark, hero) {
             ${archetype.name}
           </span>
           <h2 class="font-headline text-xl sm:text-2xl font-black text-white leading-tight">
-            ${landmark.name}
+            ${escapeHtml(landmark.name)}
           </h2>
           <p class="text-xs text-slate-300 font-bold px-2">
-            ${landmark.description}
+            ${escapeHtml(landmark.description)}
           </p>
         </div>
 
@@ -419,7 +420,7 @@ function renderLandmarkModal(landmark, hero) {
             </button>
           </div>
           <p class="text-xs text-white font-semibold italic">
-            "${landmark.voiceLine || 'A legendary haven built for heroes to rest and discover secrets!'}"
+            "${escapeHtml(landmark.voiceLine) || 'A legendary haven built for heroes to rest and discover secrets!'}"
           </p>
         </div>
 
@@ -702,7 +703,7 @@ export function attachWorldAdventureMapListeners() {
       const res = store.interactWithCustomLandmark(lm.id);
       store.showReward(
         'Landmark Bounty Claimed!',
-        `You explored ${lm.name}! Earned +${res.rewardCoins} Tokens & +${res.rewardSparks} Sparks!`,
+        `You explored ${escapeHtml(lm.name)}! Earned +${res.rewardCoins} Tokens & +${res.rewardSparks} Sparks!`,
         res.rewardCoins,
         Math.round(res.rewardCoins / 2)
       );

@@ -3,6 +3,8 @@
 // Biomes, Durations, Artifacts, Illustrated Postcards, and Affinities
 // -------------------------------------------------------------
 
+import { generateId } from '../utils/idGenerator.js';
+
 export const EXPEDITION_BIOMES = [
   {
     id: "fern_woods",
@@ -269,7 +271,7 @@ export function generateExpeditionRewards(expedition, pet) {
     artifactDropped,
     gearDropped,
     postcard: {
-      id: "post_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6),
+      id: generateId("post_", 6),
       title: template.postcardTitle,
       story: finalStory,
       biomeId: biome.id,

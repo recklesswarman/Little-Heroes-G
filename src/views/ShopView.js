@@ -2,6 +2,7 @@ import { store } from '../state/store.js';
 import { speakRex } from '../services/voiceService.js';
 import { Sound } from '../audio/sfx.js';
 import { preserveScrollPosition } from '../utils/scrollPreserve.js';
+import { escapeHtml } from '../utils/escapeHtml.js';
 
 let selectedCategory = 'all'; // 'all', 'weapons', 'gear', 'badges', 'snacks', 'themes', 'real_life'
 let selectedSort = 'cheapest'; // 'cheapest', 'expensive'
@@ -221,7 +222,7 @@ export function renderShopView() {
                   
                   <div class="flex items-start gap-3.5">
                     <div class="w-16 h-16 rounded-2xl bg-surface-container-high flex items-center justify-center p-2 flex-shrink-0 border border-surface-container-highest group-hover:scale-105 transition-transform relative overflow-hidden">
-                      <img class="w-full h-full object-contain drop-shadow" src="${item.image}" alt="${item.title}" />
+                      <img class="w-full h-full object-contain drop-shadow" src="${item.image}" alt="${escapeHtml(item.title)}" />
                       ${isParentCrafted ? `<div class="absolute inset-0 bg-gradient-to-tr from-amber-400/10 via-transparent to-yellow-300/20 pointer-events-none"></div>` : ''}
                       <button class="shop-inspect-item-btn absolute bottom-0.5 right-0.5 w-6 h-6 rounded-lg bg-black/70 text-white/80 hover:text-white flex items-center justify-center text-xs" data-inspect-id="${item.id}" title="Inspect 3D">
                         🔍
@@ -258,11 +259,11 @@ export function renderShopView() {
                             : ''
                         }
                       </div>
-                      <h3 class="font-headline text-base font-black text-inverse-surface leading-tight truncate mt-1">${item.title}</h3>
-                      <p class="text-xs text-on-surface-variant mt-0.5 line-clamp-2">${item.desc}</p>
+                      <h3 class="font-headline text-base font-black text-inverse-surface leading-tight truncate mt-1">${escapeHtml(item.title)}</h3>
+                      <p class="text-xs text-on-surface-variant mt-0.5 line-clamp-2">${escapeHtml(item.desc)}</p>
                       ${
                         item.voiceLine
-                          ? `<div class="text-[10px] text-cyan-300/90 italic mt-1 truncate">🦖 "${item.voiceLine}"</div>`
+                          ? `<div class="text-[10px] text-cyan-300/90 italic mt-1 truncate">🦖 "${escapeHtml(item.voiceLine)}"</div>`
                           : ''
                       }
                     </div>
@@ -487,9 +488,9 @@ export function renderShopView() {
                     </div>
 
                     <div class="flex flex-col">
-                      <span class="text-[10px] font-black uppercase text-tertiary">${reward.category}</span>
-                      <h3 class="font-headline text-base font-black text-inverse-surface leading-tight">${reward.title}</h3>
-                      <p class="text-xs text-on-surface-variant mt-1 line-clamp-2">${reward.desc}</p>
+                      <span class="text-[10px] font-black uppercase text-tertiary">${escapeHtml(reward.category)}</span>
+                      <h3 class="font-headline text-base font-black text-inverse-surface leading-tight">${escapeHtml(reward.title)}</h3>
+                      <p class="text-xs text-on-surface-variant mt-1 line-clamp-2">${escapeHtml(reward.desc)}</p>
                     </div>
                   </div>
 
@@ -571,14 +572,14 @@ function renderShopItemInspectModal(item, hero, state) {
         ${item.modelUrl ? `
           <model-viewer src="${item.modelUrl}" auto-rotate camera-controls shadow-intensity="1.2" ar style="width: 100%; height: 100%; background: transparent;"></model-viewer>
         ` : `
-          <img src="${item.image}" alt="${item.title}" class="w-28 h-28 object-contain drop-shadow-xl group-hover:scale-105 transition-transform" />
+          <img src="${item.image}" alt="${escapeHtml(item.title)}" class="w-28 h-28 object-contain drop-shadow-xl group-hover:scale-105 transition-transform" />
         `}
       </div>
 
       <!-- Title & Stat Badge -->
       <div class="flex flex-col gap-1 items-center">
-        <h3 class="font-headline text-xl font-black text-inverse-surface">${item.title}</h3>
-        <p class="text-xs text-on-surface-variant max-w-xs font-medium">${item.desc || ''}</p>
+        <h3 class="font-headline text-xl font-black text-inverse-surface">${escapeHtml(item.title)}</h3>
+        <p class="text-xs text-on-surface-variant max-w-xs font-medium">${escapeHtml(item.desc) || ''}</p>
         
         <div class="flex flex-wrap items-center justify-center gap-2 mt-2">
           ${item.statBonusLabel || item.statBonus ? `
@@ -611,7 +612,7 @@ function renderShopItemInspectModal(item, hero, state) {
           </button>
         </div>
         <p class="text-xs text-white/90 font-medium italic">
-          "${item.voiceLine || item.companionReaction || `This ${item.title} has great heroic energy!`}"
+          "${escapeHtml(item.voiceLine || item.companionReaction) || `This ${escapeHtml(item.title)} has great heroic energy!`}"
         </p>
       </div>
 

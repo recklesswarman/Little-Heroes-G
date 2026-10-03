@@ -1,4 +1,5 @@
 import { store } from '../state/store.js';
+import { escapeHtml } from '../utils/escapeHtml.js';
 import { ADVENTURE_GAMES, getGameChallenges } from '../data/learningGamesData.js';
 import { Sound } from '../audio/sfx.js';
 import { voicePrompts } from '../utils/voicePrompts.js';
@@ -166,7 +167,7 @@ export function renderQuestMapView() {
           <!-- Companion Mascot Cheer Box -->
           <div class="flex items-center justify-center gap-3 pt-2 border-t border-surface-container-highest text-xs font-bold text-on-surface-variant">
             <img src="${activePet.avatar}" class="w-8 h-8 rounded-full border-2 border-primary object-cover" />
-            <span>${activePet.name} is cheering for ${hero.name}! Tap your choice!</span>
+            <span>${escapeHtml(activePet.name)} is cheering for ${escapeHtml(hero.name)}! Tap your choice!</span>
           </div>
 
         </div>
@@ -274,7 +275,7 @@ export function renderQuestMapView() {
           <div class="bg-surface-container-high px-4 py-2 rounded-2xl border-2 border-secondary-container flex items-center gap-2.5 card-shadow">
             <img src="${activePet.avatar}" class="w-8 h-8 rounded-full border-2 border-primary object-cover" />
             <div class="flex flex-col">
-              <span class="text-[9px] font-black uppercase text-on-surface-variant">${activePet.name}</span>
+              <span class="text-[9px] font-black uppercase text-on-surface-variant">${escapeHtml(activePet.name)}</span>
               <span class="font-headline text-xs font-black text-secondary flex items-center gap-1">
                 <span class="material-symbols-outlined text-xs" style="font-variation-settings: 'FILL' 1;">bolt</span>
                 ${activePet.energy}% Energy
@@ -495,7 +496,7 @@ export function renderQuestMapView() {
             </div>
             <div class="flex flex-col">
               <span class="font-headline font-black text-inverse-surface">Adventure Trailhead (Stop 1 - 6)</span>
-              <span class="text-on-surface-variant font-bold">Adjusted for ${hero.name}'s level: ${kidDifficulty === 'easy' ? 'Easy Toddler (Audio Guided)' : kidDifficulty === 'hard' ? 'Hard Level (Ages 7-9)' : 'Medium Level (Ages 5-6)'}</span>
+              <span class="text-on-surface-variant font-bold">Adjusted for ${escapeHtml(hero.name)}'s level: ${kidDifficulty === 'easy' ? 'Easy Toddler (Audio Guided)' : kidDifficulty === 'hard' ? 'Hard Level (Ages 7-9)' : 'Medium Level (Ages 5-6)'}</span>
             </div>
           </div>
           <button id="map-to-pet-pen-btn" class="bg-surface-container-high hover:bg-surface-bright text-inverse-surface font-headline text-xs font-black px-4 py-2.5 rounded-xl border border-surface-container-highest flex items-center gap-1.5 chunky-btn-sm active:scale-95 self-end sm:self-auto">

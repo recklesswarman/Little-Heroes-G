@@ -44,7 +44,10 @@ const col = store.getBossColosseumState();
 assert(col.isVictoryModalOpen === true, 'Victory modal opens once the on-screen countdown reaches 0');
 assert(col.hasAwardedVictory === true, 'Victory is awarded once the on-screen countdown reaches 0');
 
-const req = store.state.pendingApprovals.find(r => r.taskId === 'morning_brush' || r.taskId === 'bedtime_brush');
+// completeToothbrushBattle() labels the queued approval 'morning_brush' or
+// 'brush_teeth_pm' depending on wall-clock hour (see store.js's isMorning
+// branch) -- accept either so this test doesn't flake by time of day.
+const req = store.state.pendingApprovals.find(r => r.taskId === 'morning_brush' || r.taskId === 'brush_teeth_pm');
 assert(!!req, 'Completing the battle on-screen still queues the parent-approval Gold Points request');
 
 console.log('\n=============================================');

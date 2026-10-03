@@ -1,5 +1,6 @@
 import { Sound } from '../audio/sfx.js';
 import confetti from 'canvas-confetti';
+import { safeConfetti } from '../utils/safeConfetti.js';
 import { PETS_DATABASE, getPetById, getPetArchetype, getPetBondBonus, SANCTUARY_TREATS, makePetSvg, getPetLevelData, calculatePetStatBonus, getDailyRotatingPetCoach } from '../data/petsData.js';
 import { ADVENTURE_GAMES } from '../data/learningGamesData.js';
 import { MOVEMENT_ROUTINES, getMovementRoutine } from '../data/movementRoutinesData.js';
@@ -27,8 +28,8 @@ import {
 } from '../data/heroHQData.js';
 import { PET_GEAR_CATALOG, calculateActiveGearBuffs, formatStatBonusName, normalizeGearSlot, getGearHaloStyle } from '../data/petGearStudioData.js';
 import { speakCompanion } from '../services/voiceService.js';
-import { isExistingActiveHousehold } from '../utils/householdHeuristics.js';
-import { FORGE_BLUEPRINTS, getBlueprintById, isBlueprintUnlocked } from '../data/heroForgeData.js';
+import { isExistingActiveHousehold, generateHouseholdCodeSuffix } from '../utils/householdHeuristics.js';
+import { generateId } from '../utils/idGenerator.js';
 import { firebaseAI } from '../services/firebaseAILogicService.js';
 import { WORLD_BIOMES, PATH_OF_VALOR_WAYPOINTS, SECRET_SHRINES, TOY_BOX_ENTITIES } from '../data/worldMapData.js';
 import { BEDTIME_MORALS, CONSTELLATION_STICKERS } from '../data/bedtimeStoryData.js';
@@ -1157,7 +1158,6 @@ class Store {
   setActiveWorkoutId(id) {
     this.state.activeWorkoutId = id;
     this.saveState(true);
-    this.notify();
   }
 
   getPet(id) {
@@ -1295,7 +1295,6 @@ class Store {
     }
 
     this.saveState(true);
-    this.notify();
     return { level: currentLvl, xp: currentXp, leveledUp };
   }
 
@@ -1338,7 +1337,6 @@ class Store {
     } catch {}
 
     this.saveState(true);
-    this.notify();
     return true;
   }
 
@@ -1771,7 +1769,7 @@ class Store {
       return;
     }
 
-    const logId = 'compl_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+    const logId = generateId('compl_', 7);
     const approvalReqId = 'task_habit_' + habit.id + '_' + Date.now();
     const nowIso = new Date().toISOString();
 
@@ -1898,7 +1896,7 @@ class Store {
       return;
     }
 
-    const logId = 'compl_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+    const logId = generateId('compl_', 7);
     const approvalReqId = 'task_chore_' + task.id + '_' + Date.now();
     const nowIso = new Date().toISOString();
 
@@ -2063,7 +2061,7 @@ class Store {
     if (item) item.completed = true;
 
     // Audit log for Parent Portal
-    const logId = 'compl_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+    const logId = generateId('compl_', 7);
     const approvalReqId = 'task_comp_' + itemId + '_' + Date.now();
     const nowIso = new Date().toISOString();
 
@@ -2126,7 +2124,7 @@ class Store {
     const currentHero = this.state.selectedHero;
     const heroId = currentHero?.id || 'hero_1';
 
-    const logId = 'compl_photo_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+    const logId = generateId('compl_photo_', 7);
     const approvalReqId = 'task_chore_photo_' + task.id + '_' + Date.now();
     const nowIso = new Date().toISOString();
 
@@ -2213,7 +2211,6 @@ class Store {
     );
 
     this.saveState(true);
-    this.notify();
   }
 
   // TOOTHBRUSH AR BATTLE COMPLETION 2.0
@@ -2366,7 +2363,7 @@ class Store {
       this.state.dentalBattleHistory = [];
     }
     const battleRecord = {
-      id: 'dental_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+      id: generateId('dental_', 6),
       bossId: boss.id,
       bossName: boss.name,
       bossAvatar: boss.avatar,
@@ -2388,7 +2385,7 @@ class Store {
     }
 
     // 6. Audit Log for Parent Portal Pillar 1 & Pillar 2 (Queued for Parent Verification of Points)
-    const logId = 'brush_log_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+    const logId = generateId('brush_log_', 7);
     const taskIdForLog = isMorning ? 'morning_brush' : 'brush_teeth_pm';
     const approvalReqId = 'task_brush_' + taskIdForLog + '_' + Date.now();
     const completionLog = {
@@ -2499,23 +2496,16 @@ class Store {
 
     // 8. Audio & Confetti Celebration
     Sound.fanfare();
-    try {
-      if (typeof confetti === 'function') {
-        confetti({
-          particleCount: 160,
-          spread: 110,
-          origin: { y: 0.5 },
-          colors: ['#54e98a', '#ffb961', '#38bdf8', '#f1c40f', '#ec4899']
-        });
-      }
-    } catch (e) {
-      // Non-fatal confetti error in headless or restricted canvas environments
-    }
+    safeConfetti({
+      particleCount: 160,
+      spread: 110,
+      origin: { y: 0.5 },
+      colors: ['#54e98a', '#ffb961', '#38bdf8', '#f1c40f', '#ec4899']
+    });
 
     speakCompanion(`ROAR! You cleansed ${boss.name}! Your smile is gleaming like diamond armor!`);
 
     this.saveState(true);
-    this.notify();
 
     return col.victoryReward;
   }
@@ -2529,7 +2519,6 @@ class Store {
     }
     this.state.pendingApprovals.push(approval);
     this.saveState(true);
-    this.notify();
     return approval;
   }
 
@@ -2543,7 +2532,7 @@ class Store {
     const points = taskData.points !== undefined ? taskData.points : (taskData.pendingPoints !== undefined ? taskData.pendingPoints : 15);
     const tokens = taskData.tokens !== undefined ? taskData.tokens : (taskData.tokensAwarded !== undefined ? taskData.tokensAwarded : 30);
     const nowIso = new Date().toISOString();
-    const logId = taskData.logId || ('log_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6));
+    const logId = taskData.logId || generateId('log_', 6);
     const reqId = taskData.id || ('task_appr_' + taskId + '_' + Date.now());
 
     const approval = {
@@ -2672,7 +2661,6 @@ class Store {
     }
 
     this.saveState(true);
-    this.notify();
 
     return {
       success: true,
@@ -2708,7 +2696,6 @@ class Store {
     );
 
     this.saveState(true);
-    this.notify();
 
     return {
       boostedCount,
@@ -2733,7 +2720,6 @@ class Store {
         Sound.fanfare();
         confetti({ particleCount: 80, spread: 80, origin: { y: 0.5 } });
         this.saveState(true);
-        this.notify();
         return { coins: 100, sparks: 20, xp: 35 };
       }
       return null;
@@ -2867,7 +2853,6 @@ class Store {
     );
 
     this.saveState(true);
-    this.notify();
 
     return {
       rewards,
@@ -2891,7 +2876,6 @@ class Store {
 
     Sound.tap();
     this.saveState(true);
-    this.notify();
     return true;
   }
 
@@ -2997,7 +2981,7 @@ class Store {
     const points = verifiedResult?.pointsEarned ?? quest.pointReward ?? 10;
     const xp = verifiedResult?.xpEarned ?? quest.xpReward ?? 35;
 
-    const logId = 'compl_ai_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+    const logId = generateId('compl_ai_', 7);
     const approvalReqId = 'task_ai_' + quest.id + '_' + Date.now();
     const nowIso = new Date().toISOString();
 
@@ -3099,16 +3083,12 @@ class Store {
       Sound.sparkle();
       Sound.coin();
 
-      try {
-        if (typeof confetti === 'function') {
-          confetti({
-            particleCount: 120,
-            spread: 100,
-            origin: { y: 0.5 },
-            colors: ['#f1c40f', '#2ecc71', '#54e98a', '#ffffff']
-          });
-        }
-      } catch (e) {}
+      safeConfetti({
+        particleCount: 120,
+        spread: 100,
+        origin: { y: 0.5 },
+        colors: ['#f1c40f', '#2ecc71', '#54e98a', '#ffffff']
+      });
 
       this.showReward(
         `LEVEL UP! Hero Level ${hero.level}!`,
@@ -3129,7 +3109,6 @@ class Store {
     if (!hero) return;
     hero.coins = (hero.coins || 0) + Number(amount);
     this.saveState(true);
-    this.notify();
   }
 
   feedPet(petId) {
@@ -3166,7 +3145,6 @@ class Store {
     Sound.crunch();
     Sound.chirp();
     this.saveState(true);
-    this.notify();
   }
 
   playWithPet(petId) {
@@ -3188,7 +3166,6 @@ class Store {
     this.addXP(15);
     Sound.cheer();
     this.saveState(true);
-    this.notify();
   }
 
   equipPetGear(gearTitle, petId, gearId) {
@@ -3213,7 +3190,6 @@ class Store {
       colors: ['#f1c40f', '#2ecc71', '#3498db']
     });
     this.saveState(true);
-    this.notify();
   }
 
   unequipPetGear(petId) {
@@ -3228,7 +3204,6 @@ class Store {
     }
     Sound.click();
     this.saveState(true);
-    this.notify();
   }
 
   getEquippedPetGear(petId) {
@@ -3281,7 +3256,6 @@ class Store {
       origin: { y: 0.6 }
     });
     this.saveState(true);
-    this.notify();
   }
 
   openPetLockerModal(petId) {
@@ -3354,17 +3328,12 @@ class Store {
     }
 
     Sound.gearSnap();
-    try {
-      if (typeof confetti === 'function' && typeof document !== 'undefined' && document.body) {
-        confetti({
-          particleCount: 25,
-          spread: 45,
-          origin: { y: 0.6 }
-        });
-      }
-    } catch (e) {}
+    safeConfetti({
+      particleCount: 25,
+      spread: 45,
+      origin: { y: 0.6 }
+    });
     this.saveState(true);
-    this.notify();
     return this.state.equippedPetGearMap[id];
   }
 
@@ -3396,7 +3365,6 @@ class Store {
 
     Sound.sparkle();
     this.saveState(true);
-    this.notify();
     return this.state.customGearDyesMap[id];
   }
 
@@ -3575,7 +3543,6 @@ class Store {
     );
 
     this.saveState(true);
-    this.notify();
     return gear;
   }
 
@@ -3596,7 +3563,6 @@ class Store {
 
     Sound.click();
     this.saveState(true);
-    this.notify();
     return true;
   }
 
@@ -3698,7 +3664,6 @@ class Store {
     );
 
     this.saveState(true);
-    this.notify();
     return furniture;
   }
 
@@ -3720,7 +3685,6 @@ class Store {
       });
     }
     this.saveState(true);
-    this.notify();
     return true;
   }
 
@@ -3770,7 +3734,6 @@ class Store {
     );
 
     this.saveState(true);
-    this.notify();
     return toy;
   }
 
@@ -3780,7 +3743,6 @@ class Store {
       this.state.parentCustomToys = this.state.parentCustomToys.filter(t => t.id !== toyId);
     }
     this.saveState(true);
-    this.notify();
     return true;
   }
 
@@ -3850,7 +3812,6 @@ class Store {
     );
 
     this.saveState(true);
-    this.notify();
     return food;
   }
 
@@ -3863,7 +3824,6 @@ class Store {
       this.state.digitalGear = this.state.digitalGear.filter(g => g.id !== foodId);
     }
     this.saveState(true);
-    this.notify();
     return true;
   }
 
@@ -3936,7 +3896,6 @@ class Store {
     );
 
     this.saveState(true);
-    this.notify();
     return boss;
   }
 
@@ -3950,7 +3909,6 @@ class Store {
       HYGIENE_BOSSES.splice(bIdx, 1);
     }
     this.saveState(true);
-    this.notify();
     return true;
   }
 
@@ -3982,7 +3940,6 @@ class Store {
     );
 
     this.saveState(true);
-    this.notify();
     return { success: true, furniture, petId: pId, comfortXp, voiceLine };
   }
 
@@ -4013,7 +3970,6 @@ class Store {
     );
 
     this.saveState(true);
-    this.notify();
     return { success: true, toy, petId: pId, refillStat: statType, refillAmount: amount, voiceLine, cheer: voiceLine };
   }
 
@@ -4045,7 +4001,6 @@ class Store {
       origin: { y: 0.5 }
     });
     this.saveState(true);
-    this.notify();
     return newCard;
   }
 
@@ -4057,7 +4012,6 @@ class Store {
     }
     Sound.pop();
     this.saveState(true);
-    this.notify();
   }
 
   openPetRunwayModal(petId) {
@@ -4148,7 +4102,6 @@ class Store {
     );
 
     this.saveState(true);
-    this.notify();
     return true;
   }
 
@@ -4193,7 +4146,6 @@ class Store {
     );
 
     this.saveState(true);
-    this.notify();
     return true;
   }
 
@@ -4207,7 +4159,6 @@ class Store {
     Sound.boing();
     Sound.chirp();
     this.saveState(true);
-    this.notify();
   }
 
   setActiveCompanion(petId) {
@@ -4242,7 +4193,6 @@ class Store {
     }
 
     this.saveState(true);
-    this.notify();
   }
 
   completePetBathReward(petId) {
@@ -4289,7 +4239,6 @@ class Store {
       'bathtub'
     );
     this.saveState(true);
-    this.notify();
   }
 
   openPetSelectionModal(type = 'starter') {
@@ -4601,7 +4550,6 @@ class Store {
       );
       this.syncSelectedHeroWithHeroes();
       this.saveState(true);
-      this.notify();
       return { success: true, item, servingsRemaining: servingsToAdd };
     }
 
@@ -4624,7 +4572,6 @@ class Store {
           item.image
         );
         this.saveState(true);
-        this.notify();
         return { success: true, item, equipped: true };
       }
 
@@ -4693,7 +4640,6 @@ class Store {
       );
       this.syncSelectedHeroWithHeroes();
       this.saveState(true);
-      this.notify();
       return { success: true, item, equipped: true };
     }
 
@@ -4840,7 +4786,6 @@ class Store {
 
     this.syncSelectedHeroWithHeroes();
     this.saveState(true);
-    this.notify();
     return { success: true, servingsRemaining: newRemaining };
   }
 
@@ -4866,7 +4811,6 @@ class Store {
       speakCompanion(`Equipped the ${weapon.title || weapon.name}! ${weapon.statBonusLabel || 'Ready for battle!'}`);
     } catch {}
     this.saveState(true);
-    this.notify();
     return { success: true, weaponId: weapon.id };
   }
 
@@ -5054,7 +4998,6 @@ class Store {
       this.approveParentRequest(req.id);
     });
     this.saveState(true);
-    this.notify();
   }
 
   // SCREEN TIME & PRIVILEGES BANK METHODS
@@ -5068,7 +5011,6 @@ class Store {
     this.logAction(`Parent granted +${minutes}m screen time bonus for ${hero.name}`, `New balance: ${hero.screenTimeMinutes} minutes`);
     Sound.coin();
     this.saveState(true);
-    this.notify();
   }
 
   deductScreenTime(heroId, minutes = 15) {
@@ -5081,7 +5023,6 @@ class Store {
     this.logAction(`Parent deducted ${minutes}m screen time for ${hero.name}`, `New balance: ${hero.screenTimeMinutes} minutes`);
     Sound.click();
     this.saveState(true);
-    this.notify();
   }
 
   toggleScreenTimePause(heroId) {
@@ -5095,7 +5036,6 @@ class Store {
     this.logAction(`Parent ${status} screen time for ${hero.name}`, `Active lock status: ${hero.isScreenTimePaused}`);
     Sound.click();
     this.saveState(true);
-    this.notify();
   }
 
   updateScreenTimeSettings(heroId, { dailyMaxScreenTime, bedtimeCurfew, screenTimeRate, screenTimeLockMessage }) {
@@ -5121,7 +5061,6 @@ class Store {
 
     this.logAction('Parent updated Screen Time governance rules', `Rate: ${screenTimeRate || 2}m/pt, Curfew: ${bedtimeCurfew || '20:00'}`);
     this.saveState(true);
-    this.notify();
   }
 
   getGameMastery(gameId) {
@@ -5147,7 +5086,6 @@ class Store {
     }
     Sound.click();
     this.saveState(true);
-    this.notify();
   }
 
   completeAdventureGame(gameId, score = 3, maxScore = 3) {
@@ -5200,7 +5138,7 @@ class Store {
     // Log to taskCompletionLogs for Parent Portal Pillar 2 (Cognitive & Motor Milestones) sync
     const nowIso = new Date().toISOString();
     const completionLog = {
-      id: 'adv_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+      id: generateId('adv_', 6),
       taskId: gameId,
       taskTitle: game.title,
       zone: 'Adventure Learning Games',
@@ -5244,7 +5182,6 @@ class Store {
     });
 
     this.saveState(true);
-    this.notify();
 
     return {
       stars: starsEarned,
@@ -5279,7 +5216,7 @@ class Store {
       this.state.movementSessionHistory = [];
     }
     const sessionRecord = {
-      id: 'move_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+      id: generateId('move_', 6),
       routineId: routine.id,
       title: routine.title,
       category: routine.category,
@@ -5347,7 +5284,6 @@ class Store {
     });
 
     this.saveState(true);
-    this.notify();
 
     return {
       coins: coinsEarned,
@@ -5591,7 +5527,7 @@ class Store {
 
   // Create a brand new household
   createNewHousehold(familyName = 'The Hero Family') {
-    const newSyncCode = 'HERO-' + Math.floor(1000 + Math.random() * 9000);
+    const newSyncCode = 'HERO-' + generateHouseholdCodeSuffix();
     this.state.household = {
       syncCode: newSyncCode,
       name: familyName.trim() || 'The Hero Family',
@@ -5711,7 +5647,6 @@ class Store {
       rec[`${type}AckDate`] = null;
     }
     this.saveState();
-    this.notify();
   }
 
   isHygieneReminderActive(kidId, type) {
@@ -5739,7 +5674,6 @@ class Store {
     const rec = this.getHygieneReminderRecord(kidId);
     rec[`${type}AckDate`] = new Date().toDateString();
     this.saveState();
-    this.notify();
   }
 
   // True when the parent flagged this reminder for today AND the kid hasn't
@@ -5813,7 +5747,6 @@ class Store {
       delete this.state.liveRex.geminiApiKey;
     }
     this.saveState();
-    this.notify();
   }
 
   setLiveRexVoice(voice) {
@@ -5822,7 +5755,6 @@ class Store {
     }
     this.state.liveRex.voiceName = voice;
     this.saveState();
-    this.notify();
   }
 
   isParentUnlocked() {
@@ -5859,7 +5791,6 @@ class Store {
   updateParentSettings(newSettings) {
     this.state.parentSettings = { ...this.state.parentSettings, ...newSettings };
     this.saveState(true);
-    this.notify();
   }
 
   addParentUser({ email, displayName, role = 'admin', uid = null }) {
@@ -5894,7 +5825,6 @@ class Store {
     }
 
     this.saveState(true);
-    this.notify();
     return { success: true, parent: newParent };
   }
 
@@ -5912,7 +5842,6 @@ class Store {
     this.state.household.parentEmails = (this.state.household.parentEmails || []).filter(em => em !== target.email);
 
     this.saveState(true);
-    this.notify();
     return { success: true };
   }
 
@@ -6148,7 +6077,6 @@ class Store {
     }
 
     this.saveState(true);
-    this.notify();
     return { success: true, householdName: this.state.household.name || cleanCode };
   }
 
@@ -6241,7 +6169,6 @@ class Store {
       this.state.revokedDeviceIds = this.state.revokedDeviceIds.filter(id => id !== targetDeviceId);
     }
     this.saveState(true);
-    this.notify();
     return { success: true };
   }
 
@@ -6938,7 +6865,6 @@ class Store {
     this.state.heroHQ.themeId = theme.id;
     Sound.sparkle();
     this.saveState();
-    this.notify();
     return theme;
   }
 
@@ -6949,7 +6875,6 @@ class Store {
     this.state.heroHQ.isNightMode = forceState !== null ? Boolean(forceState) : !this.state.heroHQ.isNightMode;
     Sound.lightSwitch();
     this.saveState();
-    this.notify();
     return this.state.heroHQ.isNightMode;
   }
 
@@ -6967,7 +6892,6 @@ class Store {
     this.state.heroHQ.equippedFurniture[slot] = furnitureId;
     Sound.placeFurniture();
     this.saveState();
-    this.notify();
     return true;
   }
 
@@ -7022,7 +6946,6 @@ class Store {
     );
 
     this.saveState(true);
-    this.notify();
     return { success: true, item };
   }
 
@@ -7043,7 +6966,6 @@ class Store {
     this.state.heroHQ.featuredTrophyIds = list;
     Sound.sparkle();
     this.saveState();
-    this.notify();
     return true;
   }
 
@@ -7057,7 +6979,6 @@ class Store {
     }
     Sound.whoosh();
     this.saveState();
-    this.notify();
   }
 
   getHQStats() {
@@ -7168,189 +7089,8 @@ class Store {
 
     if (newlyUnlocked.length > 0) {
       this.saveState(true);
-      this.notify();
     }
     return newlyUnlocked;
-  }
-
-  // =========================================================================
-  // HERO CRAFTING FORGE & 3D TINKERING LAB METHODS
-  // =========================================================================
-
-  getHeroForgeState() {
-    if (!this.state.heroForge) {
-      this.state.heroForge = {
-        selectedCategory: 'wings',
-        selectedBlueprintId: 'bp_cyber_jetpack',
-        customDyes: {
-          primary: '#2ecc71',
-          accent: '#f39c12',
-          glow: '#00d2d3'
-        },
-        forgeMode: 'forge',
-        activeForgedModal: null,
-        craftedHistory: []
-      };
-    }
-    return this.state.heroForge;
-  }
-
-  selectForgeCategory(category) {
-    const forge = this.getHeroForgeState();
-    forge.selectedCategory = category;
-    const categoryBps = FORGE_BLUEPRINTS.filter(b => b.category === category);
-    if (categoryBps.length > 0) {
-      forge.selectedBlueprintId = categoryBps[0].id;
-    }
-    this.saveState(true);
-    this.notify();
-  }
-
-  selectForgeBlueprint(blueprintId) {
-    const forge = this.getHeroForgeState();
-    forge.selectedBlueprintId = blueprintId;
-    const bp = getBlueprintById(blueprintId);
-    if (bp && bp.defaultDyes) {
-      forge.customDyes = { ...bp.defaultDyes };
-    }
-    this.saveState(true);
-    this.notify();
-  }
-
-  setForgeDye(zone, colorHex) {
-    const forge = this.getHeroForgeState();
-    if (!forge.customDyes) forge.customDyes = {};
-    forge.customDyes[zone] = colorHex;
-    this.saveState(true);
-    this.notify();
-  }
-
-  setForgeMode(mode) {
-    const forge = this.getHeroForgeState();
-    if (['forge', 'testing'].includes(mode)) {
-      forge.forgeMode = mode;
-      this.saveState(true);
-      this.notify();
-    }
-  }
-
-  openForgedCelebrationModal(item) {
-    const forge = this.getHeroForgeState();
-    forge.activeForgedModal = item;
-    this.notify();
-  }
-
-  closeForgedCelebrationModal() {
-    const forge = this.getHeroForgeState();
-    forge.activeForgedModal = null;
-    this.notify();
-  }
-
-  forgeItem(blueprintId = null, customName = null) {
-    const forge = this.getHeroForgeState();
-    const bpId = blueprintId || forge.selectedBlueprintId;
-    const bp = getBlueprintById(bpId);
-    if (!bp) {
-      return { success: false, message: 'Blueprint not found' };
-    }
-
-    const hero = this.state.selectedHero;
-    const level = hero?.level || 1;
-    const streak = hero?.streak || 1;
-    const coins = hero?.coins || 0;
-
-    // Check level & streak unlock
-    if (!isBlueprintUnlocked(bp, level, streak)) {
-      return { success: false, message: `Requires Level ${bp.requiredLevel} and Streak ${bp.requiredStreak}!` };
-    }
-
-    // Check coin cost
-    if (coins < bp.costTokens) {
-      return { success: false, message: `Not enough tokens! Costs ${bp.costTokens} 🪙 (You have ${coins} 🪙)` };
-    }
-
-    // Deduct coins & award XP
-    hero.coins = Math.max(0, hero.coins - bp.costTokens);
-    hero.xp = (hero.xp || 0) + 30;
-
-    const craftedItem = {
-      id: 'forged_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
-      blueprintId: bp.id,
-      title: customName || bp.title,
-      category: bp.category,
-      slot: bp.slot,
-      meshType: bp.meshType,
-      buffType: bp.buffType,
-      buffValue: bp.buffValue,
-      buffDesc: bp.buffDesc,
-      dyes: { ...(forge.customDyes || bp.defaultDyes) },
-      forgedAt: new Date().toISOString()
-    };
-
-    if (!forge.craftedHistory) forge.craftedHistory = [];
-    forge.craftedHistory.unshift(craftedItem);
-
-    // Auto-equip to active companion pet
-    const activePet = this.getActivePet();
-    if (activePet && bp.slot) {
-      if (!hero.equippedPetGearMap) hero.equippedPetGearMap = {};
-      if (!hero.equippedPetGearMap[activePet.id]) hero.equippedPetGearMap[activePet.id] = {};
-      hero.equippedPetGearMap[activePet.id][bp.slot] = craftedItem.id;
-
-      // Save custom dyes into gear dyes map
-      if (!hero.customGearDyesMap) hero.customGearDyesMap = {};
-      if (!hero.customGearDyesMap[activePet.id]) hero.customGearDyesMap[activePet.id] = {};
-      hero.customGearDyesMap[activePet.id][bp.slot] = craftedItem.dyes.primary;
-    }
-
-    // Also register into PET_GEAR_CATALOG so it seamlessly works with calculateActiveGearBuffs!
-    if (!PET_GEAR_CATALOG[bp.slot]) PET_GEAR_CATALOG[bp.slot] = [];
-    PET_GEAR_CATALOG[bp.slot].push({
-      id: craftedItem.id,
-      name: craftedItem.title,
-      title: craftedItem.title,
-      desc: bp.desc,
-      socket: bp.slot,
-      statBonusType: bp.buffType,
-      statBonusPercent: bp.buffValue,
-      statBonusLabel: bp.buffDesc,
-      statBonus: { type: bp.buffType, value: bp.buffValue / 100 },
-      price: bp.costTokens,
-      isCustom: true
-    });
-
-    // If marked as HQ trophy, unlock in Hero HQ hideout
-    if (bp.hqTrophy) {
-      if (!this.state.heroHQ.unlockedFurnitureIds.includes(craftedItem.id)) {
-        this.state.heroHQ.unlockedFurnitureIds.push(craftedItem.id);
-      }
-    }
-
-    if (typeof Sound?.fanfare === 'function') {
-      Sound.fanfare();
-    } else if (typeof Sound?.sparkle === 'function') {
-      Sound.sparkle();
-    }
-
-    try {
-      if (typeof confetti === 'function' && typeof document !== 'undefined' && document.body) {
-        confetti({
-          particleCount: 60,
-          spread: 80,
-          origin: { y: 0.6 },
-          colors: ['#2ecc71', '#f39c12', '#00d2d3', '#f1c40f']
-        });
-      }
-    } catch (e) {}
-
-    this.logAction(
-      `${hero?.name || 'Hero'} forged ${craftedItem.title}!`,
-      `Applied ${craftedItem.buffDesc} to ${activePet?.name || 'Pet'}`
-    );
-
-    this.saveState(true);
-    this.notify();
-    return { success: true, item: craftedItem };
   }
 
   // =========================================================================
@@ -7569,16 +7309,12 @@ class Store {
     col.comboCount = (col.comboCount || 0) + 5;
     col.enamelCleanPercent = Math.min(100, Math.round(((col.maxHp - col.currentHp) / col.maxHp) * 100));
 
-    try {
-      if (typeof confetti === 'function' && typeof document !== 'undefined' && document.body) {
-        confetti({
-          particleCount: 80,
-          spread: 100,
-          origin: { y: 0.5 },
-          colors: ['#00d2d3', '#54e98a', '#ffb961', '#ffffff']
-        });
-      }
-    } catch (e) {}
+    safeConfetti({
+      particleCount: 80,
+      spread: 100,
+      origin: { y: 0.5 },
+      colors: ['#00d2d3', '#54e98a', '#ffb961', '#ffffff']
+    });
 
     if (typeof Sound?.fanfare === 'function') Sound.fanfare();
 
@@ -7772,7 +7508,6 @@ class Store {
       'nutrition'
     );
     this.saveState(true);
-    this.notify();
     return true;
   }
 
@@ -7834,7 +7569,6 @@ class Store {
       energy: needs.energy
     };
     this.saveState(true);
-    this.notify();
     return { success: true, treat, needs, bond };
   }
 
@@ -7872,7 +7606,6 @@ class Store {
       energy: needs.energy
     };
     this.saveState(true);
-    this.notify();
     return { success: true, needs, bond };
   }
 
@@ -7888,7 +7621,6 @@ class Store {
       this.equipPetStudioGear(pId, slot, item.id);
     }
     this.saveState(true);
-    this.notify();
     return this.state.petGear[pId];
   }
 
@@ -7935,7 +7667,6 @@ class Store {
     }
 
     this.saveState(true);
-    this.notify();
     return newPet;
   }
 
@@ -7954,22 +7685,17 @@ class Store {
     }
     this.state.selectedHero.activePetId = egg.petId;
 
-    try {
-      if (typeof confetti === 'function' && typeof document !== 'undefined' && document.body) {
-        confetti({
-          particleCount: 150,
-          spread: 120,
-          origin: { y: 0.5 },
-          colors: ['#2ecc71', '#00d2d3', '#f39c12', '#ffb961', '#ffffff']
-        });
-      }
-    } catch (e) {}
+    safeConfetti({
+      particleCount: 150,
+      spread: 120,
+      origin: { y: 0.5 },
+      colors: ['#2ecc71', '#00d2d3', '#f39c12', '#ffb961', '#ffffff']
+    });
 
     if (typeof Sound?.fanfare === 'function') Sound.fanfare();
     speakCompanion(`Hooray! ${egg.petName} hatched from the Magic Egg! Welcome to our sanctuary!`);
 
     this.saveState(true);
-    this.notify();
     return { success: true, petId: egg.petId, petName: egg.petName };
   }
 
@@ -7993,7 +7719,6 @@ class Store {
       this.addPetCareXp(id, amount);
     }
     this.saveState(true);
-    this.notify();
     return next;
   }
 
@@ -8008,7 +7733,6 @@ class Store {
       this.state.selectedHero.evolutionSparks = next;
     }
     this.saveState(true);
-    this.notify();
     return next;
   }
 
@@ -8036,7 +7760,6 @@ class Store {
     bond.pearlyGleamUntil = Date.now() + (24 * 60 * 60 * 1000);
 
     this.saveState(true);
-    this.notify();
     return { sparksAwarded: 15, bondXpAwarded: 35, pearlyGleam: true };
   }
 
@@ -8115,12 +7838,9 @@ class Store {
     this.addPetSparks(pId, shrine.rewardSparks || 15);
 
     if (typeof Sound?.fanfare === 'function') Sound.fanfare();
-    if (typeof confetti === 'function' && typeof document !== 'undefined' && typeof document.createElement === 'function' && document.body) {
-      confetti({ particleCount: 50, spread: 70, origin: { y: 0.6 } });
-    }
+    safeConfetti({ particleCount: 50, spread: 70, origin: { y: 0.6 } });
 
     this.saveState(true);
-    this.notify();
     return {
       success: true,
       shrine,
@@ -8148,7 +7868,6 @@ class Store {
 
     mapState.parentHiddenChests.push(newChest);
     this.saveState(true);
-    this.notify();
     return newChest;
   }
 
@@ -8176,12 +7895,9 @@ class Store {
     this.addPetSparks(pId, chest.rewardSparks || 50);
 
     if (typeof Sound?.fanfare === 'function') Sound.fanfare();
-    if (typeof confetti === 'function' && typeof document !== 'undefined' && typeof document.createElement === 'function' && document.body) {
-      confetti({ particleCount: 75, spread: 80, origin: { y: 0.5 } });
-    }
+    safeConfetti({ particleCount: 75, spread: 80, origin: { y: 0.5 } });
 
     this.saveState(true);
-    this.notify();
     return { success: true, chest };
   }
 
@@ -8203,7 +7919,6 @@ class Store {
     if (typeof Sound?.chirp === 'function') Sound.chirp();
     else if (typeof Sound?.tap === 'function') Sound.tap();
     this.saveState(true);
-    this.notify();
     return this.getEffectiveSeason();
   }
 
@@ -8231,7 +7946,6 @@ class Store {
 
     mapState.customLandmarks.push(landmark);
     this.saveState(true);
-    this.notify();
     return landmark;
   }
 
@@ -8242,7 +7956,6 @@ class Store {
     mapState.customLandmarks = mapState.customLandmarks.filter(l => l.id !== landmarkId);
     if (mapState.customLandmarks.length !== initialLen) {
       this.saveState(true);
-      this.notify();
       return true;
     }
     return false;
@@ -8284,7 +7997,6 @@ class Store {
     else if (typeof Sound?.chirp === 'function') Sound.chirp();
 
     this.saveState(true);
-    this.notify();
 
     return {
       success: true,
@@ -8335,7 +8047,6 @@ class Store {
       mapState.toyBoxInteractions.chimesPlayed = (mapState.toyBoxInteractions.chimesPlayed || 0) + 1;
     }
     this.saveState(true);
-    this.notify();
   }
 
   completeWaypointChore(waypointId) {
@@ -8365,7 +8076,7 @@ class Store {
 
     if (!this.state.taskCompletionLogs) this.state.taskCompletionLogs = [];
     this.state.taskCompletionLogs.unshift({
-      id: 'compl_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+      id: generateId('compl_', 7),
       taskId: waypoint.choreKey,
       taskTitle: waypoint.title,
       zone: "Today's Path",
@@ -8390,12 +8101,9 @@ class Store {
     }
 
     if (typeof Sound?.fanfare === 'function') Sound.fanfare();
-    if (typeof confetti === 'function' && typeof document !== 'undefined' && typeof document.createElement === 'function' && document.body) {
-      confetti({ particleCount: 45, spread: 60, origin: { y: 0.6 } });
-    }
+    safeConfetti({ particleCount: 45, spread: 60, origin: { y: 0.6 } });
 
     this.saveState(true);
-    this.notify();
     return { success: true, waypoint };
   }
 
@@ -8419,7 +8127,6 @@ class Store {
       ...partial
     };
     this.saveState(true);
-    this.notify();
     return this.state.bedtimeSanctuaryState;
   }
 
@@ -8442,7 +8149,6 @@ class Store {
     this.logAction('Completed Pajamas & Tidy Up', `Tidied room and put on cozy pajamas! +${coinsAwarded} 🪙, +${xpAwarded} ⭐`);
     if (typeof Sound?.chime === 'function') Sound.chime();
     this.saveState(true);
-    this.notify();
     return { success: true, coinsAwarded, xpAwarded };
   }
 
@@ -8479,7 +8185,6 @@ class Store {
     if (!story) return false;
     story.isFavorite = !story.isFavorite;
     this.saveState(true);
-    this.notify();
     return story.isFavorite;
   }
 
@@ -8511,7 +8216,6 @@ class Store {
       this.state.bedtimeStoryLibrary.unshift(newStory);
     }
     this.saveState(true);
-    this.notify();
     return newStory;
   }
 
@@ -8552,8 +8256,36 @@ class Store {
       }
     }
 
-    // Quiet habit sync: mark sleep_on_time and wp_bedtime_sleep as done
+    // Quiet habit sync: award pet-care sparks/bond for the bedtime habit.
     this.syncHabitPetCare('sleep_on_time', 'daily_routine');
+    // syncHabitPetCare() only awards pet-care progress -- it never writes a
+    // taskCompletionLogs entry, so isWaypointDone() (WorldAdventureMapView.js,
+    // reading getTaskCompletionsToday('sleep_on_time', heroId)) could never
+    // see the Today's Path bedtime waypoint as done via this flow, even
+    // though the story really was completed and already paid out its own
+    // coins/xp above. Record the completion (reward-free -- this is tracking
+    // only, not a second payout) the same way completeWaypointChore() does
+    // for every other waypoint, guarded the same way against a duplicate if
+    // the kid already marked it done via the modal's other button today.
+    if (hero) {
+      const bedtimeHeroId = hero.id;
+      if (this.getTaskCompletionsToday('sleep_on_time', bedtimeHeroId).length === 0) {
+        if (!this.state.taskCompletionLogs) this.state.taskCompletionLogs = [];
+        this.state.taskCompletionLogs.unshift({
+          id: generateId('compl_', 7),
+          taskId: 'sleep_on_time',
+          taskTitle: storyData.title || 'Bedtime Story',
+          zone: "Today's Path",
+          heroId: bedtimeHeroId,
+          heroName: hero.name,
+          completedAt: new Date().toISOString(),
+          timestamp: Date.now(),
+          dateString: new Date().toLocaleDateString(),
+          timeString: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          coinsAwarded: 0
+        });
+      }
+    }
     this.toggleBedtimeLullaby(true);
 
     // Non-blocking log per kid_voice_companion_guidelines.md (NO blocking full-screen modal)
@@ -8562,7 +8294,6 @@ class Store {
     if (typeof Sound?.bloop === 'function') Sound.bloop();
 
     this.saveState(true);
-    this.notify();
 
     return {
       success: true,

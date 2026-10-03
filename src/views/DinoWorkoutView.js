@@ -259,3 +259,15 @@ function stopTimer() {
     activeCanvasInstance.stopWorkoutAnimation();
   }
 }
+
+// Exported for main.js to call when the player navigates away mid-workout --
+// otherwise timerInterval keeps ticking and eventually fires Sound.fanfare()
+// behind whatever screen they're now on. Deliberately doesn't touch
+// activeCanvasInstance: destroyActiveCanvas() already owns tearing that down
+// via the shared registry, so this only needs to stop the countdown.
+export function abandonDinoWorkoutIfRunning() {
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+}

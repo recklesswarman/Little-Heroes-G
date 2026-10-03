@@ -1,6 +1,7 @@
 import { store } from '../state/store.js';
 import { getPetById, getPetArchetype, getPetLevelData, calculatePetStatBonus } from '../data/petsData.js';
 import { Sound } from '../audio/sfx.js';
+import { escapeHtml } from '../utils/escapeHtml.js';
 
 export function renderPetDetailView() {
   const state = store.getState();
@@ -13,9 +14,9 @@ export function renderPetDetailView() {
   const statBonus = calculatePetStatBonus(pet, level);
   const isEquipped = String(hero.activePetId || '1') === String(pet.id);
   const currentAvatar = pet.avatar || `assets/pets/${pet.key || 'rex'}.png`;
-  const stats = (state.petStatsMap && state.petStatsMap[pet.id]) || { hunger: 75, hygiene: 85, energy: 90, joy: 80 };
+  const stats = store.getPetStats(pet.id, { hunger: 75, hygiene: 85, energy: 90, joy: 80 });
   const exclusiveGear = pet.exclusiveGear || [
-    { name: `${pet.name}'s Crest`, desc: `Empowers ${pet.name}'s signature moves`, icon: 'shield' }
+    { name: `${escapeHtml(pet.name)}'s Crest`, desc: `Empowers ${escapeHtml(pet.name)}'s signature moves`, icon: 'shield' }
   ];
 
   return `
@@ -40,8 +41,8 @@ export function renderPetDetailView() {
           <span class="text-[10px] font-black uppercase tracking-widest text-primary flex items-center justify-center sm:justify-start gap-1">
             <span class="material-symbols-outlined text-sm">auto_awesome</span> ${archetype.name} • Level ${level} (${levelData.title})
           </span>
-          <h1 class="font-headline text-2xl sm:text-3xl font-black text-inverse-surface text-shadow">${pet.name}</h1>
-          <p class="text-sm font-bold text-secondary">${pet.title}</p>
+          <h1 class="font-headline text-2xl sm:text-3xl font-black text-inverse-surface text-shadow">${escapeHtml(pet.name)}</h1>
+          <p class="text-sm font-bold text-secondary">${escapeHtml(pet.title)}</p>
         </div>
 
         <!-- Action Button -->
@@ -72,8 +73,8 @@ export function renderPetDetailView() {
         <div class="relative z-10 w-52 h-52 flex items-center justify-center animate-float">
           <img 
             class="w-full h-full object-contain drop-shadow-[0_20px_20px_rgba(0,0,0,0.8)]" 
-            src="${currentAvatar}" 
-            alt="${pet.name}"
+            src="${currentAvatar}"
+            alt="${escapeHtml(pet.name)}"
             loading="lazy"
             onerror="this.onerror=null; this.src='assets/pets/${pet.key || 'rex'}.png';"
           />

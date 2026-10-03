@@ -8,6 +8,7 @@
 import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import confetti from 'canvas-confetti';
+import { escapeHtml } from '../utils/escapeHtml.js';
 
 export function renderGiftCrateWidget() {
   const state = store.getState();
@@ -35,7 +36,7 @@ export function renderGiftCrateWidget() {
             Surprise Gift!
           </div>
           <div class="text-xs font-bold text-amber-950 truncate max-w-[130px]">
-            ${item.name || 'New Hero Creation!'}
+            ${escapeHtml(item.name) || 'New Hero Creation!'}
           </div>
         </div>
       </div>
@@ -121,9 +122,9 @@ export function renderGiftCrateModal() {
             <!-- 3D Stage / Model Viewer -->
             <div class="w-full h-56 bg-slate-950/80 rounded-2xl border border-white/10 overflow-hidden relative mb-4 shadow-inner flex items-center justify-center">
               ${item.modelUrl ? `
-                <model-viewer 
-                  src="${item.modelUrl}" 
-                  alt="${item.name || '3D Model'}"
+                <model-viewer
+                  src="${item.modelUrl}"
+                  alt="${escapeHtml(item.name) || '3D Model'}"
                   auto-rotate 
                   camera-controls 
                   shadow-intensity="1.2"
@@ -143,10 +144,10 @@ export function renderGiftCrateModal() {
 
             <!-- Item Name & Lore -->
             <h2 class="text-2xl font-black text-amber-300 mb-1">
-              ${item.name || 'Hero Creation'}
+              ${escapeHtml(item.name) || 'Hero Creation'}
             </h2>
             <p class="text-slate-300 text-xs leading-relaxed max-w-sm mb-3">
-              ${item.desc || item.description || 'A heroic parent-crafted marvel for your adventures.'}
+              ${escapeHtml(item.desc || item.description) || 'A heroic parent-crafted marvel for your adventures.'}
             </p>
 
             <!-- Stat Buff Tag -->
@@ -173,9 +174,9 @@ export function renderGiftCrateModal() {
               <div class="w-full bg-white/5 border border-white/10 rounded-2xl p-3 flex items-start gap-2.5 text-left mb-4">
                 <span class="text-2xl">🦖</span>
                 <div class="flex-1 text-xs text-amber-100 font-medium italic">
-                  "${item.petVoiceLine || item.companionReaction || item.cheerVoiceLine}"
+                  "${escapeHtml(item.petVoiceLine || item.companionReaction || item.cheerVoiceLine)}"
                 </div>
-                <button onclick="window.speakCompanionText && window.speakCompanionText('${(item.petVoiceLine || item.companionReaction || item.cheerVoiceLine || '').replace(/'/g, "\\'")}')"
+                <button onclick="window.speakCompanionText && window.speakCompanionText('${escapeHtml((item.petVoiceLine || item.companionReaction || item.cheerVoiceLine || '').replace(/'/g, "\\'"))}')"
                   class="text-amber-400 hover:text-amber-300 p-1">
                   🔊
                 </button>

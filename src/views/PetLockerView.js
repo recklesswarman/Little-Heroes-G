@@ -1,9 +1,11 @@
 import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import confetti from 'canvas-confetti';
+import { escapeHtml } from '../utils/escapeHtml.js';
 import { speakRex } from '../services/voiceService.js';
 import { renderPetGearStudioViewer, initPetGearStudioViewer } from '../components/PetGearStudioViewer.js';
 import { preserveScrollPosition } from '../utils/scrollPreserve.js';
+import { registerActiveCanvas } from '../utils/activeViewCanvasRegistry.js';
 
 let activeCategoryFilter = 'all';
 
@@ -101,7 +103,7 @@ export function renderPetLockerView() {
         <!-- Left: Companion Stage Visual -->
         <div class="flex items-center gap-5 z-10">
           <div class="relative w-32 h-32 sm:w-36 sm:h-36 rounded-2xl bg-gradient-to-b from-surface-container-high to-surface-container-lowest p-2 border-3 border-amber-500/50 flex items-center justify-center shadow-lg">
-            <img class="w-full h-full object-contain animate-float drop-shadow-md" src="${activePet.avatar || activePet.image}" alt="${activePet.name}" />
+            <img class="w-full h-full object-contain animate-float drop-shadow-md" src="${activePet.avatar || activePet.image}" alt="${escapeHtml(activePet.name)}" />
             <div class="absolute -bottom-2 -right-2 bg-amber-500 text-on-primary text-[10px] font-black uppercase px-2 py-0.5 rounded-md shadow">
               Lv ${store.getPetLevel(activePet.id)}
             </div>
@@ -109,7 +111,7 @@ export function renderPetLockerView() {
 
           <div class="flex flex-col">
             <span class="text-[10px] font-black uppercase text-amber-400 tracking-wider">Active Companion</span>
-            <h2 class="font-headline text-2xl font-black text-inverse-surface">${activePet.name}</h2>
+            <h2 class="font-headline text-2xl font-black text-inverse-surface">${escapeHtml(activePet.name)}</h2>
             <span class="text-xs text-on-surface-variant font-bold">${activePet.species || 'Hero Pet'} • ${activePet.element || 'Fire'} Element</span>
             
             <div class="mt-2 flex items-center gap-2">
@@ -228,7 +230,7 @@ export function renderPetLockerView() {
                 } flex items-center justify-center p-1.5 flex-shrink-0 shadow-md">
                   ${
                     item.image
-                      ? `<img src="${item.image}" class="w-full h-full object-contain rounded-xl drop-shadow" alt="${item.title}" />`
+                      ? `<img src="${item.image}" class="w-full h-full object-contain rounded-xl drop-shadow" alt="${escapeHtml(item.title)}" />`
                       : `<span class="material-symbols-outlined text-2xl text-amber-400">${item.icon || 'shield'}</span>`
                   }
                 </div>
@@ -238,8 +240,8 @@ export function renderPetLockerView() {
                     <span class="text-[9px] font-black uppercase text-amber-400 bg-amber-500/15 px-2 py-0.5 rounded-md">${item.category}</span>
                     ${item.isUnlocked ? `<span class="text-[9px] font-black uppercase text-primary bg-primary/15 px-2 py-0.5 rounded-md">Owned</span>` : ''}
                   </div>
-                  <h3 class="font-headline text-base font-bold text-inverse-surface truncate mt-0.5">${item.title}</h3>
-                  <p class="text-xs text-on-surface-variant line-clamp-1 mt-0.5">${item.desc}</p>
+                  <h3 class="font-headline text-base font-bold text-inverse-surface truncate mt-0.5">${escapeHtml(item.title)}</h3>
+                  <p class="text-xs text-on-surface-variant line-clamp-1 mt-0.5">${escapeHtml(item.desc)}</p>
                   
                   <!-- Stat Bonus Badge -->
                   <div class="mt-1 flex items-center gap-1">
@@ -260,13 +262,13 @@ export function renderPetLockerView() {
                     <span class="material-symbols-outlined text-sm">check_circle</span>
                     <span>EQUIPPED</span>
                   </span>
-                  <button data-unequip-title="${item.title}" class="locker-unequip-btn text-error hover:bg-error/10 font-headline text-xs font-bold px-3 py-2 rounded-xl border border-error/30 active:scale-95 min-h-[44px] inline-flex items-center justify-center">
+                  <button data-unequip-title="${escapeHtml(item.title)}" class="locker-unequip-btn text-error hover:bg-error/10 font-headline text-xs font-bold px-3 py-2 rounded-xl border border-error/30 active:scale-95 min-h-[44px] inline-flex items-center justify-center">
                     Unequip
                   </button>
                 `
                     : item.isUnlocked
                     ? `
-                  <button data-equip-title="${item.title}" class="locker-equip-btn w-full bg-amber-500 text-on-primary font-headline text-xs font-black py-2.5 px-4 rounded-xl chunky-btn-sm active:scale-95 shadow-sm hover:brightness-110 flex items-center justify-center gap-1.5 min-h-[48px]">
+                  <button data-equip-title="${escapeHtml(item.title)}" class="locker-equip-btn w-full bg-amber-500 text-on-primary font-headline text-xs font-black py-2.5 px-4 rounded-xl chunky-btn-sm active:scale-95 shadow-sm hover:brightness-110 flex items-center justify-center gap-1.5 min-h-[48px]">
                     <span class="material-symbols-outlined text-sm">checkroom</span>
                     <span>EQUIP ON PET</span>
                   </button>
@@ -340,7 +342,10 @@ export function attachPetLockerListeners() {
   const activePet = store.getActivePet();
 
   // Initialize Interactive 3D Skeletal Pet Gear Studio
-  initPetGearStudioViewer('pet-gear-studio-container', { petId: activePet.id });
+  // See PetPenView.js's identical registration for why this is needed --
+  // PetGearStudioViewer.js alone never stops this canvas's RAF loop on navigate-away.
+  const gearStudioController = initPetGearStudioViewer('pet-gear-studio-container', { petId: activePet.id });
+  if (gearStudioController) registerActiveCanvas(gearStudioController);
 
   // Open Runway Showcase
   const openRunwayBtn = document.getElementById('locker-open-runway-btn');

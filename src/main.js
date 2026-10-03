@@ -30,20 +30,19 @@ import { renderGiftCrateWidget, renderGiftCrateModal, attachGiftCrateListeners }
 import { renderDashboardView, attachDashboardListeners } from './views/DashboardView.js';
 import { renderQuestMapView, attachQuestMapListeners } from './views/QuestMapView.js';
 import { renderWorldAdventureMapView, attachWorldAdventureMapListeners } from './views/WorldAdventureMapView.js';
-import { renderPetSanctuaryView, attachPetSanctuaryListeners } from './views/PetSanctuaryView.js';
+import { renderPetSanctuaryView, attachPetSanctuaryListeners, abandonPetSanctuaryExpeditionIfRunning } from './views/PetSanctuaryView.js';
 import { renderPetPenView, attachPetPenListeners } from './views/PetPenView.js';
 import { renderPetRosterView, attachPetRosterListeners } from './views/PetRosterView.js';
 import { renderPetDetailView, attachPetDetailListeners } from './views/PetDetailView.js';
 import { renderPetBathView, attachPetBathListeners } from './views/PetBathView.js';
-import { renderAdventuresMapView, attachAdventuresMapListeners } from './views/AdventuresMapView.js';
 import { renderShopView, attachShopListeners } from './views/ShopView.js';
 import { renderBattleView, attachBattleListeners, abandonBattleIfRunning } from './views/BattleView.js';
-import { renderDancePartyView, attachDancePartyListeners } from './views/DancePartyView.js';
+import { renderDancePartyView, attachDancePartyListeners, abandonDancePartyIfRunning } from './views/DancePartyView.js';
 import { renderProfileView, attachProfileListeners } from './views/ProfileView.js';
 import { renderParentPortalView, attachParentPortalListeners } from './views/ParentPortalView.js';
 import { renderPetLockerView, attachPetLockerListeners } from './views/PetLockerView.js';
 import { renderHeroHQView, attachHeroHQListeners } from './views/HeroHQView.js';
-import { renderDinoWorkoutView, attachDinoWorkoutListeners } from './views/DinoWorkoutView.js';
+import { renderDinoWorkoutView, attachDinoWorkoutListeners, abandonDinoWorkoutIfRunning } from './views/DinoWorkoutView.js';
 import { renderBedtimeStoryView, setupBedtimeStoryListeners } from './views/BedtimeStoryView.js';
 import { destroyActiveCanvas } from './utils/activeViewCanvasRegistry.js';
 import { isExistingActiveHousehold } from './utils/householdHeuristics.js';
@@ -51,6 +50,13 @@ import { isExistingActiveHousehold } from './utils/householdHeuristics.js';
 const app = document.getElementById('app');
 
 let lastActiveViewForBattleCleanup = null;
+let lastActiveViewForDancePartyCleanup = null;
+let lastActiveViewForDinoWorkoutCleanup = null;
+let lastActiveViewForPetSanctuaryCleanup = null;
+
+// 'pet_sanctuary' is reached under several aliases (see the view switch below) --
+// keep this list in sync with that case so the leave-check doesn't false-positive.
+const PET_SANCTUARY_VIEW_NAMES = ['pet_sanctuary', 'pet-sanctuary', 'pet_pen', 'pet-pen', 'evolution'];
 
 // Every view/modal is a full app.innerHTML replace with no DOM diffing, so a
 // re-render triggered by anything unrelated to the field the user is
@@ -118,6 +124,31 @@ function renderApp() {
     abandonBattleIfRunning();
   }
   lastActiveViewForBattleCleanup = activeView;
+
+  // Same problem as the Battle view above, for the other views that run
+  // their own setInterval timers (and in Dance Party's case, music/sound)
+  // outside the destroyActiveCanvas() registry: left running, they either
+  // waste CPU behind the new screen or -- for the expedition timer -- fire
+  // a surprise store.notify() (full app re-render) while the player is
+  // somewhere else entirely.
+  const isLeavingDancePartyView = lastActiveViewForDancePartyCleanup === 'dance_party' && activeView !== 'dance_party';
+  if (isLeavingDancePartyView) {
+    abandonDancePartyIfRunning();
+  }
+  lastActiveViewForDancePartyCleanup = activeView;
+
+  const isLeavingDinoWorkoutView = lastActiveViewForDinoWorkoutCleanup === 'dino_workout' && activeView !== 'dino_workout';
+  if (isLeavingDinoWorkoutView) {
+    abandonDinoWorkoutIfRunning();
+  }
+  lastActiveViewForDinoWorkoutCleanup = activeView;
+
+  const wasOnPetSanctuaryView = PET_SANCTUARY_VIEW_NAMES.includes(lastActiveViewForPetSanctuaryCleanup);
+  const isLeavingPetSanctuaryView = wasOnPetSanctuaryView && !PET_SANCTUARY_VIEW_NAMES.includes(activeView);
+  if (isLeavingPetSanctuaryView) {
+    abandonPetSanctuaryExpeditionIfRunning();
+  }
+  lastActiveViewForPetSanctuaryCleanup = activeView;
 
   // Check if this device has been revoked by a household parent
   const myDeviceId = (typeof localStorage !== 'undefined') ? localStorage.getItem('stitch_device_id') : null;

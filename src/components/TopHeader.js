@@ -1,5 +1,6 @@
 import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
+import { escapeHtml } from '../utils/escapeHtml.js';
 
 export function renderTopHeader() {
   const state = store.getState();
@@ -12,11 +13,11 @@ export function renderTopHeader() {
       <div class="flex items-center gap-1 sm:gap-2 md:gap-2.5 flex-shrink-0 min-w-0">
         <button id="header-profile-btn" class="flex items-center gap-1.5 sm:gap-2 bg-surface-container hover:bg-surface-bright rounded-2xl p-1 sm:p-1.5 pr-2 sm:pr-3 border-2 border-surface-container-highest chunky-btn-sm transition-all group active:scale-95 min-h-[44px] flex-shrink-0">
           <div class="w-8 h-8 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-full overflow-hidden border-2 border-primary bg-surface-variant flex items-center justify-center shadow-inner flex-shrink-0">
-            <img class="w-full h-full object-cover group-hover:scale-105 transition-transform" src="${hero.avatar}" alt="${hero.name}" onerror="this.src='assets/avatars/hero_boy_1.png'" />
+            <img class="w-full h-full object-cover group-hover:scale-105 transition-transform" src="${hero.avatar}" alt="${escapeHtml(hero.name)}" onerror="this.src='assets/avatars/hero_boy_1.png'" />
           </div>
           <div class="flex flex-col text-left min-w-0">
             <span class="text-[9px] text-on-surface-variant font-black uppercase tracking-wider hidden md:block truncate max-w-[90px]">${hero.title}</span>
-            <span class="font-headline text-xs sm:text-sm md:text-base font-black text-secondary leading-tight truncate max-w-[65px] sm:max-w-[110px] md:max-w-none">${hero.name}</span>
+            <span class="font-headline text-xs sm:text-sm md:text-base font-black text-secondary leading-tight truncate max-w-[65px] sm:max-w-[110px] md:max-w-none">${escapeHtml(hero.name)}</span>
           </div>
           <span class="material-symbols-outlined text-xs sm:text-sm text-on-surface-variant hidden sm:inline-block flex-shrink-0">expand_more</span>
         </button>

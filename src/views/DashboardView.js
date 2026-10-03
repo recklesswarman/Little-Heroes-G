@@ -1,4 +1,5 @@
 import { store } from '../state/store.js';
+import { escapeHtml } from '../utils/escapeHtml.js';
 import { getTaskVisualSvg } from '../utils/taskVisuals.js';
 import { speakRex } from '../services/voiceService.js';
 import { Sound } from '../audio/sfx.js';
@@ -29,7 +30,7 @@ export function renderDashboardView() {
           <div class="absolute -top-3 -left-2 text-base animate-butterfly pointer-events-none select-none drop-shadow z-20" title="Fluttering Butterfly">🦋</div>
 
           <div id="dash-hero-avatar-trigger" class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-surface-container-high border-4 border-primary overflow-hidden flex items-center justify-center shadow-inner flex-shrink-0 relative cursor-pointer hover:scale-105 active:scale-95 transition-transform animate-idle-bob" title="Tap your hero to giggle or do a backflip!">
-            <img id="dash-hero-avatar-img" class="w-full h-full object-cover select-none" src="${hero.avatar}" alt="${hero.name}" />
+            <img id="dash-hero-avatar-img" class="w-full h-full object-cover select-none" src="${hero.avatar}" alt="${escapeHtml(hero.name)}" />
             <div class="absolute -bottom-1 -right-1 bg-secondary text-on-secondary font-headline text-[10px] font-black px-1.5 py-0.2 rounded-md shadow">
               LV ${hero.level}
             </div>
@@ -37,7 +38,7 @@ export function renderDashboardView() {
 
           <div class="flex flex-col min-w-0 flex-1">
             <div class="flex items-center flex-wrap gap-2">
-              <h1 class="font-headline text-2xl sm:text-3xl font-black text-inverse-surface truncate">${hero.name}</h1>
+              <h1 class="font-headline text-2xl sm:text-3xl font-black text-inverse-surface truncate">${escapeHtml(hero.name)}</h1>
               <span class="text-xs bg-secondary-container/40 text-secondary font-black px-2.5 py-0.5 rounded-full border border-secondary-container flex items-center gap-1 whitespace-nowrap">
                 <span>🔥 ${hero.streak} Day Streak</span>
                 ${store.getPetStreakShield().isActive ? '<span class="text-[9px] bg-primary/25 text-primary px-1.5 py-0.5 rounded-full border border-primary/40 font-black" title="Pet Streak Shield Active! Joyful companions protect your streak">🛡️ Shield</span>' : ''}
@@ -59,16 +60,16 @@ export function renderDashboardView() {
             ? `
         <div class="w-full md:w-auto bg-surface-container-high p-3 sm:p-3.5 rounded-2xl border-2 border-secondary-container/40 flex items-center justify-between md:justify-start gap-3 sm:gap-4 flex-shrink-0">
           <div class="w-14 h-14 rounded-2xl bg-surface-container overflow-hidden border-2 border-secondary flex items-center justify-center flex-shrink-0 relative cursor-pointer active:scale-95 transition-transform animate-idle-bob" id="dash-active-pet-trigger" title="Tap your pet to giggle or do a backflip!">
-            <img id="dash-active-pet-img" class="w-full h-full object-contain p-1 select-none" src="${activePet.avatar}" alt="${activePet.name}" />
+            <img id="dash-active-pet-img" class="w-full h-full object-contain p-1 select-none" src="${activePet.avatar}" alt="${escapeHtml(activePet.name)}" />
             <div class="absolute -top-1 -right-1 bg-primary text-on-primary text-[8px] font-black px-1 rounded">Lv${store.getPetLevel(activePet.id)}</div>
           </div>
 
           <div class="flex flex-col min-w-0">
             <span class="font-headline text-xs font-black text-secondary flex items-center gap-1 truncate">
-              ${activePet.name}
+              ${escapeHtml(activePet.name)}
               <span class="material-symbols-outlined text-xs text-primary">verified</span>
             </span>
-            <span class="text-[10px] text-on-surface-variant font-bold truncate">${activePet.title}</span>
+            <span class="text-[10px] text-on-surface-variant font-bold truncate">${escapeHtml(activePet.title)}</span>
 
             <div class="flex items-center gap-2 mt-1">
               <div class="flex items-center gap-0.5 text-[10px] font-bold text-on-surface-variant" title="Hunger">
@@ -248,7 +249,7 @@ export function renderDashboardView() {
               <span class="text-xs text-amber-300 font-bold">✨ Bedtime Sanctuary</span>
             </div>
             <h3 class="font-headline text-sm font-black text-white mt-0.5">
-              Ready for bedtime, ${hero.name}?
+              Ready for bedtime, ${escapeHtml(hero.name)}?
             </h3>
             <p class="text-[11px] text-slate-300">
               Brush teeth, put on cozy pajamas, and embark on tonight's 4-chapter AI storybook!
@@ -322,8 +323,8 @@ export function renderDashboardView() {
                     </span>
                   </div>
                   <div class="flex flex-col min-w-0 flex-1">
-                    <h3 class="font-headline text-sm sm:text-base font-bold text-inverse-surface leading-snug truncate">${h.title}</h3>
-                    <p class="text-xs text-on-surface-variant line-clamp-1 mt-0.5">${h.desc}</p>
+                    <h3 class="font-headline text-sm sm:text-base font-bold text-inverse-surface leading-snug truncate">${escapeHtml(h.title)}</h3>
+                    <p class="text-xs text-on-surface-variant line-clamp-1 mt-0.5">${escapeHtml(h.desc)}</p>
                     
                     <div class="flex items-center flex-wrap gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-black mt-1">
                       <span class="text-secondary flex items-center gap-0.5 whitespace-nowrap">
@@ -430,7 +431,7 @@ export function renderDashboardView() {
                       <span class="text-[9px] font-black uppercase text-secondary bg-surface-container-high px-2 py-0.5 rounded-md">${t.timeWindow}</span>
                       ${t.isAR ? `<span class="text-[9px] font-black uppercase text-error bg-error/15 px-2 py-0.5 rounded-md">AR Mode</span>` : ''}
                     </div>
-                    <h3 class="font-headline text-sm sm:text-base font-bold text-inverse-surface leading-snug truncate mt-0.5">${t.title}</h3>
+                    <h3 class="font-headline text-sm sm:text-base font-bold text-inverse-surface leading-snug truncate mt-0.5">${escapeHtml(t.title)}</h3>
                     
                     <div class="flex items-center flex-wrap gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-black mt-1">
                       <span class="text-secondary flex items-center gap-0.5 whitespace-nowrap">
@@ -550,8 +551,8 @@ export function renderDashboardView() {
                         <span class="text-[9px] font-black uppercase text-tertiary bg-tertiary/10 px-2 py-0.5 rounded-md border border-tertiary/20">${q.timeWindow || 'Daily'}</span>
                         <span class="text-[9px] font-bold text-on-surface-variant italic truncate max-w-[140px]">${q.petCheer || 'Let\'s do it!'}</span>
                       </div>
-                      <h3 class="font-headline text-sm sm:text-base font-bold text-inverse-surface leading-snug truncate mt-0.5">${q.title}</h3>
-                      <p class="text-xs text-on-surface-variant line-clamp-1 mt-0.5">${q.description}</p>
+                      <h3 class="font-headline text-sm sm:text-base font-bold text-inverse-surface leading-snug truncate mt-0.5">${escapeHtml(q.title)}</h3>
+                      <p class="text-xs text-on-surface-variant line-clamp-1 mt-0.5">${escapeHtml(q.description)}</p>
                       
                       <div class="flex items-center flex-wrap gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-black mt-1">
                         <span class="text-secondary flex items-center gap-0.5 whitespace-nowrap">

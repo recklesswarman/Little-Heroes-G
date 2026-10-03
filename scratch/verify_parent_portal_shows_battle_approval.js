@@ -24,7 +24,10 @@ assert(html.includes('Chore Point Request'), 'Parent Portal tags it as a point-a
 assert(html.includes('Pending Approval'), 'Parent Portal shows the pending Gold Points line');
 assert(!html.includes('Inbox is Clear!'), 'Parent Portal no longer shows the empty-inbox state');
 
-const req = store.state.pendingApprovals.find(r => r.taskId === 'morning_brush' || r.taskId === 'bedtime_brush');
+// completeToothbrushBattle() labels the queued approval 'morning_brush' or
+// 'brush_teeth_pm' depending on wall-clock hour (see store.js's isMorning
+// branch) -- accept either so this test doesn't flake by time of day.
+const req = store.state.pendingApprovals.find(r => r.taskId === 'morning_brush' || r.taskId === 'brush_teeth_pm');
 assert(!!req, 'A queued approval exists matching the brush task id');
 assert(html.includes(`+${req.pendingPoints} Gold Points`), `Parent Portal card shows the exact pending points (+${req.pendingPoints})`);
 

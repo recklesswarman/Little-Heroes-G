@@ -1,6 +1,7 @@
 import { store, KID_AVATARS } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import { processProfilePhoto } from '../utils/photoUploader.js';
+import { escapeHtml } from '../utils/escapeHtml.js';
 import { authenticateWithBiometrics } from '../utils/biometrics.js';
 import { getTaskVisualSvg } from '../utils/taskVisuals.js';
 import { firestoreSync, getDeviceFriendlyName, getDeviceIcon } from '../services/firestoreSyncService.js';
@@ -152,7 +153,7 @@ export function renderParentPortalView() {
           </div>
           <div>
             <h1 class="font-headline text-2xl sm:text-3xl font-black text-secondary">Parent Admin Portal</h1>
-            <p class="text-xs text-on-surface-variant font-bold">Household: ${state.household.name} • Code: ${state.household.syncCode}</p>
+            <p class="text-xs text-on-surface-variant font-bold">Household: ${escapeHtml(state.household.name)} • Code: ${state.household.syncCode}</p>
           </div>
         </div>
 
@@ -271,7 +272,7 @@ export function renderParentPortalView() {
                       </div>
                       <div class="flex flex-col flex-1">
                         <div class="flex items-center gap-2 flex-wrap">
-                          <span class="text-[10px] font-black uppercase text-secondary">${req.kidName}</span>
+                          <span class="text-[10px] font-black uppercase text-secondary">${escapeHtml(req.kidName)}</span>
                           <span class="text-[10px] text-on-surface-variant font-bold">• ${req.date}</span>
                           <span class="text-[9px] font-black px-2 py-0.2 rounded-md ${isTaskPointApproval ? 'bg-tertiary/20 text-tertiary' : 'bg-secondary/20 text-secondary'}">
                             ${isTaskPointApproval ? 'Chore Point Request' : 'Reward Redemption'}
@@ -282,7 +283,7 @@ export function renderParentPortalView() {
                             </span>
                           ` : ''}
                         </div>
-                        <h3 class="font-headline text-base font-black text-inverse-surface mt-0.5">${req.title}</h3>
+                        <h3 class="font-headline text-base font-black text-inverse-surface mt-0.5">${escapeHtml(req.title)}</h3>
                         
                         <div class="text-xs font-bold mt-1">
                           ${
@@ -397,7 +398,7 @@ export function renderParentPortalView() {
                   : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border border-surface-container-highest'
               }">
                 <img src="${h.avatar}" class="w-5 h-5 rounded-full object-cover border border-white/40" />
-                <span>${h.name}</span>
+                <span>${escapeHtml(h.name)}</span>
               </button>
             `
               )
@@ -426,7 +427,7 @@ export function renderParentPortalView() {
                     <div class="flex items-center gap-3">
                       <img src="${h.avatar}" class="w-12 h-12 rounded-2xl border-2 border-primary object-cover" />
                       <div>
-                        <h3 class="font-headline text-base font-black text-inverse-surface">${h.name}</h3>
+                        <h3 class="font-headline text-base font-black text-inverse-surface">${escapeHtml(h.name)}</h3>
                         <span class="text-[10px] font-black uppercase text-secondary">${h.role}</span>
                       </div>
                     </div>
@@ -627,7 +628,7 @@ export function renderParentPortalView() {
                     : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border border-surface-container-highest'
                 }">
                   <img src="${h.avatar}" class="w-5 h-5 rounded-full object-cover border border-white/40" />
-                  <span>${h.name}</span>
+                  <span>${escapeHtml(h.name)}</span>
                 </button>
               `
                 )
@@ -658,6 +659,13 @@ export function renderParentPortalView() {
             const totalMovementSessions = movementLogs.length;
             const feverBursts = movementLogs.reduce((acc, l) => acc + (l.feverBursts || 0), 0);
 
+            // Read directly off reportHero's own pet-stats map -- this report
+            // can be for a sibling kid who isn't the device's selectedHero,
+            // so store.getPetStats() (which always reads selectedHero) would
+            // silently return the wrong kid's (or no kid's) stats here.
+            const reportPetId = String(reportHero?.activePetId || '1');
+            const reportPetStats = reportHero?.petStatsMap?.[reportPetId] || state.petStatsMap?.[reportPetId] || {};
+
             const report = currentDevelopmentalReport || aiDevelopmentalReportService.formatFourPillarReport({
               childName: reportHero ? reportHero.name : 'The Little Heroes Household',
               weekKey: '2026-W37',
@@ -672,8 +680,8 @@ export function renderParentPortalView() {
               totalMovementMinutes,
               totalMovementSessions,
               feverBursts,
-              petJoy: state.petStatsMap?.[1]?.joy || 88,
-              petHygiene: state.petStatsMap?.[1]?.hygiene || 92
+              petJoy: reportPetStats.joy || 88,
+              petHygiene: reportPetStats.hygiene || 92
             });
 
             return `
@@ -776,7 +784,7 @@ export function renderParentPortalView() {
               </div>
               <div>
                 <div class="flex items-center gap-2">
-                  <h2 class="font-headline text-lg font-black text-inverse-surface">${state.household.name}</h2>
+                  <h2 class="font-headline text-lg font-black text-inverse-surface">${escapeHtml(state.household.name)}</h2>
                   <span class="bg-primary/20 text-primary text-[10px] font-black uppercase px-2 py-0.5 rounded-md border border-primary/30">Active</span>
                 </div>
                 <p class="text-xs text-on-surface-variant font-bold mt-0.5">
@@ -998,7 +1006,7 @@ export function renderParentPortalView() {
                   <div class="flex items-start gap-3.5">
                     <div class="relative flex-shrink-0">
                       <div class="w-14 h-14 rounded-full overflow-hidden border-3 border-primary bg-surface-variant flex items-center justify-center shadow-inner">
-                        <img class="w-full h-full object-cover" src="${h.avatar}" alt="${h.name}" />
+                        <img class="w-full h-full object-cover" src="${h.avatar}" alt="${escapeHtml(h.name)}" />
                       </div>
                       ${isActiveHero ? `
                         <div class="absolute -bottom-1 -right-1 bg-primary text-on-primary text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full shadow">
@@ -1009,7 +1017,7 @@ export function renderParentPortalView() {
 
                     <div class="flex flex-col flex-1 min-w-0">
                       <div class="flex items-center justify-between gap-1">
-                        <h3 class="font-headline text-base font-black text-inverse-surface truncate">${h.name}</h3>
+                        <h3 class="font-headline text-base font-black text-inverse-surface truncate">${escapeHtml(h.name)}</h3>
                         <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${
                           kidDiff === 'easy' ? 'bg-primary/20 text-primary border border-primary/40' :
                           kidDiff === 'hard' ? 'bg-error/20 text-error border border-error/40' :
@@ -1159,7 +1167,7 @@ export function renderParentPortalView() {
                         </span>
                       </div>
                       <div class="flex flex-col">
-                        <span class="text-xs font-black text-inverse-surface">${t.title}</span>
+                        <span class="text-xs font-black text-inverse-surface">${escapeHtml(t.title)}</span>
                         <span class="text-[10px] text-on-surface-variant font-bold">${t.zone} • ${t.timeWindow || 'All Day'}</span>
                         <div class="flex items-center gap-2 text-[11px] font-black mt-1.5 flex-wrap">
                           <label class="flex items-center gap-1 bg-surface-container-high px-2 py-0.5 rounded-lg border border-surface-container-highest" title="Habit Token Reward (Auto-awarded)">
@@ -1271,8 +1279,8 @@ export function renderParentPortalView() {
                         ${r.image ? `<img src="${r.image}" class="w-full h-full object-contain" />` : `<span class="material-symbols-outlined">${r.icon}</span>`}
                       </div>
                       <div class="flex flex-col">
-                        <span class="text-xs font-black text-inverse-surface">${r.title}</span>
-                        <span class="text-[10px] text-on-surface-variant font-bold">${r.desc}</span>
+                        <span class="text-xs font-black text-inverse-surface">${escapeHtml(r.title)}</span>
+                        <span class="text-[10px] text-on-surface-variant font-bold">${escapeHtml(r.desc)}</span>
                         <span class="text-xs font-black text-tertiary mt-0.5">${r.costPoints} Gold Points ⭐</span>
                       </div>
                     </div>
@@ -1323,7 +1331,7 @@ export function renderParentPortalView() {
                   (r) => `
                 <div class="bg-surface-container-high rounded-xl p-3 border border-surface-container-highest flex items-center justify-between gap-3">
                   <div class="flex items-center gap-2 truncate">
-                    <span class="text-xs font-bold text-inverse-surface truncate">${r.title}</span>
+                    <span class="text-xs font-bold text-inverse-surface truncate">${escapeHtml(r.title)}</span>
                   </div>
                   <div class="flex items-center gap-1 flex-shrink-0">
                     <input type="number" data-pricing-reallife-id="${r.id}" value="${r.costPoints}" class="w-16 bg-surface-container-lowest border border-tertiary/40 rounded-lg p-1.5 text-xs font-black text-tertiary text-center" />
@@ -1359,8 +1367,8 @@ export function renderParentPortalView() {
                 <div class="bg-surface-container-high rounded-2xl p-4 border border-surface-container-highest flex flex-col justify-between gap-3 shadow-sm">
                   <div class="flex items-start justify-between gap-2">
                     <div class="flex flex-col truncate">
-                      <span class="font-headline text-xs font-black text-inverse-surface truncate">${g.title}</span>
-                      <span class="text-[10px] text-on-surface-variant line-clamp-1">${g.desc}</span>
+                      <span class="font-headline text-xs font-black text-inverse-surface truncate">${escapeHtml(g.title)}</span>
+                      <span class="text-[10px] text-on-surface-variant line-clamp-1">${escapeHtml(g.desc)}</span>
                     </div>
                     <span class="text-[9px] font-black uppercase text-secondary bg-secondary/15 px-2 py-0.5 rounded-md flex-shrink-0">${g.category || 'Gear'}</span>
                   </div>
@@ -2437,7 +2445,7 @@ export function renderParentPortalView() {
                   <select id="studio-target-child-select" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl p-1.5 text-xs font-bold text-cyan-300">
                     <option value="all">🌟 All Children in Household</option>
                     ${(store.getState().heroes || []).map(h => `
-                      <option value="${h.id}" ${studioTargetChildProfile === h.id ? 'selected' : ''}>🦸 ${h.name}</option>
+                      <option value="${h.id}" ${studioTargetChildProfile === h.id ? 'selected' : ''}>🦸 ${escapeHtml(h.name)}</option>
                     `).join('')}
                   </select>
                 </div>
@@ -2523,7 +2531,7 @@ export function renderParentPortalView() {
                             <span class="px-2 py-0.2 rounded-full text-[9px] font-black uppercase bg-amber-400/20 text-amber-400 border border-amber-400/30">${item.socket}</span>
                             <span class="text-[9px] font-black uppercase text-secondary">🪙 ${item.costCoins} Tokens</span>
                           </div>
-                          <h5 class="font-headline text-xs font-black text-inverse-surface truncate mt-0.5">${item.name}</h5>
+                          <h5 class="font-headline text-xs font-black text-inverse-surface truncate mt-0.5">${escapeHtml(item.name)}</h5>
                         </div>
                       </div>
                       <div class="flex items-center justify-between pt-1.5 border-t border-surface-container-highest">
@@ -2558,7 +2566,7 @@ export function renderParentPortalView() {
                             <span class="px-2 py-0.2 rounded-full text-[9px] font-black uppercase bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">${item.slot || 'Furniture'}</span>
                             <span class="text-[9px] font-black uppercase text-secondary">🪙 ${item.costCoins || 100}</span>
                           </div>
-                          <h5 class="font-headline text-xs font-black text-inverse-surface truncate mt-0.5">${item.name}</h5>
+                          <h5 class="font-headline text-xs font-black text-inverse-surface truncate mt-0.5">${escapeHtml(item.name)}</h5>
                         </div>
                       </div>
                       <div class="flex items-center justify-between pt-1.5 border-t border-surface-container-highest">
@@ -2593,7 +2601,7 @@ export function renderParentPortalView() {
                             <span class="px-2 py-0.2 rounded-full text-[9px] font-black uppercase bg-purple-400/20 text-purple-300 border border-purple-400/30">${item.toyType || 'Toy'}</span>
                             <span class="text-[9px] font-black uppercase text-secondary">🪙 ${item.costCoins || 50}</span>
                           </div>
-                          <h5 class="font-headline text-xs font-black text-inverse-surface truncate mt-0.5">${item.name}</h5>
+                          <h5 class="font-headline text-xs font-black text-inverse-surface truncate mt-0.5">${escapeHtml(item.name)}</h5>
                         </div>
                       </div>
                       <div class="flex items-center justify-between pt-1.5 border-t border-surface-container-highest">
@@ -2628,7 +2636,7 @@ export function renderParentPortalView() {
                             <span class="px-2 py-0.2 rounded-full text-[9px] font-black uppercase bg-rose-400/20 text-rose-300 border border-rose-400/30">${item.domain || 'Villain'}</span>
                             <span class="text-[9px] font-black uppercase text-secondary">HP ${item.maxHp || 250}</span>
                           </div>
-                          <h5 class="font-headline text-xs font-black text-inverse-surface truncate mt-0.5">${item.name}</h5>
+                          <h5 class="font-headline text-xs font-black text-inverse-surface truncate mt-0.5">${escapeHtml(item.name)}</h5>
                         </div>
                       </div>
                       <div class="flex items-center justify-between pt-1.5 border-t border-surface-container-highest">
@@ -2668,7 +2676,7 @@ export function renderParentPortalView() {
                             <span class="px-2 py-0.2 rounded-full text-[9px] font-black uppercase bg-lime-400/20 text-lime-300 border border-lime-400/30">Snack</span>
                             <span class="text-[9px] font-black uppercase text-secondary">🪙 ${item.costCoins || 20} • x${item.quantityPerPurchase || 3}</span>
                           </div>
-                          <h5 class="font-headline text-xs font-black text-inverse-surface truncate mt-0.5">${item.name}</h5>
+                          <h5 class="font-headline text-xs font-black text-inverse-surface truncate mt-0.5">${escapeHtml(item.name)}</h5>
                         </div>
                       </div>
                       <div class="flex items-center justify-between pt-1.5 border-t border-surface-container-highest">
@@ -2707,8 +2715,8 @@ export function renderParentPortalView() {
                             <span class="px-2 py-0.2 rounded-full text-[9px] font-black uppercase bg-amber-400/20 text-amber-300 border border-amber-400/30">Mystery Stash</span>
                             <span class="text-[9px] font-black uppercase text-secondary">🔥 ${chest.requiredStreak}-Day Streak</span>
                           </div>
-                          <h5 class="font-headline text-xs font-black text-inverse-surface truncate mt-0.5">${chest.title}</h5>
-                          <p class="text-[10px] text-slate-400 truncate">${chest.description}</p>
+                          <h5 class="font-headline text-xs font-black text-inverse-surface truncate mt-0.5">${escapeHtml(chest.title)}</h5>
+                          <p class="text-[10px] text-slate-400 truncate">${escapeHtml(chest.description)}</p>
                         </div>
                       </div>
                       <div class="flex items-center justify-between pt-1.5 border-t border-surface-container-highest">
@@ -2734,8 +2742,8 @@ export function renderParentPortalView() {
                               <span class="px-2 py-0.2 rounded-full text-[9px] font-black uppercase bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">3D Landmark</span>
                               <span class="text-[9px] font-black uppercase text-secondary">${arch.name.split(' ')[0]}</span>
                             </div>
-                            <h5 class="font-headline text-xs font-black text-inverse-surface truncate mt-0.5">${landmark.name}</h5>
-                            <p class="text-[10px] text-slate-400 truncate">${landmark.description}</p>
+                            <h5 class="font-headline text-xs font-black text-inverse-surface truncate mt-0.5">${escapeHtml(landmark.name)}</h5>
+                            <p class="text-[10px] text-slate-400 truncate">${escapeHtml(landmark.description)}</p>
                           </div>
                         </div>
                         <div class="flex items-center justify-between pt-1.5 border-t border-surface-container-highest">
@@ -2775,8 +2783,8 @@ export function renderParentPortalView() {
               .map((h) => {
                 return `
                 <div class="bg-surface-container rounded-3xl p-4 border-2 border-surface-container-highest card-shadow flex flex-col items-center text-center gap-2">
-                  <img class="w-14 h-14 rounded-full border-2 border-primary object-cover" src="${h.avatar}" alt="${h.name}" />
-                  <span class="font-headline text-base font-black text-inverse-surface">${h.name}</span>
+                  <img class="w-14 h-14 rounded-full border-2 border-primary object-cover" src="${h.avatar}" alt="${escapeHtml(h.name)}" />
+                  <span class="font-headline text-base font-black text-inverse-surface">${escapeHtml(h.name)}</span>
                   <span class="text-[10px] font-black text-secondary bg-surface-container-high px-2 py-0.5 rounded-full">${h.role}</span>
                   
                   <div class="w-full grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-surface-container-highest text-xs font-black">
@@ -2902,8 +2910,8 @@ export function renderParentPortalView() {
                       (log) => `
                     <tr class="hover:bg-surface-container-high/40 transition-colors">
                       <td class="py-2 text-on-surface-variant font-medium">${log.time}</td>
-                      <td class="py-2 text-primary font-black">${log.kid}</td>
-                      <td class="py-2 text-inverse-surface font-semibold">${log.action}</td>
+                      <td class="py-2 text-primary font-black">${escapeHtml(log.kid)}</td>
+                      <td class="py-2 text-inverse-surface font-semibold">${escapeHtml(log.action)}</td>
                       <td class="py-2 text-right font-black ${log.payout?.includes('Points ⭐') ? 'text-tertiary' : 'text-secondary'}">${log.payout || log.status}</td>
                     </tr>
                   `
@@ -3021,7 +3029,7 @@ export function renderParentPortalView() {
                       <div class="flex items-center gap-2.5">
                         <img src="${h.avatar}" class="w-10 h-10 rounded-full border-2 border-primary object-cover" />
                         <div class="flex flex-col">
-                          <span class="font-headline text-sm font-black text-inverse-surface">${h.name}</span>
+                          <span class="font-headline text-sm font-black text-inverse-surface">${escapeHtml(h.name)}</span>
                           <span class="text-[10px] text-on-surface-variant font-bold">${h.role}</span>
                         </div>
                       </div>
@@ -3115,7 +3123,7 @@ export function renderParentPortalView() {
                     <div class="flex items-center gap-2.5">
                       <img src="${h.avatar}" class="w-10 h-10 rounded-full border-2 border-primary object-cover" />
                       <div class="flex flex-col">
-                        <span class="font-headline text-sm font-black text-inverse-surface">${h.name}</span>
+                        <span class="font-headline text-sm font-black text-inverse-surface">${escapeHtml(h.name)}</span>
                         <span class="text-[10px] text-on-surface-variant font-bold">Today's Reminders</span>
                       </div>
                     </div>
@@ -3761,7 +3769,7 @@ function renderEditKidModal() {
         <div class="flex justify-between items-center border-b-2 border-surface-container-highest pb-3">
           <div class="flex items-center gap-2">
             <span class="material-symbols-outlined text-secondary text-2xl">edit</span>
-            <h2 class="font-headline text-xl font-black text-inverse-surface">Edit ${editingKid.name}</h2>
+            <h2 class="font-headline text-xl font-black text-inverse-surface">Edit ${escapeHtml(editingKid.name)}</h2>
           </div>
           <button id="edit-kid-modal-close-btn" class="text-on-surface-variant hover:text-error text-2xl p-1">
             <span class="material-symbols-outlined">close</span>
@@ -3771,7 +3779,7 @@ function renderEditKidModal() {
         <div class="flex flex-col gap-4">
           <div>
             <label class="block text-xs font-black text-on-surface-variant uppercase mb-1">Child's Name</label>
-            <input type="text" id="edit-kid-name" value="${editingKid.name}" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-4 py-3 text-sm font-bold text-inverse-surface focus:border-secondary focus:outline-none" />
+            <input type="text" id="edit-kid-name" value="${escapeHtml(editingKid.name)}" class="w-full bg-surface-container-high border-2 border-surface-container-highest rounded-xl px-4 py-3 text-sm font-bold text-inverse-surface focus:border-secondary focus:outline-none" />
           </div>
 
           <div>
@@ -3870,9 +3878,9 @@ function renderDeleteKidModal() {
         </div>
 
         <div>
-          <h2 class="font-headline text-xl font-black text-inverse-surface">Delete ${deletingKid.name}?</h2>
+          <h2 class="font-headline text-xl font-black text-inverse-surface">Delete ${escapeHtml(deletingKid.name)}?</h2>
           <p class="text-xs text-on-surface-variant font-bold mt-1.5 leading-relaxed">
-            Are you sure you want to remove <strong>${deletingKid.name}</strong> from the family roster? Their quest records, level, and coin balances will be removed.
+            Are you sure you want to remove <strong>${escapeHtml(deletingKid.name)}</strong> from the family roster? Their quest records, level, and coin balances will be removed.
           </p>
         </div>
 
@@ -4236,11 +4244,12 @@ export function attachParentPortalListeners() {
       try {
         const state = store.getState();
         const hero = selectedReportKidId === 'all' ? null : state.heroes.find(h => h.id === selectedReportKidId);
+        const reportPetId = String(hero?.activePetId || '1');
         const report = await aiDevelopmentalReportService.getWeeklyReport({
           hero,
           heroes: state.heroes,
           completionLogs: state.taskCompletionLogs || [],
-          petStats: state.petStatsMap?.[1] || { joy: 88, hygiene: 92 },
+          petStats: hero?.petStatsMap?.[reportPetId] || state.petStatsMap?.[reportPetId] || { joy: 88, hygiene: 92 },
           weekOffset: selectedReportWeekOffset,
           forceRefresh: true
         });
@@ -5951,7 +5960,7 @@ export function attachParentPortalListeners() {
               voiceLine: voiceVal.trim() || 'Welcome to our secret hero landmark!'
             };
             store.addCustomWorldLandmark(landmarkToPublish);
-            store.showReward('3D Landmark Placed on Island!', `Created ${landmarkToPublish.name} in ${preset.name}!`, 0, 0);
+            store.showReward('3D Landmark Placed on Island!', `Created ${escapeHtml(landmarkToPublish.name)} in ${preset.name}!`, 0, 0);
           } else {
             const biomeSelect = document.getElementById('studio-stash-biome-select')?.value || 'whispering_meadows';
             const coinsVal = Number(document.getElementById('studio-stash-coins-slider')?.value) || studioItemPrice || 100;

@@ -4,20 +4,10 @@
 // shield barriers, dizzy stun spins, and defeat explosions.
 
 import { Sound } from '../audio/sfx.js';
-import confetti from 'canvas-confetti';
+import { safeConfetti } from '../utils/safeConfetti.js';
+import { isWebGLSupported } from './pet3DService.js';
 
-export function isWebGLSupported() {
-  if (typeof window === 'undefined') return false;
-  try {
-    const canvas = document.createElement('canvas');
-    return Boolean(
-      window.WebGLRenderingContext &&
-      (canvas.getContext('webgl') || canvas.getContext('experimental-webgl'))
-    );
-  } catch (e) {
-    return false;
-  }
-}
+export { isWebGLSupported };
 
 export const BOSSES_3D_CATALOG = {
   sugar_bandit: {
@@ -303,16 +293,12 @@ export class Boss3DInteractiveCanvas {
       });
     }
 
-    if (typeof confetti === 'function' && typeof document !== 'undefined' && document.body) {
-      try {
-        confetti({
-          particleCount: 80,
-          spread: 70,
-          origin: { y: 0.5 },
-          colors: ['#38bdf8', '#fbbf24', '#4ade80', '#ffffff']
-        });
-      } catch (e) {}
-    }
+    safeConfetti({
+      particleCount: 80,
+      spread: 70,
+      origin: { y: 0.5 },
+      colors: ['#38bdf8', '#fbbf24', '#4ade80', '#ffffff']
+    });
 
     if (typeof Sound.fanfare === 'function') {
       Sound.fanfare();

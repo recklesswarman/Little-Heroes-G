@@ -2,6 +2,7 @@ import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import { speakRex } from '../services/voiceService.js';
 import { triggerInteractiveCelebration, closeInteractiveCelebration } from './InteractiveCelebrationOverlay.js';
+import { escapeHtml } from '../utils/escapeHtml.js';
 
 let shaderAnimationId = null;
 
@@ -13,9 +14,9 @@ function generateCelebrationIcon(reward) {
   // 1. If an explicit image URL is provided (e.g. task image, reward image, pet avatar)
   if (reward.image) {
     return `
-      <img 
-        src="${reward.image}" 
-        alt="${reward.title || 'Celebration'}" 
+      <img
+        src="${reward.image}"
+        alt="${escapeHtml(reward.title) || 'Celebration'}"
         class="w-28 h-28 sm:w-32 sm:h-32 object-contain filter drop-shadow-[0_8px_16px_rgba(0,0,0,0.6)] z-10 animate-pulse-subtle"
         onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';"
       />
@@ -130,7 +131,7 @@ export function renderRewardModal() {
 
           <!-- Headline -->
           <h1 class="font-headline-lg-mobile text-2xl sm:text-3xl font-black ${titleColor} mb-6 text-center uppercase tracking-wide drop-shadow-lg">
-            ${reward.title || 'AWESOME JOB!'}
+            ${escapeHtml(reward.title) || 'AWESOME JOB!'}
           </h1>
 
           <!-- 3D Celebration Portal Circle with Generated Task / Reward Icon -->
@@ -144,7 +145,7 @@ export function renderRewardModal() {
 
           <!-- Message Body -->
           <p class="font-body-md text-xs sm:text-sm font-bold text-on-surface mb-6 px-2 leading-relaxed whitespace-pre-line">
-            ${reward.message || 'You completed an awesome heroic adventure! Keep up the great work!'}
+            ${escapeHtml(reward.message) || 'You completed an awesome heroic adventure! Keep up the great work!'}
           </p>
 
           <!-- Reward Value / Habit Coins (Glass Pill) -->

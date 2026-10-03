@@ -9,6 +9,7 @@
 
 import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
+import { escapeHtml } from '../utils/escapeHtml.js';
 import { BEDTIME_REALMS, BEDTIME_MORALS, CONSTELLATION_STICKERS } from '../data/bedtimeStoryData.js';
 import { bedtimeStoryService } from '../services/bedtimeStoryService.js';
 import { speakCompanion, stopCompanionAudio } from '../services/voiceService.js';
@@ -92,7 +93,7 @@ export function renderBedtimeStoryView() {
               </h1>
               <p class="text-[10px] sm:text-[11px] font-bold text-slate-300 flex items-center gap-1 sm:gap-1.5 truncate">
                 <span class="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-[#00d2d3] animate-pulse flex-shrink-0"></span>
-                <span class="truncate max-w-[110px] sm:max-w-none">Companion: ${pet.name}</span>
+                <span class="truncate max-w-[110px] sm:max-w-none">Companion: ${escapeHtml(pet.name)}</span>
                 <span class="text-slate-500 hidden xs:inline">•</span>
                 <span class="text-[#ffb961] hidden xs:inline">Sanctuary</span>
               </p>
@@ -176,10 +177,10 @@ function renderSanctuaryHub(library, sanctuary, hero, pet, availableMorals) {
               <span class="text-[11px] sm:text-xs text-slate-300 font-bold">• 4-5 Min Adventure</span>
             </div>
             <h2 class="font-headline font-black text-xl sm:text-2xl text-white mt-1 break-words">
-              Good evening, ${hero.name}!
+              Good evening, ${escapeHtml(hero.name)}!
             </h2>
             <p class="text-xs text-slate-300 max-w-md mt-0.5 leading-relaxed">
-              ${pet.name} is ready for bed! Complete your evening routine steps to embark on tonight's non-repeating bedtime story!
+              ${escapeHtml(pet.name)} is ready for bed! Complete your evening routine steps to embark on tonight's non-repeating bedtime story!
             </p>
           </div>
         </div>
@@ -254,7 +255,7 @@ function renderSanctuaryHub(library, sanctuary, hero, pet, availableMorals) {
           </div>
           <div>
             <h3 class="font-headline font-black text-sm text-white">Bedtime AI Storybook</h3>
-            <p class="text-[11px] text-slate-300 mt-0.5">4-Chapter calming adventure with ${pet.name}</p>
+            <p class="text-[11px] text-slate-300 mt-0.5">4-Chapter calming adventure with ${escapeHtml(pet.name)}</p>
           </div>
           <button id="step-goto-customizer-btn" class="w-full py-2.5 sm:py-2 min-h-[44px] rounded-xl bg-[#ffb961] text-black font-headline font-black text-xs flex items-center justify-center gap-1 active:scale-95 transition-all cursor-pointer">
             <span>Choose Story Below ⬇️</span>
@@ -584,7 +585,7 @@ function renderBookshelfLibrary(library) {
             <span>Back to Bookshelf</span>
           </button>
           <span class="font-headline font-black text-xs text-white truncate max-w-xs">
-            ${readingSavedStory.title} (Ch ${currentSavedActIndex + 1} of ${chapters.length})
+            ${escapeHtml(readingSavedStory.title)} (Ch ${currentSavedActIndex + 1} of ${chapters.length})
           </span>
           <div class="flex items-center gap-1.5">
             <button id="saved-story-prev-act" class="w-8 h-8 rounded-lg bg-[#0f2334] text-white flex items-center justify-center disabled:opacity-30" ${currentSavedActIndex === 0 ? 'disabled' : ''}>
@@ -688,7 +689,7 @@ function renderBookshelfLibrary(library) {
                   </div>
 
                   <h3 class="font-headline font-black text-sm text-white leading-tight">
-                    ${story.title}
+                    ${escapeHtml(story.title)}
                   </h3>
 
                   <!-- Constellation Badge Ribbon -->

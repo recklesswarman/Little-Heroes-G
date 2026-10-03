@@ -2,6 +2,7 @@ import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import { speakRex } from '../services/voiceService.js';
 import confetti from 'canvas-confetti';
+import { escapeHtml } from '../utils/escapeHtml.js';
 
 let currentTaps = 0;
 let isRevealed = false;
@@ -176,7 +177,7 @@ export function renderMysterySurpriseModal() {
               ${
                 surprise.image
                   ? `
-                <img class="w-full h-full object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.6)] animate-bounce" src="${surprise.image}" alt="${surprise.title}" />
+                <img class="w-full h-full object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.6)] animate-bounce" src="${surprise.image}" alt="${escapeHtml(surprise.title)}" />
               `
                   : `
                 <span class="material-symbols-outlined text-7xl ${isEgg ? 'text-primary' : 'text-secondary'} animate-bounce" style="font-variation-settings: 'FILL' 1;">
@@ -190,7 +191,7 @@ export function renderMysterySurpriseModal() {
             <div class="flex flex-col items-center gap-1.5 max-w-sm">
               <div class="flex items-center gap-2">
                 <span class="text-[10px] font-black uppercase ${isEgg ? 'text-primary' : 'text-secondary'} tracking-wider">
-                  ${surprise.category || 'Digital Reward'}
+                  ${escapeHtml(surprise.category) || 'Digital Reward'}
                 </span>
                 ${
                   surprise.statBonusPercent
@@ -204,11 +205,11 @@ export function renderMysterySurpriseModal() {
               </div>
 
               <h3 class="font-headline text-xl sm:text-2xl font-black text-inverse-surface leading-tight">
-                ${surprise.title}
+                ${escapeHtml(surprise.title)}
               </h3>
 
               <p class="text-xs text-on-surface-variant font-medium">
-                ${surprise.desc || 'Equipped and unlocked in your hero collection!'}
+                ${escapeHtml(surprise.desc) || 'Equipped and unlocked in your hero collection!'}
               </p>
             </div>
 

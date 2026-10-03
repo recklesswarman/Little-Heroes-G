@@ -5,6 +5,7 @@
 import { Pet3DInteractiveCanvas, getPet3DProfile } from '../services/pet3DService.js';
 import { Sound } from '../audio/sfx.js';
 import { speakRex } from '../services/voiceService.js';
+import { escapeHtml } from '../utils/escapeHtml.js';
 
 // Cache active 3D instances by canvas ID
 const activeInstances = new Map();
@@ -45,7 +46,7 @@ export function renderPet3DViewer({
       <img 
         id="${canvasId}-fallback-img" 
         src="${avatarFallback || 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZfP7_Cwlp4sz41asI8ymuapAKvjmqHtvI4zcMAF_XwUmibj8IheGrS5cA5QD5gmXgVxEkZM9FlWJPRZnct3x6-9SQB7zJKqkEDjJ3m95tAy3zRqS-PbmcQ4kv_9pmIfm2Py4mh3Fw083hkDookz1w4_r50SBA1jc9igDaAPFLYBFgSP2aQBz7Q4jVE-DwhMOyUEHlxDkQk6Gwc2EAFCSKs1c0QuhUOi3tkrk5MXRARKqZcYVzyJe6gA'}" 
-        alt="${petName}" 
+        alt="${escapeHtml(petName)}"
         class="hidden w-4/5 h-4/5 object-contain pointer-events-none animate-idle-bob"
       />
 

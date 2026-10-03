@@ -9,6 +9,7 @@ import { getPetFaceProfile } from '../services/petSkeletalFaceService.js';
 import { Sound } from '../audio/sfx.js';
 import { store } from '../state/store.js';
 import { preserveScrollPosition } from '../utils/scrollPreserve.js';
+import { escapeHtml } from '../utils/escapeHtml.js';
 
 // Cache active gear studio instances
 const activeStudioInstances = new Map();
@@ -221,10 +222,10 @@ export function renderPetGearStudioViewer({
                   </div>
                   <div class="min-w-0 flex-1">
                     <div class="flex items-center justify-between gap-1">
-                      <h4 class="text-xs font-black text-white truncate">${item.name}</h4>
+                      <h4 class="text-xs font-black text-white truncate">${escapeHtml(item.name)}</h4>
                       ${isEquipped ? '<span class="px-1.5 py-0.5 rounded text-[10px] font-black bg-amber-400 text-slate-950 uppercase tracking-wider shrink-0">On</span>' : ''}
                     </div>
-                    <p class="text-[11px] text-slate-300 leading-snug line-clamp-2 mt-0.5">${item.desc}</p>
+                    <p class="text-[11px] text-slate-300 leading-snug line-clamp-2 mt-0.5">${escapeHtml(item.desc)}</p>
                   </div>
                 </div>
 

@@ -8,6 +8,7 @@
  */
 
 import { store } from '../state/store.js';
+import { escapeHtml } from '../utils/escapeHtml.js';
 import { PETS_DATABASE, getPetArchetype, getPetBondBonus, getPetById, getPetLevelData, calculatePetStatBonus, getDailyRotatingPetCoach } from '../data/petsData.js';
 import { PET_GEAR_CATALOG, getGearHaloStyle, normalizeGearSlot, getGearItem, calculateActiveGearBuffs } from '../data/petGearStudioData.js';
 import { PetSanctuaryCanvas } from '../components/PetSanctuaryCanvas.js';
@@ -69,11 +70,11 @@ export function renderPetSanctuaryView() {
 
           <div class="flex items-center gap-2">
             <div class="w-11 h-11 rounded-2xl bg-surface-container-high border-2 border-primary/50 flex items-center justify-center overflow-hidden shadow-inner p-1">
-              <img src="${activePet.avatar || `assets/pets/${activePet.key || 'rex'}.png`}" alt="${activePet.name}" class="w-full h-full object-contain">
+              <img src="${activePet.avatar || `assets/pets/${activePet.key || 'rex'}.png`}" alt="${escapeHtml(activePet.name)}" class="w-full h-full object-contain">
             </div>
             <div class="flex flex-col">
               <div class="flex items-center gap-1.5">
-                <span class="font-headline font-black text-sm text-on-surface">${activePet.name}</span>
+                <span class="font-headline font-black text-sm text-on-surface">${escapeHtml(activePet.name)}</span>
                 <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-primary/20 text-primary border border-primary/40">
                   ${archetype.name}
                 </span>
@@ -406,7 +407,7 @@ function renderFeedDrawer(pet, needs) {
 
       <!-- Treat Snacks Shelf Grid -->
       <div>
-        <span class="text-xs font-black uppercase text-on-surface-variant tracking-wider block mb-3">Choose a snack to feed ${pet.name}:</span>
+        <span class="text-xs font-black uppercase text-on-surface-variant tracking-wider block mb-3">Choose a snack to feed ${escapeHtml(pet.name)}:</span>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
           ${store.getAllFeedableTreats().map(treat => {
             const stock = store.getTreatStock(treat.id);
@@ -608,12 +609,12 @@ function renderWardrobeDrawer(pet, equippedGear) {
                   </div>
                   <div class="flex flex-col min-w-0">
                     <div class="flex items-center gap-1.5">
-                      <span class="font-headline font-black text-xs text-on-surface truncate">${item.name}</span>
+                      <span class="font-headline font-black text-xs text-on-surface truncate">${escapeHtml(item.name)}</span>
                       <span class="px-1.5 py-0.2 rounded-md text-[9px] font-black uppercase ${halo.text} bg-slate-950 border ${halo.border}">
                         ${item.levelLabel || `Lv.${item.level}`}
                       </span>
                     </div>
-                    <span class="text-[10px] text-on-surface-variant truncate">${item.desc}</span>
+                    <span class="text-[10px] text-on-surface-variant truncate">${escapeHtml(item.desc)}</span>
                     <span class="text-[10px] font-black text-emerald-400 mt-0.5">${item.statBonusLabel}</span>
                   </div>
                 </div>
@@ -664,7 +665,7 @@ function renderExpeditionDrawer(pet) {
         <div class="flex flex-col items-center gap-4 text-center">
           <span class="text-5xl">🏆</span>
           <h4 class="font-bold text-xl text-emerald-400">Expedition Complete!</h4>
-          <p class="text-xs text-on-surface-variant">${pet.name} brought back shiny rewards from the adventure!</p>
+          <p class="text-xs text-on-surface-variant">${escapeHtml(pet.name)} brought back shiny rewards from the adventure!</p>
           <button id="claim-expedition-btn" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-3 px-8 rounded-2xl text-sm shadow-xl active:scale-95">
             Claim Rewards (100 Coins 🪙, 50 Pet Training XP ⚡)
           </button>
@@ -676,7 +677,7 @@ function renderExpeditionDrawer(pet) {
       content = `
         <div class="flex flex-col items-center gap-4 text-center">
           <span class="text-5xl animate-bounce">🏕️</span>
-          <h4 class="font-bold text-xl text-amber-400">${pet.name} is Exploring!</h4>
+          <h4 class="font-bold text-xl text-amber-400">${escapeHtml(pet.name)} is Exploring!</h4>
           <p id="expedition-countdown-display" class="text-lg text-white font-mono">${min}m ${sec}s remaining</p>
         </div>
       `;
@@ -684,7 +685,7 @@ function renderExpeditionDrawer(pet) {
   } else {
     content = `
       <div class="flex flex-col items-center gap-4 text-center">
-        <p class="text-sm text-slate-300">Send ${pet.name} on a 15-minute adventure to explore uncharted trails and discover rewards!</p>
+        <p class="text-sm text-slate-300">Send ${escapeHtml(pet.name)} on a 15-minute adventure to explore uncharted trails and discover rewards!</p>
         <div class="p-3 bg-surface-container-lowest rounded-2xl border border-surface-container-highest text-xs text-secondary font-bold">
           Rewards: 100 Hero Coins 🪙 + 50 Pet Training XP ⚡
         </div>
@@ -839,8 +840,8 @@ function renderRosterDrawer(activePet) {
                   isActive ? 'border-primary' : 'border-surface-container-highest'
                 } flex items-center justify-center p-1 shadow-inner flex-shrink-0">
                   <img 
-                    src="${petImg}" 
-                    alt="${pet.name}" 
+                    src="${petImg}"
+                    alt="${escapeHtml(pet.name)}"
                     class="w-full h-full object-contain filter drop-shadow hover:scale-105 transition-transform"
                     loading="lazy"
                     onerror="this.onerror=null; this.src='assets/pets/${pet.key || 'rex'}.png';"
@@ -848,7 +849,7 @@ function renderRosterDrawer(activePet) {
                 </div>
                 <div class="flex flex-col min-w-0">
                   <div class="flex items-center gap-1.5">
-                    <span class="font-headline font-black text-sm text-on-surface truncate">${pet.name}</span>
+                    <span class="font-headline font-black text-sm text-on-surface truncate">${escapeHtml(pet.name)}</span>
                     <span class="px-1.5 py-0.2 rounded-md text-[9px] font-black uppercase tracking-wider bg-secondary/20 text-secondary border border-secondary/40">
                       ${archetype.name}
                     </span>
@@ -1206,5 +1207,16 @@ export function attachPetSanctuaryListeners() {
         store.hatchMagicEgg(eggId);
       }
     });
+  }
+}
+
+// Exported for main.js to call when the player navigates away while an
+// expedition countdown is ticking -- otherwise it keeps running and can
+// call store.notify() (forcing a full app re-render) from behind whatever
+// screen they're now on.
+export function abandonPetSanctuaryExpeditionIfRunning() {
+  if (expeditionInterval) {
+    clearInterval(expeditionInterval);
+    expeditionInterval = null;
   }
 }

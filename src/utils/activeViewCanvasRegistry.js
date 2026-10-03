@@ -1,5 +1,5 @@
 // Tracks the single canvas-backed view instance (PetSanctuaryCanvas,
-// HeroForgeCanvas, PetExpeditionCanvas, PetSkeletalBodyCanvas, ...) that is
+// PetExpeditionCanvas, PetSkeletalBodyCanvas, Dance3DInteractiveCanvas, ...) that is
 // currently alive. main.js replaces app.innerHTML wholesale on every view
 // switch, which removes the canvas DOM node but does NOT stop the
 // instance's internal requestAnimationFrame loop -- only calling its own

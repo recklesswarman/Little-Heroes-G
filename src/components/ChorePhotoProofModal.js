@@ -2,6 +2,8 @@ import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import { aiVisionChoreService } from '../services/aiVisionChoreService.js';
 import confetti from 'canvas-confetti';
+import { escapeHtml } from '../utils/escapeHtml.js';
+import { processPhotoFitWithinBounds } from '../utils/photoUploader.js';
 
 /**
  * Kid-Friendly Chore Photo Proof Modal
@@ -83,16 +85,20 @@ class ChorePhotoProofModal {
     Sound.camera();
   }
 
-  handleFileUpload(file) {
+  async handleFileUpload(file) {
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      this.photoDataUrl = e.target.result;
+    try {
+      // Downscale/compress before storing -- an unprocessed phone camera
+      // photo can be several MB, which bloats every subsequent state save
+      // and cloud sync (see processPhotoFitWithinBounds's doc comment for
+      // why this can't just reuse processProfilePhoto's square crop).
+      this.photoDataUrl = await processPhotoFitWithinBounds(file);
       this.stopCamera();
       this.showPreview();
       Sound.camera();
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      alert(err.message || 'Unable to upload photo.');
+    }
   }
 
   showPreview() {
@@ -216,7 +222,7 @@ class ChorePhotoProofModal {
                   +5 Bonus 🪙
                 </span>
               </div>
-              <p class="text-xs text-white/90 font-bold truncate max-w-[240px]">${this.task.title}</p>
+              <p class="text-xs text-white/90 font-bold truncate max-w-[240px]">${escapeHtml(this.task.title)}</p>
             </div>
           </div>
 

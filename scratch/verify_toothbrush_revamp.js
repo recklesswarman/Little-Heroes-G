@@ -2,7 +2,7 @@
  * verify_toothbrush_revamp.js
  * 
  * Comprehensive automated verification script for AR/AI Toothbrush Battle Revamp:
- * 1. Mirrored bathroom perspective quadrant consistency (hygieneBossesData.js & Dental3DMap.js).
+ * 1. Mirrored bathroom perspective quadrant consistency (hygieneBossesData.js).
  * 2. Single-source victory reward state and elimination of double-reward bug.
  * 3. Chore Turbo Boost travel time reduction on active expeditions.
  * 4. Module integrity for hanaBattle3DService & brushAudioAnalyzer.
@@ -11,7 +11,6 @@
 
 import './setup_mock_env.js';
 import { DENTAL_QUADRANTS, getDentalQuadrant, HYGIENE_BOSSES } from '../src/data/hygieneBossesData.js';
-import { DENTAL_ZONES, renderDental3DMap } from '../src/components/Dental3DMap.js';
 import { store } from '../src/state/store.js';
 import { hanaBattle3DService, HanaBattle3DService } from '../src/services/hanaBattle3DService.js';
 import { brushAudioAnalyzer } from '../src/audio/brushAudioAnalyzer.js';
@@ -52,25 +51,6 @@ console.log('\n--- 1. Testing Mirrored Bathroom Perspective Quadrant Mapping ---
   assert(q4.brushPosition.x < 50, 'DENTAL_QUADRANTS: Q4 brushPosition is on screen left (<50)');
 
   assert(q5 && q5.name.includes('Tongue'), 'DENTAL_QUADRANTS: Q5 is Tongue Polish');
-
-  // Verify Dental3DMap zones match
-  const z1 = DENTAL_ZONES.find(z => z.id === 'q1');
-  const z2 = DENTAL_ZONES.find(z => z.id === 'q2');
-  const z3 = DENTAL_ZONES.find(z => z.id === 'q3');
-  const z4 = DENTAL_ZONES.find(z => z.id === 'q4');
-  const z5 = DENTAL_ZONES.find(z => z.id === 'q5');
-
-  assert(z1 && z1.name === 'Top Right Molars', 'DENTAL_ZONES: Q1 is Top Right Molars');
-  assert(z1.arrowAngle === 45, 'DENTAL_ZONES: Q1 arrow points to Top Right (45 deg)');
-  assert(z2 && z2.name === 'Top Left Molars', 'DENTAL_ZONES: Q2 is Top Left Molars');
-  assert(z2.arrowAngle === -45, 'DENTAL_ZONES: Q2 arrow points to Top Left (-45 deg)');
-  assert(z3 && z3.name === 'Bottom Right Molars', 'DENTAL_ZONES: Q3 is Bottom Right Molars');
-  assert(z4 && z4.name === 'Bottom Left Molars', 'DENTAL_ZONES: Q4 is Bottom Left Molars');
-  assert(z5 && z5.name === 'Tongue & Front Polish', 'DENTAL_ZONES: Q5 is Tongue & Front Polish');
-
-  // Verify initial rendered arrow coordinates for Q1 (Right side)
-  const initialMapHtml = renderDental3DMap({ activeQuadrant: 'q1' });
-  assert(initialMapHtml.includes('translate(265, 65)'), 'renderDental3DMap: initial Q1 arrow placed on screen right (265, 65)');
 
   // Verify timer progression maps correctly
   assert(getDentalQuadrant(110, 120).id === 'q1', 'getDentalQuadrant: 110s remaining maps to Q1');

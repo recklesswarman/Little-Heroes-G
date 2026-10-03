@@ -13,7 +13,9 @@ function getMoveForPose(pose) {
   return 'dino_march';
 }
 import { renderDance3DViewer, initDance3DViewer, getActiveDance3DInstance } from '../components/Dance3DViewer.js';
+import { registerActiveCanvas } from '../utils/activeViewCanvasRegistry.js';
 import { store } from '../state/store.js';
+import { escapeHtml } from '../utils/escapeHtml.js';
 import { PETS_DATABASE } from '../data/petsData.js';
 import { MOVEMENT_ROUTINES, getMovementRoutine } from '../data/movementRoutinesData.js';
 import { movementSynth } from '../audio/movementAudioSynthesizer.js';
@@ -166,7 +168,7 @@ export function renderDancePartyView() {
   const activePet = store.getActivePet();
   const hasPet = hero.unlockedPetIds && hero.unlockedPetIds.length > 0;
   const petAvatarUrl = getPetDisplayAvatar(activePet);
-  const petName = hasPet ? activePet.name : 'Sparky (Movement Coach)';
+  const petName = hasPet ? escapeHtml(activePet.name) : 'Sparky (Movement Coach)';
 
   // ROUTE SUB-MODES
   if (arcadeMode === 'movement_session' && activeRoutine) {
@@ -551,9 +553,9 @@ function renderMovementSession(hero, activePet, petAvatarUrl, petName) {
           <!-- Hero Dancing Actor -->
           <div class="flex flex-col items-center gap-2">
             <div id="movement-hero-actor" class="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-primary-container/30 border-4 border-primary overflow-hidden flex items-center justify-center shadow-xl transition-transform duration-200 ${isFreezeActive ? '' : 'animate-bounce'}">
-              <img src="${hero.avatar}" alt="${hero.name}" class="w-full h-full object-cover" />
+              <img src="${hero.avatar}" alt="${escapeHtml(hero.name)}" class="w-full h-full object-cover" />
             </div>
-            <span class="text-xs font-black text-on-surface font-headline">${hero.name}</span>
+            <span class="text-xs font-black text-on-surface font-headline">${escapeHtml(hero.name)}</span>
           </div>
 
           <!-- Sparkle / Sync Connector -->
@@ -886,7 +888,7 @@ function renderDiscoParty(hero, activePet, petAvatarUrl, petName, state) {
           <div id="disco-hero-actor" class="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-primary-container/30 border-4 border-primary overflow-hidden flex items-center justify-center shadow-xl ${
             isDancing ? 'animate-bounce' : 'animate-float'
           }">
-            <img src="${hero.avatar}" alt="${hero.name}" class="w-full h-full object-cover" />
+            <img src="${hero.avatar}" alt="${escapeHtml(hero.name)}" class="w-full h-full object-cover" />
           </div>
 
           <div id="disco-pet-actor" class="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-tertiary-container/30 border-4 border-tertiary p-2 flex items-center justify-center shadow-2xl ${
@@ -955,12 +957,15 @@ function renderDiscoParty(hero, activePet, petAvatarUrl, petName, state) {
 export function attachDancePartyEvents() {
   const hero = store.getState().selectedHero;
   if (arcadeMode === 'movement_session') {
-    initDance3DViewer('dance-coach-3d-canvas', {
+    // See PetPenView.js's identical registration for why this is needed --
+    // Dance3DViewer.js alone never stops this canvas's RAF loop on navigate-away.
+    const danceCoachController = initDance3DViewer('dance-coach-3d-canvas', {
       petId: store.getActivePet()?.id || 'rex',
       stage: 1,
       currentMove: getMoveForPose(activeRoutine?.poses?.[currentPoseIdx]),
       bpm: activeRoutine?.bpm || 118
     });
+    if (danceCoachController) registerActiveCanvas(danceCoachController);
   }
   // Navigation Back to Dash
   const backDashBtn = document.getElementById('arcade-back-dash-btn');
@@ -1582,6 +1587,15 @@ function cleanupTimers() {
     Sound.stopDisco();
     isDancing = false;
   }
+}
+
+// Exported for main.js to call when the player navigates away from this view
+// without tapping a quit/finish button -- otherwise the movement-routine
+// timer/music or the treat-catch/color-dash/disco-challenge timers keep
+// running behind whatever screen they're now on.
+export function abandonDancePartyIfRunning() {
+  cleanupMovementSession();
+  cleanupTimers();
 }
 
 function generateTreatItems(bubbleCount = 5) {

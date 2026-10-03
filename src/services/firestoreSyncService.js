@@ -22,6 +22,7 @@ const LOCAL_ONLY_STATE_KEYS = new Set([
   'mysterySurprise',
   'activeUnboxingCrateId',
   'activeDrawer',
+  'activeHygieneReminder',
   'bossColosseum',
   'aiQuests',
   'heroAiQuestsMap'
