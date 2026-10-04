@@ -15,6 +15,7 @@ Endpoints:
 from __future__ import annotations
 
 import os
+import traceback
 from typing import Any, Optional
 
 import uvicorn
@@ -154,11 +155,13 @@ async def rex_chat(req: RexChatRequest):
             habitAwarded=result.habit_awarded,
         )
     except Exception as exc:
+        traceback.print_exc()
         print(f"❌ [Rex] Unhandled error: {exc}")
         return RexChatResponse(
             reply=FALLBACK_REPLY.reply,
             emotion=FALLBACK_REPLY.emotion,
             voiceTone=FALLBACK_REPLY.voice_tone,
+            parentNote=f"Rex error: {str(exc)[:150]}",
         )
 
 

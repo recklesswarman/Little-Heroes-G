@@ -62,9 +62,6 @@ subagent_quest_guide = types.SubagentConfig(
     description="Adventure scout that guides the hero across the World Adventure Map and Path of Valor.",
     capabilities=types.SubagentCapabilities(
         agent_behavior=types.AgentBehavior.AUTONOMOUS,
-        enabled_tools=[
-            types.BuiltinTools.VIEW_FILE,
-        ],
     ),
 )
 

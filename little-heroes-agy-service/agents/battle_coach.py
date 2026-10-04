@@ -60,9 +60,6 @@ subagent_battle_coach = types.SubagentConfig(
     description="Tactical toothbrushing coach that gives real-time cadence and technique advice during boss battles.",
     capabilities=types.SubagentCapabilities(
         agent_behavior=types.AgentBehavior.AUTONOMOUS,
-        enabled_tools=[
-            types.BuiltinTools.VIEW_FILE,
-        ],
     ),
 )
 
