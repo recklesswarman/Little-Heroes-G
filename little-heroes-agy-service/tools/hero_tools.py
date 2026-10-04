@@ -18,12 +18,14 @@ from typing import Any
 
 from google.antigravity import ToolContext
 
+from . import request_state
+
 
 # ── Internal helper ──────────────────────────────────────────────────────────
 
 def _get_state(ctx: ToolContext) -> dict:
     """Retrieve the app_state snapshot injected before the agent turn."""
-    return ctx.get_state("app_state", {})
+    return request_state.get(ctx, "app_state", {})
 
 
 def _today_str() -> str:

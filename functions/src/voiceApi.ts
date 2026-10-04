@@ -110,6 +110,7 @@ function elevenLabsTtsUrl(voiceId: string): string {
 // env so it can be tuned without a code change or redeploy. Clamped so a bad
 // env value can never send an out-of-range request upstream.
 const DEFAULT_SPEECH_SPEED = 0.85;
+const DEFAULT_REX_VOICE_ID = "e9sQs6aLWU82SSolkPYZ";
 function getSpeechSpeed(): number {
   const raw = Number(process.env.ELEVENLABS_SPEECH_SPEED);
   if (!Number.isFinite(raw)) return DEFAULT_SPEECH_SPEED;
@@ -144,7 +145,9 @@ app.post("/api/elevenlabs/tts", async (req: Request, res: Response) => {
     }
 
     const normalizedPetId = normalizePetId(petId);
-    const voiceId = normalizedPetId === "rex" ? process.env.ELEVENLABS_REX_VOICE_ID : undefined;
+    const voiceId = normalizedPetId === "rex"
+      ? (process.env.ELEVENLABS_REX_VOICE_ID || DEFAULT_REX_VOICE_ID)
+      : undefined;
     if (!voiceId) {
       res.status(404).json({ error: `No ElevenLabs voice configured for pet "${normalizedPetId}".` });
       return;

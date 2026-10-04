@@ -49,7 +49,7 @@ assert(rexContent.includes('subagent_bedtime_narrator'), 'rex_companion must imp
 assert(rexContent.includes('enable_subagents=True'), 'rex_companion must enable subagents in CapabilitiesConfig');
 assert(rexContent.includes('max_subagent_depth=2'), 'rex_companion must configure max_subagent_depth');
 assert(rexContent.includes('BudgetConfig('), 'rex_companion must enforce budget limits');
-assert(rexContent.includes('CompactionConfig('), 'rex_companion must configure compaction token threshold');
+assert(rexContent.includes('compaction_threshold='), 'rex_companion must configure compaction token threshold');
 console.log('  ✅ PASS: Rex Companion agent configures 3 specialist subagents with budget & compaction');
 
 const mainContent = fs.readFileSync('little-heroes-agy-service/main.py', 'utf8');

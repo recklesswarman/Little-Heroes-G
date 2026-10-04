@@ -1,4 +1,5 @@
 """tools/__init__.py"""
+from . import request_state
 from .hero_tools import (
     get_hero_profile,
     get_quest_progress,
@@ -36,4 +37,5 @@ __all__ = [
     "recall_rex_fact",
     "list_rex_memories",
     "ALL_REX_TOOLS",
+    "request_state",
 ]
