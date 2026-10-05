@@ -16,6 +16,7 @@ Adheres strictly to the Little Heroes Bedtime Guidelines:
 from __future__ import annotations
 
 import json
+import os
 from typing import Any, Optional
 from pydantic import BaseModel, Field
 
@@ -55,6 +56,7 @@ STRICT PALETTE & CONTENT RULES:
 subagent_bedtime_narrator = types.SubagentConfig(
     name="bedtime_narrator",
     description="Soothing story narrator that weaves personalized 4-chapter bedtime adventures.",
+    system_instructions=BEDTIME_NARRATOR_SYSTEM_PROMPT,
     capabilities=types.SubagentCapabilities(
         agent_behavior=types.AgentBehavior.AUTONOMOUS,
     ),
@@ -73,6 +75,17 @@ async def generate_bedtime_chapter(
     past_titles: Optional[list[str]] = None
 ) -> BedtimeChapterResponse:
     """Generates a single soothing chapter of a bedtime story using AGY."""
+    use_vertex = os.environ.get("USE_VERTEX", "false").lower() in ("true", "1") or not os.environ.get("GEMINI_API_KEY")
+    auth_kwargs = (
+        {
+            "vertex": True,
+            "project": os.environ.get("GOOGLE_CLOUD_PROJECT", os.environ.get("PROJECT_ID", "little-heroes-quest-8842")),
+            "location": os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1"),
+        }
+        if use_vertex
+        else {"api_key": os.environ.get("GEMINI_API_KEY")}
+    )
+
     config = LocalAgentConfig(
         system_instructions=BEDTIME_NARRATOR_SYSTEM_PROMPT,
         response_schema=BedtimeChapterResponse,
@@ -81,7 +94,8 @@ async def generate_bedtime_chapter(
             max_input_tokens=10_000,
             max_output_tokens=1_200,
             max_total_tokens=12_000,
-        )
+        ),
+        **auth_kwargs,
     )
 
     rates = [0.94, 0.88, 0.82, 0.76]

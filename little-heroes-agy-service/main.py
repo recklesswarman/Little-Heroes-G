@@ -20,7 +20,7 @@ from typing import Any, Optional
 
 import uvicorn
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -65,7 +65,10 @@ app.add_middleware(
 
 class RexChatRequest(BaseModel):
     message: str = Field(..., description="The child's spoken or typed message.")
-    heroId: str = Field(..., description="Unique hero profile ID.")
+    heroId: Optional[str] = Field(None, description="Unique hero profile ID.")
+    childId: Optional[str] = Field(None, description="Alias for heroId.")
+    hero_id: Optional[str] = Field(None, description="Snake-case alias for heroId.")
+    child_id: Optional[str] = Field(None, description="Snake-case alias for childId.")
     householdId: Optional[str] = Field(None, description="Firestore household doc ID.")
     petId: Optional[str] = Field("rex", description="Active pet ID for voice selection.")
     appState: dict[str, Any] = Field(
@@ -138,13 +141,19 @@ async def health():
 @app.post("/api/rex/chat", response_model=RexChatResponse)
 async def rex_chat(req: RexChatRequest):
     """Primary child-companion conversation with persistent memory per hero."""
+    hero_id = req.heroId or req.childId or req.hero_id or req.child_id or "hero_guest"
     try:
         result = await chat_with_rex(
             message=req.message,
-            hero_id=req.heroId,
+            hero_id=hero_id,
             household_id=req.householdId,
             app_state=req.appState,
         )
+        if result.parent_note and ("error" in result.parent_note.lower() or "402" in result.parent_note):
+            raise HTTPException(
+                status_code=503,
+                detail=f"Rex companion service unavailable: {result.parent_note[:200]}",
+            )
         return RexChatResponse(
             reply=result.reply,
             emotion=result.emotion,
@@ -154,14 +163,14 @@ async def rex_chat(req: RexChatRequest):
             parentNote=result.parent_note,
             habitAwarded=result.habit_awarded,
         )
+    except HTTPException:
+        raise
     except Exception as exc:
         traceback.print_exc()
         print(f"❌ [Rex] Unhandled error: {exc}")
-        return RexChatResponse(
-            reply=FALLBACK_REPLY.reply,
-            emotion=FALLBACK_REPLY.emotion,
-            voiceTone=FALLBACK_REPLY.voice_tone,
-            parentNote=f"Rex error: {str(exc)[:150]}",
+        raise HTTPException(
+            status_code=503,
+            detail=f"Rex companion service unavailable: {str(exc)[:200]}",
         )
 
 

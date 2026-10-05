@@ -53,10 +53,10 @@ def load_conversation_id(
 ) -> Optional[str]:
     """Return the persisted AGY conversation_id for this hero, or None."""
     # 1. Try Firestore first
-    if household_id:
-        try:
-            _ensure_firebase()
-            db = firestore.client()
+    try:
+        _ensure_firebase()
+        db = firestore.client()
+        if household_id:
             doc = (
                 db.collection("households")
                 .document(household_id)
@@ -66,11 +66,19 @@ def load_conversation_id(
                 .document("state")
                 .get()
             )
-            if doc.exists:
-                data = doc.to_dict()
-                return data.get("conversationId")
-        except Exception as exc:
-            print(f"[persistence] Firestore read failed, using local fallback: {exc}")
+        else:
+            doc = (
+                db.collection("heroes")
+                .document(hero_id)
+                .collection("rexAgent")
+                .document("state")
+                .get()
+            )
+        if doc.exists:
+            data = doc.to_dict()
+            return data.get("conversationId")
+    except Exception as exc:
+        print(f"[persistence] Firestore read failed, using local fallback: {exc}")
 
     # 2. Local file fallback
     local_path = Path(save_dir_base) / hero_id / "conversation_id.txt"
@@ -89,28 +97,35 @@ def save_conversation_id(
 ) -> None:
     """Persist the AGY conversation_id for this hero."""
     # 1. Firestore
-    if household_id:
-        try:
-            _ensure_firebase()
-            db = firestore.client()
-            (
+    try:
+        _ensure_firebase()
+        db = firestore.client()
+        if household_id:
+            doc_ref = (
                 db.collection("households")
                 .document(household_id)
                 .collection("heroes")
                 .document(hero_id)
                 .collection("rexAgent")
                 .document("state")
-                .set(
-                    {
-                        "conversationId": conversation_id,
-                        "lastActive": datetime.now(timezone.utc),
-                        "totalTurns": total_turns,
-                    },
-                    merge=True,
-                )
             )
-        except Exception as exc:
-            print(f"[persistence] Firestore write failed, using local fallback: {exc}")
+        else:
+            doc_ref = (
+                db.collection("heroes")
+                .document(hero_id)
+                .collection("rexAgent")
+                .document("state")
+            )
+        doc_ref.set(
+            {
+                "conversationId": conversation_id,
+                "lastActive": datetime.now(timezone.utc),
+                "totalTurns": total_turns,
+            },
+            merge=True,
+        )
+    except Exception as exc:
+        print(f"[persistence] Firestore write failed, using local fallback: {exc}")
 
     # 2. Local file fallback (always write for offline support)
     local_dir = Path(save_dir_base) / hero_id
@@ -123,22 +138,34 @@ def load_rex_memory(
     household_id: Optional[str],
 ) -> dict:
     """Load all long-term Rex facts for this hero from Firestore."""
-    if not household_id:
-        return {}
     try:
         _ensure_firebase()
         db = firestore.client()
-        docs = (
-            db.collection("households")
-            .document(household_id)
-            .collection("heroes")
-            .document(hero_id)
-            .collection("rexMemory")
-            .stream()
-        )
+        if household_id:
+            docs = (
+                db.collection("households")
+                .document(household_id)
+                .collection("heroes")
+                .document(hero_id)
+                .collection("rexMemory")
+                .stream()
+            )
+        else:
+            docs = (
+                db.collection("heroes")
+                .document(hero_id)
+                .collection("rexMemory")
+                .stream()
+            )
         return {doc.id: doc.to_dict().get("value", "") for doc in docs}
     except Exception as exc:
         print(f"[persistence] Rex memory read failed: {exc}")
+        local_path = Path(os.environ.get("AGY_SAVE_DIR", "/tmp/agents")) / hero_id / "rex_memory.json"
+        if local_path.exists():
+            try:
+                return json.loads(local_path.read_text())
+            except Exception:
+                pass
         return {}
 
 
@@ -149,19 +176,41 @@ def save_rex_fact(
     value: str,
 ) -> None:
     """Store a single long-term Rex fact for this hero in Firestore."""
-    if not household_id:
-        return
     try:
         _ensure_firebase()
         db = firestore.client()
-        (
-            db.collection("households")
-            .document(household_id)
-            .collection("heroes")
-            .document(hero_id)
-            .collection("rexMemory")
-            .document(key)
-            .set({"value": value, "updatedAt": datetime.now(timezone.utc)}, merge=True)
-        )
+        if household_id:
+            doc_ref = (
+                db.collection("households")
+                .document(household_id)
+                .collection("heroes")
+                .document(hero_id)
+                .collection("rexMemory")
+                .document(key)
+            )
+        else:
+            doc_ref = (
+                db.collection("heroes")
+                .document(hero_id)
+                .collection("rexMemory")
+                .document(key)
+            )
+        doc_ref.set({"value": value, "updatedAt": datetime.now(timezone.utc)}, merge=True)
     except Exception as exc:
         print(f"[persistence] Rex fact save failed: {exc}")
+
+    # Local file fallback (offline / demo resilience)
+    try:
+        local_dir = Path(os.environ.get("AGY_SAVE_DIR", "/tmp/agents")) / hero_id
+        local_dir.mkdir(parents=True, exist_ok=True)
+        local_file = local_dir / "rex_memory.json"
+        mem = {}
+        if local_file.exists():
+            try:
+                mem = json.loads(local_file.read_text())
+            except Exception:
+                pass
+        mem[key] = value
+        local_file.write_text(json.dumps(mem))
+    except Exception as exc:
+        print(f"[persistence] Local memory write failed: {exc}")

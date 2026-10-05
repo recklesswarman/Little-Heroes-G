@@ -12,6 +12,7 @@ Roles:
 from __future__ import annotations
 
 import json
+import os
 from typing import Any, Optional
 from pydantic import BaseModel, Field
 
@@ -58,6 +59,8 @@ Rules:
 subagent_battle_coach = types.SubagentConfig(
     name="battle_coach",
     description="Tactical toothbrushing coach that gives real-time cadence and technique advice during boss battles.",
+    system_instructions=BATTLE_COACH_SYSTEM_PROMPT,
+    tools=[get_dental_streaks, get_battle_history],
     capabilities=types.SubagentCapabilities(
         agent_behavior=types.AgentBehavior.AUTONOMOUS,
     ),
@@ -72,6 +75,17 @@ async def get_battle_coach_advice(
     equipped_weapon: str = "laser_toothbrush"
 ) -> BattleCoachResponse:
     """Standalone helper to generate dynamic battle coaching."""
+    use_vertex = os.environ.get("USE_VERTEX", "false").lower() in ("true", "1") or not os.environ.get("GEMINI_API_KEY")
+    auth_kwargs = (
+        {
+            "vertex": True,
+            "project": os.environ.get("GOOGLE_CLOUD_PROJECT", os.environ.get("PROJECT_ID", "little-heroes-quest-8842")),
+            "location": os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1"),
+        }
+        if use_vertex
+        else {"api_key": os.environ.get("GEMINI_API_KEY")}
+    )
+
     config = LocalAgentConfig(
         system_instructions=BATTLE_COACH_SYSTEM_PROMPT,
         response_schema=BattleCoachResponse,
@@ -80,7 +94,8 @@ async def get_battle_coach_advice(
             max_input_tokens=8_000,
             max_output_tokens=500,
             max_total_tokens=10_000,
-        )
+        ),
+        **auth_kwargs,
     )
 
     prompt = (

@@ -15,6 +15,8 @@ export interface ChatWithPetData {
   currentHabit?: string;
   petId?: string;
   ageTier?: string;
+  clientHour?: number;
+  timezoneOffsetMinutes?: number;
 }
 
 export const chatWithPet = onCall(
@@ -24,7 +26,15 @@ export const chatWithPet = onCall(
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     const db = getFirestore();
 
-    const { heroId = "Little Hero", message, currentHabit, petId, ageTier = "toddler" } = (request.data || {}) as ChatWithPetData;
+    const {
+      heroId = "Little Hero",
+      message,
+      currentHabit,
+      petId,
+      ageTier = "toddler",
+      clientHour,
+      timezoneOffsetMinutes,
+    } = (request.data || {}) as ChatWithPetData;
     if (!message || !message.trim()) {
       throw new HttpsError("invalid-argument", "Missing message.");
     }
@@ -117,7 +127,7 @@ export const chatWithPet = onCall(
     }
 
     // GUARDRAIL B: Bedtime Cutoff Rule
-    const currentHour = new Date().getHours();
+    const currentHour = clientHour !== undefined ? clientHour : (timezoneOffsetMinutes !== undefined ? new Date(Date.now() - timezoneOffsetMinutes * 60000).getUTCHours() : new Date().getHours());
     if (currentHour >= (parentRules.bedtimeHour ?? 20) || currentHour < 6) {
       return { reply: `*Yawn...* ${pet.name} is fast asleep in the ${pet.restingPlace} for the night! See you in the morning, ${childName}!` };
     }

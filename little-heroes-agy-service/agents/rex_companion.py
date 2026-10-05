@@ -81,6 +81,17 @@ def _make_rex_config(
     Path(save_dir).mkdir(parents=True, exist_ok=True)
     Path(app_data_dir).mkdir(parents=True, exist_ok=True)
 
+    use_vertex = os.environ.get("USE_VERTEX", "false").lower() in ("true", "1") or not os.environ.get("GEMINI_API_KEY")
+    auth_kwargs = (
+        {
+            "vertex": True,
+            "project": os.environ.get("GOOGLE_CLOUD_PROJECT", os.environ.get("PROJECT_ID", "little-heroes-quest-8842")),
+            "location": os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1"),
+        }
+        if use_vertex
+        else {"api_key": os.environ.get("GEMINI_API_KEY")}
+    )
+
     return LocalAgentConfig(
         # ── Persistence ─────────────────────────────────────────
         save_dir=save_dir,
@@ -113,6 +124,7 @@ def _make_rex_config(
             max_output_tokens=1_000,
             max_total_tokens=20_000,
         ),
+        **auth_kwargs,
     )
 
 

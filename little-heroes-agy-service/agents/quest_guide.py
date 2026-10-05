@@ -12,6 +12,7 @@ Roles:
 from __future__ import annotations
 
 import json
+import os
 from typing import Any, Optional
 from pydantic import BaseModel, Field
 
@@ -60,6 +61,7 @@ Rules:
 subagent_quest_guide = types.SubagentConfig(
     name="quest_guide",
     description="Adventure scout that guides the hero across the World Adventure Map and Path of Valor.",
+    system_instructions=QUEST_GUIDE_SYSTEM_PROMPT,
     capabilities=types.SubagentCapabilities(
         agent_behavior=types.AgentBehavior.AUTONOMOUS,
     ),
@@ -73,6 +75,17 @@ async def get_quest_guidance(
     current_waypoint_id: Optional[str] = None
 ) -> QuestGuideResponse:
     """Standalone helper to generate personalized quest map advice."""
+    use_vertex = os.environ.get("USE_VERTEX", "false").lower() in ("true", "1") or not os.environ.get("GEMINI_API_KEY")
+    auth_kwargs = (
+        {
+            "vertex": True,
+            "project": os.environ.get("GOOGLE_CLOUD_PROJECT", os.environ.get("PROJECT_ID", "little-heroes-quest-8842")),
+            "location": os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1"),
+        }
+        if use_vertex
+        else {"api_key": os.environ.get("GEMINI_API_KEY")}
+    )
+
     config = LocalAgentConfig(
         system_instructions=QUEST_GUIDE_SYSTEM_PROMPT,
         response_schema=QuestGuideResponse,
@@ -81,7 +94,8 @@ async def get_quest_guidance(
             max_input_tokens=8_000,
             max_output_tokens=500,
             max_total_tokens=10_000,
-        )
+        ),
+        **auth_kwargs,
     )
 
     prompt = (

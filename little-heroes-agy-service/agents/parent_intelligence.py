@@ -17,6 +17,7 @@ and pet companion interactions to produce:
 from __future__ import annotations
 
 import json
+import os
 from typing import Any, Optional
 from pydantic import BaseModel, Field
 
@@ -66,6 +67,17 @@ async def generate_developmental_report(
     metrics_summary: dict[str, Any]
 ) -> DevelopmentalReportResponse:
     """Synthesizes a 4-pillar developmental report via AGY."""
+    use_vertex = os.environ.get("USE_VERTEX", "false").lower() in ("true", "1") or not os.environ.get("GEMINI_API_KEY")
+    auth_kwargs = (
+        {
+            "vertex": True,
+            "project": os.environ.get("GOOGLE_CLOUD_PROJECT", os.environ.get("PROJECT_ID", "little-heroes-quest-8842")),
+            "location": os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1"),
+        }
+        if use_vertex
+        else {"api_key": os.environ.get("GEMINI_API_KEY")}
+    )
+
     config = LocalAgentConfig(
         system_instructions=PARENT_INTELLIGENCE_PROMPT,
         response_schema=DevelopmentalReportResponse,
@@ -74,7 +86,8 @@ async def generate_developmental_report(
             max_input_tokens=15_000,
             max_output_tokens=2_000,
             max_total_tokens=18_000,
-        )
+        ),
+        **auth_kwargs,
     )
 
     prompt = f"""

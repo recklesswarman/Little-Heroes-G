@@ -91,8 +91,7 @@ function buildAppState(heroId) {
  * Sends a message to the AGY persistent Rex companion and returns a full
  * structured response ({ reply, emotion, voiceTone, suggestedAction, ... }).
  *
- * Falls back to the legacy /api/gemini/chat endpoint and then the Cloud
- * Function if the AGY service is unavailable.
+ * Falls back directly to the chatWithPet Cloud Function if the AGY service is unavailable.
  */
 export async function talkToRexAGY(message, heroId = "hero_demo_1", petId = null) {
   const activePet = store.getActivePet?.();
@@ -112,6 +111,7 @@ export async function talkToRexAGY(message, heroId = "hero_demo_1", petId = null
       body: JSON.stringify({
         message,
         heroId,
+        childId: heroId,
         householdId,
         petId: effectivePetId,
         appState,
@@ -121,7 +121,8 @@ export async function talkToRexAGY(message, heroId = "hero_demo_1", petId = null
 
     if (res.ok) {
       const data = await res.json();
-      if (data?.reply) {
+      const hasErrorNote = typeof data?.parentNote === 'string' && data.parentNote.toLowerCase().includes('error');
+      if (data?.reply && !hasErrorNote) {
         // Handle optional habit award
         if (data.habitAwarded) {
           store.toggleHabitIsland?.(data.habitAwarded);
@@ -140,44 +141,21 @@ export async function talkToRexAGY(message, heroId = "hero_demo_1", petId = null
     console.warn("[heroAgentService] AGY Rex service unavailable, falling back:", err?.message || err);
   }
 
-  // ── 2. Legacy /api/gemini/chat fallback ────────────────────────────────────
-  try {
-    const res = await fetch('/api/gemini/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message,
-        petId: effectivePetId,
-        speedMode: 'smart',
-        childName: heroId,
-      }),
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      if (data?.reply) {
-        if (data.awardedHabit) {
-          store.toggleHabitIsland?.(data.awardedHabit);
-        }
-        return { reply: data.reply, emotion: 'excited', voiceTone: 'energetic' };
-      }
-    }
-  } catch (err) {
-    console.warn("[heroAgentService] Legacy chat fallback notice:", err?.message || err);
-  }
-
-  // ── 3. Cloud Function fallback ─────────────────────────────────────────────
+  // ── 2. Cloud Function fallback (chatWithPet directly) ──────────────────────
   try {
     if (auth && !auth.currentUser) {
       try { await signInAnonymously(auth); } catch {}
     }
     const isToddler = store.isEasyMode?.() ?? true;
     const chatWithPetFn = httpsCallable(functions, "chatWithPet");
+    const now = new Date();
     const result = await chatWithPetFn({
       heroId,
       message,
       petId: effectivePetId,
       ageTier: isToddler ? "toddler" : "kid",
+      clientHour: now.getHours(),
+      timezoneOffsetMinutes: now.getTimezoneOffset(),
     });
     return { reply: result.data.reply, emotion: 'excited', voiceTone: 'energetic' };
   } catch {
