@@ -68,6 +68,10 @@ async def generate_developmental_report(
 ) -> DevelopmentalReportResponse:
     """Synthesizes a 4-pillar developmental report via AGY."""
     use_vertex = os.environ.get("USE_VERTEX", "false").lower() in ("true", "1") or not os.environ.get("GEMINI_API_KEY")
+    model_name = os.environ.get(
+        "GEMINI_MODEL",
+        "gemini-2.5-flash" if use_vertex else "gemini-3.8-flash",
+    )
     auth_kwargs = (
         {
             "vertex": True,
@@ -79,6 +83,7 @@ async def generate_developmental_report(
     )
 
     config = LocalAgentConfig(
+        model=model_name,
         system_instructions=PARENT_INTELLIGENCE_PROMPT,
         response_schema=DevelopmentalReportResponse,
         budget_config=types.BudgetConfig(

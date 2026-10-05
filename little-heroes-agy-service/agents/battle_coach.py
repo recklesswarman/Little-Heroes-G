@@ -76,6 +76,10 @@ async def get_battle_coach_advice(
 ) -> BattleCoachResponse:
     """Standalone helper to generate dynamic battle coaching."""
     use_vertex = os.environ.get("USE_VERTEX", "false").lower() in ("true", "1") or not os.environ.get("GEMINI_API_KEY")
+    model_name = os.environ.get(
+        "GEMINI_MODEL",
+        "gemini-2.5-flash" if use_vertex else "gemini-3.8-flash",
+    )
     auth_kwargs = (
         {
             "vertex": True,
@@ -87,6 +91,7 @@ async def get_battle_coach_advice(
     )
 
     config = LocalAgentConfig(
+        model=model_name,
         system_instructions=BATTLE_COACH_SYSTEM_PROMPT,
         response_schema=BattleCoachResponse,
         budget_config=types.BudgetConfig(

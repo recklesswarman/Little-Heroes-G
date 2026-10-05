@@ -14,6 +14,7 @@ Called by:
 """
 from __future__ import annotations
 
+import os
 import json
 from typing import Any, Optional
 from pydantic import BaseModel, Field
@@ -50,6 +51,21 @@ async def evaluate_proactive_trigger(
 ) -> ProactiveTriggerResult:
     """Evaluates whether to trigger a proactive nudge and generates the Rex response."""
     
+    use_vertex = os.environ.get("USE_VERTEX", "false").lower() in ("true", "1") or not os.environ.get("GEMINI_API_KEY")
+    model_name = os.environ.get(
+        "GEMINI_MODEL",
+        "gemini-2.5-flash" if use_vertex else "gemini-3.8-flash",
+    )
+    auth_kwargs = (
+        {
+            "vertex": True,
+            "project": os.environ.get("GOOGLE_CLOUD_PROJECT", os.environ.get("PROJECT_ID", "little-heroes-quest-8842")),
+            "location": os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1"),
+        }
+        if use_vertex
+        else {"api_key": os.environ.get("GEMINI_API_KEY")}
+    )
+
     # ── Bedtime Check-in ─────────────────────────────────────────────
     if trigger_type == "bedtime_checkin":
         if brushed_evening_today:
@@ -66,9 +82,11 @@ async def evaluate_proactive_trigger(
 
         # Evening brush pending
         config = LocalAgentConfig(
+            model=model_name,
             system_instructions=PROACTIVE_SYSTEM_PROMPT,
             response_schema=RexAgentResponse,
-            budget_config=types.BudgetConfig(max_model_calls=2, max_output_tokens=300)
+            budget_config=types.BudgetConfig(max_model_calls=2, max_output_tokens=300),
+            **auth_kwargs,
         )
         prompt = f"Bedtime check-in for {hero_name}. Evening teeth not brushed yet. Give a loving 1-sentence prompt to do the Sugar Fortress night battle before cozy bedtime!"
         try:
@@ -96,9 +114,11 @@ async def evaluate_proactive_trigger(
     # ── Morning Streak ───────────────────────────────────────────────
     elif trigger_type == "morning_streak":
         config = LocalAgentConfig(
+            model=model_name,
             system_instructions=PROACTIVE_SYSTEM_PROMPT,
             response_schema=RexAgentResponse,
-            budget_config=types.BudgetConfig(max_model_calls=2, max_output_tokens=300)
+            budget_config=types.BudgetConfig(max_model_calls=2, max_output_tokens=300),
+            **auth_kwargs,
         )
         prompt = f"Morning greeting for {hero_name}. Current streak is {streak} days! Encourage them to start the day strong with their morning routine!"
         try:

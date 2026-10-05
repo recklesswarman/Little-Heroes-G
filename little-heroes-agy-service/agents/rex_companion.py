@@ -82,6 +82,10 @@ def _make_rex_config(
     Path(app_data_dir).mkdir(parents=True, exist_ok=True)
 
     use_vertex = os.environ.get("USE_VERTEX", "false").lower() in ("true", "1") or not os.environ.get("GEMINI_API_KEY")
+    model_name = os.environ.get(
+        "GEMINI_MODEL",
+        "gemini-2.5-flash" if use_vertex else "gemini-3.8-flash",
+    )
     auth_kwargs = (
         {
             "vertex": True,
@@ -93,6 +97,7 @@ def _make_rex_config(
     )
 
     return LocalAgentConfig(
+        model=model_name,
         # ── Persistence ─────────────────────────────────────────
         save_dir=save_dir,
         app_data_dir=app_data_dir,

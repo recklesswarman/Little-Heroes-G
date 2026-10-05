@@ -76,6 +76,10 @@ async def generate_bedtime_chapter(
 ) -> BedtimeChapterResponse:
     """Generates a single soothing chapter of a bedtime story using AGY."""
     use_vertex = os.environ.get("USE_VERTEX", "false").lower() in ("true", "1") or not os.environ.get("GEMINI_API_KEY")
+    model_name = os.environ.get(
+        "GEMINI_MODEL",
+        "gemini-2.5-flash" if use_vertex else "gemini-3.8-flash",
+    )
     auth_kwargs = (
         {
             "vertex": True,
@@ -87,6 +91,7 @@ async def generate_bedtime_chapter(
     )
 
     config = LocalAgentConfig(
+        model=model_name,
         system_instructions=BEDTIME_NARRATOR_SYSTEM_PROMPT,
         response_schema=BedtimeChapterResponse,
         budget_config=types.BudgetConfig(
