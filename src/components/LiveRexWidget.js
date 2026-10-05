@@ -16,6 +16,7 @@ import { triggerInteractiveCelebration } from './InteractiveCelebrationOverlay.j
 import { renderPetSkeletalFaceViewer, initPetSkeletalFaceViewer, getActivePetSkeletalInstance } from './PetSkeletalFaceViewer.js';
 import { getPetFaceProfile } from '../services/petSkeletalFaceService.js';
 import { preserveScrollPosition } from '../utils/scrollPreserve.js';
+import { talkToRexAGY } from '../services/heroAgentService.js';
 
 let activeTab = 'live'; // 'live' | 'chat'
 let chatSpeedMode = 'smart'; // 'smart' | 'fast'
@@ -27,6 +28,28 @@ let chatMessages = [
     timestamp: Date.now()
   }
 ];
+
+export function addChatMessage(sender, text) {
+  if (!text || typeof text !== 'string') return;
+  const msg = {
+    id: `${sender}_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+    sender,
+    text,
+    timestamp: Date.now()
+  };
+  chatMessages.push(msg);
+  if (chatMessages.length > 30) chatMessages.shift();
+
+  const thread = document.getElementById('rex-chat-thread');
+  if (thread) {
+    const activePet = store?.getActivePet?.() || { id: 'rex', name: 'Rex the Dino' };
+    const pName = activePet.name || 'Rex the Dino';
+    const pEmoji = activePet.emoji || '🦖';
+    thread.insertAdjacentHTML('beforeend', renderChatMessage(msg, pName, pEmoji));
+    scrollChatToBottom();
+    attachListenButtons();
+  }
+}
 
 /**
  * Generates dynamic SVG for Rex the Dino with expressions for listening, thinking, and speaking
@@ -697,6 +720,10 @@ export function attachLiveRexWidgetListeners() {
     rexEngine.unlockAudio();
     if (geminiLiveService.isActive) return;
 
+    const state = store.getState();
+    const hero = store.getSelectedHero?.() || state.selectedHero || {};
+    const kidName = hero?.name?.trim() || 'Little Hero';
+
     try {
       Sound.pop();
       await geminiLiveService.connect(petId);
@@ -704,15 +731,17 @@ export function attachLiveRexWidgetListeners() {
         geminiLiveService.disconnect();
         return;
       }
-      const pGreeting = `ROAR! I'm ${petName}! Ready for super hero adventures, Little Hero?`;
+      const pGreeting = `ROAR! Hey ${kidName}! I'm ${petName}! Ready for super hero adventures? 🦖⭐`;
       updateLiveDialogue(null, pGreeting);
+      addChatMessage('rex', pGreeting);
       speakCompanion(pGreeting, petId, restoreLiveListening);
     } catch (liveErr) {
       console.warn("Gemini Live connection notice, activating speech recognition fallback:", liveErr);
       if (!store.getState().liveRex?.isOpen) return;
       rexEngine.start();
-      const pGreeting = `ROAR! I'm ${petName}! I'm listening! Tell me about your quests!`;
+      const pGreeting = `ROAR! Hey ${kidName}! I'm ${petName}! I'm listening! Tell me about your quests! 🦖⭐`;
       updateLiveDialogue(null, pGreeting);
+      addChatMessage('rex', pGreeting);
       speakCompanion(pGreeting, petId, restoreLiveListening);
     }
   }
@@ -725,8 +754,11 @@ export function attachLiveRexWidgetListeners() {
       Sound.chirp();
       const inst = getActivePetSkeletalInstance('modal-mascot-skeletal-canvas');
       if (inst) inst.triggerForeheadPat();
-      const patSpeech = "*Giggle!* That tickles! I love head pats, Little Hero! ❤️";
+      const hero = store.getSelectedHero?.() || store.getState().selectedHero || {};
+      const kidName = hero?.name?.trim() || 'Little Hero';
+      const patSpeech = `*Giggle!* That tickles! I love head pats, ${kidName}! ❤️`;
       updateLiveDialogue(null, patSpeech);
+      addChatMessage('rex', patSpeech);
       if (geminiLiveService.isActive) geminiLiveService.sendTextMessage("I patted your head!");
       speakCompanion(patSpeech, activePetId, restoreLiveListening);
     });
@@ -739,8 +771,11 @@ export function attachLiveRexWidgetListeners() {
       Sound.pop();
       const inst = getActivePetSkeletalInstance('modal-mascot-skeletal-canvas');
       if (inst) inst.triggerCheekPoke();
-      const pokeSpeech = "*Boing!* Squishy dinosaur cheeks! You're super silly! 🤭";
+      const hero = store.getSelectedHero?.() || store.getState().selectedHero || {};
+      const kidName = hero?.name?.trim() || 'Little Hero';
+      const pokeSpeech = `*Boing!* Squishy dinosaur cheeks! You're super silly, ${kidName}! 🤭`;
       updateLiveDialogue(null, pokeSpeech);
+      addChatMessage('rex', pokeSpeech);
       if (geminiLiveService.isActive) geminiLiveService.sendTextMessage("I poked your cheek!");
       speakCompanion(pokeSpeech, activePetId, restoreLiveListening);
     });
@@ -754,8 +789,11 @@ export function attachLiveRexWidgetListeners() {
       triggerInteractiveCelebration();
       const inst = getActivePetSkeletalInstance('modal-mascot-skeletal-canvas');
       if (inst) inst.triggerForeheadPat();
-      const roarSpeech = "*Happy Roar!* RAWR! Super Dinosaur Hero Power! 🦖⭐";
+      const hero = store.getSelectedHero?.() || store.getState().selectedHero || {};
+      const kidName = hero?.name?.trim() || 'Little Hero';
+      const roarSpeech = `*Happy Roar!* RAWR! Super Dinosaur Hero Power, ${kidName}! 🦖⭐`;
       updateLiveDialogue(null, roarSpeech);
+      addChatMessage('rex', roarSpeech);
       if (geminiLiveService.isActive) geminiLiveService.sendTextMessage("ROAR!");
       speakCompanion(roarSpeech, activePetId, restoreLiveListening);
     });
@@ -764,7 +802,15 @@ export function attachLiveRexWidgetListeners() {
   // Floating mascot toggle button: Selecting companion activates Gemini Live API!
   const floatBtn = document.getElementById('live-rex-floating-btn');
   if (floatBtn) {
-    floatBtn.addEventListener('click', async () => {
+    let lastTapTime = 0;
+    const handleToggleMascotModal = async (e) => {
+      if (e) {
+        e.stopPropagation();
+      }
+      const now = Date.now();
+      if (now - lastTapTime < 300) return;
+      lastTapTime = now;
+
       Sound.click();
       rexEngine.unlockAudio();
       geminiLiveService.unlockAudio();
@@ -774,7 +820,7 @@ export function attachLiveRexWidgetListeners() {
       if (!wasOpen) {
         // Open modal
         store.toggleLiveRexModal(true);
-        // AND ACTIVATE GEMINI LIVE API!
+        // AND ACTIVATE GEMINI LIVE API / PERSONALIZED GREETING!
         await activateLiveGeminiSession(activePetId);
       } else {
         // Close modal and cleanly disconnect
@@ -785,7 +831,9 @@ export function attachLiveRexWidgetListeners() {
         rexEngine.stop();
         stopRex();
       }
-    });
+    };
+
+    floatBtn.addEventListener('click', handleToggleMascotModal);
   }
 
   // Toggle Live Audio function: Handles Tap-to-Interrupt, Walkie-Talkie, and Talk Freely modes
@@ -915,64 +963,69 @@ export function attachLiveRexWidgetListeners() {
       rexEngine.unlockAudio();
       geminiLiveService.unlockAudio();
 
+      const hero = store.getSelectedHero?.() || store.getState().selectedHero || {};
+      const kidName = hero?.name?.trim() || 'Little Hero';
+
       let rexReply = '';
       switch (action) {
         case 'roar':
           Sound.roar();
-          rexReply = "*Happy Roar!* RAWR! Super Dinosaur Hero Power! 🦖⭐";
+          rexReply = `*Happy Roar!* RAWR! Super Dinosaur Hero Power, ${kidName}! 🦖⭐`;
           getActivePetSkeletalInstance('modal-mascot-skeletal-canvas')?.triggerForeheadPat?.();
           triggerInteractiveCelebration();
           break;
         case 'teeth': {
           const res = store.claimCompanionHabit('teeth');
           triggerInteractiveCelebration();
-          rexReply = `*Sparkle smile!* +${res.coins} Coins 🪙! Look at those shiny clean teeth! Super hero smile power! 🪥✨`;
+          rexReply = `*Sparkle smile!* +${res.coins} Coins 🪙! Look at those shiny clean teeth, ${kidName}! Super hero smile power! 🪥✨`;
           break;
         }
         case 'yay':
           Sound.chirp();
           triggerInteractiveCelebration();
-          rexReply = "*HIGH FIVE!* Up high, down low, you are an incredible superstar! ⭐🎉";
+          rexReply = `*HIGH FIVE, ${kidName}!* Up high, down low, you are an incredible superstar! ⭐🎉`;
           break;
         case 'toys': {
           const res = store.claimCompanionHabit('toys');
           triggerInteractiveCelebration();
-          rexReply = `*Tidy Champion!* +${res.coins} Coins 🪙! All toys safely in their home! Great teamwork, Little Hero! 🧸⭐`;
+          rexReply = `*Tidy Champion!* +${res.coins} Coins 🪙! All toys safely in their home! Great teamwork, ${kidName}! 🧸⭐`;
           break;
         }
         case 'snack': {
           const res = store.claimCompanionHabit('snack');
           triggerInteractiveCelebration();
-          rexReply = `*Crunch crunch!* +${res.coins} Coins 🪙! Yummy vitamins! Healthy snacks give you super dinosaur strength! 🍎🥦`;
+          rexReply = `*Crunch crunch!* +${res.coins} Coins 🪙! Yummy vitamins! Healthy snacks give you super strength, ${kidName}! 🍎🥦`;
           break;
         }
         case 'water': {
           const res = store.claimCompanionHabit('water');
           triggerInteractiveCelebration();
-          rexReply = `*Gulp gulp!* +${res.coins} Coins 🪙! Super hero hydration! Cool fresh water powers up your brain and muscles! 💧🦖`;
+          rexReply = `*Gulp gulp!* +${res.coins} Coins 🪙! Super hero hydration, ${kidName}! Cool fresh water powers up your brain! 💧🦖`;
           break;
         }
         case 'breathe':
           Sound.chirp();
-          rexReply = "Let's breathe together: In 1-2-3... and gentle dragon breath out 1-2-3! Ahhh, feel how calm you are! 🌬️";
+          rexReply = `Let's breathe together, ${kidName}: In 1-2-3... and gentle dragon breath out 1-2-3! Feel how calm you are! 🌬️`;
           break;
         case 'joke': {
           Sound.chirp();
           const jokes = [
-            "What do you call a sleeping dinosaur? A dino-snore! *Hahaha!* 🦖💤",
-            "Why did the T-Rex cross the road? To catch the super hero bus! *Giggle!* 🚌🦖",
-            "What is a dinosaur's favorite school subject? His-tree-history! *Roar!* 📚🦕"
+            `What do you call a sleeping dinosaur, ${kidName}? A dino-snore! *Hahaha!* 🦖💤`,
+            `Why did the T-Rex cross the road, ${kidName}? To catch the super hero bus! *Giggle!* 🚌🦖`,
+            `What is a dinosaur's favorite school subject, ${kidName}? His-tree-history! *Roar!* 📚🦕`
           ];
           rexReply = jokes[Math.floor(Math.random() * jokes.length)];
           break;
         }
         default:
-          rexReply = `*Happy roar!* You're doing incredible, Little Hero!`;
+          rexReply = `*Happy roar!* You're doing incredible, ${kidName}!`;
           break;
       }
 
       // Show user message & Rex reply in live dialogue immediately
       updateLiveDialogue(prompt, rexReply);
+      addChatMessage('user', prompt);
+      addChatMessage('rex', rexReply);
 
       // If Gemini Live is active, forward text to live session with handleInGame: false so server session tracks context without duplicate local triggers
       if (geminiLiveService.isActive) {
@@ -1197,6 +1250,11 @@ export function attachLiveRexWidgetListeners() {
       const floatRig = getActivePetSkeletalInstance('floating-mascot-skeletal-canvas');
       modalRig?.startSpeaking?.();
       floatRig?.startSpeaking?.();
+
+      const spokenText = e?.detail?.text;
+      if (spokenText) {
+        updateLiveDialogue(null, spokenText);
+      }
     };
     window._liveRexCompanionSpeechEnd = () => {
       const modalRig = getActivePetSkeletalInstance('modal-mascot-skeletal-canvas');
@@ -1230,6 +1288,7 @@ async function handleSendChatMessage(text) {
   const activePet = store?.getActivePet?.() || { id: 'rex', name: 'Rex the Dino' };
   const petName = escapeHtml(activePet.name) || 'Rex the Dino';
   const petEmoji = activePet.emoji || '🦖';
+  const activePetId = activePet.id || 'rex';
   const thread = document.getElementById('rex-chat-thread');
 
   // 1. Add user message
@@ -1246,6 +1305,9 @@ async function handleSendChatMessage(text) {
     scrollChatToBottom();
   }
 
+  // Also show user text in live dialogue
+  updateLiveDialogue(text, null);
+
   // 2. Add placeholder thinking bubble
   const thinkingId = 'thinking_' + Date.now();
   if (thread) {
@@ -1258,27 +1320,36 @@ async function handleSendChatMessage(text) {
     scrollChatToBottom();
   }
 
-  // 3. Request reply from server
+  // 3. Request reply from AGY persistent agent service
   try {
-    const reply = await geminiLiveService.askRexChat(text, chatSpeedMode);
+    const currentHero = store.getSelectedHero?.() || store.getState().selectedHero || {};
+    const heroId = currentHero.id || store.getSelectedKidId?.() || 'hero_1';
+    const agyResult = await talkToRexAGY(text, heroId, activePetId);
+
     const thinkEl = document.getElementById(thinkingId);
     if (thinkEl) thinkEl.remove();
 
-    if (reply) {
-      const rexMsg = {
-        id: 'rex_' + Date.now(),
-        sender: 'rex',
-        text: reply,
-        timestamp: Date.now()
-      };
-      chatMessages.push(rexMsg);
-      if (thread) {
-        thread.insertAdjacentHTML('beforeend', renderChatMessage(rexMsg, petName, petEmoji));
-        scrollChatToBottom();
-        attachListenButtons();
-      }
+    const reply = agyResult?.reply || `*Happy roar!* You're doing incredible!`;
+    const rexMsg = {
+      id: 'rex_' + Date.now(),
+      sender: 'rex',
+      text: reply,
+      timestamp: Date.now()
+    };
+    chatMessages.push(rexMsg);
+    if (thread) {
+      thread.insertAdjacentHTML('beforeend', renderChatMessage(rexMsg, petName, petEmoji));
+      scrollChatToBottom();
+      attachListenButtons();
     }
+
+    // Update live dialogue box
+    updateLiveDialogue(null, reply);
+
+    // Speak aloud using realistic kid-friendly voice
+    speakCompanion(reply, activePetId);
   } catch (err) {
+    console.warn("Error communicating with Rex AGY agent:", err);
     const thinkEl = document.getElementById(thinkingId);
     if (thinkEl) thinkEl.remove();
   }

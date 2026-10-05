@@ -69,6 +69,8 @@ class RexChatRequest(BaseModel):
     childId: Optional[str] = Field(None, description="Alias for heroId.")
     hero_id: Optional[str] = Field(None, description="Snake-case alias for heroId.")
     child_id: Optional[str] = Field(None, description="Snake-case alias for childId.")
+    heroName: Optional[str] = Field(None, description="The child's real name (e.g. Leo).")
+    childName: Optional[str] = Field(None, description="Alias for heroName.")
     householdId: Optional[str] = Field(None, description="Firestore household doc ID.")
     petId: Optional[str] = Field("rex", description="Active pet ID for voice selection.")
     appState: dict[str, Any] = Field(
@@ -93,6 +95,8 @@ class BattleCoachRequest(BaseModel):
     currentQuadrant: int = 1
     cadenceScore: float = 85.0
     equippedWeapon: str = "laser_toothbrush"
+    heroName: Optional[str] = "Little Hero"
+    childName: Optional[str] = None
 
 
 class QuestGuideRequest(BaseModel):
@@ -142,12 +146,23 @@ async def health():
 async def rex_chat(req: RexChatRequest):
     """Primary child-companion conversation with persistent memory per hero."""
     hero_id = req.heroId or req.childId or req.hero_id or req.child_id or "hero_guest"
+    kid_name = req.heroName or req.childName
+    app_state = req.appState or {}
+    if kid_name:
+        if "hero" not in app_state:
+            app_state["hero"] = {}
+        app_state["hero"]["name"] = kid_name
+    elif "hero" not in app_state or not app_state["hero"].get("name"):
+        if "hero" not in app_state:
+            app_state["hero"] = {}
+        app_state["hero"]["name"] = "Little Hero"
+
     try:
         result = await chat_with_rex(
             message=req.message,
             hero_id=hero_id,
             household_id=req.householdId,
-            app_state=req.appState,
+            app_state=app_state,
         )
         if result.parent_note and ("error" in result.parent_note.lower() or "402" in result.parent_note):
             raise HTTPException(
@@ -177,12 +192,14 @@ async def rex_chat(req: RexChatRequest):
 @app.post("/api/rex/battle-coach", response_model=BattleCoachResponse)
 async def battle_coach(req: BattleCoachRequest):
     """Tactical toothbrushing advice and villain counter-moves during boss combat."""
+    hero_name = req.heroName or req.childName or "Little Hero"
     return await get_battle_coach_advice(
         boss_id=req.bossId,
         boss_hp_percent=req.bossHpPercent,
         current_quadrant=req.currentQuadrant,
         cadence_score=req.cadenceScore,
         equipped_weapon=req.equippedWeapon,
+        hero_name=hero_name,
     )
 
 

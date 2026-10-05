@@ -11,6 +11,7 @@ import { signInAnonymously } from "firebase/auth";
 import { geminiLiveService } from "./geminiLiveService.js";
 import { speakCompanion, unlockVoiceAudio, isRexSpeaking } from "./voiceService.js";
 import { triggerInteractiveCelebration } from "../components/InteractiveCelebrationOverlay.js";
+import { talkToRexAGY } from "./heroAgentService.js";
 
 let functions = existingFunctions;
 if (!functions) {
@@ -481,42 +482,29 @@ class RexVoiceEngine {
     }, true);
 
     try {
-      // 1. Primary: Server-Side Gemini Chatbot API (secure server credentials)
-      const response = await fetch('/api/gemini/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message,
-          petId: activePetId,
-          speedMode: 'smart',
-          childName: heroName
-        })
-      });
+      // 1. Primary: Persistent AGY Rex Microservice with app-state awareness & memory
+      const agyData = await talkToRexAGY(message, activeHero?.id, activePetId);
+      if (agyData && agyData.reply) {
+        store.setLiveRexState({ lastRexTranscript: agyData.reply }, true);
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data && data.reply) {
-          store.setLiveRexState({ lastRexTranscript: data.reply }, true);
-
-          if (data.awardedHabit) {
-            const res = store.claimCompanionHabit(data.awardedHabit);
-            if (res?.isNew) {
-              triggerInteractiveCelebration({
-                text: `+${res.coins} Coins! Habit Complete!`,
-                subtext: 'Awesome job!',
-                coins: res.coins,
-                emojis: ['⭐', '🦖', '✨']
-              });
-            }
+        if (agyData.habitAwarded) {
+          const res = store.claimCompanionHabit(agyData.habitAwarded);
+          if (res?.isNew) {
+            triggerInteractiveCelebration({
+              text: `+${res.coins} Coins! Habit Complete!`,
+              subtext: 'Awesome job!',
+              coins: res.coins,
+              emojis: ['⭐', '🦖', '✨']
+            });
           }
-
-          this.speak(data.reply, activePetId);
-          return data.reply;
         }
+
+        this.speak(agyData.reply, activePetId);
+        return agyData.reply;
       }
-      throw new Error('Chat API returned invalid response');
+      throw new Error('AGY Rex returned invalid response');
     } catch (err) {
-      console.warn("Primary Gemini Chat notice, trying secondary cloud or local fallback:", err?.message || err);
+      console.warn("Primary AGY Rex Chat notice, trying secondary cloud or local fallback:", err?.message || err);
 
       // Try Firebase Cloud Functions if available
       try {

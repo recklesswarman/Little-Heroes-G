@@ -72,7 +72,8 @@ async def get_battle_coach_advice(
     boss_hp_percent: float,
     current_quadrant: int,
     cadence_score: float,
-    equipped_weapon: str = "laser_toothbrush"
+    equipped_weapon: str = "laser_toothbrush",
+    hero_name: str = "Little Hero"
 ) -> BattleCoachResponse:
     """Standalone helper to generate dynamic battle coaching."""
     use_vertex = os.environ.get("USE_VERTEX", "false").lower() in ("true", "1") or not os.environ.get("GEMINI_API_KEY")
@@ -104,9 +105,10 @@ async def get_battle_coach_advice(
     )
 
     prompt = (
+        f"Hero: {hero_name}. "
         f"Boss: {boss_id} at {boss_hp_percent}% HP. "
         f"Hero currently brushing quadrant {current_quadrant} with {equipped_weapon}. "
-        f"Cadence score: {cadence_score}. Give quick tactical advice!"
+        f"Cadence score: {cadence_score}. Give quick tactical advice directly to {hero_name}!"
     )
 
     try:
@@ -119,7 +121,7 @@ async def get_battle_coach_advice(
         print(f"[BattleCoach] Fallback triggered: {exc}")
 
     return BattleCoachResponse(
-        coach_text="ENAMEL POWER SURGE! Keep those circles moving, Little Hero!",
+        coach_text=f"ENAMEL POWER SURGE! Keep those circles moving, {hero_name}!",
         suggested_move="scrub",
         target_quadrant=current_quadrant,
         urgency="normal"

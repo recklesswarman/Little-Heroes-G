@@ -647,28 +647,17 @@ class GeminiLiveService {
     store.setLiveRexState({ lastUserTranscript: promptText }, true);
 
     try {
-      const response = await fetch('/api/gemini/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: promptText,
-          petId,
-          speedMode,
-          childName
-        })
-      });
+      const { talkToRexAGY } = await import('./heroAgentService.js');
+      const currentHero = store.getSelectedHero?.() || store.getState().selectedHero || {};
+      const heroId = currentHero.id || store.getSelectedKidId?.() || 'hero_1';
+      const result = await talkToRexAGY(promptText, heroId, petId);
 
-      if (!response.ok) {
-        throw new Error(`Chat HTTP error: ${response.status}`);
-      }
-
-      const result = await response.json();
       if (result && result.reply) {
         store.setLiveRexState({ lastRexTranscript: result.reply }, true);
 
         // If a habit was completed, auto-award it
-        if (result.awardedHabit) {
-          store.claimCompanionHabit(result.awardedHabit);
+        if (result.habitAwarded) {
+          store.claimCompanionHabit(result.habitAwarded);
           triggerInteractiveCelebration();
         }
 
@@ -680,7 +669,7 @@ class GeminiLiveService {
         return result.reply;
       }
     } catch (err) {
-      console.warn('Chat error, attempting Cloud Functions fallback:', err);
+      console.warn('AGY Chat notice, attempting Cloud Functions fallback:', err);
       try {
         const { cloudFunctions, cloudFunctionsService } = await import('./cloudFunctionsService.js');
         const cf = cloudFunctions || cloudFunctionsService;

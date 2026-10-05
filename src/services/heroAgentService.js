@@ -26,9 +26,15 @@ const AGY_REX_URL = import.meta.env?.VITE_AGY_REX_URL || '';
  */
 function buildAppState(heroId) {
   const state = store.getState?.() || {};
-  const selectedHero = state.selectedHero || {};
+  const currentHero = store.getSelectedHero?.() || state.selectedHero || {};
   const heroes = state.heroes || [];
-  const hero = heroes.find(h => h.id === heroId) || selectedHero;
+  let hero = currentHero;
+  if (heroId && heroId !== 'hero_demo_1' && currentHero.id !== heroId) {
+    hero = heroes.find(h => h.id === heroId) || currentHero;
+  }
+  const rawName = hero.name || currentHero.name || (heroes[0] && heroes[0].name) || '';
+  const heroName = (rawName && rawName.trim()) ? rawName.trim() : 'Little Hero';
+  const effectiveHeroId = hero.id || heroId || 'hero_1';
   const activePet = store.getActivePet?.() || {};
   const petStats = (state.petStatsMap || {})[activePet.id] || {};
 
@@ -49,14 +55,14 @@ function buildAppState(heroId) {
     lastBrushedEvening: state.lastBrushedEvening || null,
     consecutiveStreak: hero.streak || 0,
     dentalBadges: state.dentalBadges || [],
-    lastFlossDate: (state.hygieneReminders?.[heroId]?.flossDate) || null,
-    lastMouthwashDate: (state.hygieneReminders?.[heroId]?.mouthwashDate) || null,
+    lastFlossDate: (state.hygieneReminders?.[effectiveHeroId]?.flossDate) || null,
+    lastMouthwashDate: (state.hygieneReminders?.[effectiveHeroId]?.mouthwashDate) || null,
   };
 
   return {
     hero: {
-      id: hero.id,
-      name: hero.name,
+      id: effectiveHeroId,
+      name: heroName,
       level: hero.level || 1,
       xp: hero.xp || 0,
       xpNext: hero.xpNext || 100,
@@ -93,11 +99,15 @@ function buildAppState(heroId) {
  *
  * Falls back directly to the chatWithPet Cloud Function if the AGY service is unavailable.
  */
-export async function talkToRexAGY(message, heroId = "hero_demo_1", petId = null) {
+export async function talkToRexAGY(message, heroId = null, petId = null) {
+  const state = store.getState?.() || {};
+  const currentHero = store.getSelectedHero?.() || state.selectedHero || {};
+  const effectiveHeroId = heroId || currentHero.id || store.getSelectedKidId?.() || "hero_1";
   const activePet = store.getActivePet?.();
   const effectivePetId = petId || activePet?.id || "rex";
-  const householdId = store.getState?.()?.household?.id || null;
-  const appState = buildAppState(heroId);
+  const householdId = state.household?.id || null;
+  const appState = buildAppState(effectiveHeroId);
+  const heroName = appState.hero.name || "Little Hero";
 
   // ── 1. AGY Rex microservice (primary) ──────────────────────────────────────
   const agyEndpoint = AGY_REX_URL
@@ -110,8 +120,10 @@ export async function talkToRexAGY(message, heroId = "hero_demo_1", petId = null
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         message,
-        heroId,
-        childId: heroId,
+        heroId: effectiveHeroId,
+        childId: effectiveHeroId,
+        heroName,
+        childName: heroName,
         householdId,
         petId: effectivePetId,
         appState,
@@ -150,9 +162,11 @@ export async function talkToRexAGY(message, heroId = "hero_demo_1", petId = null
     const chatWithPetFn = httpsCallable(functions, "chatWithPet");
     const now = new Date();
     const result = await chatWithPetFn({
-      heroId,
+      heroId: effectiveHeroId,
       message,
       petId: effectivePetId,
+      childName: heroName,
+      heroName,
       ageTier: isToddler ? "toddler" : "kid",
       clientHour: now.getHours(),
       timezoneOffsetMinutes: now.getTimezoneOffset(),
@@ -160,7 +174,7 @@ export async function talkToRexAGY(message, heroId = "hero_demo_1", petId = null
     return { reply: result.data.reply, emotion: 'excited', voiceTone: 'energetic' };
   } catch {
     return {
-      reply: `*Happy cheer!* Great job, Little Hero! Let's explore and have fun together!`,
+      reply: `*Happy cheer!* Rawr! Great job, ${heroName}! Let's explore and have fun together! 🦖✨`,
       emotion: 'excited',
       voiceTone: 'energetic',
     };
@@ -187,13 +201,24 @@ export function playRexVoice(text, petId = null) {
 /**
  * Invokes the Battle Coach AGY agent for tactical brushing guidance
  */
-export async function getBattleCoachAdvice(bossId, bossHpPercent, currentQuadrant, cadenceScore, equippedWeapon = "laser_toothbrush") {
+export async function getBattleCoachAdvice(bossId, bossHpPercent, currentQuadrant, cadenceScore, equippedWeapon = "laser_toothbrush", heroName = null) {
+  const state = store.getState?.() || {};
+  const currentHero = store.getSelectedHero?.() || state.selectedHero || {};
+  const effectiveHeroName = heroName || currentHero.name || "Little Hero";
   const endpoint = AGY_REX_URL ? `${AGY_REX_URL}/api/rex/battle-coach` : '/api/rex/battle-coach';
   try {
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ bossId, bossHpPercent, currentQuadrant, cadenceScore, equippedWeapon }),
+      body: JSON.stringify({
+        bossId,
+        bossHpPercent,
+        currentQuadrant,
+        cadenceScore,
+        equippedWeapon,
+        heroName: effectiveHeroName,
+        childName: effectiveHeroName,
+      }),
       signal: AbortSignal.timeout(6000)
     });
     if (res.ok) {
@@ -203,7 +228,7 @@ export async function getBattleCoachAdvice(bossId, bossHpPercent, currentQuadran
     console.warn("[heroAgentService] Battle coach unavailable:", err?.message || err);
   }
   return {
-    coach_text: "ENAMEL POWER SURGE! Keep scrubbing those sweet treats away!",
+    coach_text: `ENAMEL POWER SURGE! Keep scrubbing those sweet treats away, ${effectiveHeroName}!`,
     suggested_move: "scrub",
     target_quadrant: currentQuadrant,
     urgency: "normal"
@@ -213,13 +238,22 @@ export async function getBattleCoachAdvice(bossId, bossHpPercent, currentQuadran
 /**
  * Invokes the Quest Guide AGY agent for Path of Valor directions
  */
-export async function getQuestGuideDirections(heroName, level, completedWaypoints, currentWaypointId = null) {
+export async function getQuestGuideDirections(heroName = null, level = 1, completedWaypoints = [], currentWaypointId = null) {
+  const state = store.getState?.() || {};
+  const currentHero = store.getSelectedHero?.() || state.selectedHero || {};
+  const effectiveHeroName = heroName || currentHero.name || "Little Hero";
   const endpoint = AGY_REX_URL ? `${AGY_REX_URL}/api/rex/quest-guide` : '/api/rex/quest-guide';
   try {
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ heroName, level, completedWaypoints, currentWaypointId }),
+      body: JSON.stringify({
+        heroName: effectiveHeroName,
+        childName: effectiveHeroName,
+        level,
+        completedWaypoints,
+        currentWaypointId
+      }),
       signal: AbortSignal.timeout(6000)
     });
     if (res.ok) {
@@ -229,7 +263,7 @@ export async function getQuestGuideDirections(heroName, level, completedWaypoint
     console.warn("[heroAgentService] Quest guide unavailable:", err?.message || err);
   }
   return {
-    guidance_text: `Onward ${heroName}! Check your map for the next glowing waypoint!`,
+    guidance_text: `Onward ${effectiveHeroName}! Check your map for the next glowing waypoint!`,
     recommended_waypoint_id: currentWaypointId || "wp_night_teeth",
     unlocked_biome: "Dino Meadow",
     required_habit_or_chore: "Daily Quest"

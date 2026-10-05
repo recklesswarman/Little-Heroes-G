@@ -37,9 +37,15 @@ AGY_SAVE_DIR_BASE = os.environ.get("AGY_SAVE_DIR", "/tmp/agents")
 REX_SYSTEM_PROMPT = """\
 You are Rex, a cheerful and brave Dino companion for Little Heroes Adventures.
 You speak in short, playful, age-appropriate language designed for toddlers and young kids aged 2–8.
-You always use the child's name when you know it.
 You are enthusiastic, encouraging, and never scary or negative.
 You celebrate every small win with big energy! 🦖✨
+
+CRITICAL NAME & MEMORY RULES:
+- The default name is 'Little Hero'. If the child's profile name is 'Little Hero', address them warmly as 'Little Hero' (e.g., 'Rawr, Little Hero!', 'Way to go, Little Hero! 🦖✨').
+- If the child's profile name is a custom name (e.g. Leo, Maya, Sam), you MUST address them directly by their name (e.g., 'Rawr, Leo!', 'Great job, Leo! 🦖✨').
+- You retain memory across conversations. Recall facts the child has shared with you (favorite things, pets, bedtime, accomplishments) and use your memory tools (remember_rex_fact / recall_rex_fact) when they tell you something new.
+- NEVER address them as '[Name]'.
+- Keep 'reply' to 1-2 short, punchy sentences. Toddlers have short attention spans!
 
 You have access to tools that tell you everything about this child:
 - Their name, level, XP, and active pet companion
@@ -54,10 +60,9 @@ Before answering, check the relevant tools if you need details, or use the conte
 NEVER make up facts about the child — only use what the tools or context state.
 
 Response rules:
-- Keep 'reply' to 1-2 short sentences. Toddlers have short attention spans!
 - Always set an appropriate 'emotion' (happy, excited, curious, proud, sleepy) and 'voice_tone' (energetic, gentle, playful).
 - If the child should do something next (brush teeth, go on a quest, etc.), set 'suggested_action'.
-- Use 'parent_note' for notable achievements or gentle flags for parents.
+- Use 'parent_note' for notable achievements or gentle flags for parents. In parent_note, always use the child's real name instead of '[Name]'.
 - Only set 'habit_awarded' if you're certain a habit was just completed this session.
 """
 
@@ -138,15 +143,33 @@ def _make_rex_config(
 def _context_preamble(app_state: dict[str, Any], rex_memory: dict[str, Any]) -> str:
     """Compact context block so Rex is personal even before any tool call."""
     hero = (app_state or {}).get("hero", {}) or {}
-    bits = []
-    if hero.get("name"):
-        bits.append(f"child's name: {hero['name']}")
+    raw_name = hero.get("name")
+    remembered_name = rex_memory.get("child_name") or rex_memory.get("kid_name") or rex_memory.get("name")
+
+    if raw_name and str(raw_name).strip().lower() not in ("little hero", "hero", "unknown", "none", ""):
+        effective_name = str(raw_name).strip()
+    elif remembered_name and str(remembered_name).strip().lower() not in ("little hero", "hero", "unknown", "none", ""):
+        effective_name = str(remembered_name).strip()
+    else:
+        effective_name = "Little Hero"
+
+    preamble_parts = []
+    if effective_name.lower() == "little hero":
+        preamble_parts.append("CHILD'S PROFILE NAME: Little Hero (default profile name). Address them warmly as 'Little Hero'!")
+    else:
+        preamble_parts.append(
+            f"CHILD'S PROFILE NAME: {effective_name}. "
+            f"You MUST address them directly as {effective_name} and use their name in your reply!"
+        )
+
+    bits = [f"name: {effective_name}"]
     for key in ("level", "streak", "coins"):
         if hero.get(key) is not None:
             bits.append(f"{key}: {hero[key]}")
     if rex_memory:
         bits.append("remembered facts: " + "; ".join(f"{k}={v}" for k, v in rex_memory.items()))
-    return f"[Context — {', '.join(bits)}]\n" if bits else ""
+    preamble_parts.append(f"[Hero Stats — {', '.join(bits)}]")
+    return ("\n".join(preamble_parts) + "\n\n")
 
 
 # ── Public entry point ─────────────────────────────────────────────────────────
@@ -254,10 +277,32 @@ async def _run_rex_turn(
                 print(f"⚠️  [Rex] Budget limit hit: {response.stop_reason}")
                 return FALLBACK_REPLY
 
+            # Determine effective name for memory retention and response sanitization
+            hero_cfg = (app_state or {}).get("hero", {}) or {}
+            raw_name = hero_cfg.get("name")
+            remembered_name = rex_memory.get("child_name") or rex_memory.get("kid_name") or rex_memory.get("name")
+            if raw_name and str(raw_name).strip().lower() not in ("little hero", "hero", "unknown", "none", ""):
+                effective_name = str(raw_name).strip()
+            elif remembered_name and str(remembered_name).strip().lower() not in ("little hero", "hero", "unknown", "none", ""):
+                effective_name = str(remembered_name).strip()
+            else:
+                effective_name = "Little Hero"
+
+            # Retain child's profile name in persistent memory if a custom name is used
+            if effective_name != "Little Hero" and rex_memory.get("child_name") != effective_name:
+                rex_memory["child_name"] = effective_name
+                try:
+                    save_rex_fact(hero_id, household_id, "child_name", effective_name)
+                except Exception as exc:  # noqa: BLE001
+                    print(f"⚠️  [Rex] Could not save child name to memory: {exc}")
+
             # Parse structured output
             data = await response.structured_output()
             if data:
-                return RexAgentResponse(**data)
+                res = RexAgentResponse(**data)
+                if res.parent_note and "[Name]" in res.parent_note:
+                    res.parent_note = res.parent_note.replace("[Name]", effective_name)
+                return res
 
             # Fallback to response text if structured output parsing returned None
             raw_text = await response.text()
@@ -267,6 +312,8 @@ async def _run_rex_turn(
                     emotion="excited",
                     voice_tone="energetic",
                 )
-            return FALLBACK_REPLY
+            fallback = FALLBACK_REPLY.model_copy()
+            fallback.reply = f"Rawr! Rex is taking a quick dino nap 🦖💤 Try again in a moment, {effective_name}!"
+            return fallback
         finally:
             request_state.clear(active_id)
