@@ -5215,8 +5215,13 @@ class Store {
     const coinsEarned = routine.rewardCoins || 40;
     const xpEarned = routine.rewardXP || 60;
     const sparksEarned = (routine.rewardSparks || 10) + (feverBursts > 1 ? 5 : 0);
+    const pendingPoints = 10;
 
-    // 1. Rewards to Hero
+    // 1. Rewards to Hero (tokens/XP/sparks auto-issue immediately; Gold
+    // Points are queued below for Parent Approval -- previously neither
+    // currentHero.points nor the Parent Portal ever saw these points at
+    // all, even though the audit log below falsely claimed they were
+    // already 'approved').
     currentHero.coins = (currentHero.coins || 0) + coinsEarned;
     this.addXP(xpEarned);
 
@@ -5251,9 +5256,11 @@ class Store {
     }
 
     // 4. Audit Log for Parent Portal Pillar 2 (Cognitive & Motor Milestones) & Pillar 4
+    const logId = 'move_log_' + Date.now();
+    const approvalReqId = 'task_movement_' + routine.id + '_' + Date.now();
     const nowIso = new Date().toISOString();
     const completionLog = {
-      id: 'move_log_' + Date.now(),
+      id: logId,
       taskId: routine.id,
       taskTitle: routine.title,
       zone: 'Gross Motor & Dance Party',
@@ -5269,11 +5276,13 @@ class Store {
       dateString: new Date().toLocaleDateString(),
       timeString: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       coinsAwarded: coinsEarned,
-      pointsAwarded: 10,
+      pointsAwarded: pendingPoints,
       xpAwarded: xpEarned,
       sparksAwarded: sparksEarned,
-      status: 'approved',
-      approvedAt: nowIso
+      status: 'pending',
+      approvalRequestId: approvalReqId,
+      approvedAt: null,
+      rejectedAt: null
     };
 
     if (!this.state.taskCompletionLogs) {
@@ -5284,10 +5293,27 @@ class Store {
       this.state.taskCompletionLogs.pop();
     }
 
+    if (!this.state.pendingApprovals) this.state.pendingApprovals = [];
+    this.state.pendingApprovals.push({
+      id: approvalReqId,
+      logId,
+      kidId: currentHero.id,
+      kidName: currentHero.name,
+      type: 'task_point_approval',
+      taskId: routine.id,
+      title: routine.title,
+      zone: 'Gross Motor & Dance Party',
+      pendingPoints,
+      tokensAwarded: coinsEarned,
+      date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: nowIso,
+      status: 'pending'
+    });
+
     this.applyChoreTurboBoost(15, 'Movement Routine: ' + routine.title);
     this.logAction(
       `${currentHero.name} rocked ${routine.title}! 🕺💃`,
-      `+${coinsEarned} Tokens 🪙, +${xpEarned} XP, +${sparksEarned} Sparks ⚡ for ${activePet.name} (${durationMinutes} mins active)`
+      `+${coinsEarned} Tokens 🪙 auto-issued, +${xpEarned} XP, +${sparksEarned} Sparks ⚡ for ${activePet.name} (${durationMinutes} mins active). (${pendingPoints} Points ⭐ pending Parent Approval)`
     );
 
     Sound.fanfare();
@@ -8132,37 +8158,69 @@ class Store {
     }
 
     const pId = String(hero.activePetId || '1');
+    const pendingPoints = Math.round(waypoint.rewardCoins / 2);
 
+    // Tokens/XP/Sparks auto-issue immediately; Gold Points are queued below
+    // for Parent Approval, matching every other completion path in the app
+    // (toggleHabitIsland, toggleTaskForest, etc.) -- without the
+    // pendingApprovals push, this routine's points were previously
+    // self-granted and never surfaced in the Parent Portal.
     hero.coins = (hero.coins || 0) + waypoint.rewardCoins;
-    hero.points = (hero.points || 0) + Math.round(waypoint.rewardCoins / 2);
     hero.xp = (hero.xp || 0) + waypoint.rewardXp;
     this.addPetSparks(pId, waypoint.rewardSparks);
 
+    const logId = generateId('compl_', 7);
+    const approvalReqId = 'task_waypoint_' + waypoint.id + '_' + Date.now();
+    const nowIso = new Date().toISOString();
+
     if (!this.state.taskCompletionLogs) this.state.taskCompletionLogs = [];
     this.state.taskCompletionLogs.unshift({
-      id: generateId('compl_', 7),
+      id: logId,
       taskId: waypoint.choreKey,
       taskTitle: waypoint.title,
       zone: "Today's Path",
       heroId,
       heroName: hero.name,
-      completedAt: new Date().toISOString(),
+      completedAt: nowIso,
       timestamp: Date.now(),
       dateString: new Date().toLocaleDateString(),
       timeString: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       coinsAwarded: waypoint.rewardCoins,
-      pointsAwarded: Math.round(waypoint.rewardCoins / 2),
+      pointsAwarded: pendingPoints,
       xpAwarded: waypoint.rewardXp,
-      status: 'auto_approved',
-      approvedAt: new Date().toISOString(),
+      status: 'pending',
+      approvalRequestId: approvalReqId,
+      approvedAt: null,
       rejectedAt: null
     });
     if (this.state.taskCompletionLogs.length > 200) this.state.taskCompletionLogs.pop();
+
+    if (!this.state.pendingApprovals) this.state.pendingApprovals = [];
+    this.state.pendingApprovals.push({
+      id: approvalReqId,
+      logId,
+      kidId: heroId,
+      kidName: hero.name,
+      type: 'task_point_approval',
+      taskId: waypoint.choreKey,
+      title: waypoint.title,
+      zone: "Today's Path",
+      pendingPoints,
+      tokensAwarded: waypoint.rewardCoins,
+      date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: nowIso,
+      status: 'pending'
+    });
 
     // Sync habit care & pearly gleam if dental
     if (waypoint.choreKey && waypoint.choreKey.includes('brush')) {
       this.syncHabitPetCare('brush_teeth', 'daily_routine');
     }
+
+    this.logAction(
+      `${hero.name} completed '${waypoint.title}'`,
+      `+${waypoint.rewardCoins} Tokens 🪙 auto-issued. (${pendingPoints} Points ⭐ pending Parent Approval)`
+    );
 
     if (typeof Sound?.fanfare === 'function') Sound.fanfare();
     safeConfetti({ particleCount: 45, spread: 60, origin: { y: 0.6 } });
@@ -8203,14 +8261,57 @@ class Store {
     const hero = this.state.selectedHero;
     const coinsAwarded = 15;
     const xpAwarded = 10;
+    const pendingPoints = Math.round(coinsAwarded / 2);
     if (hero) {
       hero.coins = (hero.coins || 0) + coinsAwarded;
       hero.xp = (hero.xp || 0) + xpAwarded;
-      hero.points = (hero.points || 0) + Math.round(coinsAwarded / 2);
+
+      const logId = generateId('compl_', 7);
+      const approvalReqId = 'task_pajamas_' + Date.now();
+      const nowIso = new Date().toISOString();
+
+      if (!this.state.taskCompletionLogs) this.state.taskCompletionLogs = [];
+      this.state.taskCompletionLogs.unshift({
+        id: logId,
+        taskId: 'pajamas_tidy',
+        taskTitle: 'Pajamas & Tidy Up',
+        zone: 'Bedtime Sanctuary',
+        heroId: hero.id,
+        heroName: hero.name,
+        completedAt: nowIso,
+        timestamp: Date.now(),
+        dateString: new Date().toLocaleDateString(),
+        timeString: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        coinsAwarded,
+        pointsAwarded: pendingPoints,
+        xpAwarded,
+        status: 'pending',
+        approvalRequestId: approvalReqId,
+        approvedAt: null,
+        rejectedAt: null
+      });
+      if (this.state.taskCompletionLogs.length > 200) this.state.taskCompletionLogs.pop();
+
+      if (!this.state.pendingApprovals) this.state.pendingApprovals = [];
+      this.state.pendingApprovals.push({
+        id: approvalReqId,
+        logId,
+        kidId: hero.id,
+        kidName: hero.name,
+        type: 'task_point_approval',
+        taskId: 'pajamas_tidy',
+        title: 'Pajamas & Tidy Up',
+        zone: 'Bedtime Sanctuary',
+        pendingPoints,
+        tokensAwarded: coinsAwarded,
+        date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        timestamp: nowIso,
+        status: 'pending'
+      });
     }
 
     this.syncHabitPetCare('clean_toys', 'daily_routine');
-    this.logAction('Completed Pajamas & Tidy Up', `Tidied room and put on cozy pajamas! +${coinsAwarded} 🪙, +${xpAwarded} ⭐`);
+    this.logAction('Completed Pajamas & Tidy Up', `+${coinsAwarded} Tokens 🪙 auto-issued. (${pendingPoints} Points ⭐ pending Parent Approval)`);
     if (typeof Sound?.chime === 'function') Sound.chime();
     this.saveState(true);
     return { success: true, coinsAwarded, xpAwarded };
@@ -8293,10 +8394,10 @@ class Store {
     const coinsAwarded = 30;
     const sparksAwarded = 15;
     const xpAwarded = 20;
+    const pendingPoints = Math.round(coinsAwarded / 2);
 
     if (hero) {
       hero.coins = (hero.coins || 0) + coinsAwarded;
-      hero.points = (hero.points || 0) + Math.round(coinsAwarded / 2);
       hero.xp = (hero.xp || 0) + xpAwarded;
 
       // 30-day anti-repetition: log moral and story title into hero.bedtimeHistory
@@ -8313,14 +8414,60 @@ class Store {
         hero.bedtimeHistory = hero.bedtimeHistory.slice(0, 100);
       }
 
-      // Also mirror to matching hero in heroes array
+      // Also mirror to matching hero in heroes array (points NOT mirrored
+      // here -- they're queued for Parent Approval below, and
+      // approveParentRequest() already credits the correct heroes-array
+      // entry by kidId once approved, so mirroring an un-awarded value here
+      // would be both unnecessary and wrong).
       const hIdx = (this.state.heroes || []).findIndex(h => h.id === hero.id);
       if (hIdx !== -1) {
         this.state.heroes[hIdx].coins = hero.coins;
         this.state.heroes[hIdx].xp = hero.xp;
-        this.state.heroes[hIdx].points = hero.points;
         this.state.heroes[hIdx].bedtimeHistory = hero.bedtimeHistory;
       }
+
+      const logId = generateId('compl_', 7);
+      const approvalReqId = 'task_bedtime_story_' + Date.now();
+      const nowIso = new Date().toISOString();
+
+      if (!this.state.taskCompletionLogs) this.state.taskCompletionLogs = [];
+      this.state.taskCompletionLogs.unshift({
+        id: logId,
+        taskId: 'bedtime_story',
+        taskTitle: storyData.title || 'Bedtime Story',
+        zone: 'Bedtime Sanctuary',
+        heroId: hero.id,
+        heroName: hero.name,
+        completedAt: nowIso,
+        timestamp: Date.now(),
+        dateString: new Date().toLocaleDateString(),
+        timeString: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        coinsAwarded,
+        pointsAwarded: pendingPoints,
+        xpAwarded,
+        status: 'pending',
+        approvalRequestId: approvalReqId,
+        approvedAt: null,
+        rejectedAt: null
+      });
+      if (this.state.taskCompletionLogs.length > 200) this.state.taskCompletionLogs.pop();
+
+      if (!this.state.pendingApprovals) this.state.pendingApprovals = [];
+      this.state.pendingApprovals.push({
+        id: approvalReqId,
+        logId,
+        kidId: hero.id,
+        kidName: hero.name,
+        type: 'task_point_approval',
+        taskId: 'bedtime_story',
+        title: storyData.title || 'Bedtime Story',
+        zone: 'Bedtime Sanctuary',
+        pendingPoints,
+        tokensAwarded: coinsAwarded,
+        date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        timestamp: nowIso,
+        status: 'pending'
+      });
     }
 
     // Quiet habit sync: award pet-care sparks/bond for the bedtime habit.
@@ -8356,7 +8503,7 @@ class Store {
     this.toggleBedtimeLullaby(true);
 
     // Non-blocking log per kid_voice_companion_guidelines.md (NO blocking full-screen modal)
-    this.logAction('Completed Bedtime Storybook Adventure', `Read "${storyData.title || 'Bedtime Story'}" with Rex. +${coinsAwarded} 🪙, +${sparksAwarded} ⚡`);
+    this.logAction('Completed Bedtime Storybook Adventure', `Read "${storyData.title || 'Bedtime Story'}" with Rex. +${coinsAwarded} 🪙 auto-issued, +${sparksAwarded} ⚡. (${pendingPoints} Points ⭐ pending Parent Approval)`);
 
     if (typeof Sound?.bloop === 'function') Sound.bloop();
 
