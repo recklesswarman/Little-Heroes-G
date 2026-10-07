@@ -1,4 +1,4 @@
-const CACHE_NAME = 'little-heroes-v3.2.0-rewards-revamp-20260930';
+const CACHE_NAME = 'little-heroes-v3.3.0-rewards-revamp-20261007';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -9,28 +9,27 @@ const STATIC_ASSETS = [
 const THREE_D_EXTENSIONS = ['.splinecode', '.glb', '.gltf', '.mp3', '.wav', '.ogg', '.png', '.jpg', '.svg'];
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(STATIC_ASSETS);
     })
   );
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
-        cacheNames.map((cache) => {
-          if (cache !== CACHE_NAME) {
+        cacheNames
+          .filter((cache) => cache !== CACHE_NAME)
+          .map((cache) => {
             console.log('[SW] Deleting obsolete cache:', cache);
             return caches.delete(cache);
-          }
-        })
+          })
       );
-    })
+    }).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {

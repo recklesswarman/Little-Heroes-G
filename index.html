@@ -21,11 +21,13 @@
   <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"></script>
   <script>
     // Bulletproof PWA Cache-Buster & Service Worker Auto-Updater
-    const APP_BUILD_VERSION = 'v3.2.0-digital-rewards-20260930';
+    const APP_BUILD_VERSION = 'v3.3.0-digital-rewards-20261007';
     window.__LITTLE_HEROES_VERSION__ = APP_BUILD_VERSION;
 
     window.forceAppHardRefresh = async function() {
       try {
+        sessionStorage.removeItem('lh_auto_reload_attempted');
+        sessionStorage.removeItem('lh_last_auto_reload');
         if ('serviceWorker' in navigator) {
           const registrations = await navigator.serviceWorker.getRegistrations();
           for (const reg of registrations) {
@@ -42,7 +44,9 @@
       } catch (e) {
         console.warn('Cache purge error:', e);
       }
-      window.location.reload(true);
+      const u = new URL(window.location.href);
+      u.searchParams.set('_v', Date.now());
+      window.location.replace(u.href);
     };
 
     // Auto-detect version mismatch on page load
@@ -90,16 +94,26 @@
     })();
 
     // Auto-recovery for chunk loading or unexpected syntax token errors from stale caches
-    window.addEventListener('error', function(e) {
-      const msg = (e && e.message) ? String(e.message).toLowerCase() : '';
-      if (msg.includes('unexpected token') || msg.includes('loading chunk') || msg.includes('failed to fetch dynamically imported module')) {
-        console.warn('[PWA] Stale chunk error detected. Auto-refreshing...', e);
-        if (!sessionStorage.getItem('lh_auto_reload_attempted')) {
-          sessionStorage.setItem('lh_auto_reload_attempted', '1');
+    function handleChunkOrCacheError(err) {
+      const reason = err && (err.reason || err);
+      const msg = ((err && err.message) || (reason && reason.message) || String(err) || '').toLowerCase();
+      if (
+        msg.includes('unexpected token') ||
+        msg.includes('loading chunk') ||
+        msg.includes('failed to fetch dynamically imported module') ||
+        msg.includes('import call') ||
+        msg.includes('mime type')
+      ) {
+        console.warn('[PWA] Stale chunk error detected. Auto-refreshing...', err);
+        const lastAttempt = Number(sessionStorage.getItem('lh_last_auto_reload') || 0);
+        if (Date.now() - lastAttempt > 6000) {
+          sessionStorage.setItem('lh_last_auto_reload', String(Date.now()));
           window.forceAppHardRefresh();
         }
       }
-    });
+    }
+    window.addEventListener('error', handleChunkOrCacheError);
+    window.addEventListener('unhandledrejection', handleChunkOrCacheError);
   </script>
 </head>
 <body class="bg-background text-on-background font-body select-none overflow-x-hidden min-h-screen antialiased" style="background-color: #0b0f19; color: #f8fafc;">

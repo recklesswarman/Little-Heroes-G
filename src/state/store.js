@@ -637,6 +637,27 @@ class Store {
           }
         }
 
+        // Automatic Schema Sync for Returning Browsers:
+        // Ensure all entries in DIGITAL_REWARDS_CATALOG that are missing from parsed.digitalGear
+        // are merged in upon initialization regardless of digitalRewardsOverhaulApplied flag
+        if (Array.isArray(parsed.digitalGear)) {
+          DIGITAL_REWARDS_CATALOG.forEach((catItem) => {
+            if (!parsed.digitalGear.some((d) => d.id === catItem.id)) {
+              parsed.digitalGear.push(catItem);
+            }
+          });
+        } else {
+          parsed.digitalGear = [...DIGITAL_REWARDS_CATALOG];
+        }
+
+        // Ensure parentCustomWeapons and parentCustomFood arrays exist and are preserved
+        if (!Array.isArray(parsed.parentCustomWeapons)) {
+          parsed.parentCustomWeapons = [];
+        }
+        if (!Array.isArray(parsed.parentCustomFood)) {
+          parsed.parentCustomFood = [];
+        }
+
         if (parsed.heroes && parsed.heroes.length > 0) {
           parsed.heroes.forEach((h) => {
             const validActive = h.activePetId ? getPetById(h.activePetId) : null;
@@ -7001,6 +7022,11 @@ class Store {
     }
     if (cloudData.digitalGear && Array.isArray(cloudData.digitalGear)) {
       this.state.digitalGear = cloudData.digitalGear;
+      DIGITAL_REWARDS_CATALOG.forEach(catItem => {
+        if (!this.state.digitalGear.some(d => d.id === catItem.id)) {
+          this.state.digitalGear.push(catItem);
+        }
+      });
     }
     if (cloudData.parentCustomWeapons && Array.isArray(cloudData.parentCustomWeapons)) {
       this.state.parentCustomWeapons = cloudData.parentCustomWeapons;
@@ -7009,6 +7035,8 @@ class Store {
           DIGITAL_REWARDS_CATALOG.unshift(w);
         }
       });
+    } else if (!Array.isArray(this.state.parentCustomWeapons)) {
+      this.state.parentCustomWeapons = [];
     }
     if (cloudData.parentCustomFood && Array.isArray(cloudData.parentCustomFood)) {
       this.state.parentCustomFood = cloudData.parentCustomFood;
@@ -7017,6 +7045,8 @@ class Store {
           DIGITAL_REWARDS_CATALOG.unshift(f);
         }
       });
+    } else if (!Array.isArray(this.state.parentCustomFood)) {
+      this.state.parentCustomFood = [];
     }
     if (cloudData.inventory && Array.isArray(cloudData.inventory)) {
       this.state.inventory = Array.from(new Set([...(this.state.inventory || []), ...cloudData.inventory]));

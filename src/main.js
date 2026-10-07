@@ -57,6 +57,7 @@ let lastActiveViewForPetSanctuaryCleanup = null;
 // 'pet_sanctuary' is reached under several aliases (see the view switch below) --
 // keep this list in sync with that case so the leave-check doesn't false-positive.
 const PET_SANCTUARY_VIEW_NAMES = ['pet_sanctuary', 'pet-sanctuary', 'pet_pen', 'pet-pen', 'evolution'];
+const DANCE_PARTY_VIEW_NAMES = ['dance_party', 'teamwork-preview', 'teamwork_preview', '/teamwork-preview', '/teamwork_preview'];
 
 // Every view/modal is a full app.innerHTML replace with no DOM diffing, so a
 // re-render triggered by anything unrelated to the field the user is
@@ -131,7 +132,8 @@ function renderApp() {
   // waste CPU behind the new screen or -- for the expedition timer -- fire
   // a surprise store.notify() (full app re-render) while the player is
   // somewhere else entirely.
-  const isLeavingDancePartyView = lastActiveViewForDancePartyCleanup === 'dance_party' && activeView !== 'dance_party';
+  const wasOnDancePartyView = DANCE_PARTY_VIEW_NAMES.includes(lastActiveViewForDancePartyCleanup);
+  const isLeavingDancePartyView = wasOnDancePartyView && !DANCE_PARTY_VIEW_NAMES.includes(activeView);
   if (isLeavingDancePartyView) {
     abandonDancePartyIfRunning();
   }
@@ -285,6 +287,10 @@ function renderApp() {
       attachViewListeners = attachPetSanctuaryListeners;
       break;
     case 'dance_party':
+    case 'teamwork_preview':
+    case 'teamwork-preview':
+    case '/teamwork-preview':
+    case '/teamwork_preview':
       mainContent = renderDancePartyView();
       attachViewListeners = attachDancePartyListeners;
       break;
@@ -468,7 +474,7 @@ window.addEventListener('online', () => {
   }
 });
 
-// Route Resolver for /learn and /boost shortcuts
+// Route Resolver for /learn, /boost, and /teamwork-preview shortcuts
 function resolveRouteFromUrl() {
   if (typeof window === 'undefined') return null;
   const path = (window.location.pathname || '').toLowerCase();
@@ -478,6 +484,16 @@ function resolveRouteFromUrl() {
   }
   if (path === '/boost' || path === 'boost' || hash === 'boost') {
     return 'battle';
+  }
+  if (
+    path === '/teamwork-preview' ||
+    path === 'teamwork-preview' ||
+    path === '/teamwork_preview' ||
+    path === 'teamwork_preview' ||
+    hash === 'teamwork-preview' ||
+    hash === 'teamwork_preview'
+  ) {
+    return 'dance_party';
   }
   return null;
 }

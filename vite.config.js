@@ -86,7 +86,7 @@ function geminiServerPlugin() {
 
 export default defineConfig({
   plugins: [geminiServerPlugin()],
-  base: './',
+  base: process.env.VITE_BASE_PATH || '/',
   server: {
     port: 3000,
     host: '0.0.0.0',
