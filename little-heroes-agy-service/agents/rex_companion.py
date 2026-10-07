@@ -230,13 +230,62 @@ async def chat_with_rex(
         raise
 
 
+async def chat_with_rex_audio(
+    audio_bytes: bytes,
+    mime_type: str,
+    hero_id: str,
+    household_id: Optional[str],
+    app_state: dict[str, Any],
+) -> RexAgentResponse:
+    """Send child's spoken audio directly to Rex using Google Antigravity SDK multimodal audio."""
+    try:
+        conversation_id = load_conversation_id(hero_id, household_id, AGY_SAVE_DIR_BASE)
+    except Exception as exc:  # noqa: BLE001
+        print(f"⚠️  [Rex Audio] Could not load conversation id: {exc}")
+        conversation_id = None
+
+    try:
+        rex_memory = load_rex_memory(hero_id, household_id) or {}
+    except Exception as exc:  # noqa: BLE001
+        print(f"⚠️  [Rex Audio] Could not load memory: {exc}")
+        rex_memory = {}
+
+    try:
+        return await _run_rex_turn(
+            message=None,
+            hero_id=hero_id,
+            household_id=household_id,
+            app_state=app_state,
+            rex_memory=rex_memory,
+            conversation_id=conversation_id,
+            audio_bytes=audio_bytes,
+            mime_type=mime_type,
+        )
+    except Exception as exc:  # noqa: BLE001
+        if conversation_id is not None:
+            print(f"⚠️  [Rex Audio] Resume turn failed ({exc}); starting fresh session...")
+            return await _run_rex_turn(
+                message=None,
+                hero_id=hero_id,
+                household_id=household_id,
+                app_state=app_state,
+                rex_memory=rex_memory,
+                conversation_id=None,
+                audio_bytes=audio_bytes,
+                mime_type=mime_type,
+            )
+        raise
+
+
 async def _run_rex_turn(
-    message: str,
+    message: Optional[str],
     hero_id: str,
     household_id: Optional[str],
     app_state: dict[str, Any],
     rex_memory: dict[str, Any],
     conversation_id: Optional[str],
+    audio_bytes: Optional[bytes] = None,
+    mime_type: Optional[str] = None,
 ) -> RexAgentResponse:
     config = _make_rex_config(hero_id, conversation_id)
 
@@ -251,8 +300,19 @@ async def _run_rex_turn(
             household_id=household_id,
         )
         try:
-            full_prompt = _context_preamble(app_state, rex_memory) + message
-            response = await agent.chat(full_prompt)
+            preamble = _context_preamble(app_state, rex_memory)
+            if audio_bytes and mime_type:
+                audio_obj = types.Audio(data=audio_bytes, mime_type=mime_type)
+                audio_instruction = (
+                    preamble
+                    + "Listen to the child's spoken audio. "
+                    "First, in 'user_transcript', write exactly what the child said or asked. "
+                    "Then in 'reply', respond warmly and playfully as Rex (1-2 short sentences max) directly to the child."
+                )
+                full_input = [audio_instruction, audio_obj]
+            else:
+                full_input = preamble + (message or "")
+            response = await agent.chat(full_input)
 
             # Persist conversation_id back to Firestore asynchronously
             try:

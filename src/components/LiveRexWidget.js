@@ -16,15 +16,37 @@ import { triggerInteractiveCelebration } from './InteractiveCelebrationOverlay.j
 import { renderPetSkeletalFaceViewer, initPetSkeletalFaceViewer, getActivePetSkeletalInstance } from './PetSkeletalFaceViewer.js';
 import { getPetFaceProfile } from '../services/petSkeletalFaceService.js';
 import { preserveScrollPosition } from '../utils/scrollPreserve.js';
-import { talkToRexAGY } from '../services/heroAgentService.js';
+import { talkToRexAGY, sendRexAudioAGY } from '../services/heroAgentService.js';
+import { audioRecorder } from '../services/audioRecorderService.js';
 
 let activeTab = 'live'; // 'live' | 'chat'
 let chatSpeedMode = 'smart'; // 'smart' | 'fast'
+let isHoldRecording = false;
+
+export function getKidProfileName() {
+  const state = store?.getState?.() || {};
+  const hero = store?.getSelectedHero?.() || state?.selectedHero || (state?.heroes && state?.heroes[0]) || {};
+  return hero?.name?.trim() || 'Little Hero';
+}
+
+export function playEmotionSFX(emotion) {
+  const emo = (emotion || '').toLowerCase();
+  if (emo === 'excited' || emo === 'playful' || emo === 'energetic') {
+    Sound.roar?.();
+  } else if (emo === 'proud' || emo === 'cheering') {
+    Sound.pop?.();
+  } else if (emo === 'sleepy' || emo === 'gentle' || emo === 'calm') {
+    Sound.click?.();
+  } else {
+    Sound.chirp?.();
+  }
+}
+
 let chatMessages = [
   {
     id: 'msg_welcome',
     sender: 'rex',
-    text: "Rawr! Hello Little Hero! I am Rex, your dinosaur champion! You can talk to me, pet my face, or tap any picture below!",
+    text: "Rawr! Hello Little Hero! I am Rex, your dinosaur champion! You can hold the button to talk to me, pet my face, or tap any picture below!",
     timestamp: Date.now()
   }
 ];
@@ -263,41 +285,31 @@ export function renderLiveRexWidget() {
                 <button id="modal-rex-avatar-btn" class="absolute -bottom-2.5 left-1/2 -translate-x-1/2 px-3.5 py-1 min-h-[32px] rounded-full text-[11px] font-headline font-black shadow-lg flex items-center gap-1.5 whitespace-nowrap cursor-pointer z-10 transition-transform active:scale-95 ${
                   isSpeaking
                     ? 'bg-primary text-on-primary ring-2 ring-primary-container animate-pulse'
-                    : isWalkieRecording
+                    : (isHoldRecording || isWalkieRecording)
                     ? 'bg-linear-to-r from-amber-500 to-orange-500 text-slate-950 font-black animate-pulse ring-2 ring-amber-300'
-                    : isWalkie
-                    ? 'bg-surface-container-highest text-amber-300 border border-amber-400/60 hover:brightness-110'
-                    : isListening
-                    ? 'bg-emerald-500 text-white animate-pulse'
                     : isThinking
                     ? 'bg-amber-500 text-white animate-bounce'
+                    : isListening
+                    ? 'bg-emerald-500 text-white animate-pulse'
                     : 'bg-secondary text-on-secondary hover:brightness-110'
                 }">
                   <span class="material-symbols-outlined text-xs">${
                     isSpeaking
                       ? 'volume_up'
-                      : isWalkieRecording
+                      : (isHoldRecording || isWalkieRecording)
                       ? 'sensors'
-                      : isWalkie
-                      ? 'radio'
-                      : isListening
-                      ? 'mic'
                       : isThinking
                       ? 'hourglass_top'
-                      : 'touch_app'
+                      : 'mic'
                   }</span>
                   <span>${
                     isSpeaking
                       ? 'Talking! (Tap to Pause)'
-                      : isWalkieRecording
-                      ? 'Tap when Done! 🚀'
-                      : isWalkie
-                      ? 'Tap to Talk 📻'
-                      : isListening
-                      ? 'Listening...'
+                      : (isHoldRecording || isWalkieRecording)
+                      ? 'Release to Send! 🚀'
                       : isThinking
                       ? 'Thinking...'
-                      : 'Tap to Talk!'
+                      : 'Hold to Talk 🎙️'
                   }</span>
                 </button>
               </div>
@@ -320,15 +332,11 @@ export function renderLiveRexWidget() {
                 ${
                   isSpeaking
                     ? `🗣️ ${petName} is speaking! (Tap Rex to pause)`
-                    : isWalkieRecording
-                    ? `📻 Walkie-Talkie: Speaking to Rex! Tap button when done!`
-                    : isWalkie
-                    ? `📻 Walkie-Talkie: Tap button to speak to ${petName}!`
-                    : isListening
-                    ? `👂 Speak now! ${petName} is listening to you!`
+                    : (isHoldRecording || isWalkieRecording)
+                    ? `🎙️ Recording! Hold while speaking, release to send to ${petName}!`
                     : isThinking
                     ? `🤔 ${petName} is getting your answer ready...`
-                    : `Touch ${petName}'s face or pick a picture below!`
+                    : `Hold the button to talk to ${petName}, or tap a picture below!`
                 }
               </p>
             </div>
@@ -428,27 +436,23 @@ export function renderLiveRexWidget() {
               <button id="live-rex-toggle-btn" class="flex-1 py-3 px-4 rounded-2xl font-headline text-xs font-black flex items-center justify-center gap-2 chunky-btn shadow-md active:scale-95 transition-all cursor-pointer ${
                 isSpeaking
                   ? 'bg-primary text-on-primary border-primary-container animate-pulse ring-2 ring-primary/50'
-                  : isWalkieRecording
+                  : (isHoldRecording || isWalkieRecording)
                   ? 'bg-linear-to-r from-amber-500 to-orange-500 text-slate-950 border-amber-600 animate-pulse ring-2 ring-amber-400'
-                  : isWalkie
-                  ? 'bg-linear-to-r from-amber-500/20 to-orange-500/20 text-amber-300 border-2 border-amber-400/50 hover:bg-amber-500/30'
-                  : isListening
-                  ? 'bg-emerald-500 text-white border-emerald-600 animate-pulse'
+                  : isThinking
+                  ? 'bg-amber-500 text-white border-amber-600 animate-bounce'
                   : 'bg-primary text-on-primary border-primary-container'
               }">
                 <span class="material-symbols-outlined text-base">${
-                  isSpeaking ? 'pause_circle' : isWalkieRecording ? 'sensors' : isWalkie ? 'radio' : isListening ? 'mic' : 'mic_none'
+                  isSpeaking ? 'pause_circle' : (isHoldRecording || isWalkieRecording) ? 'sensors' : isThinking ? 'hourglass_top' : 'mic'
                 }</span>
                 <span>${
                   isSpeaking
                     ? `${petName} is Talking! (Tap to Pause)`
-                    : isWalkieRecording
-                    ? 'Recording... Tap to Send to Rex! 🚀'
-                    : isWalkie
-                    ? 'Start Talking (Walkie-Talkie 📻)'
-                    : isListening
-                    ? 'Listening (Tap to Pause)'
-                    : 'Start Live Conversation'
+                    : (isHoldRecording || isWalkieRecording)
+                    ? 'Recording... Release to Send! 🚀'
+                    : isThinking
+                    ? `${petName} is thinking...`
+                    : `Hold to Talk to ${petName} 🎙️`
                 }</span>
               </button>
             </div>
@@ -885,12 +889,273 @@ export function attachLiveRexWidgetListeners() {
     }
   };
 
-  // Action pill button triggers live voice
+  // ── HOLD-TO-TALK (PUSH-TO-TALK) PIPELINE ─────────────────────────────────
+  let activePointerId = null;
+
+  function updateVisualizerWaveBars(volume, freqData) {
+    const bars = document.querySelectorAll('.rex-wave-bar');
+    if (!bars || bars.length === 0) return;
+    bars.forEach((bar, idx) => {
+      const bin = freqData ? (freqData[idx * 4] || 0) / 255 : volume;
+      const height = Math.max(6, Math.min(32, Math.round(6 + bin * 26)));
+      bar.style.height = `${height}px`;
+      bar.style.backgroundColor = isHoldRecording ? '#F59E0B' : '#10B981';
+    });
+  }
+
+  function resetVisualizerWaveBars() {
+    const bars = document.querySelectorAll('.rex-wave-bar');
+    if (!bars || bars.length === 0) return;
+    bars.forEach((bar, idx) => {
+      bar.style.height = `${[8, 14, 20, 16, 20, 14, 8][idx % 7]}px`;
+      bar.style.backgroundColor = '#10B981';
+    });
+  }
+
+  async function startHoldToTalk(e, triggerBtn) {
+    if (isHoldRecording) return;
+
+    // 1. If Rex is speaking, tap/press immediately pauses speech!
+    if (geminiLiveService.isSpeaking || isRexSpeaking()) {
+      Sound.chirp();
+      geminiLiveService.interruptSpeech();
+      stopRex();
+      updateLiveDialogue(null, "*Gently paused!* Hold the button to talk to Rex! ❤️");
+      return;
+    }
+
+    if (e && e.pointerId !== undefined && triggerBtn?.setPointerCapture) {
+      try {
+        triggerBtn.setPointerCapture(e.pointerId);
+        activePointerId = e.pointerId;
+      } catch {}
+    }
+
+    const kidName = getKidProfileName();
+
+    try {
+      Sound.pop();
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(30);
+      }
+      isHoldRecording = true;
+
+      // Update button & status text to recording state
+      if (triggerBtn) {
+        triggerBtn.classList.add('ring-4', 'ring-amber-400', 'animate-pulse');
+      }
+      const statusTextEl = document.getElementById('rex-status-text');
+      if (statusTextEl) {
+        statusTextEl.textContent = `🎙️ Rex is listening! Keep holding while speaking to Rex, ${kidName}! Release when done! 🦖`;
+      }
+      const pillBtn = document.getElementById('modal-rex-avatar-btn');
+      if (pillBtn) {
+        pillBtn.innerHTML = '<span class="material-symbols-outlined text-xs">sensors</span><span>Release to Send! 🚀</span>';
+      }
+      const bottomToggleBtn = document.getElementById('live-rex-toggle-btn');
+      if (bottomToggleBtn) {
+        bottomToggleBtn.innerHTML = '<span class="material-symbols-outlined text-base">sensors</span><span>Recording... Release to Send! 🚀</span>';
+      }
+
+      const inst = getActivePetSkeletalInstance('modal-mascot-skeletal-canvas');
+      if (inst?.setTargetHeadPose) inst.setTargetHeadPose(0, -0.15, 0.08);
+
+      await audioRecorder.startRecording((volume, freqData) => {
+        updateVisualizerWaveBars(volume, freqData);
+        if (volume > 0.03 && inst?.setMouthOpen) {
+          inst.setMouthOpen(Math.min(1, volume * 2.5));
+        }
+      });
+    } catch (micErr) {
+      isHoldRecording = false;
+      if (triggerBtn) {
+        triggerBtn.classList.remove('ring-4', 'ring-amber-400', 'animate-pulse');
+      }
+      resetVisualizerWaveBars();
+      console.warn("[LiveRexWidget] Microphone start notice:", micErr);
+
+      if (micErr?.message === 'PERMISSION_DENIED' || micErr?.name === 'NotAllowedError') {
+        Sound.pop();
+        const notice = `Rex can't hear your mic yet! Ask Mom or Dad to tap Allow, or pick a picture below! 🦖`;
+        updateLiveDialogue(null, notice);
+        speakCompanion(notice, activePetId);
+
+        // Visually highlight and pulse toddler action cards
+        const actionCards = document.querySelectorAll('.rex-toddler-action-btn');
+        actionCards.forEach((btn) => {
+          btn.classList.add('ring-4', 'ring-amber-400', 'animate-pulse');
+        });
+        setTimeout(() => {
+          actionCards.forEach((btn) => {
+            btn.classList.remove('ring-4', 'ring-amber-400', 'animate-pulse');
+          });
+        }, 4000);
+      }
+    }
+  }
+
+  async function finishHoldToTalk(e, triggerBtn) {
+    if (!isHoldRecording) return;
+    isHoldRecording = false;
+
+    if (activePointerId !== null && triggerBtn?.releasePointerCapture) {
+      try {
+        triggerBtn.releasePointerCapture(activePointerId);
+      } catch {}
+      activePointerId = null;
+    }
+
+    if (triggerBtn) {
+      triggerBtn.classList.remove('ring-4', 'ring-amber-400', 'animate-pulse');
+    }
+    resetVisualizerWaveBars();
+
+    const inst = getActivePetSkeletalInstance('modal-mascot-skeletal-canvas');
+    if (inst?.setTargetHeadPose) inst.setTargetHeadPose(0.1, 0.1, 0.05);
+
+    const recordingResult = await audioRecorder.stopRecording();
+    const kidName = getKidProfileName();
+
+    // 1. Accidental short tap (< 400ms) guidance
+    if (recordingResult.isAccidentalTap) {
+      Sound.click();
+      const guidance = `Hold down the button while speaking to me, ${kidName}! 🦖🎙️`;
+      updateLiveDialogue(null, guidance);
+      const statusTextEl = document.getElementById('rex-status-text');
+      if (statusTextEl) {
+        statusTextEl.textContent = `💡 Hold down the button while talking!`;
+      }
+      const pillBtn = document.getElementById('modal-rex-avatar-btn');
+      if (pillBtn) {
+        pillBtn.innerHTML = '<span class="material-symbols-outlined text-xs">mic</span><span>Hold to Talk 🎙️</span>';
+      }
+      const bottomToggleBtn = document.getElementById('live-rex-toggle-btn');
+      if (bottomToggleBtn) {
+        bottomToggleBtn.innerHTML = `<span class="material-symbols-outlined text-base">mic</span><span>Hold to Talk to ${petName} 🎙️</span>`;
+      }
+      speakCompanion(guidance, activePetId);
+      return;
+    }
+
+    // 2. Processing / Thinking State
+    const statusTextEl = document.getElementById('rex-status-text');
+    if (statusTextEl) {
+      statusTextEl.textContent = `🤔 ${petName} is thinking about what you said, ${kidName}...`;
+    }
+    const pillBtn = document.getElementById('modal-rex-avatar-btn');
+    if (pillBtn) {
+      pillBtn.innerHTML = '<span class="material-symbols-outlined text-xs animate-spin">hourglass_top</span><span>Thinking...</span>';
+    }
+    const bottomToggleBtn = document.getElementById('live-rex-toggle-btn');
+    if (bottomToggleBtn) {
+      bottomToggleBtn.innerHTML = `<span class="material-symbols-outlined text-base animate-spin">hourglass_top</span><span>${petName} is thinking...</span>`;
+    }
+
+    const currentHero = store.getSelectedHero?.() || store.getState().selectedHero || {};
+    const heroId = currentHero.id || store.getSelectedKidId?.() || 'hero_1';
+
+    try {
+      // 3. Local browser transcript captured during hold (zero-cost)
+      if (recordingResult.transcript && recordingResult.transcript.trim()) {
+        const userWords = recordingResult.transcript.trim();
+        updateLiveDialogue(userWords, null);
+        addChatMessage('user', userWords);
+
+        const resp = await talkToRexAGY(userWords, heroId, activePetId);
+        handleRexVoiceResponse(resp);
+      }
+      // 4. Multimodal Audio recorded (Gemini Flash on Vertex AI / Cloud Run)
+      else if (recordingResult.blob && recordingResult.blob.size > 0) {
+        updateLiveDialogue("Listening to your voice... 🦖🎙️", null);
+        const resp = await sendRexAudioAGY(recordingResult.blob, heroId, activePetId);
+        if (resp.userTranscript) {
+          updateLiveDialogue(resp.userTranscript, resp.reply);
+          addChatMessage('user', resp.userTranscript);
+        } else {
+          updateLiveDialogue(null, resp.reply);
+        }
+        handleRexVoiceResponse(resp);
+      } else {
+        updateLiveDialogue(null, `Rex didn't hear you clearly, ${kidName}! Hold down the button and speak again! 🦖`);
+        speakCompanion(`Rex didn't hear you clearly, ${kidName}! Hold down the button and speak again!`, activePetId);
+        if (pillBtn) {
+          pillBtn.innerHTML = '<span class="material-symbols-outlined text-xs">mic</span><span>Hold to Talk 🎙️</span>';
+        }
+        if (bottomToggleBtn) {
+          bottomToggleBtn.innerHTML = `<span class="material-symbols-outlined text-base">mic</span><span>Hold to Talk to ${petName} 🎙️</span>`;
+        }
+      }
+    } catch (procErr) {
+      console.warn("[LiveRexWidget] Error processing voice turn:", procErr);
+      const fallback = `*Happy roar!* You did awesome, ${kidName}! Ready for our next hero adventure? 🦖⭐`;
+      updateLiveDialogue(null, fallback);
+      speakCompanion(fallback, activePetId);
+      if (pillBtn) {
+        pillBtn.innerHTML = '<span class="material-symbols-outlined text-xs">mic</span><span>Hold to Talk 🎙️</span>';
+      }
+      if (bottomToggleBtn) {
+        bottomToggleBtn.innerHTML = `<span class="material-symbols-outlined text-base">mic</span><span>Hold to Talk to ${petName} 🎙️</span>`;
+      }
+    }
+  }
+
+  function handleRexVoiceResponse(res) {
+    const kidName = getKidProfileName();
+    const reply = res?.reply || `*Happy roar!* You're doing incredible, ${kidName}! 🦖⭐`;
+    const emotion = res?.emotion || 'happy';
+
+    addChatMessage('rex', reply);
+    updateLiveDialogue(null, reply);
+
+    const pillBtn = document.getElementById('modal-rex-avatar-btn');
+    if (pillBtn) {
+      pillBtn.innerHTML = '<span class="material-symbols-outlined text-xs">volume_up</span><span>Talking! (Tap to Pause)</span>';
+    }
+    const bottomToggleBtn = document.getElementById('live-rex-toggle-btn');
+    if (bottomToggleBtn) {
+      bottomToggleBtn.innerHTML = `<span class="material-symbols-outlined text-base">pause_circle</span><span>${petName} is Talking! (Tap to Pause)</span>`;
+    }
+
+    // Emotion-synchronized Dino SFX right before speech
+    playEmotionSFX(emotion);
+
+    speakCompanion(reply, activePetId, () => {
+      restoreLiveListening();
+      if (pillBtn) {
+        pillBtn.innerHTML = '<span class="material-symbols-outlined text-xs">mic</span><span>Hold to Talk 🎙️</span>';
+      }
+      if (bottomToggleBtn) {
+        bottomToggleBtn.innerHTML = `<span class="material-symbols-outlined text-base">mic</span><span>Hold to Talk to ${petName} 🎙️</span>`;
+      }
+    });
+  }
+
+  // Action pill button triggers Hold-to-Talk voice
   const giantAvatarBtn = document.getElementById('modal-rex-avatar-btn');
   if (giantAvatarBtn) {
-    giantAvatarBtn.addEventListener('click', (e) => {
+    giantAvatarBtn.addEventListener('pointerdown', (e) => {
       e.stopPropagation();
-      handleToggleRexLive();
+      startHoldToTalk(e, giantAvatarBtn);
+    });
+    giantAvatarBtn.addEventListener('pointerup', (e) => {
+      e.stopPropagation();
+      finishHoldToTalk(e, giantAvatarBtn);
+    });
+    giantAvatarBtn.addEventListener('pointercancel', (e) => {
+      e.stopPropagation();
+      finishHoldToTalk(e, giantAvatarBtn);
+    });
+    giantAvatarBtn.addEventListener('keydown', (e) => {
+      if ((e.key === ' ' || e.key === 'Enter') && !isHoldRecording) {
+        e.preventDefault();
+        startHoldToTalk(e, giantAvatarBtn);
+      }
+    });
+    giantAvatarBtn.addEventListener('keyup', (e) => {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        finishHoldToTalk(e, giantAvatarBtn);
+      }
     });
   }
 
@@ -947,8 +1212,29 @@ export function attachLiveRexWidgetListeners() {
   // Bottom Live conversation toggle button
   const toggleBtn = document.getElementById('live-rex-toggle-btn');
   if (toggleBtn) {
-    toggleBtn.addEventListener('click', () => {
-      handleToggleRexLive();
+    toggleBtn.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      startHoldToTalk(e, toggleBtn);
+    });
+    toggleBtn.addEventListener('pointerup', (e) => {
+      e.stopPropagation();
+      finishHoldToTalk(e, toggleBtn);
+    });
+    toggleBtn.addEventListener('pointercancel', (e) => {
+      e.stopPropagation();
+      finishHoldToTalk(e, toggleBtn);
+    });
+    toggleBtn.addEventListener('keydown', (e) => {
+      if ((e.key === ' ' || e.key === 'Enter') && !isHoldRecording) {
+        e.preventDefault();
+        startHoldToTalk(e, toggleBtn);
+      }
+    });
+    toggleBtn.addEventListener('keyup', (e) => {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        finishHoldToTalk(e, toggleBtn);
+      }
     });
   }
 
@@ -1096,11 +1382,12 @@ export function attachLiveRexWidgetListeners() {
       const isThinking = status === 'thinking';
       
       const isWalkie = geminiLiveService.voiceMode === 'walkie';
-      const isWalkieRecording = isWalkie && (geminiLiveService.walkieState === 'recording' || data.walkieState === 'recording');
+      const isWalkieRecording = isHoldRecording || (isWalkie && (geminiLiveService.walkieState === 'recording' || data.walkieState === 'recording'));
       const isListening = isWalkie ? isWalkieRecording : (status === 'listening');
 
       const currentPet = store?.getActivePet?.() || { id: 'rex', name: 'Rex the Dino' };
       const pName = currentPet.name || 'Rex the Dino';
+      const kidName = getKidProfileName();
 
       // 1. Status Text
       const statusTextEl = document.getElementById('rex-status-text');
@@ -1110,14 +1397,12 @@ export function attachLiveRexWidgetListeners() {
           : isConnecting
           ? `🔄 Connecting to ${pName}...`
           : isWalkieRecording
-          ? `📻 Recording Walkie-Talkie! Tap when you are done!`
-          : isWalkie
-          ? `📻 Walkie-Talkie: Tap button to speak to ${pName}!`
+          ? `🎙️ Recording! Hold while speaking to ${pName}, release when done!`
           : isListening
-          ? `👂 Speak now! ${pName} is listening to you!`
+          ? `👂 Speak now! ${pName} is listening to you, ${kidName}!`
           : isThinking
           ? `🤔 ${pName} is getting your answer ready...`
-          : `Touch ${pName}'s face or pick a picture below!`;
+          : `Hold the button to talk to ${pName}, or pick a picture below!`;
       }
 
       // 2. Giant Mascot Disc Border & Glow
@@ -1134,8 +1419,6 @@ export function attachLiveRexWidgetListeners() {
             ? 'ring-4 ring-amber-400 border-4 border-amber-400 shadow-[0_0_25px_rgba(251,191,36,0.6)]'
             : isConnecting
             ? 'ring-4 ring-sky-400 border-4 border-sky-400 shadow-[0_0_25px_rgba(56,189,248,0.6)]'
-            : isWalkie
-            ? 'ring-2 ring-amber-400/50 border-4 border-amber-400/40 hover:border-amber-400'
             : 'border-4 border-primary/40 hover:border-primary group-hover:scale-105'
         }`;
       }
@@ -1148,42 +1431,36 @@ export function attachLiveRexWidgetListeners() {
             ? 'bg-primary text-on-primary ring-2 ring-primary-container animate-pulse'
             : isWalkieRecording
             ? 'bg-linear-to-r from-amber-500 to-orange-500 text-slate-950 font-black animate-pulse ring-2 ring-amber-300'
-            : isWalkie
-            ? 'bg-surface-container-highest text-amber-300 border border-amber-400/60 hover:brightness-110'
-            : isListening
-            ? 'bg-emerald-500 text-white animate-pulse'
             : isThinking
             ? 'bg-amber-500 text-white animate-bounce'
             : isConnecting
             ? 'bg-sky-500 text-white animate-pulse'
+            : isListening
+            ? 'bg-emerald-500 text-white animate-pulse'
             : 'bg-secondary text-on-secondary hover:brightness-110'
         }`;
         const icon = isSpeaking
           ? 'volume_up'
           : isWalkieRecording
           ? 'sensors'
-          : isWalkie
-          ? 'radio'
-          : isListening
-          ? 'mic'
           : isThinking
           ? 'hourglass_top'
           : isConnecting
           ? 'sync'
-          : 'touch_app';
+          : isListening
+          ? 'mic'
+          : 'mic';
         const label = isSpeaking
           ? 'Talking! (Tap to Pause)'
           : isWalkieRecording
-          ? 'Tap when Done! 🚀'
-          : isWalkie
-          ? 'Tap to Talk 📻'
-          : isListening
-          ? 'Listening...'
+          ? 'Release to Send! 🚀'
           : isThinking
           ? 'Thinking...'
           : isConnecting
           ? 'Connecting...'
-          : 'Tap to Talk!';
+          : isListening
+          ? 'Listening...'
+          : 'Hold to Talk 🎙️';
         pillBtnEl.innerHTML = `<span class="material-symbols-outlined text-xs ${isConnecting ? 'animate-spin' : ''}">${icon}</span><span>${label}</span>`;
       }
 
@@ -1203,16 +1480,13 @@ export function attachLiveRexWidgetListeners() {
           toggleBtnEl.innerHTML = '<span class="material-symbols-outlined text-base animate-spin">sync</span><span>Connecting to Gemini Live...</span>';
         } else if (isWalkieRecording) {
           toggleBtnEl.className = 'flex-1 py-3 px-4 rounded-2xl font-headline text-xs font-black flex items-center justify-center gap-2 chunky-btn shadow-md active:scale-95 transition-all bg-linear-to-r from-amber-500 to-orange-500 text-slate-950 border-amber-600 animate-pulse ring-2 ring-amber-400 cursor-pointer';
-          toggleBtnEl.innerHTML = '<span class="material-symbols-outlined text-base">sensors</span><span>Recording... Tap to Send to Rex! 🚀</span>';
-        } else if (isWalkie) {
-          toggleBtnEl.className = 'flex-1 py-3 px-4 rounded-2xl font-headline text-xs font-black flex items-center justify-center gap-2 chunky-btn shadow-md active:scale-95 transition-all bg-linear-to-r from-amber-500/20 to-orange-500/20 text-amber-300 border-2 border-amber-400/50 hover:bg-amber-500/30 cursor-pointer';
-          toggleBtnEl.innerHTML = '<span class="material-symbols-outlined text-base">radio</span><span>Start Talking (Walkie-Talkie 📻)</span>';
-        } else if (isListening) {
-          toggleBtnEl.className = 'flex-1 py-3 px-4 rounded-2xl font-headline text-xs font-black flex items-center justify-center gap-2 chunky-btn shadow-md active:scale-95 transition-all bg-emerald-500 text-white border-emerald-600 animate-pulse cursor-pointer';
-          toggleBtnEl.innerHTML = '<span class="material-symbols-outlined text-base">mic</span><span>Listening (Tap to Pause)</span>';
+          toggleBtnEl.innerHTML = '<span class="material-symbols-outlined text-base">sensors</span><span>Recording... Release to Send! 🚀</span>';
+        } else if (isThinking) {
+          toggleBtnEl.className = 'flex-1 py-3 px-4 rounded-2xl font-headline text-xs font-black flex items-center justify-center gap-2 chunky-btn shadow-md active:scale-95 transition-all bg-amber-500 text-white border-amber-600 animate-bounce cursor-pointer';
+          toggleBtnEl.innerHTML = `<span class="material-symbols-outlined text-base animate-spin">hourglass_top</span><span>${pName} is thinking...</span>`;
         } else {
           toggleBtnEl.className = 'flex-1 py-3 px-4 rounded-2xl font-headline text-xs font-black flex items-center justify-center gap-2 chunky-btn shadow-md active:scale-95 transition-all bg-primary text-on-primary border-primary-container cursor-pointer';
-          toggleBtnEl.innerHTML = '<span class="material-symbols-outlined text-base">mic_none</span><span>Start Live Conversation</span>';
+          toggleBtnEl.innerHTML = `<span class="material-symbols-outlined text-base">mic</span><span>Hold to Talk to ${pName} 🎙️</span>`;
         }
       }
 
@@ -1345,6 +1619,9 @@ async function handleSendChatMessage(text) {
 
     // Update live dialogue box
     updateLiveDialogue(null, reply);
+
+    // Emotion-synchronized Dino SFX right before speech
+    playEmotionSFX(agyResult?.emotion);
 
     // Speak aloud using realistic kid-friendly voice
     speakCompanion(reply, activePetId);

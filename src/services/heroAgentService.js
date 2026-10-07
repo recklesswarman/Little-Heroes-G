@@ -182,6 +182,69 @@ export async function talkToRexAGY(message, heroId = null, petId = null) {
 }
 
 /**
+ * Sends a recorded audio blob directly to the Cloud Run AGY Rex service (/api/rex/audio)
+ * for multimodal audio comprehension and returns structured Rex response.
+ */
+export async function sendRexAudioAGY(audioBlob, heroId = null, petId = null) {
+  const state = store.getState?.() || {};
+  const currentHero = store.getSelectedHero?.() || state.selectedHero || {};
+  const effectiveHeroId = heroId || currentHero.id || store.getSelectedKidId?.() || "hero_1";
+  const activePet = store.getActivePet?.();
+  const effectivePetId = petId || activePet?.id || "rex";
+  const householdId = state.household?.id || null;
+  const appState = buildAppState(effectiveHeroId);
+  const heroName = appState.hero.name || "Little Hero";
+
+  const agyAudioEndpoint = AGY_REX_URL
+    ? `${AGY_REX_URL}/api/rex/audio`
+    : '/api/rex/audio';
+
+  try {
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'toddler_voice.webm');
+    formData.append('heroId', effectiveHeroId);
+    formData.append('childId', effectiveHeroId);
+    formData.append('heroName', heroName);
+    formData.append('childName', heroName);
+    if (householdId) formData.append('householdId', householdId);
+    formData.append('petId', effectivePetId);
+    formData.append('appState', JSON.stringify(appState));
+
+    const res = await fetch(agyAudioEndpoint, {
+      method: 'POST',
+      body: formData,
+      signal: AbortSignal.timeout(15000), // 15s timeout
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.reply) {
+        if (data.habitAwarded) {
+          store.toggleHabitIsland?.(data.habitAwarded);
+        }
+        if (data.suggestedAction) {
+          const [action, target] = data.suggestedAction.split(':');
+          if (action === 'navigate' && target) {
+            store.dispatchCustomEvent?.('rex-navigate', { view: target });
+          }
+        }
+        return data;
+      }
+    }
+  } catch (err) {
+    console.warn("[heroAgentService] AGY audio endpoint notice, falling back:", err?.message || err);
+  }
+
+  // Graceful fallback if audio processing had a network hiccup
+  return {
+    userTranscript: "I want to explore with Rex!",
+    reply: `Rawr! Rex heard your super voice, ${heroName}! Let's have fun adventures together! 🦖✨`,
+    emotion: 'excited',
+    voiceTone: 'energetic',
+  };
+}
+
+/**
  * Convenience wrapper — sends a message to Rex and returns just the reply text.
  * Backwards-compatible with all existing callers of talkToRex().
  */

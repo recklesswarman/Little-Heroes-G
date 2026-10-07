@@ -72,3 +72,8 @@ class RexAgentResponse(BaseModel):
             "Requires parent auto-approve setting. Null if no award this turn."
         )
     )
+
+    user_transcript: Optional[str] = Field(
+        default=None,
+        description="The child's spoken words transcribed from audio, for live dialogue display."
+    )

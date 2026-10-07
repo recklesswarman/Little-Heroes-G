@@ -14,18 +14,20 @@ Endpoints:
 """
 from __future__ import annotations
 
+import json
 import os
 import traceback
 from typing import Any, Optional
 
 import uvicorn
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from agents import (
     chat_with_rex,
+    chat_with_rex_audio,
     FALLBACK_REPLY,
     get_battle_coach_advice,
     BattleCoachResponse,
@@ -87,6 +89,7 @@ class RexChatResponse(BaseModel):
     storyChapter: Optional[str] = None
     parentNote: Optional[str] = None
     habitAwarded: Optional[str] = None
+    userTranscript: Optional[str] = None
 
 
 class BattleCoachRequest(BaseModel):
@@ -186,6 +189,71 @@ async def rex_chat(req: RexChatRequest):
         raise HTTPException(
             status_code=503,
             detail=f"Rex companion service unavailable: {str(exc)[:200]}",
+        )
+
+
+@app.post("/api/rex/audio", response_model=RexChatResponse)
+async def rex_audio(
+    audio: UploadFile = File(...),
+    heroId: Optional[str] = Form(None),
+    childId: Optional[str] = Form(None),
+    heroName: Optional[str] = Form(None),
+    childName: Optional[str] = Form(None),
+    householdId: Optional[str] = Form(None),
+    petId: Optional[str] = Form("rex"),
+    appState: Optional[str] = Form(None),
+):
+    """Multimodal audio endpoint: streams child's voice directly to Google Antigravity Rex agent."""
+    hero_id = heroId or childId or "hero_guest"
+    kid_name = heroName or childName
+    parsed_app_state = {}
+    if appState:
+        try:
+            parsed_app_state = json.loads(appState)
+        except Exception:
+            parsed_app_state = {}
+
+    if kid_name:
+        if "hero" not in parsed_app_state:
+            parsed_app_state["hero"] = {}
+        parsed_app_state["hero"]["name"] = kid_name
+    elif "hero" not in parsed_app_state or not parsed_app_state["hero"].get("name"):
+        if "hero" not in parsed_app_state:
+            parsed_app_state["hero"] = {}
+        parsed_app_state["hero"]["name"] = "Little Hero"
+
+    audio_bytes = await audio.read()
+    mime_type = audio.content_type or "audio/webm"
+
+    try:
+        result = await chat_with_rex_audio(
+            audio_bytes=audio_bytes,
+            mime_type=mime_type,
+            hero_id=hero_id,
+            household_id=householdId,
+            app_state=parsed_app_state,
+        )
+        return RexChatResponse(
+            reply=result.reply,
+            emotion=result.emotion,
+            voiceTone=result.voice_tone,
+            suggestedAction=result.suggested_action,
+            storyChapter=result.story_chapter,
+            parentNote=result.parent_note,
+            habitAwarded=result.habit_awarded,
+            userTranscript=result.user_transcript,
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        traceback.print_exc()
+        print(f"❌ [Rex Audio] Unhandled error: {exc}")
+        effective_name = kid_name or "Little Hero"
+        return RexChatResponse(
+            reply=f"Rawr! Rex heard your super voice, {effective_name}! Let's have fun adventures together! 🦖✨",
+            emotion="excited",
+            voiceTone="energetic",
+            userTranscript="[Spoken voice]",
         )
 
 
