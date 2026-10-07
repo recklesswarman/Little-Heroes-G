@@ -50,6 +50,7 @@ let studioStatType = 'damage_boost';
 let studioStatPercent = 25;
 let studioItemPrice = 150;
 let studioPetVoiceLine = 'Zap! Ready for hyper-speed hero adventures!';
+let studioCraftedBy = 'Mom & Dad';
 
 // Furniture State
 let studioFurnitureType = 'bed';
@@ -1452,6 +1453,7 @@ export function renderParentPortalView() {
       ${
         activeAdminTab === 'studio'
           ? (() => {
+              const publishedCustomWeapons = store.getParentCustomWeapons ? store.getParentCustomWeapons() : [];
               const publishedCustomGear = store.getParentCustomGear ? store.getParentCustomGear() : [];
               const publishedCustomFurniture = store.getParentCustomFurniture ? store.getParentCustomFurniture() : [];
               const publishedCustomToys = store.getParentCustomToys ? store.getParentCustomToys() : [];
@@ -1460,6 +1462,7 @@ export function renderParentPortalView() {
               const publishedCustomFood = store.getParentCustomFood ? store.getParentCustomFood() : [];
 
               const categoryTabs = [
+                { id: 'weapon', label: 'Combat Battle Weapons', emoji: '⚔️', count: publishedCustomWeapons.length, desc: 'Laser Sabers, Blasters & Shields' },
                 { id: 'gear', label: 'Pet Wearable Gear', emoji: '🛡️', count: publishedCustomGear.length, desc: 'Costumes, capes, boots & visors' },
                 { id: 'furniture', label: 'Hero HQ Furniture', emoji: '🛋️', count: publishedCustomFurniture.length, desc: 'Beds, desks, lounges & rugs' },
                 { id: 'toy', label: 'Pet Pen Toys', emoji: '🎾', count: publishedCustomToys.length, desc: 'Trampolines, balls & puzzles' },
@@ -1467,6 +1470,14 @@ export function renderParentPortalView() {
                 { id: 'pet', label: '3D Pet Companions', emoji: '🐾', count: publishedCustomPets.length, desc: '6 Archetypes, Habit Bond Perks & Magic Eggs' },
                 { id: 'food', label: 'Pet Snacks & Food', emoji: '🍎', count: publishedCustomFood.length, desc: 'Limited-use consumable treats' },
                 { id: 'world_stash', label: '3D Map Secret Stashes', emoji: '🗺️', count: (store.getWorldAdventureMapState().parentHiddenChests || []).length, desc: 'Hidden Mystery Crates, Landmarks & Bedtime Switch' }
+              ];
+
+              const weaponThemes = [
+                { key: 'plasma_saber', label: '⚔️ Star-Plasma Saber', color: '#06b6d4', desc: 'Glowing plasma blade with +30% attack power' },
+                { key: 'hydro_blaster', label: '🔫 Hydro-Bubble Blaster', color: '#3b82f6', desc: 'High-pressure water pulse that blasts plaque' },
+                { key: 'phoenix_wand', label: '🪄 Phoenix Ember Wand', color: '#f97316', desc: 'Fiery sparks that burn away sugar barriers' },
+                { key: 'sonic_cleanser', label: '⚡ Sonic Tooth Cannon', color: '#10b981', desc: 'Ultrasonic soundwaves for maximum enamel defense' },
+                { key: 'starlight_hammer', label: '🔨 Starlight Titan Hammer', color: '#fbbf24', desc: 'Heavy starlight mallet delivering critical smashes' }
               ];
 
               const petModels = [
@@ -2409,6 +2420,20 @@ export function renderParentPortalView() {
                     class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-cyan-300 focus:outline-hidden focus:border-cyan-400" 
                   />
                 </div>
+
+                <div>
+                  <label class="text-[10px] font-black uppercase text-on-surface-variant block mb-1 flex items-center gap-1">
+                    <span class="material-symbols-outlined text-xs text-amber-400">palette</span>
+                    <span>Crafted By (Author Signature Badge)</span>
+                  </label>
+                  <input 
+                    id="studio-crafted-by-input" 
+                    type="text" 
+                    value="${escapeHtml(studioCraftedBy || 'Mom & Dad')}"
+                    placeholder="e.g. Mom, Dad, Grandma, Coach..."
+                    class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-amber-300 focus:outline-hidden focus:border-amber-400" 
+                  />
+                </div>
               </div>
 
               <!-- Delivery Channel & Child Target (Clean Card) -->
@@ -2509,6 +2534,42 @@ export function renderParentPortalView() {
                 </h3>
                 <p class="text-xs text-on-surface-variant">All custom gear, furniture, toys and bosses crafted in the studio.</p>
               </div>
+            </div>
+
+            <!-- 0. Custom Battle Weapons Section -->
+            <div class="flex flex-col gap-3">
+              <h4 class="text-xs font-black text-secondary uppercase tracking-wider flex items-center gap-1.5">
+                <span>⚔️</span><span>Published Custom Battle Weapons (${publishedCustomWeapons.length})</span>
+              </h4>
+              ${publishedCustomWeapons.length === 0 ? `
+                <p class="text-xs text-on-surface-variant italic">No custom battle weapons published yet.</p>
+              ` : `
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  ${publishedCustomWeapons.map(item => `
+                    <div class="p-3.5 rounded-2xl bg-surface-container-high border-2 border-cyan-400/40 shadow-md flex flex-col justify-between gap-2.5">
+                      <div class="flex items-start gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-cyan-950/80 border border-cyan-400/40 flex items-center justify-center text-xl shadow-sm shrink-0">
+                          ${item.image ? `<img src="${item.image}" class="w-8 h-8 object-contain" />` : `<span class="material-symbols-outlined text-cyan-300">swords</span>`}
+                        </div>
+                        <div class="min-w-0 flex-1">
+                          <div class="flex items-center gap-1.5 flex-wrap">
+                            <span class="px-2 py-0.2 rounded-full text-[9px] font-black uppercase bg-cyan-400/20 text-cyan-300 border border-cyan-400/30">⚔️ Weapon</span>
+                            <span class="text-[9px] font-black uppercase text-secondary">🪙 ${item.costCoins} Tokens</span>
+                          </div>
+                          <h5 class="font-headline text-xs font-black text-inverse-surface truncate mt-0.5">${escapeHtml(item.name || item.title)}</h5>
+                          <span class="text-[10px] text-amber-300 font-bold block truncate">⭐ Crafted by ${escapeHtml(item.craftedBy || 'Mom & Dad')}</span>
+                        </div>
+                      </div>
+                      <div class="flex items-center justify-between pt-1.5 border-t border-surface-container-highest">
+                        <span class="text-[10px] font-black text-emerald-400">${item.statBonusLabel || `+${item.statBonusPercent || 30}% Damage`}</span>
+                        <button class="delete-custom-weapon-btn text-error hover:bg-error/15 p-1 rounded-lg" data-weapon-id="${item.id}" title="Delete Weapon">
+                          <span class="material-symbols-outlined text-sm">delete</span>
+                        </button>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              `}
             </div>
 
             <!-- 1. Custom Gear Section -->
@@ -5852,8 +5913,31 @@ export function attachParentPortalListeners() {
         const nameVal = document.getElementById('studio-item-name')?.value || studioItemName;
         const descVal = document.getElementById('studio-item-desc')?.value || studioItemDesc;
         const voiceVal = document.getElementById('studio-item-voiceline')?.value || studioPetVoiceLine;
+        const craftedByVal = document.getElementById('studio-crafted-by-input')?.value?.trim() || studioCraftedBy || 'Mom & Dad';
 
-        if (studioActiveCategory === 'gear') {
+        if (studioActiveCategory === 'weapon') {
+          const weaponToPublish = {
+            id: `parent_weapon_${Date.now()}`,
+            name: nameVal.trim() || 'Hero Battle Saber',
+            title: nameVal.trim() || 'Hero Battle Saber',
+            desc: descVal.trim() || 'Legendary combat weapon handcrafted for toothbrush battles!',
+            category: 'Weapons',
+            archetype: studioItemArchetype || 'laser_sword',
+            statBonusType: studioStatType || 'damage_boost',
+            statBonusPercent: studioStatPercent || 30,
+            statBonusLabel: `+${studioStatPercent || 30}% Boss Attack Power`,
+            costCoins: studioItemPrice || 200,
+            craftedBy: craftedByVal,
+            deliveryMethod: studioDeliveryMethod || 'instant_gift',
+            targetChildProfile: studioTargetChildProfile || 'all',
+            voiceLine: voiceVal.trim() || 'Enamel power surge! Ready to vanquish sugar bandits!',
+            image: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=256&auto=format&fit=crop&q=80',
+            icon: 'swords',
+            isCustomAI: true,
+            isParentCrafted: true
+          };
+          store.publishCustomAIWeapon(weaponToPublish);
+        } else if (studioActiveCategory === 'gear') {
           const gearToPublish = {
             id: `parent_gear_${Date.now()}`,
             name: nameVal.trim() || 'Hero Pet Gear',
@@ -5869,6 +5953,7 @@ export function attachParentPortalListeners() {
             statBonusPercent: studioStatPercent,
             statBonusLabel: `+${studioStatPercent}% ${formatStatBonusName(studioStatType)}`,
             costCoins: studioItemPrice,
+            craftedBy: craftedByVal,
             petVoiceLine: voiceVal.trim(),
             splineUrl: studioActiveSplineUrl || undefined,
             category: 'Avatar & Pet Gear',
@@ -5884,6 +5969,7 @@ export function attachParentPortalListeners() {
             zone: studioFurnitureZone,
             comfort: studioFurnitureComfort,
             costCoins: studioItemPrice,
+            craftedBy: craftedByVal,
             desc: descVal.trim() || 'Custom Hero HQ furniture handcrafted by parent!',
             petVoiceLine: voiceVal.trim(),
             splineUrl: studioActiveSplineUrl || undefined,
@@ -5899,6 +5985,7 @@ export function attachParentPortalListeners() {
             statRefillTarget: studioToyStat,
             statRefillAmount: studioToyAmount,
             costCoins: studioItemPrice,
+            craftedBy: craftedByVal,
             desc: descVal.trim() || 'Interactive pet toy handcrafted by parent!',
             cheerVoiceLine: voiceVal.trim(),
             splineUrl: studioActiveSplineUrl || undefined,
@@ -5918,6 +6005,7 @@ export function attachParentPortalListeners() {
             joyBoost: studioFoodJoyBoost,
             quantityPerPurchase: studioFoodQuantity,
             costCoins: studioItemPrice,
+            craftedBy: craftedByVal,
             isCustom: true
           };
           store.publishCustomAIFood(foodToPublish);
@@ -5939,6 +6027,7 @@ export function attachParentPortalListeners() {
             emoji: studioBossDomain === 'dental' ? '👾' : studioBossDomain === 'bedtime' ? '⏰' : studioBossDomain === 'screens' ? '📱' : '🥦',
             gradient: studioBossDomain === 'dental' ? 'from-purple-900 to-indigo-950' : studioBossDomain === 'bedtime' ? 'from-blue-900 to-slate-950' : studioBossDomain === 'screens' ? 'from-emerald-900 to-slate-950' : 'from-rose-900 to-amber-950',
             accentBorder: 'border-purple-500',
+            craftedBy: craftedByVal,
             isCustom: true
           };
           store.publishCustomAIBoss(bossToPublish);
@@ -5983,7 +6072,22 @@ export function attachParentPortalListeners() {
     }
   }
 
-  // 19. Delete Handlers across all 4 categories
+  // 19. Delete Handlers across all custom categories
+  document.querySelectorAll('.delete-custom-weapon-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const weaponId = btn.getAttribute('data-weapon-id');
+      if (weaponId) store.deleteCustomAIWeapon(weaponId);
+    });
+  });
+
+  const craftedByInput = document.getElementById('studio-crafted-by-input');
+  if (craftedByInput) {
+    craftedByInput.addEventListener('input', (e) => {
+      studioCraftedBy = e.target.value;
+    });
+  }
+
   document.querySelectorAll('.delete-custom-gear-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();

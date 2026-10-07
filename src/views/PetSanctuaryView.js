@@ -410,6 +410,13 @@ function renderFeedDrawer(pet, needs) {
             const stock = store.getTreatStock(treat.id);
             const isFree = treat.costCoins <= 0;
             const outOfStock = !isFree && stock <= 0;
+            const maxServings = treat.maxServings || treat.quantityPerPurchase || 3;
+            const servingsLabel = (treat.usageType === 'multi_use' || treat.quantityPerPurchase > 1)
+              ? `${stock}/${maxServings} Servings`
+              : `${stock} left`;
+            const authorBadge = (treat.isParentCrafted || treat.isCustomAI)
+              ? `<span class="text-[9px] font-black text-amber-300 bg-amber-950/70 px-1.5 py-0.5 rounded border border-amber-600/50 mt-1 truncate max-w-full">⭐ ${escapeHtml(treat.craftedBy || 'Mom & Dad')}</span>`
+              : '';
             return `
             <button
               class="${outOfStock ? 'buy-treat-pack-btn' : 'feed-treat-btn'} flex flex-col items-center text-center p-3.5 rounded-2xl ${outOfStock ? 'bg-amber-950/40 border-amber-500/40 hover:bg-amber-950/60' : 'bg-surface-container-high hover:bg-surface-bright border-surface-container-highest'} border-2 active:scale-95 transition-all shadow-sm group"
@@ -421,8 +428,9 @@ function renderFeedDrawer(pet, needs) {
                 outOfStock
                   ? `<span class="text-[10px] font-black text-amber-400 mt-0.5">🪙 Buy Pack: ${treat.costCoins}</span>`
                   : `<span class="text-[10px] font-bold text-secondary mt-0.5">+${treat.hungerFill || treat.hunger || 25} Hunger</span>
-                     <span class="text-[10px] font-black text-primary">${isFree ? 'Always Free' : `${stock} left`}</span>`
+                     <span class="text-[10px] font-black text-primary">${isFree ? 'Always Free' : servingsLabel}</span>`
               }
+              ${authorBadge}
             </button>
           `;
           }).join('')}

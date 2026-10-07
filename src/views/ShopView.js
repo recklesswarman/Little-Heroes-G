@@ -12,7 +12,15 @@ export function renderShopView() {
   const state = store.getState();
   const hero = state.selectedHero;
   const recentlyUnlocked = state.recentlyUnlocked || [];
-  const digitalGear = state.digitalGear || [];
+  const parentWeapons = store.getParentCustomWeapons ? store.getParentCustomWeapons() : [];
+  const parentGear = store.getParentCustomGear ? store.getParentCustomGear() : [];
+  const parentFood = store.getParentCustomFood ? store.getParentCustomFood() : [];
+  const digitalGear = [...(state.digitalGear || [])];
+  [...parentWeapons, ...parentGear, ...parentFood].forEach(item => {
+    if (item && item.id && !digitalGear.some(d => d.id === item.id)) {
+      digitalGear.unshift(item);
+    }
+  });
   const currentShopSeason = store.getEffectiveSeason();
   const profileThemes = (state.profileThemes || []).filter((t) => !t.seasonId || t.seasonId === currentShopSeason);
   const realLifeRewards = state.realLifeRewards || [];
@@ -233,6 +241,11 @@ export function renderShopView() {
                     <div class="flex flex-col flex-1 min-w-0">
                       <div class="flex items-center gap-1.5 flex-wrap">
                         <span class="text-[10px] font-black uppercase text-secondary">${item.category}</span>
+                        ${
+                          isParentCrafted
+                            ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-headline font-black bg-amber-400 text-slate-950 flex items-center gap-1 shadow-xs border border-amber-300">⭐ Crafted by ${escapeHtml(item.craftedBy || 'Mom & Dad')}</span>`
+                            : ''
+                        }
                         ${
                           isWeapon
                             ? `<span class="text-[9px] font-black uppercase text-cyan-300 bg-cyan-950/60 px-1.5 py-0.5 rounded border border-cyan-700/60 flex items-center gap-0.5">⚔️ 1 Active / Battle</span>`
@@ -583,6 +596,11 @@ function renderShopItemInspectModal(item, hero, state) {
         <p class="text-xs text-on-surface-variant max-w-xs font-medium">${escapeHtml(item.desc) || ''}</p>
         
         <div class="flex flex-wrap items-center justify-center gap-2 mt-2">
+          ${(item.isParentCrafted || item.isCustomAI) ? `
+            <span class="px-2.5 py-1 rounded-full text-[10px] font-headline font-black bg-amber-400 text-slate-950 flex items-center gap-1 shadow-xs border border-amber-300">
+              ⭐ Crafted by ${escapeHtml(item.craftedBy || 'Mom & Dad')}
+            </span>
+          ` : ''}
           ${item.statBonusLabel || item.statBonus ? `
             <span class="text-[10px] font-black uppercase text-emerald-400 bg-emerald-500/15 px-2.5 py-1 rounded-full border border-emerald-500/30 flex items-center gap-1">
               <span class="material-symbols-outlined text-xs">bolt</span>

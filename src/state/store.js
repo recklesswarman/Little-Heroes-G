@@ -86,9 +86,11 @@ const defaultState = {
   previousView: 'dashboard',
   selectedPetDetailId: 1,
   selectedAdventureGameId: 'phonics_forest',
+  parentCustomWeapons: [],
   parentCustomGear: [],
   parentCustomFurniture: [],
   parentCustomToys: [],
+  parentCustomFood: [],
   parentCustomBosses: [],
   selectedBossId: 'sugar_bandit',
   pendingGiftCrates: [],
@@ -767,6 +769,24 @@ class Store {
         if (!parsed.pendingBounties || !Array.isArray(parsed.pendingBounties)) {
           parsed.pendingBounties = [];
         }
+        if (!parsed.parentCustomWeapons || !Array.isArray(parsed.parentCustomWeapons)) {
+          parsed.parentCustomWeapons = [];
+        }
+        parsed.parentCustomWeapons.forEach(item => {
+          if (item && item.id) {
+            const inCatalog = DIGITAL_REWARDS_CATALOG.some(w => w.id === item.id);
+            if (!inCatalog) {
+              DIGITAL_REWARDS_CATALOG.unshift(item);
+            }
+            if (parsed.digitalGear && Array.isArray(parsed.digitalGear)) {
+              const inDigital = parsed.digitalGear.some(g => g.id === item.id);
+              if (!inDigital) {
+                parsed.digitalGear.unshift(item);
+              }
+            }
+          }
+        });
+
         if (!parsed.parentCustomGear || !Array.isArray(parsed.parentCustomGear)) {
           parsed.parentCustomGear = [];
         }
@@ -806,6 +826,24 @@ class Store {
         if (!parsed.parentCustomToys || !Array.isArray(parsed.parentCustomToys)) {
           parsed.parentCustomToys = [];
         }
+
+        if (!parsed.parentCustomFood || !Array.isArray(parsed.parentCustomFood)) {
+          parsed.parentCustomFood = [];
+        }
+        parsed.parentCustomFood.forEach(item => {
+          if (item && item.id) {
+            const inCatalog = DIGITAL_REWARDS_CATALOG.some(w => w.id === item.id);
+            if (!inCatalog) {
+              DIGITAL_REWARDS_CATALOG.unshift(item);
+            }
+            if (parsed.digitalGear && Array.isArray(parsed.digitalGear)) {
+              const inDigital = parsed.digitalGear.some(g => g.id === item.id);
+              if (!inDigital) {
+                parsed.digitalGear.unshift(item);
+              }
+            }
+          }
+        });
 
         if (!parsed.parentCustomBosses || !Array.isArray(parsed.parentCustomBosses)) {
           parsed.parentCustomBosses = [];
@@ -3442,6 +3480,158 @@ class Store {
     }
   }
 
+  getParentCustomWeapons() {
+    return this.state.parentCustomWeapons || [];
+  }
+
+  publishCustomAIWeapon(weaponItem) {
+    if (!weaponItem || (!weaponItem.name && !weaponItem.title)) return null;
+
+    const name = weaponItem.name || weaponItem.title || 'Custom Battle Weapon';
+    const deliveryMethod = weaponItem.deliveryMethod || 'instant_gift';
+    const targetChildProfile = weaponItem.targetChildProfile || 'all';
+    const craftedBy = weaponItem.craftedBy || 'Mom & Dad';
+
+    const weapon = {
+      ...weaponItem,
+      id: weaponItem.id || `parent_weapon_${Date.now()}`,
+      name,
+      title: name,
+      category: 'Weapons',
+      isParentCrafted: true,
+      isCustomAI: true,
+      unlocked: deliveryMethod === 'instant_gift',
+      deliveryMethod,
+      targetChildProfile,
+      craftedBy,
+      archetype: weaponItem.archetype || 'laser_sword',
+      statBonusType: weaponItem.statBonusType || 'damage_boost',
+      statBonusPercent: Number(weaponItem.statBonusPercent) || 30,
+      statBonusLabel: weaponItem.statBonusLabel || `+${weaponItem.statBonusPercent || 30}% Boss Attack Power`,
+      costCoins: Number(weaponItem.costCoins || weaponItem.coinPrice) || 200,
+      image: weaponItem.image || 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=256&auto=format&fit=crop&q=80',
+      icon: weaponItem.icon || 'swords',
+      voiceLine: weaponItem.voiceLine || 'Enamel power surge! Ready to vanquish sugar bandits!',
+      createdAt: weaponItem.createdAt || new Date().toISOString()
+    };
+
+    if (!this.state.parentCustomWeapons) this.state.parentCustomWeapons = [];
+    const existingIdx = this.state.parentCustomWeapons.findIndex(w => w.id === weapon.id);
+    if (existingIdx >= 0) {
+      this.state.parentCustomWeapons[existingIdx] = weapon;
+    } else {
+      this.state.parentCustomWeapons.unshift(weapon);
+    }
+
+    if (!this.state.digitalGear) this.state.digitalGear = [];
+    const digIdx = this.state.digitalGear.findIndex(g => g.id === weapon.id);
+    if (digIdx >= 0) {
+      this.state.digitalGear[digIdx] = weapon;
+    } else {
+      this.state.digitalGear.unshift(weapon);
+    }
+
+    const catIdx = DIGITAL_REWARDS_CATALOG.findIndex(w => w.id === weapon.id);
+    if (catIdx >= 0) {
+      DIGITAL_REWARDS_CATALOG[catIdx] = weapon;
+    } else {
+      DIGITAL_REWARDS_CATALOG.unshift(weapon);
+    }
+
+    // Handle delivery channels
+    if (deliveryMethod === 'instant_gift') {
+      const crate = {
+        id: `crate_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+        item: weapon,
+        category: 'weapon',
+        targetChildProfile,
+        isOpened: false,
+        unboxed: false,
+        createdAt: new Date().toISOString()
+      };
+      if (!this.state.pendingGiftCrates) this.state.pendingGiftCrates = [];
+      this.state.pendingGiftCrates.unshift(crate);
+      this.state.activeUnboxingCrateId = crate.id;
+
+      if (this.state.selectedHero) {
+        if (!this.state.selectedHero.inventory) this.state.selectedHero.inventory = ['laser_toothbrush'];
+        if (!this.state.selectedHero.inventory.includes(weapon.id)) {
+          this.state.selectedHero.inventory.push(weapon.id);
+        }
+        this.equipHeroWeapon(weapon.id);
+      }
+    } else if (deliveryMethod === 'habit_bounty') {
+      const bounty = {
+        id: `bounty_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+        item: weapon,
+        category: 'weapon',
+        targetChildProfile,
+        habitId: weaponItem.bountyRequirement?.habitId || 'brush_teeth',
+        targetStreakDays: Number(weaponItem.bountyRequirement?.targetStreakDays) || 3,
+        currentStreakProgress: 0,
+        createdAt: new Date().toISOString()
+      };
+      if (!this.state.pendingBounties) this.state.pendingBounties = [];
+      this.state.pendingBounties.unshift(bounty);
+    }
+
+    this.logAction(
+      `Parent crafted 3D Battle Weapon: '${weapon.name}' (Crafted by: ${craftedBy})`,
+      `Published via ${deliveryMethod.toUpperCase()} (Target: ${targetChildProfile}). (${weapon.statBonusLabel})`
+    );
+
+    Sound.fanfare();
+    try { confetti({ particleCount: 75, spread: 80, origin: { y: 0.6 } }); } catch {}
+    this.showReward(
+      `⚔️ 3D Battle Weapon Published!`,
+      `"${weapon.name}" is now live via ${deliveryMethod === 'instant_gift' ? 'Surprise Gift Delivery 🎁' : deliveryMethod === 'habit_bounty' ? 'Habit Bounty 🎯' : 'Hero Shop 🪙'}!\n⭐ Crafted by: ${craftedBy}\n⚡ Bonus: ${weapon.statBonusLabel}\n⚔️ Combat ready!`,
+      0,
+      0,
+      weapon.image,
+      weapon.icon || 'auto_awesome'
+    );
+
+    this.saveState(true);
+    return weapon;
+  }
+
+  deleteCustomAIWeapon(weaponId) {
+    if (!weaponId) return false;
+
+    let targetItem = null;
+    if (this.state.parentCustomWeapons) {
+      targetItem = this.state.parentCustomWeapons.find(w => w.id === weaponId);
+      this.state.parentCustomWeapons = this.state.parentCustomWeapons.filter(w => w.id !== weaponId);
+    }
+    if (this.state.digitalGear) {
+      this.state.digitalGear = this.state.digitalGear.filter(w => w.id !== weaponId);
+    }
+    const catIdx = DIGITAL_REWARDS_CATALOG.findIndex(w => w.id === weaponId);
+    if (catIdx >= 0) {
+      DIGITAL_REWARDS_CATALOG.splice(catIdx, 1);
+    }
+
+    // Global Cascade Purge: remove from all hero inventories and reset equipped slot
+    const purgeHeroWeapon = (hero) => {
+      if (!hero) return;
+      if (Array.isArray(hero.inventory)) {
+        hero.inventory = hero.inventory.filter(id => id !== weaponId && (targetItem ? id !== targetItem.title && id !== targetItem.name : true));
+      }
+      if (hero.equippedWeapon === weaponId || (targetItem && (hero.equippedWeapon === targetItem.title || hero.equippedWeapon === targetItem.name))) {
+        hero.equippedWeapon = 'laser_toothbrush';
+      }
+    };
+
+    purgeHeroWeapon(this.state.selectedHero);
+    if (Array.isArray(this.state.heroes)) {
+      this.state.heroes.forEach(purgeHeroWeapon);
+    }
+
+    Sound.click();
+    this.saveState(true);
+    return true;
+  }
+
   getParentCustomGear() {
     return this.state.parentCustomGear || [];
   }
@@ -3453,6 +3643,7 @@ class Store {
     const name = gearItem.name || gearItem.title || 'Custom Hero Gear';
     const deliveryMethod = gearItem.deliveryMethod || 'instant_gift';
     const targetChildProfile = gearItem.targetChildProfile || 'all';
+    const craftedBy = gearItem.craftedBy || 'Mom & Dad';
 
     const gear = {
       ...gearItem,
@@ -3466,6 +3657,7 @@ class Store {
       unlocked: deliveryMethod === 'instant_gift',
       deliveryMethod,
       targetChildProfile,
+      craftedBy,
       statBonusType: gearItem.statBonusType || (socket === 'feet' ? 'speed_boost' : socket === 'chest' ? 'defense_boost' : socket === 'head' ? 'damage_boost' : 'xp_boost'),
       statBonusPercent: Number(gearItem.statBonusPercent) || 25,
       statBonusLabel: gearItem.statBonusLabel || `+${gearItem.statBonusPercent || 25}% ${formatStatBonusName(gearItem.statBonusType)}`,
@@ -3540,15 +3732,15 @@ class Store {
     }
 
     this.logAction(
-      `Parent crafted 3D ${gear.category === 'Weapons' ? 'Battle Weapon' : 'Pet Gear'}: '${gear.name}'`,
+      `Parent crafted 3D ${gear.category === 'Weapons' ? 'Battle Weapon' : 'Pet Gear'}: '${gear.name}' (Crafted by: ${craftedBy})`,
       `Published via ${deliveryMethod.toUpperCase()} (Target: ${targetChildProfile}). (${gear.statBonusLabel})`
     );
 
     Sound.fanfare();
-    confetti({ particleCount: 75, spread: 80, origin: { y: 0.6 } });
+    try { confetti({ particleCount: 75, spread: 80, origin: { y: 0.6 } }); } catch {}
     this.showReward(
       `✨ 3D ${gear.category === 'Weapons' ? 'Weapon' : 'Pet Gear'} Published!`,
-      `"${gear.name}" is now live via ${deliveryMethod === 'instant_gift' ? 'Surprise Gift Delivery 🎁' : deliveryMethod === 'habit_bounty' ? 'Habit Bounty 🎯' : 'Hero Shop 🪙'}!\n⚡ Bonus: ${gear.statBonusLabel}\n⚔️ Combat ready!`,
+      `"${gear.name}" is now live via ${deliveryMethod === 'instant_gift' ? 'Surprise Gift Delivery 🎁' : deliveryMethod === 'habit_bounty' ? 'Habit Bounty 🎯' : 'Hero Shop 🪙'}!\n⭐ Crafted by: ${craftedBy}\n⚡ Bonus: ${gear.statBonusLabel}\n⚔️ Combat ready!`,
       0,
       0,
       gear.image,
@@ -3562,16 +3754,62 @@ class Store {
   deleteCustomAIGear(gearId) {
     if (!gearId) return false;
 
+    let targetItem = null;
     if (this.state.parentCustomGear) {
-      const item = this.state.parentCustomGear.find(g => g.id === gearId);
+      targetItem = this.state.parentCustomGear.find(g => g.id === gearId);
       this.state.parentCustomGear = this.state.parentCustomGear.filter(g => g.id !== gearId);
-      if (item && item.socket && PET_GEAR_CATALOG[item.socket]) {
-        PET_GEAR_CATALOG[item.socket] = PET_GEAR_CATALOG[item.socket].filter(g => g.id !== gearId);
+      if (targetItem && targetItem.socket && PET_GEAR_CATALOG[targetItem.socket]) {
+        PET_GEAR_CATALOG[targetItem.socket] = PET_GEAR_CATALOG[targetItem.socket].filter(g => g.id !== gearId);
       }
     }
 
     if (this.state.digitalGear) {
       this.state.digitalGear = this.state.digitalGear.filter(g => g.id !== gearId);
+    }
+    const catIdx = DIGITAL_REWARDS_CATALOG.findIndex(g => g.id === gearId);
+    if (catIdx >= 0) {
+      DIGITAL_REWARDS_CATALOG.splice(catIdx, 1);
+    }
+
+    // Global Cascade Purge: remove from all hero inventories and equipped slots
+    const purgeHeroGear = (hero) => {
+      if (!hero) return;
+      if (Array.isArray(hero.inventory)) {
+        hero.inventory = hero.inventory.filter(id => id !== gearId && (targetItem ? id !== targetItem.title && id !== targetItem.name : true));
+      }
+      if (Array.isArray(hero.equippedGear)) {
+        hero.equippedGear = hero.equippedGear.filter(id => id !== gearId);
+      } else if (hero.equippedGear && typeof hero.equippedGear === 'object') {
+        Object.keys(hero.equippedGear).forEach(key => {
+          if (hero.equippedGear[key] === gearId || (targetItem && hero.equippedGear[key] === targetItem.title)) {
+            delete hero.equippedGear[key];
+          }
+        });
+      }
+      if (hero.equippedPetGear && typeof hero.equippedPetGear === 'object') {
+        Object.keys(hero.equippedPetGear).forEach(key => {
+          if (hero.equippedPetGear[key] === gearId || (targetItem && hero.equippedPetGear[key] === targetItem.title)) {
+            delete hero.equippedPetGear[key];
+          }
+        });
+      }
+      if (hero.equippedPetGearMap && typeof hero.equippedPetGearMap === 'object') {
+        Object.keys(hero.equippedPetGearMap).forEach(pId => {
+          const petG = hero.equippedPetGearMap[pId];
+          if (petG && typeof petG === 'object') {
+            Object.keys(petG).forEach(slot => {
+              if (petG[slot] === gearId || (targetItem && petG[slot] === targetItem.title)) {
+                delete petG[slot];
+              }
+            });
+          }
+        });
+      }
+    };
+
+    purgeHeroGear(this.state.selectedHero);
+    if (Array.isArray(this.state.heroes)) {
+      this.state.heroes.forEach(purgeHeroGear);
     }
 
     Sound.click();
@@ -3771,6 +4009,7 @@ class Store {
   publishCustomAIFood(item) {
     if (!item || (!item.name && !item.title)) return null;
     const name = item.name || item.title || 'Custom Pet Snack';
+    const craftedBy = item.craftedBy || 'Mom & Dad';
     const food = {
       ...item,
       id: item.id || `ai_food_${Date.now()}`,
@@ -3779,6 +4018,7 @@ class Store {
       category: 'Snacks',
       isParentCrafted: true,
       isCustomAI: true,
+      craftedBy,
       costCoins: Number(item.costCoins || item.coinPrice) || 20,
       hungerFill: Number(item.hungerFill || item.hunger) || 35,
       energyFill: Number(item.energyFill) || 20,
@@ -3808,16 +4048,23 @@ class Store {
       this.state.digitalGear.unshift(food);
     }
 
+    const catIdx = DIGITAL_REWARDS_CATALOG.findIndex(w => w.id === food.id);
+    if (catIdx >= 0) {
+      DIGITAL_REWARDS_CATALOG[catIdx] = food;
+    } else {
+      DIGITAL_REWARDS_CATALOG.unshift(food);
+    }
+
     this.logAction(
-      `Parent crafted Pet Food: '${food.name}'`,
+      `Parent crafted Pet Food: '${food.name}' (Crafted by: ${craftedBy})`,
       `Now purchasable in the Rewards Shop -- ${food.quantityPerPurchase}x uses for ${food.costCoins} coins!`
     );
 
     Sound.fanfare();
-    confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
+    try { confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } }); } catch {}
     this.showReward(
       '🍎 Pet Snack Published!',
-      `"${food.name}" is now in the Rewards Shop!\n🪙 ${food.costCoins} coins for ${food.quantityPerPurchase}x uses\n🐾 Feed it to companions in the Pet Sanctuary!`,
+      `"${food.name}" is now in the Rewards Shop!\n⭐ Crafted by: ${craftedBy}\n🪙 ${food.costCoins} coins for ${food.quantityPerPurchase}x uses\n🐾 Feed it to companions in the Pet Sanctuary!`,
       0,
       0,
       food.image,
@@ -3830,12 +4077,40 @@ class Store {
 
   deleteCustomAIFood(foodId) {
     if (!foodId) return false;
+    let targetItem = null;
     if (this.state.parentCustomFood) {
+      targetItem = this.state.parentCustomFood.find(f => f.id === foodId);
       this.state.parentCustomFood = this.state.parentCustomFood.filter(f => f.id !== foodId);
     }
     if (this.state.digitalGear) {
       this.state.digitalGear = this.state.digitalGear.filter(g => g.id !== foodId);
     }
+    const catIdx = DIGITAL_REWARDS_CATALOG.findIndex(w => w.id === foodId);
+    if (catIdx >= 0) {
+      DIGITAL_REWARDS_CATALOG.splice(catIdx, 1);
+    }
+
+    // Global Cascade Purge: remove from all hero consumables and inventories
+    const purgeHeroFood = (hero) => {
+      if (!hero) return;
+      if (Array.isArray(hero.inventory)) {
+        hero.inventory = hero.inventory.filter(id => id !== foodId && (targetItem ? id !== targetItem.title && id !== targetItem.name : true));
+      }
+      if (hero.consumables && typeof hero.consumables === 'object') {
+        delete hero.consumables[foodId];
+        if (targetItem) {
+          delete hero.consumables[targetItem.title];
+          delete hero.consumables[targetItem.name];
+        }
+      }
+    };
+
+    purgeHeroFood(this.state.selectedHero);
+    if (Array.isArray(this.state.heroes)) {
+      this.state.heroes.forEach(purgeHeroFood);
+    }
+
+    Sound.click();
     this.saveState(true);
     return true;
   }
@@ -4811,6 +5086,7 @@ class Store {
     if (!hero.inventory) hero.inventory = ['laser_toothbrush'];
 
     const weapon = (this.state.digitalGear || []).find((g) => g.id === weaponId && (g.category === 'Weapons' || g.category === 'weapon')) ||
+      (this.state.parentCustomWeapons || []).find((g) => g.id === weaponId) ||
       DIGITAL_REWARDS_CATALOG.find((g) => g.id === weaponId) ||
       (typeof THREE_D_ASSETS !== 'undefined' ? THREE_D_ASSETS.find((g) => g.id === weaponId) : null);
 
@@ -4838,6 +5114,7 @@ class Store {
     }
     if (!weaponId) return null;
     const weapon = (this.state.digitalGear || []).find((g) => g.id === weaponId && (g.category === 'Weapons' || g.category === 'weapon')) ||
+      (this.state.parentCustomWeapons || []).find((g) => g.id === weaponId) ||
       DIGITAL_REWARDS_CATALOG.find((g) => g.id === weaponId) ||
       (typeof THREE_D_ASSETS !== 'undefined' ? THREE_D_ASSETS.find((g) => g.id === weaponId) : null) ||
       null;
@@ -6724,6 +7001,22 @@ class Store {
     }
     if (cloudData.digitalGear && Array.isArray(cloudData.digitalGear)) {
       this.state.digitalGear = cloudData.digitalGear;
+    }
+    if (cloudData.parentCustomWeapons && Array.isArray(cloudData.parentCustomWeapons)) {
+      this.state.parentCustomWeapons = cloudData.parentCustomWeapons;
+      cloudData.parentCustomWeapons.forEach(w => {
+        if (w && w.id && !DIGITAL_REWARDS_CATALOG.some(cat => cat.id === w.id)) {
+          DIGITAL_REWARDS_CATALOG.unshift(w);
+        }
+      });
+    }
+    if (cloudData.parentCustomFood && Array.isArray(cloudData.parentCustomFood)) {
+      this.state.parentCustomFood = cloudData.parentCustomFood;
+      cloudData.parentCustomFood.forEach(f => {
+        if (f && f.id && !DIGITAL_REWARDS_CATALOG.some(cat => cat.id === f.id)) {
+          DIGITAL_REWARDS_CATALOG.unshift(f);
+        }
+      });
     }
     if (cloudData.inventory && Array.isArray(cloudData.inventory)) {
       this.state.inventory = Array.from(new Set([...(this.state.inventory || []), ...cloudData.inventory]));

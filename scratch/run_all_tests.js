@@ -33,6 +33,7 @@ const testFiles = [
   'scratch/test_mobile_and_avatar_fix.cjs',
   'scratch/test_firebase_storage.cjs',
   'scratch/test_digital_rewards_revamp.cjs',
+  'scratch/verify_digital_rewards_complete_loop.mjs',
   'scratch/test_trophy_showcase.cjs',
   'scratch/test_battle_visual_refresh.cjs',
   'scratch/test_warrior_teeth_army_and_parent_rewards.cjs',
