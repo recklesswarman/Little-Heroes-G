@@ -84,9 +84,11 @@ function geminiServerPlugin() {
   };
 }
 
+const isGitHubActions = process.env.GITHUB_ACTIONS === 'true';
+
 export default defineConfig({
   plugins: [geminiServerPlugin()],
-  base: process.env.VITE_BASE_PATH || '/',
+  base: process.env.VITE_BASE_PATH || (isGitHubActions ? '/Little-Heroes-G/' : '/'),
   server: {
     port: 3000,
     host: '0.0.0.0',

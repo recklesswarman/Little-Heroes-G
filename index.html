@@ -102,7 +102,8 @@
         msg.includes('loading chunk') ||
         msg.includes('failed to fetch dynamically imported module') ||
         msg.includes('import call') ||
-        msg.includes('mime type')
+        msg.includes('mime type') ||
+        msg.includes('syntaxerror')
       ) {
         console.warn('[PWA] Stale chunk error detected. Auto-refreshing...', err);
         const lastAttempt = Number(sessionStorage.getItem('lh_last_auto_reload') || 0);
@@ -111,6 +112,18 @@
           window.forceAppHardRefresh();
         }
       }
+
+      // If after 3.5s the app placeholder is still unmounted, render a clear diagnostic card
+      setTimeout(function() {
+        const appEl = document.getElementById('app');
+        if (appEl && appEl.innerHTML.includes('Loading your hero headquarters...') && !document.getElementById('lh-startup-err')) {
+          const errCard = document.createElement('div');
+          errCard.id = 'lh-startup-err';
+          errCard.style.cssText = 'margin-top:16px;padding:12px 16px;background:#1e1b4b;border:1px solid #6366f1;border-radius:12px;color:#c7d2fe;font-size:12px;max-width:340px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.5);';
+          errCard.innerHTML = '<p style="margin:0 0 8px 0;font-weight:700;">✨ New update detected! Purging old data...</p><button onclick="window.forceAppHardRefresh()" style="background:#4f46e5;color:white;border:none;padding:8px 16px;border-radius:8px;font-weight:800;font-size:12px;cursor:pointer;">Update & Launch Now</button>';
+          appEl.firstElementChild.appendChild(errCard);
+        }
+      }, 3500);
     }
     window.addEventListener('error', handleChunkOrCacheError);
     window.addEventListener('unhandledrejection', handleChunkOrCacheError);

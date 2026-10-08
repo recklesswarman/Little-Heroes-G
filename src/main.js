@@ -96,6 +96,31 @@ function restoreFocusedFieldState(saved) {
 }
 
 function renderApp() {
+  try {
+    _renderAppInternal();
+  } catch (renderErr) {
+    console.error('Fatal renderApp error:', renderErr);
+    if (app) {
+      app.innerHTML = `
+        <div class="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-center select-none font-body text-white">
+          <div class="text-5xl mb-4">🦖</div>
+          <h2 class="text-xl font-black mb-2">Rex Needs a Quick Breath!</h2>
+          <p class="text-sm text-slate-400 mb-4 max-w-sm">Something stumbled while loading this screen. Tap below to reload.</p>
+          <div class="flex gap-3">
+            <button onclick="window.location.reload()" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-4 py-2 rounded-xl text-sm cursor-pointer">
+              Reload Screen
+            </button>
+            <button onclick="window.forceAppHardRefresh()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-4 py-2 rounded-xl text-sm border border-slate-700 cursor-pointer">
+              Clear Cache & Reset
+            </button>
+          </div>
+        </div>
+      `;
+    }
+  }
+}
+
+function _renderAppInternal() {
   // Capture once per render, before any of the branches below replace
   // app.innerHTML -- there are three separate replacement points (the auth
   // splash, the landing/auth wall, and the main app shell) and any of them
@@ -215,7 +240,16 @@ function renderApp() {
   // Strict Auth Wall Gate:
   // If user is unauthenticated OR household has not been configured/joined yet,
   // strictly render the Landing Auth Wall so that NO stranger's data is displayed!
-  if (!state.isAuthenticated || !state.isHouseholdConfigured) {
+  // Exception: Direct preview shortcuts (/teamwork-preview, /boost, /learn) bypass
+  // the wall to allow instant demonstration of gross-motor routines, battles, and maps.
+  const isDirectPreview = Boolean(
+    activeView === 'dance_party' ||
+    activeView === 'battle' ||
+    activeView === 'adventures_map' ||
+    DANCE_PARTY_VIEW_NAMES.includes(activeView)
+  );
+
+  if ((!state.isAuthenticated || !state.isHouseholdConfigured) && !isDirectPreview) {
     app.innerHTML = `
       <div class="min-h-screen bg-background text-on-surface flex flex-col font-body selection:bg-primary selection:text-on-primary">
         ${renderLandingAuthModal()}
@@ -477,8 +511,13 @@ window.addEventListener('online', () => {
 // Route Resolver for /learn, /boost, and /teamwork-preview shortcuts
 function resolveRouteFromUrl() {
   if (typeof window === 'undefined') return null;
-  const path = (window.location.pathname || '').toLowerCase();
-  const hash = (window.location.hash || '').toLowerCase().replace(/^#\/?/, '');
+  let path = (window.location.pathname || '').toLowerCase();
+  if (path.startsWith('/little-heroes-g')) {
+    path = path.slice('/little-heroes-g'.length);
+  }
+  path = path.replace(/\/+$/, '') || '/';
+  const hash = (window.location.hash || '').toLowerCase().replace(/^#\/?/, '').replace(/\/+$/, '');
+
   if (path === '/learn' || path === 'learn' || hash === 'learn') {
     return 'adventures_map';
   }

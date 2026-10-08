@@ -107,8 +107,10 @@ const mainJs = fs.readFileSync('src/main.js', 'utf8');
 assert(mainJs.includes("'/teamwork-preview'"), 'src/main.js must handle /teamwork-preview');
 assert(mainJs.includes("'teamwork-preview'"), 'src/main.js must handle teamwork-preview');
 assert(mainJs.includes("'teamwork_preview'"), 'src/main.js must handle teamwork_preview');
-assert(mainJs.includes("DANCE_PARTY_VIEW_NAMES"), 'src/main.js must define DANCE_PARTY_VIEW_NAMES');
-console.log('  ✅ PASS: src/main.js has teamwork-preview routing and cleanup');
+assert(mainJs.includes("'/little-heroes-g'"), 'src/main.js must handle /little-heroes-g subpath');
+assert(mainJs.includes('isDirectPreview'), 'src/main.js must allow preview routes to bypass auth gate');
+assert(mainJs.includes('_renderAppInternal'), 'src/main.js must wrap renderApp in error boundary');
+console.log('  ✅ PASS: src/main.js handles subpaths, preview auth bypass, and error boundaries');
 
 // Test 4: server.js static serving and nested asset redirection
 console.log('\n--- Test 4: server.js Static Serving and Error Handling ---');
@@ -126,5 +128,24 @@ assert(
   'server.js must return 404 json for missing assets'
 );
 console.log('  ✅ PASS: server.js handles nested asset requests and cache headers');
+
+// Test 5: vite.config.js and firebase.json
+console.log('\n--- Test 5: Vite Base Path and Firebase Cache Headers ---');
+const viteConfig = fs.readFileSync('vite.config.js', 'utf8');
+assert(
+  viteConfig.includes("isGitHubActions ? '/Little-Heroes-G/' : '/'"),
+  'vite.config.js must support GitHub Pages subpath when in GitHub Actions'
+);
+
+const firebaseJson = fs.readFileSync('firebase.json', 'utf8');
+assert(
+  firebaseJson.includes('"headers": ['),
+  'firebase.json must configure custom Cache-Control headers for hosting'
+);
+assert(
+  firebaseJson.includes('"source": "**/*.@(html|json)"'),
+  'firebase.json must disable caching for html and json'
+);
+console.log('  ✅ PASS: vite.config.js and firebase.json correctly configured for multi-host deployment');
 
 console.log('\n🎉 ALL VERIFICATION CHECKS PASSED!\n');
