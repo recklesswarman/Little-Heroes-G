@@ -19,16 +19,20 @@
 
         // Clean leading and trailing slashes
         route = route.replace(/^\/+/, '').replace(/\/+$/, '');
+        try {
+          route = decodeURIComponent(route);
+        } catch (e) {}
+
         var search = window.location.search || '';
         var rawHash = window.location.hash || '';
+        var fullQuery = search ? (search.startsWith('?') ? search : '?' + search) : '';
 
-        // If a route exists, redirect to SPA root with the route hash
+        // If a route exists, redirect to SPA root with query parameters preceding the hash route
         if (route) {
-          var fullQuery = search ? (search.startsWith('?') ? search : '?' + search) : '';
-          var target = (basePath || '') + '/#' + route + (fullQuery ? fullQuery : '') + (rawHash ? rawHash : '');
+          var target = (basePath || '') + '/' + fullQuery + '#' + route + (rawHash ? rawHash : '');
           window.location.replace(target);
         } else {
-          window.location.replace((basePath || '') + '/' + search + rawHash);
+          window.location.replace((basePath || '') + '/' + fullQuery + rawHash);
         }
       } catch (err) {
         console.error('SPA redirection failed:', err);

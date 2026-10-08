@@ -3484,6 +3484,12 @@ class Store {
 
       b.currentStreakProgress = (b.currentStreakProgress || 0) + 1;
       if (b.currentStreakProgress >= (b.targetStreakDays || 1)) {
+        if (!b.item || typeof b.item !== 'object' || !b.item.id) {
+          console.warn('[Store] Skipping corrupt habit bounty without valid item id:', b);
+          this.state.pendingBounties.splice(i, 1);
+          continue;
+        }
+
         const crate = {
           id: `crate_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
           item: b.item,
@@ -3533,8 +3539,9 @@ class Store {
 
         Sound.fanfare();
         confetti({ particleCount: 80, spread: 85, origin: { y: 0.6 } });
+        const rewardName = b.item.name || b.item.title || 'Hero Reward';
         this.logAction(
-          `🎉 Habit Bounty Unlocked: '${b.item.name}'!`,
+          `🎉 Habit Bounty Unlocked: '${rewardName}'!`,
           `Earned by completing streak goal for '${habitId}'!`
         );
       }
@@ -7092,12 +7099,21 @@ class Store {
       this.state.realLifeRewards = cloudData.realLifeRewards;
     }
     if (cloudData.digitalGear && Array.isArray(cloudData.digitalGear)) {
-      this.state.digitalGear = cloudData.digitalGear;
+      this.state.digitalGear = cloudData.digitalGear.filter(d => d && !deletedCustomItemIdsSet.has(d.id));
       DIGITAL_REWARDS_CATALOG.forEach(catItem => {
-        if (!this.state.digitalGear.some(d => d.id === catItem.id)) {
+        if (catItem && !deletedCustomItemIdsSet.has(catItem.id) && !this.state.digitalGear.some(d => d.id === catItem.id)) {
           this.state.digitalGear.push(catItem);
         }
       });
+    } else if (Array.isArray(this.state.digitalGear)) {
+      this.state.digitalGear = this.state.digitalGear.filter(d => d && !deletedCustomItemIdsSet.has(d.id));
+    }
+
+    // Prune tombstoned custom items from in-memory DIGITAL_REWARDS_CATALOG
+    for (let i = DIGITAL_REWARDS_CATALOG.length - 1; i >= 0; i--) {
+      if (deletedCustomItemIdsSet.has(DIGITAL_REWARDS_CATALOG[i]?.id)) {
+        DIGITAL_REWARDS_CATALOG.splice(i, 1);
+      }
     }
     if (cloudData.parentCustomWeapons && Array.isArray(cloudData.parentCustomWeapons)) {
       this.state.parentCustomWeapons = cloudData.parentCustomWeapons.filter(w => w && !deletedCustomItemIdsSet.has(w.id));

@@ -245,7 +245,11 @@ function _renderAppInternal() {
   const isDirectPreview = Boolean(
     activeView === 'dance_party' ||
     activeView === 'battle' ||
+    activeView === 'boost' ||
+    activeView === '/boost' ||
     activeView === 'adventures_map' ||
+    activeView === 'learn' ||
+    activeView === '/learn' ||
     DANCE_PARTY_VIEW_NAMES.includes(activeView)
   );
 
@@ -511,12 +515,29 @@ window.addEventListener('online', () => {
 // Route Resolver for /learn, /boost, and /teamwork-preview shortcuts
 function resolveRouteFromUrl() {
   if (typeof window === 'undefined') return null;
-  let path = (window.location.pathname || '').toLowerCase();
-  if (path.startsWith('/little-heroes-g')) {
-    path = path.slice('/little-heroes-g'.length);
+
+  // 1. Path normalization: decode percent-encoding, strip repo base, normalize slashes
+  let rawPath = (window.location.pathname || '').toLowerCase();
+  try {
+    rawPath = decodeURIComponent(rawPath);
+  } catch (e) {}
+
+  if (rawPath.startsWith('/little-heroes-g')) {
+    rawPath = rawPath.slice('/little-heroes-g'.length);
   }
-  path = path.replace(/\/+$/, '') || '/';
-  const hash = (window.location.hash || '').toLowerCase().replace(/^#\/?/, '').replace(/\/+$/, '');
+  let path = rawPath.replace(/\/+/g, '/').replace(/\/+$/, '');
+  if (!path.startsWith('/')) {
+    path = '/' + path;
+  }
+
+  // 2. Hash normalization: decode percent-encoding, strip leading '#/' and query strings/anchors
+  let rawHash = (window.location.hash || '').toLowerCase();
+  try {
+    rawHash = decodeURIComponent(rawHash);
+  } catch (e) {}
+
+  rawHash = rawHash.replace(/^#+/, '').replace(/^\/+/, '');
+  const hash = rawHash.split('?')[0].split('&')[0].split('#')[0].replace(/\/+$/, '');
 
   if (path === '/learn' || path === 'learn' || hash === 'learn') {
     return 'adventures_map';

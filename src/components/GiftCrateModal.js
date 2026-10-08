@@ -176,8 +176,12 @@ export function renderGiftCrateModal() {
                 <div class="flex-1 text-xs text-amber-100 font-medium italic">
                   "${escapeHtml(item.petVoiceLine || item.companionReaction || item.cheerVoiceLine)}"
                 </div>
-                <button onclick="window.speakCompanionText && window.speakCompanionText('${escapeHtml((item.petVoiceLine || item.companionReaction || item.cheerVoiceLine || '').replace(/'/g, "\\'"))}')"
-                  class="text-amber-400 hover:text-amber-300 p-1">
+                <button type="button"
+                  onclick="window.replayCrateCompanionVoice && window.replayCrateCompanionVoice('${crate.id}')"
+                  class="text-amber-400 hover:text-amber-300 p-1 cursor-pointer transition-colors"
+                  data-crate-id="${crate.id}"
+                  title="Replay Voice"
+                  aria-label="Replay Companion Voice">
                   🔊
                 </button>
               </div>
@@ -196,6 +200,16 @@ export function renderGiftCrateModal() {
 }
 
 export function attachGiftCrateListeners() {
+  window.replayCrateCompanionVoice = (crateId) => {
+    const targetCrateId = crateId || store.state.activeUnboxingCrateId;
+    const crate = (store.state.pendingGiftCrates || []).find(c => c.id === targetCrateId);
+    const item = crate?.item || {};
+    const voiceText = item.petVoiceLine || item.companionReaction || item.cheerVoiceLine;
+    if (voiceText && window.speakCompanionText) {
+      window.speakCompanionText(voiceText);
+    }
+  };
+
   window.openActiveGiftCrate = (crateId) => {
     store.state.activeUnboxingCrateId = crateId;
     store.notify();
