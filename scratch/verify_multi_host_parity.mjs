@@ -215,7 +215,7 @@ for (const ep of endpointsToProbe) {
   console.log(`\n  ▶️ Probing ${ep.name} at: ${ep.url}`);
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 12000);
+    const timeout = setTimeout(() => controller.abort(), 30000);
     const res = await fetch(ep.url, { signal: controller.signal });
     clearTimeout(timeout);
 
