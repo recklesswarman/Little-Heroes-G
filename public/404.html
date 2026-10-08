@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Little Hero Adventures</title>
+  <script>
+    // GitHub Pages SPA Single Page Application Route Redirection
+    // When accessing deep links on GitHub Pages (e.g. /Little-Heroes-G/teamwork-preview),
+    // GitHub Pages serves this 404.html. This script captures the requested subpath
+    // and seamlessly restores the route into the SPA via hash fallback or query restoration.
+    (function() {
+      try {
+        var path = window.location.pathname || '';
+        var repoBase = '/Little-Heroes-G';
+        var isGhPages = path.toLowerCase().startsWith(repoBase.toLowerCase());
+        var basePath = isGhPages ? repoBase : '';
+        var route = isGhPages ? path.slice(repoBase.length) : path;
+
+        // Clean leading and trailing slashes
+        route = route.replace(/^\/+/, '').replace(/\/+$/, '');
+        var search = window.location.search || '';
+        var rawHash = window.location.hash || '';
+
+        // If a route exists, redirect to SPA root with the route hash
+        if (route) {
+          var fullQuery = search ? (search.startsWith('?') ? search : '?' + search) : '';
+          var target = (basePath || '') + '/#' + route + (fullQuery ? fullQuery : '') + (rawHash ? rawHash : '');
+          window.location.replace(target);
+        } else {
+          window.location.replace((basePath || '') + '/' + search + rawHash);
+        }
+      } catch (err) {
+        console.error('SPA redirection failed:', err);
+        window.location.replace('/Little-Heroes-G/');
+      }
+    })();
+  </script>
+</head>
+<body style="background-color: #0b0f19; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align: center;">
+  <div>
+    <div style="font-size: 56px; margin-bottom: 16px;">🦖</div>
+    <h1 style="font-size: 22px; font-weight: 800; margin: 0 0 8px 0;">Little Hero Adventures</h1>
+    <p style="font-size: 14px; color: #94a3b8; margin: 0 0 20px 0;">Redirecting to your hero headquarters...</p>
+    <a href="/Little-Heroes-G/" style="color: #6366f1; text-decoration: none; font-weight: 700; font-size: 14px;">Tap here if you are not redirected automatically</a>
+  </div>
+</body>
+</html>

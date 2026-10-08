@@ -28,6 +28,9 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+        env:
+          VITE_BASE_PATH: '/'
+          TARGET_HOST: 'firebase'
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:

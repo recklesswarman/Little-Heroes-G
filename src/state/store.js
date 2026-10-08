@@ -507,6 +507,9 @@ const defaultState = {
   // Deleted kid profiles tracked to prevent resurrection across concurrent devices
   deletedHeroIds: [],
 
+  // Deleted custom items tracked to prevent resurrection across concurrent devices
+  deletedCustomItemIds: [],
+
   // Active connected devices in household
   devices: {}
 };
@@ -650,12 +653,15 @@ class Store {
           parsed.digitalGear = [...DIGITAL_REWARDS_CATALOG];
         }
 
-        // Ensure parentCustomWeapons and parentCustomFood arrays exist and are preserved
+        // Ensure parentCustomWeapons, parentCustomFood, and deletedCustomItemIds arrays exist and are preserved
         if (!Array.isArray(parsed.parentCustomWeapons)) {
           parsed.parentCustomWeapons = [];
         }
         if (!Array.isArray(parsed.parentCustomFood)) {
           parsed.parentCustomFood = [];
+        }
+        if (!Array.isArray(parsed.deletedCustomItemIds)) {
+          parsed.deletedCustomItemIds = [];
         }
 
         if (parsed.heroes && parsed.heroes.length > 0) {
@@ -2558,6 +2564,8 @@ class Store {
       this.state.brushStreak = (this.state.brushStreak || 0) + 1;
     }
 
+    this.checkAndAwardHabitBounties('brush_teeth', currentHero);
+
     this.applyChoreTurboBoost(15, 'Toothbrush AR Battle');
     this.logAction(
       `${currentHero.name} defeated ${boss.name} in Toothbrush Battle! 🪥🦷`,
@@ -2578,6 +2586,13 @@ class Store {
     this.saveState(true);
 
     return col.victoryReward;
+  }
+
+  // RECORD DENTAL BATTLE (Hook for dental battle completion & habit bounty streak progression)
+  recordDentalBattle(bossId = 'sugar_bandit', durationSec = 120, avgCadence = 85) {
+    const currentHero = this.getSelectedHero() || this.state.selectedHero;
+    this.checkAndAwardHabitBounties('brush_teeth', currentHero);
+    return this.completeToothbrushBattle(bossId, durationSec, avgCadence);
   }
 
   // Adds a pending parent sign-off request to the Parent Portal queue
@@ -3462,7 +3477,10 @@ class Store {
     for (let i = this.state.pendingBounties.length - 1; i >= 0; i--) {
       const b = this.state.pendingBounties[i];
       if (b.targetChildProfile && b.targetChildProfile !== 'all' && b.targetChildProfile !== heroId) continue;
-      if (b.habitId && b.habitId !== 'any' && b.habitId !== habitId) continue;
+      const isHabitMatch = !b.habitId || b.habitId === 'any' || b.habitId === habitId ||
+        (b.habitId === 'brush_teeth' && (habitId === 'brush_teeth_am' || habitId === 'brush_teeth_pm' || habitId === 'toothbrush_adventure_battle' || habitId === 'morning_brush' || habitId === 'bedtime_brush')) ||
+        ((b.habitId === 'brush_teeth_am' || b.habitId === 'brush_teeth_pm') && habitId === 'brush_teeth');
+      if (!isHabitMatch) continue;
 
       b.currentStreakProgress = (b.currentStreakProgress || 0) + 1;
       if (b.currentStreakProgress >= (b.targetStreakDays || 1)) {
@@ -3486,6 +3504,28 @@ class Store {
         } else if (b.category === 'furniture') {
           if (!this.state.heroHQ.unlockedFurnitureIds.includes(b.item.id)) {
             this.state.heroHQ.unlockedFurnitureIds.push(b.item.id);
+          }
+        } else if (b.category === 'weapon') {
+          if (b.item) {
+            b.item.unlocked = true;
+          }
+          if (this.state.selectedHero) {
+            if (!this.state.selectedHero.inventory) {
+              this.state.selectedHero.inventory = ['laser_toothbrush'];
+            }
+            if (!this.state.selectedHero.inventory.includes(b.item.id)) {
+              this.state.selectedHero.inventory.push(b.item.id);
+            }
+            this.state.selectedHero.equippedWeapon = b.item.id;
+          }
+          if (!this.state.parentCustomWeapons) {
+            this.state.parentCustomWeapons = [];
+          }
+          if (!this.state.parentCustomWeapons.some(w => w.id === b.item.id)) {
+            this.state.parentCustomWeapons.push(b.item);
+          }
+          if (this.equipHeroWeapon) {
+            try { this.equipHeroWeapon(b.item.id); } catch {}
           }
         }
 
@@ -3618,6 +3658,11 @@ class Store {
 
   deleteCustomAIWeapon(weaponId) {
     if (!weaponId) return false;
+
+    if (!this.state.deletedCustomItemIds) this.state.deletedCustomItemIds = [];
+    if (!this.state.deletedCustomItemIds.includes(weaponId)) {
+      this.state.deletedCustomItemIds.push(weaponId);
+    }
 
     let targetItem = null;
     if (this.state.parentCustomWeapons) {
@@ -3774,6 +3819,11 @@ class Store {
 
   deleteCustomAIGear(gearId) {
     if (!gearId) return false;
+
+    if (!this.state.deletedCustomItemIds) this.state.deletedCustomItemIds = [];
+    if (!this.state.deletedCustomItemIds.includes(gearId)) {
+      this.state.deletedCustomItemIds.push(gearId);
+    }
 
     let targetItem = null;
     if (this.state.parentCustomGear) {
@@ -4098,6 +4148,12 @@ class Store {
 
   deleteCustomAIFood(foodId) {
     if (!foodId) return false;
+
+    if (!this.state.deletedCustomItemIds) this.state.deletedCustomItemIds = [];
+    if (!this.state.deletedCustomItemIds.includes(foodId)) {
+      this.state.deletedCustomItemIds.push(foodId);
+    }
+
     let targetItem = null;
     if (this.state.parentCustomFood) {
       targetItem = this.state.parentCustomFood.find(f => f.id === foodId);
@@ -4116,6 +4172,9 @@ class Store {
       if (!hero) return;
       if (Array.isArray(hero.inventory)) {
         hero.inventory = hero.inventory.filter(id => id !== foodId && (targetItem ? id !== targetItem.title && id !== targetItem.name : true));
+      }
+      if (Array.isArray(hero.consumables)) {
+        hero.consumables = hero.consumables.filter(c => c && c.id !== foodId && (targetItem ? c.id !== targetItem.title && c.id !== targetItem.name : true));
       }
       if (hero.consumables && typeof hero.consumables === 'object') {
         delete hero.consumables[foodId];
@@ -6677,6 +6736,15 @@ class Store {
     }
     const deletedHeroIdsSet = new Set(this.state.deletedHeroIds || []);
 
+    // 2b. Deleted Custom Items Tracking (Prevents resurrecting deleted custom weapons/items across devices)
+    if (cloudData.deletedCustomItemIds && Array.isArray(cloudData.deletedCustomItemIds)) {
+      this.state.deletedCustomItemIds = Array.from(new Set([
+        ...(this.state.deletedCustomItemIds || []),
+        ...cloudData.deletedCustomItemIds
+      ]));
+    }
+    const deletedCustomItemIdsSet = new Set(this.state.deletedCustomItemIds || []);
+
     // 3. Heroes & Kid Profiles (Smart Merge from heroesMap AND heroes array)
     let repairPushNeeded = false;
     let incomingHeroes = [];
@@ -6772,7 +6840,7 @@ class Store {
           screenTimeRate: cloudH.screenTimeRate !== undefined ? Number(cloudH.screenTimeRate) : (localH?.screenTimeRate ?? 2),
           isScreenTimePaused: cloudH.isScreenTimePaused !== undefined ? Boolean(cloudH.isScreenTimePaused) : (localH?.isScreenTimePaused ?? false),
           screenTimeLockMessage: cloudH.screenTimeLockMessage || localH?.screenTimeLockMessage || 'Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙',
-          inventory: Array.from(new Set([...(localH?.inventory || []), ...(cloudH.inventory || [])])),
+          inventory: Array.from(new Set([...(localH?.inventory || []), ...(cloudH.inventory || [])])).filter(id => !deletedCustomItemIdsSet.has(id)),
           aiQuests: (localH?.aiQuests && localH.aiQuests.length > 0)
             ? localH.aiQuests
             : (this.state.heroAiQuestsMap?.[cloudH.id]?.length > 0)
@@ -6786,6 +6854,9 @@ class Store {
       // Also preserve any local heroes that aren't yet in incomingHeroes AND not deleted
       (this.state.heroes || []).forEach((localH) => {
         if (localH && localH.id && !deletedHeroIdsSet.has(localH.id) && !mergedHeroes.some((h) => h.id === localH.id)) {
+          if (Array.isArray(localH.inventory)) {
+            localH.inventory = localH.inventory.filter(id => !deletedCustomItemIdsSet.has(id));
+          }
           mergedHeroes.push(localH);
         }
       });
@@ -7029,8 +7100,8 @@ class Store {
       });
     }
     if (cloudData.parentCustomWeapons && Array.isArray(cloudData.parentCustomWeapons)) {
-      this.state.parentCustomWeapons = cloudData.parentCustomWeapons;
-      cloudData.parentCustomWeapons.forEach(w => {
+      this.state.parentCustomWeapons = cloudData.parentCustomWeapons.filter(w => w && !deletedCustomItemIdsSet.has(w.id));
+      this.state.parentCustomWeapons.forEach(w => {
         if (w && w.id && !DIGITAL_REWARDS_CATALOG.some(cat => cat.id === w.id)) {
           DIGITAL_REWARDS_CATALOG.unshift(w);
         }
@@ -7039,8 +7110,8 @@ class Store {
       this.state.parentCustomWeapons = [];
     }
     if (cloudData.parentCustomFood && Array.isArray(cloudData.parentCustomFood)) {
-      this.state.parentCustomFood = cloudData.parentCustomFood;
-      cloudData.parentCustomFood.forEach(f => {
+      this.state.parentCustomFood = cloudData.parentCustomFood.filter(f => f && !deletedCustomItemIdsSet.has(f.id));
+      this.state.parentCustomFood.forEach(f => {
         if (f && f.id && !DIGITAL_REWARDS_CATALOG.some(cat => cat.id === f.id)) {
           DIGITAL_REWARDS_CATALOG.unshift(f);
         }
@@ -7049,7 +7120,15 @@ class Store {
       this.state.parentCustomFood = [];
     }
     if (cloudData.inventory && Array.isArray(cloudData.inventory)) {
-      this.state.inventory = Array.from(new Set([...(this.state.inventory || []), ...cloudData.inventory]));
+      this.state.inventory = Array.from(new Set([...(this.state.inventory || []), ...cloudData.inventory])).filter(id => !deletedCustomItemIdsSet.has(id));
+    } else if (Array.isArray(this.state.inventory)) {
+      this.state.inventory = this.state.inventory.filter(id => !deletedCustomItemIdsSet.has(id));
+    }
+    if (this.state.selectedHero && Array.isArray(this.state.selectedHero.inventory)) {
+      this.state.selectedHero.inventory = this.state.selectedHero.inventory.filter(id => !deletedCustomItemIdsSet.has(id));
+      if (deletedCustomItemIdsSet.has(this.state.selectedHero.equippedWeapon)) {
+        this.state.selectedHero.equippedWeapon = 'laser_toothbrush';
+      }
     }
     if (cloudData.liveRex && typeof cloudData.liveRex === 'object') {
       this.state.liveRex = {
@@ -7881,9 +7960,22 @@ class Store {
 
   getTreatStock(treatId) {
     const treat = this.getAllFeedableTreats().find(t => t.id === treatId);
-    if (!treat || treat.costCoins <= 0) return Infinity;
+    if (treat && treat.costCoins <= 0) return Infinity;
     if (!this.state.selectedHero?.consumables) return 0;
-    return this.state.selectedHero.consumables[treatId] || 0;
+    const consumables = this.state.selectedHero.consumables;
+    let entry = consumables[treatId];
+    if (entry === undefined && Array.isArray(consumables)) {
+      entry = consumables.find(c => c && c.id === treatId);
+    }
+    if (entry === undefined || entry === null) return 0;
+    if (typeof entry === 'object') {
+      return entry.servingsRemaining !== undefined ? (Number(entry.servingsRemaining) || 0) : 0;
+    }
+    if (typeof entry === 'number') {
+      return isNaN(entry) ? 0 : entry;
+    }
+    const num = Number(entry);
+    return isNaN(num) ? 0 : num;
   }
 
   // Buy a pack of a purchasable treat (grants quantityPerPurchase uses).
@@ -7928,7 +8020,7 @@ class Store {
     const hero = this.state.selectedHero;
     if (treat.costCoins > 0) {
       if (!hero.consumables) hero.consumables = {};
-      const stock = hero.consumables[treatId] || 0;
+      const stock = this.getTreatStock(treatId);
       if (stock <= 0) {
         if (typeof Sound?.hit === 'function') Sound.hit();
         this.showReward(
@@ -7941,7 +8033,28 @@ class Store {
         );
         return { success: false, message: 'Out of stock for this treat!' };
       }
-      hero.consumables[treatId] = stock - 1;
+
+      let entry = hero.consumables[treatId];
+      if (entry === undefined && Array.isArray(hero.consumables)) {
+        entry = hero.consumables.find(c => c && c.id === treatId);
+      }
+
+      if (typeof entry === 'object' && entry !== null) {
+        if (typeof entry.servingsRemaining === 'number' && !isNaN(entry.servingsRemaining)) {
+          entry.servingsRemaining--;
+        } else {
+          entry.servingsRemaining = Math.max(0, (Number(stock) || 1) - 1);
+        }
+        if (entry.servingsRemaining <= 0) {
+          if (Array.isArray(hero.consumables)) {
+            hero.consumables = hero.consumables.filter(c => c && c.id !== treatId);
+          }
+          delete hero.consumables[treatId];
+        }
+      } else {
+        const count = typeof entry === 'number' && !isNaN(entry) ? entry : (Number(stock) || 0);
+        hero.consumables[treatId] = Math.max(0, count - 1);
+      }
     }
 
     // Refill hunger & energy

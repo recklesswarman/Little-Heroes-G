@@ -51,7 +51,15 @@ const testFiles = [
   'scratch/verify_badge_ladders_world_map_and_learning.mjs',
   'scratch/verify_hero_avatar_presets_expansion.mjs',
   'scratch/verify_routine_approvals_pipeline.mjs',
-  'scratch/verify_fragmentation_and_rewards_fixes.mjs'
+  'scratch/verify_fragmentation_and_rewards_fixes.mjs',
+  // 3 Existing Offline Suites (49-51):
+  'scratch/verify_agy_persistent_fixes.mjs',
+  'scratch/verify_name_and_memory_retention.mjs',
+  'scratch/verify_rex_voice_input_hold_to_talk.mjs',
+  // 3 New Milestone E2E Suites (52-54):
+  'scratch/verify_multi_host_parity.mjs',
+  'scratch/verify_rewards_revamp_loop_hardened.mjs',
+  'scratch/verify_direct_preview_routing.mjs'
 ];
 
 let allPassed = true;

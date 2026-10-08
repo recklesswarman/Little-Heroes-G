@@ -85,10 +85,11 @@ function geminiServerPlugin() {
 }
 
 const isGitHubActions = process.env.GITHUB_ACTIONS === 'true';
+const base = process.env.VITE_BASE_PATH || (process.env.TARGET_HOST === 'firebase' ? '/' : (isGitHubActions ? '/Little-Heroes-G/' : '/'));
 
 export default defineConfig({
   plugins: [geminiServerPlugin()],
-  base: process.env.VITE_BASE_PATH || (isGitHubActions ? '/Little-Heroes-G/' : '/'),
+  base,
   server: {
     port: 3000,
     host: '0.0.0.0',
@@ -96,4 +97,5 @@ export default defineConfig({
     open: false
   }
 });
+
 
