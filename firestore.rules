@@ -5,7 +5,7 @@ rules_version = '2';
 // ===============================================================
 //
 // Collection: households
-// Document ID: {householdCode} (alphanumeric code, 4 to 32 chars)
+// Document ID: {householdCode} (alphanumeric code, 4 to 32 chars, regex: ^[A-Za-z0-9_-]{4,32}$)
 // Fields:
 //   - syncCode: string (optional, 4 to 32 chars) - Household sync code
 //   - name / householdName: string (optional, max 100 chars) - Family display name
@@ -13,7 +13,7 @@ rules_version = '2';
 //   - heroes: list (optional, max 20 entries) - List of hero profile objects
 //   - heroesMap: map (optional, max 20 entries) - Map of hero states keyed by heroId
 //   - deletedHeroIds: list (optional, max 50 entries) - Tombstoned hero IDs
-//   - selectedHero: map (optional, max 50 fields) - Currently focused hero profile
+//   - selectedHero: map (optional, max 60 fields) - Currently focused hero profile
 //   - parents: list (optional, max 15 entries) - Parent display objects
 //   - parentUids: list (optional, max 15 entries) - Authorized parent Auth UIDs
 //   - parentEmails: list (optional, max 15 entries) - Authorized parent emails
@@ -56,7 +56,10 @@ rules_version = '2';
 //   - stateSnapshot: map (optional, max 60 entries) - Coalesced state snapshot
 //   - lastWriterSessionId: string (optional, max 64 chars) - Multi-tab deduplication session ID
 //   - lastWriterDeviceId: string (optional, max 64 chars) - Originating device ID
-//   - updatedAt / lastUpdated: string | timestamp | number (optional) - Modification timestamp
+//   - updatedAt / lastUpdated: string | timestamp | number (optional, max 40 chars) - Modification timestamp
+//   - parentCustomWeapons: list (optional, max 50 entries) - Parent studio custom weapons
+//   - parentCustomFood: list (optional, max 50 entries) - Parent studio custom pet snacks
+//   - deletedCustomItemIds: list (optional, max 50 entries) - Multi-device custom item tombstones
 //
 // Collection: user_households
 // Document ID: {linkId} (request.auth.uid or email_*)
@@ -66,8 +69,8 @@ rules_version = '2';
 //   - email: string (optional, max 120 chars) - Associated email address
 //   - displayName: string (optional, max 100 chars) - User display name
 //   - role: string (optional, 'parent' | 'child' | 'admin') - User role in household
-//   - linkedAt: string | timestamp | number (optional) - Link establishment time
-//   - updatedAt: string | timestamp | number (optional) - Last update time
+//   - linkedAt: string | timestamp | number (optional, max 40 chars) - Link establishment time
+//   - updatedAt: string | timestamp | number (optional, max 40 chars) - Last update time
 //   - persistentLink: map (optional, max 10 entries) - RFC 6749 sliding window link state
 //
 // Collection: users
@@ -79,7 +82,7 @@ rules_version = '2';
 //   - photoURL: string (optional, max 500 chars) - Avatar URL
 //   - householdCode: string (optional, max 32 chars) - Associated household code
 //   - role: string (optional, 'parent' | 'child' | 'admin') - User role
-//   - createdAt / updatedAt: string | timestamp | number (optional)
+//   - createdAt / updatedAt: string | timestamp | number (optional, max 40 chars)
 //
 // Collection: heroes (Server-Only via Admin SDK)
 // Document ID: {heroId}
@@ -103,7 +106,7 @@ service cloud.firestore {
     }
 
     function isValidHouseholdCode(code) {
-      return code is string && code.size() >= 4 && code.size() <= 32;
+      return code is string && code.size() >= 4 && code.size() <= 32 && code.matches('^[A-Za-z0-9_-]+$');
     }
 
     function hasOnlyAllowedFields(fields) {
@@ -111,13 +114,25 @@ service cloud.firestore {
     }
 
     function uidUnchanged() {
-      return !('userId' in request.resource.data) ||
-        request.resource.data.userId == request.auth.uid;
+      return (!('userId' in request.resource.data) || request.resource.data.userId == request.auth.uid) &&
+             (!('uid' in request.resource.data) || request.resource.data.uid == request.auth.uid);
     }
 
     function uidNotModified() {
       return (!('userId' in request.resource.data) || request.resource.data.userId == resource.data.userId) &&
-        (!('uid' in request.resource.data) || request.resource.data.uid == resource.data.uid);
+             (!('uid' in request.resource.data) || request.resource.data.uid == resource.data.uid);
+    }
+
+    function areImmutableFieldsUnchanged(fields) {
+      return resource == null || !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    function isValidUrl(url) {
+      return url is string && (url.matches('^https://.*') || url.matches('^http://.*'));
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$');
     }
 
     // ===============================================================
@@ -132,29 +147,47 @@ service cloud.firestore {
       );
     }
 
-    // One-time bootstrap: a household created without parents yet can have the
-    // first authenticated caller claim ownership, but ONLY via an update that
-    // itself sets parentUids to include their own UID.
+    // Hardened one-time bootstrap:
+    // A household created without parentUids can have the first authenticated parent claim ownership,
+    // BUT only if parentEmails is either unset OR matches the claiming user's verified email.
     function isBootstrapParentClaim(householdData) {
       return isAuthenticated()
         && (!('parentUids' in householdData) || !(householdData.parentUids is list) || householdData.parentUids.size() == 0)
+        && (!('parentEmails' in householdData) || !(householdData.parentEmails is list) || householdData.parentEmails.size() == 0 ||
+            (request.auth.token.email_verified == true && request.auth.token.email != null && request.auth.token.email in householdData.parentEmails))
         && request.resource.data.parentUids is list
         && request.resource.data.parentUids.size() > 0
         && request.auth.uid in request.resource.data.parentUids;
     }
 
     // Comprehensive payload validation preventing Resource Exhaustion & DoS (1MB payload attacks)
+    // and strictly restricting keys to the registered schema.
     function isValidHouseholdPayload() {
       let data = request.resource.data;
-      return (data.keys().hasAny(['syncCode', 'name', 'householdName']))
-        && (!('syncCode' in data) || (data.syncCode is string && data.syncCode.size() <= 32))
+      return hasOnlyAllowedFields([
+          'syncCode', 'name', 'householdName', 'devices', 'heroes', 'heroesMap',
+          'deletedHeroIds', 'selectedHero', 'parents', 'parentUids', 'parentEmails',
+          'parentSettings', 'pendingApprovals', 'resolvedApprovals',
+          'taskCompletionLogs', 'taskLedgerLogs', 'taskForest', 'habitIslands',
+          'aiQuests', 'heroAiQuestsMap', 'recentlyUnlocked', 'realLifeRewards',
+          'digitalGear', 'inventory', 'petStatsMap', 'petLevelMap', 'petXpMap',
+          'equippedGearMap', 'equippedPetGear', 'equippedPetGearSlots', 'equippedPetGearMap',
+          'customGearDyesMap', 'savedHeroCards', 'pets', 'petSanctuary', 'heroHQ',
+          'heroForge', 'petStreakShield', 'activeExpeditions', 'expeditionHistory',
+          'unlockedArtifacts', 'gameMasteryMap', 'liveRex', 'profileThemes',
+          'gameProgress', 'linkedAccounts', 'revokedDeviceIds', 'stateSnapshot',
+          'lastWriterSessionId', 'lastWriterDeviceId', 'updatedAt', 'lastUpdated',
+          'parentCustomWeapons', 'parentCustomFood', 'deletedCustomItemIds'
+        ])
+        && (data.keys().hasAny(['syncCode', 'name', 'householdName']))
+        && (!('syncCode' in data) || (isValidHouseholdCode(data.syncCode)))
         && (!('householdName' in data) || (data.householdName is string && data.householdName.size() <= 100))
         && (!('name' in data) || (data.name is string && data.name.size() <= 100))
         && (!('devices' in data) || (data.devices is map && data.devices.size() <= 30))
         && (!('heroes' in data) || (data.heroes is list && data.heroes.size() <= 20))
         && (!('heroesMap' in data) || (data.heroesMap is map && data.heroesMap.size() <= 20))
         && (!('deletedHeroIds' in data) || (data.deletedHeroIds is list && data.deletedHeroIds.size() <= 50))
-        && (!('selectedHero' in data) || (data.selectedHero == null || data.selectedHero is map))
+        && (!('selectedHero' in data) || (data.selectedHero == null || (data.selectedHero is map && data.selectedHero.size() <= 60)))
         && (!('parents' in data) || (data.parents is list && data.parents.size() <= 15))
         && (!('parentUids' in data) || (data.parentUids is list && data.parentUids.size() <= 15))
         && (!('parentEmails' in data) || (data.parentEmails is list && data.parentEmails.size() <= 15))
@@ -175,6 +208,7 @@ service cloud.firestore {
         && (!('petLevelMap' in data) || (data.petLevelMap is map && data.petLevelMap.size() <= 30))
         && (!('petXpMap' in data) || (data.petXpMap is map && data.petXpMap.size() <= 30))
         && (!('equippedGearMap' in data) || (data.equippedGearMap is map && data.equippedGearMap.size() <= 20))
+        && (!('equippedPetGear' in data) || data.equippedPetGear == null || (data.equippedPetGear is string && data.equippedPetGear.size() <= 100) || (data.equippedPetGear is map && data.equippedPetGear.size() <= 20))
         && (!('equippedPetGearSlots' in data) || (data.equippedPetGearSlots is map && data.equippedPetGearSlots.size() <= 20))
         && (!('equippedPetGearMap' in data) || (data.equippedPetGearMap is map && data.equippedPetGearMap.size() <= 30))
         && (!('customGearDyesMap' in data) || (data.customGearDyesMap is map && data.customGearDyesMap.size() <= 30))
@@ -195,7 +229,12 @@ service cloud.firestore {
         && (!('revokedDeviceIds' in data) || (data.revokedDeviceIds is list && data.revokedDeviceIds.size() <= 50))
         && (!('stateSnapshot' in data) || (data.stateSnapshot is map && data.stateSnapshot.size() <= 60))
         && (!('lastWriterSessionId' in data) || (data.lastWriterSessionId is string && data.lastWriterSessionId.size() <= 64))
-        && (!('lastWriterDeviceId' in data) || (data.lastWriterDeviceId is string && data.lastWriterDeviceId.size() <= 64));
+        && (!('lastWriterDeviceId' in data) || (data.lastWriterDeviceId is string && data.lastWriterDeviceId.size() <= 64))
+        && (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 40) || (data.updatedAt is timestamp) || (data.updatedAt is number))
+        && (!('lastUpdated' in data) || (data.lastUpdated is string && data.lastUpdated.size() <= 40) || (data.lastUpdated is timestamp) || (data.lastUpdated is number))
+        && (!('parentCustomWeapons' in data) || (data.parentCustomWeapons is list && data.parentCustomWeapons.size() <= 50))
+        && (!('parentCustomFood' in data) || (data.parentCustomFood is list && data.parentCustomFood.size() <= 50))
+        && (!('deletedCustomItemIds' in data) || (data.deletedCustomItemIds is list && data.deletedCustomItemIds.size() <= 50));
     }
 
     // Secure household creation rules preventing unauthorized administrative pre-claiming
@@ -205,26 +244,53 @@ service cloud.firestore {
         // Unauthenticated client creation cannot pre-populate administrative parent claims
         (!isAuthenticated() && (!('parentUids' in data) || data.parentUids.size() == 0) && (!('parentEmails' in data) || data.parentEmails.size() == 0)) ||
         // Authenticated creation: if parentUids is specified, caller must be in the list
-        (isAuthenticated() && (!('parentUids' in data) || request.auth.uid in data.parentUids))
+        (isAuthenticated() && (!('parentUids' in data) || request.auth.uid in data.parentUids) &&
+         (!('parentEmails' in data) || (request.auth.token.email_verified == true && request.auth.token.email != null && request.auth.token.email in data.parentEmails)))
       );
     }
 
-    // Strict validation for kid/non-parent updates:
-    // Kids CANNOT modify parental controls, admin lists, delete kid profiles, self-approve chores,
-    // modify revoked devices list, alter linked parent accounts, or tamper with parental settings via stateSnapshot
+    // Hardened validation for kid/non-parent updates:
+    // 1. Kids CANNOT modify parental controls, admin lists, delete kid profiles, self-approve chores,
+    //    modify revoked devices list, alter linked parent accounts, or tamper with parental settings via stateSnapshot.
+    // 2. Reject writes originating from devices marked as revoked in existing household state.
+    // 3. Existing pending approvals and task logs are IMMUTABLE to kids (kids can only append, never overwrite or forge).
     function isAllowedKidUpdate(existingData, newData) {
       let affected = newData.diff(existingData).affectedKeys();
       return isValidHouseholdPayload()
-        // 1. Kids CANNOT modify parental controls, parent admin lists, delete profiles, revoke devices, or alter linked accounts
-        && !affected.hasAny(['parentSettings', 'parents', 'parentUids', 'parentEmails', 'deletedHeroIds', 'revokedDeviceIds', 'linkedAccounts', 'resolvedApprovals'])
-        // 2. Kids CANNOT dismiss or shrink pending approvals list (only append new chore submissions)
-        && (!('pendingApprovals' in existingData) || !('pendingApprovals' in newData) || newData.pendingApprovals.size() >= existingData.pendingApprovals.size())
-        // 3. Kids CANNOT delete or shrink task completion logs (only append or maintain)
-        && (!('taskCompletionLogs' in existingData) || !('taskCompletionLogs' in newData) || newData.taskCompletionLogs.size() >= existingData.taskCompletionLogs.size())
-        // 4. State snapshot integrity: kid updates must not alter parentSettings or parentUids via nested snapshot
+        // 1. Kids CANNOT modify parental controls, parent admin lists, delete profiles, revoke devices, linked accounts, or custom reward catalogs
+        && !affected.hasAny([
+          'parentSettings', 'parents', 'parentUids', 'parentEmails',
+          'deletedHeroIds', 'revokedDeviceIds', 'linkedAccounts',
+          'resolvedApprovals', 'parentCustomWeapons', 'parentCustomFood', 'deletedCustomItemIds'
+        ])
+        // 2. Reject writes originating from revoked devices
+        && (!('revokedDeviceIds' in existingData) || !(existingData.revokedDeviceIds is list) ||
+            !('lastWriterDeviceId' in newData) || !(newData.lastWriterDeviceId in existingData.revokedDeviceIds))
+        && (!('devices' in existingData) || !(existingData.devices is map) ||
+            !('lastWriterDeviceId' in newData) || !(newData.lastWriterDeviceId in existingData.devices) ||
+            !('revoked' in existingData.devices[newData.lastWriterDeviceId]) ||
+            existingData.devices[newData.lastWriterDeviceId].revoked != true)
+        // 3. Kids CANNOT delete, overwrite, or mutate existing pending approvals (must preserve all existing entries)
+        && (!('pendingApprovals' in existingData) || !(existingData.pendingApprovals is list) ||
+            existingData.pendingApprovals.size() == 0 ||
+            (('pendingApprovals' in newData) && (newData.pendingApprovals is list) &&
+             newData.pendingApprovals.size() >= existingData.pendingApprovals.size() &&
+             newData.pendingApprovals.hasAll(existingData.pendingApprovals)))
+        // 4. Kids CANNOT delete, overwrite, or mutate existing task completion logs
+        && (!('taskCompletionLogs' in existingData) || !(existingData.taskCompletionLogs is list) ||
+            existingData.taskCompletionLogs.size() == 0 ||
+            (('taskCompletionLogs' in newData) && (newData.taskCompletionLogs is list) &&
+             newData.taskCompletionLogs.size() >= existingData.taskCompletionLogs.size() &&
+             newData.taskCompletionLogs.hasAll(existingData.taskCompletionLogs)))
+        // 5. State snapshot integrity: kid updates must not alter administrative fields via nested snapshot
         && (!('stateSnapshot' in newData) || !('parentSettings' in newData.stateSnapshot) || !('stateSnapshot' in existingData) || !('parentSettings' in existingData.stateSnapshot) || newData.stateSnapshot.parentSettings == existingData.stateSnapshot.parentSettings)
         && (!('stateSnapshot' in newData) || !('parentUids' in newData.stateSnapshot) || !('stateSnapshot' in existingData) || !('parentUids' in existingData.stateSnapshot) || newData.stateSnapshot.parentUids == existingData.stateSnapshot.parentUids)
-        && (!('stateSnapshot' in newData) || !('revokedDeviceIds' in newData.stateSnapshot) || !('stateSnapshot' in existingData) || !('revokedDeviceIds' in existingData.stateSnapshot) || newData.stateSnapshot.revokedDeviceIds == existingData.stateSnapshot.revokedDeviceIds);
+        && (!('stateSnapshot' in newData) || !('parentEmails' in newData.stateSnapshot) || !('stateSnapshot' in existingData) || !('parentEmails' in existingData.stateSnapshot) || newData.stateSnapshot.parentEmails == existingData.stateSnapshot.parentEmails)
+        && (!('stateSnapshot' in newData) || !('parents' in newData.stateSnapshot) || !('stateSnapshot' in existingData) || !('parents' in existingData.stateSnapshot) || newData.stateSnapshot.parents == existingData.stateSnapshot.parents)
+        && (!('stateSnapshot' in newData) || !('revokedDeviceIds' in newData.stateSnapshot) || !('stateSnapshot' in existingData) || !('revokedDeviceIds' in existingData.stateSnapshot) || newData.stateSnapshot.revokedDeviceIds == existingData.stateSnapshot.revokedDeviceIds)
+        && (!('stateSnapshot' in newData) || !('linkedAccounts' in newData.stateSnapshot) || !('stateSnapshot' in existingData) || !('linkedAccounts' in existingData.stateSnapshot) || newData.stateSnapshot.linkedAccounts == existingData.stateSnapshot.linkedAccounts)
+        && (!('stateSnapshot' in newData) || !('parentCustomWeapons' in newData.stateSnapshot) || !('stateSnapshot' in existingData) || !('parentCustomWeapons' in existingData.stateSnapshot) || newData.stateSnapshot.parentCustomWeapons == existingData.stateSnapshot.parentCustomWeapons)
+        && (!('stateSnapshot' in newData) || !('parentCustomFood' in newData.stateSnapshot) || !('stateSnapshot' in existingData) || !('parentCustomFood' in existingData.stateSnapshot) || newData.stateSnapshot.parentCustomFood == existingData.stateSnapshot.parentCustomFood);
     }
 
     // ===============================================================
@@ -237,9 +303,11 @@ service cloud.firestore {
         && ('userId' in data && data.userId is string && data.userId == request.auth.uid)
         && (resource == null || !('userId' in resource.data) || data.userId == resource.data.userId)
         && ('householdCode' in data && data.householdCode is string && isValidHouseholdCode(data.householdCode))
-        && (!('email' in data) || (data.email is string && data.email.size() <= 120))
+        && (!('email' in data) || (data.email is string && data.email.size() <= 120 && isValidEmail(data.email)))
         && (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100))
         && (!('role' in data) || (data.role in ['parent', 'child', 'admin']))
+        && (!('linkedAt' in data) || (data.linkedAt is string && data.linkedAt.size() <= 40) || (data.linkedAt is timestamp) || (data.linkedAt is number))
+        && (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 40) || (data.updatedAt is timestamp) || (data.updatedAt is number))
         && (!('persistentLink' in data) || (data.persistentLink is map && data.persistentLink.size() <= 10));
     }
 
@@ -253,10 +321,13 @@ service cloud.firestore {
         && uidUnchanged()
         && uidNotModified()
         && (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100))
-        && (!('email' in data) || (data.email is string && data.email.size() <= 120))
-        && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500))
+        && (!('email' in data) || (data.email is string && data.email.size() <= 120 && isValidEmail(data.email)))
+        && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500 && isValidUrl(data.photoURL)))
         && (!('householdCode' in data) || (data.householdCode is string && isValidHouseholdCode(data.householdCode)))
-        && (!('role' in data) || (data.role in ['parent', 'child', 'admin']));
+        && (!('role' in data) || (data.role in ['parent', 'child', 'admin']))
+        && (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 40) || (data.createdAt is timestamp) || (data.createdAt is number))
+        && (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 40) || (data.updatedAt is timestamp) || (data.updatedAt is number))
+        && areImmutableFieldsUnchanged(['createdAt']);
     }
 
     // ===============================================================
@@ -278,7 +349,7 @@ service cloud.firestore {
       // Updates:
       // Require valid code and valid payload on ALL updates.
       // 1. Authorized parents can update any aspect (approvals, points, screen time, settings, co-parents).
-      // 2. Initial bootstrap claims allow first parent onboarding.
+      // 2. Hardened initial bootstrap claims allow first parent onboarding without allowing takeovers of pre-emailed accounts.
       // 3. Kids and household devices can submit chore requests, log activity, and sync mini-game state via isAllowedKidUpdate().
       allow update: if isValidHouseholdCode(householdCode)
         && isValidHouseholdPayload()
@@ -290,6 +361,11 @@ service cloud.firestore {
 
       // Prevent accidental or malicious household deletion from client
       allow delete: if false;
+
+      // Subcollections are strictly denied
+      match /{allChildren=**} {
+        allow read, write: if false;
+      }
     }
 
     // --- Users / Profiles Collection ---
@@ -323,7 +399,7 @@ service cloud.firestore {
       allow get: if isAuthenticated() && (
         isOwner(linkId) ||
         (resource != null && resource.data.userId == request.auth.uid) ||
-        (request.auth.token.email != null && resource != null && resource.data.email == request.auth.token.email)
+        (request.auth.token.email_verified == true && request.auth.token.email != null && resource != null && resource.data.email == request.auth.token.email)
       );
       allow list: if false;
       
@@ -331,7 +407,7 @@ service cloud.firestore {
         && isValidUserHouseholdPayload()
         && (
           isOwner(linkId) ||
-          (request.auth.token.email != null && request.resource.data.email == request.auth.token.email)
+          (request.auth.token.email_verified == true && request.auth.token.email != null && request.resource.data.email == request.auth.token.email)
         );
 
       allow update: if isAuthenticated()
@@ -339,7 +415,7 @@ service cloud.firestore {
         && (
           isOwner(linkId) ||
           (resource != null && resource.data.userId == request.auth.uid) ||
-          (request.auth.token.email != null && resource.data.email == request.auth.token.email)
+          (request.auth.token.email_verified == true && request.auth.token.email != null && resource.data.email == request.auth.token.email)
         )
         && request.resource.data.userId == resource.data.userId; // Immutable UID
 
@@ -347,6 +423,10 @@ service cloud.firestore {
         isOwner(linkId) ||
         (resource != null && resource.data.userId == request.auth.uid)
       );
+
+      match /{allChildren=**} {
+        allow read, write: if false;
+      }
     }
 
     // --- Zero-Trust Default Deny ---
