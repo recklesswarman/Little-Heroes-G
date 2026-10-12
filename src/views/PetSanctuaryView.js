@@ -21,6 +21,7 @@ let eggCrackTaps = {}; // { [eggId]: tapCount }
 let expeditionInterval = null;
 let selectedRosterFilter = 'all';
 let selectedWardrobeCategory = 'masks';
+let isCareToolbarOpen = false; // Collapsible FAB state on mobile / side rail
 
 export function renderPetSanctuaryView() {
   const state = store.getState();
@@ -48,7 +49,7 @@ export function renderPetSanctuaryView() {
   const equippedGear = (state.petGear && state.petGear[activePet.id]) || {};
 
   return `
-    <div class="min-h-screen bg-surface-container-lowest text-on-background flex flex-col font-body select-none pb-36 sm:pb-44 animate-fade-in relative overflow-x-hidden">
+    <div class="min-h-screen bg-surface-container-lowest text-on-background flex flex-col font-body select-none pb-24 sm:pb-28 animate-fade-in relative overflow-x-hidden">
       
       <!-- ===================================================================== -->
       <!-- TOP NAVIGATION & STATUS HUD                                           -->
@@ -224,98 +225,117 @@ export function renderPetSanctuaryView() {
       </main>
 
       <!-- ===================================================================== -->
-      <!-- BOTTOM ACTION DOCK (6 TACTILE ACTION BUTTONS)                         -->
-      <!-- Positioned right above the BottomNav bar (68px-72px)                 -->
+      <!-- VERTICAL FLOATING SIDE TOOLBAR (LEFT SIDE RAIL + MOBILE COLLAPSIBLE FAB) -->
+      <!-- Relocated to the left side to keep the bottom screen and Rex widget 100% clear -->
       <!-- ===================================================================== -->
-      <nav class="fixed bottom-[68px] sm:bottom-[72px] left-0 right-0 z-30 bg-surface-container/95 backdrop-blur-lg border-t-2 border-surface-container-highest px-2 sm:px-6 py-2 sm:py-2.5 shadow-2xl">
-        <div class="max-w-xl mx-auto grid grid-cols-6 gap-1.5 sm:gap-3">
-          
+      <aside 
+        id="sanctuary-care-toolbar-container"
+        class="fixed left-3 sm:left-5 bottom-24 sm:top-1/2 sm:-translate-y-1/2 sm:bottom-auto z-30 flex flex-col items-start select-none pointer-events-auto"
+        aria-label="Pet Care Actions"
+      >
+        <!-- Mobile Toggle FAB (visible on screens < 640px) -->
+        <button
+          id="care-toolbar-fab"
+          class="sm:hidden w-12 h-12 rounded-2xl bg-surface-container/95 hover:bg-surface-bright text-primary border-2 border-primary/50 shadow-2xl flex items-center justify-center font-headline font-black text-sm active:scale-95 transition-all mb-2 backdrop-blur-md"
+          title="Toggle Pet Care Actions"
+          aria-expanded="${isCareToolbarOpen ? 'true' : 'false'}"
+          aria-label="Toggle Pet Care Menu"
+        >
+          <span class="text-xl transition-transform duration-300 ${isCareToolbarOpen ? 'rotate-90' : ''}">${isCareToolbarOpen ? '✕' : '🐾'}</span>
+        </button>
+
+        <!-- Vertical Pill Action Buttons Column -->
+        <nav 
+          id="sanctuary-care-pills"
+          class="flex flex-col gap-2 p-2 sm:p-2.5 rounded-3xl bg-surface-container/90 sm:bg-surface-container/80 backdrop-blur-xl border-2 border-surface-container-highest shadow-2xl transition-all duration-300 ${
+            isCareToolbarOpen ? 'flex opacity-100 scale-100 pointer-events-auto' : 'hidden sm:flex opacity-100 scale-100 pointer-events-auto'
+          }"
+        >
           <!-- 1. FEED TREAT -->
           <button 
             id="action-feed-btn" 
-            class="sanctuary-dock-btn min-h-[48px] flex flex-col items-center justify-center p-1.5 sm:p-2.5 rounded-2xl font-headline font-black text-xs transition-all active:translate-y-1 active:border-b-0 border-b-4 ${
+            class="sanctuary-dock-btn h-11 sm:h-12 px-3 sm:px-4 rounded-2xl font-headline font-black text-xs sm:text-sm flex items-center gap-2.5 transition-all active:scale-95 border-b-3 shadow-md ${
               activeDrawer === 'feed'
-                ? 'bg-primary text-slate-950 border-[#1b7a43] shadow-md ring-2 ring-primary/60'
-                : 'bg-surface-container-high hover:bg-surface-bright text-on-surface border-surface-container-highest'
+                ? 'bg-primary text-slate-950 border-[#1b7a43] ring-2 ring-primary/60 scale-105'
+                : 'bg-surface-container-high hover:bg-surface-bright text-on-surface border-surface-container-highest hover:text-primary'
             }"
             aria-label="Feed pet treats"
           >
-            <span class="text-xl sm:text-3xl leading-none">🍎</span>
-            <span class="mt-0.5 sm:mt-1 text-[9px] sm:text-xs">FEED</span>
+            <span class="text-xl sm:text-2xl leading-none">🍎</span>
+            <span class="tracking-wide font-headline font-black">FEED</span>
           </button>
 
           <!-- 2. BUBBLE BATH -->
           <button 
             id="action-bath-btn" 
-            class="sanctuary-dock-btn min-h-[48px] flex flex-col items-center justify-center p-1.5 sm:p-2.5 rounded-2xl font-headline font-black text-xs transition-all active:translate-y-1 active:border-b-0 border-b-4 ${
+            class="sanctuary-dock-btn h-11 sm:h-12 px-3 sm:px-4 rounded-2xl font-headline font-black text-xs sm:text-sm flex items-center gap-2.5 transition-all active:scale-95 border-b-3 shadow-md ${
               activeDrawer === 'bath'
-                ? 'bg-tertiary text-slate-950 border-[#007b83] shadow-md ring-2 ring-tertiary/60'
-                : 'bg-surface-container-high hover:bg-surface-bright text-on-surface border-surface-container-highest'
+                ? 'bg-tertiary text-slate-950 border-[#007b83] ring-2 ring-tertiary/60 scale-105'
+                : 'bg-surface-container-high hover:bg-surface-bright text-on-surface border-surface-container-highest hover:text-tertiary'
             }"
             aria-label="Scrub in bubble lagoon"
           >
-            <span class="text-xl sm:text-3xl leading-none">🫧</span>
-            <span class="mt-0.5 sm:mt-1 text-[9px] sm:text-xs">BATH</span>
+            <span class="text-xl sm:text-2xl leading-none">🫧</span>
+            <span class="tracking-wide font-headline font-black">BATH</span>
           </button>
 
           <!-- 3. HERO WARDROBE -->
           <button 
             id="action-wardrobe-btn" 
-            class="sanctuary-dock-btn min-h-[48px] flex flex-col items-center justify-center p-1.5 sm:p-2.5 rounded-2xl font-headline font-black text-xs transition-all active:translate-y-1 active:border-b-0 border-b-4 ${
+            class="sanctuary-dock-btn h-11 sm:h-12 px-3 sm:px-4 rounded-2xl font-headline font-black text-xs sm:text-sm flex items-center gap-2.5 transition-all active:scale-95 border-b-3 shadow-md ${
               activeDrawer === 'wardrobe'
-                ? 'bg-secondary text-slate-950 border-[#b26a00] shadow-md ring-2 ring-secondary/60'
-                : 'bg-surface-container-high hover:bg-surface-bright text-on-surface border-surface-container-highest'
+                ? 'bg-secondary text-slate-950 border-[#b26a00] ring-2 ring-secondary/60 scale-105'
+                : 'bg-surface-container-high hover:bg-surface-bright text-on-surface border-surface-container-highest hover:text-secondary'
             }"
             aria-label="Snap-on 3D forged gear"
           >
-            <span class="text-xl sm:text-3xl leading-none">🪞</span>
-            <span class="mt-0.5 sm:mt-1 text-[9px] sm:text-xs">GEAR</span>
+            <span class="text-xl sm:text-2xl leading-none">🪞</span>
+            <span class="tracking-wide font-headline font-black">GEAR</span>
           </button>
 
           <!-- 4. 24 PET COMPANIONS ROSTER -->
           <button 
             id="action-roster-dock-btn" 
-            class="sanctuary-dock-btn min-h-[48px] flex flex-col items-center justify-center p-1.5 sm:p-2.5 rounded-2xl font-headline font-black text-xs transition-all active:translate-y-1 active:border-b-0 border-b-4 ${
+            class="sanctuary-dock-btn h-11 sm:h-12 px-3 sm:px-4 rounded-2xl font-headline font-black text-xs sm:text-sm flex items-center gap-2.5 transition-all active:scale-95 border-b-3 shadow-md ${
               activeDrawer === 'roster'
-                ? 'bg-linear-to-r from-secondary to-primary text-slate-950 border-[#1b7a43] shadow-md ring-2 ring-primary/60'
-                : 'bg-surface-container-high hover:bg-surface-bright text-on-surface border-surface-container-highest'
+                ? 'bg-linear-to-r from-secondary to-primary text-slate-950 border-[#1b7a43] ring-2 ring-primary/60 scale-105'
+                : 'bg-surface-container-high hover:bg-surface-bright text-on-surface border-surface-container-highest hover:text-primary'
             }"
             aria-label="24 Pet Companions Roster"
           >
-            <span class="text-xl sm:text-3xl leading-none">🐾</span>
-            <span class="mt-0.5 sm:mt-1 text-[9px] sm:text-xs">ROSTER</span>
+            <span class="text-xl sm:text-2xl leading-none">🐾</span>
+            <span class="tracking-wide font-headline font-black">ROSTER</span>
           </button>
 
           <!-- 5. EXPEDITION -->
           <button 
             id="action-expedition-btn" 
-            class="sanctuary-dock-btn min-h-[48px] flex flex-col items-center justify-center p-1.5 sm:p-2.5 rounded-2xl font-headline font-black text-xs transition-all active:translate-y-1 active:border-b-0 border-b-4 ${
+            class="sanctuary-dock-btn h-11 sm:h-12 px-3 sm:px-4 rounded-2xl font-headline font-black text-xs sm:text-sm flex items-center gap-2.5 transition-all active:scale-95 border-b-3 shadow-md ${
               activeDrawer === 'expedition'
-                ? 'bg-amber-400 text-slate-950 border-[#b7791f] shadow-md ring-2 ring-amber-400/60'
-                : 'bg-surface-container-high hover:bg-surface-bright text-on-surface border-surface-container-highest'
+                ? 'bg-amber-400 text-slate-950 border-[#b7791f] ring-2 ring-amber-400/60 scale-105'
+                : 'bg-surface-container-high hover:bg-surface-bright text-on-surface border-surface-container-highest hover:text-amber-300'
             }"
             aria-label="Send on Adventure"
           >
-            <span class="text-xl sm:text-3xl leading-none">🏕️</span>
-            <span class="mt-0.5 sm:mt-1 text-[9px] sm:text-xs">EXPLORE</span>
+            <span class="text-xl sm:text-2xl leading-none">🏕️</span>
+            <span class="tracking-wide font-headline font-black">EXPLORE</span>
           </button>
 
           <!-- 6. WORKOUT -->
           <button 
             id="action-workout-btn" 
-            class="sanctuary-dock-btn min-h-[48px] flex flex-col items-center justify-center p-1.5 sm:p-2.5 rounded-2xl font-headline font-black text-xs transition-all active:translate-y-1 active:border-b-0 border-b-4 ${
+            class="sanctuary-dock-btn h-11 sm:h-12 px-3 sm:px-4 rounded-2xl font-headline font-black text-xs sm:text-sm flex items-center gap-2.5 transition-all active:scale-95 border-b-3 shadow-md ${
               activeDrawer === 'workout'
-                ? 'bg-rose-400 text-slate-950 border-[#9b2c2c] shadow-md ring-2 ring-rose-400/60'
-                : 'bg-surface-container-high hover:bg-surface-bright text-on-surface border-surface-container-highest'
+                ? 'bg-rose-400 text-slate-950 border-[#9b2c2c] ring-2 ring-rose-400/60 scale-105'
+                : 'bg-surface-container-high hover:bg-surface-bright text-on-surface border-surface-container-highest hover:text-rose-300'
             }"
             aria-label="Companion Workout"
           >
-            <span class="text-xl sm:text-3xl leading-none">💪</span>
-            <span class="mt-0.5 sm:mt-1 text-[9px] sm:text-xs">WORKOUT</span>
+            <span class="text-xl sm:text-2xl leading-none">💪</span>
+            <span class="tracking-wide font-headline font-black">WORKOUT</span>
           </button>
-
-        </div>
-      </nav>
+        </nav>
+      </aside>
 
       <!-- ===================================================================== -->
       <!-- SLIDE-OUT TACTILE DRAWER PANELS                                       -->
@@ -952,7 +972,36 @@ export function attachPetSanctuaryListeners() {
     });
   }
 
-  // Bottom Dock Actions: Feed, Bath, Wardrobe, Evolution
+  // Mobile Care Toolbar FAB Toggle
+  const careFab = document.getElementById('care-toolbar-fab');
+  const carePillsNav = document.getElementById('sanctuary-care-pills');
+  if (careFab) {
+    careFab.addEventListener('click', () => {
+      Sound.pop();
+      isCareToolbarOpen = !isCareToolbarOpen;
+      careFab.setAttribute('aria-expanded', isCareToolbarOpen ? 'true' : 'false');
+      if (carePillsNav) {
+        if (isCareToolbarOpen) {
+          carePillsNav.classList.remove('hidden');
+          carePillsNav.classList.add('flex', 'opacity-100', 'scale-100');
+        } else {
+          carePillsNav.classList.add('hidden');
+          carePillsNav.classList.remove('flex');
+        }
+      }
+      const fabIcon = careFab.querySelector('span');
+      if (fabIcon) {
+        fabIcon.textContent = isCareToolbarOpen ? '✕' : '🐾';
+        if (isCareToolbarOpen) {
+          fabIcon.classList.add('rotate-90');
+        } else {
+          fabIcon.classList.remove('rotate-90');
+        }
+      }
+    });
+  }
+
+  // Left Toolbar Actions: Feed, Bath, Wardrobe, Roster, Expedition, Workout
   const feedBtn = document.getElementById('action-feed-btn');
   if (feedBtn) {
     feedBtn.addEventListener('click', () => {
