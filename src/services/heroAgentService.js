@@ -162,7 +162,7 @@ export async function talkToRexAGY(message, heroId = null, petId = null) {
     const chatWithPetFn = httpsCallable(functions, "chatWithPet");
     const now = new Date();
     const result = await chatWithPetFn({
-      heroId: effectiveHeroId,
+      heroId: heroName || effectiveHeroId,
       message,
       petId: effectivePetId,
       childName: heroName,

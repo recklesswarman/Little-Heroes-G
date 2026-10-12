@@ -11,6 +11,8 @@ if (!getApps().length) {
 
 export interface ChatWithPetData {
   heroId?: string;
+  childName?: string;
+  heroName?: string;
   message: string;
   currentHabit?: string;
   petId?: string;
@@ -28,6 +30,8 @@ export const chatWithPet = onCall(
 
     const {
       heroId = "Little Hero",
+      childName: passedChildName,
+      heroName: passedHeroName,
       message,
       currentHabit,
       petId,
@@ -42,7 +46,9 @@ export const chatWithPet = onCall(
       throw new HttpsError("invalid-argument", "Message is too long.");
     }
 
-    const childName = heroId || "Little Hero";
+    const childName = (passedChildName && passedChildName.trim())
+      || (passedHeroName && passedHeroName.trim())
+      || (heroId && heroId !== "hero_1" && heroId !== "hero_demo_1" ? heroId.trim() : "Little Hero");
     const selectedPet = (petId || "rex").toLowerCase();
 
     // 1. Multi-Pet Character Persona Engine
