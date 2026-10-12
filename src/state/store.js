@@ -2877,10 +2877,15 @@ class Store {
       sanct.expedition = { active: false };
     }
 
-    // 7. Audit Log for Parent Portal
+    // 7. Audit Log for Parent Portal. Coins/XP/sparks auto-issue above;
+    // Gold Points are queued below for Parent Approval instead of being
+    // logged as already-approved.
     const nowIso = new Date().toISOString();
+    const logId = 'exp_log_' + Date.now();
+    const approvalReqId = 'task_expedition_' + expedition.biomeId + '_' + Date.now();
+    const pendingPoints = 10;
     const completionLog = {
-      id: 'exp_log_' + Date.now(),
+      id: logId,
       taskId: 'expedition_' + expedition.biomeId,
       taskTitle: `Pet Expedition: ${pet.name} returned from ${expedition.biomeName}`,
       zone: 'Pet Expeditions',
@@ -2896,11 +2901,13 @@ class Store {
       dateString: new Date().toLocaleDateString(),
       timeString: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       coinsAwarded: rewards.coinsAwarded,
-      pointsAwarded: 10,
+      pointsAwarded: pendingPoints,
       xpAwarded: rewards.xpAwarded,
       sparksAwarded: rewards.sparksAwarded,
-      status: 'approved',
-      approvedAt: nowIso
+      status: 'pending',
+      approvalRequestId: approvalReqId,
+      approvedAt: null,
+      rejectedAt: null
     };
     if (!this.state.taskCompletionLogs) this.state.taskCompletionLogs = [];
     this.state.taskCompletionLogs.unshift(completionLog);
@@ -2908,9 +2915,26 @@ class Store {
       this.state.taskCompletionLogs.pop();
     }
 
+    if (!this.state.pendingApprovals) this.state.pendingApprovals = [];
+    this.state.pendingApprovals.push({
+      id: approvalReqId,
+      logId,
+      kidId: currentHero.id,
+      kidName: currentHero.name,
+      type: 'task_point_approval',
+      taskId: 'expedition_' + expedition.biomeId,
+      title: completionLog.taskTitle,
+      zone: 'Pet Expeditions',
+      pendingPoints,
+      tokensAwarded: rewards.coinsAwarded,
+      date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: nowIso,
+      status: 'pending'
+    });
+
     this.logAction(
       `${pet.name} returned from ${expedition.biomeName}! 🎒✨`,
-      `+${rewards.sparksAwarded} Sparks ⚡, +${rewards.coinsAwarded} Coins 🪙, +${rewards.xpAwarded} XP${rewards.artifactDropped ? ' & Found ' + rewards.artifactDropped.name : ''}`
+      `+${rewards.sparksAwarded} Sparks ⚡, +${rewards.coinsAwarded} Coins 🪙 auto-issued, +${rewards.xpAwarded} XP${rewards.artifactDropped ? ' & Found ' + rewards.artifactDropped.name : ''} (${pendingPoints} Points ⭐ pending Parent Approval)`
     );
 
     Sound.fanfare();
@@ -5514,10 +5538,15 @@ class Store {
     pStats.joy = Math.min(100, (pStats.joy || 80) + 15);
     pStats.energy = Math.min(100, (pStats.energy || 70) + 10);
 
-    // Log to taskCompletionLogs for Parent Portal Pillar 2 (Cognitive & Motor Milestones) sync
+    // Log to taskCompletionLogs for Parent Portal Pillar 2 (Cognitive & Motor Milestones)
+    // sync. Coins/XP/sparks auto-issue above; Gold Points are queued below
+    // for Parent Approval instead of being logged as already-approved.
     const nowIso = new Date().toISOString();
+    const logId = generateId('adv_', 6);
+    const approvalReqId = 'task_adventure_' + gameId + '_' + Date.now();
+    const pendingPoints = starsEarned * 5;
     const completionLog = {
-      id: generateId('adv_', 6),
+      id: logId,
       taskId: gameId,
       taskTitle: game.title,
       zone: 'Adventure Learning Games',
@@ -5533,10 +5562,12 @@ class Store {
       dateString: new Date().toLocaleDateString(),
       timeString: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       coinsAwarded: totalCoins,
-      pointsAwarded: starsEarned * 5,
+      pointsAwarded: pendingPoints,
       xpAwarded: totalXP,
-      status: 'approved',
-      approvedAt: nowIso
+      status: 'pending',
+      approvalRequestId: approvalReqId,
+      approvedAt: null,
+      rejectedAt: null
     };
 
     if (!this.state.taskCompletionLogs) {
@@ -5547,9 +5578,26 @@ class Store {
       this.state.taskCompletionLogs.pop();
     }
 
+    if (!this.state.pendingApprovals) this.state.pendingApprovals = [];
+    this.state.pendingApprovals.push({
+      id: approvalReqId,
+      logId,
+      kidId: currentHero.id,
+      kidName: currentHero.name,
+      type: 'task_point_approval',
+      taskId: gameId,
+      title: game.title,
+      zone: 'Adventure Learning Games',
+      pendingPoints,
+      tokensAwarded: totalCoins,
+      date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: nowIso,
+      status: 'pending'
+    });
+
     this.logAction(
       `${currentHero.name} mastered ${game.realm || game.title} (${starsEarned}⭐)`,
-      `+${totalCoins} Tokens 🪙, +${totalXP} XP, +${sparksEarned * 2} Training XP ⚡ for ${activePet.name}`
+      `+${totalCoins} Tokens 🪙 auto-issued, +${totalXP} XP, +${sparksEarned * 2} Training XP ⚡ for ${activePet.name} (${pendingPoints} Points ⭐ pending Parent Approval)`
     );
 
     Sound.fanfare();
@@ -8370,14 +8418,63 @@ class Store {
 
     mapState.discoveredSecrets.push(shrineId);
 
-    // Award Rewards
+    // Award Rewards (coins/stars/sparks auto-issue immediately; Gold Points
+    // are queued below for Parent Approval instead of self-granting)
     const hero = this.state.selectedHero;
+    const pendingPoints = Math.round(shrine.rewardCoins / 2);
     hero.coins = (hero.coins || 0) + shrine.rewardCoins;
-    hero.points = (hero.points || 0) + Math.round(shrine.rewardCoins / 2);
     hero.stars = (hero.stars || 0) + 1;
 
     const pId = String(hero.activePetId || '1');
     this.addPetSparks(pId, shrine.rewardSparks || 15);
+
+    const logId = 'shrine_log_' + Date.now();
+    const approvalReqId = 'task_shrine_' + shrine.id + '_' + Date.now();
+    const nowIso = new Date().toISOString();
+    if (!this.state.taskCompletionLogs) this.state.taskCompletionLogs = [];
+    this.state.taskCompletionLogs.unshift({
+      id: logId,
+      taskId: shrine.id,
+      taskTitle: shrine.name,
+      zone: 'World Map Secrets',
+      heroId: hero.id,
+      heroName: hero.name,
+      completedAt: nowIso,
+      timestamp: Date.now(),
+      dateString: new Date().toLocaleDateString(),
+      timeString: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      coinsAwarded: shrine.rewardCoins,
+      pointsAwarded: pendingPoints,
+      status: 'pending',
+      approvalRequestId: approvalReqId,
+      approvedAt: null,
+      rejectedAt: null
+    });
+    if (this.state.taskCompletionLogs.length > 200) {
+      this.state.taskCompletionLogs.pop();
+    }
+
+    if (!this.state.pendingApprovals) this.state.pendingApprovals = [];
+    this.state.pendingApprovals.push({
+      id: approvalReqId,
+      logId,
+      kidId: hero.id,
+      kidName: hero.name,
+      type: 'task_point_approval',
+      taskId: shrine.id,
+      title: shrine.name,
+      zone: 'World Map Secrets',
+      pendingPoints,
+      tokensAwarded: shrine.rewardCoins,
+      date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: nowIso,
+      status: 'pending'
+    });
+
+    this.logAction(
+      `${hero.name} discovered the secret shrine '${shrine.name}'! 🗺️✨`,
+      `+${shrine.rewardCoins} Tokens 🪙 auto-issued (${pendingPoints} Points ⭐ pending Parent Approval)`
+    );
 
     if (typeof Sound?.fanfare === 'function') Sound.fanfare();
     safeConfetti({ particleCount: 50, spread: 70, origin: { y: 0.6 } });
@@ -8430,11 +8527,61 @@ class Store {
     }
 
     chest.unlocked = true;
+    // Coins/sparks auto-issue immediately; Gold Points are queued below for
+    // Parent Approval instead of self-granting.
+    const pendingPoints = Math.round(chest.rewardCoins / 2);
     hero.coins = (hero.coins || 0) + chest.rewardCoins;
-    hero.points = (hero.points || 0) + Math.round(chest.rewardCoins / 2);
 
     const pId = String(hero.activePetId || '1');
     this.addPetSparks(pId, chest.rewardSparks || 50);
+
+    const logId = 'chest_log_' + Date.now();
+    const approvalReqId = 'task_chest_' + chest.id + '_' + Date.now();
+    const nowIso = new Date().toISOString();
+    if (!this.state.taskCompletionLogs) this.state.taskCompletionLogs = [];
+    this.state.taskCompletionLogs.unshift({
+      id: logId,
+      taskId: chest.id,
+      taskTitle: chest.title,
+      zone: 'World Map Chests',
+      heroId: hero.id,
+      heroName: hero.name,
+      completedAt: nowIso,
+      timestamp: Date.now(),
+      dateString: new Date().toLocaleDateString(),
+      timeString: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      coinsAwarded: chest.rewardCoins,
+      pointsAwarded: pendingPoints,
+      status: 'pending',
+      approvalRequestId: approvalReqId,
+      approvedAt: null,
+      rejectedAt: null
+    });
+    if (this.state.taskCompletionLogs.length > 200) {
+      this.state.taskCompletionLogs.pop();
+    }
+
+    if (!this.state.pendingApprovals) this.state.pendingApprovals = [];
+    this.state.pendingApprovals.push({
+      id: approvalReqId,
+      logId,
+      kidId: hero.id,
+      kidName: hero.name,
+      type: 'task_point_approval',
+      taskId: chest.id,
+      title: chest.title,
+      zone: 'World Map Chests',
+      pendingPoints,
+      tokensAwarded: chest.rewardCoins,
+      date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: nowIso,
+      status: 'pending'
+    });
+
+    this.logAction(
+      `${hero.name} unlocked the chest '${chest.title}'! 📦✨`,
+      `+${chest.rewardCoins} Tokens 🪙 auto-issued (${pendingPoints} Points ⭐ pending Parent Approval)`
+    );
 
     if (typeof Sound?.fanfare === 'function') Sound.fanfare();
     safeConfetti({ particleCount: 75, spread: 80, origin: { y: 0.5 } });
@@ -8528,12 +8675,62 @@ class Store {
     const hero = this.state.selectedHero;
     const coinsAwarded = landmark.rewardCoins || 25;
     const sparksAwarded = landmark.rewardSparks || 10;
+    // Coins/sparks auto-issue immediately; Gold Points are queued below for
+    // Parent Approval instead of self-granting.
+    const pendingPoints = Math.round(coinsAwarded / 2);
 
     hero.coins = (hero.coins || 0) + coinsAwarded;
-    hero.points = (hero.points || 0) + Math.round(coinsAwarded / 2);
 
     const pId = String(hero.activePetId || '1');
     this.addPetSparks(pId, sparksAwarded);
+
+    const logId = 'landmark_log_' + Date.now();
+    const approvalReqId = 'task_landmark_' + landmark.id + '_' + Date.now();
+    const nowIso = new Date().toISOString();
+    if (!this.state.taskCompletionLogs) this.state.taskCompletionLogs = [];
+    this.state.taskCompletionLogs.unshift({
+      id: logId,
+      taskId: landmark.id,
+      taskTitle: landmark.name,
+      zone: 'World Map Landmarks',
+      heroId: hero.id,
+      heroName: hero.name,
+      completedAt: nowIso,
+      timestamp: Date.now(),
+      dateString: new Date().toLocaleDateString(),
+      timeString: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      coinsAwarded,
+      pointsAwarded: pendingPoints,
+      status: 'pending',
+      approvalRequestId: approvalReqId,
+      approvedAt: null,
+      rejectedAt: null
+    });
+    if (this.state.taskCompletionLogs.length > 200) {
+      this.state.taskCompletionLogs.pop();
+    }
+
+    if (!this.state.pendingApprovals) this.state.pendingApprovals = [];
+    this.state.pendingApprovals.push({
+      id: approvalReqId,
+      logId,
+      kidId: hero.id,
+      kidName: hero.name,
+      type: 'task_point_approval',
+      taskId: landmark.id,
+      title: landmark.name,
+      zone: 'World Map Landmarks',
+      pendingPoints,
+      tokensAwarded: coinsAwarded,
+      date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: nowIso,
+      status: 'pending'
+    });
+
+    this.logAction(
+      `${hero.name} discovered the landmark '${landmark.name}'! 🏰✨`,
+      `+${coinsAwarded} Tokens 🪙 auto-issued (${pendingPoints} Points ⭐ pending Parent Approval)`
+    );
 
     if (typeof Sound?.fanfare === 'function') Sound.fanfare();
     else if (typeof Sound?.chirp === 'function') Sound.chirp();
