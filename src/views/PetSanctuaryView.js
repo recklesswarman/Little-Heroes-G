@@ -9,7 +9,7 @@
 
 import { store } from '../state/store.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
-import { PETS_DATABASE, getPetArchetype, getPetBondBonus, getPetById, getPetLevelData, calculatePetStatBonus, getDailyRotatingPetCoach } from '../data/petsData.js';
+import { PETS_DATABASE, getPetArchetype, getPetBondBonus, getPetById, getPetLevelData, calculatePetStatBonus, getDailyRotatingPetCoach, DINO_WORKOUTS } from '../data/petsData.js';
 import { PET_GEAR_CATALOG, getGearHaloStyle, normalizeGearSlot, getGearItem, calculateActiveGearBuffs } from '../data/petGearStudioData.js';
 import { PetSanctuaryCanvas } from '../components/PetSanctuaryCanvas.js';
 import { Sound } from '../audio/sfx.js';
@@ -729,66 +729,142 @@ function renderExpeditionDrawer(pet) {
 // -----------------------------------------------------------------------------
 function renderWorkoutDrawer(pet) {
   const dailyCoach = getDailyRotatingPetCoach();
+  const streakData = store.getWorkoutStreak();
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const todayIdx = new Date().getDay();
 
   return `
-    <div class="flex flex-col gap-5">
-      <!-- Daily Coach Hero Spotlight Card -->
-      <div class="p-4 rounded-3xl bg-linear-to-br from-surface-container-high to-surface-container-lowest border-2 border-amber-400/50 shadow-xl flex items-center gap-4">
+    <div class="flex flex-col gap-6">
+      
+      <!-- 1. Daily Featured Coach Spotlight (With +25% XP Bonus) -->
+      <div class="p-4 rounded-3xl bg-linear-to-br from-surface-container-high via-surface-container to-surface-container-lowest border-2 border-amber-400/50 shadow-xl flex flex-col sm:flex-row items-center gap-4 relative overflow-hidden">
+        <div class="absolute -right-8 -top-8 w-28 h-28 bg-amber-400/10 rounded-full blur-xl pointer-events-none"></div>
         <div class="w-20 h-20 rounded-2xl bg-surface-container-lowest border-2 border-amber-400/60 flex items-center justify-center p-1.5 shadow-md shrink-0">
           <img src="${dailyCoach.avatar || `assets/pets/${dailyCoach.key || 'rex'}.png`}" alt="${dailyCoach.name}" class="w-full h-full object-contain filter drop-shadow-sm">
         </div>
-        <div class="flex flex-col min-w-0">
-          <div class="flex items-center gap-2">
+        <div class="flex flex-col min-w-0 flex-1 text-center sm:text-left">
+          <div class="flex items-center justify-center sm:justify-start gap-2">
             <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-400/20 text-amber-300 border border-amber-400/40">
-              Daily Coach
+              Daily Featured Coach
             </span>
-            <span class="text-xs font-bold text-on-surface-variant">${dailyCoach.archetypeName}</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 animate-pulse">
+              +25% XP BONUS
+            </span>
           </div>
-          <h4 class="font-headline font-black text-lg text-on-surface truncate">Coach ${dailyCoach.name}</h4>
-          <span class="text-xs font-black text-secondary mt-0.5">${dailyCoach.signatureMove}</span>
-          <span class="text-[11px] text-on-surface-variant font-medium mt-1 leading-tight line-clamp-2">${dailyCoach.workoutDesc}</span>
+          <h4 class="font-headline font-black text-lg text-on-surface truncate mt-1">Coach ${dailyCoach.name} • ${dailyCoach.signatureMove}</h4>
+          <span class="text-xs text-on-surface-variant font-medium line-clamp-2 mt-0.5">${dailyCoach.workoutDesc || 'Join today’s featured coach for high-energy gross-motor power!'}</span>
+        </div>
+        <button 
+          id="start-coach-workout-btn"
+          class="w-full sm:w-auto px-5 py-3 rounded-2xl bg-linear-to-r from-amber-400 via-emerald-400 to-cyan-400 hover:opacity-95 text-slate-950 font-headline font-black text-xs uppercase tracking-wider border-b-4 border-amber-600 active:translate-y-1 active:border-b-0 transition-all shadow-lg shrink-0 flex items-center justify-center gap-1.5"
+        >
+          <span class="material-symbols-outlined text-base">play_arrow</span>
+          <span>START FEATURED</span>
+        </button>
+      </div>
+
+      <!-- 2. 7-Day Workout Streak Stamp Card -->
+      <div class="p-3.5 rounded-2xl bg-surface-container-lowest border border-surface-container-highest shadow-inner flex flex-col gap-2">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-amber-400 text-base">local_fire_department</span>
+            <span class="font-headline font-black text-xs text-on-surface">7-Day Workout Streak: <span class="text-amber-400">${streakData.currentStreak || 0} Days</span></span>
+          </div>
+          <span class="text-[10px] font-bold text-on-surface-variant">Stamp daily to keep active!</span>
+        </div>
+        <div class="grid grid-cols-7 gap-1.5 sm:gap-2">
+          ${dayNames.map((name, idx) => {
+            const isStamped = Boolean(streakData.stamps && streakData.stamps[idx]);
+            const isToday = idx === todayIdx;
+            return `
+              <div class="flex flex-col items-center justify-center p-2 rounded-xl ${
+                isStamped 
+                  ? 'bg-amber-400/20 border border-amber-400/60 text-amber-300' 
+                  : isToday 
+                    ? 'bg-surface-container-high border-2 border-dashed border-primary/60 text-primary animate-pulse' 
+                    : 'bg-surface-container border border-surface-container-highest/60 text-on-surface-variant/40'
+              }">
+                <span class="text-[9px] font-black uppercase tracking-wider">${name}</span>
+                <span class="material-symbols-outlined text-base mt-0.5">
+                  ${isStamped ? 'verified' : isToday ? 'fitness_center' : 'circle'}
+                </span>
+              </div>
+            `;
+          }).join('')}
         </div>
       </div>
 
-      <!-- Training Rewards Banner -->
-      <div class="flex items-center justify-between p-3 rounded-2xl bg-surface-container-lowest border border-emerald-400/40">
-        <div class="flex items-center gap-2 text-emerald-400 font-black text-xs">
-          <span class="material-symbols-outlined text-base">military_tech</span>
-          <span>Workout Completion Bonus:</span>
+      <!-- 3. All 8 Dinosaur Workouts Roster -->
+      <div class="flex flex-col gap-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <h4 class="font-headline font-black text-sm text-on-surface">All 8 Dinosaur Gross-Motor Moves</h4>
+            <p class="text-[11px] text-on-surface-variant font-bold">Pick any coach anytime • +15 Sparks, Joy 100%, +Coins & XP</p>
+          </div>
+          <span class="px-2.5 py-1 rounded-xl bg-cyan-400/10 text-cyan-300 border border-cyan-400/30 font-black text-xs">
+            8 Dinosaur Coaches
+          </span>
         </div>
-        <div class="flex items-center gap-2">
-          <span class="px-2.5 py-0.5 rounded-xl bg-cyan-400/20 text-cyan-300 border border-cyan-400/40 text-xs font-black">+50 Pet XP ⚡</span>
-          <span class="px-2.5 py-0.5 rounded-xl bg-amber-400/20 text-amber-300 border border-amber-400/40 text-xs font-black">+100 Coins 🪙</span>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          ${DINO_WORKOUTS.map(w => {
+            const coachPet = getPetById(w.coachId) || {};
+            const isDailyCoach = dailyCoach.id === w.coachId;
+
+            return `
+              <div class="relative flex flex-col p-3.5 rounded-2xl bg-surface-container-lowest border-2 ${
+                isDailyCoach ? 'border-amber-400/70 shadow-amber-400/10 shadow-lg' : 'border-surface-container-highest'
+              } hover:border-primary/50 transition-all group">
+                
+                ${isDailyCoach ? `
+                  <span class="absolute -top-2.5 right-3 px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-400 text-slate-950 border border-amber-300 shadow-xs">
+                    Daily +25% XP
+                  </span>
+                ` : ''}
+
+                <div class="flex items-center gap-3 mb-2.5">
+                  <div class="w-12 h-12 rounded-xl bg-surface-container border border-surface-container-highest flex items-center justify-center p-1 shrink-0 overflow-hidden shadow-inner">
+                    <img 
+                      src="${coachPet.avatar || `assets/pets/${coachPet.key || 'rex'}.png`}" 
+                      alt="${w.coachName}" 
+                      class="w-full h-full object-contain filter drop-shadow-xs"
+                      onerror="this.onerror=null; this.outerHTML='<span class=\"text-2xl\">${w.visualDemo || '🦖'}</span>';"
+                    >
+                  </div>
+                  <div class="flex flex-col min-w-0">
+                    <h5 class="font-headline font-black text-sm text-on-surface truncate group-hover:text-primary transition-colors">
+                      ${w.name}
+                    </h5>
+                    <span class="text-[11px] font-bold text-secondary truncate">Coach ${w.coachName}</span>
+                  </div>
+                </div>
+
+                <div class="mb-3 flex-1 flex flex-col justify-between">
+                  <p class="text-[11px] text-on-surface-variant font-medium line-clamp-2 leading-relaxed">
+                    ${w.instructions}
+                  </p>
+                  <div class="mt-2 pt-2 border-t border-surface-container-highest/60 flex items-center justify-between text-[10px] font-bold">
+                    <span class="text-amber-300 flex items-center gap-1">
+                      <span class="material-symbols-outlined text-xs">speed</span>
+                      <span>${w.targetMuscles}</span>
+                    </span>
+                    <span class="text-emerald-400 font-black">+15 Sparks</span>
+                  </div>
+                </div>
+
+                <button 
+                  class="workout-card-select-btn w-full py-2.5 px-3 rounded-xl bg-surface-container-high hover:bg-primary hover:text-slate-950 text-on-surface font-headline font-black text-xs uppercase tracking-wider border border-surface-container-highest active:scale-95 transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                  data-workout-id="${w.id}"
+                >
+                  <span class="material-symbols-outlined text-base">directions_run</span>
+                  <span>TRAIN WITH ${w.coachName.toUpperCase()}</span>
+                </button>
+              </div>
+            `;
+          }).join('')}
         </div>
       </div>
 
-      <!-- Signature Gross Motor Exercise Steps -->
-      <div class="flex flex-col gap-2.5">
-        <span class="text-xs font-black uppercase text-on-surface-variant tracking-wider">Coach Routine:</span>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          <div class="p-3 rounded-2xl bg-surface-container-high border border-surface-container-highest flex flex-col">
-            <span class="text-xs font-black text-primary mb-1">1. High Knees Stomp</span>
-            <span class="text-[11px] text-on-surface-variant font-medium">Warm up big leg muscles with rhythm stomps!</span>
-          </div>
-          <div class="p-3 rounded-2xl bg-surface-container-high border border-surface-container-highest flex flex-col">
-            <span class="text-xs font-black text-secondary mb-1">2. ${dailyCoach.signatureMove}</span>
-            <span class="text-[11px] text-on-surface-variant font-medium">Follow Coach ${dailyCoach.name}'s signature motion!</span>
-          </div>
-          <div class="p-3 rounded-2xl bg-surface-container-high border border-surface-container-highest flex flex-col">
-            <span class="text-xs font-black text-tertiary mb-1">3. Victory Hero Pose</span>
-            <span class="text-[11px] text-on-surface-variant font-medium">Hold a balanced hero stance for maximum bond!</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Start Workout Action Button -->
-      <button 
-        id="start-coach-workout-btn"
-        class="w-full py-4 px-6 rounded-2xl bg-linear-to-r from-amber-400 via-emerald-400 to-cyan-400 hover:opacity-95 text-slate-950 font-headline font-black text-sm flex items-center justify-center gap-2 border-b-4 border-amber-600 active:translate-y-1 active:border-b-0 transition-all shadow-xl"
-      >
-        <span class="material-symbols-outlined text-xl">fitness_center</span>
-        <span>TRAIN WITH COACH ${dailyCoach.name.toUpperCase()} (+50 PET XP)</span>
-      </button>
     </div>
   `;
 }
@@ -1113,15 +1189,22 @@ export function attachPetSanctuaryListeners() {
   if (coachWorkoutBtn) {
     coachWorkoutBtn.addEventListener('click', () => {
       Sound.fanfare();
+      const dailyCoach = getDailyRotatingPetCoach();
+      if (dailyCoach && dailyCoach.workoutId) {
+        store.setActiveWorkoutId(dailyCoach.workoutId);
+      }
       store.closeSanctuaryDrawer();
       store.navigate('dino_workout');
     });
   }
 
-  document.querySelectorAll('.start-workout-btn').forEach(btn => {
+  document.querySelectorAll('.workout-card-select-btn, .start-workout-btn').forEach(btn => {
     btn.addEventListener('click', () => {
+      Sound.fanfare();
       const wId = btn.getAttribute('data-workout-id');
-      store.setActiveWorkoutId(wId);
+      if (wId) {
+        store.setActiveWorkoutId(wId);
+      }
       store.saveState(true);
       store.closeSanctuaryDrawer();
       store.navigate('dino_workout');

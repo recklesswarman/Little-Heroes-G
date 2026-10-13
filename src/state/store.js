@@ -8323,6 +8323,72 @@ class Store {
     return next;
   }
 
+  addEvolutionSparks(petId, amount = 15) {
+    return this.addPetSparks(petId, amount);
+  }
+
+  getWorkoutStreak() {
+    const hero = this.state.selectedHero;
+    if (!hero) return { currentStreak: 0, lastDate: null, stamps: [false, false, false, false, false, false, false] };
+    if (!hero.workoutStreakData) {
+      hero.workoutStreakData = {
+        currentStreak: 0,
+        lastDate: null,
+        stamps: [false, false, false, false, false, false, false]
+      };
+    }
+    return hero.workoutStreakData;
+  }
+
+  boostPetJoy(petId) {
+    const id = String(petId || this.state.selectedHero?.activePetId || '1');
+    const stats = this.ensurePetStats(id);
+    stats.joy = 100;
+    stats.energy = Math.max(20, (stats.energy || 80) - 10);
+    const hero = this.state.selectedHero;
+    if (hero) {
+      if (!hero.petNeedsMap) hero.petNeedsMap = {};
+      if (!hero.petNeedsMap[id]) hero.petNeedsMap[id] = {};
+      hero.petNeedsMap[id].joy = 100;
+      hero.petNeedsMap[id].energy = stats.energy;
+    }
+    this.saveState(true);
+    this.notify();
+  }
+
+  recordWorkoutCompletion(workoutId, xpAwarded = 50, coinsAwarded = 50, sparksAwarded = 15) {
+    const hero = this.state.selectedHero;
+    const petId = hero?.activePetId || '1';
+
+    // 1. Award Sparks, XP, and Coins
+    this.addPetSparks(petId, sparksAwarded);
+    this.addPetTrainingXp(petId, xpAwarded);
+    this.addCoins(coinsAwarded);
+
+    // 2. Boost Pet Joy to 100%
+    this.boostPetJoy(petId);
+
+    // 3. Update 7-Day Workout Streak Stamp Card
+    const streakData = this.getWorkoutStreak();
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (streakData.lastDate !== todayStr) {
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+      if (streakData.lastDate === yesterday) {
+        streakData.currentStreak = (streakData.currentStreak || 0) + 1;
+      } else {
+        streakData.currentStreak = 1;
+      }
+      streakData.lastDate = todayStr;
+      const dayIdx = new Date().getDay(); // 0-6 (Sun-Sat)
+      if (streakData.stamps && streakData.stamps.length === 7) {
+        streakData.stamps[dayIdx] = true;
+      }
+    }
+
+    this.saveState(true);
+    return streakData;
+  }
+
   syncHabitPetCare(habitId, type = 'habit', petId = null) {
     const activePet = this.getActivePet();
     const pId = String(petId || activePet?.id || '2');

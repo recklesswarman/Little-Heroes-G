@@ -856,6 +856,146 @@ export function getPetById(id) {
 
 export function getDailyRotatingPetCoach() {
   const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
-  const petIdx = dayOfYear % PETS_DATABASE.length;
+  // Prefer rotating through the 8 dinosaur coaches
+  const petIdx = dayOfYear % 8;
   return PETS_DATABASE[petIdx] || PETS_DATABASE[0];
 }
+
+export const DINO_WORKOUTS = [
+  {
+    id: 'trex_run',
+    coachId: '1',
+    name: 'T-Rex Run',
+    coachName: 'Rex',
+    coachTitle: 'The Apex Stomper',
+    signatureMove: 'Knee-Lifter Stomp',
+    instructions: 'Put your elbows in your armpits and run in place lifting your knees high as the ground shakes!',
+    visualDemo: '🦖',
+    visualPose: 'Tuck elbows into chest, stomp knees high up in alternating rhythm',
+    targetMuscles: 'Leg Power & Big Stomps',
+    icon: 'directions_run',
+    color: '#2ecc71',
+    accentColor: '#f1c40f',
+    bgGradient: 'from-emerald-500/20 to-emerald-950/40 border-emerald-500/50'
+  },
+  {
+    id: 'velociraptor_run',
+    coachId: '2',
+    name: 'Velociraptor Run',
+    coachName: 'Raptor',
+    coachTitle: 'The Lightning Sprinter',
+    signatureMove: 'Lightning Sprint',
+    instructions: 'Run in place on your toes as fast as you can! Quick feet, fast breaths, lightning speed!',
+    visualDemo: '🦎',
+    visualPose: 'Sprint in place on ball of feet with rapid arm pumps',
+    targetMuscles: 'Speed & Agility',
+    icon: 'speed',
+    color: '#e74c3c',
+    accentColor: '#f39c12',
+    bgGradient: 'from-rose-500/20 to-rose-950/40 border-rose-500/50'
+  },
+  {
+    id: 'stegosaurus_walks',
+    coachId: '3',
+    name: 'Stegosaurus Walks',
+    coachName: 'Stego',
+    coachTitle: 'The Solar Stomper',
+    signatureMove: 'Heavy Four-Foot Stomp',
+    instructions: 'Hands and feet on the ground with hips high in the air! Walk forward and backward loudly!',
+    visualDemo: '🦕',
+    visualPose: 'Bear crawl position with hips high in the air, stomping forward and back',
+    targetMuscles: 'Full Body Core & Shoulders',
+    icon: 'pets',
+    color: '#f1c40f',
+    accentColor: '#2ecc71',
+    bgGradient: 'from-amber-500/20 to-amber-950/40 border-amber-500/50'
+  },
+  {
+    id: 'pterodactyl_takeoff',
+    coachId: '4',
+    name: 'Pterodactyl Take Off',
+    coachName: 'Pterry',
+    coachTitle: 'The Sky Launcher',
+    signatureMove: 'Sky Launcher Take-Off',
+    instructions: 'Spread your arms wide in giant circles and jump up and down as high as you can reach!',
+    visualDemo: '🦇',
+    visualPose: 'Spread arms wide, wind up circles, and explode into high hops',
+    targetMuscles: 'Wings & Vertical Leap',
+    icon: 'flight',
+    color: '#00d2ff',
+    accentColor: '#3a7bd5',
+    bgGradient: 'from-cyan-500/20 to-cyan-950/40 border-cyan-500/50'
+  },
+  {
+    id: 'compsognathus_prance',
+    coachId: '5',
+    name: 'Compsognathus Prance',
+    coachName: 'Chomper',
+    coachTitle: 'The Tiny Dancer',
+    signatureMove: 'Beat Prance',
+    instructions: 'Jump left and right, crossing one leg behind the other as you groove to the beat!',
+    visualDemo: '🦖',
+    visualPose: 'Hop side to side crossing rear leg behind in rhythmic skater hops',
+    targetMuscles: 'Rhythm, Balance & Hips',
+    icon: 'music_note',
+    color: '#1abc9c',
+    accentColor: '#f39c12',
+    bgGradient: 'from-teal-500/20 to-teal-950/40 border-teal-500/50'
+  },
+  {
+    id: 'brachiosaurus_stretch',
+    coachId: '6',
+    name: 'Brachiosaurus Stretch',
+    coachName: 'Brachio',
+    coachTitle: 'The Great Stretcher',
+    signatureMove: 'Star Reach Stretch',
+    instructions: 'Stand tall, reach both arms up as high as you can on your tiptoes! How far can you reach?',
+    visualDemo: '🦕',
+    visualPose: 'Rise onto tiptoes, reach fingertips to ceiling, long elongated spine',
+    targetMuscles: 'Spine & Tiptoe Balance',
+    icon: 'accessibility_new',
+    color: '#34495e',
+    accentColor: '#2ecc71',
+    bgGradient: 'from-slate-500/20 to-slate-950/40 border-slate-500/50'
+  },
+  {
+    id: 'diplodocus',
+    coachId: '7',
+    name: 'The Diplodocus',
+    coachName: 'Dippy',
+    coachTitle: 'The Balance Master',
+    signatureMove: 'Bird-Dog Balance',
+    instructions: 'On hands and knees, stretch right arm forward and left leg backward! Hold and switch sides!',
+    visualDemo: '🦕',
+    visualPose: 'Hands and knees pose with opposite arm and leg outstretched straight',
+    targetMuscles: 'Core Stability & Balance',
+    icon: 'sports_gymnastics',
+    color: '#e67e22',
+    accentColor: '#27ae60',
+    bgGradient: 'from-orange-500/20 to-orange-950/40 border-orange-500/50'
+  },
+  {
+    id: 'spinosaurus_stretch',
+    coachId: '8',
+    name: 'Spinosaurus Stretch',
+    coachName: 'Spino',
+    coachTitle: 'The Cool-Down King',
+    signatureMove: 'Sail Fin Arch',
+    instructions: 'Draw your belly button in and round your back toward the ceiling like Spino’s giant sail!',
+    visualDemo: '🐊',
+    visualPose: 'Kneel and round spine upward toward the sky, slow calm deep breathing',
+    targetMuscles: 'Spine Flexibility & Cool Down',
+    icon: 'self_improvement',
+    color: '#c0392b',
+    accentColor: '#3498db',
+    bgGradient: 'from-red-500/20 to-red-950/40 border-red-500/50'
+  }
+];
+
+export function getWorkoutById(workoutId) {
+  if (!workoutId) return DINO_WORKOUTS[0];
+  const normalized = String(workoutId).toLowerCase().trim();
+  return DINO_WORKOUTS.find(w => w.id === normalized || normalized.includes(w.id)) || 
+         (normalized === 'diplodocus_balance' ? DINO_WORKOUTS[6] : DINO_WORKOUTS[0]);
+}
+
