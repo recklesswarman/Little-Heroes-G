@@ -136,26 +136,58 @@ export function renderDinoWorkoutView() {
           </p>
         </div>
 
-        <!-- Two-Column Hero Stage: 3D Coach Pedestal & Visual Form Demo Card -->
+        <!-- Two-Column Hero Stage: 3D Coach Pedestal / Video Demo & Form Guidance -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full my-3 items-center justify-center">
           
-          <!-- 3D Mascot Showcase Pedestal with Rhythmic Metronome Glow -->
-          <div class="relative w-44 h-44 sm:w-52 sm:h-52 mx-auto aspect-square bg-surface-container-lowest rounded-full border-4 border-primary shadow-2xl overflow-hidden flex items-center justify-center ring-4 ring-primary/20 transition-all ${isWorkingOut && !isPaused ? 'animate-pulse ring-8 ring-primary/40' : ''}" id="workout-canvas-container">
-            <!-- PetSanctuaryCanvas will mount here -->
+          <!-- 3D Mascot Showcase Pedestal & Video Player with Rhythmic Metronome Glow -->
+          <div class="relative w-48 h-48 sm:w-56 sm:h-56 mx-auto aspect-square bg-surface-container-lowest rounded-3xl border-4 border-primary shadow-2xl overflow-hidden flex items-center justify-center ring-4 ring-primary/20 transition-all ${isWorkingOut && !isPaused ? 'ring-8 ring-primary/40' : ''}" id="workout-media-container">
+            
+            <!-- Video Player (Loads if available) -->
+            ${workout.videoDemo ? `
+              <video 
+                id="workout-demo-video"
+                src="${workout.videoDemo}"
+                class="w-full h-full object-cover rounded-2xl hidden"
+                loop
+                muted
+                playsinline
+                autoplay
+                aria-label="Coach ${workout.coachName} move demonstration video"
+              ></video>
+            ` : ''}
+
+            <!-- Canvas Viewport Mount (High-fidelity kinematic 3D fallback) -->
+            <div id="workout-canvas-container" class="w-full h-full absolute inset-0 flex items-center justify-center">
+              <!-- PetSanctuaryCanvas will mount here -->
+            </div>
+
+            <!-- Metronome Beat Pulse Visualizer Ring -->
+            <div id="metronome-pulse-ring" class="absolute inset-0 rounded-3xl pointer-events-none border-2 border-primary/0 transition-all duration-150"></div>
           </div>
 
           <!-- Visual Demonstration Form Card (Silhouette & Visual Pose Instructions) -->
-          <div class="flex flex-col items-center justify-center p-4 rounded-2xl bg-surface-container-lowest border-2 border-surface-container-highest text-center shadow-inner h-44 sm:h-52">
-            <span class="text-4xl sm:text-5xl mb-2 filter drop-shadow-md animate-bounce">${workout.visualDemo}</span>
-            <span class="font-headline font-black text-xs uppercase tracking-wider text-secondary mb-1">
-              Coach Move Demo
-            </span>
-            <p class="text-xs text-on-surface font-bold leading-snug">
+          <div class="flex flex-col items-center justify-center p-4 rounded-3xl bg-surface-container-lowest border-2 border-surface-container-highest text-center shadow-inner h-48 sm:h-56 relative overflow-hidden">
+            <div class="absolute -right-6 -bottom-6 w-20 h-20 bg-primary/10 rounded-full blur-xl pointer-events-none"></div>
+            
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-3xl sm:text-4xl filter drop-shadow-md animate-bounce">${workout.visualDemo}</span>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-secondary/20 text-secondary border border-secondary/40">
+                Form Guide
+              </span>
+            </div>
+
+            <h5 class="font-headline font-black text-sm text-on-surface mb-1">
+              ${workout.signatureMove}
+            </h5>
+            
+            <p class="text-xs text-on-surface-variant font-medium leading-relaxed max-w-xs">
               ${workout.visualPose}
             </p>
-            <div class="mt-2.5 px-3 py-1 rounded-xl bg-surface-container border border-surface-container-highest text-[10px] font-black text-amber-300 flex items-center gap-1">
-              <span class="material-symbols-outlined text-xs">music_note</span>
-              <span id="tempo-indicator">${isWorkingOut && !isPaused ? 'Match Coach Stomp Rhythm 🎵' : 'Ready for Movement'}</span>
+
+            <!-- Dynamic Rhythmic Tempo & Cheering Cue Banner -->
+            <div class="mt-3 px-3 py-1.5 rounded-2xl bg-surface-container border border-surface-container-highest text-[11px] font-black text-amber-300 flex items-center gap-1.5 shadow-xs w-full max-w-xs justify-center">
+              <span class="material-symbols-outlined text-sm ${isWorkingOut && !isPaused ? 'animate-spin' : ''}">music_note</span>
+              <span id="tempo-indicator" class="truncate font-mono">${isWorkingOut && !isPaused ? `Tempo: ${workout.tempoBpm || 120} BPM • Move to the beat! 🥁` : 'Ready for Movement'}</span>
             </div>
           </div>
         </div>
@@ -311,10 +343,56 @@ export function attachDinoWorkoutListeners() {
         readyDisplay.textContent = '3';
       }
 
-      // Voice prompt: announce move
-      try {
-        speakCompanion(`Get ready for ${workout.name}! ${workout.signatureMove}! Ready...`, coachPet.id);
-      } catch(e) {}
+    // Video & Canvas dual setup
+    const demoVideo = document.getElementById('workout-demo-video');
+    const canvasMount = document.getElementById('workout-canvas-container');
+    const pulseRing = document.getElementById('metronome-pulse-ring');
+
+    if (demoVideo) {
+      demoVideo.addEventListener('loadeddata', () => {
+        // When video is ready, reveal video and keep canvas ready in background
+        demoVideo.classList.remove('hidden');
+        if (canvasMount) canvasMount.classList.add('opacity-0');
+      });
+      demoVideo.addEventListener('error', () => {
+        // Fallback to high-fidelity procedural canvas
+        demoVideo.classList.add('hidden');
+        if (canvasMount) canvasMount.classList.remove('opacity-0');
+      });
+    }
+
+    let metronomeInterval = null;
+    const bpm = workout.tempoBpm || 120;
+    const beatMs = Math.round((60 / bpm) * 1000);
+
+    function startMetronome() {
+      if (metronomeInterval) clearInterval(metronomeInterval);
+      metronomeInterval = setInterval(() => {
+        if (isPaused || workoutPhase !== 'active') return;
+        Sound.tap();
+        if (pulseRing) {
+          pulseRing.classList.remove('border-primary/0');
+          pulseRing.classList.add('border-primary', 'scale-105');
+          setTimeout(() => {
+            pulseRing.classList.remove('border-primary', 'scale-105');
+            pulseRing.classList.add('border-primary/0');
+          }, 120);
+        }
+      }, beatMs);
+    }
+
+    function stopMetronome() {
+      if (metronomeInterval) {
+        clearInterval(metronomeInterval);
+        metronomeInterval = null;
+      }
+    }
+
+    // Voice prompt: announce move
+    const introCue = workout.audioCues?.intro || `Get ready for ${workout.name}! ${workout.signatureMove}! Follow the rhythm!`;
+    try {
+      speakCompanion(introCue, coachPet.id);
+    } catch(e) {}
 
       let count = 3;
       countdownInterval = setInterval(() => {
@@ -361,6 +439,8 @@ export function attachDinoWorkoutListeners() {
       activeCanvasInstance.startWorkoutAnimation();
     }
 
+    startMetronome();
+
     timerInterval = setInterval(() => {
       if (isPaused) return;
 
@@ -374,8 +454,9 @@ export function attachDinoWorkoutListeners() {
       // Midpoint encouraging coach audio reminder
       if (!hasSpokenMidpoint && remainingTime === Math.round(totalDuration / 2)) {
         hasSpokenMidpoint = true;
+        const halfwayCue = workout.audioCues?.halfway || `Halfway there, little hero! Keep moving with Coach ${workout.coachName}!`;
         try {
-          speakCompanion(`Halfway there, little hero! Keep moving with Coach ${workout.coachName}!`, coachPet.id);
+          speakCompanion(halfwayCue, coachPet.id);
         } catch (e) {}
       }
 
@@ -386,12 +467,14 @@ export function attachDinoWorkoutListeners() {
 
       if (remainingTime <= 0) {
         stopTimer();
+        stopMetronome();
         workoutPhase = 'finished';
         if (activeControls) activeControls.classList.add('hidden');
         if (btnFinish) btnFinish.classList.remove('hidden');
         Sound.fanfare();
+        const finishCue = workout.audioCues?.finalCheer || `Victory! Phenomenal workout with Coach ${workout.coachName}!`;
         try {
-          speakCompanion(`Victory! Phenomenal workout with Coach ${workout.coachName}!`, coachPet.id);
+          speakCompanion(finishCue, coachPet.id);
         } catch (e) {}
       }
     }, 1000);

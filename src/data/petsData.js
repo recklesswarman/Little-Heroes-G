@@ -872,7 +872,14 @@ export const DINO_WORKOUTS = [
     instructions: 'Put your elbows in your armpits and run in place lifting your knees high as the ground shakes!',
     visualDemo: '🦖',
     visualPose: 'Tuck elbows into chest, stomp knees high up in alternating rhythm',
+    videoDemo: 'assets/workouts/trex_run_demo.mp4',
+    tempoBpm: 120,
     targetMuscles: 'Leg Power & Big Stomps',
+    audioCues: {
+      intro: "Coach Rex here! Put your elbows right into your armpits and lift those knees high! Stomp, stomp, stomp!",
+      halfway: "Ground-shaking power, little hero! Rex is super proud! Keep those high knees marching!",
+      finalCheer: "5, 4, 3, 2, 1... ROAR! Incredible T-Rex stomps! You crushed it!"
+    },
     icon: 'directions_run',
     color: '#2ecc71',
     accentColor: '#f1c40f',
@@ -888,7 +895,14 @@ export const DINO_WORKOUTS = [
     instructions: 'Run in place on your toes as fast as you can! Quick feet, fast breaths, lightning speed!',
     visualDemo: '🦎',
     visualPose: 'Sprint in place on ball of feet with rapid arm pumps',
+    videoDemo: 'assets/workouts/velociraptor_run_demo.mp4',
+    tempoBpm: 140,
     targetMuscles: 'Speed & Agility',
+    audioCues: {
+      intro: "Lightning Raptor ready! Up on your tiptoes, pump your arms, and sprint like the wind!",
+      halfway: "So fast! You're a supersonic raptor! Keep those quick feet dancing!",
+      finalCheer: "5, 4, 3, 2, 1... WHOOSH! Lightning sprint victory! You're unstoppable!"
+    },
     icon: 'speed',
     color: '#e74c3c',
     accentColor: '#f39c12',
@@ -904,7 +918,14 @@ export const DINO_WORKOUTS = [
     instructions: 'Hands and feet on the ground with hips high in the air! Walk forward and backward loudly!',
     visualDemo: '🦕',
     visualPose: 'Bear crawl position with hips high in the air, stomping forward and back',
+    videoDemo: 'assets/workouts/stegosaurus_walks_demo.mp4',
+    tempoBpm: 90,
     targetMuscles: 'Full Body Core & Shoulders',
+    audioCues: {
+      intro: "Coach Stego reporting! Hands and feet on the floor, hips up high! Stomp forward and back like heavy armor!",
+      halfway: "Strong shoulders, mighty core! Feel those solar plates glowing! Keep stomping sturdy!",
+      finalCheer: "5, 4, 3, 2, 1... STOMP! Mighty Stegosaurus walks complete! Unbreakable hero!"
+    },
     icon: 'pets',
     color: '#f1c40f',
     accentColor: '#2ecc71',
@@ -920,7 +941,14 @@ export const DINO_WORKOUTS = [
     instructions: 'Spread your arms wide in giant circles and jump up and down as high as you can reach!',
     visualDemo: '🦇',
     visualPose: 'Spread arms wide, wind up circles, and explode into high hops',
+    videoDemo: 'assets/workouts/pterodactyl_takeoff_demo.mp4',
+    tempoBpm: 110,
     targetMuscles: 'Wings & Vertical Leap',
+    audioCues: {
+      intro: "Sky Captain Pterry! Spread those wings wide in big wind-up circles, and launch into the clouds with high hops!",
+      halfway: "Look at you soar! Higher and higher! Flap those wings and jump for the sky!",
+      finalCheer: "5, 4, 3, 2, 1... TOUCHDOWN! Sky Launcher mastered! You flew like a champion!"
+    },
     icon: 'flight',
     color: '#00d2ff',
     accentColor: '#3a7bd5',
@@ -936,7 +964,14 @@ export const DINO_WORKOUTS = [
     instructions: 'Jump left and right, crossing one leg behind the other as you groove to the beat!',
     visualDemo: '🦖',
     visualPose: 'Hop side to side crossing rear leg behind in rhythmic skater hops',
+    videoDemo: 'assets/workouts/compsognathus_prance_demo.mp4',
+    tempoBpm: 125,
     targetMuscles: 'Rhythm, Balance & Hips',
+    audioCues: {
+      intro: "Tiny Chomper's groove time! Hop to the left, cross behind! Hop to the right! Feel that dancing beat!",
+      halfway: "Look at that rhythm and balance! Groovy little hero! Side to side, don't stop now!",
+      finalCheer: "5, 4, 3, 2, 1... TA-DA! Perfect Beat Prance! You've got rhythm superpowers!"
+    },
     icon: 'music_note',
     color: '#1abc9c',
     accentColor: '#f39c12',
@@ -952,7 +987,14 @@ export const DINO_WORKOUTS = [
     instructions: 'Stand tall, reach both arms up as high as you can on your tiptoes! How far can you reach?',
     visualDemo: '🦕',
     visualPose: 'Rise onto tiptoes, reach fingertips to ceiling, long elongated spine',
+    videoDemo: 'assets/workouts/brachiosaurus_stretch_demo.mp4',
+    tempoBpm: 80,
     targetMuscles: 'Spine & Tiptoe Balance',
+    audioCues: {
+      intro: "Gentle Brachio here! Stand up tall, climb up onto your tiptoes, and reach both hands all the way to the stars!",
+      halfway: "So tall! You're reaching right through the tree branches! Hold that majestic stretch!",
+      finalCheer: "5, 4, 3, 2, 1... AAH! Star Reach complete! You stand tall like a prehistoric giant!"
+    },
     icon: 'accessibility_new',
     color: '#34495e',
     accentColor: '#2ecc71',
@@ -968,7 +1010,14 @@ export const DINO_WORKOUTS = [
     instructions: 'On hands and knees, stretch right arm forward and left leg backward! Hold and switch sides!',
     visualDemo: '🦕',
     visualPose: 'Hands and knees pose with opposite arm and leg outstretched straight',
+    videoDemo: 'assets/workouts/diplodocus_demo.mp4',
+    tempoBpm: 75,
     targetMuscles: 'Core Stability & Balance',
+    audioCues: {
+      intro: "Balance Master Dippy! Down on hands and knees! Reach right arm forward and left leg back! Rock solid balance!",
+      halfway: "Switch sides smoothly! Left arm forward, right leg back! Balance steady like a bridge!",
+      finalCheer: "5, 4, 3, 2, 1... YES! Unshakeable Diplodocus balance! Masterful stability!"
+    },
     icon: 'sports_gymnastics',
     color: '#e67e22',
     accentColor: '#27ae60',
@@ -984,7 +1033,14 @@ export const DINO_WORKOUTS = [
     instructions: 'Draw your belly button in and round your back toward the ceiling like Spino’s giant sail!',
     visualDemo: '🐊',
     visualPose: 'Kneel and round spine upward toward the sky, slow calm deep breathing',
+    videoDemo: 'assets/workouts/spinosaurus_stretch_demo.mp4',
+    tempoBpm: 65,
     targetMuscles: 'Spine Flexibility & Cool Down',
+    audioCues: {
+      intro: "Cool-down King Spino! Tuck your chin, pull your belly in, and round your back upward like a magnificent sail fin! Deep calm breath in...",
+      halfway: "Slow, soothing breaths. Arch and release. Feel all that hero muscle energy relax and restore.",
+      finalCheer: "5, 4, 3, 2, 1... PEACEFUL! Sail Fin Arch complete! Perfectly cooled down, hero!"
+    },
     icon: 'self_improvement',
     color: '#c0392b',
     accentColor: '#3498db',
