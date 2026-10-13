@@ -233,8 +233,12 @@ export function renderDashboardView() {
           ? `
       <div class="bg-gradient-to-r from-primary/15 via-emerald-500/10 to-transparent border-2 border-primary/40 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fade-in card-shadow">
         <div class="flex items-center gap-3.5">
-          <div class="w-12 h-12 rounded-2xl bg-primary/15 text-primary border border-primary/40 flex items-center justify-center text-2xl flex-shrink-0">
-            ${escapeHtml(activePet?.avatar || '🦖')}
+          <div class="w-12 h-12 rounded-2xl bg-primary/15 text-primary border border-primary/40 flex items-center justify-center text-2xl flex-shrink-0 overflow-hidden shadow-inner p-1">
+            ${
+              activePet?.avatar
+                ? `<img src="${activePet.avatar}" alt="${escapeHtml(activePet.name || 'Pet')}" class="w-full h-full object-contain select-none" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='block';" /><span class="hidden text-2xl select-none">${escapeHtml(activePet?.emoji || '🦖')}</span>`
+                : `<span class="text-2xl select-none">${escapeHtml(activePet?.emoji || '🦖')}</span>`
+            }
           </div>
           <div class="flex flex-col">
             <span class="font-headline text-xs font-black text-primary uppercase tracking-wide">Sanctuary Check-In</span>
