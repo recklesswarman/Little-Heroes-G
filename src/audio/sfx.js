@@ -9,6 +9,7 @@ let audioCtx = null;
 let isMuted = false;
 let discoInterval = null;
 let battleRhythmInterval = null;
+let workoutBeatInterval = null;
 let lullabyInterval = null;
 let lullabyNoteIndex = 0;
 let lullabyActive = false;
@@ -40,6 +41,7 @@ export const Sound = {
     if (isMuted) {
       this.stopDisco();
       this.stopBattleRhythm();
+      this.stopWorkoutBeat();
       this.stopLullaby();
     }
     return isMuted;
@@ -50,6 +52,7 @@ export const Sound = {
     if (isMuted) {
       this.stopDisco();
       this.stopBattleRhythm();
+      this.stopWorkoutBeat();
       this.stopLullaby();
     }
   },
@@ -986,6 +989,103 @@ export const Sound = {
     if (battleRhythmInterval) {
       this.startBattleRhythm();
     }
+  },
+
+  // 17b. HIGH-ENERGY DINO HERO WORKOUT BEAT (Procedural upbeat chiptune groove with dynamic BPM)
+  startWorkoutBeat(bpm = 126, onBeat) {
+    if (isMuted) return;
+    this.stopLullaby();
+    this.stopBattleRhythm();
+    this.stopDisco();
+    this.stopWorkoutBeat();
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    let step = 0;
+    const bassNotes = [110, 110, 130.81, 146.83, 110, 110, 164.81, 146.83];
+    const synthNotes = [440, 523.25, 587.33, 659.25, 523.25, 587.33, 659.25, 783.99];
+    const intervalMs = Math.max(120, Math.round(60000 / (bpm * 2)));
+
+    workoutBeatInterval = setInterval(() => {
+      if (isMuted) return;
+      try {
+        const now = ctx.currentTime;
+        // Kick on downbeats (0, 4)
+        if (step % 4 === 0) {
+          const kick = ctx.createOscillator();
+          const kickGain = ctx.createGain();
+          kick.frequency.setValueAtTime(145, now);
+          kick.frequency.exponentialRampToValueAtTime(36, now + 0.09);
+          kickGain.gain.setValueAtTime(0.30, now);
+          kickGain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+          kick.connect(kickGain);
+          kickGain.connect(ctx.destination);
+          kick.start(now);
+          kick.stop(now + 0.1);
+        }
+        // Snare / clap on backbeat (2, 6)
+        if (step % 4 === 2) {
+          const snareFilter = ctx.createBiquadFilter();
+          snareFilter.type = 'highpass';
+          snareFilter.frequency.setValueAtTime(900, now);
+          const snare = ctx.createOscillator();
+          const snareGain = ctx.createGain();
+          snare.type = 'triangle';
+          snare.frequency.setValueAtTime(240, now);
+          snare.frequency.exponentialRampToValueAtTime(55, now + 0.07);
+          snareGain.gain.setValueAtTime(0.18, now);
+          snareGain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+          snare.connect(snareFilter);
+          snareFilter.connect(snareGain);
+          snareGain.connect(ctx.destination);
+          snare.start(now);
+          snare.stop(now + 0.08);
+        }
+        // Bass groove
+        const bass = ctx.createOscillator();
+        const bassGain = ctx.createGain();
+        bass.type = 'sawtooth';
+        bass.frequency.setValueAtTime(bassNotes[step % bassNotes.length], now);
+        const bassFilter = ctx.createBiquadFilter();
+        bassFilter.type = 'lowpass';
+        bassFilter.frequency.setValueAtTime(450, now);
+        bassGain.gain.setValueAtTime(0.14, now);
+        bassGain.gain.exponentialRampToValueAtTime(0.01, now + 0.11);
+        bass.connect(bassFilter);
+        bassFilter.connect(bassGain);
+        bassGain.connect(ctx.destination);
+        bass.start(now);
+        bass.stop(now + 0.11);
+
+        // Cheerful melodic synth
+        if (step % 2 === 1) {
+          const lead = ctx.createOscillator();
+          const leadGain = ctx.createGain();
+          lead.type = 'sine';
+          lead.frequency.setValueAtTime(synthNotes[step % synthNotes.length], now);
+          leadGain.gain.setValueAtTime(0.08, now);
+          leadGain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+          lead.connect(leadGain);
+          leadGain.connect(ctx.destination);
+          lead.start(now);
+          lead.stop(now + 0.09);
+        }
+
+        if (onBeat) onBeat(step);
+        step++;
+      } catch (e) {}
+    }, intervalMs);
+  },
+
+  stopWorkoutBeat() {
+    if (workoutBeatInterval) {
+      clearInterval(workoutBeatInterval);
+      workoutBeatInterval = null;
+    }
+  },
+
+  isWorkoutBeatActive() {
+    return !!workoutBeatInterval;
   },
 
   // 18. SHIELD DEFLECT (Metallic bubble bounce when Hero Shield blocks cavity slime)

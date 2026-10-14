@@ -15,10 +15,145 @@ export const COMPANION_VOICE_PROFILES = {
   rex: {
     id: 'rex',
     name: 'Rex the Dino',
-    pitch: 1.30,
+    pitch: 1.25,
     rate: 0.95,
     volume: 1.0,
     geminiVoice: 'Puck',
+    preferredVoice: 'daniel'
+  },
+  '1': {
+    id: '1',
+    name: 'Rex the Dino',
+    pitch: 1.25,
+    rate: 0.95,
+    volume: 1.0,
+    geminiVoice: 'Puck',
+    preferredVoice: 'daniel'
+  },
+  raptor: {
+    id: 'raptor',
+    name: 'Raptor the Velociraptor',
+    pitch: 1.35,
+    rate: 1.05,
+    volume: 1.0,
+    geminiVoice: 'Zephyr',
+    preferredVoice: 'daniel'
+  },
+  '2': {
+    id: '2',
+    name: 'Raptor the Velociraptor',
+    pitch: 1.35,
+    rate: 1.05,
+    volume: 1.0,
+    geminiVoice: 'Zephyr',
+    preferredVoice: 'daniel'
+  },
+  stego: {
+    id: 'stego',
+    name: 'Stego the Stegosaurus',
+    pitch: 0.90,
+    rate: 0.88,
+    volume: 1.0,
+    geminiVoice: 'Fenrir',
+    preferredVoice: 'daniel'
+  },
+  '3': {
+    id: '3',
+    name: 'Stego the Stegosaurus',
+    pitch: 0.90,
+    rate: 0.88,
+    volume: 1.0,
+    geminiVoice: 'Fenrir',
+    preferredVoice: 'daniel'
+  },
+  pterry: {
+    id: 'pterry',
+    name: 'Pterry the Pterodactyl',
+    pitch: 1.40,
+    rate: 1.02,
+    volume: 1.0,
+    geminiVoice: 'Aoede',
+    preferredVoice: 'daniel'
+  },
+  '4': {
+    id: '4',
+    name: 'Pterry the Pterodactyl',
+    pitch: 1.40,
+    rate: 1.02,
+    volume: 1.0,
+    geminiVoice: 'Aoede',
+    preferredVoice: 'daniel'
+  },
+  chomper: {
+    id: 'chomper',
+    name: 'Chomper the Compsognathus',
+    pitch: 1.45,
+    rate: 1.08,
+    volume: 1.0,
+    geminiVoice: 'Puck',
+    preferredVoice: 'daniel'
+  },
+  '5': {
+    id: '5',
+    name: 'Chomper the Compsognathus',
+    pitch: 1.45,
+    rate: 1.08,
+    volume: 1.0,
+    geminiVoice: 'Puck',
+    preferredVoice: 'daniel'
+  },
+  brachio: {
+    id: 'brachio',
+    name: 'Brachio the Brachiosaurus',
+    pitch: 0.85,
+    rate: 0.85,
+    volume: 1.0,
+    geminiVoice: 'Charon',
+    preferredVoice: 'daniel'
+  },
+  '6': {
+    id: '6',
+    name: 'Brachio the Brachiosaurus',
+    pitch: 0.85,
+    rate: 0.85,
+    volume: 1.0,
+    geminiVoice: 'Charon',
+    preferredVoice: 'daniel'
+  },
+  dippy: {
+    id: 'dippy',
+    name: 'Dippy the Diplodocus',
+    pitch: 1.05,
+    rate: 0.92,
+    volume: 1.0,
+    geminiVoice: 'Charon',
+    preferredVoice: 'daniel'
+  },
+  '7': {
+    id: '7',
+    name: 'Dippy the Diplodocus',
+    pitch: 1.05,
+    rate: 0.92,
+    volume: 1.0,
+    geminiVoice: 'Charon',
+    preferredVoice: 'daniel'
+  },
+  spino: {
+    id: 'spino',
+    name: 'Spino the Spinosaurus',
+    pitch: 0.95,
+    rate: 0.88,
+    volume: 1.0,
+    geminiVoice: 'Fenrir',
+    preferredVoice: 'daniel'
+  },
+  '8': {
+    id: '8',
+    name: 'Spino the Spinosaurus',
+    pitch: 0.95,
+    rate: 0.88,
+    volume: 1.0,
+    geminiVoice: 'Fenrir',
     preferredVoice: 'daniel'
   },
   aqua_drake: {

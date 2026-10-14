@@ -863,45 +863,32 @@ export function getDailyRotatingPetCoach() {
 
 export const DINO_WORKOUTS = [
   {
-    id: 'trex_run',
-    coachId: '1',
-    name: 'T-Rex Run',
-    coachName: 'Rex',
-    coachTitle: 'The Apex Stomper',
-    signatureMove: 'Knee-Lifter Stomp',
-    instructions: 'Put your elbows in your armpits and run in place lifting your knees high as the ground shakes!',
-    visualDemo: '🦖',
-    visualPose: 'Tuck elbows into chest, stomp knees high up in alternating rhythm',
-    videoDemo: 'assets/workouts/trex_run_demo.mp4',
-    tempoBpm: 120,
-    targetMuscles: 'Leg Power & Big Stomps',
-    audioCues: {
-      intro: "Coach Rex here! Put your elbows right into your armpits and lift those knees high! Stomp, stomp, stomp!",
-      halfway: "Ground-shaking power, little hero! Rex is super proud! Keep those high knees marching!",
-      finalCheer: "5, 4, 3, 2, 1... ROAR! Incredible T-Rex stomps! You crushed it!"
-    },
-    icon: 'directions_run',
-    color: '#2ecc71',
-    accentColor: '#f1c40f',
-    bgGradient: 'from-emerald-500/20 to-emerald-950/40 border-emerald-500/50'
-  },
-  {
+    stepNumber: 1,
     id: 'velociraptor_run',
     coachId: '2',
     name: 'Velociraptor Run',
     coachName: 'Raptor',
     coachTitle: 'The Lightning Sprinter',
     signatureMove: 'Lightning Sprint',
-    instructions: 'Run in place on your toes as fast as you can! Quick feet, fast breaths, lightning speed!',
+    instructions: 'Velociraptors are known for their speed. Run in place as fast as you can for the entire minute.',
+    formCues: 'Stay on the balls of your feet, pump your bent arms, and keep your chest proud!',
     visualDemo: '🦎',
-    visualPose: 'Sprint in place on ball of feet with rapid arm pumps',
-    videoDemo: 'assets/workouts/velociraptor_run_demo.mp4',
-    tempoBpm: 140,
-    targetMuscles: 'Speed & Agility',
+    visualPose: 'Sprint in place on balls of feet with rapid arm pumps at lightning speed',
+    tempoBpm: 138,
+    targetMuscles: 'Speed, Quick Feet & Agility',
+    cadenceTimeline: [
+      { at: 60, cue: "Lightning Raptor ready! Up on your tiptoes, pump those arms, and run in place as fast as you can!" },
+      { at: 50, cue: "Quick feet, quick feet! Tap-tap-tap-tap! Feel that lightning speed!" },
+      { at: 40, cue: "Look at those legs fly! Fast like a Velociraptor hunting through the prehistoric jungle!" },
+      { at: 30, cue: "Halfway through, little hero! Don't slow down now, keep those feet moving fast, fast, fast!" },
+      { at: 20, cue: "Super turbo speed! Pumping your arms helps your feet go even faster!" },
+      { at: 10, cue: "Final 10 seconds! Give it everything you've got! Lightning sprint to the finish!" },
+      { at: 3, cue: "3, 2, 1... WHOOSH! Victory! What incredible speed!" }
+    ],
     audioCues: {
       intro: "Lightning Raptor ready! Up on your tiptoes, pump your arms, and sprint like the wind!",
       halfway: "So fast! You're a supersonic raptor! Keep those quick feet dancing!",
-      finalCheer: "5, 4, 3, 2, 1... WHOOSH! Lightning sprint victory! You're unstoppable!"
+      finalCheer: "3, 2, 1... WHOOSH! Lightning sprint victory! You're unstoppable!"
     },
     icon: 'speed',
     color: '#e74c3c',
@@ -909,22 +896,32 @@ export const DINO_WORKOUTS = [
     bgGradient: 'from-rose-500/20 to-rose-950/40 border-rose-500/50'
   },
   {
+    stepNumber: 2,
     id: 'stegosaurus_walks',
     coachId: '3',
     name: 'Stegosaurus Walks',
     coachName: 'Stego',
     coachTitle: 'The Solar Stomper',
     signatureMove: 'Heavy Four-Foot Stomp',
-    instructions: 'Hands and feet on the ground with hips high in the air! Walk forward and backward loudly!',
+    instructions: 'Stegosauruses are extremely heavy and walk on all four legs. But their back legs are longer than their front legs. So, on your hands and feet, with your hips high (like a bear walk) walk 4 steps forward and 4 steps back. But, try to stomp as loudly as you can at the same time so you sound like a heavy stegosaurus.',
+    formCues: 'Hands and feet flat on the floor, hips pushed high to the sky, heavy stomps on every step!',
     visualDemo: '🦕',
-    visualPose: 'Bear crawl position with hips high in the air, stomping forward and back',
-    videoDemo: 'assets/workouts/stegosaurus_walks_demo.mp4',
-    tempoBpm: 90,
-    targetMuscles: 'Full Body Core & Shoulders',
+    visualPose: 'Bear walk on hands and feet with hips high: 4 steps forward, 4 steps back, heavy stomps',
+    tempoBpm: 92,
+    targetMuscles: 'Shoulders, Core & Heavy Stomp Power',
+    cadenceTimeline: [
+      { at: 60, cue: "Coach Stego reporting! Down on your hands and feet, hips high in the air! Walk 4 steps forward and 4 steps back, and stomp as loudly as you can!" },
+      { at: 50, cue: "1, 2, 3, 4 forward! Heavy stomp! Now 1, 2, 3, 4 back! Shake the ground!" },
+      { at: 40, cue: "Keep those hips high! Back legs longer than front legs! Big heavy stegosaurus armor!" },
+      { at: 30, cue: "30 seconds done! Stomp, stomp, stomp, stomp! You sound like a real dinosaur walking through the forest!" },
+      { at: 20, cue: "Forward 4 steps... stomp! Backward 4 steps... stomp! Mighty core, strong shoulders!" },
+      { at: 10, cue: "Last 10 seconds! Make your loudest, heaviest stomps of all!" },
+      { at: 3, cue: "3, 2, 1... BOOM! Ground-shaking Stegosaurus power! Unbreakable!" }
+    ],
     audioCues: {
       intro: "Coach Stego reporting! Hands and feet on the floor, hips up high! Stomp forward and back like heavy armor!",
       halfway: "Strong shoulders, mighty core! Feel those solar plates glowing! Keep stomping sturdy!",
-      finalCheer: "5, 4, 3, 2, 1... STOMP! Mighty Stegosaurus walks complete! Unbreakable hero!"
+      finalCheer: "3, 2, 1... STOMP! Mighty Stegosaurus walks complete! Unbreakable hero!"
     },
     icon: 'pets',
     color: '#f1c40f',
@@ -932,22 +929,32 @@ export const DINO_WORKOUTS = [
     bgGradient: 'from-amber-500/20 to-amber-950/40 border-amber-500/50'
   },
   {
+    stepNumber: 3,
     id: 'pterodactyl_takeoff',
     coachId: '4',
     name: 'Pterodactyl Take Off',
     coachName: 'Pterry',
     coachTitle: 'The Sky Launcher',
     signatureMove: 'Sky Launcher Take-Off',
-    instructions: 'Spread your arms wide in giant circles and jump up and down as high as you can reach!',
+    instructions: 'Stand with your arms spread wide like a pterodactyl’s wings and move them quickly in a circular motion then jump up and down as high as you can, like you’re trying to take off and fly like a pterodactyl.',
+    formCues: 'Wind up arms in fast circles, crouch into your knees, and explode into the air with big hops!',
     visualDemo: '🦇',
     visualPose: 'Spread arms wide, wind up circles, and explode into high hops',
-    videoDemo: 'assets/workouts/pterodactyl_takeoff_demo.mp4',
-    tempoBpm: 110,
-    targetMuscles: 'Wings & Vertical Leap',
+    tempoBpm: 112,
+    targetMuscles: 'Wings, Vertical Leap & Balance',
+    cadenceTimeline: [
+      { at: 60, cue: "Sky Captain Pterry! Spread your arms wide like giant wings! Move them in quick circles, then jump up and down as high as you can to take off!" },
+      { at: 50, cue: "Circle those wings! Wind them up... now JUMP! Jump into the sky!" },
+      { at: 40, cue: "Circle, circle, circle... and LAUNCH! Spring off your toes and reach for the clouds!" },
+      { at: 30, cue: "Halfway there, flying hero! Flap those wings in fast circles and hop high! You're catching the updraft!" },
+      { at: 20, cue: "Can you jump even higher this time? 1, 2, 3... BLAST OFF!" },
+      { at: 10, cue: "Final 10 seconds of flight! Big circles, highest jumps of the day!" },
+      { at: 3, cue: "3, 2, 1... TOUCHDOWN! Majestic flight! You soared like a real Pterodactyl!" }
+    ],
     audioCues: {
       intro: "Sky Captain Pterry! Spread those wings wide in big wind-up circles, and launch into the clouds with high hops!",
       halfway: "Look at you soar! Higher and higher! Flap those wings and jump for the sky!",
-      finalCheer: "5, 4, 3, 2, 1... TOUCHDOWN! Sky Launcher mastered! You flew like a champion!"
+      finalCheer: "3, 2, 1... TOUCHDOWN! Sky Launcher mastered! You flew like a champion!"
     },
     icon: 'flight',
     color: '#00d2ff',
@@ -955,22 +962,65 @@ export const DINO_WORKOUTS = [
     bgGradient: 'from-cyan-500/20 to-cyan-950/40 border-cyan-500/50'
   },
   {
+    stepNumber: 4,
+    id: 'trex_run',
+    coachId: '1',
+    name: 'T-Rex Run',
+    coachName: 'Rex',
+    coachTitle: 'The Apex Stomper',
+    signatureMove: 'Knee-Lifter Stomp',
+    instructions: 'High knees. Bend your arms, and try to get your elbows as close to your armpits as possible, making short arms like the tyrannosaurus Rex. Now, run or march in place lifting your knees as high as you can as if you’re trying to get your knees to touch your hands.',
+    formCues: 'Tuck elbows tight against your ribs, bend arms short like Rex, and drive knees up to chest level!',
+    visualDemo: '🦖',
+    visualPose: 'Tuck elbows into armpits, march or run lifting knees high to touch hands',
+    tempoBpm: 122,
+    targetMuscles: 'Leg Power, Core Drive & Big Stomps',
+    cadenceTimeline: [
+      { at: 60, cue: "Coach Rex here! High knees time! Bend your arms and tuck your elbows right into your armpits like short T-Rex arms! Now run or march in place, lifting your knees as high as you can!" },
+      { at: 50, cue: "Knees up, knees up! Try to tap those knees right up to your hands! Stomp, stomp, stomp!" },
+      { at: 40, cue: "Keep those elbows tucked in tight! You're the King of the Dinosaurs! Mighty high knees!" },
+      { at: 30, cue: "Halfway mark, little hero! The ground is trembling with every knee lift! Keep that rhythm going!" },
+      { at: 20, cue: "March or run, lift them HIGH! Up to your chest! Show me that Rex power!" },
+      { at: 10, cue: "Last 10 seconds! High knees as fast and high as you can! 1, 2, 1, 2!" },
+      { at: 3, cue: "3, 2, 1... ROAR! Tremendous T-Rex Run! You are an Apex Champion!" }
+    ],
+    audioCues: {
+      intro: "Coach Rex here! Put your elbows right into your armpits and lift those knees high! Stomp, stomp, stomp!",
+      halfway: "Ground-shaking power, little hero! Rex is super proud! Keep those high knees marching!",
+      finalCheer: "3, 2, 1... ROAR! Incredible T-Rex stomps! You crushed it!"
+    },
+    icon: 'directions_run',
+    color: '#2ecc71',
+    accentColor: '#f1c40f',
+    bgGradient: 'from-emerald-500/20 to-emerald-950/40 border-emerald-500/50'
+  },
+  {
+    stepNumber: 5,
     id: 'compsognathus_prance',
     coachId: '5',
     name: 'Compsognathus Prance',
     coachName: 'Chomper',
     coachTitle: 'The Tiny Dancer',
     signatureMove: 'Beat Prance',
-    instructions: 'Jump left and right, crossing one leg behind the other as you groove to the beat!',
+    instructions: 'These are like skater jumps. Compsognathus was a small but fast carnivore that relied on it’s speed to catch it’s pray. Stand with your legs hip-width apart, knees bent slightly. You’re going to jump left and right, crossing one leg behind the other as you move, prancing back and forth like a Compsognathus about to prance on its prey.',
+    formCues: 'Bend knees softly, leap side to side, and cross your back leg behind as you land gracefully!',
     visualDemo: '🦖',
-    visualPose: 'Hop side to side crossing rear leg behind in rhythmic skater hops',
-    videoDemo: 'assets/workouts/compsognathus_prance_demo.mp4',
-    tempoBpm: 125,
-    targetMuscles: 'Rhythm, Balance & Hips',
+    visualPose: 'Hop side to side crossing rear leg behind in rhythmic skater jumps',
+    tempoBpm: 126,
+    targetMuscles: 'Rhythm, Lateral Agility & Hip Balance',
+    cadenceTimeline: [
+      { at: 60, cue: "Tiny Chomper's groove time! Legs hip-width, knees bent! Jump to the left, cross your right leg behind! Jump to the right, cross your left leg behind! Prance like a speedy Compsognathus!" },
+      { at: 50, cue: "Hop left... cross behind! Hop right... cross behind! Springy and light on your feet!" },
+      { at: 40, cue: "Look at that agile balance! Quick and bouncy, ready to pounce!" },
+      { at: 30, cue: "30 seconds down! Side to side, find the groove! Swing your arms to help you balance!" },
+      { at: 20, cue: "Prance, leap, cross! Prance, leap, cross! Smooth and fast like a prehistoric dancer!" },
+      { at: 10, cue: "Final 10 seconds! Big springy bounds from side to side!" },
+      { at: 3, cue: "3, 2, 1... TA-DA! Perfect Compsognathus Prance! Super agility and balance!" }
+    ],
     audioCues: {
       intro: "Tiny Chomper's groove time! Hop to the left, cross behind! Hop to the right! Feel that dancing beat!",
       halfway: "Look at that rhythm and balance! Groovy little hero! Side to side, don't stop now!",
-      finalCheer: "5, 4, 3, 2, 1... TA-DA! Perfect Beat Prance! You've got rhythm superpowers!"
+      finalCheer: "3, 2, 1... TA-DA! Perfect Beat Prance! You've got rhythm superpowers!"
     },
     icon: 'music_note',
     color: '#1abc9c',
@@ -978,22 +1028,32 @@ export const DINO_WORKOUTS = [
     bgGradient: 'from-teal-500/20 to-teal-950/40 border-teal-500/50'
   },
   {
+    stepNumber: 6,
     id: 'brachiosaurus_stretch',
     coachId: '6',
     name: 'Brachiosaurus Stretch',
     coachName: 'Brachio',
     coachTitle: 'The Great Stretcher',
     signatureMove: 'Star Reach Stretch',
-    instructions: 'Stand tall, reach both arms up as high as you can on your tiptoes! How far can you reach?',
+    instructions: 'Stand up straight, feet together, and lift your arms straight over your head. Stretch up as tall as you can with your arms up standing on your tip toes. How far can you reach? Stretch higher and higher!',
+    formCues: 'Feet together, rise onto tiptoes, reach fingertips to ceiling, long elongated spine!',
     visualDemo: '🦕',
-    visualPose: 'Rise onto tiptoes, reach fingertips to ceiling, long elongated spine',
-    videoDemo: 'assets/workouts/brachiosaurus_stretch_demo.mp4',
-    tempoBpm: 80,
-    targetMuscles: 'Spine & Tiptoe Balance',
+    visualPose: 'Stand tall on tiptoes, arms straight overhead, reaching higher and higher',
+    tempoBpm: 78,
+    targetMuscles: 'Spine Elongation, Calves & Balance',
+    cadenceTimeline: [
+      { at: 60, cue: "Gentle Brachio here! Stand up straight with your feet together! Lift both arms straight over your head and stretch up tall onto your tiptoes! How far can you reach?" },
+      { at: 50, cue: "Reach up to the tallest tree canopy! Reach for the stars! Keep your balance on your tiptoes!" },
+      { at: 40, cue: "Deep breath in... and reach two inches higher! Stretch your fingertips toward the ceiling!" },
+      { at: 30, cue: "Halfway through! Hold that magnificent tall pose! Long straight spine, just like Brachio's long neck!" },
+      { at: 20, cue: "If you wobble, that's okay! Reset on your tiptoes and reach, reach, reach!" },
+      { at: 10, cue: "Final 10 seconds! Tallest giant in the world! Reach as high as you possibly can!" },
+      { at: 3, cue: "3, 2, 1... AAH! Majestic Brachiosaurus Stretch! You stood tall like a legend!" }
+    ],
     audioCues: {
       intro: "Gentle Brachio here! Stand up tall, climb up onto your tiptoes, and reach both hands all the way to the stars!",
       halfway: "So tall! You're reaching right through the tree branches! Hold that majestic stretch!",
-      finalCheer: "5, 4, 3, 2, 1... AAH! Star Reach complete! You stand tall like a prehistoric giant!"
+      finalCheer: "3, 2, 1... AAH! Star Reach complete! You stand tall like a prehistoric giant!"
     },
     icon: 'accessibility_new',
     color: '#34495e',
@@ -1001,22 +1061,33 @@ export const DINO_WORKOUTS = [
     bgGradient: 'from-slate-500/20 to-slate-950/40 border-slate-500/50'
   },
   {
+    stepNumber: 7,
     id: 'diplodocus',
     coachId: '7',
     name: 'The Diplodocus',
     coachName: 'Dippy',
     coachTitle: 'The Balance Master',
     signatureMove: 'Bird-Dog Balance',
-    instructions: 'On hands and knees, stretch right arm forward and left leg backward! Hold and switch sides!',
+    instructions: 'Start on your hands and knees. Now stretch your left leg straight behind you, like a diplodocus tail, and stretch your right arm straight in front of you like a diplodocus neck. Now move your leg up, down, left, and right, like a diplodocus wagging its tail. Switch sides and repeat.',
+    formCues: 'Hands and knees on floor, back flat like a table, opposite arm and leg extended, wag tail leg gently!',
     visualDemo: '🦕',
-    visualPose: 'Hands and knees pose with opposite arm and leg outstretched straight',
-    videoDemo: 'assets/workouts/diplodocus_demo.mp4',
-    tempoBpm: 75,
-    targetMuscles: 'Core Stability & Balance',
+    visualPose: 'Hands and knees pose with opposite arm and leg outstretched, wagging tail, switch sides at 30s',
+    tempoBpm: 74,
+    targetMuscles: 'Core Stability, Spine Balance & Coordination',
+    hasHalfwaySideSwitch: true,
+    cadenceTimeline: [
+      { at: 60, cue: "Balance Master Dippy! Start on your hands and knees! Stretch your right arm forward like a long neck, and your left leg straight behind like a tail! Now gently wag your tail leg up, down, left, and right!" },
+      { at: 50, cue: "Wag that tail! Up, down, side to side! Keep your belly strong and steady like a bridge!" },
+      { at: 40, cue: "Look straight down at your hands for balance! Reaching long with your arm and leg!" },
+      { at: 30, cue: "HALFWAY! Switch sides now! Stretch your left arm forward, and your right leg straight back! Wag that tail!" },
+      { at: 20, cue: "Up, down, left, right! Whip that tail! Rock-solid balance on the new side!" },
+      { at: 10, cue: "Last 10 seconds! Steady as a rock, reaching long and wagging strong!" },
+      { at: 3, cue: "3, 2, 1... YES! Unshakeable Diplodocus balance! Masterful stability!" }
+    ],
     audioCues: {
       intro: "Balance Master Dippy! Down on hands and knees! Reach right arm forward and left leg back! Rock solid balance!",
-      halfway: "Switch sides smoothly! Left arm forward, right leg back! Balance steady like a bridge!",
-      finalCheer: "5, 4, 3, 2, 1... YES! Unshakeable Diplodocus balance! Masterful stability!"
+      halfway: "HALFWAY! Switch sides now! Left arm forward, right leg back! Wag that tail!",
+      finalCheer: "3, 2, 1... YES! Unshakeable Diplodocus balance! Masterful stability!"
     },
     icon: 'sports_gymnastics',
     color: '#e67e22',
@@ -1024,22 +1095,32 @@ export const DINO_WORKOUTS = [
     bgGradient: 'from-orange-500/20 to-orange-950/40 border-orange-500/50'
   },
   {
+    stepNumber: 8,
     id: 'spinosaurus_stretch',
     coachId: '8',
     name: 'Spinosaurus Stretch',
     coachName: 'Spino',
     coachTitle: 'The Cool-Down King',
     signatureMove: 'Sail Fin Arch',
-    instructions: 'Draw your belly button in and round your back toward the ceiling like Spino’s giant sail!',
+    instructions: 'Cat cow stretch. On your hands and knees, draw your belly to your spine and round your back toward the ceiling. Your back should be in an arch-like shape, similar to the spines on a spinosaurus\' back. Then gently sink down and look forward. Repeat slowly to stretch your back.',
+    formCues: 'On hands and knees, arch spine up to ceiling on inhale (Spino sail!), sink gently on exhale looking ahead.',
     visualDemo: '🐊',
-    visualPose: 'Kneel and round spine upward toward the sky, slow calm deep breathing',
-    videoDemo: 'assets/workouts/spinosaurus_stretch_demo.mp4',
-    tempoBpm: 65,
-    targetMuscles: 'Spine Flexibility & Cool Down',
+    visualPose: 'Cat-cow stretch: round spine toward ceiling like a Spino sail, gently sink down and look forward',
+    tempoBpm: 64,
+    targetMuscles: 'Spine Flexibility, Breath Wave & Full-Body Cool Down',
+    cadenceTimeline: [
+      { at: 60, cue: "Cool-down King Spino! Down on your hands and knees for our calming cat-cow stretch! Draw your belly to your spine and round your back toward the ceiling, just like the giant sail on a Spinosaurus' back!" },
+      { at: 50, cue: "Tuck your chin and arch your back high! Now gently sink your belly down, lift your chest, and look forward!" },
+      { at: 40, cue: "Deep breath in... round your back up like a Spino sail! Breathe out... gently sink down and look forward!" },
+      { at: 30, cue: "30 seconds of peaceful stretching! Feel your back loosen up and relax. Arch up... and release down." },
+      { at: 20, cue: "Slow and gentle waves along your spine. Inhale into that high curved sail, exhale as you soften." },
+      { at: 10, cue: "Final 10 seconds! One more glorious arch up to the sky... and soft release." },
+      { at: 3, cue: "3, 2, 1... PEACEFUL! All 8 prehistoric workouts complete! You are a true Dinosaur Hero!" }
+    ],
     audioCues: {
       intro: "Cool-down King Spino! Tuck your chin, pull your belly in, and round your back upward like a magnificent sail fin! Deep calm breath in...",
       halfway: "Slow, soothing breaths. Arch and release. Feel all that hero muscle energy relax and restore.",
-      finalCheer: "5, 4, 3, 2, 1... PEACEFUL! Sail Fin Arch complete! Perfectly cooled down, hero!"
+      finalCheer: "3, 2, 1... PEACEFUL! Sail Fin Arch complete! Perfectly cooled down, hero!"
     },
     icon: 'self_improvement',
     color: '#c0392b',
@@ -1054,4 +1135,5 @@ export function getWorkoutById(workoutId) {
   return DINO_WORKOUTS.find(w => w.id === normalized || normalized.includes(w.id)) || 
          (normalized === 'diplodocus_balance' ? DINO_WORKOUTS[6] : DINO_WORKOUTS[0]);
 }
+
 
