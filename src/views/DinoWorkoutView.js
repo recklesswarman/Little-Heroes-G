@@ -139,26 +139,11 @@ export function renderDinoWorkoutView() {
         <!-- Two-Column Hero Stage: 3D Coach Pedestal / Video Demo & Form Guidance -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full my-3 items-center justify-center">
           
-          <!-- 3D Mascot Showcase Pedestal & Video Player with Rhythmic Metronome Glow -->
+          <!-- 3D Mascot Showcase Pedestal with Rhythmic Metronome Glow -->
           <div class="relative w-48 h-48 sm:w-56 sm:h-56 mx-auto aspect-square bg-surface-container-lowest rounded-3xl border-4 border-primary shadow-2xl overflow-hidden flex items-center justify-center ring-4 ring-primary/20 transition-all ${isWorkingOut && !isPaused ? 'ring-8 ring-primary/40' : ''}" id="workout-media-container">
-            
-            <!-- Video Player (Loads if available) -->
-            ${workout.videoDemo ? `
-              <video 
-                id="workout-demo-video"
-                src="${workout.videoDemo}"
-                class="w-full h-full object-cover rounded-2xl hidden"
-                loop
-                muted
-                playsinline
-                autoplay
-                aria-label="Coach ${workout.coachName} move demonstration video"
-              ></video>
-            ` : ''}
-
-            <!-- Canvas Viewport Mount (High-fidelity kinematic 3D fallback) -->
+            <!-- Canvas Viewport Mount (High-fidelity 60FPS kinematic 3D Dinosaur Coach) -->
             <div id="workout-canvas-container" class="w-full h-full absolute inset-0 flex items-center justify-center">
-              <!-- PetSanctuaryCanvas will mount here -->
+              <!-- PetSanctuaryCanvas mounts here -->
             </div>
 
             <!-- Metronome Beat Pulse Visualizer Ring -->
@@ -273,7 +258,7 @@ export function attachDinoWorkoutListeners() {
   const dailyCoach = getDailyRotatingPetCoach();
   const isDailyFeatured = dailyCoach.id === workout.coachId;
 
-  // Mount 3D Pet Canvas Pedestal
+  // Mount 3D Pet Canvas Pedestal & start continuous coach move demonstration
   const container = document.getElementById('workout-canvas-container');
   if (container) {
     if (activeCanvasInstance) {
@@ -282,6 +267,9 @@ export function attachDinoWorkoutListeners() {
     activeCanvasInstance = new PetSanctuaryCanvas(container, { petId: workout.coachId || coachPet.id });
     if (activeCanvasInstance.setWorkoutMode) {
       activeCanvasInstance.setWorkoutMode(workout.id);
+    }
+    if (activeCanvasInstance.startWorkoutAnimation) {
+      activeCanvasInstance.startWorkoutAnimation();
     }
     registerActiveCanvas(activeCanvasInstance);
   }
@@ -343,24 +331,7 @@ export function attachDinoWorkoutListeners() {
         readyDisplay.textContent = '3';
       }
 
-    // Video & Canvas dual setup
-    const demoVideo = document.getElementById('workout-demo-video');
-    const canvasMount = document.getElementById('workout-canvas-container');
     const pulseRing = document.getElementById('metronome-pulse-ring');
-
-    if (demoVideo) {
-      demoVideo.addEventListener('loadeddata', () => {
-        // When video is ready, reveal video and keep canvas ready in background
-        demoVideo.classList.remove('hidden');
-        if (canvasMount) canvasMount.classList.add('opacity-0');
-      });
-      demoVideo.addEventListener('error', () => {
-        // Fallback to high-fidelity procedural canvas
-        demoVideo.classList.add('hidden');
-        if (canvasMount) canvasMount.classList.remove('opacity-0');
-      });
-    }
-
     let metronomeInterval = null;
     const bpm = workout.tempoBpm || 120;
     const beatMs = Math.round((60 / bpm) * 1000);
