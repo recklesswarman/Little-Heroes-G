@@ -7,9 +7,41 @@
 // 5. Browser Autoplay & Gesture Pre-Unlock Engine
 
 import { store } from '../state/store.js';
+import { DINO_WORKOUTS } from '../data/petsData.js';
 
 const ELEVENLABS_TTS_ENDPOINT = '/api/elevenlabs/tts';
 const TTS_ENDPOINT = '/api/gemini/tts';
+
+// Zero-latency client-side audio cache for gross-motor cadence cues and companion audio clips
+export const workoutAudioClipCache = new Map();
+
+/**
+ * Normalizes a companion pet ID or numeric string to its canonical roster key
+ */
+export function normalizePetKey(petId) {
+  if (!petId) return 'rex';
+  const raw = String(petId).toLowerCase().trim();
+  const idMap = {
+    '1': 'rex',
+    '2': 'raptor',
+    '3': 'stego',
+    '4': 'pterry',
+    '5': 'chomper',
+    '6': 'brachio',
+    '7': 'dippy',
+    '8': 'spino'
+  };
+  return idMap[raw] || raw;
+}
+
+/**
+ * Generates cache key for workout audio clips
+ */
+export function getAudioCacheKey(text, petId = 'rex') {
+  const clean = cleanDialogueText(text);
+  const norm = normalizePetKey(petId);
+  return `${norm}:${clean}`;
+}
 
 export const COMPANION_VOICE_PROFILES = {
   rex: {
@@ -521,11 +553,17 @@ function base64ToFloat32Array(base64Data) {
  * Returns true if playback started.
  */
 async function playPcmTtsResponse(data, cleanSpoken, petId, callback, myGeneration) {
-  if (!data || !data.audio) return false;
+  if (!data || (!data.audio && !data.audioBuffer)) return false;
 
-  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  const AudioCtx = (typeof window !== 'undefined') && (window.AudioContext || window.webkitAudioContext);
+  if (!AudioCtx) return false;
+
   if (!sharedAudioContext || sharedAudioContext.state === 'closed') {
-    sharedAudioContext = new AudioCtx({ sampleRate: 24000 });
+    try {
+      sharedAudioContext = new AudioCtx({ sampleRate: 24000 });
+    } catch {
+      return false;
+    }
   }
   if (sharedAudioContext.state === 'suspended') {
     await sharedAudioContext.resume().catch(() => {});
@@ -541,10 +579,29 @@ async function playPcmTtsResponse(data, cleanSpoken, petId, callback, myGenerati
     return false;
   }
 
-  const float32 = base64ToFloat32Array(data.audio);
-  const sampleRate = data.sampleRate || 24000;
-  const audioBuffer = sharedAudioContext.createBuffer(1, float32.length, sampleRate);
-  audioBuffer.copyToChannel(float32, 0);
+  // Anti-collision safeguard: ensure previous active audio source is cleanly stopped
+  if (currentAudioSource) {
+    try {
+      currentAudioSource.stop();
+      currentAudioSource.disconnect();
+    } catch {}
+    currentAudioSource = null;
+  }
+
+  let audioBuffer = data.audioBuffer;
+  if (!audioBuffer && data.audio) {
+    try {
+      const float32 = base64ToFloat32Array(data.audio);
+      const sampleRate = data.sampleRate || 24000;
+      audioBuffer = sharedAudioContext.createBuffer(1, float32.length, sampleRate);
+      audioBuffer.copyToChannel(float32, 0);
+      data.audioBuffer = audioBuffer;
+    } catch (e) {
+      console.warn('Failed to decode PCM audio data:', e);
+      return false;
+    }
+  }
+  if (!audioBuffer) return false;
 
   const source = sharedAudioContext.createBufferSource();
   source.buffer = audioBuffer;
@@ -613,19 +670,86 @@ async function fetchPcmTts(endpoint, cleanSpoken, petId, timeoutMs = 4500) {
 }
 
 /**
+ * Pre-fetches and pre-renders cadence audio clips for the active workout routine
+ * into the zero-latency client-side audio cache (`workoutAudioClipCache`).
+ * Ensures all cadence cues (0s, 10s, 20s, 30s, 40s, 50s, 58s/end) and intro/cheers
+ * trigger with 0ms latency during exercise.
+ */
+export async function prewarmWorkoutAudio(workoutId, coachId = null) {
+  let workout = null;
+  if (workoutId && typeof workoutId === 'object' && workoutId.cadenceTimeline) {
+    workout = workoutId;
+  } else if (typeof workoutId === 'string' && Array.isArray(DINO_WORKOUTS)) {
+    workout = DINO_WORKOUTS.find((w) => w.id === workoutId);
+  }
+  if (!workout) return;
+
+  const targetCoach = coachId || workout.coachId || 'rex';
+  const normKey = normalizePetKey(targetCoach);
+  const rawId = String(targetCoach).toLowerCase().trim();
+
+  const cuesToPrewarm = new Set();
+  if (Array.isArray(workout.cadenceTimeline)) {
+    for (const item of workout.cadenceTimeline) {
+      if (item?.cue) cuesToPrewarm.add(item.cue);
+    }
+  }
+  if (workout.audioCues) {
+    if (workout.audioCues.intro) cuesToPrewarm.add(workout.audioCues.intro);
+    if (workout.audioCues.halfway) cuesToPrewarm.add(workout.audioCues.halfway);
+    if (workout.audioCues.finalCheer) cuesToPrewarm.add(workout.audioCues.finalCheer);
+  }
+
+  const tasks = Array.from(cuesToPrewarm).map(async (cueText) => {
+    const cleanSpoken = cleanDialogueText(cueText);
+    if (!cleanSpoken) return;
+
+    const cacheKey = `${normKey}:${cleanSpoken}`;
+    if (workoutAudioClipCache.has(cacheKey) || workoutAudioClipCache.has(`${rawId}:${cleanSpoken}`)) {
+      return;
+    }
+
+    // Try ElevenLabs first
+    let data = await fetchPcmTts(ELEVENLABS_TTS_ENDPOINT, cleanSpoken, targetCoach, 3000);
+    // If ElevenLabs fails or is unconfigured, fall back to Gemini TTS
+    if (!data) {
+      data = await fetchPcmTts(TTS_ENDPOINT, cleanSpoken, targetCoach, 4500);
+    }
+
+    if (data && data.audio) {
+      // Pre-decode into AudioBuffer if AudioContext is available
+      const AudioCtx = (typeof window !== 'undefined') && (window.AudioContext || window.webkitAudioContext);
+      if (AudioCtx) {
+        try {
+          if (!sharedAudioContext || sharedAudioContext.state === 'closed') {
+            sharedAudioContext = new AudioCtx({ sampleRate: 24000 });
+          }
+          if (sharedAudioContext) {
+            const float32 = base64ToFloat32Array(data.audio);
+            const sampleRate = data.sampleRate || 24000;
+            const buffer = sharedAudioContext.createBuffer(1, float32.length, sampleRate);
+            buffer.copyToChannel(float32, 0);
+            data.audioBuffer = buffer;
+          }
+        } catch {}
+      }
+
+      workoutAudioClipCache.set(cacheKey, data);
+      workoutAudioClipCache.set(`${rawId}:${cleanSpoken}`, data);
+      workoutAudioClipCache.set(cleanSpoken, data);
+    }
+  });
+
+  await Promise.allSettled(tasks);
+}
+
+/**
  * Unified Spoken Voice Entrypoint for Pet Companions
+ * 0. Zero-Latency Client-Side Cache Check (`workoutAudioClipCache`).
  * 1. Prepares dialogue text by stripping asterisks/stage directions.
  * 2. Primary: ElevenLabs voice, where this pet has one configured (/api/elevenlabs/tts).
  * 3. Secondary: Realistic kid-friendly voice via Gemini 3.1 Flash TTS (/api/gemini/tts).
- * 4. Resilient Fallback: Cartoon Speech Synthesis if offline or both network calls fail.
- *
- * Pass { instant: true } for fast-paced, real-time contexts (e.g. the
- * toothbrush battle's quadrant/event coaching): tries ElevenLabs alone with
- * a short timeout (long enough for a warm cache hit, too short to feel
- * laggy), then falls straight through to the zero-latency browser fallback
- * on any miss/timeout. Skips the Gemini tier entirely -- stacking two
- * network hops (ElevenLabs then Gemini) before falling back is what made
- * this feel laggy in the first place.
+ * 4. Resilient Fallback: Cartoon Speech Synthesis with natural 'Daniel' voice if offline.
  */
 export const speakCompanion = async (text, petIdOrOptions = 'rex', onEnded = null) => {
   if (!text || typeof text !== 'string' || !text.trim()) return;
@@ -660,7 +784,7 @@ export const speakCompanion = async (text, petIdOrOptions = 'rex', onEnded = nul
   // await and abandons rather than starting audio once it's no longer current.
   const myGeneration = ++speechGeneration;
 
-  // Immediately stop any prior speech output
+  // Immediately stop any prior speech output (anti-collision & non-overlapping)
   stopRex();
 
   // If user has not interacted yet, queue speech so it fires on their first tap
@@ -668,22 +792,29 @@ export const speakCompanion = async (text, petIdOrOptions = 'rex', onEnded = nul
     pendingUnlockSpeech = { text: cleanSpoken, petId, onEnded: callback };
   }
 
+  // --- Tier 0: Zero-Latency Client-Side Audio Cache ---
+  const normKey = normalizePetKey(petId);
+  const rawId = String(petId).toLowerCase().trim();
+  const cachedData =
+    workoutAudioClipCache.get(`${normKey}:${cleanSpoken}`) ||
+    workoutAudioClipCache.get(`${rawId}:${cleanSpoken}`) ||
+    workoutAudioClipCache.get(cleanSpoken);
+
+  if (cachedData) {
+    const played = await playPcmTtsResponse(cachedData, cleanSpoken, petId, callback, myGeneration);
+    if (played) return;
+    if (myGeneration !== speechGeneration) return;
+    speakWithSpeechSynthesis(cleanSpoken, petId, callback);
+    return;
+  }
+
   if (instant) {
-    // Fast-paced/real-time contexts (the toothbrush battle) still deserve
-    // ElevenLabs' voice quality when it can arrive fast enough -- but only
-    // when it can. The battle's coaching lines are a small, repeating set
-    // (quadrant cues, hazard warnings, the halfway Learn Challenge question,
-    // etc.), so after the first time a line is spoken on a given server
-    // instance it's served from that server's in-memory TTS cache (see
-    // server/elevenLabsService.js) in well under this timeout; a cold/novel
-    // line simply won't make it back in time and falls straight through to
-    // the zero-latency browser voice, exactly as before this existed.
-    // Gemini's tier is skipped here -- a second network hop has no room left
-    // in this tight a budget.
     const INSTANT_ELEVENLABS_TIMEOUT_MS = 700;
     const fastData = await fetchPcmTts(ELEVENLABS_TTS_ENDPOINT, cleanSpoken, petId, INSTANT_ELEVENLABS_TIMEOUT_MS);
     if (myGeneration !== speechGeneration) return;
     if (fastData) {
+      workoutAudioClipCache.set(`${normKey}:${cleanSpoken}`, fastData);
+      workoutAudioClipCache.set(cleanSpoken, fastData);
       const played = await playPcmTtsResponse(fastData, cleanSpoken, petId, callback, myGeneration);
       if (played) return;
       if (myGeneration !== speechGeneration) return;
@@ -699,6 +830,8 @@ export const speakCompanion = async (text, petIdOrOptions = 'rex', onEnded = nul
   const elevenLabsData = await fetchPcmTts(ELEVENLABS_TTS_ENDPOINT, cleanSpoken, petId);
   if (myGeneration !== speechGeneration) return;
   if (elevenLabsData) {
+    workoutAudioClipCache.set(`${normKey}:${cleanSpoken}`, elevenLabsData);
+    workoutAudioClipCache.set(cleanSpoken, elevenLabsData);
     ttsSucceeded = await playPcmTtsResponse(elevenLabsData, cleanSpoken, petId, callback, myGeneration);
   }
 
@@ -708,6 +841,8 @@ export const speakCompanion = async (text, petIdOrOptions = 'rex', onEnded = nul
     const geminiData = await fetchPcmTts(TTS_ENDPOINT, cleanSpoken, petId);
     if (myGeneration !== speechGeneration) return;
     if (geminiData) {
+      workoutAudioClipCache.set(`${normKey}:${cleanSpoken}`, geminiData);
+      workoutAudioClipCache.set(cleanSpoken, geminiData);
       ttsSucceeded = await playPcmTtsResponse(geminiData, cleanSpoken, petId, callback, myGeneration);
     }
   }

@@ -1,15 +1,23 @@
+import 'dotenv/config';
 import { defineConfig } from 'vite';
 
 async function setupGeminiMiddleware(server) {
   let geminiService = null;
+  let elevenLabsService = null;
   try {
     geminiService = await import('./server/geminiService.js');
   } catch (err) {
     console.warn('Gemini server middleware notice:', err.message);
   }
-  if (!geminiService) return;
+  try {
+    elevenLabsService = await import('./server/elevenLabsService.js');
+  } catch (err) {
+    console.warn('ElevenLabs server middleware notice:', err.message);
+  }
+  if (!geminiService && !elevenLabsService) return;
 
-  const { handleTTSRequest, handleChatRequest, attachGeminiLiveWebSocket } = geminiService;
+  const { handleTTSRequest, handleChatRequest, attachGeminiLiveWebSocket } = geminiService || {};
+  const { handleElevenLabsTTSRequest } = elevenLabsService || {};
 
   const parseJsonBody = (req) => new Promise((resolve, reject) => {
     let body = '';
@@ -37,7 +45,38 @@ async function setupGeminiMiddleware(server) {
           res.statusCode = code;
           return res;
         };
-        return await handleTTSRequest(req, res);
+        if (typeof handleTTSRequest === 'function') {
+          return await handleTTSRequest(req, res);
+        } else {
+          res.statusCode = 503;
+          res.setHeader('Content-Type', 'application/json');
+          return res.end(JSON.stringify({ error: 'Gemini TTS handler not available' }));
+        }
+      } catch (err) {
+        res.statusCode = 500;
+        res.setHeader('Content-Type', 'application/json');
+        return res.end(JSON.stringify({ error: err.message }));
+      }
+    }
+
+    if (url === '/api/elevenlabs/tts' && req.method === 'POST') {
+      try {
+        req.body = await parseJsonBody(req);
+        res.json = (data) => {
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify(data));
+        };
+        res.status = (code) => {
+          res.statusCode = code;
+          return res;
+        };
+        if (typeof handleElevenLabsTTSRequest === 'function') {
+          return await handleElevenLabsTTSRequest(req, res);
+        } else {
+          res.statusCode = 503;
+          res.setHeader('Content-Type', 'application/json');
+          return res.end(JSON.stringify({ error: 'ElevenLabs service not loaded' }));
+        }
       } catch (err) {
         res.statusCode = 500;
         res.setHeader('Content-Type', 'application/json');
@@ -56,7 +95,13 @@ async function setupGeminiMiddleware(server) {
           res.statusCode = code;
           return res;
         };
-        return await handleChatRequest(req, res);
+        if (typeof handleChatRequest === 'function') {
+          return await handleChatRequest(req, res);
+        } else {
+          res.statusCode = 503;
+          res.setHeader('Content-Type', 'application/json');
+          return res.end(JSON.stringify({ error: 'Gemini Chat handler not available' }));
+        }
       } catch (err) {
         res.statusCode = 500;
         res.setHeader('Content-Type', 'application/json');
@@ -67,7 +112,7 @@ async function setupGeminiMiddleware(server) {
     next();
   });
 
-  if (server.httpServer) {
+  if (server.httpServer && typeof attachGeminiLiveWebSocket === 'function') {
     attachGeminiLiveWebSocket(server.httpServer);
   }
 }

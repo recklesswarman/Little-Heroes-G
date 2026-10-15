@@ -24,8 +24,9 @@
 
 import { store } from '../state/store.js';
 import { getPetById, getWorkoutById, getDailyRotatingPetCoach, DINO_WORKOUTS } from '../data/petsData.js';
+import { WorkoutHero3DStage } from '../components/WorkoutHero3DStage.js';
 import { WorkoutHeroDuoCanvas } from '../components/WorkoutHeroDuoCanvas.js';
-import { speakCompanion, stopRex } from '../services/voiceService.js';
+import { speakCompanion, stopRex, prewarmWorkoutAudio } from '../services/voiceService.js';
 import confetti from 'canvas-confetti';
 import { registerActiveCanvas } from '../utils/activeViewCanvasRegistry.js';
 import { Sound } from '../audio/sfx.js';
@@ -442,20 +443,27 @@ export function attachDinoWorkoutListeners() {
   const dailyCoach = getDailyRotatingPetCoach();
   const isDailyFeatured = dailyCoach.id === workout.coachId;
 
-  // 1. MOUNT SIDE-BY-SIDE 3D DUO CANVAS
+  // 1. MOUNT SIDE-BY-SIDE 3D DUO STAGE (With automatic 2D Canvas Fallback)
   const stageContainer = document.getElementById('workout-canvas-container');
   if (stageContainer) {
     if (activeDuoCanvas) {
       activeDuoCanvas.destroy();
       activeDuoCanvas = null;
     }
-    activeDuoCanvas = new WorkoutHeroDuoCanvas(stageContainer, {
+    activeDuoCanvas = new WorkoutHero3DStage(stageContainer, {
       workoutId: workout.id,
       coachId: workout.coachId || coachPet.id,
       tempoBpm: workout.tempoBpm || 120
     });
     activeDuoCanvas.setTimeRemaining(remainingTime);
     registerActiveCanvas(activeDuoCanvas);
+  }
+
+  // Prewarm cadence audio cues for instant zero-latency playback
+  try {
+    prewarmWorkoutAudio(activeWorkoutId, coachPet.id);
+  } catch (err) {
+    console.warn('Audio prewarm warning:', err);
   }
 
   // 2. MODE SELECTORS (Circuit vs Practice)
@@ -470,6 +478,9 @@ export function attachDinoWorkoutListeners() {
       selectedDurationTier = 'titan'; // 60s standard for 8-min circuit
       store.setActiveWorkoutId(DINO_WORKOUTS[0].id);
       resetWorkoutState();
+      try {
+        prewarmWorkoutAudio(DINO_WORKOUTS[0].id, DINO_WORKOUTS[0].coachId);
+      } catch (e) {}
       store.notify();
     });
   }
@@ -490,8 +501,12 @@ export function attachDinoWorkoutListeners() {
       const idx = parseInt(btn.getAttribute('data-index'), 10);
       if (!isNaN(idx) && idx >= 0 && idx < DINO_WORKOUTS.length) {
         currentCircuitIndex = idx;
-        store.setActiveWorkoutId(DINO_WORKOUTS[idx].id);
+        const w = DINO_WORKOUTS[idx];
+        store.setActiveWorkoutId(w.id);
         resetWorkoutState();
+        try {
+          prewarmWorkoutAudio(w.id, w.coachId);
+        } catch (e) {}
         store.notify();
       }
     });
@@ -503,8 +518,12 @@ export function attachDinoWorkoutListeners() {
       Sound.bloop();
       const wId = btn.getAttribute('data-workout-id');
       if (wId) {
+        const nextW = getWorkoutById(wId);
         store.setActiveWorkoutId(wId);
         resetWorkoutState();
+        try {
+          prewarmWorkoutAudio(wId, nextW?.coachId);
+        } catch (e) {}
         store.notify();
       }
     });
@@ -616,11 +635,6 @@ export function attachDinoWorkoutListeners() {
         } else if (count === 0) {
           Sound.whistle ? Sound.whistle() : Sound.fanfare();
           if (readyDisplay) readyDisplay.textContent = 'GO!';
-          if (isVoiceEnabled) {
-            try {
-              speakCompanion('Go, go, go! Move to the beat!', coachPet.id);
-            } catch (e) {}
-          }
         } else {
           stopCountdownPhase();
           startActiveWorkoutTimer();
@@ -635,6 +649,34 @@ export function attachDinoWorkoutListeners() {
       countdownInterval = null;
     }
     if (readyDisplay) readyDisplay.classList.add('hidden');
+  }
+
+  function checkCadenceCues(timeRemainingSec) {
+    if (!isVoiceEnabled || !workout.cadenceTimeline) return;
+
+    for (const cueItem of workout.cadenceTimeline) {
+      // Direct timestamp match (60s, 50s, 40s, 30s, 20s, 10s, 3s)
+      // or final wrap-up cue near 58s elapsed (2s remaining)
+      const isMatch = (timeRemainingSec === cueItem.at) ||
+                      (cueItem.at <= 3 && timeRemainingSec === 2);
+
+      if (isMatch && !spokenTimelineSet.has(cueItem.at)) {
+        spokenTimelineSet.add(cueItem.at);
+
+        // For Diplodocus at 30s remaining, announce halfway side switch synchronously with pose mirror
+        let cueText = cueItem.cue;
+        if (cueItem.at === 30 && workout.hasHalfwaySideSwitch) {
+          cueText = workout.audioCues?.halfway || cueItem.cue;
+        }
+
+        try {
+          speakCompanion(cueText, coachPet.id);
+        } catch (e) {
+          console.warn('speakCompanion error:', e);
+        }
+        break;
+      }
+    }
   }
 
   function startActiveWorkoutTimer() {
@@ -655,6 +697,9 @@ export function attachDinoWorkoutListeners() {
       activeDuoCanvas.setTimeRemaining(remainingTime);
       activeDuoCanvas.startAnimation();
     }
+
+    // Trigger initial cadence cue at 0s elapsed / 60s remaining so it is not skipped
+    checkCadenceCues(remainingTime);
 
     // Start High-Energy Upbeat Music Beat
     if (isMusicEnabled) {
@@ -678,7 +723,12 @@ export function attachDinoWorkoutListeners() {
 
       remainingTime--;
       if (timerDisplay) timerDisplay.textContent = `${remainingTime}s`;
-      if (activeDuoCanvas) activeDuoCanvas.setTimeRemaining(remainingTime);
+      if (activeDuoCanvas) {
+        activeDuoCanvas.setTimeRemaining(remainingTime);
+        if (workout.hasHalfwaySideSwitch && remainingTime <= 30) {
+          activeDuoCanvas.isHalfwayFlipped = true;
+        }
+      }
 
       if (progressBar) {
         const pct = Math.max(0, Math.round((remainingTime / totalDuration) * 100));
@@ -686,17 +736,7 @@ export function attachDinoWorkoutListeners() {
       }
 
       // Check Cadence Voice Prompts
-      if (isVoiceEnabled && workout.cadenceTimeline) {
-        for (const cueItem of workout.cadenceTimeline) {
-          if (remainingTime === cueItem.at && !spokenTimelineSet.has(cueItem.at)) {
-            spokenTimelineSet.add(cueItem.at);
-            try {
-              speakCompanion(cueItem.cue, coachPet.id);
-            } catch (e) {}
-            break;
-          }
-        }
-      }
+      checkCadenceCues(remainingTime);
 
       // Final 5s countdown audio clicks
       if (remainingTime > 0 && remainingTime <= 5) {
@@ -787,6 +827,9 @@ export function attachDinoWorkoutListeners() {
     const nextWorkout = DINO_WORKOUTS[currentCircuitIndex];
     store.setActiveWorkoutId(nextWorkout.id);
     resetWorkoutState();
+    try {
+      prewarmWorkoutAudio(nextWorkout.id, nextWorkout.coachId);
+    } catch (e) {}
     store.notify();
   }
 
