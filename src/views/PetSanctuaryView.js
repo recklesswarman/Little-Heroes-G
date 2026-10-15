@@ -751,8 +751,8 @@ function renderWorkoutDrawer(pet) {
               +25% XP BONUS
             </span>
           </div>
-          <h4 class="font-headline font-black text-lg text-on-surface truncate mt-1">Coach ${dailyCoach.name} • ${dailyCoach.signatureMove}</h4>
-          <span class="text-xs text-on-surface-variant font-medium line-clamp-2 mt-0.5">${dailyCoach.workoutDesc || 'Join today’s featured coach for high-energy gross-motor power!'}</span>
+          <h4 class="font-headline font-black text-lg text-on-surface truncate mt-1">Coach ${dailyCoach.name} • ${dailyCoach.workoutName || 'Signature Hero Move'}</h4>
+          <span class="text-xs text-on-surface-variant font-medium line-clamp-2 mt-0.5">${dailyCoach.workoutInstructions || 'Join today’s featured coach for high-energy gross-motor power!'}</span>
         </div>
         <button 
           id="start-coach-workout-btn"
@@ -962,7 +962,7 @@ function renderRosterDrawer(activePet) {
 
               <div class="mt-3 pt-2.5 border-t border-surface-container-highest/60 flex items-center justify-between">
                 <span class="text-[10px] text-on-surface-variant font-medium truncate max-w-[130px]">
-                  ${pet.signatureMove || 'Hero Stomp'}
+                  ${pet.workoutName || 'Hero Stomp'}
                 </span>
                 ${isActive ? `
                   <span class="px-3 py-1 rounded-xl bg-primary text-slate-950 font-black text-[11px] uppercase tracking-wider flex items-center gap-1 shadow-xs">

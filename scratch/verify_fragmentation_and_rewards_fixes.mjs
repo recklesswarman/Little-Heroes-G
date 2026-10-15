@@ -75,10 +75,14 @@ console.log('  ✅ PASS: parentCustomWeapons and parentCustomFood are preserved'
 
 // Test 2: Version checks in index.html and sw.js
 console.log('\n--- Test 2: PWA Version Bump and Cache Buster ---');
+// APP_BUILD_VERSION is bumped on every change to critical views/catalogs per
+// CLAUDE.md, so pin the invariant (the constant exists with a sane "vX.Y.Z-"
+// format) rather than one point-in-time literal, which would otherwise break
+// on every legitimate future bump.
 const indexHtml = fs.readFileSync('index.html', 'utf8');
 assert(
-  indexHtml.includes("const APP_BUILD_VERSION = 'v3.3.0-digital-rewards-20261007'"),
-  'index.html must have APP_BUILD_VERSION v3.3.0-digital-rewards-20261007'
+  /const APP_BUILD_VERSION = 'v\d+\.\d+\.\d+-[\w-]+'/.test(indexHtml),
+  "index.html must define APP_BUILD_VERSION as a versioned 'vX.Y.Z-label' string"
 );
 assert(
   indexHtml.includes('handleChunkOrCacheError'),
@@ -90,10 +94,12 @@ assert(
 );
 console.log('  ✅ PASS: index.html has updated APP_BUILD_VERSION and chunk recovery logic');
 
+// Same reasoning as APP_BUILD_VERSION above: check the invariant shape, not
+// one frozen literal that every subsequent legitimate cache bump would break.
 const swJs = fs.readFileSync('public/sw.js', 'utf8');
 assert(
-  swJs.includes("const CACHE_NAME = 'little-heroes-v3.3.0-rewards-revamp-20261007'"),
-  'public/sw.js must have CACHE_NAME little-heroes-v3.3.0-rewards-revamp-20261007'
+  /const CACHE_NAME = 'little-heroes-v\d+\.\d+\.\d+-[\w-]+'/.test(swJs),
+  "public/sw.js must define CACHE_NAME as a versioned 'little-heroes-vX.Y.Z-label' string"
 );
 assert(
   swJs.includes('self.clients.claim()'),

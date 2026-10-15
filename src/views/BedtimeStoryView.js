@@ -7,7 +7,7 @@
  * Non-blocking habit minting per kid_voice_companion_guidelines.md.
  */
 
-import { store } from '../state/store.js';
+import { store, KID_AVATARS } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
 import { BEDTIME_REALMS, BEDTIME_MORALS, CONSTELLATION_STICKERS } from '../data/bedtimeStoryData.js';
@@ -29,7 +29,7 @@ let activeBookshelfFilter = 'all'; // 'all' | 'favorites'
  * Safely guards against image URL vs emoji strings, preventing raw token spillage
  */
 function renderHeroWithPetBadge(hero, pet) {
-  const heroAvatar = hero?.avatar || 'assets/avatars/hero_boy_1.png';
+  const heroAvatar = hero?.avatar || KID_AVATARS[0].url;
   const heroName = hero?.name || 'Hero';
   
   const petAvatar = pet?.avatar || pet?.image || `assets/pets/${pet?.key || 'rex'}.png`;
@@ -44,7 +44,7 @@ function renderHeroWithPetBadge(hero, pet) {
           src="${heroAvatar}" 
           alt="${heroName}" 
           class="w-full h-full object-cover select-none pointer-events-none" 
-          onerror="this.onerror=null; this.src='assets/avatars/hero_boy_1.png';"
+          onerror="this.onerror=null; this.src='${KID_AVATARS[0].url}';"
         />
       </div>
       <!-- Active Pet Companion Badge Overlay -->

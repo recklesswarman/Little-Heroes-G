@@ -157,17 +157,24 @@ testAssert(
 // 4. PWA Version Consistency & Service Worker Cache Bumping
 // =========================================================================
 console.log('\n--- 4. Testing PWA Version Consistency & Service Worker Cache Control ---');
+// APP_BUILD_VERSION/CACHE_NAME are bumped together on every change to
+// critical views/catalogs per CLAUDE.md, so this checks the real invariant
+// (the two files' version numbers stay in sync with each other) rather than
+// a frozen literal, which would otherwise break on every legitimate bump.
 const indexHtml = fs.readFileSync('index.html', 'utf8');
-const versionMatch = indexHtml.match(/const APP_BUILD_VERSION = ['"]([^'"]+)['"]/);
-testAssert(Boolean(versionMatch), 'index.html defines APP_BUILD_VERSION');
-const appBuildVersion = versionMatch[1];
-testAssert(appBuildVersion.startsWith('v3.3.0'), `APP_BUILD_VERSION (${appBuildVersion}) starts with "v3.3.0"`);
+const versionMatch = indexHtml.match(/const APP_BUILD_VERSION = ['"]v(\d+\.\d+\.\d+)-[\w-]+['"]/);
+testAssert(Boolean(versionMatch), 'index.html defines a versioned APP_BUILD_VERSION (vX.Y.Z-label)');
+const appBuildVersion = versionMatch ? versionMatch[1] : null;
 
 const swJs = fs.readFileSync('public/sw.js', 'utf8');
-const cacheNameMatch = swJs.match(/const CACHE_NAME = ['"]([^'"]+)['"]/);
-testAssert(Boolean(cacheNameMatch), 'public/sw.js defines CACHE_NAME');
-const swCacheName = cacheNameMatch[1];
-testAssert(swCacheName.includes('v3.3.0'), `CACHE_NAME (${swCacheName}) includes "v3.3.0"`);
+const cacheNameMatch = swJs.match(/const CACHE_NAME = ['"]little-heroes-v(\d+\.\d+\.\d+)-[\w-]+['"]/);
+testAssert(Boolean(cacheNameMatch), 'public/sw.js defines a versioned CACHE_NAME (little-heroes-vX.Y.Z-label)');
+const swCacheVersion = cacheNameMatch ? cacheNameMatch[1] : null;
+
+testAssert(
+  Boolean(appBuildVersion) && appBuildVersion === swCacheVersion,
+  `index.html's APP_BUILD_VERSION (${appBuildVersion}) matches public/sw.js's CACHE_NAME version (${swCacheVersion})`
+);
 
 testAssert(swJs.includes('caches.delete'), 'public/sw.js deletes outdated cache keys');
 testAssert(swJs.includes('self.clients.claim()'), 'public/sw.js claims clients immediately on activate');

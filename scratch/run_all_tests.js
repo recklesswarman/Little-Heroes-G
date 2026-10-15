@@ -60,7 +60,8 @@ const testFiles = [
   'scratch/verify_multi_host_parity.mjs',
   'scratch/verify_rewards_revamp_loop_hardened.mjs',
   'scratch/verify_direct_preview_routing.mjs',
-  'scratch/verify_world_map_and_minigame_approvals.mjs'
+  'scratch/verify_world_map_and_minigame_approvals.mjs',
+  'scratch/verify_companion_workout_fixes.mjs'
 ];
 
 let allPassed = true;
