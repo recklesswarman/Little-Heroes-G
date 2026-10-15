@@ -63,7 +63,9 @@ const testFiles = [
   'scratch/verify_world_map_and_minigame_approvals.mjs',
   'scratch/verify_companion_workout_fixes.mjs',
   // Milestone Dino Hero Workout E2E Suite:
-  'scratch/verify_dino_workout_e2e.mjs'
+  'scratch/verify_dino_workout_e2e.mjs',
+  // Milestone Task & Habit Engine and Realtime Sync Suite:
+  'scratch/verify_task_habit_engine_and_sync.mjs'
 ];
 
 let allPassed = true;

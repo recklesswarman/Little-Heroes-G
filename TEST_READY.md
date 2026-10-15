@@ -1,99 +1,64 @@
-# TEST_READY: Dino Hero Workout E2E Test Suite Readiness & Verification
+# TEST_READY: Task & Habit Engine and Household Realtime Sync E2E Simulation Test Suite
 
-## Status: READY & INTEGRATED
-
-The comprehensive automated End-to-End test suite for the **Companion Hero Dino Workout** system has been designed, authored, and wired into the project test runner.
-
----
-
-## 1. Test Runner Invocations
-
-### Dedicated Dinosaur Workout E2E Suite:
-```powershell
-node scratch/verify_dino_workout_e2e.mjs
-```
-
-### Full Project Regression Suite:
-```powershell
-node scratch/run_all_tests.js
-```
+**Test Writer:** E2E Simulation Test Writer (`test_writer_e2e_gen2`)  
+**Test Suite File:** `scratch/verify_task_habit_engine_and_sync.mjs`  
+**Execution Command:** `node scratch/verify_task_habit_engine_and_sync.mjs`  
+**Date:** 2026-10-15  
 
 ---
 
-## 2. Test Architecture & Tier Breakdown
+## 1. Executive Summary
+The end-to-end multi-device simulation test suite for the **Task & Habit Engine and Household Realtime Sync Infrastructure** has been fully authored, compiled, and verified in `scratch/verify_task_habit_engine_and_sync.mjs`. 
 
-The test suite in `scratch/verify_dino_workout_e2e.mjs` is structured into 4 comprehensive tiers with 66 individual test assertions across all requirements:
+The test harness uses `esbuild` to bundle the application state engine (`src/state/store.js`), real-time sync service (`src/services/firestoreSyncService.js`), and UI view renderers (`ParentPortalView.js`, `DashboardView.js`, `WorldAdventureMapView.js`) into isolated `node:vm` contexts representing independent devices (Child 1 on Tablet A, Child 2 on Tablet B, and Parent on Mobile Portal) backed by an in-memory reactive Firestore simulator (`makeFS`).
 
-```
-├── TIER 1: Feature Coverage (40 Tests, >=5 tests per feature)
-│   ├── Feature 1.1: All 8 Prehistoric Gross-Motor Workouts (5 tests)
-│   ├── Feature 1.2: 3D Skeletal Bone Transforms (5 tests)
-│   ├── Feature 1.3: WebGL Support Check & 2D Canvas Fallback (5 tests)
-│   ├── Feature 1.4: Hybrid Voice Coaching Personas for all 8 Coaches (5 tests)
-│   ├── Feature 1.5: Zero-Latency Audio Cache Retrieval (5 tests)
-│   ├── Feature 1.6: Cadence Timing: 0s, 10s, 20s, 30s, 40s, 50s, 58s (5 tests)
-│   ├── Feature 1.7: 30s Diplodocus Synchronous Announcement & Pose Flip (5 tests)
-│   └── Feature 1.8: Stitch Color Palette Compliance: Zero pink/purple (5 tests)
-│
-├── TIER 2: Boundary & Corner Cases (10 Tests)
-│   ├── 2.1: WebGL Context Loss Handling (webglcontextlost event preventDefault)
-│   ├── 2.2: Degenerate timeRemaining = 0 clamping
-│   ├── 2.3: Degenerate timeRemaining = null safe fallback
-│   ├── 2.4: Negative timeRemaining = -15s clamping
-│   ├── 2.5: Extreme Low Tempo (60 BPM minimum periodic stability)
-│   ├── 2.6: Extreme High Tempo (180 BPM maximum periodic stability)
-│   ├── 2.7: Rapid Pause / Resume Cycling (50 cycles)
-│   ├── 2.8: Single-Frame Delta-Time Spike (5000ms wake clamp)
-│   ├── 2.9: Speech Cancellation on Abrupt Exit (stopRex / abandon)
-│   └── 2.10: High-Frequency Metronome Beat Pulses
-│
-├── TIER 3: Cross-Feature Combinations (8 Tests)
-│   ├── 3.1: Voice Cadence + 3D Animation Sync on Velociraptor Run (138 BPM)
-│   ├── 3.2: Voice Cadence + 3D Animation Sync on Stegosaurus Walks (92 BPM)
-│   ├── 3.3: Voice Cadence + 3D Animation Sync on Diplodocus (74 BPM)
-│   ├── 3.4: Mid-Routine Workout Switching (Velociraptor -> Stegosaurus)
-│   ├── 3.5: Mid-Routine Workout Switching (Diplodocus -> Spinosaurus)
-│   ├── 3.6: Side-by-Side Positioning Coordinates (Dino Coach w*0.28, Avatar w*0.72)
-│   ├── 3.7: Common Floor Plane Alignment (h*0.78)
-│   └── 3.8: Multi-Tier Duration Scaling (Toddler 30s, Junior 45s, Titan 60s)
-│
-└── TIER 4: Real-World Application Scenarios (8 Tests)
-    ├── 4.1: 8-Minute Circuit Mode Progression (Moves 1 through 8 sequence)
-    ├── 4.2: Inter-Move 10-Second Water Break Intermission Handling
-    ├── 4.3: Hydration Voice Cheer Prompt Delivery
-    ├── 4.4: Skip Break Action Immediate Advance
-    ├── 4.5: Full Circuit Progression from Move 1 to Move 8
-    ├── 4.6: Store Initial State Baseline Setup
-    ├── 4.7: Grand 8-Minute Circuit Store Reward Minting (+120 Sparks, +400 XP, +400 Coins)
-    └── 4.8: Pet Joy Boosted to 100% and 7-Day Streak Stamp Card Marked
-```
+The suite programmatically exercises and validates all 7 acceptance criteria categories from `ORIGINAL_REQUEST.md` (§2026-10-15T15:15:03Z) and invariants from `task_and_currency_lifecycle_rules.md`.
 
 ---
 
-## 3. Feature Coverage Matrix
+## 2. Test Architecture & Coverage Matrix
 
-| Requirement | Feature Description | Tier | Tests | Status | Authoritative Source |
-|---|---|---|---|---|---|
-| **R1.1** | 8 Prehistoric Gross-Motor Workouts | Tier 1.1 | 5 | ✅ Covered | `src/data/petsData.js:864-1137` |
-| **R1.2** | 3D Skeletal Bone Transforms | Tier 1.2 | 5 | ✅ Covered | `PROJECT.md §Avatar Skeletal Rig` & `WorkoutHeroDuoCanvas.js:510-832` |
-| **R1.3** | WebGL Support Check & 2D Fallback | Tier 1.3 | 5 | ✅ Covered | `PROJECT.md §Parity Contract` & `WorkoutHeroDuoCanvas.js:43-100` |
-| **R2.1** | Hybrid Voice Coaching for 8 Coaches | Tier 1.4 | 5 | ✅ Covered | `src/services/voiceService.js:14-204` |
-| **R2.2** | Zero-Latency Audio Cache Retrieval | Tier 1.5 | 5 | ✅ Covered | `PROJECT.md §Audio Voice Service` & `voiceService.js:630-720` |
-| **R2.3** | Cadence Timing (0s, 10s, 20s, 30s, 40s, 50s, 58s) | Tier 1.6 | 5 | ✅ Covered | `petsData.js` cadenceTimeline & `ORIGINAL_REQUEST.md §R2` |
-| **R2.4** | 30s Diplodocus Synchronous Announcement & Flip | Tier 1.7 | 5 | ✅ Covered | `petsData.js:1065-1096` & `WorkoutHeroDuoCanvas.js:765-800` |
-| **R3.1** | Stitch Color Palette Compliance | Tier 1.8 | 5 | ✅ Covered | `CLAUDE.md`, `PROJECT.md §16`, `src/styles/index.css` |
-| **Edge** | WebGL Context Loss (`webglcontextlost`) | Tier 2 | 2 | ✅ Covered | WebGL Specification & DOM Event Model |
-| **Edge** | Extreme Timers & Tempo (60 to 180 BPM) | Tier 2 | 4 | ✅ Covered | Boundary Value Analysis |
-| **Edge** | Rapid Pause / Resume & Abrupt Exit Cancellation | Tier 2 | 4 | ✅ Covered | `DinoWorkoutView.js:555-572` & `stopRex()` |
-| **Combo** | Multi-Move Voice/Kinematics Synchrony | Tier 3 | 5 | ✅ Covered | Pairwise Integration Matrix |
-| **Combo** | Side-by-Side Dual Stage Positioning | Tier 3 | 3 | ✅ Covered | `WorkoutHeroDuoCanvas.js:295-331` |
-| **E2E** | 8-Minute Circuit Mode & 10s Water Break | Tier 4 | 5 | ✅ Covered | `DinoWorkoutView.js:725-771` |
-| **E2E** | Store Reward Minting (+120 Sparks, +400 XP, +400 Coins) | Tier 4 | 3 | ✅ Covered | `src/state/store.js:8359-8390` |
+| Category | Description | Assertions | Target Components |
+|---|---|:---:|---|
+| **1. Auto-Reward & Schema** | Auto-credits Tokens, Hero XP, and Pet Sparks on completion; queues Gold Points; verifies complete schema: `id, logId, kidId, kidName, type: 'task_point_approval', taskId, taskTitle, zone, tokensAwarded, xpAwarded, sparksAwarded, pendingPoints, timestamp, status: 'pending'` in `pendingApprovals` and `taskCompletionLogs`. | 24 | `store.js:toggleTaskForest`, `toggleHabitIsland` |
+| **2. Parent Portal Metadata** | Parent Action Inbox renders exact kidName, taskTitle, `+pendingPoints Gold Points`, `+tokensAwarded Tokens`, `+xpAwarded XP`, `+sparksAwarded Sparks`. Asserts removal of automatic screen time conversion (`⏱️ +Xm Screen Time`). | 9 | `ParentPortalView.js:renderParentPortalView` |
+| **3. Zero-Drop Persistence** | Verifies pending approvals older than 45 seconds (`timestamp: Date.now() - 120000`) survive cloud hydration, device reboot/reload from persistent storage (`localStorage`), and non-destructive union reconcile with repair push (`pushStateToCloud(true)`). | 3 | `store.js:hydrateFromCloud`, `firestoreSyncService.js` |
+| **4. Approval Flow** | Parent approval credits Gold Points to child balance on both Parent and Kid devices; verifies `hero.screenTimeMinutes` is strictly unchanged (NO auto-conversion); removes request from `pendingApprovals`; updates log to `status: 'approved'`; resets chore to `completed: false` allowing re-completion in subsequent cycles. | 8 | `store.js:approveParentRequest` |
+| **5. Denial & Reversible Clawback** | Parent denial awards 0 Gold Points; claws back auto-issued Tokens, Hero XP, and Pet Sparks with strict clamping at floor 0 (handling cases where kid spent tokens prior to denial); marks log as `status: 'rejected'`; non-blocking 'Needs Redo' state allows child to re-attempt and submit the chore today. | 9 | `store.js:rejectParentRequest`, `getTaskCompletionsToday` |
+| **6. 1:1 Map & Quests Parity** | 1:1 bidirectional completion between World Map (`completeWaypointChore`) and Quests (`toggleTaskForest`); chore aliasing (`clean_room`<->`clean_toys`, `brush_teeth_am`<->`morning_brush`, `sleep_on_time`<->`night_bedtime`); single completion payout per cycle (blocks duplicate submission while pending); dynamic reward inheritance from parent portal settings. | 9 | `store.js:completeWaypointChore`, `WorldAdventureMapView.js` |
+| **7. Sibling Isolation & Sync** | Concurrent task submissions from two siblings (`hero_1` and `hero_2`) on separate devices create distinct pending approval items on the Parent device without array clobbering; approving Child 1 credits only Child 1; denying Child 2 claws back only Child 2; pet sparks remain strictly isolated. | 11 | `store.js:hydrateFromCloud`, multi-device Firestore sync |
+| **Total** | | **73** | |
 
 ---
 
-## 4. Test Suite Execution Summary
-- **Total Test Assertions**: 66
-- **Test Pass Rate**: 100% (0 failures, 0 skipped)
-- **Integration**: Registered in `scratch/run_all_tests.js` as test suite #65.
-- **Dependencies**: Uses `scratch/setup_mock_env.js` headless environment; requires zero external network calls.
+## 3. Current Test Execution Results
+
+**Execution Command:** `node scratch/verify_task_habit_engine_and_sync.mjs`  
+**Status:** 58 Passed, 15 Failed (Total: 73 Assertions)
+
+The test suite executed with 0 runtime crashes, cleanly compiling and executing all 7 test categories. The 15 failures represent authentic, requirement-derived implementation defects in the current codebase that are actively assigned to Worker M1 (Core Engine & Store) and Worker M2 (UI & Views).
+
+### Defect Escalation Breakdown for Implementing Workers:
+
+#### A. Core Engine & State (`src/state/store.js` & `src/services/firestoreSyncService.js` - Owned by Worker M1):
+1. **Approval Record Schema Incompleteness:** `pendingApprovals` records pushed in `toggleTaskForest`, `toggleHabitIsland`, and `completeWaypointChore` omit `xpAwarded` and `sparksAwarded`.
+2. **Illegal Screen Time Auto-Conversion:** `approveParentRequest` illegitimately increments `hero.screenTimeMinutes` (`hero.screenTimeMinutes += pointsToAward * rate`), violating Rule 2 & Acceptance Criteria R3.
+3. **Missing Reversible Clawback:** `rejectParentRequest` does not claw back auto-issued Tokens, Hero XP, or Pet Sparks (`Math.max(0, balance - awarded)`).
+4. **Denial Lockout Bug:** `getTaskCompletionsToday` does not filter out rejected logs (`status: 'rejected'`), which permanently locks the child out from re-attempting a rejected task/waypoint.
+5. **Denial Task Reset Bug:** On rejection, tasks are not reset on the child's device, leaving them marked complete instead of triggering "Needs Redo".
+6. **45-Second Stale Drop Bug:** `hydrateFromCloud` (line 7304) filters out unconfirmed local pending approvals older than 45 seconds (`ageMs < 45000`), causing pending approvals to vanish after 45 seconds.
+7. **Dynamic Reward Inheritance at Source:** `completeWaypointChore` reads hardcoded static rewards from `waypoint` instead of inheriting parent-configured rewards from `taskForest` / `habitIslands`.
+
+#### B. UI & View Integration (`src/views/ParentPortalView.js` & `WorldAdventureMapView.js` - Owned by Worker M2):
+8. **Parent Portal Metadata Omissions:** Approval cards in `ParentPortalView.js` omit `req.xpAwarded` and `req.sparksAwarded`.
+9. **Parent Portal Screen Time Display:** Approval cards render `+Xm Screen Time` conversion text, which must be removed.
+10. **"Needs Redo" Visual State:** "Needs Redo" badge/indicator is not yet rendered in Quests and World Map waypoints for rejected tasks.
+
+---
+
+## 4. Verification Instructions
+To execute the suite:
+```bash
+node scratch/verify_task_habit_engine_and_sync.mjs
+```
+The test suite will exit with code `0` once Worker M1 and Worker M2 complete their assigned implementation fixes.

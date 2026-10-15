@@ -260,10 +260,10 @@ export function renderParentPortalView() {
               ${pending
                 .map((req) => {
                   const isTaskPointApproval = req.type === 'task_point_approval' || req.type === 'task';
-                  const pointsAmount = req.pendingPoints || req.rewardPoints || 10;
-                  const tokensAmount = req.tokensAwarded || req.rewardCoins || 20;
-                  const kid = heroes.find(h => h.id === req.kidId) || heroes[0];
-                  const earnedMinutes = pointsAmount * (kid?.screenTimeRate || 2);
+                  const pointsAmount = req.pendingPoints ?? req.rewardPoints ?? req.points ?? 10;
+                  const tokensAmount = req.tokensAwarded ?? req.coinsAwarded ?? req.tokens ?? req.rewardCoins ?? 0;
+                  const xpAmount = req.xpAwarded ?? req.xp ?? req.rewardXp ?? 0;
+                  const sparksAmount = req.sparksAwarded ?? req.sparks ?? req.rewardSparks ?? 0;
 
                   return `
                   <div class="bg-surface-container rounded-3xl p-5 border-2 ${isTaskPointApproval ? 'border-tertiary-container/80' : 'border-secondary-container/80'} card-shadow flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -284,12 +284,12 @@ export function renderParentPortalView() {
                             </span>
                           ` : ''}
                         </div>
-                        <h3 class="font-headline text-base font-black text-inverse-surface mt-0.5">${escapeHtml(req.title)}</h3>
+                        <h3 class="font-headline text-base font-black text-inverse-surface mt-0.5">${escapeHtml(req.taskTitle || req.title || 'Chore Submission')}</h3>
                         
-                        <div class="text-xs font-bold mt-1">
+                        <div class="text-xs font-bold mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
                           ${
                             isTaskPointApproval
-                              ? `<span class="text-tertiary">⭐ Pending Approval: <strong>+${pointsAmount} Gold Points</strong></span> &nbsp;•&nbsp; <span class="text-sky-300 font-black">⏱️ +${earnedMinutes}m Screen Time</span> <span class="text-on-surface-variant font-medium">(Auto-issued +${tokensAmount} Tokens 🪙)</span>`
+                              ? `<span class="text-tertiary">⭐ Pending Approval: <strong>+${pointsAmount} Gold Points</strong></span> &nbsp;•&nbsp; <span class="text-amber-300 font-bold">+${tokensAmount} Tokens 🪙</span> &nbsp;•&nbsp; <span class="text-emerald-300 font-bold">+${xpAmount} XP</span> &nbsp;•&nbsp; <span class="text-sky-300 font-bold">+${sparksAmount} Sparks ⚡</span>`
                               : `<span class="text-error">🎁 Redemption Cost: <strong>-${req.costPoints} Gold Points ⭐</strong></span>`
                           }
                         </div>
@@ -341,7 +341,7 @@ export function renderParentPortalView() {
                       </button>
                       
                       <button data-approve-id="${req.id}" class="admin-approve-btn flex-1 sm:flex-none ${isTaskPointApproval ? 'bg-tertiary text-on-tertiary border-tertiary-container' : 'bg-primary text-on-primary border-primary-container'} font-headline text-xs font-black px-5 py-3 rounded-xl chunky-btn shadow-xs hover:brightness-110 active:scale-95 min-h-[44px]">
-                        ${isTaskPointApproval ? `✓ Issue +${pointsAmount} ⭐ (+${earnedMinutes}m ⏱️)` : `✓ Fulfill & Deduct (-${req.costPoints} ⭐)`}
+                        ${isTaskPointApproval ? `✓ Approve (+${pointsAmount} Gold Points)` : `✓ Fulfill & Deduct (-${req.costPoints} ⭐)`}
                       </button>
                     </div>
                   </div>

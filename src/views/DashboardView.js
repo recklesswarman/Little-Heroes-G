@@ -321,6 +321,7 @@ export function renderDashboardView() {
               const isPending = store.isTaskPendingApproval(h.id, hero.id);
               const completionsToday = store.getTaskCompletionsToday(h.id, hero.id);
               const completedTodayCount = completionsToday.length;
+              const isNeedsRedo = store.isTaskNeedsRedo ? store.isTaskNeedsRedo(h.id, hero.id) : false;
 
               let btnClass = 'tactile-check-ready';
               let statusBadge = '';
@@ -334,6 +335,15 @@ export function renderDashboardView() {
                 statusBadge = `
                   <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1 shadow-xs whitespace-nowrap">
                     <span class="material-symbols-outlined text-[11px] animate-spin">hourglass_empty</span> Pending Parent ⭐
+                  </span>
+                `;
+              } else if (isNeedsRedo) {
+                btnClass = 'tactile-check-ready animate-pulse border-amber-400 bg-amber-500/30';
+                btnTitle = 'Needs Redo: Tap to retry today!';
+                pendingBadgeHtml = `<span class="absolute -top-1.5 -right-1.5 bg-amber-500 text-slate-900 rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black shadow-sm border border-amber-200" title="Needs Redo">🔄</span>`;
+                statusBadge = `
+                  <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1 shadow-xs whitespace-nowrap">
+                    <span class="material-symbols-outlined text-[11px]">restart_alt</span> Needs Redo: Try again!
                   </span>
                 `;
               } else if (completedTodayCount > 0) {
@@ -353,6 +363,8 @@ export function renderDashboardView() {
               <div data-habit-card-id="${h.id}" class="habit-card-item tactile-card bg-surface-container rounded-3xl p-3.5 sm:p-4 flex items-center justify-between gap-2.5 sm:gap-3.5 border-2 ${
                 isPending
                   ? 'border-amber-500/50 bg-surface-container'
+                  : isNeedsRedo
+                  ? 'border-amber-400/80 bg-amber-500/5'
                   : completedTodayCount > 0
                   ? 'border-primary/40 bg-surface-container'
                   : 'border-surface-container-highest bg-surface-container'
@@ -367,6 +379,11 @@ export function renderDashboardView() {
                   <div class="flex flex-col min-w-0 flex-1">
                     <h3 class="font-headline text-sm sm:text-base font-bold text-inverse-surface leading-snug truncate">${escapeHtml(h.title)}</h3>
                     <p class="text-xs text-on-surface-variant line-clamp-1 mt-0.5">${escapeHtml(h.desc)}</p>
+                    ${isNeedsRedo ? `
+                      <p class="text-[11px] text-amber-300 font-bold mt-1 flex items-center gap-1">
+                        <span class="material-symbols-outlined text-xs">restart_alt</span> Rex says: Let's do a quick redo and earn those rewards!
+                      </p>
+                    ` : ''}
                     
                     <div class="flex items-center flex-wrap gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-black mt-1">
                       <span class="text-secondary flex items-center gap-0.5 whitespace-nowrap">
@@ -427,6 +444,7 @@ export function renderDashboardView() {
               const isPending = store.isTaskPendingApproval(t.id, hero.id);
               const completionsToday = store.getTaskCompletionsToday(t.id, hero.id);
               const completedTodayCount = completionsToday.length;
+              const isNeedsRedo = store.isTaskNeedsRedo ? store.isTaskNeedsRedo(t.id, hero.id) : false;
 
               let btnClass = 'tactile-check-ready';
               let statusBadge = '';
@@ -440,6 +458,15 @@ export function renderDashboardView() {
                 statusBadge = `
                   <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1 shadow-xs whitespace-nowrap">
                     <span class="material-symbols-outlined text-[11px] animate-spin">hourglass_empty</span> Pending Parent ⭐
+                  </span>
+                `;
+              } else if (isNeedsRedo) {
+                btnClass = 'tactile-check-ready animate-pulse border-amber-400 bg-amber-500/30';
+                btnTitle = 'Needs Redo: Tap to retry today!';
+                pendingBadgeHtml = `<span class="absolute -top-1.5 -right-1.5 bg-amber-500 text-slate-900 rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black shadow-sm border border-amber-200" title="Needs Redo">🔄</span>`;
+                statusBadge = `
+                  <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1 shadow-xs whitespace-nowrap">
+                    <span class="material-symbols-outlined text-[11px]">restart_alt</span> Needs Redo: Try again!
                   </span>
                 `;
               } else if (completedTodayCount > 0) {
@@ -457,6 +484,8 @@ export function renderDashboardView() {
               <div data-task-card-id="${t.id}" class="task-card-item tactile-card bg-surface-container rounded-3xl p-3.5 sm:p-4 flex items-center justify-between gap-2.5 sm:gap-3.5 border-2 ${
                 isPending
                   ? 'border-amber-500/50 bg-surface-container'
+                  : isNeedsRedo
+                  ? 'border-amber-400/80 bg-amber-500/5'
                   : completedTodayCount > 0 && !t.isAR
                   ? 'border-primary/40 bg-surface-container'
                   : 'border-surface-container-highest bg-surface-container'
@@ -474,6 +503,11 @@ export function renderDashboardView() {
                       ${t.isAR ? `<span class="text-[9px] font-black uppercase text-error bg-error/15 px-2 py-0.5 rounded-md">AR Mode</span>` : ''}
                     </div>
                     <h3 class="font-headline text-sm sm:text-base font-bold text-inverse-surface leading-snug truncate mt-0.5">${escapeHtml(t.title)}</h3>
+                    ${isNeedsRedo ? `
+                      <p class="text-[11px] text-amber-300 font-bold mt-1 flex items-center gap-1">
+                        <span class="material-symbols-outlined text-xs">restart_alt</span> Rex says: Let's do a quick redo and earn those rewards!
+                      </p>
+                    ` : ''}
                     
                     <div class="flex items-center flex-wrap gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-black mt-1">
                       <span class="text-secondary flex items-center gap-0.5 whitespace-nowrap">

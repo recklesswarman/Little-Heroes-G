@@ -1,4 +1,4 @@
-const CACHE_NAME = 'little-heroes-v3.3.1-companion-workout-fix-20261015';
+const CACHE_NAME = 'little-heroes-v3.4.0-task-habit-engine-sync-20261015';
 const STATIC_ASSETS = [
   './',
   './index.html',

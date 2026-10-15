@@ -507,6 +507,9 @@ class FirestoreSyncService {
             level: h.level || 1,
             xp: h.xp || 0,
             xpNext: h.xpNext || 100,
+            sparks: Math.max(0, Number(h.sparks) || 0),
+            evolutionSparks: Math.max(0, Number(h.evolutionSparks ?? h.sparks) || 0),
+            petSparkMap: h.petSparkMap ? { ...h.petSparkMap } : {},
             streak: h.streak || 1,
             stars: h.stars || 0,
             role: h.role || h.title || 'Adventurer',
@@ -635,7 +638,7 @@ class FirestoreSyncService {
       this.pushInFlight = false;
       if (this.pushPending) {
         this.pushPending = false;
-        this.pushStateToCloud();
+        this.pushStateToCloud(true);
       }
     }
   }

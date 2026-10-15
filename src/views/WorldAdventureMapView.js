@@ -190,6 +190,7 @@ function getTimeOfDayDefault() {
 function renderTodaysPathTab(hero, activePet, mapState) {
   const waypoints = PATH_OF_VALOR_WAYPOINTS;
   const nextWaypoint = waypoints.find(w => !isWaypointDone(w, hero)) || waypoints[0];
+  const nextNeedsRedo = store.isTaskNeedsRedo ? store.isTaskNeedsRedo(nextWaypoint.choreKey, hero?.id) : false;
 
   return `
     <div class="flex flex-col gap-5 animate-fade-in">
@@ -201,9 +202,16 @@ function renderTodaysPathTab(hero, activePet, mapState) {
             <span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'FILL' 1;">${nextWaypoint.icon}</span>
           </div>
           <div class="flex flex-col">
-            <div class="flex items-center gap-2">
-              <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-[#f39c12] text-black">Next Hero Stop</span>
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${nextNeedsRedo ? 'bg-amber-500 text-black animate-pulse' : 'bg-[#f39c12] text-black'}">
+                ${nextNeedsRedo ? '🔄 Needs Redo Stop' : 'Next Hero Stop'}
+              </span>
               <span class="text-xs font-bold text-slate-300">Step ${nextWaypoint.stepNumber} of 8</span>
+              ${nextNeedsRedo ? `
+                <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1">
+                  <span class="material-symbols-outlined text-xs">restart_alt</span> Needs Redo: Try again today!
+                </span>
+              ` : ''}
             </div>
             <h2 class="font-headline text-lg sm:text-xl font-black text-white">${nextWaypoint.title}</h2>
             <p class="text-xs text-slate-300 font-semibold">${nextWaypoint.speechPrompt}</p>
@@ -223,8 +231,8 @@ function renderTodaysPathTab(hero, activePet, mapState) {
             </button>
           ` : `
             <button data-complete-waypoint="${nextWaypoint.id}" class="w-full sm:w-auto px-5 py-3 rounded-2xl bg-linear-to-r from-primary-container to-[#27ae60] text-surface-container-lowest font-headline font-black text-xs sm:text-sm tracking-wide shadow-[0_4px_0_0_#145237] active:translate-y-1 active:shadow-none flex items-center justify-center gap-2 cursor-pointer">
-              <span class="material-symbols-outlined text-base">check_circle</span>
-              <span>COMPLETE HABIT</span>
+              <span class="material-symbols-outlined text-base">${nextNeedsRedo ? 'restart_alt' : 'check_circle'}</span>
+              <span>${nextNeedsRedo ? 'REDO HABIT' : 'COMPLETE HABIT'}</span>
             </button>
           `}
         </div>
@@ -234,23 +242,61 @@ function renderTodaysPathTab(hero, activePet, mapState) {
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
         ${waypoints.map((wp) => {
           const isDone = isWaypointDone(wp, hero);
+          const needsRedo = store.isTaskNeedsRedo ? store.isTaskNeedsRedo(wp.choreKey, hero?.id) : false;
+          const rewards = (store.getWaypointRewards ? store.getWaypointRewards(wp.id) : null) || {
+            coins: wp.rewardCoins,
+            points: Math.round(wp.rewardCoins / 2),
+            xp: wp.rewardXp,
+            sparks: wp.rewardSparks
+          };
+          const rewardCoins = rewards.coins;
+          const rewardPoints = rewards.points;
+          const rewardXp = rewards.xp;
+          const rewardSparks = rewards.sparks;
+
           return `
-            <div class="bg-[#0f2334] rounded-3xl p-4 border-2 ${isDone ? 'border-primary-container/40 opacity-90' : 'border-surface-container-highest'} shadow-[0_4px_0_0_#050f18] flex items-center justify-between gap-3 hover:border-primary/50 transition-all">
+            <div class="bg-[#0f2334] rounded-3xl p-4 border-2 ${
+              needsRedo
+                ? 'border-amber-400/80 bg-amber-500/5'
+                : isDone
+                ? 'border-primary-container/40 opacity-90'
+                : 'border-surface-container-highest'
+            } shadow-[0_4px_0_0_#050f18] flex items-center justify-between gap-3 hover:border-primary/50 transition-all">
               <div class="flex items-center gap-3">
                 <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shrink-0 ${
-                  isDone ? 'bg-primary-container text-surface-container-lowest' : 'bg-[#1a3850] text-[#ffb961]'
+                  needsRedo
+                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                    : isDone
+                    ? 'bg-primary-container text-surface-container-lowest'
+                    : 'bg-[#1a3850] text-[#ffb961]'
                 }">
-                  ${isDone ? '<span class="material-symbols-outlined font-black">check</span>' : `<span class="font-headline font-black">${wp.stepNumber}</span>`}
+                  ${
+                    needsRedo
+                      ? '<span class="material-symbols-outlined font-black">restart_alt</span>'
+                      : isDone
+                      ? '<span class="material-symbols-outlined font-black">check</span>'
+                      : `<span class="font-headline font-black">${wp.stepNumber}</span>`
+                  }
                 </div>
                 <div class="flex flex-col text-left">
-                  <div class="flex items-center gap-1.5">
+                  <div class="flex items-center gap-1.5 flex-wrap">
                     <span class="text-[10px] font-black uppercase text-[#f39c12]">${wp.category}</span>
                     <span class="text-slate-400">•</span>
-                    <span class="text-[11px] font-bold text-slate-300">+${wp.rewardCoins} 🪙 +${wp.rewardSparks} ⚡</span>
+                    <span class="text-[11px] font-bold text-slate-300">+${rewardCoins} 🪙 +${rewardSparks} ⚡</span>
+                    ${needsRedo ? `
+                      <span class="text-[9px] font-black uppercase px-2 py-0.2 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[11px]">restart_alt</span> Needs Redo
+                      </span>
+                    ` : ''}
                   </div>
                   <h3 class="font-headline text-sm sm:text-base font-black text-white leading-tight ${isDone ? 'line-through text-slate-400' : ''}">
                     ${wp.title}
                   </h3>
+                  ${needsRedo ? `
+                    <span class="text-[11px] text-amber-300 font-bold mt-0.5 flex items-center gap-1">
+                      Tap to retry and submit for parent sign-off!
+                    </span>
+                  ` : ''}
                 </div>
               </div>
 
@@ -454,6 +500,17 @@ function renderLandmarkModal(landmark, hero) {
 
 function renderWaypointModal(wp, hero) {
   const isDone = isWaypointDone(wp, hero);
+  const needsRedo = store.isTaskNeedsRedo ? store.isTaskNeedsRedo(wp.choreKey, hero?.id) : false;
+  const rewards = (store.getWaypointRewards ? store.getWaypointRewards(wp.id) : null) || {
+    coins: wp.rewardCoins,
+    points: Math.round(wp.rewardCoins / 2),
+    xp: wp.rewardXp,
+    sparks: wp.rewardSparks
+  };
+  const rewardCoins = rewards.coins;
+  const rewardPoints = rewards.points;
+  const rewardXp = rewards.xp;
+  const rewardSparks = rewards.sparks;
 
   return `
     <div id="waypoint-modal-backdrop" class="fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in select-none">
@@ -474,19 +531,30 @@ function renderWaypointModal(wp, hero) {
           <p class="text-xs text-slate-300 font-bold mt-1">${wp.speechPrompt}</p>
         </div>
 
+        ${needsRedo ? `
+          <div class="bg-amber-500/15 border-2 border-amber-500/40 rounded-2xl p-3 flex items-center justify-center gap-2 text-amber-300 font-headline text-xs font-black animate-pulse">
+            <span class="material-symbols-outlined text-base">restart_alt</span>
+            <span>Needs Redo: Ready to retry and submit for parent sign-off!</span>
+          </div>
+        ` : ''}
+
         <!-- Rewards Box -->
-        <div class="grid grid-cols-3 gap-2 bg-[#0f2334] p-3 rounded-2xl border border-surface-container-highest">
+        <div class="grid grid-cols-4 gap-2 bg-[#0f2334] p-3 rounded-2xl border border-surface-container-highest">
           <div class="flex flex-col items-center">
-            <span class="text-[10px] uppercase font-black text-slate-400">Tokens</span>
-            <span class="text-sm font-black text-primary-container">+${wp.rewardCoins} 🪙</span>
+            <span class="text-[9px] uppercase font-black text-slate-400">Tokens</span>
+            <span class="text-sm font-black text-primary-container">+${rewardCoins} 🪙</span>
           </div>
           <div class="flex flex-col items-center">
-            <span class="text-[10px] uppercase font-black text-slate-400">Hero XP</span>
-            <span class="text-sm font-black text-[#00d2d3]">+${wp.rewardXp} ⭐</span>
+            <span class="text-[9px] uppercase font-black text-slate-400">Points</span>
+            <span class="text-sm font-black text-[#ffb961]">+${rewardPoints} ⭐</span>
           </div>
           <div class="flex flex-col items-center">
-            <span class="text-[10px] uppercase font-black text-slate-400">Sparks</span>
-            <span class="text-sm font-black text-[#ffb961]">+${wp.rewardSparks} ⚡</span>
+            <span class="text-[9px] uppercase font-black text-slate-400">Hero XP</span>
+            <span class="text-sm font-black text-[#00d2d3]">+${rewardXp} XP</span>
+          </div>
+          <div class="flex flex-col items-center">
+            <span class="text-[9px] uppercase font-black text-slate-400">Sparks</span>
+            <span class="text-sm font-black text-[#f39c12]">+${rewardSparks} ⚡</span>
           </div>
         </div>
 
@@ -503,13 +571,13 @@ function renderWaypointModal(wp, hero) {
               <span>READ BEDTIME AI STORYBOOK</span>
             </button>
             <button id="modal-complete-chore-btn" class="w-full py-3 rounded-2xl bg-[#0f2334] text-slate-300 hover:text-white border border-surface-container-highest font-headline text-xs font-black tracking-wide flex items-center justify-center gap-2 cursor-pointer">
-              <span class="material-symbols-outlined text-base">check_circle</span>
-              <span>${isDone ? 'COMPLETED TODAY' : 'MARK CHORE COMPLETE WITHOUT STORY'}</span>
+              <span class="material-symbols-outlined text-base">${needsRedo ? 'restart_alt' : 'check_circle'}</span>
+              <span>${needsRedo ? 'REDO CHORE & COMPLETE' : isDone ? 'COMPLETED TODAY' : 'MARK CHORE COMPLETE WITHOUT STORY'}</span>
             </button>
           ` : `
             <button id="modal-complete-chore-btn" class="w-full py-4 rounded-2xl bg-linear-to-r from-primary-container to-[#27ae60] text-surface-container-lowest font-headline text-base font-black tracking-wide shadow-[0_6px_0_0_#145237] active:translate-y-1 active:shadow-none flex items-center justify-center gap-2 cursor-pointer">
-              <span class="material-symbols-outlined text-2xl">check_circle</span>
-              <span>${isDone ? 'COMPLETED TODAY' : 'MARK CHORE COMPLETE'}</span>
+              <span class="material-symbols-outlined text-2xl">${needsRedo ? 'restart_alt' : 'check_circle'}</span>
+              <span>${needsRedo ? 'REDO CHORE & COMPLETE' : isDone ? 'COMPLETED TODAY' : 'MARK CHORE COMPLETE'}</span>
             </button>
           `}
         </div>
