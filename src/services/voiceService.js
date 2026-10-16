@@ -35,12 +35,13 @@ export function normalizePetKey(petId) {
 }
 
 /**
- * Generates cache key for workout audio clips
+ * Generates cache key for workout and bedtime audio clips, with optional voiceStyle
  */
-export function getAudioCacheKey(text, petId = 'rex') {
+export function getAudioCacheKey(text, petId = 'rex', voiceStyle = 'default') {
   const clean = cleanDialogueText(text);
   const norm = normalizePetKey(petId);
-  return `${norm}:${clean}`;
+  const style = voiceStyle && voiceStyle !== 'default' ? voiceStyle : 'default';
+  return style !== 'default' ? `${norm}:${style}:${clean}` : `${norm}:${clean}`;
 }
 
 export const COMPANION_VOICE_PROFILES = {
@@ -284,9 +285,9 @@ if (typeof window !== 'undefined') {
 
     // Play any queued speech blocked prior to first touch
     if (pendingUnlockSpeech) {
-      const { text, petId, onEnded } = pendingUnlockSpeech;
+      const { text, petId, onEnded, options } = pendingUnlockSpeech;
       pendingUnlockSpeech = null;
-      speakCompanion(text, petId, onEnded).catch(() => {});
+      speakCompanion(text, petId, onEnded, options).catch(() => {});
     }
   };
 
@@ -448,7 +449,7 @@ export function getCompanionVoiceParams(petId = 'rex') {
 /**
  * Client-Side Cartoon Speech Synthesis with Daniel voice priority & pet tuning
  */
-function speakWithSpeechSynthesis(text, petId = 'rex', onEnded = null) {
+function speakWithSpeechSynthesis(text, petId = 'rex', onEnded = null, options = {}) {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
     if (typeof onEnded === 'function') onEnded();
     return;
@@ -472,9 +473,19 @@ function speakWithSpeechSynthesis(text, petId = 'rex', onEnded = null) {
       utterance.voice = chosenVoice;
     }
 
-    utterance.pitch = profile.pitch || 1.30;
-    utterance.rate = profile.rate || 0.95;
-    utterance.volume = profile.volume || 1.0;
+    const rate = typeof options?.rate === 'number' && Number.isFinite(options.rate) && options.rate > 0
+      ? options.rate
+      : (profile.rate || 0.95);
+    const pitch = typeof options?.pitch === 'number' && Number.isFinite(options.pitch) && options.pitch > 0
+      ? options.pitch
+      : (profile.pitch || 1.30);
+    const volume = typeof options?.volume === 'number' && Number.isFinite(options.volume)
+      ? Math.max(0, Math.min(1, options.volume))
+      : (profile.volume || 1.0);
+
+    utterance.pitch = pitch;
+    utterance.rate = rate;
+    utterance.volume = volume;
 
     // Retain module-level reference to prevent V8 GC from stopping speech mid-sentence
     activeUtterance = utterance;
@@ -552,7 +563,7 @@ function base64ToFloat32Array(base64Data) {
  * wiring up the same speech-start/syllable/end events used for lip-sync.
  * Returns true if playback started.
  */
-async function playPcmTtsResponse(data, cleanSpoken, petId, callback, myGeneration) {
+async function playPcmTtsResponse(data, cleanSpoken, petId, callback, myGeneration, options = {}) {
   if (!data || (!data.audio && !data.audioBuffer)) return false;
 
   const AudioCtx = (typeof window !== 'undefined') && (window.AudioContext || window.webkitAudioContext);
@@ -562,7 +573,11 @@ async function playPcmTtsResponse(data, cleanSpoken, petId, callback, myGenerati
     try {
       sharedAudioContext = new AudioCtx({ sampleRate: 24000 });
     } catch {
-      return false;
+      try {
+        sharedAudioContext = new AudioCtx();
+      } catch {
+        return false;
+      }
     }
   }
   if (sharedAudioContext.state === 'suspended') {
@@ -605,6 +620,22 @@ async function playPcmTtsResponse(data, cleanSpoken, petId, callback, myGenerati
 
   const source = sharedAudioContext.createBufferSource();
   source.buffer = audioBuffer;
+
+  // Apply playback rate scaling for soothing bedtime whisper cadence or custom rate
+  const rate = typeof options?.rate === 'number' && Number.isFinite(options.rate) && options.rate > 0
+    ? options.rate
+    : 1.0;
+
+  if (source.playbackRate && typeof source.playbackRate.setValueAtTime === 'function') {
+    try {
+      source.playbackRate.setValueAtTime(rate, sharedAudioContext.currentTime);
+    } catch {
+      source.playbackRate.value = rate;
+    }
+  } else if (source.playbackRate) {
+    source.playbackRate.value = rate;
+  }
+
   source.connect(sharedAudioContext.destination);
   currentAudioSource = source;
 
@@ -645,18 +676,50 @@ async function playPcmTtsResponse(data, cleanSpoken, petId, callback, myGenerati
 }
 
 /**
- * Fetches a PCM TTS response from a server endpoint with a short timeout,
+ * Fetches a PCM TTS response from a server endpoint with a configurable timeout,
  * returning the parsed JSON on success or null on any failure/timeout/
  * non-2xx response (so callers can fall through to the next voice tier).
+ *
+ * Defaults to 18000ms for bedtime chapters (or when voiceStyle === 'bedtime')
+ * to prevent 4500ms aborts on long story chapters.
  */
-async function fetchPcmTts(endpoint, cleanSpoken, petId, timeoutMs = 4500) {
+export async function fetchPcmTts(endpoint, cleanSpoken, petId, timeoutMsOrOptions = 4500, voiceStyle = 'default') {
+  let timeoutMs = 4500;
+  let style = voiceStyle || 'default';
+
+  if (timeoutMsOrOptions && typeof timeoutMsOrOptions === 'object') {
+    if (typeof timeoutMsOrOptions.timeoutMs === 'number') {
+      timeoutMs = timeoutMsOrOptions.timeoutMs;
+    }
+    if (timeoutMsOrOptions.voiceStyle) {
+      style = timeoutMsOrOptions.voiceStyle;
+    }
+  } else if (typeof timeoutMsOrOptions === 'number' && timeoutMsOrOptions > 0) {
+    timeoutMs = timeoutMsOrOptions;
+  }
+
+  // If bedtime style, default to 18000ms unless a custom timeout was explicitly specified (other than default 4500)
+  if (style === 'bedtime') {
+    if (timeoutMs === 4500 || !timeoutMs) {
+      timeoutMs = 18000;
+    }
+  }
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   try {
+    const bodyPayload = {
+      text: cleanSpoken,
+      petId
+    };
+    if (style && style !== 'default') {
+      bodyPayload.voiceStyle = style;
+    }
+
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: cleanSpoken, petId }),
+      body: JSON.stringify(bodyPayload),
       signal: controller.signal
     });
     if (!response.ok) return null;
@@ -751,21 +814,182 @@ export async function prewarmWorkoutAudio(workoutId, coachId = null) {
  * 3. Secondary: Realistic kid-friendly voice via Gemini 3.1 Flash TTS (/api/gemini/tts).
  * 4. Resilient Fallback: Cartoon Speech Synthesis with natural 'Daniel' voice if offline.
  */
-export const speakCompanion = async (text, petIdOrOptions = 'rex', onEnded = null) => {
+/**
+ * Pre-fetches and pre-decodes audio for an upcoming dialogue or bedtime chapter
+ * into `workoutAudioClipCache` so it triggers with 0ms latency when requested.
+ *
+ * @param {string} text - Raw text to clean and synthesize.
+ * @param {string|number|Object} [petIdOrOptions='rex'] - Active companion pet id, or options object.
+ * @param {Object} [options={}] - { timeoutMs: 18000, voiceStyle: 'bedtime', rate: 0.88 }
+ * @returns {Promise<AudioBuffer|Object|null>} Decoded audio buffer/payload or null on failure.
+ */
+export async function prefetchCompanionAudio(text, petIdOrOptions = 'rex', options = {}) {
+  const cleanSpoken = cleanDialogueText(text);
+  if (!cleanSpoken) return null;
+
+  let petId = 'rex';
+  let opts = {};
+
+  if (petIdOrOptions && typeof petIdOrOptions === 'object') {
+    opts = { ...petIdOrOptions };
+    petId = petIdOrOptions.petId || 'rex';
+  } else if (typeof petIdOrOptions === 'string' || typeof petIdOrOptions === 'number') {
+    petId = String(petIdOrOptions);
+    if (options && typeof options === 'object') {
+      opts = { ...options };
+    }
+  } else if (options && typeof options === 'object') {
+    opts = { ...options };
+  }
+
+  const normKey = normalizePetKey(petId);
+  const rawId = String(petId || 'rex').toLowerCase().trim();
+  const voiceStyle = opts.voiceStyle || 'default';
+  const timeoutMs = typeof opts.timeoutMs === 'number' && opts.timeoutMs > 0
+    ? opts.timeoutMs
+    : (voiceStyle === 'bedtime' ? 18000 : 4500);
+
+  const styleKey = `${normKey}:${voiceStyle}:${cleanSpoken}`;
+  const rawStyleKey = `${rawId}:${voiceStyle}:${cleanSpoken}`;
+  const genericKey = `${normKey}:${cleanSpoken}`;
+  const rawKey = `${rawId}:${cleanSpoken}`;
+
+  // 1. Check if already cached
+  const existing =
+    (voiceStyle && voiceStyle !== 'default' ? workoutAudioClipCache.get(styleKey) : null) ||
+    (voiceStyle && voiceStyle !== 'default' ? workoutAudioClipCache.get(rawStyleKey) : null) ||
+    workoutAudioClipCache.get(genericKey) ||
+    workoutAudioClipCache.get(rawKey) ||
+    workoutAudioClipCache.get(cleanSpoken);
+
+  if (existing) {
+    const res = existing.audioBuffer || existing;
+    if (res && existing.audioBuffer) {
+      res.audio = existing.audio;
+      res.sampleRate = existing.sampleRate;
+      res.audioBuffer = existing.audioBuffer;
+    }
+    return res;
+  }
+
+  // 2. Background fetch via ElevenLabs first, then Gemini Flash TTS fallback
+  let data = await fetchPcmTts(ELEVENLABS_TTS_ENDPOINT, cleanSpoken, petId, timeoutMs, voiceStyle);
+  if (!data) {
+    data = await fetchPcmTts(TTS_ENDPOINT, cleanSpoken, petId, Math.min(timeoutMs, 8000), voiceStyle);
+  }
+
+  if (!data || !data.audio) return null;
+
+  // 3. Pre-decode into Web Audio AudioBuffer if AudioContext is accessible
+  const AudioCtx = (typeof window !== 'undefined') && (window.AudioContext || window.webkitAudioContext);
+  if (AudioCtx) {
+    try {
+      if (!sharedAudioContext || sharedAudioContext.state === 'closed') {
+        try {
+          sharedAudioContext = new AudioCtx({ sampleRate: 24000 });
+        } catch {
+          sharedAudioContext = new AudioCtx();
+        }
+      }
+      if (sharedAudioContext) {
+        const float32 = base64ToFloat32Array(data.audio);
+        const sampleRate = data.sampleRate || 24000;
+        const buffer = sharedAudioContext.createBuffer(1, float32.length, sampleRate);
+        buffer.copyToChannel(float32, 0);
+        data.audioBuffer = buffer;
+      }
+    } catch (e) {
+      console.warn('Audio prefetch decode notice:', e);
+    }
+  }
+
+  // 4. Save into client cache
+  if (voiceStyle && voiceStyle !== 'default') {
+    workoutAudioClipCache.set(styleKey, data);
+    workoutAudioClipCache.set(rawStyleKey, data);
+  }
+  workoutAudioClipCache.set(genericKey, data);
+  workoutAudioClipCache.set(rawKey, data);
+  workoutAudioClipCache.set(cleanSpoken, data);
+
+  const result = data.audioBuffer || data;
+  if (result && data.audioBuffer) {
+    result.audio = data.audio;
+    result.sampleRate = data.sampleRate;
+    result.audioBuffer = data.audioBuffer;
+  }
+  return result;
+}
+
+/**
+ * Unified Spoken Voice Entrypoint for Pet Companions
+ * 0. Zero-Latency Client-Side Cache Check (`workoutAudioClipCache`).
+ * 1. Prepares dialogue text by stripping asterisks/stage directions.
+ * 2. Primary: ElevenLabs voice, where this pet has one configured (/api/elevenlabs/tts).
+ * 3. Secondary: Realistic kid-friendly voice via Gemini 3.1 Flash TTS (/api/gemini/tts).
+ * 4. Resilient Fallback: Cartoon Speech Synthesis with natural 'Daniel' voice if offline.
+ */
+export const speakCompanion = async (text, petIdOrOptions = 'rex', onEndedOrOptions = null, options = {}) => {
   if (!text || typeof text !== 'string' || !text.trim()) return;
 
   let petId = 'rex';
-  let callback = onEnded;
-  let instant = false;
+  let callback = null;
+  let opts = {
+    timeoutMs: 4500,
+    rate: 1.0,
+    pitch: 1.0,
+    voiceStyle: 'default',
+    instant: false
+  };
 
-  if (typeof petIdOrOptions === 'string') {
-    petId = petIdOrOptions;
-  } else if (typeof petIdOrOptions === 'function') {
+  // Case 1: 2nd argument is an options object
+  if (petIdOrOptions && typeof petIdOrOptions === 'object') {
+    opts = { ...opts, ...petIdOrOptions };
+    if (petIdOrOptions.petId) {
+      petId = petIdOrOptions.petId;
+    }
+    if (typeof petIdOrOptions.onEnded === 'function') {
+      callback = petIdOrOptions.onEnded;
+    }
+  }
+  // Case 2: 2nd argument is a callback function
+  else if (typeof petIdOrOptions === 'function') {
     callback = petIdOrOptions;
-  } else if (petIdOrOptions && typeof petIdOrOptions === 'object') {
-    petId = petIdOrOptions.petId || 'rex';
-    if (petIdOrOptions.onEnded) callback = petIdOrOptions.onEnded;
-    instant = Boolean(petIdOrOptions.instant);
+  }
+  // Case 3: 2nd argument is a petId string/number
+  else if (petIdOrOptions !== undefined && petIdOrOptions !== null) {
+    petId = String(petIdOrOptions);
+  }
+
+  // Case 4: 3rd argument is a callback function
+  if (typeof onEndedOrOptions === 'function') {
+    callback = onEndedOrOptions;
+  }
+  // Case 5: 3rd argument is an options object
+  else if (onEndedOrOptions && typeof onEndedOrOptions === 'object') {
+    opts = { ...opts, ...onEndedOrOptions };
+    if (typeof onEndedOrOptions.onEnded === 'function') {
+      callback = onEndedOrOptions.onEnded;
+    }
+    if (onEndedOrOptions.petId && (!petId || petId === 'rex')) {
+      petId = onEndedOrOptions.petId;
+    }
+  }
+
+  // Case 6: 4th argument trailing options
+  if (options && typeof options === 'object') {
+    opts = { ...opts, ...options };
+    if (typeof options.onEnded === 'function' && !callback) {
+      callback = options.onEnded;
+    }
+    if (options.petId && (!petId || petId === 'rex')) {
+      petId = options.petId;
+    }
+  }
+
+  // If voiceStyle is 'bedtime' and timeoutMs wasn't explicitly changed from 4500, default to 18000ms
+  if (opts.voiceStyle === 'bedtime' && (!opts.timeoutMs || opts.timeoutMs === 4500)) {
+    opts.timeoutMs = 18000;
   }
 
   // If no explicit petId given or default rex, check active pet in store
@@ -777,7 +1001,10 @@ export const speakCompanion = async (text, petIdOrOptions = 'rex', onEnded = nul
   }
 
   const cleanSpoken = cleanDialogueText(text);
-  if (!cleanSpoken) return;
+  if (!cleanSpoken) {
+    if (typeof callback === 'function') callback();
+    return;
+  }
 
   // Claim this as the newest call -- any earlier in-flight call (still
   // awaiting a fetch or an AudioContext resume) checks this after every
@@ -789,68 +1016,86 @@ export const speakCompanion = async (text, petIdOrOptions = 'rex', onEnded = nul
 
   // If user has not interacted yet, queue speech so it fires on their first tap
   if (!hasUserInteracted) {
-    pendingUnlockSpeech = { text: cleanSpoken, petId, onEnded: callback };
+    pendingUnlockSpeech = { text: cleanSpoken, petId, onEnded: callback, options: opts };
   }
 
   // --- Tier 0: Zero-Latency Client-Side Audio Cache ---
   const normKey = normalizePetKey(petId);
   const rawId = String(petId).toLowerCase().trim();
+  const voiceStyle = opts.voiceStyle || 'default';
+
   const cachedData =
+    (voiceStyle && voiceStyle !== 'default' ? workoutAudioClipCache.get(`${normKey}:${voiceStyle}:${cleanSpoken}`) : null) ||
+    (voiceStyle && voiceStyle !== 'default' ? workoutAudioClipCache.get(`${rawId}:${voiceStyle}:${cleanSpoken}`) : null) ||
     workoutAudioClipCache.get(`${normKey}:${cleanSpoken}`) ||
     workoutAudioClipCache.get(`${rawId}:${cleanSpoken}`) ||
     workoutAudioClipCache.get(cleanSpoken);
 
   if (cachedData) {
-    const played = await playPcmTtsResponse(cachedData, cleanSpoken, petId, callback, myGeneration);
+    const played = await playPcmTtsResponse(cachedData, cleanSpoken, petId, callback, myGeneration, opts);
     if (played) return;
     if (myGeneration !== speechGeneration) return;
-    speakWithSpeechSynthesis(cleanSpoken, petId, callback);
+    speakWithSpeechSynthesis(cleanSpoken, petId, callback, opts);
     return;
   }
 
-  if (instant) {
+  if (opts.instant) {
     const INSTANT_ELEVENLABS_TIMEOUT_MS = 700;
-    const fastData = await fetchPcmTts(ELEVENLABS_TTS_ENDPOINT, cleanSpoken, petId, INSTANT_ELEVENLABS_TIMEOUT_MS);
+    const fastData = await fetchPcmTts(ELEVENLABS_TTS_ENDPOINT, cleanSpoken, petId, INSTANT_ELEVENLABS_TIMEOUT_MS, voiceStyle);
     if (myGeneration !== speechGeneration) return;
     if (fastData) {
+      if (voiceStyle && voiceStyle !== 'default') {
+        workoutAudioClipCache.set(`${normKey}:${voiceStyle}:${cleanSpoken}`, fastData);
+        workoutAudioClipCache.set(`${rawId}:${voiceStyle}:${cleanSpoken}`, fastData);
+      }
       workoutAudioClipCache.set(`${normKey}:${cleanSpoken}`, fastData);
       workoutAudioClipCache.set(cleanSpoken, fastData);
-      const played = await playPcmTtsResponse(fastData, cleanSpoken, petId, callback, myGeneration);
+      const played = await playPcmTtsResponse(fastData, cleanSpoken, petId, callback, myGeneration, opts);
       if (played) return;
       if (myGeneration !== speechGeneration) return;
     }
-    speakWithSpeechSynthesis(cleanSpoken, petId, callback);
+    speakWithSpeechSynthesis(cleanSpoken, petId, callback, opts);
     return;
   }
 
   let ttsSucceeded = false;
+  const timeoutMs = opts.timeoutMs || (voiceStyle === 'bedtime' ? 18000 : 4500);
 
   // 1. Primary: ElevenLabs voice (only pets with a configured voice get one;
   // the server responds 404 for anyone else, and we fall through below).
-  const elevenLabsData = await fetchPcmTts(ELEVENLABS_TTS_ENDPOINT, cleanSpoken, petId);
+  const elevenLabsData = await fetchPcmTts(ELEVENLABS_TTS_ENDPOINT, cleanSpoken, petId, timeoutMs, voiceStyle);
   if (myGeneration !== speechGeneration) return;
   if (elevenLabsData) {
+    if (voiceStyle && voiceStyle !== 'default') {
+      workoutAudioClipCache.set(`${normKey}:${voiceStyle}:${cleanSpoken}`, elevenLabsData);
+      workoutAudioClipCache.set(`${rawId}:${voiceStyle}:${cleanSpoken}`, elevenLabsData);
+    }
     workoutAudioClipCache.set(`${normKey}:${cleanSpoken}`, elevenLabsData);
     workoutAudioClipCache.set(cleanSpoken, elevenLabsData);
-    ttsSucceeded = await playPcmTtsResponse(elevenLabsData, cleanSpoken, petId, callback, myGeneration);
+    ttsSucceeded = await playPcmTtsResponse(elevenLabsData, cleanSpoken, petId, callback, myGeneration, opts);
   }
 
   // 2. Secondary: Server-Side Realistic Gemini TTS Engine (/api/gemini/tts)
   if (!ttsSucceeded) {
     if (myGeneration !== speechGeneration) return;
-    const geminiData = await fetchPcmTts(TTS_ENDPOINT, cleanSpoken, petId);
+    const geminiTimeout = Math.min(timeoutMs, 8000);
+    const geminiData = await fetchPcmTts(TTS_ENDPOINT, cleanSpoken, petId, geminiTimeout, voiceStyle);
     if (myGeneration !== speechGeneration) return;
     if (geminiData) {
+      if (voiceStyle && voiceStyle !== 'default') {
+        workoutAudioClipCache.set(`${normKey}:${voiceStyle}:${cleanSpoken}`, geminiData);
+        workoutAudioClipCache.set(`${rawId}:${voiceStyle}:${cleanSpoken}`, geminiData);
+      }
       workoutAudioClipCache.set(`${normKey}:${cleanSpoken}`, geminiData);
       workoutAudioClipCache.set(cleanSpoken, geminiData);
-      ttsSucceeded = await playPcmTtsResponse(geminiData, cleanSpoken, petId, callback, myGeneration);
+      ttsSucceeded = await playPcmTtsResponse(geminiData, cleanSpoken, petId, callback, myGeneration, opts);
     }
   }
 
   // 3. Resilient Client-Side Speech Synthesis Fallback (Daniel Voice)
   if (!ttsSucceeded) {
     if (myGeneration !== speechGeneration) return;
-    speakWithSpeechSynthesis(cleanSpoken, petId, callback);
+    speakWithSpeechSynthesis(cleanSpoken, petId, callback, opts);
   }
 };
 

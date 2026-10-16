@@ -1,64 +1,93 @@
-# TEST_READY: Task & Habit Engine and Household Realtime Sync E2E Simulation Test Suite
+# Little Hero Adventures — Test Ready Declaration
 
-**Test Writer:** E2E Simulation Test Writer (`test_writer_e2e_gen2`)  
-**Test Suite File:** `scratch/verify_task_habit_engine_and_sync.mjs`  
-**Execution Command:** `node scratch/verify_task_habit_engine_and_sync.mjs`  
-**Date:** 2026-10-15  
+**Milestone:** `M-TEST` (E2E Test Suite Creation)  
+**Author:** `test_writer_mtest_1`  
+**Date:** 2026-10-16  
+**Status:** **READY FOR IMPLEMENTATION MILESTONES (M1 - M4)**
 
 ---
 
 ## 1. Executive Summary
-The end-to-end multi-device simulation test suite for the **Task & Habit Engine and Household Realtime Sync Infrastructure** has been fully authored, compiled, and verified in `scratch/verify_task_habit_engine_and_sync.mjs`. 
 
-The test harness uses `esbuild` to bundle the application state engine (`src/state/store.js`), real-time sync service (`src/services/firestoreSyncService.js`), and UI view renderers (`ParentPortalView.js`, `DashboardView.js`, `WorldAdventureMapView.js`) into isolated `node:vm` contexts representing independent devices (Child 1 on Tablet A, Child 2 on Tablet B, and Parent on Mobile Portal) backed by an in-memory reactive Firestore simulator (`makeFS`).
+The comprehensive, requirement-driven, opaque-box E2E test suite for the Little Hero Adventures Bedtime AI Storybook upgrade is complete, verified, and integrated into the project's master regression runner.
 
-The suite programmatically exercises and validates all 7 acceptance criteria categories from `ORIGINAL_REQUEST.md` (§2026-10-15T15:15:03Z) and invariants from `task_and_currency_lifecycle_rules.md`.
-
----
-
-## 2. Test Architecture & Coverage Matrix
-
-| Category | Description | Assertions | Target Components |
-|---|---|:---:|---|
-| **1. Auto-Reward & Schema** | Auto-credits Tokens, Hero XP, and Pet Sparks on completion; queues Gold Points; verifies complete schema: `id, logId, kidId, kidName, type: 'task_point_approval', taskId, taskTitle, zone, tokensAwarded, xpAwarded, sparksAwarded, pendingPoints, timestamp, status: 'pending'` in `pendingApprovals` and `taskCompletionLogs`. | 24 | `store.js:toggleTaskForest`, `toggleHabitIsland` |
-| **2. Parent Portal Metadata** | Parent Action Inbox renders exact kidName, taskTitle, `+pendingPoints Gold Points`, `+tokensAwarded Tokens`, `+xpAwarded XP`, `+sparksAwarded Sparks`. Asserts removal of automatic screen time conversion (`⏱️ +Xm Screen Time`). | 9 | `ParentPortalView.js:renderParentPortalView` |
-| **3. Zero-Drop Persistence** | Verifies pending approvals older than 45 seconds (`timestamp: Date.now() - 120000`) survive cloud hydration, device reboot/reload from persistent storage (`localStorage`), and non-destructive union reconcile with repair push (`pushStateToCloud(true)`). | 3 | `store.js:hydrateFromCloud`, `firestoreSyncService.js` |
-| **4. Approval Flow** | Parent approval credits Gold Points to child balance on both Parent and Kid devices; verifies `hero.screenTimeMinutes` is strictly unchanged (NO auto-conversion); removes request from `pendingApprovals`; updates log to `status: 'approved'`; resets chore to `completed: false` allowing re-completion in subsequent cycles. | 8 | `store.js:approveParentRequest` |
-| **5. Denial & Reversible Clawback** | Parent denial awards 0 Gold Points; claws back auto-issued Tokens, Hero XP, and Pet Sparks with strict clamping at floor 0 (handling cases where kid spent tokens prior to denial); marks log as `status: 'rejected'`; non-blocking 'Needs Redo' state allows child to re-attempt and submit the chore today. | 9 | `store.js:rejectParentRequest`, `getTaskCompletionsToday` |
-| **6. 1:1 Map & Quests Parity** | 1:1 bidirectional completion between World Map (`completeWaypointChore`) and Quests (`toggleTaskForest`); chore aliasing (`clean_room`<->`clean_toys`, `brush_teeth_am`<->`morning_brush`, `sleep_on_time`<->`night_bedtime`); single completion payout per cycle (blocks duplicate submission while pending); dynamic reward inheritance from parent portal settings. | 9 | `store.js:completeWaypointChore`, `WorldAdventureMapView.js` |
-| **7. Sibling Isolation & Sync** | Concurrent task submissions from two siblings (`hero_1` and `hero_2`) on separate devices create distinct pending approval items on the Parent device without array clobbering; approving Child 1 credits only Child 1; denying Child 2 claws back only Child 2; pet sparks remain strictly isolated. | 11 | `store.js:hydrateFromCloud`, multi-device Firestore sync |
-| **Total** | | **73** | |
+The test infrastructure strictly adheres to the 4-Tier test methodology, providing authoritative, independent verification across all 20 features from `PROJECT.md` Feature Inventory, boundary edge cases, cross-feature combination matrices, and real-world child bedtime routines.
 
 ---
 
-## 3. Current Test Execution Results
+## 2. Test Artifacts Delivered
 
-**Execution Command:** `node scratch/verify_task_habit_engine_and_sync.mjs`  
-**Status:** 58 Passed, 15 Failed (Total: 73 Assertions)
-
-The test suite executed with 0 runtime crashes, cleanly compiling and executing all 7 test categories. The 15 failures represent authentic, requirement-derived implementation defects in the current codebase that are actively assigned to Worker M1 (Core Engine & Store) and Worker M2 (UI & Views).
-
-### Defect Escalation Breakdown for Implementing Workers:
-
-#### A. Core Engine & State (`src/state/store.js` & `src/services/firestoreSyncService.js` - Owned by Worker M1):
-1. **Approval Record Schema Incompleteness:** `pendingApprovals` records pushed in `toggleTaskForest`, `toggleHabitIsland`, and `completeWaypointChore` omit `xpAwarded` and `sparksAwarded`.
-2. **Illegal Screen Time Auto-Conversion:** `approveParentRequest` illegitimately increments `hero.screenTimeMinutes` (`hero.screenTimeMinutes += pointsToAward * rate`), violating Rule 2 & Acceptance Criteria R3.
-3. **Missing Reversible Clawback:** `rejectParentRequest` does not claw back auto-issued Tokens, Hero XP, or Pet Sparks (`Math.max(0, balance - awarded)`).
-4. **Denial Lockout Bug:** `getTaskCompletionsToday` does not filter out rejected logs (`status: 'rejected'`), which permanently locks the child out from re-attempting a rejected task/waypoint.
-5. **Denial Task Reset Bug:** On rejection, tasks are not reset on the child's device, leaving them marked complete instead of triggering "Needs Redo".
-6. **45-Second Stale Drop Bug:** `hydrateFromCloud` (line 7304) filters out unconfirmed local pending approvals older than 45 seconds (`ageMs < 45000`), causing pending approvals to vanish after 45 seconds.
-7. **Dynamic Reward Inheritance at Source:** `completeWaypointChore` reads hardcoded static rewards from `waypoint` instead of inheriting parent-configured rewards from `taskForest` / `habitIslands`.
-
-#### B. UI & View Integration (`src/views/ParentPortalView.js` & `WorldAdventureMapView.js` - Owned by Worker M2):
-8. **Parent Portal Metadata Omissions:** Approval cards in `ParentPortalView.js` omit `req.xpAwarded` and `req.sparksAwarded`.
-9. **Parent Portal Screen Time Display:** Approval cards render `+Xm Screen Time` conversion text, which must be removed.
-10. **"Needs Redo" Visual State:** "Needs Redo" badge/indicator is not yet rendered in Quests and World Map waypoints for rejected tasks.
+| File Path | Description | Status |
+|---|---|---|
+| `scratch/verify_bedtime_storybook.mjs` | Primary 4-Tier E2E automated test suite (100+ checks across Tiers 1-4) | **Created & Verified** |
+| `scratch/run_all_tests.js` | Master regression runner with `scratch/verify_bedtime_storybook.mjs` registered | **Updated & Registered** |
+| `TEST_INFRA.md` | Comprehensive test infrastructure documentation, contracts, and mocking guide | **Created** |
+| `TEST_READY.md` | Formal milestone completion and test readiness declaration (this file) | **Published** |
 
 ---
 
-## 4. Verification Instructions
-To execute the suite:
+## 3. Test Coverage Matrix
+
+### Tier 1: Feature Coverage (20 Features, >=5 tests each = 100 tests)
+- **F1: Generative Story Routes**: Validates `/api/rex/bedtime-story` and `/api/gemini/bedtime-story` across `server.js`, `geminiService.js`, `vite.config.js`, and `functions/src/voiceApi.ts`.
+- **F2: Structured 3-Chapter Story Schema**: Validates 3 chapters with `title`, `chapterText`, `whisperLine`, `sleepyCue`, `moralReflection`, `choices`, `sceneMood`, and `sceneDescriptor`.
+- **F3: Combinatorial Story Weaver**: Validates 12+ archetypes per realm, dynamic sentence builders, zero hardcoded "Rex" references for other pets, and preservation of 4 canonical realms + extended realms.
+- **F4: Real-Time Per-Child Personalization**: Validates `buildChildStoryContext` integrating child profile, today's chores/habits, active pet metadata from `PETS_DATABASE`, equipped gear, and parent wish.
+- **F5: Anti-Repetition Story Memory**: Validates `hero.bedtimeHistory` tracking last 25 story seeds/archetypes/titles as negative prompt constraints and deterministic seed rotation.
+- **F6: Sibling Bookshelf Isolation**: Validates `bedtimeStoryLibrary` and `saveBedtimeStory` scoped per `heroId` with instant Firestore sync.
+- **F7: Universal ElevenLabs Voice Fallback**: Validates all 24 pets and storytelling requests resolve to main voice (`e9sQs6aLWU82SSolkPYZ`) without HTTP 404s.
+- **F8: Bedtime Voice Narration Tuning**: Validates bedtime voice parameters (`stability: 0.65`, `similarity_boost: 0.80`, `style: 0.35`, `use_speaker_boost: true`), speed <= 0.82, and cache key incorporating `voiceStyle`.
+- **F9: Extended Timeouts & Playback Rate**: Validates 18,000ms timeout in `fetchPcmTts` and Web Audio `AudioBufferSourceNode.playbackRate` scaling.
+- **F10: Background Audio Pre-Fetching**: Validates `prefetchCompanionAudio` pre-decoding Chapter N+1 into cache while Chapter N plays for 0ms transitions.
+- **F11: Hands-Free Auto-Read Mode**: Validates `autoReadMode` in sanctuary state, toggle in `BedtimeStoryView.js`, 3s breathing countdown auto-advance, and quiet bedtime completion.
+- **F12: Plot-Driven 3D Diorama Stage**: Validates `BedtimeStoryStage3D` dynamic scene construction from chapter `sceneDescriptor`.
+- **F13: Articulated Toddler Hero & 24 Pet Rigs**: Validates toddler hero avatar with magic item hand socket + articulated pet companion rigs matching all 24 pet archetypes (dino, mystic, beast, aquatic, mech).
+- **F14: 3-Chapter Diorama Choreography**: Validates Chapter 1 arrival/lantern/fireflies, Chapter 2 obstacle/helper gesture/particle burst, and Chapter 3 slumber nest/curled sleep/4s-4s breathing pacer.
+- **F15: Interactive Raycast Constellations & Chimes**: Validates tapping 3D stars/fireflies triggers 3D ripple burst and pentatonic lullaby chimes (`playConstellationChime`).
+- **F16: Graceful 2D Fallback & Explorer Palette**: Validates 2D Canvas/SVG fallback upon context loss or headless execution, and enforces strict Explorer Palette (`#09141e`, `#2ecc71`, `#00d2d3`, `#f39c12`, `#ffb961` — zero pink/purple).
+- **F17: Dynamic Parent-Configured Bedtime Rewards**: Validates `store.completeBedtimeStory` dynamically reads `store.getWaypointRewards('wp_bedtime')` / `sleep_on_time`.
+- **F18: One-Completion Payout Invariant**: Validates rejection of duplicate bedtime reward minting while `sleep_on_time` is pending parent approval.
+- **F19: Reversible Currency Lifecycle**: Validates auto-issuing Tokens/XP/Sparks, queuing Gold Points in `pendingApprovals` with full delta metadata, and clean clawback clamped at floor 0 upon parent denial.
+- **F20: Comprehensive Master Test Suite**: Validates test execution, documentation, and registration.
+
+### Tier 2: Boundary & Corner Cases (7 Suites)
+- **T2.1**: Empty bedtime history initialization (safe fallback without crash).
+- **T2.2**: 25+ story history rollover (FIFO eviction capped at 25 entries).
+- **T2.3**: Non-Rex companion pets (all 24 pets pass without 404 or missing rigs).
+- **T2.4**: Missing or empty daytime tasks today (graceful default summary).
+- **T2.5**: Headless WebGL fallback (null context and context loss recovery).
+- **T2.6**: Denial clawback clamping at floor 0 (never negative balance).
+- **T2.7**: Exhaustive Color Scan (deep scan confirms ZERO pink/purple across all assets).
+
+### Tier 3: Cross-Feature Combinations (Pairwise Matrix)
+- Matrix testing across Realm (Whispering Woods, Starlight Cove, Cloud Kingdom, Dino Slumber, Space, Crystal Cavern) x Pet Archetype (Dino, Mystic, Beast, Aquatic, Mech) x Mode (Auto-Read vs. Interactive) x Parent Bedtime Wish.
+
+### Tier 4: Realistic Real-World Workflows
+- **Workflow 1**: End-to-end child bedtime routine (sanctuary hub -> Ch 1 -> Ch 2 prefetch -> Ch 3 breathing nest).
+- **Workflow 2**: Bedtime story completion and currency issuance.
+- **Workflow 3**: Parent review in Parent Portal (approval awards points; denial claws back tokens/sparks).
+- **Workflow 4**: Sibling bedtime isolation workflow (Child A and Child B concurrent submissions).
+
+---
+
+## 4. How Downstream Agents Run the Tests
+
+To verify individual feature progress or full milestone readiness:
+
 ```bash
-node scratch/verify_task_habit_engine_and_sync.mjs
+# Run the bedtime storybook verification suite
+node scratch/verify_bedtime_storybook.mjs
+
+# Run the master regression suite
+node scratch/run_all_tests.js
 ```
-The test suite will exit with code `0` once Worker M1 and Worker M2 complete their assigned implementation fixes.
+
+---
+
+## 5. Milestone Handoff to Implementing Agents
+
+The test harness is armed. Implementers for Milestones M1, M2, M3, and M4 can now develop against these concrete assertions:
+- **M1 (AI Story Engine & Routes)**: Implement generative routes in `server.js`, `geminiService.js`, `vite.config.js`, `functions/src/voiceApi.ts`, Combinatorial Story Weaver in `bedtimeStoryData.js`, and `buildChildStoryContext` in `bedtimeStoryService.js`.
+- **M2 (ElevenLabs Voice & Audio Pre-Fetching)**: Implement universal voice resolution in `elevenLabsService.js` and `voiceApi.ts`, bedtime voice tuning, 18s timeouts & playback rate in `voiceService.js`, `prefetchCompanionAudio`, and Auto-Read toggle in `BedtimeStoryView.js`.
+- **M3 (3D Diorama Stage & View Integration)**: Implement `BedtimeStoryStage3D.js` with Three.js/Spline diorama, 24 pet rigs, 3-chapter choreography, 4s/4s breathing pacer, raycast chimes, and 2D fallback.
+- **M4 (Store Task/Habit & Currency Lifecycle)**: Implement dynamic rewards, one-completion invariant, sibling bookshelf isolation, and clean clawback in `store.js`.

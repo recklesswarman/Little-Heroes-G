@@ -1,4 +1,4 @@
-const CACHE_NAME = 'little-heroes-v3.4.0-task-habit-engine-sync-20261015';
+const CACHE_NAME = 'little-heroes-v3.5.0-bedtime-storybook-3d-20261015';
 const STATIC_ASSETS = [
   './',
   './index.html',

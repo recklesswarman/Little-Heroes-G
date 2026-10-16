@@ -89,8 +89,8 @@ interface TtsCachePayload {
 const ttsCache = new Map<string, TtsCachePayload>();
 const TTS_CACHE_MAX_ENTRIES = 200;
 
-function getTtsCacheKey(cleanText: string, voiceId: string, speed: number): string {
-  return createHash("sha256").update(`${cleanText}|${voiceId}|${speed}`).digest("hex");
+function getTtsCacheKey(cleanText: string, voiceId: string, speed: number, voiceStyle: string = "companion"): string {
+  return createHash("sha256").update(`${cleanText}|${voiceId}|${speed}|${voiceStyle}`).digest("hex");
 }
 
 function cacheTtsResponse(key: string, payload: TtsCachePayload): void {
@@ -132,7 +132,7 @@ app.post("/api/elevenlabs/tts", async (req: Request, res: Response) => {
       return;
     }
 
-    const { text, petId } = (req.body || {}) as { text?: unknown; petId?: unknown };
+    const { text, petId, voiceStyle } = (req.body || {}) as { text?: unknown; petId?: unknown; voiceStyle?: string };
     if (!text || typeof text !== "string" || !text.trim()) {
       res.status(400).json({ error: "Text prompt is required." });
       return;
@@ -145,21 +145,32 @@ app.post("/api/elevenlabs/tts", async (req: Request, res: Response) => {
     }
 
     const normalizedPetId = normalizePetId(petId);
-    const voiceId = normalizedPetId === "rex"
-      ? (process.env.ELEVENLABS_REX_VOICE_ID || DEFAULT_REX_VOICE_ID)
-      : undefined;
-    if (!voiceId) {
-      res.status(404).json({ error: `No ElevenLabs voice configured for pet "${normalizedPetId}".` });
-      return;
-    }
+    // Universal resolution: All 24 pets and bedtime storytelling fall back to the main voice, eliminating 404s
+    const voiceId = process.env.ELEVENLABS_REX_VOICE_ID || DEFAULT_REX_VOICE_ID;
 
     const speechSpeed = getSpeechSpeed();
-    const cacheKey = getTtsCacheKey(cleanText, voiceId, speechSpeed);
+    const styleKey = typeof voiceStyle === "string" ? voiceStyle : "companion";
+    const cacheKey = getTtsCacheKey(cleanText, voiceId, speechSpeed, styleKey);
     const cached = ttsCache.get(cacheKey);
     if (cached) {
       res.json({ ...cached, cached: true });
       return;
     }
+
+    const isBedtime = styleKey === "bedtime";
+    const voiceSettings = isBedtime ? {
+      stability: 0.65,
+      similarity_boost: 0.80,
+      style: 0.35,
+      use_speaker_boost: true,
+      speed: speechSpeed
+    } : {
+      stability: 0.5,
+      similarity_boost: 0.75,
+      style: 0.3,
+      use_speaker_boost: true,
+      speed: speechSpeed
+    };
 
     const upstream = await fetch(elevenLabsTtsUrl(voiceId), {
       method: "POST",
@@ -171,13 +182,7 @@ app.post("/api/elevenlabs/tts", async (req: Request, res: Response) => {
       body: JSON.stringify({
         text: cleanText,
         model_id: "eleven_turbo_v2_5",
-        voice_settings: {
-          stability: 0.5,
-          similarity_boost: 0.75,
-          style: 0.3,
-          use_speaker_boost: true,
-          speed: speechSpeed
-        }
+        voice_settings: voiceSettings
       })
     });
 
@@ -300,6 +305,343 @@ app.post("/api/gemini/tts", async (req: Request, res: Response) => {
   } catch (error) {
     const message = errorMessage(error, "Failed to generate voice speech");
     console.error("Gemini TTS proxy error:", message);
+    res.status(500).json({ error: message });
+  }
+});
+
+// ===========================================================================
+// Bedtime AI Storybook Routes -- /api/rex/bedtime-story & /api/gemini/bedtime-story
+// ===========================================================================
+
+app.post(["/api/rex/bedtime-story", "/api/gemini/bedtime-story"], async (req: Request, res: Response) => {
+  try {
+    if (isRateLimited(`bedtime:${getRequestIp(req)}`, 20, 60_000)) {
+      res.status(429).json({ error: "Too many requests, please slow down." });
+      return;
+    }
+
+    const {
+      heroName = "Little Hero",
+      petId = "rex",
+      petName = "Rex",
+      realmId = "space",
+      moralId = "brave_dark",
+      magicItem = "",
+      gentleObstacle = "",
+      customWish = "",
+      chapterIndex,
+      actNumber,
+      userChoices = [],
+      recentTitles = [],
+      recentArchetypes = []
+    } = (req.body || {}) as any;
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (apiKey) {
+      try {
+        const { GoogleGenAI } = await import("@google/genai");
+        const ai = new GoogleGenAI({ apiKey });
+
+        const prompt = `You are an expert children's bedtime author and soothing cartoon companion creating a deeply personalized, 3-chapter bedtime story for a young child (ages 3-7).
+Child's Name: "${heroName}"
+Companion Pet: "${petName}" (Species/Archetype: ${petId})
+Bedtime Realm: "${realmId}"
+Moral Theme: "${moralId}"
+${magicItem ? `Magic Item chosen by child: "${magicItem}". Include this special item in the story!` : ""}
+${gentleObstacle ? `Gentle hurdle: "${gentleObstacle}". Resolve this hurdle through kindness!` : ""}
+${customWish ? `Parent Bedtime Wish: "${customWish}". Weave this gently into Chapter 1!` : ""}
+${userChoices.length > 0 ? `Child's choices: ${JSON.stringify(userChoices)}` : ""}
+
+ANTI-REPETITION MANDATE:
+Do NOT copy or repeat any of these recently generated titles: ${JSON.stringify(recentTitles.slice(0, 15))}.
+Do NOT reuse these plot archetypes: ${JSON.stringify(recentArchetypes.slice(0, 10))}.
+Create a completely fresh, enchanting tale!
+
+COLOR & PALETTE RULE:
+Strict Explorer Palette only: Midnight Slate (#09141e), Emerald Green (#2ecc71), Electric Cyan (#00d2d3), Solar Orange (#f39c12), and Warm Amber (#ffb961).
+STRICTLY NEVER mention or use pink or purple!
+
+STRUCTURE:
+Generate exactly 3 chapters:
+Chapter 1 (Twilight Arrival & Discovery): ~110-130 words. Packing hero gear/magic item, entering realm, celebrating daytime achievements.
+Chapter 2 (Starlit Journey & Gentle Obstacle): ~120-140 words. Discovering a sleepy creature or gentle obstacle, resolving it with ${moralId} and ${petName}'s help.
+Chapter 3 (Deep Slumber Sanctuary): ~110-130 words. Tucking in, cozy nest, synchronized 4s inhale / 4s exhale breathing, sleepy yawns, whispered goodnight.
+
+Return ONLY a valid JSON object matching this schema (no markdown, no backticks, just raw JSON):
+{
+  "title": "A soothing creative title (max 5 words)",
+  "theme": "${moralId}",
+  "realm": "${realmId}",
+  "chapters": [
+    {
+      "chapterIndex": 0,
+      "chapterNumber": 1,
+      "title": "Chapter 1: Short Chapter Title",
+      "chapterText": "Soothing narrative text (~110-130 words)",
+      "whisperLine": "A comforting whisper line for bedtime",
+      "sleepyCue": "A physical relaxation prompt",
+      "moralReflection": "A sweet sentence celebrating courage or kindness",
+      "choices": ["Choice 1", "Choice 2", "Choice 3"],
+      "sceneMood": "tranquil",
+      "sceneDescriptor": {
+        "environmentBiome": "Twilight Realm Entry",
+        "timeOfNight": "twilight_arrival",
+        "weatherParticles": "fireflies",
+        "cameraWork": "orbit_pan",
+        "heroAction": "walking_with_lantern",
+        "petAction": "trotting_beside",
+        "keyProps": ["Starlight Lantern"],
+        "lightingPalette": {
+          "ambient": "#09141e",
+          "directional": "#00d2d3",
+          "accent": "#ffb961"
+        }
+      }
+    },
+    {
+      "chapterIndex": 1,
+      "chapterNumber": 2,
+      "title": "Chapter 2: Short Chapter Title",
+      "chapterText": "Soothing narrative text (~120-140 words)",
+      "whisperLine": "A comforting whisper line",
+      "sleepyCue": "A slow deep breath prompt",
+      "moralReflection": "A sweet reflection on moral virtue",
+      "choices": ["Choice 1", "Choice 2", "Choice 3"],
+      "sceneMood": "mystical",
+      "sceneDescriptor": {
+        "environmentBiome": "Starlit Path",
+        "timeOfNight": "starlit_journey",
+        "weatherParticles": "aurora_ribbons",
+        "cameraWork": "follow_walk",
+        "heroAction": "helping_obstacle",
+        "petAction": "glowing_magic",
+        "keyProps": ["Sleeping Friend", "Amber Beacon"],
+        "lightingPalette": {
+          "ambient": "#09141e",
+          "directional": "#00d2d3",
+          "accent": "#ffb961"
+        }
+      }
+    },
+    {
+      "chapterIndex": 2,
+      "chapterNumber": 3,
+      "title": "Chapter 3: The Slumber Sanctuary",
+      "chapterText": "Soothing narrative text (~110-130 words)",
+      "whisperLine": "Goodnight little hero, sweet dreams",
+      "sleepyCue": "4s inhale, 4s exhale breathing pacer",
+      "moralReflection": "Resting easy knowing you did your best today",
+      "choices": [],
+      "sceneMood": "deep_slumber",
+      "sceneDescriptor": {
+        "environmentBiome": "Slumber Sanctuary Nest",
+        "timeOfNight": "deep_slumber_sanctuary",
+        "weatherParticles": "starlight_snow",
+        "cameraWork": "crane_descend_nest",
+        "heroAction": "curled_asleep",
+        "petAction": "sleeping_curled",
+        "keyProps": ["Cozy Slumber Nest", "Velvet Blankets"],
+        "lightingPalette": {
+          "ambient": "#09141e",
+          "directional": "#09141e",
+          "accent": "#ffb961"
+        }
+      }
+    }
+  ]
+}`;
+
+        const response = await ai.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: [{ parts: [{ text: prompt }] }],
+          config: {
+            temperature: 0.7,
+            maxOutputTokens: 2048
+          }
+        });
+
+        const rawText = (response as any).text || "";
+        const cleanJson = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
+        const parsed = JSON.parse(cleanJson);
+
+        if (parsed && Array.isArray(parsed.chapters) && parsed.chapters.length >= 3) {
+          const normalizedChapters = parsed.chapters.slice(0, 3).map((ch: any, idx: number) => ({
+            ...ch,
+            chapterIndex: idx,
+            chapterNumber: idx + 1,
+            text: ch.chapterText || ch.text || "",
+            chapterText: ch.chapterText || ch.text || "",
+            choices: Array.isArray(ch.choices) ? ch.choices : [],
+            sceneDescriptor: {
+              environmentBiome: ch.sceneDescriptor?.environmentBiome || "Twilight Slumber Realm",
+              timeOfNight: idx === 0 ? "twilight_arrival" : idx === 1 ? "starlit_journey" : "deep_slumber_sanctuary",
+              weatherParticles: ch.sceneDescriptor?.weatherParticles || (idx === 1 ? "aurora_ribbons" : idx === 2 ? "starlight_snow" : "fireflies"),
+              cameraWork: idx === 0 ? "orbit_pan" : idx === 1 ? "follow_walk" : "crane_descend_nest",
+              heroAction: idx === 0 ? "walking_with_lantern" : idx === 1 ? "helping_obstacle" : "curled_asleep",
+              petAction: idx === 0 ? "trotting_beside" : idx === 1 ? "glowing_magic" : "sleeping_curled",
+              keyProps: Array.isArray(ch.sceneDescriptor?.keyProps) ? ch.sceneDescriptor.keyProps : ["Starlight Lantern", "Cozy Nest"],
+              lightingPalette: {
+                ambient: "#09141e",
+                directional: "#00d2d3",
+                accent: "#ffb961"
+              }
+            }
+          }));
+
+          const storyPayload = {
+            success: true,
+            storyId: `story_${Date.now()}`,
+            title: parsed.title || `${heroName}'s Adventure in ${realmId}`,
+            theme: moralId,
+            realm: realmId,
+            realmId: realmId,
+            realmName: realmId,
+            moralId: moralId,
+            heroName,
+            petName,
+            seed: Date.now(),
+            archetypeId: parsed.archetypeId || "gemini_cloud",
+            chapters: normalizedChapters
+          };
+
+          const reqIdx = actNumber !== undefined ? Number(actNumber) - 1 : (chapterIndex !== undefined ? Number(chapterIndex) : undefined);
+          if (reqIdx !== undefined && normalizedChapters[reqIdx]) {
+            const ch = normalizedChapters[reqIdx];
+            res.json({
+              ...storyPayload,
+              ...ch,
+              text: ch.text,
+              title: ch.title,
+              prompt: ch.choices?.[0] ? "What should we do next?" : "Sleep tight, brave hero.",
+              promptQuestion: ch.choices?.[0] ? "What should we do next?" : "Sleep tight, brave hero.",
+              defaultChips: ch.choices.map((c: string) => ({ text: c, icon: "stars" })),
+              suggestionChips: ch.choices.map((c: string) => ({ text: c, icon: "stars" })),
+              isSleepingEnd: reqIdx >= 2
+            });
+            return;
+          }
+
+          res.json(storyPayload);
+          return;
+        }
+      } catch (geminiErr) {
+        console.warn("Cloud Functions Gemini story error, using procedural fallback:", geminiErr);
+      }
+    }
+
+    // Standalone fallback generator
+    const ch1Text = `The golden sun had dipped peacefully below the horizon, painting the sky in deep shades of midnight slate and starlight cyan. Tonight, ${heroName} and faithful companion ${petName} stood at the edge of the realm. Their cozy bedtime adventure was just beginning. ${petName} adjusted their soft explorer collar with quiet excitement. ${petName} looked over with a warm, comforting smile: "Every great bedtime explorer knows that sweet dreams begin with preparation! What special hero gadget should we pack into our backpack tonight?" ${customWish ? `Tonight was extra special because ${heroName} whispered a bedtime wish: "${customWish}". ` : ""}The cool evening air was quiet and peaceful.`;
+    const ch2Text = `With their favorite hero gear snugly tucked into their pack, ${heroName} and ${petName} ventured deeper along the glowing pathway. Suddenly, ${petName}'s ears perked up! The loyal pet padded ahead toward a patch of shimmering moon-flowers. There, nestled beneath a canopy of gentle starlight, was a sweet little creature in need of a friend. It blinked its sleepy eyes, looking just a little bit nervous in the big, quiet night. ${petName} leaned in gently, giving a warm, reassuring nuzzle to let the creature know it was completely safe with friends nearby.`;
+    const ch3Text = `All was quiet now across the vast expanse of the realm. The little creature was safely tucked into its cozy mossy hammock, purring softly in deep slumber. ${heroName} felt a wonderful, heavy warmth spreading from their toes all the way up to their eyelids. ${petName} curled up into a soft, fluffy ball at ${heroName}'s side, letting out a giant, sleepy yawn that made everyone yawn too. ${petName} softly snuggled down under the glowing bedtime lantern and whispered into the quiet twilight: "You did wonderful today, brave hero. You brushed your teeth, showed kindness, and conquered the day. Now, let the stars watch over your dreams."`;
+
+    const explorerPalette = { ambient: "#09141e", directional: "#00d2d3", accent: "#ffb961" };
+
+    const chapters = [
+      {
+        chapterIndex: 0,
+        chapterNumber: 1,
+        title: "Chapter 1: The Evening Departure",
+        chapterText: ch1Text,
+        text: ch1Text,
+        whisperLine: `The evening sky is calm and quiet, ${heroName}. Rest your shoulders.`,
+        sleepyCue: "Take one slow, deep breath as the stars begin to twinkle.",
+        moralReflection: "Every great journey begins with a brave little first step.",
+        choices: ["Starlight Compass 🧭", "Laser Toothbrush 🪥", "Cozy Pajamas 🧸"],
+        sceneMood: "tranquil",
+        sceneDescriptor: {
+          environmentBiome: "The Moonlit Meadow",
+          timeOfNight: "twilight_arrival" as const,
+          weatherParticles: "fireflies" as const,
+          cameraWork: "orbit_pan" as const,
+          heroAction: "walking_with_lantern" as const,
+          petAction: "trotting_beside" as const,
+          keyProps: ["Starlight Lantern", "Glowing Path"],
+          lightingPalette: explorerPalette
+        }
+      },
+      {
+        chapterIndex: 1,
+        chapterNumber: 2,
+        title: "Chapter 2: The Curious Discovery",
+        chapterText: ch2Text,
+        text: ch2Text,
+        whisperLine: "You are safe with friends nearby. The night is gentle and kind.",
+        sleepyCue: "Notice how soft the night sounds are, like a whispered lullaby.",
+        moralReflection: "Helping a friend in need is a true hero superpower.",
+        choices: ["Share Blanket 🤝", "Take 3 Deep Breaths 🧘", "Sing a Gentle Song 🎵"],
+        sceneMood: "mystical",
+        sceneDescriptor: {
+          environmentBiome: "The Whispering Canopy",
+          timeOfNight: "starlit_journey" as const,
+          weatherParticles: "aurora_ribbons" as const,
+          cameraWork: "follow_walk" as const,
+          heroAction: "helping_obstacle" as const,
+          petAction: "glowing_magic" as const,
+          keyProps: ["Sleeping Star-Friend", "Amber Beacon"],
+          lightingPalette: explorerPalette
+        }
+      },
+      {
+        chapterIndex: 2,
+        chapterNumber: 3,
+        title: "Chapter 3: The Slumber Sanctuary",
+        chapterText: ch3Text,
+        text: ch3Text,
+        whisperLine: "Close your eyes, brave hero. Sleep is here, warm and sweet.",
+        sleepyCue: "Inhale peace for 4 seconds... exhale dreams for 4 seconds...",
+        moralReflection: "Resting easy in the gentle stillness of the quiet night.",
+        choices: [],
+        sceneMood: "deep_slumber",
+        sceneDescriptor: {
+          environmentBiome: "The Slumber Sanctuary",
+          timeOfNight: "deep_slumber_sanctuary" as const,
+          weatherParticles: "starlight_snow" as const,
+          cameraWork: "crane_descend_nest" as const,
+          heroAction: "curled_asleep" as const,
+          petAction: "sleeping_curled" as const,
+          keyProps: ["Cozy Slumber Nest", "Velvet Blankets"],
+          lightingPalette: explorerPalette
+        }
+      }
+    ];
+
+    const fallbackPayload = {
+      success: true,
+      storyId: `story_${Date.now()}`,
+      title: `${heroName} and ${petName}'s Bedtime Journey`,
+      theme: moralId,
+      realm: realmId,
+      realmId: realmId,
+      realmName: realmId,
+      moralId: moralId,
+      heroName,
+      petName,
+      seed: Date.now(),
+      archetypeId: "procedural_cloud",
+      chapters
+    };
+
+    const reqIdx = actNumber !== undefined ? Number(actNumber) - 1 : (chapterIndex !== undefined ? Number(chapterIndex) : undefined);
+    if (reqIdx !== undefined && chapters[reqIdx]) {
+      const ch = chapters[reqIdx];
+      res.json({
+        ...fallbackPayload,
+        ...ch,
+        text: ch.text,
+        title: ch.title,
+        prompt: ch.choices?.[0] ? "What should we do next?" : "Sleep tight, brave hero.",
+        promptQuestion: ch.choices?.[0] ? "What should we do next?" : "Sleep tight, brave hero.",
+        defaultChips: ch.choices.map((c: string) => ({ text: c, icon: "stars" })),
+        suggestionChips: ch.choices.map((c: string) => ({ text: c, icon: "stars" })),
+        isSleepingEnd: reqIdx >= 2
+      });
+      return;
+    }
+
+    res.json(fallbackPayload);
+  } catch (err) {
+    const message = errorMessage(err, "Failed to generate bedtime story");
+    console.error("Bedtime story error:", message);
     res.status(500).json({ error: message });
   }
 });

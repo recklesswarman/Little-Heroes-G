@@ -509,7 +509,8 @@ const defaultState = {
     pajamasCompletedDate: null,
     selectedMoralId: 'brave_dark',
     customBedtimeWish: '',
-    narrationMode: 'rex'
+    narrationMode: 'rex',
+    autoReadMode: true
   },
 
   // Deleted kid profiles tracked to prevent resurrection across concurrent devices
@@ -1849,22 +1850,34 @@ class Store {
   }
 
   getTaskCompletions(taskId, heroId = null, includeRejected = false) {
-    const kidId = heroId || this.state.selectedHero?.id;
-    const targetIds = this.getTaskAliasGroup(taskId);
+    let actualTaskId = taskId;
+    let actualHeroId = heroId;
+    if (!heroId && taskId && (this.state.heroes || []).some(h => h.id === taskId)) {
+      actualHeroId = taskId;
+      actualTaskId = null;
+    }
+    const kidId = actualHeroId || this.state.selectedHero?.id;
+    const targetIds = actualTaskId ? this.getTaskAliasGroup(actualTaskId) : null;
     return (this.state.taskCompletionLogs || []).filter(
-      (l) => targetIds.includes(l.taskId) &&
+      (l) => (!targetIds || targetIds.includes(l.taskId)) &&
              (!kidId || l.heroId === kidId) &&
              (includeRejected || l.status !== 'rejected')
     );
   }
 
   getTaskCompletionsToday(taskId, heroId = null, includeRejected = false) {
-    const kidId = heroId || this.state.selectedHero?.id;
-    if (!includeRejected && this.isTaskNeedsRedo(taskId, kidId)) {
+    let actualTaskId = taskId;
+    let actualHeroId = heroId;
+    if (!heroId && taskId && (this.state.heroes || []).some(h => h.id === taskId)) {
+      actualHeroId = taskId;
+      actualTaskId = null;
+    }
+    const kidId = actualHeroId || this.state.selectedHero?.id;
+    if (actualTaskId && !includeRejected && this.isTaskNeedsRedo(actualTaskId, kidId)) {
       return [];
     }
     const todayStr = new Date().toISOString().split('T')[0];
-    return this.getTaskCompletions(taskId, heroId, includeRejected).filter((l) => {
+    return this.getTaskCompletions(actualTaskId, kidId, includeRejected).filter((l) => {
       const logDay = (l.completedAt || '').split('T')[0];
       return logDay === todayStr;
     });
@@ -1911,6 +1924,29 @@ class Store {
     return null;
   }
 
+  setTaskConfig(taskIdOrKey, config) {
+    if (!taskIdOrKey || !config) return;
+    const aliases = this.getTaskAliasGroup(taskIdOrKey);
+    let found = false;
+    (this.state.taskForest || []).forEach(t => {
+      if (aliases.includes(t.id)) {
+        Object.assign(t, config);
+        found = true;
+      }
+    });
+    (this.state.habitIslands || []).forEach(h => {
+      if (aliases.includes(h.id)) {
+        Object.assign(h, config);
+        found = true;
+      }
+    });
+    if (!found) {
+      if (!this.state.taskForest) this.state.taskForest = [];
+      this.state.taskForest.push({ id: taskIdOrKey, ...config });
+    }
+    this.saveState(true);
+  }
+
   getWaypointRewards(waypointId) {
     const waypoint = PATH_OF_VALOR_WAYPOINTS.find(w => w.id === waypointId);
     if (!waypoint) return null;
@@ -1921,10 +1957,15 @@ class Store {
     const isXpCustom = taskConfig?.xp !== undefined && (!defaultRoutine || taskConfig.xp !== defaultRoutine.xp);
     const isSparksCustom = taskConfig?.sparks !== undefined && (!defaultRoutine || taskConfig.sparks !== defaultRoutine.sparks);
 
-    const coins = isCoinsCustom ? Number(taskConfig.coins) : waypoint.rewardCoins;
-    const points = isPointsCustom ? Number(taskConfig.points) : (isCoinsCustom ? Math.round(coins / 2) : Math.round(waypoint.rewardCoins / 2));
-    const xp = isXpCustom ? Number(taskConfig.xp) : waypoint.rewardXp;
-    const sparks = isSparksCustom ? Number(taskConfig.sparks) : waypoint.rewardSparks;
+    const defaultCoins = waypointId === 'wp_bedtime' ? 30 : waypoint.rewardCoins;
+    const defaultSparks = waypointId === 'wp_bedtime' ? 15 : waypoint.rewardSparks;
+    const defaultXp = waypointId === 'wp_bedtime' ? 20 : waypoint.rewardXp;
+    const defaultPoints = waypointId === 'wp_bedtime' ? 15 : Math.round(waypoint.rewardCoins / 2);
+
+    const coins = isCoinsCustom ? Number(taskConfig.coins) : defaultCoins;
+    const points = isPointsCustom ? Number(taskConfig.points) : (isCoinsCustom ? Math.round(coins / 2) : defaultPoints);
+    const xp = isXpCustom ? Number(taskConfig.xp) : defaultXp;
+    const sparks = isSparksCustom ? Number(taskConfig.sparks) : defaultSparks;
     return { coins, points, xp, sparks };
   }
 
@@ -5480,7 +5521,19 @@ class Store {
     if (reqIndex === -1) return;
     const req = this.state.pendingApprovals[reqIndex];
 
-    const hero = this.state.heroes.find(h => h.id === req.kidId) || this.state.selectedHero;
+    // Keep selectedHero and heroes[] mirror in sync prior to clawback calculation
+    if (this.state.selectedHero && this.state.selectedHero.id === req.kidId) {
+      const h = (this.state.heroes || []).find(x => x.id === req.kidId);
+      if (h && h !== this.state.selectedHero) {
+        h.coins = this.state.selectedHero.coins;
+        h.tokens = this.state.selectedHero.tokens ?? this.state.selectedHero.coins;
+        h.xp = this.state.selectedHero.xp;
+        h.sparks = this.state.selectedHero.sparks;
+        h.evolutionSparks = this.state.selectedHero.evolutionSparks ?? this.state.selectedHero.sparks;
+      }
+    }
+
+    const hero = (this.state.heroes || []).find(h => h.id === req.kidId) || this.state.selectedHero;
 
     if (req.type === 'task_point_approval' || req.type === 'task') {
       const nowIso = new Date().toISOString();
@@ -5513,12 +5566,21 @@ class Store {
           this.deductPetSparks(petId, sparksToClawback, hero.id);
         }
 
-        if (this.state.selectedHero?.id === hero.id) {
+        if (this.state.selectedHero && this.state.selectedHero.id === hero.id) {
           this.state.selectedHero.coins = hero.coins;
           this.state.selectedHero.tokens = hero.tokens;
           this.state.selectedHero.xp = hero.xp;
           this.state.selectedHero.sparks = hero.sparks;
           this.state.selectedHero.evolutionSparks = hero.evolutionSparks;
+        }
+
+        const mirroredHero = (this.state.heroes || []).find(h => h.id === hero.id);
+        if (mirroredHero && mirroredHero !== hero) {
+          mirroredHero.coins = hero.coins;
+          mirroredHero.tokens = hero.tokens;
+          mirroredHero.xp = hero.xp;
+          mirroredHero.sparks = hero.sparks;
+          mirroredHero.evolutionSparks = hero.evolutionSparks;
         }
       }
 
@@ -9261,8 +9323,12 @@ class Store {
         pajamasCompletedDate: null,
         selectedMoralId: 'brave_dark',
         customBedtimeWish: '',
-        narrationMode: 'rex'
+        narrationMode: 'rex',
+        autoReadMode: true
       };
+    }
+    if (this.state.bedtimeSanctuaryState.autoReadMode === undefined) {
+      this.state.bedtimeSanctuaryState.autoReadMode = true;
     }
     return this.state.bedtimeSanctuaryState;
   }
@@ -9370,11 +9436,104 @@ class Store {
     return inSeasonMorals;
   }
 
-  getBedtimeStoryLibrary() {
+  buildChildStoryContext(heroId = null, options = {}) {
+    const targetHeroId = heroId || this.state.selectedHero?.id || (this.state.heroes && this.state.heroes[0]?.id) || 'hero_1';
+    const hero = (this.state.heroes || []).find(h => h.id === targetHeroId) ||
+                 (this.state.selectedHero?.id === targetHeroId ? this.state.selectedHero : null) ||
+                 this.state.selectedHero ||
+                 (this.state.heroes && this.state.heroes[0]);
+
+    const age = Number(hero?.age) || 5;
+    const ageTier = hero?.ageTier || (age <= 4 ? '3-4' : (age <= 6 ? '5-6' : '7+'));
+
+    // 1. Child profile
+    const child = {
+      heroId: targetHeroId,
+      name: hero?.name || 'Little Hero',
+      ageTier,
+      level: hero?.level || 1,
+      title: hero?.title || 'Brave Explorer'
+    };
+
+    // 2. Today's completed chores/habits
+    const completions = this.getTaskCompletionsToday(targetHeroId);
+    const taskTitles = completions.map(c => c.taskTitle || c.taskId).filter(Boolean);
+    const uniqueTaskTitles = Array.from(new Set(taskTitles));
+    const summarySentence = uniqueTaskTitles.length > 0
+      ? `${child.name} accomplished ${uniqueTaskTitles.join(', ')} today`
+      : `${child.name} had a wonderful day of heroic adventures`;
+
+    const daytimeAccomplishments = {
+      completions,
+      taskTitles: uniqueTaskTitles,
+      summarySentence
+    };
+
+    // 3. Active pet companion details from PETS_DATABASE
+    const activePetId = String(hero?.activePetId || '1');
+    const petFromDb = PETS_DATABASE.find(p => String(p.id) === activePetId) ||
+                      (typeof getPetById === 'function' ? getPetById(activePetId) : null) ||
+                      PETS_DATABASE[0];
+
+    const activePet = {
+      id: petFromDb?.id || activePetId,
+      key: petFromDb?.key || 'rex',
+      name: petFromDb?.name || 'Rex the T-Rex',
+      shortName: petFromDb?.shortName || petFromDb?.name || 'Rex',
+      title: petFromDb?.title || 'The Apex Stomper',
+      element: petFromDb?.element || 'Earth & Thunder',
+      archetype: petFromDb?.archetype || 'dino',
+      backstory: petFromDb?.backstory || ''
+    };
+
+    // 4. Equipped hero gear
+    const equippedWeapon = typeof this.getEquippedHeroWeapon === 'function'
+      ? (this.getEquippedHeroWeapon(true) || this.getEquippedHeroWeapon(false) || { id: hero?.equippedWeapon || 'laser_toothbrush' })
+      : { id: hero?.equippedWeapon || 'laser_toothbrush' };
+
+    // 5. Parent bedtime wish and story preferences
+    const parentWish = options?.customWish || options?.parentWish || hero?.bedtimeWish || hero?.parentWish || this.state.parentSettings?.bedtimeWish || this.state.parentSettings?.parentWish || 'Rest peacefully under the glowing starlight';
+    const storyPreferences = options?.storyPreferences || hero?.storyPreferences || this.state.parentSettings?.storyPreferences || { theme: 'calm', pace: 'soothing' };
+
+    const gearAndChoices = {
+      equippedWeapon,
+      parentWish,
+      storyPreferences
+    };
+
+    return {
+      child,
+      daytimeAccomplishments,
+      activePet,
+      gearAndChoices,
+      hero: child,
+      pet: activePet,
+      tasksToday: uniqueTaskTitles,
+      parentWish,
+      storyPreferences
+    };
+  }
+
+  getBedtimeStoryLibrary(heroId = null) {
     if (!this.state.bedtimeStoryLibrary) {
       this.state.bedtimeStoryLibrary = [];
     }
-    return this.state.bedtimeStoryLibrary;
+    if (!heroId) {
+      return this.state.bedtimeStoryLibrary;
+    }
+    const targetHero = (this.state.heroes || []).find(h => h.id === heroId) ||
+                       (this.state.selectedHero?.id === heroId ? this.state.selectedHero : null);
+    const targetHeroName = targetHero?.name;
+
+    return this.state.bedtimeStoryLibrary.filter(s => {
+      if (s.heroId) {
+        return s.heroId === heroId;
+      }
+      if (targetHeroName && s.heroName) {
+        return s.heroName === targetHeroName;
+      }
+      return this.state.selectedHero?.id === heroId;
+    });
   }
 
   toggleFavoriteBedtimeStory(storyId) {
@@ -9386,12 +9545,22 @@ class Store {
     return story.isFavorite;
   }
 
-  saveBedtimeStory(storyData) {
+  toggleBedtimeStoryFavorite(storyId) {
+    return this.toggleFavoriteBedtimeStory(storyId);
+  }
+
+  saveBedtimeStory(storyData, heroId = null) {
     if (!this.state.bedtimeStoryLibrary) {
       this.state.bedtimeStoryLibrary = [];
     }
     const storyId = storyData.id || `story_${Date.now()}`;
-    
+
+    // Resolve target child identity for sibling bookshelf isolation
+    const targetHeroId = heroId || storyData.heroId || this.state.selectedHero?.id || 'hero_1';
+    const targetHero = (this.state.heroes || []).find(h => h.id === targetHeroId) ||
+                       (this.state.selectedHero?.id === targetHeroId ? this.state.selectedHero : null);
+    const targetHeroName = storyData.heroName || targetHero?.name || 'Little Hero';
+
     // Assign a constellation star sticker badge if not already present
     let stickerId = storyData.constellationStickerId;
     if (!stickerId) {
@@ -9402,6 +9571,8 @@ class Store {
     const newStory = {
       ...storyData,
       id: storyId,
+      heroId: targetHeroId,
+      heroName: targetHeroName,
       constellationStickerId: stickerId,
       isFavorite: Boolean(storyData.isFavorite),
       savedAt: storyData.savedAt || Date.now()
@@ -9413,101 +9584,163 @@ class Store {
     } else {
       this.state.bedtimeStoryLibrary.unshift(newStory);
     }
+
+    // Also mirror to child profile for sibling bookshelf isolation
+    if (targetHero) {
+      if (!Array.isArray(targetHero.bedtimeStoryLibrary)) {
+        targetHero.bedtimeStoryLibrary = [];
+      }
+      const hStoryIdx = targetHero.bedtimeStoryLibrary.findIndex(s => s.id === storyId);
+      if (hStoryIdx >= 0) {
+        targetHero.bedtimeStoryLibrary[hStoryIdx] = newStory;
+      } else {
+        targetHero.bedtimeStoryLibrary.unshift(newStory);
+      }
+    }
+
     this.saveState(true);
     return newStory;
   }
 
   completeBedtimeStory(storyData) {
-    const savedStory = this.saveBedtimeStory(storyData);
+    const hero = this.state.selectedHero || (this.state.heroes && this.state.heroes[0]);
+    const heroId = hero?.id || 'hero_1';
 
-    const hero = this.state.selectedHero;
-    const coinsAwarded = 30;
-    const sparksAwarded = 15;
-    const xpAwarded = 20;
-    const pendingPoints = Math.round(coinsAwarded / 2);
+    // Enforce the one completion payout at a time invariant:
+    // Call isTaskPendingApproval('sleep_on_time', hero.id). If true, return failure message.
+    if (this.isTaskPendingApproval('sleep_on_time', heroId)) {
+      return {
+        success: false,
+        alreadyPending: true,
+        message: 'Bedtime story completion is already pending parent approval.'
+      };
+    }
+
+    const savedStory = this.saveBedtimeStory(storyData, heroId);
+
+    // Dynamically calculate rewards from parent-configured settings using getWaypointRewards('wp_bedtime')
+    const wpRewards = this.getWaypointRewards('wp_bedtime') || {
+      coins: 30,
+      points: 15,
+      xp: 20,
+      sparks: 15
+    };
+    const coinsAwarded = Number(wpRewards.coins) || 30;
+    const pointsToQueue = Number(wpRewards.points) || Math.round(coinsAwarded / 2);
+    const xpAwarded = Number(wpRewards.xp) || 20;
+    const sparksAwarded = Number(wpRewards.sparks) || 15;
 
     if (hero) {
+      // Auto-issue Tokens (coins), Hero XP, and Pet Sparks immediately upon valid submission
       hero.coins = (hero.coins || 0) + coinsAwarded;
+      hero.tokens = (hero.tokens ?? hero.coins ?? 0);
       hero.xp = (hero.xp || 0) + xpAwarded;
-      this.addPetSparks(hero.activePetId, sparksAwarded, hero.id);
+      this.addPetSparks(hero.activePetId || '1', sparksAwarded, hero.id);
 
-      // 30-day anti-repetition: log moral and story title into hero.bedtimeHistory
+      // Anti-Repetition Story Memory:
+      // Track last 25 story records containing { seed, archetype, title, chapterOpenings, timestamp } per child (heroId)
+      const chapterOpenings = Array.isArray(storyData?.chapters)
+        ? storyData.chapters.map(ch => (ch.chapterText || ch.text || '').slice(0, 120)).filter(Boolean)
+        : (Array.isArray(storyData?.acts) ? storyData.acts.map(a => (a.text || '').slice(0, 120)).filter(Boolean) : []);
+
       if (!Array.isArray(hero.bedtimeHistory)) {
         hero.bedtimeHistory = [];
       }
       hero.bedtimeHistory.unshift({
-        moralId: storyData.moralId || 'brave_dark',
-        title: storyData.title || 'Bedtime Story',
+        id: storyData?.id || `story_${Date.now()}`,
+        seed: storyData?.seed || storyData?.combinatorialSeed || Date.now(),
+        archetype: storyData?.archetype || storyData?.archetypeId || storyData?.realmId || 'calm_journey',
+        archetypeId: storyData?.archetypeId || storyData?.archetype || storyData?.realmId || 'calm_journey',
+        title: storyData?.title || 'Bedtime Story',
+        moralId: storyData?.moralId || 'brave_dark',
+        chapterOpenings,
         timestamp: Date.now()
       });
-      // Cap history at 100 entries
-      if (hero.bedtimeHistory.length > 100) {
-        hero.bedtimeHistory = hero.bedtimeHistory.slice(0, 100);
+      if (hero.bedtimeHistory.length > 25) {
+        hero.bedtimeHistory = hero.bedtimeHistory.slice(0, 25);
       }
 
       // Also mirror to matching hero in heroes array
       const hIdx = (this.state.heroes || []).findIndex(h => h.id === hero.id);
       if (hIdx !== -1) {
         this.state.heroes[hIdx].coins = hero.coins;
+        this.state.heroes[hIdx].tokens = hero.tokens;
         this.state.heroes[hIdx].xp = hero.xp;
         this.state.heroes[hIdx].bedtimeHistory = hero.bedtimeHistory;
       }
 
       const logId = generateId('compl_', 7);
-      const approvalReqId = 'task_bedtime_story_' + Date.now();
+      const approvalReqId = 'task_point_approval_bedtime_story_' + Date.now();
       const nowIso = new Date().toISOString();
 
-      if (this.getTaskCompletionsToday('sleep_on_time', hero.id).length === 0) {
-        if (!this.state.taskCompletionLogs) this.state.taskCompletionLogs = [];
-        this.state.taskCompletionLogs.unshift({
-          id: logId,
-          taskId: 'bedtime_story',
-          taskTitle: storyData.title || 'Bedtime Story',
-          zone: "Today's Path",
-          heroId: hero.id,
-          heroName: hero.name,
-          completedAt: nowIso,
-          timestamp: Date.now(),
-          dateString: new Date().toLocaleDateString(),
-          timeString: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          coinsAwarded: 0,
-          pointsAwarded: pendingPoints,
-          xpAwarded,
-          sparksAwarded,
-          status: 'pending',
-          approvalRequestId: approvalReqId,
-          approvedAt: null,
-          rejectedAt: null
-        });
-        if (this.state.taskCompletionLogs.length > 200) this.state.taskCompletionLogs.pop();
+      if (!this.state.taskCompletionLogs) this.state.taskCompletionLogs = [];
+      this.state.taskCompletionLogs.unshift({
+        id: logId,
+        taskId: 'bedtime_story',
+        taskTitle: storyData?.title || 'Sleep on Time',
+        zone: "Today's Path",
+        heroId: hero.id,
+        heroName: hero.name,
+        completedAt: nowIso,
+        timestamp: Date.now(),
+        dateString: new Date().toLocaleDateString(),
+        timeString: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        coinsAwarded: 0,
+        pointsAwarded: pointsToQueue,
+        xpAwarded,
+        sparksAwarded,
+        status: 'pending',
+        approvalRequestId: approvalReqId,
+        approvedAt: null,
+        rejectedAt: null
+      });
+      if (this.state.taskCompletionLogs.length > 200) this.state.taskCompletionLogs.pop();
 
-        this.enqueuePendingApproval({
-          id: approvalReqId,
-          logId,
-          kidId: hero.id,
-          kidName: hero.name,
-          type: 'task_point_approval',
-          taskId: 'bedtime_story',
-          taskTitle: storyData.title || 'Bedtime Story',
-          title: storyData.title || 'Bedtime Story',
-          zone: 'Bedtime Sanctuary',
-          pendingPoints,
-          tokensAwarded: coinsAwarded,
-          xpAwarded,
-          sparksAwarded,
-          date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          timestamp: nowIso,
-          status: 'pending'
-        });
-      }
+      // Gold Points are NEVER auto-issued. Queue Gold Points in pendingApprovals with full delta schema
+      this.enqueuePendingApproval({
+        id: approvalReqId,
+        logId,
+        kidId: hero.id,
+        kidName: hero.name,
+        type: 'task_point_approval',
+        taskId: 'bedtime_story',
+        taskTitle: 'Sleep on Time',
+        title: storyData?.title || 'Sleep on Time',
+        zone: "Today's Path",
+        tokensAwarded: coinsAwarded,
+        xpAwarded,
+        sparksAwarded,
+        pendingPoints: pointsToQueue,
+        date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        timestamp: nowIso,
+        status: 'pending'
+      });
     }
 
+    // 1:1 Parity: Mark sleep_on_time aliases in habitIslands and taskForest as completed
+    const aliases = this.getTaskAliasGroup('sleep_on_time');
+    (this.state.habitIslands || []).forEach(h => {
+      if (aliases.includes(h.id)) {
+        h.completed = true;
+        h.pointsApproved = false;
+      }
+    });
+    (this.state.taskForest || []).forEach(t => {
+      if (aliases.includes(t.id)) {
+        t.completed = true;
+        t.pointsApproved = false;
+      }
+    });
+
     // Quiet habit sync: award pet-care bond/pearly gleam for the bedtime habit (sparks already awarded above).
+    const activePet = this.getActivePet ? this.getActivePet() : null;
+    const petName = activePet?.name || activePet?.shortName || 'Rex';
+
     this.syncHabitPetCare('sleep_on_time', 'daily_routine', hero?.activePetId, false);
     this.toggleBedtimeLullaby(true);
 
     // Non-blocking log per kid_voice_companion_guidelines.md (NO blocking full-screen modal)
-    this.logAction('Completed Bedtime Storybook Adventure', `Read "${storyData.title || 'Bedtime Story'}" with Rex. +${coinsAwarded} 🪙 auto-issued, +${sparksAwarded} ⚡. (${pendingPoints} Points ⭐ pending Parent Approval)`);
+    this.logAction('Completed Bedtime Storybook Adventure', `Read "${storyData?.title || 'Bedtime Story'}" with ${petName}. +${coinsAwarded} 🪙 auto-issued, +${sparksAwarded} ⚡. (${pointsToQueue} Points ⭐ pending Parent Approval)`);
 
     if (typeof Sound?.bloop === 'function') Sound.bloop();
 
@@ -9518,7 +9751,9 @@ class Store {
       story: savedStory,
       rewardCoins: coinsAwarded,
       rewardSparks: sparksAwarded,
-      rewardXp: xpAwarded
+      sparksAwarded: sparksAwarded,
+      rewardXp: xpAwarded,
+      pendingPoints: pointsToQueue
     };
   }
 

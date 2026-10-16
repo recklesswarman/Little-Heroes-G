@@ -15,10 +15,128 @@ import {
   BEDTIME_REALMS,
   BEDTIME_MORALS,
   CONSTELLATION_STICKERS,
+  getBedtimeRealm,
   generateFallbackSvg,
-  generateProceduralBedtimeStory
+  generateProceduralBedtimeStory,
+  generateFullBedtimeStory
 } from '../data/bedtimeStoryData.js';
+import { PETS_DATABASE } from '../data/petsData.js';
 import { generateBedtimeChapterAGY } from './heroAgentService.js';
+
+/**
+ * Builds a comprehensive real-time child story context snapshot.
+ * Integrates child profile, daytime habits/tasks completed today, active pet companion
+ * from PETS_DATABASE, equipped hero gear, and anti-repetition negative constraints.
+ */
+export function buildChildStoryContext(heroId = null, options = {}) {
+  const state = store.getState ? store.getState() : (store.state || {});
+  const heroes = state.heroes || [];
+  const selectedHero = state.selectedHero || heroes[0] || { id: 'hero_1', name: 'Little Hero', level: 1 };
+  const effectiveHeroId = heroId || selectedHero.id || 'hero_1';
+  const hero = heroes.find(h => h.id === effectiveHeroId) || selectedHero;
+
+  // 1. Child Profile
+  const ageTier = hero.age ? (hero.age <= 4 ? '3-4' : hero.age <= 6 ? '5-6' : '7+') : '5-6';
+  const level = Number(hero.level) || 1;
+  const title = hero.title || (level >= 10 ? 'Grand Master Hero' : level >= 5 ? 'Brave Starlight Guardian' : 'Little Explorer');
+  const streak = Number(hero.streak) || 1;
+
+  // 2. Daytime Accomplishments (Today's completed chores & habits)
+  const todayStr = new Date().toISOString().split('T')[0];
+  const validLogsToday = (state.taskCompletionLogs || []).filter(log =>
+    (!effectiveHeroId || log.heroId === effectiveHeroId) &&
+    (log.completedAt || '').startsWith(todayStr) &&
+    log.status !== 'rejected'
+  );
+  const taskTitles = Array.from(new Set(validLogsToday.map(l => l.taskTitle || l.taskId))).filter(Boolean).slice(0, 4);
+  const summarySentence = taskTitles.length > 0
+    ? taskTitles.join(', ')
+    : 'brushed teeth sparkling clean and tidied up toys';
+  const celebrationHook = `Today in daytime adventures, ${hero.name || 'our little hero'} heroically ${summarySentence}.`;
+
+  // 3. Active Companion Pet (from PETS_DATABASE)
+  const petId = String(hero.activePetId || '1');
+  const petData = PETS_DATABASE.find(p => String(p.id) === petId || p.key === petId) || PETS_DATABASE[0];
+
+  // 4. Equipped Hero Gear & Story Choices
+  const equippedWeapon = (store.getEquippedHeroWeapon && store.getEquippedHeroWeapon(true)) || {
+    id: 'laser_toothbrush',
+    title: 'Laser Toothbrush Saber',
+    description: 'A glowing photon saber that brushes away nighttime shadows',
+    icon: 'cleaning_services'
+  };
+
+  const realm = getBedtimeRealm(options.realmId || 'space');
+  const moral = BEDTIME_MORALS.find(m => m.id === options.moralId) || BEDTIME_MORALS[0];
+
+  // 5. Anti-Repetition Constraints & Seed Rotation
+  const bedtimeHistory = Array.isArray(hero.bedtimeHistory) ? hero.bedtimeHistory : [];
+  const recentTitles = bedtimeHistory.map(h => h.title).filter(Boolean).slice(0, 25);
+  const recentArchetypes = bedtimeHistory.map(h => h.archetypeId).filter(Boolean).slice(0, 25);
+  const forbiddenKeywords = ['darkness', 'spooky', 'monster', 'nightmare'];
+  const deterministicSeed = Date.now() + Math.floor(Math.random() * 1000);
+
+  return {
+    child: {
+      heroId: effectiveHeroId,
+      name: hero.name || 'Little Hero',
+      ageTier,
+      level,
+      title,
+      streak
+    },
+    daytimeAccomplishments: {
+      taskIds: validLogsToday.map(l => l.taskId).filter(Boolean),
+      taskTitles,
+      summarySentence,
+      celebrationHook
+    },
+    activePet: {
+      id: petData.id,
+      key: petData.key,
+      name: petData.name,
+      shortName: petData.shortName || petData.name,
+      title: petData.title || 'Loyal Companion',
+      element: petData.element || 'Starlight',
+      archetype: petData.archetype || 'dino',
+      backstory: petData.backstory || '',
+      emoji: petData.emoji || '🦖',
+      actionVerb: petData.workoutInstructions || 'trots cheerfully beside you'
+    },
+    gearAndChoices: {
+      equippedWeapon,
+      realm: {
+        id: realm.id,
+        name: realm.name,
+        biome: realm.subBiomes[0],
+        accentColor: realm.accentColor
+      },
+      moral: {
+        id: moral.id,
+        name: moral.name,
+        guidance: moral.moralGuidance,
+        petAction: moral.petAction,
+        slumberResolution: moral.slumberResolution
+      },
+      magicItem: options.magicItem || 'Starlight Lantern',
+      gentleObstacle: options.gentleObstacle || 'Sleepy Bridge Troll',
+      parentWish: options.customWish || ''
+    },
+    antiRepetition: {
+      recentTitles,
+      recentArchetypes,
+      forbiddenKeywords,
+      deterministicSeed
+    }
+  };
+}
+
+// Attach to store if not already defined
+if (typeof store.buildChildStoryContext !== 'function') {
+  store.buildChildStoryContext = function(heroId = null, options = {}) {
+    return buildChildStoryContext(heroId, options);
+  };
+}
 
 class BedtimeStoryService {
   constructor() {
@@ -150,17 +268,18 @@ class BedtimeStoryService {
   }
 
   /**
-   * Start a brand new 4-chapter Bedtime Story (~4-5 mins total)
+   * Start a brand new 4-chapter (or 3-chapter) Bedtime Story
    */
-  async startStory(realmId, moralId = null, customWish = '', narrationMode = 'rex') {
+  async startStory(realmId, moralId = null, customWish = '', narrationMode = 'rex', options = {}) {
     this.cancelAutoAdvance();
-    const realm = BEDTIME_REALMS.find(r => r.id === realmId) || BEDTIME_REALMS[0];
     const hero = store.getState().selectedHero;
-    const petId = String(hero.activePetId || '1');
-    const pet = (store.getState().pets || []).find(p => String(p.id) === petId) || { name: 'Rex the Dino' };
-    
-    // Choose moral from available or passed parameter
-    const morals = store.getAvailableBedtimeMorals(hero.id);
+    const heroId = options.heroId || hero?.id || 'hero_1';
+
+    // Build comprehensive child context with anti-repetition memory & daytime accomplishments
+    const context = store.buildChildStoryContext(heroId, { realmId, moralId, customWish, ...options });
+
+    const realm = getBedtimeRealm(realmId);
+    const morals = store.getAvailableBedtimeMorals(heroId);
     const moral = BEDTIME_MORALS.find(m => m.id === moralId) || morals[0] || BEDTIME_MORALS[0];
 
     // Pick a celestial constellation sticker for this story
@@ -169,6 +288,7 @@ class BedtimeStoryService {
 
     this.activeSession = {
       id: `story_${Date.now()}`,
+      heroId: context.child.heroId,
       realmId: realm.id,
       realmName: realm.name,
       realmEmoji: realm.emoji,
@@ -179,13 +299,15 @@ class BedtimeStoryService {
       constellationStickerId: sticker.id,
       constellationStickerName: sticker.name,
       constellationStickerEmoji: sticker.emoji,
-      title: `${hero.name}'s Adventure in ${realm.name}`,
-      heroName: hero.name || 'Little Hero',
-      petId: petId,
-      petName: pet.name || 'Rex',
+      title: `${context.child.name}'s Adventure in ${realm.name}`,
+      heroName: context.child.name || 'Little Hero',
+      petId: context.activePet.id || '1',
+      petKey: context.activePet.key || 'rex',
+      petName: context.activePet.name || 'Rex',
       actNumber: 1, // 1 to 4
       acts: [],
       userChoices: [],
+      childContext: context,
       completed: false,
       createdAt: Date.now()
     };
@@ -201,7 +323,7 @@ class BedtimeStoryService {
     this.activeSession.acts.push(act1);
 
     // Narrate Chapter 1
-    this.narrateAct(act1.text, petId, 1);
+    this.narrateAct(act1.text, this.activeSession.petId, 1);
 
     return act1;
   }
@@ -224,7 +346,7 @@ class BedtimeStoryService {
 
     // 4 chapters total
     if (currentActNumber >= 4) {
-      return this.activeSession.acts[3];
+      return this.activeSession.acts[this.activeSession.acts.length - 1];
     }
 
     const nextActNumber = currentActNumber + 1;
@@ -234,8 +356,29 @@ class BedtimeStoryService {
     if (!this.activeSession) return nextAct;
     this.activeSession.acts.push(nextAct);
 
-    if (nextActNumber === 4) {
+    if (nextActNumber === 4 || nextAct.isSleepingEnd) {
       this.activeSession.completed = true;
+
+      // Update hero.bedtimeHistory anti-repetition record
+      const state = store.getState();
+      const hero = state.selectedHero;
+      if (hero) {
+        if (!Array.isArray(hero.bedtimeHistory)) hero.bedtimeHistory = [];
+        hero.bedtimeHistory.unshift({
+          id: this.activeSession.id,
+          seed: this.activeSession.childContext?.antiRepetition?.deterministicSeed || Date.now(),
+          archetypeId: nextAct.archetypeId || 'lost_baby_constellation',
+          realmId: this.activeSession.realmId,
+          title: this.activeSession.title,
+          moralId: this.activeSession.moralId,
+          chapterOpenings: this.activeSession.acts.map(a => (a.text || '').slice(0, 40)),
+          timestamp: Date.now()
+        });
+        if (hero.bedtimeHistory.length > 25) {
+          hero.bedtimeHistory = hero.bedtimeHistory.slice(0, 25);
+        }
+      }
+
       // Complete bedtime story quietly per guidelines
       store.completeBedtimeStory(this.activeSession);
     }
@@ -247,10 +390,9 @@ class BedtimeStoryService {
     return nextAct;
   }
 
-  narrateAct(text, petId, chapterNumber = 1) {
+  narrateAct(text, petId, chapterNumber = 1, options = {}) {
     const session = this.activeSession;
     if (session?.narrationMode === 'parent') {
-      // In Parent Read Aloud mode, skip AI speech, unduck lullaby, and start auto-advance
       Sound.duckLullaby(false);
       this.startAutoAdvance(() => this.advanceStory());
       if (typeof window !== 'undefined') {
@@ -262,20 +404,25 @@ class BedtimeStoryService {
     // Progressive hushed cadence rates:
     // Ch 1: 0.94 -> Ch 2: 0.88 -> Ch 3: 0.82 -> Ch 4: 0.76 (sleepy whisper)
     const rates = [0.94, 0.88, 0.82, 0.76];
-    const rate = rates[Math.min(chapterNumber - 1, rates.length - 1)];
+    const rate = options.rate || rates[Math.min(chapterNumber - 1, rates.length - 1)];
 
     // Duck the lullaby synthesizer volume while speaking
     Sound.duckLullaby(true);
 
     try {
       speakCompanion(text, petId, () => {
-        // Speech finished: restore lullaby volume and start 15s sleep auto-advance
         Sound.duckLullaby(false);
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('bedtime-story-speech-finished'));
         }
         this.startAutoAdvance(() => this.advanceStory());
-      }, { rate, pitch: chapterNumber === 4 ? 0.95 : 1.05 });
+      }, {
+        rate,
+        pitch: chapterNumber >= 3 ? 0.95 : 1.05,
+        voiceStyle: 'bedtime',
+        timeoutMs: 18000,
+        ...options
+      });
     } catch (e) {
       Sound.duckLullaby(false);
       console.warn('Story speech error:', e);
@@ -284,58 +431,143 @@ class BedtimeStoryService {
   }
 
   /**
-   * Generate an Act (1, 2, 3, or 4) using Gemini or offline procedural generator
+   * Generate an Act using Server Route -> AGY -> Firebase AI Logic -> Combinatorial Story Weaver
    */
   async generateAct(actNumber, previousChoice) {
     const session = this.activeSession;
-    const realm = BEDTIME_REALMS.find(r => r.id === session.realmId) || BEDTIME_REALMS[0];
+    const realm = getBedtimeRealm(session.realmId);
     const moral = BEDTIME_MORALS.find(m => m.id === session.moralId) || BEDTIME_MORALS[0];
     const heroName = session.heroName;
     const petName = session.petName;
+    const petId = session.petId || 'rex';
     const customWish = session.customWish || '';
 
-    // Collect past titles for strict anti-repetition
+    // Collect past titles and archetypes for strict anti-repetition
     const pastStories = store.getBedtimeStoryLibrary() || [];
-    const pastTitles = pastStories.map(s => `"${s.title}"`).slice(0, 15).join(', ');
+    const pastTitles = pastStories.map(s => s.title).filter(Boolean).slice(0, 25);
+    const recentArchetypes = session.childContext?.antiRepetition?.recentArchetypes || [];
 
     let generatedAct = null;
 
-    // 1. Try Google Antigravity (AGY) Bedtime Story Narrator Agent
+    // 1. Try Server Route /api/gemini/bedtime-story or /api/rex/bedtime-story
     try {
       this.isGenerating = true;
-      const agyChapter = await generateBedtimeChapterAGY({
-        heroName,
-        petName,
-        realmName: realm.name,
-        moralName: moral.name,
-        moralGuidance: moral.moralGuidance || moral.tagline,
-        actNumber,
-        previousChoice: previousChoice || '',
-        customWish: customWish || '',
-        pastTitles: pastStories.map(s => s.title).slice(0, 15)
-      });
+      const baseUrl = typeof window !== 'undefined' && window.location?.origin
+        ? ''
+        : (process.env.TEST_SERVER_URL || '');
 
-      if (agyChapter && agyChapter.text) {
-        const fallbackSvg = generateFallbackSvg(realm.id, actNumber, previousChoice || (agyChapter.suggestion_chips && agyChapter.suggestion_chips[0]) || '');
-        generatedAct = {
-          actNumber,
-          title: agyChapter.title || `Chapter ${actNumber}: ${realm.name}`,
-          text: agyChapter.text,
-          promptQuestion: agyChapter.prompt_question || (actNumber < 4 ? 'What should we do next?' : 'Sleep tight, little hero.'),
-          suggestionChips: Array.isArray(agyChapter.suggestion_chips) && agyChapter.suggestion_chips.length > 0
-            ? agyChapter.suggestion_chips.map(c => typeof c === 'string' ? { text: c, icon: 'stars' } : c)
-            : (actNumber === 1 ? realm.act1DefaultChips : actNumber === 2 ? realm.act2DefaultChips : realm.act3DefaultChips),
-          svgArt: fallbackSvg,
-          isSleepingEnd: actNumber === 4
-        };
+      if (baseUrl !== '' || (typeof window !== 'undefined' && window.location?.origin)) {
+        const res = await fetch(`${baseUrl}/api/gemini/bedtime-story`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            heroName,
+            heroId: session.heroId,
+            petId,
+            petName,
+            realmId: realm.id,
+            moralId: moral.id,
+            customWish,
+            actNumber,
+            previousChoice: previousChoice || '',
+            userChoices: session.userChoices || [],
+            recentTitles: pastTitles,
+            recentArchetypes
+          })
+        });
+
+        if (res.ok) {
+          const apiData = await res.json();
+          const chData = (Array.isArray(apiData.chapters) && apiData.chapters[actNumber - 1]) || apiData;
+          if (chData && (chData.text || chData.chapterText)) {
+            const fallbackSvg = generateFallbackSvg(realm.id, actNumber, previousChoice || (chData.choices && chData.choices[0]) || '');
+            generatedAct = {
+              actNumber,
+              chapterNumber: actNumber,
+              chapterIndex: actNumber - 1,
+              title: chData.title || `Chapter ${actNumber}: ${realm.name}`,
+              text: chData.chapterText || chData.text,
+              chapterText: chData.chapterText || chData.text,
+              promptQuestion: chData.choices?.[0] ? 'What should we do next?' : (actNumber < 4 ? 'What should we do next?' : 'Sleep tight, little hero.'),
+              prompt: chData.choices?.[0] ? 'What should we do next?' : (actNumber < 4 ? 'What should we do next?' : 'Sleep tight, little hero.'),
+              suggestionChips: Array.isArray(chData.choices) && chData.choices.length > 0
+                ? chData.choices.map(c => typeof c === 'string' ? { text: c, icon: 'stars' } : c)
+                : (actNumber === 1 ? realm.act1DefaultChips : actNumber === 2 ? realm.act2DefaultChips : realm.act3DefaultChips),
+              defaultChips: Array.isArray(chData.choices) && chData.choices.length > 0
+                ? chData.choices.map(c => typeof c === 'string' ? { text: c, icon: 'stars' } : c)
+                : (actNumber === 1 ? realm.act1DefaultChips : actNumber === 2 ? realm.act2DefaultChips : realm.act3DefaultChips),
+              svgArt: fallbackSvg,
+              whisperLine: chData.whisperLine || '',
+              sleepyCue: chData.sleepyCue || '',
+              moralReflection: chData.moralReflection || '',
+              choices: Array.isArray(chData.choices) ? chData.choices : [],
+              sceneMood: chData.sceneMood || 'tranquil',
+              sceneDescriptor: chData.sceneDescriptor,
+              isSleepingEnd: actNumber === 4 || chData.isSleepingEnd,
+              archetypeId: chData.archetypeId
+            };
+          }
+        }
       }
-    } catch (agyErr) {
-      console.warn('AGY Bedtime Narrator attempt fell back to Firebase AI:', agyErr);
+    } catch (routeErr) {
+      // In offline / test environment, proceed smoothly to AGY / Firebase / procedural fallback
     } finally {
       this.isGenerating = false;
     }
 
-    // 2. If AGY unavailable, fall back to Firebase AI Logic (Gemini API)
+    // 2. Try Google Antigravity (AGY) Bedtime Story Narrator Agent
+    if (!generatedAct) {
+      try {
+        this.isGenerating = true;
+        const agyChapter = await generateBedtimeChapterAGY({
+          heroName,
+          petName,
+          realmName: realm.name,
+          moralName: moral.name,
+          moralGuidance: moral.moralGuidance || moral.tagline,
+          actNumber,
+          previousChoice: previousChoice || '',
+          customWish: customWish || '',
+          pastTitles
+        });
+
+        if (agyChapter && agyChapter.text) {
+          const fallbackSvg = generateFallbackSvg(realm.id, actNumber, previousChoice || (agyChapter.suggestion_chips && agyChapter.suggestion_chips[0]) || '');
+          const proceduralForDescriptor = generateProceduralBedtimeStory(realm.id, moral.id, heroName, petName, customWish, actNumber - 1, session.userChoices || []);
+          generatedAct = {
+            actNumber,
+            chapterNumber: actNumber,
+            chapterIndex: actNumber - 1,
+            title: agyChapter.title || `Chapter ${actNumber}: ${realm.name}`,
+            text: agyChapter.text,
+            chapterText: agyChapter.text,
+            promptQuestion: agyChapter.prompt_question || (actNumber < 4 ? 'What should we do next?' : 'Sleep tight, little hero.'),
+            prompt: agyChapter.prompt_question || (actNumber < 4 ? 'What should we do next?' : 'Sleep tight, little hero.'),
+            suggestionChips: Array.isArray(agyChapter.suggestion_chips) && agyChapter.suggestion_chips.length > 0
+              ? agyChapter.suggestion_chips.map(c => typeof c === 'string' ? { text: c, icon: 'stars' } : c)
+              : (actNumber === 1 ? realm.act1DefaultChips : actNumber === 2 ? realm.act2DefaultChips : realm.act3DefaultChips),
+            defaultChips: Array.isArray(agyChapter.suggestion_chips) && agyChapter.suggestion_chips.length > 0
+              ? agyChapter.suggestion_chips.map(c => typeof c === 'string' ? { text: c, icon: 'stars' } : c)
+              : (actNumber === 1 ? realm.act1DefaultChips : actNumber === 2 ? realm.act2DefaultChips : realm.act3DefaultChips),
+            svgArt: fallbackSvg,
+            whisperLine: proceduralForDescriptor.whisperLine,
+            sleepyCue: proceduralForDescriptor.sleepyCue,
+            moralReflection: proceduralForDescriptor.moralReflection,
+            choices: proceduralForDescriptor.choices,
+            sceneMood: proceduralForDescriptor.sceneMood,
+            sceneDescriptor: proceduralForDescriptor.sceneDescriptor,
+            isSleepingEnd: actNumber === 4,
+            archetypeId: proceduralForDescriptor.archetypeId
+          };
+        }
+      } catch (agyErr) {
+        // Fall back to Firebase AI
+      } finally {
+        this.isGenerating = false;
+      }
+    }
+
+    // 3. Fall back to Firebase AI Logic (Gemini API)
     if (!generatedAct && firebaseAI.isAiReady && firebaseAI.model) {
       try {
         this.isGenerating = true;
@@ -348,10 +580,10 @@ Current chapter: Chapter ${actNumber} of 4.
 ${previousChoice ? `The child chose: "${previousChoice}".` : ''}
 
 ANTI-REPETITION MANDATE:
-Do NOT repeat or copy any of these past story titles or plots: ${pastTitles || 'None yet'}. Make this story unique and refreshing!
+Do NOT repeat or copy any of these past story titles or plots: ${pastTitles.join(', ') || 'None yet'}. Make this story unique and refreshing!
 
 CHAPTER GUIDELINES:
-- Chapter 1: The Evening Departure. Introduce the twilight setting, packing bedtime hero gear or pajamas, and the soothing calm of dusk. (Target: ~110-130 words).
+- Chapter 1: The Evening Departure. Introduce twilight, packing bedtime hero gear or pajamas, and the soothing calm of dusk. (Target: ~110-130 words).
 - Chapter 2: The Curious Discovery. The active pet (${petName}) uses their gentle senses to discover a sleepy creature or gentle bedtime mystery. (Target: ~120-140 words).
 - Chapter 3: Overcoming the Challenge with the Daily Moral. The hurdle is resolved through ${moral.name} (${moral.moralGuidance}). ${petName} helps by ${moral.petAction}. (Target: ~130-150 words).
 - Chapter 4: Peaceful Cozy Slumber. Tucking in, deep calming breaths, yawns, and soft goodnight whispers as ambient stars shine. (Target: ~110-130 words).
@@ -371,26 +603,41 @@ Return ONLY raw JSON with these exact keys (no markdown code blocks, just raw JS
         const parsed = JSON.parse(rawText);
 
         const fallbackSvg = generateFallbackSvg(realm.id, actNumber, previousChoice || (parsed.suggestionChips && parsed.suggestionChips[0]) || '');
+        const proceduralForDescriptor = generateProceduralBedtimeStory(realm.id, moral.id, heroName, petName, customWish, actNumber - 1, session.userChoices || []);
 
         generatedAct = {
           actNumber,
+          chapterNumber: actNumber,
+          chapterIndex: actNumber - 1,
           title: parsed.title || `Chapter ${actNumber}: ${realm.name}`,
-          text: parsed.text || `Rex smiled happily beside ${heroName} as they gazed at the quiet, starry night.`,
+          text: parsed.text || `${petName} smiled happily beside ${heroName} as they gazed at the quiet, starry night.`,
+          chapterText: parsed.text || `${petName} smiled happily beside ${heroName} as they gazed at the quiet, starry night.`,
           promptQuestion: parsed.promptQuestion || (actNumber < 4 ? 'What should we do next?' : 'Sleep tight, little hero.'),
+          prompt: parsed.promptQuestion || (actNumber < 4 ? 'What should we do next?' : 'Sleep tight, little hero.'),
           suggestionChips: Array.isArray(parsed.suggestionChips) && parsed.suggestionChips.length > 0
             ? parsed.suggestionChips.map(c => typeof c === 'string' ? { text: c, icon: 'stars' } : c)
             : (actNumber === 1 ? realm.act1DefaultChips : actNumber === 2 ? realm.act2DefaultChips : realm.act3DefaultChips),
+          defaultChips: Array.isArray(parsed.suggestionChips) && parsed.suggestionChips.length > 0
+            ? parsed.suggestionChips.map(c => typeof c === 'string' ? { text: c, icon: 'stars' } : c)
+            : (actNumber === 1 ? realm.act1DefaultChips : actNumber === 2 ? realm.act2DefaultChips : realm.act3DefaultChips),
           svgArt: fallbackSvg,
-          isSleepingEnd: actNumber === 4
+          whisperLine: proceduralForDescriptor.whisperLine,
+          sleepyCue: proceduralForDescriptor.sleepyCue,
+          moralReflection: proceduralForDescriptor.moralReflection,
+          choices: proceduralForDescriptor.choices,
+          sceneMood: proceduralForDescriptor.sceneMood,
+          sceneDescriptor: proceduralForDescriptor.sceneDescriptor,
+          isSleepingEnd: actNumber === 4,
+          archetypeId: proceduralForDescriptor.archetypeId
         };
       } catch (err) {
-        console.warn('Gemini bedtime story generation fallback:', err);
+        // Fall back to offline procedural generator
       } finally {
         this.isGenerating = false;
       }
     }
 
-    // Resilient offline combinatorial generator if AI generation failed or wasn't available
+    // 4. Resilient offline Combinatorial Dynamic Story Weaver
     if (!generatedAct) {
       generatedAct = this.createOfflineAct(actNumber, realm, moral, heroName, petName, customWish, previousChoice);
     }
@@ -413,13 +660,75 @@ Return ONLY raw JSON with these exact keys (no markdown code blocks, just raw JS
 
     return {
       actNumber,
+      chapterNumber: actNumber,
+      chapterIndex: actNumber - 1,
       title: procedural.title,
       text: procedural.text,
-      promptQuestion: procedural.prompt,
-      suggestionChips: procedural.defaultChips || [],
+      chapterText: procedural.chapterText || procedural.text,
+      promptQuestion: procedural.promptQuestion || procedural.prompt,
+      prompt: procedural.prompt,
+      suggestionChips: procedural.suggestionChips || procedural.defaultChips || [],
+      defaultChips: procedural.defaultChips || [],
       svgArt: fallbackSvg,
-      isSleepingEnd: actNumber === 4
+      whisperLine: procedural.whisperLine || '',
+      sleepyCue: procedural.sleepyCue || '',
+      moralReflection: procedural.moralReflection || '',
+      choices: procedural.choices || [],
+      sceneMood: procedural.sceneMood || 'tranquil',
+      sceneDescriptor: procedural.sceneDescriptor,
+      isSleepingEnd: actNumber === 4,
+      archetypeId: procedural.archetypeId
     };
+  }
+
+  /**
+   * One-shot 3-chapter bedtime story generation
+   */
+  async generateBedtimeStory(options = {}) {
+    const hero = store.getState().selectedHero;
+    const heroId = options.heroId || hero?.id || 'hero_1';
+    const context = store.buildChildStoryContext(heroId, options);
+    const realm = getBedtimeRealm(options.realmId || 'space');
+    const moral = BEDTIME_MORALS.find(m => m.id === options.moralId) || BEDTIME_MORALS[0];
+
+    try {
+      const baseUrl = typeof window !== 'undefined' && window.location?.origin ? '' : (process.env.TEST_SERVER_URL || '');
+      if (baseUrl !== '' || (typeof window !== 'undefined' && window.location?.origin)) {
+        const res = await fetch(`${baseUrl}/api/gemini/bedtime-story`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            heroName: context.child.name,
+            heroId: context.child.heroId,
+            petId: context.activePet.id,
+            petName: context.activePet.name,
+            realmId: realm.id,
+            moralId: moral.id,
+            magicItem: context.gearAndChoices.magicItem,
+            gentleObstacle: context.gearAndChoices.gentleObstacle,
+            customWish: options.customWish || '',
+            userChoices: options.userChoices || [],
+            recentTitles: context.antiRepetition.recentTitles,
+            recentArchetypes: context.antiRepetition.recentArchetypes
+          })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && Array.isArray(data.chapters)) {
+            return data;
+          }
+        }
+      }
+    } catch (e) {}
+
+    return generateFullBedtimeStory(
+      realm.id,
+      moral.id,
+      context.child.name,
+      context.activePet.name,
+      options.customWish || '',
+      options.userChoices || []
+    );
   }
 
   getActiveSession() {

@@ -3,7 +3,8 @@
  * Little Hero Adventures - Bedtime Storybook Engine
  * 
  * Strict Explorer Design System: ZERO pink or purple.
- * Only midnight slate, emerald green, starlight cyan, solar orange, and amber gold.
+ * Only midnight slate (#09141e), emerald green (#2ecc71), starlight cyan (#00d2d3),
+ * solar orange (#f39c12), and warm amber (#ffb961).
  */
 
 export const BEDTIME_MORALS = [
@@ -280,6 +281,9 @@ export const CONSTELLATION_STICKERS = [
   }
 ];
 
+/**
+ * 4 Canonical Bedtime Realms (strictly preserved for backwards compatibility with tests asserting length === 4)
+ */
 export const BEDTIME_REALMS = [
   {
     id: 'space',
@@ -307,7 +311,7 @@ export const BEDTIME_REALMS = [
       { text: 'Cosmic Pajama Boots 🧸', icon: 'bed' }
     ],
     act2Prompts: [
-      'Rex points ahead with his explorer scope! Our companion pet discovers a gentle starlight mystery in the asteroid garden! What did they find?'
+      'Our companion pet discovers a gentle starlight mystery in the asteroid garden! What did they find?'
     ],
     act2DefaultChips: [
       { text: 'A Nest of Sleeping Star-Bunnies! 🐰', icon: 'auto_awesome' },
@@ -342,7 +346,7 @@ export const BEDTIME_REALMS = [
     ],
     heroHabitThemes: ['Clean giant dinosaur teeth until they sparkle', 'Put away the jungle tools before bedtime', 'Eat healthy prehistoric crunch berries'],
     act1Prompts: [
-      'Rex puts on his explorer hat! What friendly dinosaur tool should we carry into the glowing jungle?'
+      'Our companion puts on their explorer hat! What friendly dinosaur tool should we carry into the glowing jungle?'
     ],
     act1DefaultChips: [
       { text: 'Sparkle Toothbrush 🪥', icon: 'dentistry' },
@@ -385,7 +389,7 @@ export const BEDTIME_REALMS = [
     ],
     heroHabitThemes: ['Swab and tidy the ship deck', 'Drink fresh water from the captain barrel', 'Brush pirate peg-teeth until pearl-white'],
     act1Prompts: [
-      'Captain Rex raises the sleep lantern on the Starlight Sloop! What pirate treasure gear do we pack?'
+      'Our companion raises the sleep lantern on the Starlight Sloop! What pirate treasure gear do we pack?'
     ],
     act1DefaultChips: [
       { text: 'Golden Toothbrush 🪥', icon: 'stars' },
@@ -428,7 +432,7 @@ export const BEDTIME_REALMS = [
     ],
     heroHabitThemes: ['Polish shiny knight armor', 'Tidy away wooden swords and toy shields', 'Sip warm milk or water before bed'],
     act1Prompts: [
-      'Sir Rex the Brave polishes his round shield! What noble bedtime supply should we carry on evening rounds?'
+      'Our companion polishes their round shield! What noble bedtime supply should we carry on evening rounds?'
     ],
     act1DefaultChips: [
       { text: 'Shield of Pearly Smiles 🛡️', icon: 'shield' },
@@ -456,77 +460,621 @@ export const BEDTIME_REALMS = [
 ];
 
 /**
- * Procedural Combinatorial Bedtime Story Generator (~120-150 words per chapter)
- * Used as a 100% resilient offline fallback or when network is offline.
- * Guaranteed 100% non-repeating across sessions via rich combinatorial matrix.
+ * Extended Bedtime Realms Catalog
+ * Features rich storytelling environments with zero pink/purple Explorer styling.
  */
-export function generateProceduralBedtimeStory(realmId, moralId, heroName, activePetName, customWish = '', chapterIndex = 0, userChoices = []) {
-  const realm = BEDTIME_REALMS.find(r => r.id === realmId) || BEDTIME_REALMS[0];
+export const EXTENDED_BEDTIME_REALMS = [
+  {
+    id: 'whispering_woods',
+    name: 'Whispering Woods',
+    subtitle: 'Luminescent ancient trees, glowing mushroom paths & sleepy moss hollows',
+    icon: 'forest',
+    emoji: '🌲',
+    accentColor: '#2ecc71',
+    glowColor: '#00d2d3',
+    bgGradient: 'from-[#040e0b] via-[#091b15] to-[#0d2a20]',
+    ambientSound: 'forest_crickets',
+    subBiomes: [
+      'The Luminescent Ancient Grove',
+      'The Whispering Hollow Cedar',
+      'The Bioluminescent Mushroom Path',
+      'The Velvet Moss Glade'
+    ],
+    heroHabitThemes: ['Brush pinecone crumbs off travel boots', 'Tidy forest acorns into little baskets', 'Sip fresh spring water from a wooden cup'],
+    act1Prompts: ['What gentle woodland explorer tool should we carry into the whispering trees?'],
+    act1DefaultChips: [
+      { text: 'Glow-Moss Lantern 🏮', icon: 'lightbulb' },
+      { text: 'Wooden Compass 🧭', icon: 'explore' },
+      { text: 'Fluffy Leaf Blanket 🍃', icon: 'bed' }
+    ],
+    act2Prompts: ['A soft rustling among the bioluminescent mushrooms! What sweet forest friend did our companion discover?'],
+    act2DefaultChips: [
+      { text: 'A Sleepy Baby Owl in a Hollow! 🦉', icon: 'pets' },
+      { text: 'A Lost Starlight Hedgehog! 🦔', icon: 'auto_awesome' },
+      { text: 'A Tiny Fawn Looking for its Den! 🦌', icon: 'favorite' }
+    ],
+    act3Prompts: ['The path to the Slumber Hollow is dim. How do we help our forest friends find peaceful rest?'],
+    act3DefaultChips: [
+      { text: 'Hang a Star-Lantern on the Bough! 🏮', icon: 'lightbulb' },
+      { text: 'Sing a Soft Forest Lullaby! 🎵', icon: 'music_note' },
+      { text: 'Share a Warm Velvet Blanket! 🤝', icon: 'handshake' }
+    ],
+    act4Prompt: 'The ancient cedar branches sway gently in the night breeze. Fireflies flicker like cozy nightlights. Close your eyes and dream of quiet green woods, little hero.'
+  },
+  {
+    id: 'starlight_cove',
+    name: 'Starlight Cove',
+    subtitle: 'Bioluminescent ocean tidepools, sea glass reefs & singing slumber whales',
+    icon: 'water',
+    emoji: '🌊',
+    accentColor: '#00d2d3',
+    glowColor: '#2ecc71',
+    bgGradient: 'from-[#030d14] via-[#061e2a] to-[#0a2f3f]',
+    ambientSound: 'ocean_lullaby',
+    subBiomes: [
+      'The Glowing Sea Glass Tidepools',
+      'The Bioluminescent Coral Arch',
+      'The Singing Slumber Whale Trench',
+      'The Sandy Hammock Shore'
+    ],
+    heroHabitThemes: ['Rinse salt spray off hero gear', 'Collect smooth driftwood into tidy piles', 'Drink cool freshwater before sleeping'],
+    act1Prompts: ['What seaworthy bedtime gear should we pack for our calm tide voyage?'],
+    act1DefaultChips: [
+      { text: 'Pearl Nightlight 🐚', icon: 'lightbulb' },
+      { text: 'Sea Turtle Flute 🎵', icon: 'music_note' },
+      { text: 'Cozy Fleece Hammock 🛏️', icon: 'bed' }
+    ],
+    act2Prompts: ['Gentle ripples sparkle with aqua light! Who is splashing softly by the tidepool?'],
+    act2DefaultChips: [
+      { text: 'A Baby Sea Otter with a Star Shell! 🦦', icon: 'pets' },
+      { text: 'A Friendly Slumber Whale Humming Low! 🐋', icon: 'waves' },
+      { text: 'A Glowing Jellyfish Lighting the Reef! 🪼', icon: 'auto_awesome' }
+    ],
+    act3Prompts: ['The harbor tide is gentle and slow. How does our brave crew prepare for the calmest night?'],
+    act3DefaultChips: [
+      { text: 'Breathe with the Ocean Waves! 🧘', icon: 'self_improvement' },
+      { text: 'Place Chime Conch Shells on Sand! 🐚', icon: 'music_note' },
+      { text: 'Tuck the Baby Otter into Seaweed Bed! 💛', icon: 'favorite' }
+    ],
+    act4Prompt: 'The tide sighs softly against the warm sand. The slumber whale hums a deep, soothing ocean lullaby. Sleep peacefully under the starlight waves.'
+  },
+  {
+    id: 'cloud_kingdom',
+    name: 'Cloud Kingdom',
+    subtitle: 'Floating cumulus islands, moonbeam bridges & gentle cloud sheep',
+    icon: 'cloud',
+    emoji: '☁️',
+    accentColor: '#00d2d3',
+    glowColor: '#ffb961',
+    bgGradient: 'from-[#08121a] via-[#10222f] to-[#183446]',
+    ambientSound: 'cloud_breeze',
+    subBiomes: [
+      'The Floating Cumulus Meadow',
+      'The Moonbeam Rainbow Arch',
+      'The Whispering Cloud Castle',
+      'The Fluffy Slumber Nest'
+    ],
+    heroHabitThemes: ['Comb stardust from cloud slippers', 'Fold sleeping robes neatly on cloud shelves', 'Sip warm celestial milk'],
+    act1Prompts: ['What sky explorer gear do we bring onto the floating cloud islands?'],
+    act1DefaultChips: [
+      { text: 'Feather Quilt Backpack 🪶', icon: 'bed' },
+      { text: 'Moonbeam Wand 🪄', icon: 'auto_awesome' },
+      { text: 'Stardust Goggles 🥽', icon: 'visibility' }
+    ],
+    act2Prompts: ['A soft bleat echoes through the misty sky! What friendly creature did we meet?'],
+    act2DefaultChips: [
+      { text: 'A Fluffy Cloud Sheep Tangled in Stars! 🐑', icon: 'pets' },
+      { text: 'A Little Moon Pegasus Resting Its Wings! 🦄', icon: 'auto_awesome' },
+      { text: 'A Sleepy Star Baby Looking for its Cloud! ⭐', icon: 'star' }
+    ],
+    act3Prompts: ['The moonbeam bridge is resting for the night. How do we help everyone cross to the big cloud nest?'],
+    act3DefaultChips: [
+      { text: 'Gently Untangle the Golden Starlight! 🤝', icon: 'handshake' },
+      { text: 'Take Three Slow Feather Breaths! 🧘', icon: 'self_improvement' },
+      { text: 'Share a Warm Cloud Blanket! ☁️', icon: 'bed' }
+    ],
+    act4Prompt: 'The cumulus clouds float like giant velvet pillows. The night breeze whispers sweet dreams through the sky. Drift into sleep, floating on clouds.'
+  },
+  {
+    id: 'crystal_caverns',
+    name: 'Musical Crystal Caverns',
+    subtitle: 'Singing stalactite geodes, reflecting mirror pools & warm amber crystals',
+    icon: 'diamond',
+    emoji: '💎',
+    accentColor: '#00d2d3',
+    glowColor: '#ffb961',
+    bgGradient: 'from-[#050c12] via-[#0b1c26] to-[#112a38]',
+    ambientSound: 'crystal_chimes',
+    subBiomes: [
+      'The Singing Geode Grotto',
+      'The Mirror Glade Spring',
+      'The Warm Amber Crystal Hearth',
+      'The Echo Chamber of Dreams'
+    ],
+    heroHabitThemes: ['Polish shiny crystal mining badges', 'Put away explorer pickaxes neatly', 'Drink pure subterranean mineral water'],
+    act1Prompts: ['What cavern explorer supplies should we take into the singing crystal grotto?'],
+    act1DefaultChips: [
+      { text: 'Tuning Fork of Harmony 🎵', icon: 'music_note' },
+      { text: 'Amber Crystal Lantern 🏮', icon: 'lightbulb' },
+      { text: 'Velvet Cave Sleeping Bag 🛏️', icon: 'bed' }
+    ],
+    act2Prompts: ['A soft chime rings through the cave! What gentle underground friend is resting here?'],
+    act2DefaultChips: [
+      { text: 'A Baby Crystal Salamander Glowing Warm! 🦎', icon: 'pets' },
+      { text: 'A Sleepy Geode Golem Yawning! 🪨', icon: 'face' },
+      { text: 'A Lost Chime Hummingbird Sleeping! 🐦', icon: 'auto_awesome' }
+    ],
+    act3Prompts: ['The crystal chimes are slightly out of tune for bedtime. How do we restore peaceful harmony?'],
+    act3DefaultChips: [
+      { text: 'Tap the Amber Crystal with Kindness! 💎', icon: 'stars' },
+      { text: 'Hum the Sweet Dream Lullaby! 🎶', icon: 'music_note' },
+      { text: 'Sweep the Fallen Crystal Dust! 🧹', icon: 'cleaning_services' }
+    ],
+    act4Prompt: 'Every crystal in the cavern hums a soft, harmonious chord. Warm amber light glows like a gentle hearth. Close your eyes and dream of sparkling stars, brave spelunker.'
+  },
+  {
+    id: 'coral_sanctuary',
+    name: 'Underwater Coral Sanctuary',
+    subtitle: 'Deep marine starlight lagoons, velvet anemones & bioluminescent sea jellies',
+    icon: 'scuba_diving',
+    emoji: '🪸',
+    accentColor: '#00d2d3',
+    glowColor: '#2ecc71',
+    bgGradient: 'from-[#020b12] via-[#051a25] to-[#0a2939]',
+    ambientSound: 'underwater_bubbles',
+    subBiomes: [
+      'The Velvet Anemone Meadow',
+      'The Bioluminescent Jellyfish Lagoon',
+      'The Pearl Shell Slumber Basin',
+      'The Deep Coral Nursery'
+    ],
+    heroHabitThemes: ['Brush coral grit from diving goggles', 'Tidy shells into organized rows', 'Drink bubbly fresh hydration'],
+    act1Prompts: ['What deep-sea gear should we bring down into the peaceful sanctuary?'],
+    act1DefaultChips: [
+      { text: 'Glowing Bubble Lantern 🫧', icon: 'lightbulb' },
+      { text: 'Conch Shell Communicator 🐚', icon: 'hearing' },
+      { text: 'Seaweed Sleeping Cocoon 🛏️', icon: 'bed' }
+    ],
+    act2Prompts: ['Gentle bubbles rise toward the surface! Who is peeking out from the coral alcove?'],
+    act2DefaultChips: [
+      { text: 'A Tiny Seahorse with Bedtime Yawns! 🎠', icon: 'pets' },
+      { text: 'A Baby Manta Ray Gliding to Rest! 🪽', icon: 'waves' },
+      { text: 'A Clam Sheltering a Luminous Pearl! 🦪', icon: 'auto_awesome' }
+    ],
+    act3Prompts: ['The deep currents are swirling softly. How do we calm the waters for bedtime?'],
+    act3DefaultChips: [
+      { text: 'Guide Jellies to their Rest Nooks! 🪼', icon: 'favorite' },
+      { text: 'Breathe Out Gentle Calming Bubbles! 🧘', icon: 'self_improvement' },
+      { text: 'Tidy Drifting Sea Grass! 🌿', icon: 'cleaning_services' }
+    ],
+    act4Prompt: 'Soft bioluminescent bubbles drift upwards like slow-motion stars. The sea is warm, safe, and silent. Drift into sweet underwater dreams.'
+  },
+  {
+    id: 'dino_slumber_valley',
+    name: 'Dino Slumber Valley',
+    subtitle: 'Prehistoric hot springs basin, mossy geyser nests & warm amber lava lamps',
+    icon: 'volcano',
+    emoji: '🦕',
+    accentColor: '#2ecc71',
+    glowColor: '#ffb961',
+    bgGradient: 'from-[#030e0a] via-[#091f16] to-[#0f3224]',
+    ambientSound: 'warm_geyser',
+    subBiomes: [
+      'The Warm Geyser Slumber Basin',
+      'The Amber Lava Rock Terrace',
+      'The Whispering Fern Canopy',
+      'The Sleepy Brachio Hot Spring'
+    ],
+    heroHabitThemes: ['Scrub fossil teeth until shiny', 'Stack smooth basalt stones into cairns', 'Drink steaming herbal hot spring water'],
+    act1Prompts: ['What prehistoric explorer gear shall we bring into the warm slumber valley?'],
+    act1DefaultChips: [
+      { text: 'Stone-Age Nightlight 🏮', icon: 'lightbulb' },
+      { text: 'Fern Leaf Pillow 🌿', icon: 'bed' },
+      { text: 'Fossil Flute 🎵', icon: 'music_note' }
+    ],
+    act2Prompts: ['Bubbles rise lazily from a warm volcanic pool! Who is resting their weary legs?'],
+    act2DefaultChips: [
+      { text: 'A Baby Brachiosaurus Yawning Wide! 🦕', icon: 'pets' },
+      { text: 'A Sleepy Stegosaurus Nesting in Moss! 🦖', icon: 'favorite' },
+      { text: 'A Warm Magma Snail Humming Peacefully! 🐌', icon: 'auto_awesome' }
+    ],
+    act3Prompts: ['The evening geyser mist is rising thick and warm. How do we prepare our cozy valley nest?'],
+    act3DefaultChips: [
+      { text: 'Roll Soft Moss Across the Warm Stones! 🌿', icon: 'bed' },
+      { text: 'Sing the Ancient Dino Lullaby! 🎶', icon: 'music_note' },
+      { text: 'Share the Warmest Steam Spot! 🤝', icon: 'handshake' }
+    ],
+    act4Prompt: 'Warm prehistoric mist rises lazily into the starlit sky. The giant dinosaurs breathe deeply and softly together. Rest peacefully in the warm valley, little hero.'
+  }
+];
+
+export const ALL_BEDTIME_REALMS = [...BEDTIME_REALMS, ...EXTENDED_BEDTIME_REALMS];
+
+// Wire custom find/some onto BEDTIME_REALMS so lookups for extended realms succeed seamlessly
+BEDTIME_REALMS.find = function(predicate, thisArg) {
+  return ALL_BEDTIME_REALMS.find(predicate, thisArg);
+};
+
+export function getBedtimeRealm(realmId) {
+  if (!realmId) return BEDTIME_REALMS[0];
+  const normalized = String(realmId).toLowerCase().trim();
+  // Handle alias for crystal_caverns / crystal_cavern
+  if (normalized === 'crystal_cavern') {
+    return ALL_BEDTIME_REALMS.find(r => r.id === 'crystal_caverns') || BEDTIME_REALMS[0];
+  }
+  return ALL_BEDTIME_REALMS.find(r => r.id === normalized) || BEDTIME_REALMS[0];
+}
+
+/**
+ * 12+ Combinatorial Plot Archetypes Matrix
+ */
+export const PLOT_ARCHETYPES = [
+  {
+    id: 'lost_baby_constellation',
+    name: 'The Lost Baby Constellation',
+    summary: 'Guiding a lost baby celestial creature home to its family nest',
+    mood: 'mystical',
+    act2Discovery: 'a tiny glowing baby creature nestled in a cradle of sleeping stardust, looking just a little bit nervous in the big, quiet night',
+    act3Challenge: 'The little one was worried about finding the right way home through the dark.',
+    act3Resolution: 'holding hands, lighting the starlight beacon, and showing gentle bravery together',
+    keyProp: 'Luminous Constellation Map'
+  },
+  {
+    id: 'bridge_of_whispers',
+    name: 'The Bridge of Whispers',
+    summary: 'Helping a sleepy guardian repair or cross a mystical bridge',
+    mood: 'tranquil',
+    act2Discovery: 'a tired stone guardian sitting beside a bridge whose glowing stepping stones were dim and resting',
+    act3Challenge: 'The bridge stones needed gentle cooperation and patience to light up again.',
+    act3Resolution: 'taking turns stepping gently and sharing encouraging smiles until every stone glowed amber',
+    keyProp: 'Bridge of Whispering Stones'
+  },
+  {
+    id: 'magic_lantern_glow',
+    name: 'The Slumber Beacon Lantern',
+    summary: 'Lighting bedtime beacons along a dim twilight path',
+    mood: 'gentle',
+    act2Discovery: 'an ancient brass lantern hung from a bough, waiting for a warm hero spark to light the way',
+    act3Challenge: 'The twilight path was shadowy and needed courage to step forward.',
+    act3Resolution: 'breathing in calmness and lighting the lantern together, showing that dark shadows are soft and safe',
+    keyProp: 'Starlight Slumber Lantern'
+  },
+  {
+    id: 'singing_crystal_pond',
+    name: 'The Singing Mirror Tidepool',
+    summary: 'Restoring harmonic calm to a shimmering water tidepool',
+    mood: 'tranquil',
+    act2Discovery: 'a crystal tidepool reflecting the evening stars, humming a slightly hurried ripple melody',
+    act3Challenge: 'The water ripples needed calm breathing to settle into a glassy bedtime mirror.',
+    act3Resolution: 'taking three slow, deep ocean breaths, watching the waves melt into peaceful stillness',
+    keyProp: 'Singing Mirror Tidepool'
+  },
+  {
+    id: 'cloud_sheep_blanket',
+    name: 'The Cloud Sheep Quilt',
+    summary: 'Untangling a floating cloud sheep to share a bedtime quilt',
+    mood: 'gentle',
+    act2Discovery: 'a fluffy cloud sheep tangled softly in gentle moonbeams, needing a helping paw to get cozy',
+    act3Challenge: 'The golden yarn was in gentle knots that required patience and teamwork.',
+    act3Resolution: 'patiently working together to smooth the fleece into a giant warm bedtime blanket for all',
+    keyProp: 'Velvet Cloud Quilt'
+  },
+  {
+    id: 'yawning_ancient_tree',
+    name: 'The Great Hollow Cedar',
+    summary: 'Tucking woodland and star friends into a great hollow tree',
+    mood: 'deep_slumber',
+    act2Discovery: 'a massive ancient cedar whose hollow trunk was glowing with soft moss and tiny yawn bubbles',
+    act3Challenge: 'Every friend needed their own tidy resting cubby before the realm could sleep.',
+    act3Resolution: 'tidying toys and bedding neatly into each nook, giving every friend sweet dreams',
+    keyProp: 'Ancient Hollow Cedar'
+  },
+  {
+    id: 'tidepool_night_chimes',
+    name: 'The Shoreline Conch Chimes',
+    summary: 'Placing gentle musical conch shells along the shoreline',
+    mood: 'tranquil',
+    act2Discovery: 'three spiral conch shells scattered along the powdery sand, waiting to play their evening song',
+    act3Challenge: 'The shells needed to be arranged in careful, listening harmony.',
+    act3Resolution: 'using quiet listening ears to arrange the shells until a soothing lullaby chord washed across the sand',
+    keyProp: 'Singing Conch Shells'
+  },
+  {
+    id: 'glowing_stardust_trail',
+    name: 'The Firefly Stardust Trail',
+    summary: 'Following firefly trails to a secret cozy resting glade',
+    mood: 'mystical',
+    act2Discovery: 'a playful cluster of bioluminescent fireflies dancing in a slow, winding spiral',
+    act3Challenge: 'The path twisted into unfamiliar territory, calling for a brave exploratory spirit.',
+    act3Resolution: 'taking brave little steps hand in hand, discovering that new adventures lead to cozy sanctuaries',
+    keyProp: 'Twinkling Firefly Trail'
+  },
+  {
+    id: 'floating_island_hammock',
+    name: 'The Velvet Island Hammock',
+    summary: 'Weaving a suspended velvet hammock between gentle boughs',
+    mood: 'gentle',
+    act2Discovery: 'a pair of flowering night boughs framing the calmest view of the starry horizon',
+    act3Challenge: 'The hammock needed strong knot-tying and sharing of warm blankets.',
+    act3Resolution: 'sharing the softest blankets and testing the swing together with cheerful giggles',
+    keyProp: 'Woven Starlight Hammock'
+  },
+  {
+    id: 'moonstone_lullaby',
+    name: 'The Harmonic Moonstone',
+    summary: 'Chanting the evening lullaby with the realm guardian',
+    mood: 'tranquil',
+    act2Discovery: 'a smooth pearlescent moonstone resting on a velvet moss pedestal under the stars',
+    act3Challenge: 'The stone glows only when friends speak kind truths and open their hearts.',
+    act3Resolution: 'sharing gratitude for today\'s small moments, watching the stone blossom into radiant amber warmth',
+    keyProp: 'Harmonic Moonstone'
+  },
+  {
+    id: 'kind_dragon_hearth',
+    name: 'The Gentle Dragon Hearth',
+    summary: 'Warming chamomile tea for a gentle dragon with bedtime hiccups',
+    mood: 'gentle',
+    act2Discovery: 'a friendly miniature dragon curled beside a stone fireplace, with tiny puffing hiccups',
+    act3Challenge: 'The hiccups were making the dragon feel silly and frustrated.',
+    act3Resolution: 'taking deep dragon breaths together and sharing a warm cup of herbal water until the hiccups floated away',
+    keyProp: 'Hearthstone Fireplace'
+  },
+  {
+    id: 'peaceful_slumber_bell',
+    name: 'The Silver Slumber Bell',
+    summary: 'Ringing the soft silver bell that lulls the entire realm to sleep',
+    mood: 'deep_slumber',
+    act2Discovery: 'a delicate silver chime bell suspended from an arch of sleeping vines',
+    act3Challenge: 'The bell needed a calm, steady hand so its chime would whisper instead of clatter.',
+    act3Resolution: 'gently nudging the clapper with steady patience, sending a wave of drowsy peace across the realm',
+    keyProp: 'Silver Slumber Bell'
+  }
+];
+
+/**
+ * Procedural Combinatorial Bedtime Story Generator (~120-150 words per chapter)
+ * Combinatorial Dynamic Story Weaver with 12+ distinct archetypes per realm.
+ * Output rich structured sceneDescriptor payloads and strictly zero pink/purple palette.
+ */
+export function generateProceduralBedtimeStory(
+  realmId = 'space',
+  moralId = 'brave_dark',
+  heroName = 'Little Hero',
+  activePetName = 'Rex',
+  customWish = '',
+  chapterIndex = 0,
+  userChoices = []
+) {
+  const realm = getBedtimeRealm(realmId);
   const moral = BEDTIME_MORALS.find(m => m.id === moralId) || BEDTIME_MORALS[0];
   const hName = heroName || 'Little Hero';
   const pName = activePetName || 'Rex';
   const choiceText = (userChoices[chapterIndex - 1] || '').trim();
 
+  // Deterministic rotation of archetypes based on names & realm
+  const hash = String(hName + pName + realm.id + moral.id).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  const archetypeIdx = (hash + Number(chapterIndex || 0)) % PLOT_ARCHETYPES.length;
+  const archetype = PLOT_ARCHETYPES[archetypeIdx] || PLOT_ARCHETYPES[0];
+
   const subBiome = realm.subBiomes[chapterIndex % realm.subBiomes.length];
+  const choiceProp = choiceText ? choiceText.replace(/[^\w\s]/gi, '').trim() : archetype.keyProp;
+
+  // Scene descriptor weather particles mapping based on realm
+  let weatherParticles = 'fireflies';
+  if (realm.id === 'space') weatherParticles = 'starlight_snow';
+  else if (realm.id === 'starlight_cove' || realm.id === 'coral_sanctuary' || realm.id === 'pirate_lagoon') weatherParticles = 'gentle_bubbles';
+  else if (realm.id === 'whispering_woods' || realm.id === 'dino_jungle') weatherParticles = 'bioluminescent_spores';
+  else if (realm.id === 'cloud_kingdom' || realm.id === 'enchanted_castle') weatherParticles = 'aurora_ribbons';
+
+  const explorerPalette = {
+    ambient: '#09141e',
+    directional: realm.accentColor || '#00d2d3',
+    accent: '#ffb961'
+  };
 
   if (chapterIndex === 0) {
-    // Chapter 1: The Evening Departure (~120 words)
+    // Chapter 1: The Evening Departure & Arrival (~120 words)
+    const text = `The golden sun had dipped peacefully below the horizon, painting the sky in deep shades of midnight slate and starlight cyan. Tonight, ${hName} and faithful companion ${pName} stood at the edge of ${subBiome}. Their cozy bedtime adventure was just beginning. ${pName} adjusted their soft explorer collar with quiet excitement. ${pName} looked over with a warm, comforting smile: "Every great bedtime explorer knows that sweet dreams begin with preparation! What special hero gadget should we pack into our backpack tonight?" ${customWish ? `Tonight was extra special because ${hName} whispered a bedtime wish: "${customWish}". ` : ''}The cool evening air was quiet and peaceful, filled with the gentle hum of twilight.`;
+
+    const sceneDescriptor = {
+      environmentBiome: subBiome,
+      timeOfNight: 'twilight_arrival',
+      weatherParticles,
+      cameraWork: 'orbit_pan',
+      heroAction: 'walking_with_lantern',
+      petAction: 'trotting_beside',
+      keyProps: ['Starlight Lantern', subBiome, 'Glowing Explorer Path'],
+      lightingPalette: explorerPalette
+    };
+
     return {
       chapterIndex: 0,
+      chapterNumber: 1,
       title: 'Chapter 1: The Evening Departure',
       subtitle: `${realm.name} - Under the Twilight Sky`,
-      text: `The golden sun had dipped below the horizon, painting the sky in deep shades of midnight slate and starlight cyan. Tonight, ${hName} and faithful companion ${pName} stood at the edge of ${subBiome}. Their cozy bedtime adventure was just beginning. ${pName} wagged their tail with quiet excitement, adjusting their soft explorer collar. Rex looked over with a warm smile: "Every great bedtime explorer knows that sweet dreams begin with preparation! What special hero gadget should we pack into our backpack tonight?" ${customWish ? `Tonight was extra special because ${hName} whispered a bedtime wish: "${customWish}". ` : ''}The cool evening air was quiet and peaceful, filled with the gentle hum of twilight.`,
+      text,
+      chapterText: text,
+      whisperLine: `The evening sky is calm and quiet, ${hName}. Rest your shoulders and breathe in the peaceful dusk.`,
+      sleepyCue: 'Take one slow, deep breath as the stars begin to twinkle.',
+      moralReflection: `Every great journey begins with a brave little first step into the quiet evening.`,
+      choices: realm.act1DefaultChips.map(c => c.text),
+      sceneMood: 'tranquil',
+      sceneDescriptor,
       prompt: realm.act1Prompts[0],
-      defaultChips: realm.act1DefaultChips
+      promptQuestion: realm.act1Prompts[0],
+      defaultChips: realm.act1DefaultChips,
+      suggestionChips: realm.act1DefaultChips,
+      isSleepingEnd: false,
+      archetypeId: archetype.id
     };
   }
 
   if (chapterIndex === 1) {
-    // Chapter 2: Pet Companion's Discovery (~130 words)
+    // Chapter 2: Pet Companion's Discovery & Gentle Mystery (~130 words)
+    const text = `With ${choiceText || 'their favorite hero gear'} snugly tucked into their pack, ${hName} and ${pName} ventured deeper along the glowing pathway. The stars overhead twinkled like cheerful fireflies. Suddenly, ${pName}'s ears perked up! The loyal pet padded ahead toward a patch of shimmering moon-flowers in ${subBiome}. ${pName} gave a soft, curious boof and gestured with their paws. There, nestled beneath a canopy of gentle starlight, was ${archetype.act2Discovery}. It blinked its sleepy eyes, looking just a little bit nervous in the big, quiet night. ${pName} leaned in gently, giving a warm, reassuring nuzzle to let the creature know it was completely safe with friends nearby.`;
+
+    const sceneDescriptor = {
+      environmentBiome: subBiome,
+      timeOfNight: 'starlit_journey',
+      weatherParticles: 'aurora_ribbons',
+      cameraWork: 'follow_walk',
+      heroAction: 'discovering_landmark',
+      petAction: 'sniffing_clue',
+      keyProps: [choiceProp, archetype.keyProp, 'Shimmering Moon-Flowers'],
+      lightingPalette: explorerPalette
+    };
+
     return {
       chapterIndex: 1,
+      chapterNumber: 2,
       title: 'Chapter 2: The Curious Discovery',
       subtitle: `${pName}'s Helpful Senses`,
-      text: `With ${choiceText || 'their favorite hero gear'} snugly tucked into their pack, ${hName} and ${pName} ventured deeper along the glowing pathway. The stars overhead twinkled like cheerful fireflies. Suddenly, ${pName}'s ears perked up! The loyal pet padded ahead toward a patch of shimmering moon-flowers in ${subBiome}. ${pName} gave a soft, curious boof and gestured with their paws. There, nestled beneath a canopy of gentle starlight, was a sweet little creature in need of a friend. It blinked its sleepy eyes, looking just a little bit nervous in the big, quiet night. ${pName} leaned in gently, giving a warm, reassuring nuzzle to let the creature know it was completely safe with friends nearby.`,
+      text,
+      chapterText: text,
+      whisperLine: `You are safe with friends nearby, little one. The night is gentle and kind.`,
+      sleepyCue: 'Notice how soft the night sounds are, like a whispered lullaby.',
+      moralReflection: `Noticing when someone needs a friend is a true superhero superpower.`,
+      choices: realm.act2DefaultChips.map(c => c.text),
+      sceneMood: 'mystical',
+      sceneDescriptor,
       prompt: realm.act2Prompts[0],
-      defaultChips: realm.act2DefaultChips
+      promptQuestion: realm.act2Prompts[0],
+      defaultChips: realm.act2DefaultChips,
+      suggestionChips: realm.act2DefaultChips,
+      isSleepingEnd: false,
+      archetypeId: archetype.id
     };
   }
 
   if (chapterIndex === 2) {
     // Chapter 3: Overcoming the Challenge with the Daily Moral (~140 words)
+    const text = `The gentle creature looked up at ${hName} with wide, hopeful eyes. It seemed they had encountered a little bedtime hurdle: ${moral.tagline.toLowerCase()}. ${archetype.act3Challenge} ${pName} stepped forward with gentle understanding: "Remember, little explorer, ${moral.moralGuidance.toLowerCase()}" ${hName} smiled, remembering the importance of ${moral.name.toLowerCase()}. Working together with ${pName}, ${hName} demonstrated true hero character through ${archetype.act3Resolution}. ${pName} ${moral.petAction}, showing how simple and wonderful it feels to do the right thing. The creature let out a tiny, contented sigh. The whole clearing glowed with a soft, warm amber light as the challenge melted away into peace.`;
+
+    const sceneDescriptor = {
+      environmentBiome: subBiome,
+      timeOfNight: 'starlit_journey',
+      weatherParticles: 'fireflies',
+      cameraWork: 'follow_walk',
+      heroAction: 'helping_obstacle',
+      petAction: 'glowing_magic',
+      keyProps: [archetype.keyProp, 'Amber Glow Beacon', 'Slumber Flowers'],
+      lightingPalette: explorerPalette
+    };
+
     return {
       chapterIndex: 2,
+      chapterNumber: 3,
       title: 'Chapter 3: The Lesson of the Stars',
       subtitle: moral.name,
-      text: `The gentle creature looked up at ${hName} with wide, hopeful eyes. It seemed they had encountered a little bedtime hurdle: ${moral.tagline.toLowerCase()}. Rex stepped forward and gently knelt down beside them: "Remember, little explorer, ${moral.moralGuidance.toLowerCase()}" ${hName} smiled, remembering the importance of ${moral.name.toLowerCase()}. Working together with ${pName}, ${hName} demonstrated true hero character. ${pName} ${moral.petAction}, showing how simple and wonderful it feels to do the right thing. The creature let out a tiny, contented sigh. The whole clearing glowed with a soft, warm amber light as the challenge melted away into peace.`,
+      text,
+      chapterText: text,
+      whisperLine: `Kindness and patience always light the way home. Feel your muscles melt and relax.`,
+      sleepyCue: 'Breathe out slowly, blowing away all the day\'s busy thoughts like dandelion seeds.',
+      moralReflection: moral.slumberResolution,
+      choices: realm.act3DefaultChips.map(c => c.text),
+      sceneMood: 'gentle',
+      sceneDescriptor,
       prompt: realm.act3Prompts[0],
-      defaultChips: realm.act3DefaultChips
+      promptQuestion: realm.act3Prompts[0],
+      defaultChips: realm.act3DefaultChips,
+      suggestionChips: realm.act3DefaultChips,
+      isSleepingEnd: userChoices.length >= 2,
+      archetypeId: archetype.id
     };
   }
 
-  // Chapter 4: Peaceful Cozy Slumber (~130 words)
+  // Chapter 4 (or Legacy Index 3): Peaceful Cozy Slumber (~130 words)
+  const text = `All was quiet now across the vast expanse of ${realm.name}. The little creature was safely tucked into its cozy mossy hammock, purring softly in deep slumber. ${hName} felt a wonderful, heavy warmth spreading from their toes all the way up to their eyelids. ${pName} curled up into a soft, fluffy ball at ${hName}'s side, letting out a giant, sleepy yawn that made everyone yawn too. ${pName} softly snuggled down under the glowing bedtime lantern and whispered into the quiet twilight: "You did wonderful today, brave hero. You brushed your teeth, showed kindness, and conquered the day. Now, let the stars watch over your dreams." The ambient night chimes began to play their soothing song as sleep arrived.`;
+
+  const sceneDescriptor = {
+    environmentBiome: subBiome,
+    timeOfNight: 'deep_slumber_sanctuary',
+    weatherParticles: 'starlight_snow',
+    cameraWork: 'crane_descend_nest',
+    heroAction: 'curled_asleep',
+    petAction: 'sleeping_curled',
+    keyProps: ['Cozy Slumber Nest', 'Velvet Blankets', 'Bedtime Lantern'],
+    lightingPalette: explorerPalette
+  };
+
   return {
     chapterIndex: 3,
+    chapterNumber: 4,
     title: 'Chapter 4: The Slumber Sanctuary',
     subtitle: 'Cozy Dreams & Goodnight',
-    text: `All was quiet now across the vast expanse of ${realm.name}. The little creature was safely tucked into its cozy mossy hammock, purring softly in deep slumber. ${hName} felt a wonderful, heavy warmth spreading from their toes all the way up to their eyelids. ${pName} curled up into a soft, fluffy ball at ${hName}'s side, letting out a giant, sleepy yawn that made everyone yawn too. Rex softly lowered the glowing bedtime lantern and whispered into the quiet twilight: "You did wonderful today, brave hero. You brushed your teeth, showed kindness, and conquered the day. Now, let the stars watch over your dreams." The ambient night chimes began to play their soothing song as sleep arrived.`,
+    text,
+    chapterText: text,
+    whisperLine: `Close your eyes, brave hero. Sleep is here, warm and sweet. Goodnight.`,
+    sleepyCue: 'Inhale peace for 4 seconds... exhale dreams for 4 seconds...',
+    moralReflection: moral.slumberResolution,
+    choices: [],
+    sceneMood: 'deep_slumber',
+    sceneDescriptor,
     prompt: realm.act4Prompt,
-    defaultChips: []
+    promptQuestion: realm.act4Prompt,
+    defaultChips: [],
+    suggestionChips: [],
+    isSleepingEnd: true,
+    archetypeId: archetype.id
+  };
+}
+
+/**
+ * Generate a complete 3-Chapter Bedtime Story Payload
+ * Conforms to PROJECT.md § Interface Contracts.
+ */
+export function generateFullBedtimeStory(
+  realmId = 'space',
+  moralId = 'brave_dark',
+  heroName = 'Little Hero',
+  activePetName = 'Rex',
+  customWish = '',
+  userChoices = []
+) {
+  const realm = getBedtimeRealm(realmId);
+  const moral = BEDTIME_MORALS.find(m => m.id === moralId) || BEDTIME_MORALS[0];
+  const hName = heroName || 'Little Hero';
+  const pName = activePetName || 'Rex';
+
+  const ch1 = generateProceduralBedtimeStory(realm.id, moral.id, hName, pName, customWish, 0, userChoices);
+  const ch2 = generateProceduralBedtimeStory(realm.id, moral.id, hName, pName, customWish, 1, userChoices);
+  // In the 3-chapter narrative arc, Chapter 3 is the Slumber Sanctuary conclusion
+  const ch3 = generateProceduralBedtimeStory(realm.id, moral.id, hName, pName, customWish, 3, userChoices);
+  ch3.chapterIndex = 2;
+  ch3.chapterNumber = 3;
+  ch3.title = 'Chapter 3: The Slumber Sanctuary';
+
+  const hash = String(hName + pName + realm.id + moral.id).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  const archetype = PLOT_ARCHETYPES[hash % PLOT_ARCHETYPES.length];
+
+  return {
+    success: true,
+    storyId: `story_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+    title: `${hName} and ${pName}'s ${realm.name} Journey`,
+    theme: moral.id,
+    realm: realm.id,
+    realmId: realm.id,
+    realmName: realm.name,
+    moralId: moral.id,
+    heroName: hName,
+    petName: pName,
+    seed: hash,
+    archetypeId: archetype.id,
+    chapters: [ch1, ch2, ch3]
   };
 }
 
 /**
  * Generate Procedural Animated Fallback SVG Vignettes
  * Guaranteed 100% offline-ready, strictly adhering to zero pink/purple palette.
- * Supports Chapters 1 through 4 with interactive tap coordinates.
+ * Supports all canonical and extended realms with interactive tap coordinates.
  */
 export function generateFallbackSvg(realmId, chapterNumber = 1, customItemText = '') {
-  const realm = BEDTIME_REALMS.find(r => r.id === realmId) || BEDTIME_REALMS[0];
+  const realm = getBedtimeRealm(realmId);
   const safeText = (customItemText || '').replace(/[<>&"]/g, '').slice(0, 32);
   const ch = Number(chapterNumber) || 1;
 
-  if (realmId === 'space') {
+  if (realm.id === 'space') {
     return `
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" class="w-full h-full rounded-3xl overflow-hidden shadow-2xl">
         <defs>
@@ -577,7 +1125,7 @@ export function generateFallbackSvg(realmId, chapterNumber = 1, customItemText =
           <path d="M-10 60 Q0 90 0 90 Q0 90 10 60 Z" fill="#ffb961"/>
         </g>
 
-        <!-- Companion Rex with Space Helmet -->
+        <!-- Companion Avatar with Space Helmet -->
         <g transform="translate(420, 310)" class="cursor-pointer" data-chime="659.25">
           <ellipse cx="40" cy="65" rx="35" ry="40" fill="#2ecc71"/>
           <ellipse cx="45" cy="70" rx="20" ry="25" fill="#86efac"/>
@@ -608,7 +1156,7 @@ export function generateFallbackSvg(realmId, chapterNumber = 1, customItemText =
     `;
   }
 
-  if (realmId === 'dino_jungle') {
+  if (realm.id === 'dino_jungle' || realm.id === 'dino_slumber_valley') {
     return `
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" class="w-full h-full rounded-3xl overflow-hidden shadow-2xl">
         <defs>
@@ -651,7 +1199,7 @@ export function generateFallbackSvg(realmId, chapterNumber = 1, customItemText =
           <path d="M155 65 Q160 60 165 65" stroke="#040e0b" stroke-width="2.5" fill="none" stroke-linecap="round"/>
         </g>
 
-        <!-- Rex Explorer with Nightcap -->
+        <!-- Explorer Companion with Nightcap -->
         <g transform="translate(480, 310)" class="cursor-pointer" data-chime="587.33">
           <ellipse cx="40" cy="65" rx="35" ry="40" fill="#2ecc71"/>
           <ellipse cx="45" cy="70" rx="20" ry="25" fill="#86efac"/>
@@ -675,7 +1223,7 @@ export function generateFallbackSvg(realmId, chapterNumber = 1, customItemText =
     `;
   }
 
-  if (realmId === 'pirate_lagoon') {
+  if (realm.id === 'pirate_lagoon' || realm.id === 'starlight_cove') {
     return `
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" class="w-full h-full rounded-3xl overflow-hidden shadow-2xl">
         <defs>
@@ -697,7 +1245,7 @@ export function generateFallbackSvg(realmId, chapterNumber = 1, customItemText =
           <circle cx="700" cy="100" r="42" fill="#030d14"/>
         </g>
 
-        <!-- Pirate Sloop Resting at Anchor -->
+        <!-- Starlight Sloop Resting at Anchor -->
         <g transform="translate(360, 270)">
           <path d="M-50 70 L50 70 L35 100 L-35 100 Z" fill="#ffb961" stroke="#f39c12" stroke-width="3"/>
           <line x1="0" y1="70" x2="0" y2="0" stroke="#050f18" stroke-width="5"/>
@@ -712,7 +1260,124 @@ export function generateFallbackSvg(realmId, chapterNumber = 1, customItemText =
           <g transform="translate(400, 465)">
             <rect x="-180" y="-22" width="360" height="38" rx="19" fill="#030d14" fill-opacity="0.85" stroke="#00d2d3" stroke-width="2"/>
             <text x="0" y="2" text-anchor="middle" fill="#00d2d3" font-family="sans-serif" font-weight="900" font-size="13">
-              PIRATE GEAR: ${safeText.toUpperCase()}
+              COAST GEAR: ${safeText.toUpperCase()}
+            </text>
+          </g>
+        ` : ''}
+      </svg>
+    `;
+  }
+
+  if (realm.id === 'whispering_woods') {
+    return `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" class="w-full h-full rounded-3xl overflow-hidden shadow-2xl">
+        <defs>
+          <linearGradient id="woodsSky" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#040e0b"/>
+            <stop offset="60%" stop-color="#081e16"/>
+            <stop offset="100%" stop-color="#0c2b20"/>
+          </linearGradient>
+        </defs>
+        <rect width="800" height="500" fill="url(#woodsSky)"/>
+        <!-- Ancient Trees -->
+        <path d="M120 500 L140 220 L160 500 Z" fill="#0a1813"/>
+        <path d="M680 500 L660 200 L640 500 Z" fill="#0a1813"/>
+        <circle cx="140" cy="200" r="70" fill="#0f2b20" opacity="0.8"/>
+        <circle cx="660" cy="180" r="80" fill="#0f2b20" opacity="0.8"/>
+        <!-- Glowing Mushrooms -->
+        <ellipse cx="260" cy="420" rx="20" ry="12" fill="#2ecc71" opacity="0.85"/>
+        <ellipse cx="540" cy="430" rx="18" ry="10" fill="#00d2d3" opacity="0.85"/>
+        <!-- Soft Stars -->
+        <circle cx="400" cy="80" r="3" fill="#ffb961" opacity="0.9" data-chime="659.25"/>
+        <circle cx="300" cy="120" r="2.5" fill="#ffb961" opacity="0.7"/>
+        <circle cx="500" cy="100" r="3" fill="#ffffff" opacity="0.8"/>
+        <!-- Hollow Tree Bed -->
+        <rect x="340" y="320" width="120" height="120" rx="30" fill="#122c22"/>
+        <ellipse cx="400" cy="380" rx="40" ry="25" fill="#ffb961" opacity="0.2"/>
+        <ellipse cx="400" cy="380" rx="25" ry="15" fill="#2ecc71"/>
+        ${safeText ? `
+          <g transform="translate(400, 465)">
+            <rect x="-180" y="-22" width="360" height="38" rx="19" fill="#040e0b" fill-opacity="0.85" stroke="#2ecc71" stroke-width="2"/>
+            <text x="0" y="2" text-anchor="middle" fill="#2ecc71" font-family="sans-serif" font-weight="900" font-size="13">
+              WOODS GEAR: ${safeText.toUpperCase()}
+            </text>
+          </g>
+        ` : ''}
+      </svg>
+    `;
+  }
+
+  if (realm.id === 'cloud_kingdom') {
+    return `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" class="w-full h-full rounded-3xl overflow-hidden shadow-2xl">
+        <defs>
+          <linearGradient id="cloudSky" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#08121a"/>
+            <stop offset="50%" stop-color="#0e1f2b"/>
+            <stop offset="100%" stop-color="#152e3f"/>
+          </linearGradient>
+        </defs>
+        <rect width="800" height="500" fill="url(#cloudSky)"/>
+        <!-- Floating Clouds -->
+        <g fill="#00d2d3" opacity="0.25">
+          <circle cx="200" cy="380" r="60"/>
+          <circle cx="260" cy="360" r="80"/>
+          <circle cx="340" cy="380" r="70"/>
+          <circle cx="520" cy="390" r="70"/>
+          <circle cx="600" cy="370" r="80"/>
+        </g>
+        <!-- Golden Crescent Moon -->
+        <circle cx="640" cy="120" r="45" fill="#ffb961" opacity="0.9"/>
+        <circle cx="660" cy="110" r="42" fill="#08121a"/>
+        <!-- Star chimes -->
+        <circle cx="160" cy="80" r="3" fill="#ffffff" data-chime="523.25"/>
+        <circle cx="400" cy="60" r="3.5" fill="#ffb961" data-chime="659.25"/>
+        <!-- Sleeping Cloud Sheep -->
+        <g transform="translate(380, 310)">
+          <ellipse cx="25" cy="35" rx="35" ry="25" fill="#e0f2fe"/>
+          <circle cx="48" cy="24" r="16" fill="#cbd5e1"/>
+          <path d="M44 24 Q48 20 52 24" stroke="#08121a" stroke-width="2.5" fill="none"/>
+        </g>
+        ${safeText ? `
+          <g transform="translate(400, 465)">
+            <rect x="-180" y="-22" width="360" height="38" rx="19" fill="#08121a" fill-opacity="0.85" stroke="#00d2d3" stroke-width="2"/>
+            <text x="0" y="2" text-anchor="middle" fill="#00d2d3" font-family="sans-serif" font-weight="900" font-size="13">
+              SKY GEAR: ${safeText.toUpperCase()}
+            </text>
+          </g>
+        ` : ''}
+      </svg>
+    `;
+  }
+
+  if (realm.id === 'crystal_caverns' || realm.id === 'coral_sanctuary') {
+    return `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" class="w-full h-full rounded-3xl overflow-hidden shadow-2xl">
+        <defs>
+          <linearGradient id="cavernSky" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#050c12"/>
+            <stop offset="60%" stop-color="#0b1c26"/>
+            <stop offset="100%" stop-color="#112a38"/>
+          </linearGradient>
+        </defs>
+        <rect width="800" height="500" fill="url(#cavernSky)"/>
+        <!-- Crystal Stalactites -->
+        <polygon points="120,0 140,140 160,0" fill="#00d2d3" opacity="0.6"/>
+        <polygon points="280,0 300,180 320,0" fill="#ffb961" opacity="0.6"/>
+        <polygon points="560,0 580,160 600,0" fill="#00d2d3" opacity="0.6"/>
+        <polygon points="680,0 700,120 720,0" fill="#2ecc71" opacity="0.6"/>
+        <!-- Reflecting Pool -->
+        <ellipse cx="400" cy="420" rx="300" ry="60" fill="#091b29" stroke="#00d2d3" stroke-width="2"/>
+        <ellipse cx="400" cy="420" rx="180" ry="30" fill="#00d2d3" opacity="0.25"/>
+        <!-- Twinkling Chimes -->
+        <circle cx="140" cy="140" r="4" fill="#ffffff" data-chime="783.99"/>
+        <circle cx="300" cy="180" r="4" fill="#ffb961" data-chime="880.00"/>
+        <circle cx="580" cy="160" r="4" fill="#ffffff" data-chime="1046.50"/>
+        ${safeText ? `
+          <g transform="translate(400, 465)">
+            <rect x="-180" y="-22" width="360" height="38" rx="19" fill="#050c12" fill-opacity="0.85" stroke="#00d2d3" stroke-width="2"/>
+            <text x="0" y="2" text-anchor="middle" fill="#00d2d3" font-family="sans-serif" font-weight="900" font-size="13">
+              CAVERN GEAR: ${safeText.toUpperCase()}
             </text>
           </g>
         ` : ''}

@@ -3,7 +3,7 @@ import { isRateLimited, getRequestIp } from './geminiService.js';
 import { getPetById } from '../src/data/petsData.js';
 
 // In-memory cache of generated ElevenLabs audio, keyed by the exact cleaned
-// text + voice + speed that produced it. The toothbrush battle's coaching
+// text + voice + speed + voiceStyle that produced it. The toothbrush battle's coaching
 // lines are a small, repeating set (5 quadrant cues, a handful of hazard
 // warnings, the halfway Learn Challenge question, etc.) spoken over and over
 // across every kid's every battle, so after the very first time each line is
@@ -16,8 +16,8 @@ import { getPetById } from '../src/data/petsData.js';
 const ttsCache = new Map();
 const TTS_CACHE_MAX_ENTRIES = 200;
 
-function getTtsCacheKey(cleanText, voiceId, speed) {
-  return createHash('sha256').update(`${cleanText}|${voiceId}|${speed}`).digest('hex');
+function getTtsCacheKey(cleanText, voiceId, speed, voiceStyle = 'companion') {
+  return createHash('sha256').update(`${cleanText}|${voiceId}|${speed}|${voiceStyle}`).digest('hex');
 }
 
 function cacheTtsResponse(key, payload) {
@@ -28,14 +28,12 @@ function cacheTtsResponse(key, payload) {
   }
 }
 
-// Maps a companion pet id to its ElevenLabs voice id. Only pets with an
-// entry here get an ElevenLabs voice -- everyone else falls through to the
-// Gemini TTS tier in voiceService.js. Voice ids are not secret (they're
-// public identifiers within an ElevenLabs account), so they're fine to keep
-// here, but they're still read from env so a voice can be swapped without a
-// code change or redeploy.
+// Maps a companion pet id to its ElevenLabs voice id.
+// Universal voice resolution: All 24 pets and bedtime storytelling fall back to the main
+// ElevenLabs voice (process.env.ELEVENLABS_REX_VOICE_ID || 'e9sQs6aLWU82SSolkPYZ'), eliminating HTTP 404s.
+const DEFAULT_MAIN_VOICE_ID = 'e9sQs6aLWU82SSolkPYZ';
 const ELEVENLABS_VOICE_MAP = {
-  rex: process.env.ELEVENLABS_REX_VOICE_ID || null
+  rex: process.env.ELEVENLABS_REX_VOICE_ID || DEFAULT_MAIN_VOICE_ID
 };
 
 const ELEVENLABS_TTS_URL = (voiceId) =>
@@ -71,7 +69,7 @@ export async function handleElevenLabsTTSRequest(req, res) {
       return res.status(503).json({ error: 'ElevenLabs is not configured in server environment.' });
     }
 
-    const { text, petId } = req.body || {};
+    const { text, petId, voiceStyle = 'companion' } = req.body || {};
     if (!text || typeof text !== 'string' || !text.trim()) {
       return res.status(400).json({ error: 'Text prompt is required.' });
     }
@@ -85,26 +83,34 @@ export async function handleElevenLabsTTSRequest(req, res) {
       return res.status(400).json({ error: 'No readable speech text found.' });
     }
 
-    // petId from the client can be the pet's numeric roster id (e.g. '1' for
-    // Rex the T-Rex), its short semantic key ('rex'), or a display name --
-    // the voice map is keyed by the semantic key, so it must be resolved via
-    // the same pet catalog the rest of the app uses (getPetById), not just
-    // lowercased as-is. getPetById defaults to PETS_DATABASE[0] (Rex) for an
-    // unrecognized id, matching the same "assume Rex" convention already
-    // used by the Gemini TTS/persona lookups in geminiService.js.
-    const normalizedPetId = (getPetById(petId)?.key || 'rex').toLowerCase();
-    const voiceId = ELEVENLABS_VOICE_MAP[normalizedPetId];
-    if (!voiceId) {
-      // No ElevenLabs voice configured for this pet -- client falls back.
-      return res.status(404).json({ error: `No ElevenLabs voice configured for pet "${normalizedPetId}".` });
-    }
+    // Resolve pet and voice ID
+    // Universal resolution: All 24 pets and bedtime narration default to the main ElevenLabs voice
+    const normalizedPetId = (getPetById(petId)?.key || String(petId || 'rex')).toLowerCase();
+    const mainVoiceId = process.env.ELEVENLABS_REX_VOICE_ID || DEFAULT_MAIN_VOICE_ID;
+    const voiceId = ELEVENLABS_VOICE_MAP[normalizedPetId] || mainVoiceId;
 
     const speechSpeed = getSpeechSpeed();
-    const cacheKey = getTtsCacheKey(cleanText, voiceId, speechSpeed);
+    const cacheKey = getTtsCacheKey(cleanText, voiceId, speechSpeed, voiceStyle);
     const cached = ttsCache.get(cacheKey);
     if (cached) {
       return res.json({ ...cached, cached: true });
     }
+
+    // Bedtime narration tuning vs companion/workout tuning
+    const isBedtime = voiceStyle === 'bedtime';
+    const voiceSettings = isBedtime ? {
+      stability: 0.65,
+      similarity_boost: 0.80,
+      style: 0.35,
+      use_speaker_boost: true,
+      speed: speechSpeed
+    } : {
+      stability: 0.5,
+      similarity_boost: 0.75,
+      style: 0.3,
+      use_speaker_boost: true,
+      speed: speechSpeed
+    };
 
     const upstream = await fetch(ELEVENLABS_TTS_URL(voiceId), {
       method: 'POST',
@@ -116,13 +122,7 @@ export async function handleElevenLabsTTSRequest(req, res) {
       body: JSON.stringify({
         text: cleanText,
         model_id: 'eleven_turbo_v2_5',
-        voice_settings: {
-          stability: 0.5,
-          similarity_boost: 0.75,
-          style: 0.3,
-          use_speaker_boost: true,
-          speed: speechSpeed
-        }
+        voice_settings: voiceSettings
       })
     });
 
@@ -141,7 +141,8 @@ export async function handleElevenLabsTTSRequest(req, res) {
       mimeType: 'audio/pcm;rate=24000',
       voice: voiceId,
       sampleRate: 24000,
-      petId: normalizedPetId
+      petId: normalizedPetId,
+      voiceStyle
     };
     cacheTtsResponse(cacheKey, responsePayload);
 

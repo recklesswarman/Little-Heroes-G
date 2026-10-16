@@ -16,7 +16,7 @@ async function setupGeminiMiddleware(server) {
   }
   if (!geminiService && !elevenLabsService) return;
 
-  const { handleTTSRequest, handleChatRequest, attachGeminiLiveWebSocket } = geminiService || {};
+  const { handleTTSRequest, handleChatRequest, handleBedtimeStoryRequest, attachGeminiLiveWebSocket } = geminiService || {};
   const { handleElevenLabsTTSRequest } = elevenLabsService || {};
 
   const parseJsonBody = (req) => new Promise((resolve, reject) => {
@@ -101,6 +101,31 @@ async function setupGeminiMiddleware(server) {
           res.statusCode = 503;
           res.setHeader('Content-Type', 'application/json');
           return res.end(JSON.stringify({ error: 'Gemini Chat handler not available' }));
+        }
+      } catch (err) {
+        res.statusCode = 500;
+        res.setHeader('Content-Type', 'application/json');
+        return res.end(JSON.stringify({ error: err.message }));
+      }
+    }
+
+    if ((url === '/api/rex/bedtime-story' || url === '/api/gemini/bedtime-story') && req.method === 'POST') {
+      try {
+        req.body = await parseJsonBody(req);
+        res.json = (data) => {
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify(data));
+        };
+        res.status = (code) => {
+          res.statusCode = code;
+          return res;
+        };
+        if (typeof handleBedtimeStoryRequest === 'function') {
+          return await handleBedtimeStoryRequest(req, res);
+        } else {
+          res.statusCode = 503;
+          res.setHeader('Content-Type', 'application/json');
+          return res.end(JSON.stringify({ error: 'Bedtime story handler not available' }));
         }
       } catch (err) {
         res.statusCode = 500;

@@ -65,7 +65,9 @@ const testFiles = [
   // Milestone Dino Hero Workout E2E Suite:
   'scratch/verify_dino_workout_e2e.mjs',
   // Milestone Task & Habit Engine and Realtime Sync Suite:
-  'scratch/verify_task_habit_engine_and_sync.mjs'
+  'scratch/verify_task_habit_engine_and_sync.mjs',
+  // Milestone Bedtime AI Storybook E2E Suite:
+  'scratch/verify_bedtime_storybook.mjs'
 ];
 
 let allPassed = true;

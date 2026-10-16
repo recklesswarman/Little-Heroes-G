@@ -12,7 +12,8 @@ import { Sound } from '../audio/sfx.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
 import { BEDTIME_REALMS, BEDTIME_MORALS, CONSTELLATION_STICKERS } from '../data/bedtimeStoryData.js';
 import { bedtimeStoryService } from '../services/bedtimeStoryService.js';
-import { speakCompanion, stopCompanionAudio } from '../services/voiceService.js';
+import { speakCompanion, stopCompanionAudio, prefetchCompanionAudio } from '../services/voiceService.js';
+import { BedtimeStoryStage3D } from '../components/BedtimeStoryStage3D.js';
 
 let activeViewMode = 'sanctuary'; // 'sanctuary' | 'story' | 'bookshelf'
 let isMicListening = false;
@@ -23,6 +24,7 @@ let autoAdvanceSeconds = 15;
 let autoAdvanceActive = false;
 let selectedRealmId = 'space';
 let activeBookshelfFilter = 'all'; // 'all' | 'favorites'
+let activeStage3D = null;
 
 /**
  * Helper to render Kid Hero Avatar with active Pet Companion badge overlay
@@ -403,8 +405,11 @@ function renderStoryStage(session, pet, hero) {
   if (!session) return '';
   const currentActNumber = session.actNumber;
   const currentAct = session.acts[currentActNumber - 1] || session.acts[0] || {};
-  const isLastAct = currentActNumber === 4;
+  const totalActs = (session.acts && session.acts.length) || 3;
+  const isLastAct = currentActNumber >= totalActs;
   const isParentMode = session.narrationMode === 'parent';
+  const sanctuary = store.getBedtimeSanctuaryState();
+  const isAutoRead = sanctuary.autoReadMode !== false;
 
   return `
     <div class="flex flex-col gap-4 animate-fade-in text-left">
@@ -415,7 +420,7 @@ function renderStoryStage(session, pet, hero) {
           <span class="text-xl shrink-0">${session.realmEmoji || '📖'}</span>
           <div class="min-w-0">
             <h3 class="font-headline font-black text-xs text-white truncate">
-              ${session.realmName} • Chapter ${currentActNumber} of 4
+              ${session.realmName} • Chapter ${currentActNumber} of ${totalActs}
             </h3>
             <p class="text-[10px] text-slate-400 font-bold truncate">
               Moral: ${session.moralName || 'Bravery & Sleep'}
@@ -423,10 +428,21 @@ function renderStoryStage(session, pet, hero) {
           </div>
         </div>
 
-        <!-- Progress Dots & Auto-Advance Badge -->
+        <!-- Progress Dots & Auto-Read / Auto-Advance Badge -->
         <div class="flex items-center gap-2 shrink-0">
+          <!-- Hands-Free Auto-Read Mode Toggle Button -->
+          <button id="toggle-autoread-btn" class="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl border text-[10px] sm:text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer ${
+            isAutoRead
+              ? 'bg-[#00d2d3]/20 text-[#00d2d3] border-[#00d2d3]/60 shadow-[0_0_10px_rgba(0,210,211,0.25)]'
+              : 'bg-[#0f2334] text-slate-400 border-surface-container-highest hover:text-white'
+          }" title="Toggle Hands-Free Auto-Read All 3 Chapters">
+            <span class="material-symbols-outlined text-xs sm:text-sm">auto_mode</span>
+            <span class="hidden xs:inline">${isAutoRead ? 'Auto-Read: ON' : 'Auto-Read: OFF'}</span>
+            <span class="xs:hidden">${isAutoRead ? 'Auto: ON' : 'Auto: OFF'}</span>
+          </button>
+
           <div class="flex items-center gap-1 sm:gap-1.5">
-            ${[1, 2, 3, 4].map(step => `
+            ${Array.from({ length: totalActs }, (_, i) => i + 1).map(step => `
               <div class="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full transition-all ${
                 step === currentActNumber
                   ? 'bg-[#00d2d3] scale-125 shadow-[0_0_8px_#00d2d3]'
@@ -446,11 +462,22 @@ function renderStoryStage(session, pet, hero) {
         </div>
       </div>
 
-      <!-- INTERACTIVE ILLUSTRATION STAGE (Responsive min-height & max-height) -->
+      <!-- Hands-Free Auto-Read Active Banner -->
+      ${isAutoRead ? `
+        <div class="bg-[#0e2634]/90 border border-[#00d2d3]/40 px-3 py-1.5 rounded-xl flex items-center justify-between text-[11px] font-bold text-[#00d2d3] animate-fade-in">
+          <span class="flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-xs">headphones</span>
+            <span>Hands-Free Auto-Read Mode: Relax and listen as all 3 chapters unfold seamlessly.</span>
+          </span>
+          <span class="text-[10px] text-[#ffb961] font-mono">Auto-Play</span>
+        </div>
+      ` : ''}
+
+      <!-- INTERACTIVE ILLUSTRATION STAGE (3D Stage with 2D SVG Fallback) -->
       <div id="interactive-illustration-container" class="relative bg-surface-container-lowest rounded-3xl sm:rounded-4xl border-3 sm:border-4 border-surface-container-highest shadow-[0_12px_0_0_#030910] min-h-[220px] sm:min-h-[340px] md:min-h-[400px] max-h-[48vh] overflow-hidden flex items-center justify-center transition-all cursor-pointer" title="Tap stars or scenery for gentle lullaby chimes!">
         
-        <!-- Rendered SVG Art -->
-        <div class="w-full h-full flex items-center justify-center select-none pointer-events-auto">
+        <!-- 3D WebGL / Fallback Mount -->
+        <div id="bedtime-3d-stage-mount" class="w-full h-full flex items-center justify-center select-none pointer-events-auto">
           ${currentAct.svgArt || '<div class="text-slate-500">Starlight scene loading...</div>'}
         </div>
 
@@ -462,7 +489,7 @@ function renderStoryStage(session, pet, hero) {
 
         <!-- Narration Mode Watermark -->
         <div class="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 bg-[#09141e]/85 backdrop-blur-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-bold text-[#ffb961] border border-[#ffb961]/30 pointer-events-none flex items-center gap-1">
-          <span>${isParentMode ? '📖 Parent Mode' : '🦖 Rex Narrating'}</span>
+          <span>${isParentMode ? '📖 Parent Mode' : `🦖 ${pet?.name || 'Rex'} Narrating`}</span>
         </div>
 
         ${isGeneratingScene ? `
@@ -730,6 +757,10 @@ export function setupBedtimeStoryListeners() {
     Sound.bloop();
     stopCompanionAudio();
     bedtimeStoryService.cancelAutoAdvance();
+    if (activeStage3D) {
+      activeStage3D.destroy();
+      activeStage3D = null;
+    }
     if (activeViewMode === 'story' || activeViewMode === 'bookshelf') {
       activeViewMode = 'sanctuary';
       readingSavedStory = null;
@@ -945,11 +976,36 @@ export function setupBedtimeStoryListeners() {
     }
   });
 
+  // Toggle Hands-Free Auto-Read Mode
+  document.getElementById('toggle-autoread-btn')?.addEventListener('click', () => {
+    Sound.tap();
+    const sanctuary = store.getBedtimeSanctuaryState();
+    const newAutoRead = sanctuary.autoReadMode === false;
+    store.updateBedtimeSanctuaryState({ autoReadMode: newAutoRead });
+    store.notify();
+  });
+
+  const completeBedtimeStoryRoutine = () => {
+    const session = bedtimeStoryService.getActiveSession();
+    if (session) {
+      try {
+        store.completeBedtimeStory(session);
+      } catch (err) {
+        console.warn('Bedtime story completion sync error:', err);
+      }
+    }
+  };
+
   // Finish and return
   document.getElementById('story-finish-return-btn')?.addEventListener('click', () => {
     Sound.tap();
     stopCompanionAudio();
     bedtimeStoryService.cancelAutoAdvance();
+    completeBedtimeStoryRoutine();
+    if (activeStage3D) {
+      activeStage3D.destroy();
+      activeStage3D = null;
+    }
     activeViewMode = 'sanctuary';
     store.notify();
   });
@@ -957,6 +1013,11 @@ export function setupBedtimeStoryListeners() {
   document.getElementById('story-save-bookshelf-btn')?.addEventListener('click', () => {
     Sound.fanfare();
     bedtimeStoryService.cancelAutoAdvance();
+    completeBedtimeStoryRoutine();
+    if (activeStage3D) {
+      activeStage3D.destroy();
+      activeStage3D = null;
+    }
     activeViewMode = 'bookshelf';
     store.notify();
   });
@@ -1050,4 +1111,56 @@ export function setupBedtimeStoryListeners() {
       }
     });
   }
+  // 3D Storybook Stage Mounting & Audio Pre-Fetching
+  const mountOrUpdate3DStage = () => {
+    if (activeViewMode !== 'story') {
+      if (activeStage3D) {
+        activeStage3D.destroy();
+        activeStage3D = null;
+      }
+      return;
+    }
+
+    const session = bedtimeStoryService.getActiveSession();
+    if (!session) return;
+    const currentActNumber = session.actNumber;
+    const currentAct = (session.acts && session.acts[currentActNumber - 1]) || (session.acts && session.acts[0]) || {};
+    const hero = store.getState().selectedHero;
+    const petId = String(hero?.activePetId || '1');
+    const pet = (store.getState().pets || []).find(p => String(p.id) === petId) || { name: 'Rex the Dino', key: 'rex' };
+
+    const mount = document.getElementById('bedtime-3d-stage-mount') || document.getElementById('interactive-illustration-container');
+    if (mount) {
+      if (!activeStage3D || activeStage3D.container !== mount || activeStage3D.isDestroyed) {
+        if (activeStage3D) activeStage3D.destroy();
+        activeStage3D = new BedtimeStoryStage3D(mount, {
+          sceneDescriptor: currentAct.sceneDescriptor,
+          chapterIndex: currentActNumber - 1,
+          heroProfile: hero,
+          activePet: pet,
+          magicItem: session.magicItem || 'Starlight Lantern',
+          gentleObstacle: session.gentleObstacle || 'Sleepy Troll',
+          onConstellationTapped: (starId) => {
+            // Constellation tapped
+          }
+        });
+      } else {
+        activeStage3D.setSceneDescriptor(currentAct.sceneDescriptor, currentActNumber - 1);
+      }
+    }
+
+    // Audio Pre-Fetching: Pre-fetch next chapter while reading current
+    if (session.acts && session.acts[currentActNumber]) {
+      const nextAct = session.acts[currentActNumber];
+      const nextText = nextAct.chapterText || nextAct.text;
+      if (nextText) {
+        prefetchCompanionAudio(nextText, session.petId || pet?.id || 'rex', {
+          voiceStyle: 'bedtime',
+          rate: [0.94, 0.88, 0.82, 0.76][Math.min(currentActNumber, 3)]
+        }).catch(() => {});
+      }
+    }
+  };
+
+  mountOrUpdate3DStage();
 }

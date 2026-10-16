@@ -3,7 +3,7 @@ import express from 'express';
 import http from 'http';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { handleTTSRequest, handleChatRequest, attachGeminiLiveWebSocket } from './server/geminiService.js';
+import { handleTTSRequest, handleChatRequest, handleBedtimeStoryRequest, attachGeminiLiveWebSocket } from './server/geminiService.js';
 import { handleElevenLabsTTSRequest } from './server/elevenLabsService.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -22,6 +22,8 @@ app.get('/healthz', (req, res) => {
 // Gemini API Endpoints
 app.post('/api/gemini/tts', handleTTSRequest);
 app.post('/api/gemini/chat', handleChatRequest);
+app.post('/api/gemini/bedtime-story', handleBedtimeStoryRequest);
+app.post('/api/rex/bedtime-story', handleBedtimeStoryRequest);
 
 // ElevenLabs voice endpoint (primary companion voice tier; see voiceService.js)
 app.post('/api/elevenlabs/tts', handleElevenLabsTTSRequest);
