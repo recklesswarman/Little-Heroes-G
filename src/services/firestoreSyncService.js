@@ -1,5 +1,5 @@
 import { doc, setDoc, onSnapshot, updateDoc, deleteField, arrayRemove } from "firebase/firestore";
-import { db, isFirebaseAvailable } from "../config/firebase.js";
+import { db, isFirebaseAvailable, ensureAuthReady } from "../config/firebase.js";
 import { store, STORAGE_KEY, HERO_STAMPED_FIELDS } from "../state/store.js";
 import { persistentLink } from "./persistentLinkService.js";
 
@@ -367,6 +367,8 @@ class FirestoreSyncService {
     const cleanCode = (code || '').trim().toUpperCase();
     if (!cleanCode) return { success: false, error: 'Please enter a valid household code' };
 
+    await ensureAuthReady();
+
     const state = store.getState();
     state.household.syncCode = cleanCode;
     state.isDeviceRevoked = false;
@@ -469,6 +471,7 @@ class FirestoreSyncService {
 
   async _doPush() {
     if (!isFirebaseAvailable || !db || this.isQuotaExhausted()) return;
+    await ensureAuthReady();
     if (this.pushInFlight) {
       this.pushPending = true;
       return;
@@ -809,6 +812,7 @@ class FirestoreSyncService {
   async pingDevicePresence(code) {
     if (!isFirebaseAvailable || !db || this.isQuotaExhausted() || !code) return;
     if (store.getState().isDeviceRevoked) return; // Never ping presence while revoked
+    await ensureAuthReady();
     try {
       const docRef = doc(db, "households", code);
       const timestamp = new Date().toISOString();

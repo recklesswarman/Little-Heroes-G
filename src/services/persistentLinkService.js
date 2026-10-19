@@ -1,5 +1,5 @@
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
-import { db, isFirebaseAvailable } from "../config/firebase.js";
+import { db, isFirebaseAvailable, ensureAuthReady, auth } from "../config/firebase.js";
 import { store } from "../state/store.js";
 import { isQuotaExhaustedGlobal, markQuotaExhaustedGlobal, isQuotaError } from "./firestoreSyncService.js";
 
@@ -173,13 +173,17 @@ class PersistentLinkService {
    * Bind user account to household in Firestore
    */
   async syncPersistentLinkToCloud(session) {
-    if (!isFirebaseAvailable || !db || !session.userId || isQuotaExhaustedGlobal()) return;
+    if (!isFirebaseAvailable || !db || !session || isQuotaExhaustedGlobal()) return;
 
     try {
+      await ensureAuthReady();
+      const activeUserId = session.userId || auth?.currentUser?.uid;
+      if (!activeUserId) return;
+
       const payload = {
-        userId: session.userId,
-        email: session.email,
-        displayName: session.displayName,
+        userId: activeUserId,
+        email: session.email || '',
+        displayName: session.displayName || 'Parent Admin',
         householdCode: session.householdCode,
         updatedAt: new Date().toISOString(),
         persistentLink: {
@@ -192,7 +196,7 @@ class PersistentLinkService {
       };
 
       // 1. Save under primary user key
-      const userHouseholdRef = doc(db, "user_households", session.userId);
+      const userHouseholdRef = doc(db, "user_households", activeUserId);
       await setDoc(userHouseholdRef, payload, { merge: true });
 
       // 2. Also index by email if available so multiple devices can link by email
@@ -205,9 +209,9 @@ class PersistentLinkService {
       // 3. Record linked account in the household document
       const householdRef = doc(db, "households", session.householdCode);
       await updateDoc(householdRef, {
-        [`linkedAccounts.${session.userId}`]: {
-          email: session.email,
-          displayName: session.displayName,
+        [`linkedAccounts.${activeUserId}`]: {
+          email: session.email || '',
+          displayName: session.displayName || 'Parent Admin',
           lastActive: new Date().toISOString()
         }
       }).catch(async (updateErr) => {
@@ -217,9 +221,9 @@ class PersistentLinkService {
         }
         await setDoc(householdRef, {
           linkedAccounts: {
-            [session.userId]: {
-              email: session.email,
-              displayName: session.displayName,
+            [activeUserId]: {
+              email: session.email || '',
+              displayName: session.displayName || 'Parent Admin',
               lastActive: new Date().toISOString()
             }
           }
@@ -243,6 +247,7 @@ class PersistentLinkService {
     if (!isFirebaseAvailable || !db || !userIdOrEmail || isQuotaExhaustedGlobal()) return null;
 
     try {
+      await ensureAuthReady();
       // 1. Direct lookup by ID
       const userHouseholdRef = doc(db, "user_households", userIdOrEmail);
       let snap = await getDoc(userHouseholdRef);

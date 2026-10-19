@@ -1,4 +1,4 @@
-const CACHE_NAME = 'little-heroes-v3.5.0-bedtime-storybook-3d-20261015';
+const CACHE_NAME = 'little-heroes-v3.5.1-firestore-rules-sync-20261019';
 const STATIC_ASSETS = [
   './',
   './index.html',

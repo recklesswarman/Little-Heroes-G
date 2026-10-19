@@ -67,7 +67,9 @@ const testFiles = [
   // Milestone Task & Habit Engine and Realtime Sync Suite:
   'scratch/verify_task_habit_engine_and_sync.mjs',
   // Milestone Bedtime AI Storybook E2E Suite:
-  'scratch/verify_bedtime_storybook.mjs'
+  'scratch/verify_bedtime_storybook.mjs',
+  // Milestone Cloud Firestore Multi-Database & Security Rules E2E Suite:
+  'scratch/verify_firestore_rules_and_sync.mjs'
 ];
 
 let allPassed = true;

@@ -23,7 +23,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const LAT = 45; // Simulated Firestore network latency (ms)
 
 const stubs = {
-  'firebase-config.js': `export const app = {}; export const auth = null; export const db = {}; export const functions = null; export const googleProvider = null; export const isFirebaseAvailable = true; export const firestoreDatabaseId = ''; export const firebaseConfig = {};`,
+  'firebase-config.js': `export const app = {}; export const auth = null; export const db = {}; export const functions = null; export const googleProvider = null; export const isFirebaseAvailable = true; export const firestoreDatabaseId = ''; export const firebaseConfig = {}; export const ensureAuthReady = async () => null;`,
   'firestore.js': `const D = { __op: 'delete' };
 export const deleteField = () => D;
 export const arrayRemove = (...vals) => ({ __op: 'arrayRemove', vals });

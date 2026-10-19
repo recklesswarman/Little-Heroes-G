@@ -16,7 +16,7 @@ const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..').re
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'pet-isolation-'));
 
 const stubs = {
-  'firebase-config.js': `export const app = {}; export const auth = null; export const db = {}; export const functions = null; export const googleProvider = null; export const isFirebaseAvailable = true; export const firestoreDatabaseId = ''; export const firebaseConfig = {};`,
+  'firebase-config.js': `export const app = {}; export const auth = null; export const db = {}; export const functions = null; export const googleProvider = null; export const isFirebaseAvailable = true; export const firestoreDatabaseId = ''; export const firebaseConfig = {}; export const ensureAuthReady = async () => null;`,
   'firestore.js': `export const deleteField = () => ({__op:'delete'}); export const arrayRemove = () => ({}); export const arrayUnion = () => ({}); export const serverTimestamp = () => new Date().toISOString(); export const increment = (n) => n; export const doc = () => ({}); export const collection = () => ({}); export const getFirestore = () => ({}); export const setDoc = async () => {}; export const updateDoc = async () => {}; export const getDoc = async () => ({exists:()=>false,data:()=>null}); export const onSnapshot = () => () => {};`,
   'sound.js': `export const Sound = new Proxy({}, { get: () => () => {} }); export function initTactileSoundEngine() {}`,
   'confetti.js': `export default function confetti() {}`,

@@ -9,57 +9,75 @@ rules_version = '2';
 // Fields:
 //   - syncCode: string (optional, 4 to 32 chars) - Household sync code
 //   - name / householdName: string (optional, max 100 chars) - Family display name
-//   - devices: map (optional, max 30 entries) - Active connected devices map
-//   - heroes: list (optional, max 20 entries) - List of hero profile objects
-//   - heroesMap: map (optional, max 20 entries) - Map of hero states keyed by heroId
-//   - deletedHeroIds: list (optional, max 50 entries) - Tombstoned hero IDs
-//   - selectedHero: map (optional, max 60 fields) - Currently focused hero profile
-//   - parents: list (optional, max 15 entries) - Parent display objects
-//   - parentUids: list (optional, max 15 entries) - Authorized parent Auth UIDs
-//   - parentEmails: list (optional, max 15 entries) - Authorized parent emails
-//   - parentSettings: map (optional, max 35 entries) - Parental controls and PIN settings
-//   - pendingApprovals: list (optional, max 100 entries) - Completed chores awaiting review
-//   - resolvedApprovals: list (optional, max 300 entries) - History ledger of reviewed chores
-//   - taskCompletionLogs: list (optional, max 500 entries) - Chore completion timestamp logs
-//   - taskLedgerLogs: list (optional, max 500 entries) - Extended ledger event entries
-//   - taskForest: list (optional, max 50 entries) - Daily routine chore definitions
-//   - habitIslands: list (optional, max 50 entries) - Habit definitions
-//   - aiQuests: list (optional, max 50 entries) - AI spark quests
-//   - heroAiQuestsMap: map (optional, max 20 entries) - Per-hero AI quests map
-//   - recentlyUnlocked: list (optional, max 50 entries) - Reward unlock history
-//   - realLifeRewards: list (optional, max 50 entries) - Real-world reward items
-//   - digitalGear: list (optional, max 100 entries) - Catalog of unlockable digital gear
-//   - inventory: list (optional, max 100 entries) - Unlocked inventory items
-//   - petStatsMap: map (optional, max 30 entries) - Companion pet stat levels
-//   - petLevelMap: map (optional, max 30 entries) - Companion pet level progression
-//   - petXpMap: map (optional, max 30 entries) - Companion pet XP counters
-//   - equippedGearMap: map (optional, max 20 entries) - Gear equipped by heroes
-//   - equippedPetGear: string | map (optional) - Active pet gear item
-//   - equippedPetGearSlots: map (optional, max 20 entries) - Pet gear slots map
-//   - equippedPetGearMap: map (optional, max 30 entries) - Pet gear mapping
-//   - customGearDyesMap: map (optional, max 30 entries) - Gear dye customizations
-//   - savedHeroCards: list (optional, max 50 entries) - Exported hero trading cards
-//   - pets: list (optional, max 30 entries) - Adopted companions list
-//   - petSanctuary: map (optional, max 30 entries) - Sanctuary state
-//   - heroHQ: map (optional, max 30 entries) - Base camp customization state
-//   - heroForge: map (optional, max 30 entries) - 3D forge lab state
-//   - petStreakShield: map (optional, max 20 entries) - Streak protection status
-//   - activeExpeditions: list (optional, max 10 entries) - Active pet expeditions
-//   - expeditionHistory: list (optional, max 50 entries) - Past expedition logs
-//   - unlockedArtifacts: list (optional, max 50 entries) - Discovered relics
-//   - gameMasteryMap: map (optional, max 50 entries) - Mini-game high scores & mastery
-//   - liveRex: map (optional, max 20 entries) - Live companion mascot state
-//   - profileThemes: list (optional, max 30 entries) - Unlocked UI themes
-//   - gameProgress: map (optional, max 30 entries) - Learning game progress
-//   - linkedAccounts: map (optional, max 20 entries) - Linked parent account references
-//   - revokedDeviceIds: list (optional, max 50 entries) - Blocked / logged-out device IDs
-//   - stateSnapshot: map (optional, max 60 entries) - Coalesced state snapshot
-//   - lastWriterSessionId: string (optional, max 64 chars) - Multi-tab deduplication session ID
-//   - lastWriterDeviceId: string (optional, max 64 chars) - Originating device ID
-//   - updatedAt / lastUpdated: string | timestamp | number (optional, max 40 chars) - Modification timestamp
-//   - parentCustomWeapons: list (optional, max 50 entries) - Parent studio custom weapons
-//   - parentCustomFood: list (optional, max 50 entries) - Parent studio custom pet snacks
-//   - deletedCustomItemIds: list (optional, max 50 entries) - Multi-device custom item tombstones
+//   - devices: map (optional, max 50 entries) - Active connected devices map
+//   - heroes: list (optional, max 30 entries) - List of hero profile objects
+//   - heroesMap: map (optional, max 30 entries) - Map of hero states keyed by heroId
+//   - deletedHeroIds: list (optional, max 100 entries) - Tombstoned hero IDs
+//   - selectedHero: map | null (optional, max 120 fields) - Currently focused hero profile
+//   - parents: list (optional, max 20 entries) - Parent display objects
+//   - parentUids: list (optional, max 20 entries) - Authorized parent Auth UIDs
+//   - parentEmails: list (optional, max 20 entries) - Authorized parent emails
+//   - parentSettings: map (optional, max 60 entries) - Parental controls and PIN settings
+//   - pendingApprovals: list (optional, max 200 entries) - Completed chores awaiting review
+//   - resolvedApprovals: list (optional, max 500 entries) - History ledger of reviewed chores
+//   - taskCompletionLogs: list (optional, max 1000 entries) - Chore completion timestamp logs
+//   - taskLedgerLogs: list (optional, max 1000 entries) - Extended ledger event entries
+//   - taskForest: list (optional, max 100 entries) - Daily routine chore definitions
+//   - habitIslands: list (optional, max 100 entries) - Habit definitions
+//   - aiQuests: list (optional, max 100 entries) - AI spark quests
+//   - heroAiQuestsMap: map (optional, max 30 entries) - Per-hero AI quests map
+//   - recentlyUnlocked: list (optional, max 100 entries) - Reward unlock history
+//   - realLifeRewards: list (optional, max 100 entries) - Real-world reward items
+//   - digitalGear: list (optional, max 200 entries) - Catalog of unlockable digital gear
+//   - inventory: list (optional, max 200 entries) - Unlocked inventory items
+//   - petStatsMap: map (optional, max 50 entries) - Companion pet stat levels
+//   - petLevelMap: map (optional, max 50 entries) - Companion pet level progression
+//   - petXpMap: map (optional, max 50 entries) - Companion pet XP counters
+//   - equippedGearMap: map (optional, max 50 entries) - Gear equipped by heroes
+//   - equippedPetGear: string | map | null (optional) - Active pet gear item
+//   - equippedPetGearSlots: map (optional, max 30 entries) - Pet gear slots map
+//   - equippedPetGearMap: map (optional, max 50 entries) - Pet gear mapping
+//   - customGearDyesMap: map (optional, max 50 entries) - Gear dye customizations
+//   - savedHeroCards: list (optional, max 100 entries) - Exported hero trading cards
+//   - pets: list (optional, max 50 entries) - Adopted companions list
+//   - petSanctuary: map (optional, max 50 entries) - Sanctuary state
+//   - heroHQ: map (optional, max 50 entries) - Base camp customization state
+//   - heroForge: map (optional, max 50 entries) - 3D forge lab state
+//   - petStreakShield: map (optional, max 30 entries) - Streak protection status
+//   - activeExpeditions: list (optional, max 30 entries) - Active pet expeditions
+//   - expeditionHistory: list (optional, max 100 entries) - Past expedition logs
+//   - unlockedArtifacts: list (optional, max 100 entries) - Discovered relics
+//   - gameMasteryMap: map (optional, max 100 entries) - Mini-game high scores & mastery
+//   - liveRex: map (optional, max 30 entries) - Live companion mascot state
+//   - profileThemes: list (optional, max 50 entries) - Unlocked UI themes
+//   - gameProgress: map (optional, max 50 entries) - Learning game progress
+//   - linkedAccounts: map (optional, max 30 entries) - Linked parent account references
+//   - revokedDeviceIds: list (optional, max 100 entries) - Blocked / logged-out device IDs
+//   - stateSnapshot: map (optional, max 150 entries) - Coalesced state snapshot
+//   - lastWriterSessionId: string (optional, max 128 chars) - Multi-tab deduplication session ID
+//   - lastWriterDeviceId: string (optional, max 128 chars) - Originating device ID
+//   - updatedAt / lastUpdated: string | timestamp | number (optional, max 64 chars) - Modification timestamp
+//   - parentCustomWeapons: list (optional, max 100 entries) - Parent studio custom weapons
+//   - parentCustomGear: list (optional, max 100 entries) - Parent studio custom pet gear
+//   - parentCustomFurniture: list (optional, max 100 entries) - Parent studio custom furniture
+//   - parentCustomToys: list (optional, max 100 entries) - Parent studio custom toys
+//   - parentCustomFood: list (optional, max 100 entries) - Parent studio custom pet snacks
+//   - parentCustomBosses: list (optional, max 100 entries) - Parent studio custom bosses
+//   - deletedCustomItemIds: list (optional, max 200 entries) - Multi-device custom item tombstones
+//   - pendingGiftCrates: list (optional, max 100 entries) - Pending mystery gift crates
+//   - pendingBounties: list (optional, max 100 entries) - Pending parent bounties
+//   - rewardLedger: list (optional, max 500 entries) - Reward transaction ledger
+//   - movementSessionHistory: list (optional, max 200 entries) - Movement routine history
+//   - dentalBadges: list (optional, max 100 entries) - Earned dental badges
+//   - dentalBattleHistory: list (optional, max 200 entries) - Toothbrush battle logs
+//   - lastBrushedMorning / lastBrushedEvening: string | number | null (optional, max 64 chars)
+//   - hygieneReminders: map (optional, max 50 entries) - Per-hero hygiene reminder schedule
+//   - worldAdventureMap: map (optional, max 50 entries) - 3D world map state
+//   - bedtimeStoryLibrary: list (optional, max 200 entries) - Saved AI bedtime stories
+//   - activeBedtimeStory: map | null (optional, max 50 entries) - Currently active story
+//   - bedtimeSanctuaryState: map (optional, max 30 entries) - Bedtime workflow state
+//   - bedtimeConfig: map (optional, max 30 entries) - Bedtime configuration
+//   - taskEngineVersion: number | string (optional, max 32 chars) - Schema version marker
 //
 // Collection: user_households
 // Document ID: {linkId} (request.auth.uid or email_*)
@@ -68,21 +86,22 @@ rules_version = '2';
 //   - householdCode: string (required, 4 to 32 chars) - Linked household code
 //   - email: string (optional, max 120 chars) - Associated email address
 //   - displayName: string (optional, max 100 chars) - User display name
-//   - role: string (optional, 'parent' | 'child' | 'admin') - User role in household
-//   - linkedAt: string | timestamp | number (optional, max 40 chars) - Link establishment time
-//   - updatedAt: string | timestamp | number (optional, max 40 chars) - Last update time
+//   - role: string (optional, 'parent' | 'child') - User role in household (no self-assigned admin)
+//   - linkedAt: string | timestamp | number (optional, max 64 chars) - Link establishment time
+//   - updatedAt: string | timestamp | number (optional, max 64 chars) - Last update time
 //   - persistentLink: map (optional, max 10 entries) - RFC 6749 sliding window link state
 //
 // Collection: users
 // Document ID: {userId} (request.auth.uid)
 // Fields:
-//   - uid / userId: string (required) - Auth UID (immutable)
+//   - uid / userId: string (optional, immutable, must match auth.uid) - Auth UID
 //   - email: string (optional, max 120 chars) - User email
 //   - displayName: string (optional, max 100 chars) - User display name
 //   - photoURL: string (optional, max 500 chars) - Avatar URL
 //   - householdCode: string (optional, max 32 chars) - Associated household code
-//   - role: string (optional, 'parent' | 'child' | 'admin') - User role
-//   - createdAt / updatedAt: string | timestamp | number (optional, max 40 chars)
+//   - role: string (optional, 'parent' | 'child') - User role (cannot self-escalate to 'admin')
+//   - createdAt: string | timestamp | number (optional, immutable, max 64 chars)
+//   - updatedAt: string | timestamp | number (optional, max 64 chars)
 //
 // Collection: heroes (Server-Only via Admin SDK)
 // Document ID: {heroId}
@@ -92,11 +111,11 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+
     // ===============================================================
     // General Helper Functions
     // ===============================================================
-    
+
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -119,8 +138,8 @@ service cloud.firestore {
     }
 
     function uidNotModified() {
-      return (!('userId' in request.resource.data) || request.resource.data.userId == resource.data.userId) &&
-             (!('uid' in request.resource.data) || request.resource.data.uid == resource.data.uid);
+      return (resource == null || !('userId' in resource.data) || !('userId' in request.resource.data) || request.resource.data.userId == resource.data.userId) &&
+             (resource == null || !('uid' in resource.data) || !('uid' in request.resource.data) || request.resource.data.uid == resource.data.uid);
     }
 
     function areImmutableFieldsUnchanged(fields) {
@@ -133,6 +152,10 @@ service cloud.firestore {
 
     function isValidEmail(email) {
       return email is string && email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$');
+    }
+
+    function isValidTimestampOrString(val, maxLen) {
+      return (val is string && val.size() <= maxLen) || (val is timestamp) || (val is number);
     }
 
     // ===============================================================
@@ -155,16 +178,32 @@ service cloud.firestore {
         && (!('parentUids' in householdData) || !(householdData.parentUids is list) || householdData.parentUids.size() == 0)
         && (!('parentEmails' in householdData) || !(householdData.parentEmails is list) || householdData.parentEmails.size() == 0 ||
             (request.auth.token.email_verified == true && request.auth.token.email != null && request.auth.token.email in householdData.parentEmails))
+        && ('parentUids' in request.resource.data)
         && request.resource.data.parentUids is list
         && request.resource.data.parentUids.size() > 0
         && request.auth.uid in request.resource.data.parentUids;
     }
 
+    // Ensure a revoked device cannot push state updates unless it is explicitly re-joining via joinHousehold()
+    function isNotRevokedDevice(existingData, newData) {
+      let affected = newData.diff(existingData).affectedKeys();
+      let isRejoining = affected.hasOnly(['devices', 'revokedDeviceIds']);
+      let writerRevokedInList = ('revokedDeviceIds' in existingData) && (existingData.revokedDeviceIds is list) &&
+                                ('lastWriterDeviceId' in newData) && (newData.lastWriterDeviceId in existingData.revokedDeviceIds);
+      let writerRevokedInMap = ('devices' in existingData) && (existingData.devices is map) &&
+                               ('lastWriterDeviceId' in newData) && (newData.lastWriterDeviceId in existingData.devices) &&
+                               (existingData.devices[newData.lastWriterDeviceId] is map) &&
+                               ('revoked' in existingData.devices[newData.lastWriterDeviceId]) &&
+                               existingData.devices[newData.lastWriterDeviceId].revoked == true;
+      return isRejoining || (!writerRevokedInList && !writerRevokedInMap);
+    }
+
     // Comprehensive payload validation preventing Resource Exhaustion & DoS (1MB payload attacks)
-    // and strictly restricting keys to the registered schema.
+    // and strictly restricting keys to the registered schema while supporting partial updateDoc() calls.
     function isValidHouseholdPayload() {
       let data = request.resource.data;
-      return hasOnlyAllowedFields([
+      return data.keys().size() <= 120
+        && hasOnlyAllowedFields([
           'syncCode', 'name', 'householdName', 'devices', 'heroes', 'heroesMap',
           'deletedHeroIds', 'selectedHero', 'parents', 'parentUids', 'parentEmails',
           'parentSettings', 'pendingApprovals', 'resolvedApprovals',
@@ -177,64 +216,89 @@ service cloud.firestore {
           'unlockedArtifacts', 'gameMasteryMap', 'liveRex', 'profileThemes',
           'gameProgress', 'linkedAccounts', 'revokedDeviceIds', 'stateSnapshot',
           'lastWriterSessionId', 'lastWriterDeviceId', 'updatedAt', 'lastUpdated',
-          'parentCustomWeapons', 'parentCustomFood', 'deletedCustomItemIds'
+          'parentCustomWeapons', 'parentCustomGear', 'parentCustomFurniture',
+          'parentCustomToys', 'parentCustomFood', 'parentCustomBosses',
+          'deletedCustomItemIds', 'pendingGiftCrates', 'pendingBounties',
+          'rewardLedger', 'movementSessionHistory', 'dentalBadges',
+          'dentalBattleHistory', 'lastBrushedMorning', 'lastBrushedEvening',
+          'hygieneReminders', 'worldAdventureMap', 'bedtimeStoryLibrary',
+          'activeBedtimeStory', 'bedtimeSanctuaryState', 'bedtimeConfig',
+          'taskEngineVersion'
         ])
-        && (data.keys().hasAny(['syncCode', 'name', 'householdName']))
-        && (!('syncCode' in data) || (isValidHouseholdCode(data.syncCode)))
+        && (!('syncCode' in data) || data.syncCode == '' || isValidHouseholdCode(data.syncCode))
         && (!('householdName' in data) || (data.householdName is string && data.householdName.size() <= 100))
         && (!('name' in data) || (data.name is string && data.name.size() <= 100))
-        && (!('devices' in data) || (data.devices is map && data.devices.size() <= 30))
-        && (!('heroes' in data) || (data.heroes is list && data.heroes.size() <= 20))
-        && (!('heroesMap' in data) || (data.heroesMap is map && data.heroesMap.size() <= 20))
-        && (!('deletedHeroIds' in data) || (data.deletedHeroIds is list && data.deletedHeroIds.size() <= 50))
-        && (!('selectedHero' in data) || (data.selectedHero == null || (data.selectedHero is map && data.selectedHero.size() <= 60)))
-        && (!('parents' in data) || (data.parents is list && data.parents.size() <= 15))
-        && (!('parentUids' in data) || (data.parentUids is list && data.parentUids.size() <= 15))
-        && (!('parentEmails' in data) || (data.parentEmails is list && data.parentEmails.size() <= 15))
-        && (!('parentSettings' in data) || (data.parentSettings is map && data.parentSettings.size() <= 35))
-        && (!('pendingApprovals' in data) || (data.pendingApprovals is list && data.pendingApprovals.size() <= 100))
-        && (!('resolvedApprovals' in data) || (data.resolvedApprovals is list && data.resolvedApprovals.size() <= 300))
-        && (!('taskCompletionLogs' in data) || (data.taskCompletionLogs is list && data.taskCompletionLogs.size() <= 500))
-        && (!('taskLedgerLogs' in data) || (data.taskLedgerLogs is list && data.taskLedgerLogs.size() <= 500))
-        && (!('taskForest' in data) || (data.taskForest is list && data.taskForest.size() <= 50))
-        && (!('habitIslands' in data) || (data.habitIslands is list && data.habitIslands.size() <= 50))
-        && (!('aiQuests' in data) || (data.aiQuests is list && data.aiQuests.size() <= 50))
-        && (!('heroAiQuestsMap' in data) || (data.heroAiQuestsMap is map && data.heroAiQuestsMap.size() <= 20))
-        && (!('recentlyUnlocked' in data) || (data.recentlyUnlocked is list && data.recentlyUnlocked.size() <= 50))
-        && (!('realLifeRewards' in data) || (data.realLifeRewards is list && data.realLifeRewards.size() <= 50))
-        && (!('digitalGear' in data) || (data.digitalGear is list && data.digitalGear.size() <= 100))
-        && (!('inventory' in data) || (data.inventory is list && data.inventory.size() <= 100))
-        && (!('petStatsMap' in data) || (data.petStatsMap is map && data.petStatsMap.size() <= 30))
-        && (!('petLevelMap' in data) || (data.petLevelMap is map && data.petLevelMap.size() <= 30))
-        && (!('petXpMap' in data) || (data.petXpMap is map && data.petXpMap.size() <= 30))
-        && (!('equippedGearMap' in data) || (data.equippedGearMap is map && data.equippedGearMap.size() <= 20))
-        && (!('equippedPetGear' in data) || data.equippedPetGear == null || (data.equippedPetGear is string && data.equippedPetGear.size() <= 100) || (data.equippedPetGear is map && data.equippedPetGear.size() <= 20))
-        && (!('equippedPetGearSlots' in data) || (data.equippedPetGearSlots is map && data.equippedPetGearSlots.size() <= 20))
-        && (!('equippedPetGearMap' in data) || (data.equippedPetGearMap is map && data.equippedPetGearMap.size() <= 30))
-        && (!('customGearDyesMap' in data) || (data.customGearDyesMap is map && data.customGearDyesMap.size() <= 30))
-        && (!('savedHeroCards' in data) || (data.savedHeroCards is list && data.savedHeroCards.size() <= 50))
-        && (!('pets' in data) || (data.pets is list && data.pets.size() <= 30))
-        && (!('petSanctuary' in data) || (data.petSanctuary is map && data.petSanctuary.size() <= 30))
-        && (!('heroHQ' in data) || (data.heroHQ is map && data.heroHQ.size() <= 30))
-        && (!('heroForge' in data) || (data.heroForge is map && data.heroForge.size() <= 30))
-        && (!('petStreakShield' in data) || (data.petStreakShield is map && data.petStreakShield.size() <= 20))
-        && (!('activeExpeditions' in data) || (data.activeExpeditions is list && data.activeExpeditions.size() <= 10))
-        && (!('expeditionHistory' in data) || (data.expeditionHistory is list && data.expeditionHistory.size() <= 50))
-        && (!('unlockedArtifacts' in data) || (data.unlockedArtifacts is list && data.unlockedArtifacts.size() <= 50))
-        && (!('gameMasteryMap' in data) || (data.gameMasteryMap is map && data.gameMasteryMap.size() <= 50))
-        && (!('liveRex' in data) || (data.liveRex is map && data.liveRex.size() <= 20))
-        && (!('profileThemes' in data) || (data.profileThemes is list && data.profileThemes.size() <= 30))
-        && (!('gameProgress' in data) || (data.gameProgress is map && data.gameProgress.size() <= 30))
-        && (!('linkedAccounts' in data) || (data.linkedAccounts is map && data.linkedAccounts.size() <= 20))
-        && (!('revokedDeviceIds' in data) || (data.revokedDeviceIds is list && data.revokedDeviceIds.size() <= 50))
-        && (!('stateSnapshot' in data) || (data.stateSnapshot is map && data.stateSnapshot.size() <= 60))
-        && (!('lastWriterSessionId' in data) || (data.lastWriterSessionId is string && data.lastWriterSessionId.size() <= 64))
-        && (!('lastWriterDeviceId' in data) || (data.lastWriterDeviceId is string && data.lastWriterDeviceId.size() <= 64))
-        && (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 40) || (data.updatedAt is timestamp) || (data.updatedAt is number))
-        && (!('lastUpdated' in data) || (data.lastUpdated is string && data.lastUpdated.size() <= 40) || (data.lastUpdated is timestamp) || (data.lastUpdated is number))
-        && (!('parentCustomWeapons' in data) || (data.parentCustomWeapons is list && data.parentCustomWeapons.size() <= 50))
-        && (!('parentCustomFood' in data) || (data.parentCustomFood is list && data.parentCustomFood.size() <= 50))
-        && (!('deletedCustomItemIds' in data) || (data.deletedCustomItemIds is list && data.deletedCustomItemIds.size() <= 50));
+        && (!('devices' in data) || (data.devices is map && data.devices.size() <= 50))
+        && (!('heroes' in data) || (data.heroes is list && data.heroes.size() <= 30))
+        && (!('heroesMap' in data) || (data.heroesMap is map && data.heroesMap.size() <= 30))
+        && (!('deletedHeroIds' in data) || (data.deletedHeroIds is list && data.deletedHeroIds.size() <= 100))
+        && (!('selectedHero' in data) || data.selectedHero == null || (data.selectedHero is map && data.selectedHero.size() <= 120))
+        && (!('parents' in data) || (data.parents is list && data.parents.size() <= 20))
+        && (!('parentUids' in data) || (data.parentUids is list && data.parentUids.size() <= 20))
+        && (!('parentEmails' in data) || (data.parentEmails is list && data.parentEmails.size() <= 20))
+        && (!('parentSettings' in data) || (data.parentSettings is map && data.parentSettings.size() <= 60))
+        && (!('pendingApprovals' in data) || (data.pendingApprovals is list && data.pendingApprovals.size() <= 200))
+        && (!('resolvedApprovals' in data) || (data.resolvedApprovals is list && data.resolvedApprovals.size() <= 500))
+        && (!('taskCompletionLogs' in data) || (data.taskCompletionLogs is list && data.taskCompletionLogs.size() <= 1000))
+        && (!('taskLedgerLogs' in data) || (data.taskLedgerLogs is list && data.taskLedgerLogs.size() <= 1000))
+        && (!('taskForest' in data) || (data.taskForest is list && data.taskForest.size() <= 100))
+        && (!('habitIslands' in data) || (data.habitIslands is list && data.habitIslands.size() <= 100))
+        && (!('aiQuests' in data) || (data.aiQuests is list && data.aiQuests.size() <= 100))
+        && (!('heroAiQuestsMap' in data) || (data.heroAiQuestsMap is map && data.heroAiQuestsMap.size() <= 30))
+        && (!('recentlyUnlocked' in data) || (data.recentlyUnlocked is list && data.recentlyUnlocked.size() <= 100))
+        && (!('realLifeRewards' in data) || (data.realLifeRewards is list && data.realLifeRewards.size() <= 100))
+        && (!('digitalGear' in data) || (data.digitalGear is list && data.digitalGear.size() <= 200))
+        && (!('inventory' in data) || (data.inventory is list && data.inventory.size() <= 200))
+        && (!('petStatsMap' in data) || (data.petStatsMap is map && data.petStatsMap.size() <= 50))
+        && (!('petLevelMap' in data) || (data.petLevelMap is map && data.petLevelMap.size() <= 50))
+        && (!('petXpMap' in data) || (data.petXpMap is map && data.petXpMap.size() <= 50))
+        && (!('equippedGearMap' in data) || (data.equippedGearMap is map && data.equippedGearMap.size() <= 50))
+        && (!('equippedPetGear' in data) || data.equippedPetGear == null || (data.equippedPetGear is string && data.equippedPetGear.size() <= 100) || (data.equippedPetGear is map && data.equippedPetGear.size() <= 30))
+        && (!('equippedPetGearSlots' in data) || (data.equippedPetGearSlots is map && data.equippedPetGearSlots.size() <= 30))
+        && (!('equippedPetGearMap' in data) || (data.equippedPetGearMap is map && data.equippedPetGearMap.size() <= 50))
+        && (!('customGearDyesMap' in data) || (data.customGearDyesMap is map && data.customGearDyesMap.size() <= 50))
+        && (!('savedHeroCards' in data) || (data.savedHeroCards is list && data.savedHeroCards.size() <= 100))
+        && (!('pets' in data) || (data.pets is list && data.pets.size() <= 50))
+        && (!('petSanctuary' in data) || (data.petSanctuary is map && data.petSanctuary.size() <= 50))
+        && (!('heroHQ' in data) || (data.heroHQ is map && data.heroHQ.size() <= 50))
+        && (!('heroForge' in data) || (data.heroForge is map && data.heroForge.size() <= 50))
+        && (!('petStreakShield' in data) || (data.petStreakShield is map && data.petStreakShield.size() <= 30))
+        && (!('activeExpeditions' in data) || (data.activeExpeditions is list && data.activeExpeditions.size() <= 30))
+        && (!('expeditionHistory' in data) || (data.expeditionHistory is list && data.expeditionHistory.size() <= 100))
+        && (!('unlockedArtifacts' in data) || (data.unlockedArtifacts is list && data.unlockedArtifacts.size() <= 100))
+        && (!('gameMasteryMap' in data) || (data.gameMasteryMap is map && data.gameMasteryMap.size() <= 100))
+        && (!('liveRex' in data) || (data.liveRex is map && data.liveRex.size() <= 30))
+        && (!('profileThemes' in data) || (data.profileThemes is list && data.profileThemes.size() <= 50))
+        && (!('gameProgress' in data) || (data.gameProgress is map && data.gameProgress.size() <= 50))
+        && (!('linkedAccounts' in data) || (data.linkedAccounts is map && data.linkedAccounts.size() <= 30))
+        && (!('revokedDeviceIds' in data) || (data.revokedDeviceIds is list && data.revokedDeviceIds.size() <= 100))
+        && (!('stateSnapshot' in data) || (data.stateSnapshot is map && data.stateSnapshot.size() <= 150))
+        && (!('lastWriterSessionId' in data) || (data.lastWriterSessionId is string && data.lastWriterSessionId.size() <= 128))
+        && (!('lastWriterDeviceId' in data) || (data.lastWriterDeviceId is string && data.lastWriterDeviceId.size() <= 128))
+        && (!('updatedAt' in data) || isValidTimestampOrString(data.updatedAt, 64))
+        && (!('lastUpdated' in data) || isValidTimestampOrString(data.lastUpdated, 64))
+        && (!('parentCustomWeapons' in data) || (data.parentCustomWeapons is list && data.parentCustomWeapons.size() <= 100))
+        && (!('parentCustomGear' in data) || (data.parentCustomGear is list && data.parentCustomGear.size() <= 100))
+        && (!('parentCustomFurniture' in data) || (data.parentCustomFurniture is list && data.parentCustomFurniture.size() <= 100))
+        && (!('parentCustomToys' in data) || (data.parentCustomToys is list && data.parentCustomToys.size() <= 100))
+        && (!('parentCustomFood' in data) || (data.parentCustomFood is list && data.parentCustomFood.size() <= 100))
+        && (!('parentCustomBosses' in data) || (data.parentCustomBosses is list && data.parentCustomBosses.size() <= 100))
+        && (!('deletedCustomItemIds' in data) || (data.deletedCustomItemIds is list && data.deletedCustomItemIds.size() <= 200))
+        && (!('pendingGiftCrates' in data) || (data.pendingGiftCrates is list && data.pendingGiftCrates.size() <= 100))
+        && (!('pendingBounties' in data) || (data.pendingBounties is list && data.pendingBounties.size() <= 100))
+        && (!('rewardLedger' in data) || (data.rewardLedger is list && data.rewardLedger.size() <= 500))
+        && (!('movementSessionHistory' in data) || (data.movementSessionHistory is list && data.movementSessionHistory.size() <= 200))
+        && (!('dentalBadges' in data) || (data.dentalBadges is list && data.dentalBadges.size() <= 100))
+        && (!('dentalBattleHistory' in data) || (data.dentalBattleHistory is list && data.dentalBattleHistory.size() <= 200))
+        && (!('lastBrushedMorning' in data) || data.lastBrushedMorning == null || isValidTimestampOrString(data.lastBrushedMorning, 64))
+        && (!('lastBrushedEvening' in data) || data.lastBrushedEvening == null || isValidTimestampOrString(data.lastBrushedEvening, 64))
+        && (!('hygieneReminders' in data) || (data.hygieneReminders is map && data.hygieneReminders.size() <= 50))
+        && (!('worldAdventureMap' in data) || (data.worldAdventureMap is map && data.worldAdventureMap.size() <= 50))
+        && (!('bedtimeStoryLibrary' in data) || (data.bedtimeStoryLibrary is list && data.bedtimeStoryLibrary.size() <= 200))
+        && (!('activeBedtimeStory' in data) || data.activeBedtimeStory == null || (data.activeBedtimeStory is map && data.activeBedtimeStory.size() <= 50))
+        && (!('bedtimeSanctuaryState' in data) || (data.bedtimeSanctuaryState is map && data.bedtimeSanctuaryState.size() <= 30))
+        && (!('bedtimeConfig' in data) || (data.bedtimeConfig is map && data.bedtimeConfig.size() <= 30))
+        && (!('taskEngineVersion' in data) || (data.taskEngineVersion is number) || (data.taskEngineVersion is string && data.taskEngineVersion.size() <= 32));
     }
 
     // Secure household creation rules preventing unauthorized administrative pre-claiming
@@ -244,53 +308,45 @@ service cloud.firestore {
         // Unauthenticated client creation cannot pre-populate administrative parent claims
         (!isAuthenticated() && (!('parentUids' in data) || data.parentUids.size() == 0) && (!('parentEmails' in data) || data.parentEmails.size() == 0)) ||
         // Authenticated creation: if parentUids is specified, caller must be in the list
-        (isAuthenticated() && (!('parentUids' in data) || request.auth.uid in data.parentUids) &&
-         (!('parentEmails' in data) || (request.auth.token.email_verified == true && request.auth.token.email != null && request.auth.token.email in data.parentEmails)))
+        (isAuthenticated() && (!('parentUids' in data) || data.parentUids.size() == 0 || request.auth.uid in data.parentUids) &&
+         (!('parentEmails' in data) || data.parentEmails.size() == 0 || (request.auth.token.email_verified == true && request.auth.token.email != null && request.auth.token.email in data.parentEmails)))
       );
     }
 
-    // Hardened validation for kid/non-parent updates:
-    // 1. Kids CANNOT modify parental controls, admin lists, delete kid profiles, self-approve chores,
-    //    modify revoked devices list, alter linked parent accounts, or tamper with parental settings via stateSnapshot.
-    // 2. Reject writes originating from devices marked as revoked in existing household state.
-    // 3. Existing pending approvals and task logs are IMMUTABLE to kids (kids can only append, never overwrite or forge).
-    function isAllowedKidUpdate(existingData, newData) {
+    // Household synchronization update validator for linked family devices (kids & PIN-unlocked parents).
+    // Supports task/habit completion, Parent Portal PIN approvals/denials, parentSettings edits, and custom item studio edits
+    // while strictly protecting parentUids & parentEmails from unauthorized takeover when already claimed.
+    function isAllowedHouseholdSyncUpdate(existingData, newData) {
       let affected = newData.diff(existingData).affectedKeys();
+      let parentUidsAlreadyClaimed = ('parentUids' in existingData) && (existingData.parentUids is list) && (existingData.parentUids.size() > 0);
+      let parentEmailsAlreadyClaimed = ('parentEmails' in existingData) && (existingData.parentEmails is list) && (existingData.parentEmails.size() > 0);
       return isValidHouseholdPayload()
-        // 1. Kids CANNOT modify parental controls, parent admin lists, delete profiles, revoke devices, linked accounts, or custom reward catalogs
-        && !affected.hasAny([
-          'parentSettings', 'parents', 'parentUids', 'parentEmails',
-          'deletedHeroIds', 'revokedDeviceIds', 'linkedAccounts',
-          'resolvedApprovals', 'parentCustomWeapons', 'parentCustomFood', 'deletedCustomItemIds'
-        ])
-        // 2. Reject writes originating from revoked devices
-        && (!('revokedDeviceIds' in existingData) || !(existingData.revokedDeviceIds is list) ||
-            !('lastWriterDeviceId' in newData) || !(newData.lastWriterDeviceId in existingData.revokedDeviceIds))
-        && (!('devices' in existingData) || !(existingData.devices is map) ||
-            !('lastWriterDeviceId' in newData) || !(newData.lastWriterDeviceId in existingData.devices) ||
-            !('revoked' in existingData.devices[newData.lastWriterDeviceId]) ||
-            existingData.devices[newData.lastWriterDeviceId].revoked != true)
-        // 3. Kids CANNOT delete, overwrite, or mutate existing pending approvals (must preserve all existing entries)
-        && (!('pendingApprovals' in existingData) || !(existingData.pendingApprovals is list) ||
-            existingData.pendingApprovals.size() == 0 ||
-            (('pendingApprovals' in newData) && (newData.pendingApprovals is list) &&
-             newData.pendingApprovals.size() >= existingData.pendingApprovals.size() &&
-             newData.pendingApprovals.hasAll(existingData.pendingApprovals)))
-        // 4. Kids CANNOT delete, overwrite, or mutate existing task completion logs
-        && (!('taskCompletionLogs' in existingData) || !(existingData.taskCompletionLogs is list) ||
-            existingData.taskCompletionLogs.size() == 0 ||
-            (('taskCompletionLogs' in newData) && (newData.taskCompletionLogs is list) &&
-             newData.taskCompletionLogs.size() >= existingData.taskCompletionLogs.size() &&
-             newData.taskCompletionLogs.hasAll(existingData.taskCompletionLogs)))
-        // 5. State snapshot integrity: kid updates must not alter administrative fields via nested snapshot
-        && (!('stateSnapshot' in newData) || !('parentSettings' in newData.stateSnapshot) || !('stateSnapshot' in existingData) || !('parentSettings' in existingData.stateSnapshot) || newData.stateSnapshot.parentSettings == existingData.stateSnapshot.parentSettings)
-        && (!('stateSnapshot' in newData) || !('parentUids' in newData.stateSnapshot) || !('stateSnapshot' in existingData) || !('parentUids' in existingData.stateSnapshot) || newData.stateSnapshot.parentUids == existingData.stateSnapshot.parentUids)
-        && (!('stateSnapshot' in newData) || !('parentEmails' in newData.stateSnapshot) || !('stateSnapshot' in existingData) || !('parentEmails' in existingData.stateSnapshot) || newData.stateSnapshot.parentEmails == existingData.stateSnapshot.parentEmails)
-        && (!('stateSnapshot' in newData) || !('parents' in newData.stateSnapshot) || !('stateSnapshot' in existingData) || !('parents' in existingData.stateSnapshot) || newData.stateSnapshot.parents == existingData.stateSnapshot.parents)
-        && (!('stateSnapshot' in newData) || !('revokedDeviceIds' in newData.stateSnapshot) || !('stateSnapshot' in existingData) || !('revokedDeviceIds' in existingData.stateSnapshot) || newData.stateSnapshot.revokedDeviceIds == existingData.stateSnapshot.revokedDeviceIds)
-        && (!('stateSnapshot' in newData) || !('linkedAccounts' in newData.stateSnapshot) || !('stateSnapshot' in existingData) || !('linkedAccounts' in existingData.stateSnapshot) || newData.stateSnapshot.linkedAccounts == existingData.stateSnapshot.linkedAccounts)
-        && (!('stateSnapshot' in newData) || !('parentCustomWeapons' in newData.stateSnapshot) || !('stateSnapshot' in existingData) || !('parentCustomWeapons' in existingData.stateSnapshot) || newData.stateSnapshot.parentCustomWeapons == existingData.stateSnapshot.parentCustomWeapons)
-        && (!('stateSnapshot' in newData) || !('parentCustomFood' in newData.stateSnapshot) || !('stateSnapshot' in existingData) || !('parentCustomFood' in existingData.stateSnapshot) || newData.stateSnapshot.parentCustomFood == existingData.stateSnapshot.parentCustomFood);
+        && isNotRevokedDevice(existingData, newData)
+        // Protect parentUids from unauthorized modification or hijacking
+        && (!affected.hasAny(['parentUids']) || (
+          !parentUidsAlreadyClaimed && isBootstrapParentClaim(existingData)
+        ))
+        // Protect parentEmails from unauthorized modification or hijacking
+        && (!affected.hasAny(['parentEmails']) || (
+          !parentEmailsAlreadyClaimed && isAuthenticated() &&
+          request.auth.token.email_verified == true &&
+          request.auth.token.email != null &&
+          ('parentEmails' in newData) && (newData.parentEmails is list) &&
+          request.auth.token.email in newData.parentEmails
+        ))
+        // Prevent tampering with parentUids / parentEmails inside nested stateSnapshot.household
+        && (
+          !('stateSnapshot' in newData) || !(newData.stateSnapshot is map) ||
+          !('household' in newData.stateSnapshot) || !(newData.stateSnapshot.household is map) ||
+          !('stateSnapshot' in existingData) || !(existingData.stateSnapshot is map) ||
+          !('household' in existingData.stateSnapshot) || !(existingData.stateSnapshot.household is map) ||
+          (
+            (!('parentUids' in existingData.stateSnapshot.household) ||
+             newData.stateSnapshot.household.get('parentUids', []) == existingData.stateSnapshot.household.get('parentUids', [])) &&
+            (!('parentEmails' in existingData.stateSnapshot.household) ||
+             newData.stateSnapshot.household.get('parentEmails', []) == existingData.stateSnapshot.household.get('parentEmails', []))
+          )
+        );
     }
 
     // ===============================================================
@@ -303,11 +359,11 @@ service cloud.firestore {
         && ('userId' in data && data.userId is string && data.userId == request.auth.uid)
         && (resource == null || !('userId' in resource.data) || data.userId == resource.data.userId)
         && ('householdCode' in data && data.householdCode is string && isValidHouseholdCode(data.householdCode))
-        && (!('email' in data) || (data.email is string && data.email.size() <= 120 && isValidEmail(data.email)))
+        && (!('email' in data) || data.email == '' || (data.email is string && data.email.size() <= 120 && isValidEmail(data.email)))
         && (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100))
-        && (!('role' in data) || (data.role in ['parent', 'child', 'admin']))
-        && (!('linkedAt' in data) || (data.linkedAt is string && data.linkedAt.size() <= 40) || (data.linkedAt is timestamp) || (data.linkedAt is number))
-        && (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 40) || (data.updatedAt is timestamp) || (data.updatedAt is number))
+        && (!('role' in data) || (data.role in ['parent', 'child']))
+        && (!('linkedAt' in data) || isValidTimestampOrString(data.linkedAt, 64))
+        && (!('updatedAt' in data) || isValidTimestampOrString(data.updatedAt, 64))
         && (!('persistentLink' in data) || (data.persistentLink is map && data.persistentLink.size() <= 10));
     }
 
@@ -321,12 +377,15 @@ service cloud.firestore {
         && uidUnchanged()
         && uidNotModified()
         && (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100))
-        && (!('email' in data) || (data.email is string && data.email.size() <= 120 && isValidEmail(data.email)))
-        && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500 && isValidUrl(data.photoURL)))
-        && (!('householdCode' in data) || (data.householdCode is string && isValidHouseholdCode(data.householdCode)))
-        && (!('role' in data) || (data.role in ['parent', 'child', 'admin']))
-        && (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 40) || (data.createdAt is timestamp) || (data.createdAt is number))
-        && (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 40) || (data.updatedAt is timestamp) || (data.updatedAt is number))
+        && (!('email' in data) || data.email == '' || (data.email is string && data.email.size() <= 120 && isValidEmail(data.email)))
+        && (!('photoURL' in data) || data.photoURL == '' || (data.photoURL is string && data.photoURL.size() <= 500 && isValidUrl(data.photoURL)))
+        && (!('householdCode' in data) || data.householdCode == '' || (data.householdCode is string && isValidHouseholdCode(data.householdCode)))
+        && (!('role' in data) || (
+          data.role in ['parent', 'child'] ||
+          (resource != null && 'role' in resource.data && data.role == resource.data.role)
+        ))
+        && (!('createdAt' in data) || isValidTimestampOrString(data.createdAt, 64))
+        && (!('updatedAt' in data) || isValidTimestampOrString(data.updatedAt, 64))
         && areImmutableFieldsUnchanged(['createdAt']);
     }
 
@@ -338,25 +397,26 @@ service cloud.firestore {
     // Multi-device family synchronization scoped to explicit household codes
     match /households/{householdCode} {
       // Allow single document read with valid household code syntax.
-      // List/collection queries are strictly denied to prevent database crawling.
+      // List/collection queries are strictly denied to prevent database crawling/enumeration.
       allow get: if isValidHouseholdCode(householdCode);
       allow list: if false;
-      
+
       // Allow creation of a valid household payload with anti-takeover protections
       allow create: if isValidHouseholdCode(householdCode)
         && isValidHouseholdCreate();
 
       // Updates:
-      // Require valid code and valid payload on ALL updates.
-      // 1. Authorized parents can update any aspect (approvals, points, screen time, settings, co-parents).
-      // 2. Hardened initial bootstrap claims allow first parent onboarding without allowing takeovers of pre-emailed accounts.
-      // 3. Kids and household devices can submit chore requests, log activity, and sync mini-game state via isAllowedKidUpdate().
+      // Require valid code, valid payload, and non-revoked device status on ALL updates.
+      // 1. Authorized parents can update any aspect of their household.
+      // 2. Hardened initial bootstrap claims allow first parent onboarding without allowing takeovers of pre-claimed accounts.
+      // 3. Household devices can sync tasks, habits, PIN-approved chores, and settings while parentUids/parentEmails remain protected.
       allow update: if isValidHouseholdCode(householdCode)
         && isValidHouseholdPayload()
+        && isNotRevokedDevice(resource.data, request.resource.data)
         && (
           isParent(resource.data) ||
           isBootstrapParentClaim(resource.data) ||
-          isAllowedKidUpdate(resource.data, request.resource.data)
+          isAllowedHouseholdSyncUpdate(resource.data, request.resource.data)
         );
 
       // Prevent accidental or malicious household deletion from client
@@ -369,7 +429,7 @@ service cloud.firestore {
     }
 
     // --- Users / Profiles Collection ---
-    // User profiles strictly scoped to the authenticated owner with schema validation
+    // User profiles strictly scoped to the authenticated owner with schema & role validation
     match /users/{userId} {
       allow get: if isOwner(userId);
       allow list: if false;
@@ -378,7 +438,7 @@ service cloud.firestore {
       allow delete: if isOwner(userId);
 
       match /{allChildren=**} {
-        allow read, write: if isOwner(userId);
+        allow read, write: if false;
       }
     }
 
@@ -402,7 +462,7 @@ service cloud.firestore {
         (request.auth.token.email_verified == true && request.auth.token.email != null && resource != null && resource.data.email == request.auth.token.email)
       );
       allow list: if false;
-      
+
       allow create: if isAuthenticated()
         && isValidUserHouseholdPayload()
         && (
@@ -415,7 +475,7 @@ service cloud.firestore {
         && (
           isOwner(linkId) ||
           (resource != null && resource.data.userId == request.auth.uid) ||
-          (request.auth.token.email_verified == true && request.auth.token.email != null && resource.data.email == request.auth.token.email)
+          (request.auth.token.email_verified == true && request.auth.token.email != null && resource != null && resource.data.email == request.auth.token.email)
         )
         && request.resource.data.userId == resource.data.userId; // Immutable UID
 

@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, setPersistence, browserLocalPersistence } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, setPersistence, browserLocalPersistence, signInAnonymously } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getFunctions } from "firebase/functions";
 import { getStorage } from "firebase/storage";
@@ -27,6 +27,40 @@ let storage = null;
 let googleProvider = null;
 let isFirebaseAvailable = false;
 let isStorageAvailable = false;
+
+let authReadyPromise = null;
+
+/**
+ * Ensures an authenticated session is ready before Firestore operations.
+ * Awaits auth.authStateReady() and signs in anonymously if no authenticated user exists.
+ * Preserves existing Google/Email authenticated users.
+ */
+function ensureAuthReady() {
+  if (!isFirebaseAvailable || !auth) return Promise.resolve(null);
+  if (auth.currentUser) return Promise.resolve(auth.currentUser);
+  if (!authReadyPromise) {
+    authReadyPromise = (async () => {
+      try {
+        if (typeof auth.authStateReady === 'function') {
+          await auth.authStateReady();
+        }
+        if (!auth.currentUser) {
+          const cred = await signInAnonymously(auth);
+          return cred?.user || auth.currentUser || null;
+        }
+        return auth.currentUser;
+      } catch (err) {
+        console.warn("Silent anonymous auth notice:", err.message);
+        return auth.currentUser || null;
+      } finally {
+        if (!auth.currentUser) {
+          authReadyPromise = null;
+        }
+      }
+    })();
+  }
+  return authReadyPromise;
+}
 
 try {
   app = initializeApp(firebaseConfig);
@@ -62,10 +96,17 @@ try {
   googleProvider = new GoogleAuthProvider();
   googleProvider.setCustomParameters({ prompt: 'select_account' });
   isFirebaseAvailable = true;
+
+  // Automatically establish an anonymous auth session on startup if unauthenticated
+  ensureAuthReady().catch((err) => {
+    console.warn("Auto anonymous auth startup notice:", err.message);
+  });
+
   console.log(`🔥 Firebase initialized successfully for project: ${firebaseConfig.projectId} (DB: ${firestoreDatabaseId}, Storage: ${firebaseConfig.storageBucket})`);
 } catch (e) {
   console.warn("Firebase initialized with local fallback:", e.message);
 }
 
-export { app, auth, db, functions, storage, googleProvider, isFirebaseAvailable, isStorageAvailable, firestoreDatabaseId, firebaseConfig };
+export { app, auth, db, functions, storage, googleProvider, isFirebaseAvailable, isStorageAvailable, firestoreDatabaseId, firebaseConfig, ensureAuthReady };
+
 
