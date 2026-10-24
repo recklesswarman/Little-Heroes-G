@@ -42,14 +42,21 @@ You are the Bedtime Story Narrator agent for Little Heroes Adventures.
 You speak like a warm, loving cartoon companion telling a sleepy bedtime story to a child aged 3-7.
 
 ANTI-REPETITION MANDATE:
-Make every story original and refreshing. Avoid clichés and repetitive tropes.
+Make every story original and refreshing, varying your wording and plot beats even when the
+realm and moral repeat from a prior story. Avoid clichés and repetitive tropes, and never reuse
+the same sentences across chapters or stories.
+
+COMPANION NAMING RULE:
+Never use the companion pet's actual name. Refer to it only as "the Faithful Companion" the
+first time it appears in a chapter, then with pronouns ("it"/"its") afterward. Not every chapter
+needs to mention the companion by name — leave it out of chapters where it isn't doing anything.
 
 STRICT PALETTE & CONTENT RULES:
 - NEVER use pink or purple in descriptions or words. Only calm starlight, moonlit emerald, gentle amber glow, cozy deep slate, solar gold.
 - Pacing must slow down chapter by chapter:
   * Chapter 1: The Evening Departure (dusk settling, cozy pajamas, gentle start)
-  * Chapter 2: The Curious Discovery (a quiet mystery, friendly sleepy animal)
-  * Chapter 3: Overcoming Challenge with Moral (kindness, patience, sharing, deep breaths)
+  * Chapter 2: The Curious Discovery (a quiet mystery, friendly sleepy animal; the Faithful Companion makes the discovery)
+  * Chapter 3: Overcoming Challenge with Moral (kindness, patience, sharing, deep breaths; the Faithful Companion helps)
   * Chapter 4: Peaceful Cozy Slumber (tucking in, heavy eyelids, starlight whispers, sleep)
 """
 
@@ -109,7 +116,7 @@ async def generate_bedtime_chapter(
 
     prompt = f"""
 Hero: {hero_name}
-Companion Pet: {pet_name}
+Companion Pet Species/Archetype: {pet_name} (do not use this as the pet's name in the story — call it "the Faithful Companion" instead)
 Realm: {realm_name}
 Daily Moral Theme: {moral_name} ({moral_guidance})
 Custom Bedtime Wish: {custom_wish or 'none'}
@@ -132,21 +139,40 @@ Please write Chapter {act_number} following the chapter guidelines and soothing 
     except Exception as exc:
         print(f"[BedtimeNarrator] Fallback triggered: {exc}")
 
-    # Fallback chapter
-    if act_number == 4:
+    # Fallback chapters, varied per act so repeated offline requests for the
+    # same hero/realm don't produce identical text every time.
+    if act_number == 1:
         return BedtimeChapterResponse(
-            title="Chapter 4: Starlight Slumber",
-            text=f"{hero_name} and {pet_name} curled up under the glowing canopy of {realm_name}. Gentle starlight bathed the pillow in soft amber warmth. With three slow, deep breaths, the adventure drifted into peaceful dreams.",
-            prompt_question="Goodnight Little Hero, sweet dreams under the stars. 🌙⭐",
-            suggestion_chips=[],
-            speech_rate=0.76,
-            voice_pitch=0.95
+            title="Chapter 1: The Evening Departure",
+            text=f"{hero_name} stood at the edge of {realm_name} as the sky dimmed into soft starlight cyan and amber. It was time for a cozy bedtime adventure, and {hero_name} took a slow, happy breath, ready for whatever gentle mystery the night might hold.",
+            prompt_question="What special hero gadget should we pack tonight?",
+            suggestion_chips=["Star Lantern 🏮", "Cozy Pajamas 🧸"],
+            speech_rate=rate,
+            voice_pitch=pitch
+        )
+    if act_number == 2:
+        return BedtimeChapterResponse(
+            title="Chapter 2: The Curious Discovery",
+            text=f"Deeper into {realm_name}, the Faithful Companion's ears perked up at a soft rustle. It padded ahead and found a sleepy little creature blinking in the starlight, looking for a gentle friend nearby.",
+            prompt_question="What should we explore next under the cozy twilight?",
+            suggestion_chips=["Follow the Star Trail ⭐", "Listen to the Night Breeze 🍃"],
+            speech_rate=rate,
+            voice_pitch=pitch
+        )
+    if act_number == 3:
+        return BedtimeChapterResponse(
+            title="Chapter 3: The Gentle Lesson",
+            text=f"The little creature needed a steady hand, and {hero_name} remembered the night's lesson of {moral_name.lower()}. With the Faithful Companion's help, {hero_name} solved the gentle hurdle, and the whole clearing glowed with warm, peaceful light.",
+            prompt_question="How should we celebrate together?",
+            suggestion_chips=["Share a Warm Hug 🤝", "Take 3 Deep Breaths 🧘"],
+            speech_rate=rate,
+            voice_pitch=pitch
         )
     return BedtimeChapterResponse(
-        title=f"Chapter {act_number}: Starlight Journey",
-        text=f"{hero_name} and {pet_name} walked softly into the quiet meadows of {realm_name}. Everything was peaceful and still under the gentle twilight sky.",
-        prompt_question="What should we explore next under the cozy twilight?",
-        suggestion_chips=["Follow the Star Trail ⭐", "Listen to the Night Breeze 🍃"],
-        speech_rate=rate,
-        voice_pitch=pitch
+        title="Chapter 4: Starlight Slumber",
+        text=f"{hero_name} curled up under the glowing canopy of {realm_name}. Gentle starlight bathed the pillow in soft amber warmth. With three slow, deep breaths, the adventure drifted into peaceful dreams.",
+        prompt_question="Goodnight Little Hero, sweet dreams under the stars. 🌙⭐",
+        suggestion_chips=[],
+        speech_rate=0.76,
+        voice_pitch=0.95
     )

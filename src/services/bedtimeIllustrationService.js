@@ -11,10 +11,6 @@ const inFlightRequests = new Map();
 
 export class BedtimeIllustrationService {
   constructor() {
-    this.apiUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_IMAGE_GEN_API_URL) ||
-                  'https://little-heroes-free-image-api.recklesswarman.workers.dev';
-    this.apiKey = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_IMAGE_GEN_API_KEY) ||
-                  'little-heroes-secret-key';
     this.illustrationCache = clientIllustrationCache;
   }
 
@@ -107,7 +103,9 @@ export class BedtimeIllustrationService {
 
         let imageUrl = '';
 
-        // 1. Try local/backend proxy route first (/api/story/illustration)
+        // Route illustration requests through the local server proxy only.
+        // The Cloudflare Workers AI API key must never be shipped to the browser,
+        // so there is no direct-to-Cloudflare fallback here.
         try {
           const baseUrl = typeof window !== 'undefined' && window.location?.origin ? '' : '';
           const proxyRes = await fetch(`${baseUrl}/api/story/illustration`, {
@@ -124,44 +122,7 @@ export class BedtimeIllustrationService {
             }
           }
         } catch (proxyErr) {
-          // Fall through to direct Cloudflare Worker endpoint
-        }
-
-        // 2. Direct Cloudflare Worker endpoint call if proxy not reachable or in static mode
-        if (!imageUrl && this.apiUrl) {
-          try {
-            const cleanUrl = this.apiUrl.endsWith('/') ? this.apiUrl : `${this.apiUrl}/`;
-            const cfPrompt = customPrompt || this.buildPrompt({
-              heroName,
-              petName,
-              petArchetype,
-              realmName,
-              chapterNumber,
-              chapterText,
-              magicItem
-            });
-
-            const directRes = await fetch(cleanUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${this.apiKey}`
-              },
-              body: JSON.stringify({
-                prompt: cfPrompt,
-                model: '@cf/bytedance/stable-diffusion-xl-lightning',
-                format: 'base64'
-              }),
-              signal: AbortSignal.timeout(20000)
-            });
-
-            if (directRes.ok) {
-              const cfData = await directRes.json();
-              imageUrl = cfData.dataUri || cfData.imageUrl || '';
-            }
-          } catch (cfErr) {
-            console.warn('Direct Cloudflare Worker call note:', cfErr.message);
-          }
+          // Fall through to the procedural SVG fallback below
         }
 
         if (imageUrl) {
@@ -203,30 +164,6 @@ export class BedtimeIllustrationService {
     }).catch(() => {});
   }
 
-  /**
-   * Builds prompt for 3D Pixar / Claymation style
-   */
-  buildPrompt(params = {}) {
-    const {
-      heroName = 'Little Hero',
-      petName = 'Rex',
-      petArchetype = 'dino',
-      realmName = 'Starlight Woods',
-      chapterNumber = 1,
-      magicItem = 'Starlight Lantern',
-      chapterText = ''
-    } = params;
-
-    const action = chapterNumber === 1
-      ? `${heroName} and ${petName} starting their journey with a glowing ${magicItem}`
-      : chapterNumber === 2
-      ? `${heroName} and ${petName} discovering a sleepy magical friend`
-      : chapterNumber === 3
-      ? `${heroName} and ${petName} helping a friend with kindness and teamwork`
-      : `${heroName} and ${petName} snuggled up asleep under gentle twinkling stars`;
-
-    return `${action}, cute toddler hero and baby ${petArchetype} companion, 3D Pixar animation style, claymation textures, soft nighttime lighting in ${realmName}, cozy storybook illustration, palette of starlight cyan, warm amber, midnight slate and emerald, masterpiece.`;
-  }
 }
 
 export const bedtimeIllustrationService = new BedtimeIllustrationService();

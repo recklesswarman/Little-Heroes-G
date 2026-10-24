@@ -543,7 +543,8 @@ async function runBedtimeStorybookVerification() {
       'Expected 5 story entries in history'
     );
 
-    // F5.3: 25-item rollover enforcement (capped at 25 entries)
+    // F5.3: 25-item rollover enforcement, exercised through the real
+    // buildChildStoryContext production code (not a reimplementation).
     for (let i = 6; i <= 30; i++) {
       hero.bedtimeHistory.unshift({
         id: `story_test_${i}`,
@@ -552,18 +553,16 @@ async function runBedtimeStorybookVerification() {
         title: `Story Title ${i}`,
         timestamp: Date.now()
       });
-      if (hero.bedtimeHistory.length > 25) {
-        hero.bedtimeHistory = hero.bedtimeHistory.slice(0, 25);
-      }
     }
+    const contextAfterOverflow = bedtimeStoryService.buildChildStoryContext(hero.id, { realmId: 'space', moralId: 'brave_dark' });
     assert(
-      hero.bedtimeHistory.length === 25,
-      'hero.bedtimeHistory caps history at last 25 entries with FIFO rollover',
-      `Expected max 25 entries, got ${hero.bedtimeHistory.length}`
+      contextAfterOverflow.antiRepetition.recentTitles.length === 25,
+      'buildChildStoryContext caps recentTitles at the last 25 entries with FIFO rollover',
+      `Expected 25 recentTitles, got ${contextAfterOverflow.antiRepetition.recentTitles.length}`
     );
 
-    // F5.4: Negative prompt constraints formatting
-    const bannedTitles = hero.bedtimeHistory.slice(0, 5).map(h => h.title);
+    // F5.4: Negative prompt constraints formatting, from the real computed context
+    const bannedTitles = contextAfterOverflow.antiRepetition.recentTitles;
     const negativePrompt = `NEVER repeat these recent story titles: ${bannedTitles.join(', ')}`;
     assert(
       negativePrompt.includes('Story Title 30') && negativePrompt.includes('NEVER repeat'),
@@ -575,9 +574,27 @@ async function runBedtimeStorybookVerification() {
     const heroB = store.state.heroes[1];
     heroB.bedtimeHistory = [{ id: 'sibling_story_1', title: 'Maya Dragon Slumber' }];
     assert(
-      hero.bedtimeHistory.length === 25 && heroB.bedtimeHistory.length === 1 && hero.bedtimeHistory[0].title !== heroB.bedtimeHistory[0].title,
+      hero.bedtimeHistory.length === 30 && heroB.bedtimeHistory.length === 1 && hero.bedtimeHistory[0].title !== heroB.bedtimeHistory[0].title,
       'Sibling story history remains strictly isolated between Child A and Child B',
       'Child A and Child B must have independent history arrays'
+    );
+
+    // F5.6: generateProceduralBedtimeStory actually varies its archetype pick
+    // when the caller's anti-repetition context carries a different seed or
+    // flags the deterministic archetype as recently used (real repetition fix,
+    // not a reimplementation of the production logic).
+    const baseAct = bedtimeStoryData.generateProceduralBedtimeStory('space', 'brave_dark', 'Liam', 'Rex', '', 0, []);
+    const seededAct = bedtimeStoryData.generateProceduralBedtimeStory('space', 'brave_dark', 'Liam', 'Rex', '', 0, [], { deterministicSeed: 777, recentArchetypes: [] });
+    const avoidedAct = bedtimeStoryData.generateProceduralBedtimeStory('space', 'brave_dark', 'Liam', 'Rex', '', 0, [], { recentArchetypes: [baseAct.archetypeId] });
+    assert(
+      seededAct.archetypeId !== baseAct.archetypeId || seededAct.text !== baseAct.text,
+      'A different deterministicSeed produces a different archetype/text for the same hero+pet+realm+moral combo',
+      `Expected variation; both returned archetypeId ${baseAct.archetypeId}`
+    );
+    assert(
+      avoidedAct.archetypeId !== baseAct.archetypeId,
+      'Passing the previous archetypeId as a recently-used constraint makes the generator pick a different one',
+      `Expected an archetype different from ${baseAct.archetypeId}, got ${avoidedAct.archetypeId}`
     );
   }
 
