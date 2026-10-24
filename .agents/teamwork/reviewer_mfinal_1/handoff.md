@@ -1,155 +1,243 @@
-# Reviewer 1 (3D Graphics & Skeletal Animation) Final Review Report
-
-## Review Summary
-- **Role**: Reviewer 1 (3D Graphics & Skeletal Animation Specialist / Adversarial Critic)
-- **Verdict**: **APPROVE**
-- **Integrity Status**: 100% Verified. No hardcoded test cheats, facade implementations, dummy bypasses, or fabricated outputs detected.
+# Code Review & Adversarial Challenge Report — Reviewer 1 (`reviewer_mfinal_1`)
+**Milestone**: M-FINAL (Bedtime AI Storybook Revamp)  
+**Parent Agent**: `53bed4f6-4a95-4168-a4c5-b43e3302abb3`  
+**Date**: 2026-10-16T02:28:00Z  
+**Verdict**: **`REQUEST_CHANGES`**
 
 ---
 
 ## 1. Observation
 
-### 1.1 Avatar Skeletal Bone Hierarchy & Linear Algebra (`src/services/avatarSkeletalRig.js`)
-1. **Articulated Hierarchy**:
-   - `createAvatarRig()` defines the exact 21-bone articulated hierarchy specified in ORIGINAL_REQUEST §R1 and PROJECT.md under `root`:
-     - Torso / Head: `pelvis` -> `spine` -> `chest` -> `neck` -> `head` (lines 696–782)
-     - Left Arm: `chest` -> `shoulderL` -> `armL` -> `forearmL` -> `handL` (lines 784–815)
-     - Right Arm: `chest` -> `shoulderR` -> `armR` -> `forearmR` -> `handR` (lines 818–849)
-     - Left Leg: `pelvis` -> `hipL` -> `thighL` -> `calfL` -> `footL` (lines 852–894)
-     - Right Leg: `pelvis` -> `hipR` -> `thighR` -> `calfR` -> `footR` (lines 896–937)
-     - Cape: `chest` -> `cape` (lines 940–947)
-   - Verified that `avatarRig.bones` exposes all 21 bone references plus `root` (lines 948–971).
-2. **Matrix Forward Kinematics (Pure Float32Array Linear Algebra)**:
-   - Implemented from scratch using standard 4x4 matrix mathematics in lines 53–242:
-     - `mat4Create()` (allocates `new Float32Array(16)`)
-     - `mat4Identity(out)`
-     - `mat4Copy(out, a)`
-     - `mat4Multiply(out, a, b)`
-     - `mat4FromTranslationRotationScale(out, tx, ty, tz, rx, ry, rz, sx, sy, sz)` with Euler XYZ rotation
-     - `mat4Perspective(out, fovy, aspect, near, far)`
-     - `mat4LookAt(out, eyeX, eyeY, eyeZ, centerX, centerY, centerZ, upX, upY, upZ)`
-     - `mat4Invert(out, a)` with determinant singularity validation
-     - `mat4Transpose(out, a)`
-   - `BoneNode.updateMatrix(parentWorldMatrix)` recursively updates local translation/rotation/scale matrix and concatenates with parent's world matrix (`mat4Multiply(this.worldMatrix, parentWorldMatrix, this.localMatrix)` in lines 301–316).
-3. **All 8 Dinosaur Coach 3D Rigs (`createCoachRig`)**:
-   - Lines 1005–1346 build procedural 3D rigs for all 8 dinosaur coaches with species-tailored features:
-     - Coach '1' (Rex / T-Rex): Emerald Green & Solar Amber, short arms, massive legs, articulated 3-segment tail (`tail1`, `tail2`, `tail3`).
-     - Coach '2' (Raptor / Velociraptor): Electric Cyan & Midnight Slate, athletic running stance.
-     - Coach '3' (Stego / Stegosaurus): 4 dorsal diamond plates (`stego_plate_1` to `stego_plate_4`) attached to spine and tail.
-     - Coach '4' (Pterry / Pterodactyl): Aerodynamic wings (`wing_L`, `wing_R`) mounted to forelimbs.
-     - Coach '5' (Chomper / Compy): Midnight Slate & Emerald Green, agile bipedal rig.
-     - Coach '6' (Brachio / Brachiosaurus): Elongated arched neck (length 0.36m vs 0.16m base).
-     - Coach '7' (Dippy / Diplodocus): Long neck, whip tail (`tail1` to `tail3`).
-     - Coach '8' (Spino / Spinosaurus): Glowing dorsal sail fin (`spino_sail`) spanning the spine.
+### 1.1 Test Suite & Build Verification Results
 
-### 1.2 Mathematical Gross-Motor Kinematics Engine (`src/services/workoutKinematicsEngine.js`)
-1. **8 Gross-Motor Prehistoric Workouts**:
-   - `applyWorkoutKinematics()` updates all 21 bone rotations and translations based on `theta = 2 * PI * (tempoBpm / 60) * clock`:
-     1. `velociraptor_run` (138 BPM, lines 60–91): High-speed sprint on balls of feet (`footL/R.rotation.x = 0.44` / +25° plantarflexion), 90° locked forearm arm pumps (`forearmL/R.rotation.x = 1.57`), forward pelvis/chest speed lean (`0.24 rad`), fluttering cape.
-     2. `stegosaurus_walks` (92 BPM, lines 94–128): Quadruped bear crawl with lowered root (-0.34m) and hips pitched high (+45° / 0.785 rad), arms reaching down to floor (78° / 1.36 rad), 4-beat periodic forward and backward travel displacement (`root.position.z = Math.sin(0.55 * theta) * 0.35`).
-     3. `pterodactyl_takeoff` (112 BPM, lines 131–196): 3-phase cycle with 3.0s period:
-        - Phase A (`tau < 1.8s`): 70° wide wing abduction (`shoulderL/R.rotation.z = ±1.22`), rotating 3D loops (`sin(9t)*1.5 - 1.2`, `cos(9t)*0.8`).
-        - Phase B (`1.8 <= tau < 2.1s`): Deep crouch squat (pelvis dropped by -0.45m, knees flexed 85° / 1.48 rad).
-        - Phase C (`2.1 <= tau < 3.0s`): Rocket leap (+0.85m apex `apexY = sin(leapProg * PI) * 0.85`), arms explode overhead (-165° / -2.88 rad), toes pointed down (+35° / 0.61 rad).
-     4. `trex_run` (122 BPM, lines 199–233): Signature short arms tucked tight into armpits (`forearmL/R.rotation.x = 2.0` / 115° flexion) with pronated claws, driving explosive high knees up to hands (`thighL/R.rotation.x` up to 1.31 rad / +75° past horizontal).
-     5. `compsognathus_prance` (126 BPM, lines 236–289): Lateral skater jumps leaping side to side (`root.position.x = 0.38 + sin(skatePhase) * 0.45`), 14° body roll (`pelvis.rotation.z = ±0.24`), rear leg crossing behind landing leg (-45° backward `thigh.rotation.x = -0.78`, +25° adduction `thigh.rotation.z = ±0.44`), balancing arm swings.
-     6. `brachiosaurus_stretch` (78 BPM, lines 292–327): Standing tall with feet together, tiptoe rise (+35° / 0.61 rad plantarflexion), arms reaching straight overhead (-170° / -2.96 rad, 0° elbow flex), gazing up at stars (-25° / -0.44 rad).
-     7. `diplodocus` (74 BPM, lines 330–391): Tabletop quadruped bird-dog balance with neck reach and tail wag (`tailWagYaw = sin(1.5*theta)*0.31`, `tailWagPitch = cos(1.5*theta)*0.21`). Seamless 30s side switch (`remainingTime <= 30.0 || isHalfwayFlipped`) blended smoothly over 1.0s via `smoothstep`:
-        - Side 1: Right arm forward (-1.57), Left leg extended back (-1.57 + pitch); Left arm and Right knee planted.
-        - Side 2: Left arm forward (-1.57), Right leg extended back (-1.57 + pitch); Right arm and Left knee planted.
-     8. `spinosaurus_stretch` (64 BPM, lines 394–424): Restorative Cat-Cow spine waves with sinusoidal thoracic arching (+35° / 0.61 rad on inhale cat sail crest, -15° / -0.26 rad on exhale cow release).
-2. `applyCoachKinematics()` (lines 435–578) accurately mirrors all 8 movements on the dinosaur coach model in synchronized tempo.
+1. **`node scratch/verify_bedtime_storybook.mjs`**:
+   - **Command**: `node scratch/verify_bedtime_storybook.mjs`
+   - **Exit Code**: `0`
+   - **Result**:
+     ```
+     ======================================================================
+     📊 BEDTIME AI STORYBOOK TEST SUITE SUMMARY
+     Total Checks Executed : 131
+     Passed Checks         : 131
+     Failed Checks         : 0
+     ======================================================================
+     🎉 ALL 4 TIERS OF THE BEDTIME STORYBOOK E2E TEST SUITE PASSED SUCCESSFULLY!
+     ```
 
-### 1.3 3D Stage & Fallback Architecture (`src/components/WorkoutHero3DStage.js`)
-1. **WebGL Context Creation**:
-   - `isWebGLSupported()` checks `webgl2`, `webgl`, and `experimental-webgl` with headless/SSR safety guards (lines 124–137).
-   - In `init()`, creates canvas with alpha/depth/antialias and loads Blinn-Phong vertex and fragment shaders with Electric Cyan rim lighting and Midnight Slate ambiance (lines 55–118, 190–236).
-2. **Side-by-Side Arena Mounting**:
-   - Left: Dinosaur Coach centered at `X = -0.40`.
-   - Right: Toddler Superhero Avatar centered at `X = +0.38`.
-   - Glowing concentric floor pedestal rings (`floorArenaGeom`, `floorInnerRingGeom`) and radial metronome beat pulse shockwaves (`floorPulseRingGeom`, lines 555–573).
-3. **Parity Contract**:
-   - Fully implements `setWorkout(workoutId, coachId, tempoBpm)`, `setTimeRemaining(seconds)`, `triggerBeat()`, `startAnimation()`, `pauseAnimation()`, `resumeAnimation()`, `stopAnimation()`, and `destroy()` (lines 387–467).
-4. **Resilient Fallback**:
-   - Detects absence of WebGL and immediately instantiates `WorkoutHeroDuoCanvas` (line 246).
-   - Registers `canvas.addEventListener('webglcontextlost', handler)` which calls `e.preventDefault()` and hot-swaps to `WorkoutHeroDuoCanvas` without interrupting countdown timer or crashing (lines 225–230).
+2. **`npm run build`**:
+   - **Command**: `npm run build`
+   - **Exit Code**: `0`
+   - **Result**:
+     ```
+     vite v6.4.3 building for production...
+     ✓ built in 26.37s
+     dist/index.html 8.13 kB
+     dist/assets/index-CDeUZwzb.js 3,698.31 kB
+     ```
 
-### 1.4 Stitch Design System Compliance
-- Color constants defined in `STITCH_COLORS` (lines 24–34 of `avatarSkeletalRig.js`):
-  - `ELECTRIC_CYAN: '#00d2d3'`
-  - `EMERALD_GREEN: '#2ecc71'`
-  - `SOLAR_AMBER: '#f1c40f'`
-  - `MIDNIGHT_SLATE: '#09141e'`
-  - `DEEP_SLATE: '#0e1c28'`
-  - `CYBER_TEAL: '#01a3a4'`
-  - `BRIGHT_GOLD: '#f39c12'`
-  - `WHITE: '#ffffff'`
-  - `CHARCOAL: '#1e293b'`
-- Scanned all material declarations across character avatar meshes, dinosaur coach meshes, shaders, and floor rings: **Zero pink or purple**.
+3. **`node scratch/run_all_tests.js`**:
+   - **Command**: `node scratch/run_all_tests.js`
+   - **Exit Code**: `1`
+   - **Failure Point**: Test file 54, `scratch/verify_routine_approvals_pipeline.mjs`:
+     ```
+     ▶️  Executing: scratch/verify_routine_approvals_pipeline.mjs
+     🔥 Firebase initialized successfully for project: little-heroes-quest-8842
 
-### 1.5 Verification Execution Outputs
-1. **E2E Test Suite (`node scratch/verify_dino_workout_e2e.mjs`)**:
-   - Output: `📊 TEST SUITE SUMMARY: 66/66 Passed (0 Failed)`. Exit code 0.
-2. **Unit Test Suite (`node .agents/teamwork/worker_m1_1/test_m1_rig_and_kinematics.mjs`)**:
-   - Output: `Milestone M1 Verification Results: 119 PASSED, 0 FAILED`. Exit code 0.
-3. **Production Build (`npm run build`)**:
-   - Output: `✓ built in 14.80s`. Exit code 0.
-4. **Linter (`npm run lint`)**:
-   - Output: Exit code 0.
+     --- 1. completeWaypointChore() queues points for approval instead of self-granting ---
+       ✅ PASS: completeWaypointChore() reports success
+       ...
+     --- 3. completeBedtimeStory() queues points for approval instead of self-granting ---
+       ✅ PASS: hero.points is NOT incremented synchronously by the call
+       ✅ PASS: hero.coins IS auto-issued immediately
+       ❌ FAIL: A pendingApprovals entry was created for the bedtime story
+       ❌ FAIL: Approval entry has the correct pendingPoints (15, got undefined)
+       ✅ PASS: heroes[] mirror does NOT prematurely carry the un-awarded points either
+
+     =============================================
+     TEST RESULTS: 26 PASSED, 2 FAILED
+     =============================================
+
+     ❌ Test failed: scratch/verify_routine_approvals_pipeline.mjs (Exit code: 1)
+     ❌ Test suite failed.
+     ```
+
+---
+
+### 1.2 Code Inspection Observations
+
+#### Finding 1 (Critical): Task ID Mismatch in `store.completeBedtimeStory` Breaks `run_all_tests.js`
+- **Location**: `src/state/store.js` lines 9673–9691 vs `scratch/verify_routine_approvals_pipeline.mjs` lines 38–40 & 93–95.
+- **Direct Code in `src/state/store.js`**:
+  ```javascript
+  // Lines 9673-9691 in src/state/store.js:
+  this.enqueuePendingApproval({
+    id: approvalReqId,
+    logId,
+    kidId: hero.id,
+    kidName: hero.name,
+    type: 'task_point_approval',
+    taskId: 'sleep_on_time',
+    taskTitle: 'Sleep on Time',
+    title: storyData?.title || 'Sleep on Time',
+    zone: "Today's Path",
+    tokensAwarded: coinsAwarded,
+    xpAwarded,
+    sparksAwarded,
+    pendingPoints: pointsToQueue,
+    date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    timestamp: nowIso,
+    status: 'pending'
+  });
+  ```
+- **Direct Code in `scratch/verify_routine_approvals_pipeline.mjs`**:
+  ```javascript
+  // Lines 38-40 in scratch/verify_routine_approvals_pipeline.mjs:
+  function findApproval(taskId) {
+    return store.state.pendingApprovals.find(a => a.taskId === taskId);
+  }
+
+  // Lines 90-95:
+  store.completeBedtimeStory({ id: 'story_1', title: 'The Brave Little Dino', moralId: 'brave_dark' });
+  assert(store.state.selectedHero.points === beforeStoryPoints, 'hero.points is NOT incremented synchronously by the call');
+  assert(store.state.selectedHero.coins === 30, 'hero.coins IS auto-issued immediately');
+  const storyApproval = findApproval('bedtime_story');
+  assert(Boolean(storyApproval), 'A pendingApprovals entry was created for the bedtime story');
+  assert(storyApproval && storyApproval.pendingPoints === 15, `Approval entry has the correct pendingPoints (15, got ${storyApproval && storyApproval.pendingPoints})`);
+  ```
+- **Direct Code in `src/state/store.js` (Task Alias Group)**:
+  ```javascript
+  // Lines 1802-1804 in src/state/store.js:
+  if (id === 'sleep_on_time' || id === 'night_bedtime' || id === 'wp_bedtime' || id === 'bedtime_story' || id === 'sleep') {
+    return ['sleep_on_time', 'night_bedtime', 'wp_bedtime', 'bedtime_story', 'sleep'];
+  }
+  ```
+- **Direct Code in `scratch/verify_bedtime_storybook.mjs`**:
+  ```javascript
+  // Line 1731 in scratch/verify_bedtime_storybook.mjs:
+  const pendingItem = (store.state.pendingApprovals || []).find(p => p.taskId === 'sleep_on_time' || p.taskId === 'bedtime_story');
+  ```
+
+#### Finding 2 (Major): Architecture & Separation of Concerns Violation in `BedtimeStoryStage3D.js`
+- **Location**: `src/components/BedtimeStoryStage3D.js` lines 55–83.
+- **Direct Code in `src/components/BedtimeStoryStage3D.js`**:
+  ```javascript
+  // Ensure store bedtime sanctuary state defaults include autoReadMode: true
+  if (typeof store !== 'undefined' && store) {
+    try {
+      const sanct = store.getBedtimeSanctuaryState?.();
+      if (sanct && sanct.autoReadMode === undefined) {
+        sanct.autoReadMode = true;
+      }
+    } catch {
+      // Ignore in non-store environments
+    }
+
+    // Ensure rejectParentRequest claws back correctly even if test sets hero.coins directly on selectedHero
+    if (typeof store.rejectParentRequest === 'function' && !store._hasBedtimeClawbackGuard) {
+      store._hasBedtimeClawbackGuard = true;
+      const originalReject = store.rejectParentRequest.bind(store);
+      store.rejectParentRequest = function(reqId) {
+        const req = (this.state.pendingApprovals || []).find(r => r.id === reqId);
+        if (req && this.state.selectedHero && this.state.selectedHero.id === req.kidId) {
+          const h = (this.state.heroes || []).find(x => x.id === req.kidId);
+          if (h && h !== this.state.selectedHero) {
+            h.coins = this.state.selectedHero.coins;
+            h.xp = this.state.selectedHero.xp;
+            h.sparks = this.state.selectedHero.sparks;
+          }
+        }
+        return originalReject(reqId);
+      };
+    }
+  }
+  ```
+- **Problem**: `BedtimeStoryStage3D.js` is a 3D WebGL renderer. Monkey-patching global `store.rejectParentRequest` and mutating `store.getBedtimeSanctuaryState` upon module import couples a visual component to store lifecycle, masks state synchronization discrepancies between `selectedHero` and `heroes[0]`, and creates execution order dependencies.
 
 ---
 
 ## 2. Logic Chain
 
-1. *Requirement R1* mandates a 3D character avatar with 21 articulated skeletal bones, 8 distinct prehistoric gross-motor routines, side-by-side presentation with the coach, and graceful 2D canvas fallback on WebGL context failure.
-2. Direct inspection of `src/services/avatarSkeletalRig.js` confirms that `createAvatarRig()` constructs a complete 21-bone hierarchy (`Root -> Pelvis -> Spine -> Chest -> Neck -> Head -> Shoulders -> Upper Arms -> Forearms -> Hands -> Hips -> Thighs -> Calves -> Chunky Sneakers -> Cape`) with real Float32Array 4x4 matrix forward-kinematic evaluation.
-3. Direct inspection of `createCoachRig()` confirms all 8 dinosaur coaches exist with customized meshes (diamond plates for Stego, wings for Pterry, elongated neck for Brachio/Dippy, glowing dorsal sail for Spino).
-4. Direct inspection of `src/services/workoutKinematicsEngine.js` confirms each workout routine possesses exact mathematical formulas governing limb rotations, vertical/lateral displacements, and the 30s Diplodocus side-switch blend.
-5. Direct inspection of `src/components/WorkoutHero3DStage.js` confirms WebGL context acquisition, Blinn-Phong rim lighting, side-by-side scene composition, complete parity contract methods, and context-loss recovery.
-6. Direct inspection of `STITCH_COLORS` and shader definitions confirms 100% adherence to Electric Cyan, Emerald Green, Solar Amber, and Midnight Slate with zero pink or purple.
-7. Execution of `npm run build`, `verify_dino_workout_e2e.mjs`, and `test_m1_rig_and_kinematics.mjs` resulted in 100% pass rates (66/66 and 119/119) with 0 errors.
-8. Therefore, the 3D graphics and skeletal animation system satisfies all functional requirements and acceptance criteria.
+1. **Mission Requirement**: The Reviewer's mission states:
+   - "2. Run `node scratch/verify_bedtime_storybook.mjs` and confirm 100% pass."
+   - "3. Run `node scratch/run_all_tests.js` and confirm 100% pass."
+   - "4. Run `npm run build` and confirm exit code 0."
+   - "Write your review report to `handoff.md` with an explicit verdict: `APPROVE` or `REQUEST_CHANGES`."
+2. **Observation Linking**:
+   - `node scratch/verify_bedtime_storybook.mjs` passed 131/131 checks (Observation 1.1.1).
+   - `npm run build` succeeded with exit code 0 (Observation 1.1.2).
+   - `node scratch/run_all_tests.js` failed at `scratch/verify_routine_approvals_pipeline.mjs` with exit code 1 (Observation 1.1.3).
+3. **Root Cause Analysis of Test Failure**:
+   - In `scratch/verify_routine_approvals_pipeline.mjs`, `findApproval('bedtime_story')` performs an exact match on `a.taskId === 'bedtime_story'`.
+   - Worker M4 updated `store.completeBedtimeStory` to enqueue pending approvals with `taskId: 'sleep_on_time'`.
+   - Because `a.taskId` is `'sleep_on_time'`, `findApproval('bedtime_story')` returns `undefined`.
+   - In `store.js` line 1802, `'bedtime_story'` and `'sleep_on_time'` are mutual aliases in the exact same alias group (`['sleep_on_time', 'night_bedtime', 'wp_bedtime', 'bedtime_story', 'sleep']`).
+   - `store.isTaskPendingApproval('sleep_on_time', heroId)` resolves aliases via `this.getTaskAliasGroup('sleep_on_time')` and returns `true` whether `taskId` is `'bedtime_story'` or `'sleep_on_time'`.
+   - In `scratch/verify_bedtime_storybook.mjs` line 1731, the check accepts either: `p.taskId === 'sleep_on_time' || p.taskId === 'bedtime_story'`.
+   - Therefore, emitting `taskId: 'bedtime_story'` in `completeBedtimeStory` (or supporting alias lookup in `findApproval` or ensuring `pendingApprovals` preserves `bedtime_story` as `taskId`) will fix the regression in `scratch/verify_routine_approvals_pipeline.mjs` while maintaining 100% pass across `verify_bedtime_storybook.mjs`, `verify_bedtime_waypoint_marks_done.js`, and `run_all_tests.js`.
+4. **Architectural Assessment**:
+   - `BedtimeStoryStage3D.js` contains monkey-patching of `store.rejectParentRequest` to sync `selectedHero` with `heroes[0]`. This logic belongs inside `Store.prototype.rejectParentRequest` in `src/state/store.js` rather than inside a 3D component.
+5. **Verdict Derivation**:
+   - Because `node scratch/run_all_tests.js` exits with code 1, the work product does NOT meet the required acceptance criterion ("Run `node scratch/run_all_tests.js` and confirm 100% pass").
+   - Under the Reviewer protocol: "Report any failures as findings — do NOT fix them yourself. Write your review report to `handoff.md` with an explicit verdict: `APPROVE` or `REQUEST_CHANGES`."
+   - The required verdict is unequivocally **`REQUEST_CHANGES`**.
 
 ---
 
 ## 3. Caveats
 
-- No caveats. The implementation relies on self-contained WebGL primitives and pure Float32Array linear algebra, ensuring offline PWA operation without external network dependencies.
+- **No Caveats on Test Execution**: Both test suites (`verify_bedtime_storybook.mjs` and `run_all_tests.js`) and build commands (`npm run build`) were executed directly on the local machine in PowerShell and the outputs captured verbatim.
+- **Audio Warnings in Headless CLI**: Non-fatal Web Audio warnings (`createBiquadFilter is not a function`, `exponentialRampToValueAtTime is not a function`) occur in Node.js because the headless environment lacks Web Audio hardware. These are caught gracefully by `try/catch` blocks in `sfx.js` and do not break tests.
+- **Review Scope Strictness**: In accordance with the Reviewer identity constraint ("Review-only — do NOT modify implementation code"), Reviewer 1 did not modify `src/state/store.js` or `BedtimeStoryStage3D.js`.
 
 ---
 
-## 4. Conclusion
+## 4. Conclusion & Actionable Next Steps
 
-The 3D character avatar, skeletal bone hierarchy, forward kinematics engine, 8 dinosaur coach models, and WebGL stage with 2D fallback are fully compliant with the specification, mathematically sound, performant, and resilient.
+### Verdict: **`REQUEST_CHANGES`**
 
-**Verdict: APPROVE**
+### Summary of Required Changes:
+
+1. **Fix `taskId` in `store.completeBedtimeStory` (Priority: High / Blocking)**:
+   - In `src/state/store.js`:
+     In `completeBedtimeStory`, change `taskId: 'sleep_on_time'` in `this.state.taskCompletionLogs` and `this.enqueuePendingApproval` to `taskId: 'bedtime_story'`.
+     Because `'bedtime_story'` and `'sleep_on_time'` are mutual aliases in `getTaskAliasGroup`:
+     - `this.isTaskPendingApproval('sleep_on_time', heroId)` will continue to return `true` (enforcing the one-completion invariant).
+     - `verify_routine_approvals_pipeline.mjs` line 93 (`findApproval('bedtime_story')`) will succeed.
+     - `verify_bedtime_storybook.mjs` line 1731 (`p.taskId === 'sleep_on_time' || p.taskId === 'bedtime_story'`) will succeed.
+     - `node scratch/run_all_tests.js` will pass 100%.
+
+2. **Clean up Store Monkey-Patch from `BedtimeStoryStage3D.js` (Priority: Medium)**:
+   - In `src/components/BedtimeStoryStage3D.js` lines 55–83:
+     Remove the runtime monkey-patching of `store.rejectParentRequest` and `store.getBedtimeSanctuaryState`.
+   - In `src/state/store.js`:
+     Ensure `rejectParentRequest` inherently synchronizes `hero.coins`, `hero.xp`, and `hero.sparks` between `state.selectedHero` and `state.heroes.find(h => h.id === req.kidId)` natively.
 
 ---
 
 ## 5. Verification Method
 
-To independently verify these conclusions:
+To verify resolution of these findings:
 
-1. **Run Full Automated End-to-End Test Suite**:
+1. **Verify Full Project Test Suite**:
    ```powershell
-   node scratch/verify_dino_workout_e2e.mjs
+   node scratch/run_all_tests.js
    ```
-   *Expected Result*: 66/66 tests pass with 0 failures, exit code 0.
+   *Expected*: All 64 test suites execute and report `🎉 ALL TEST SUITES PASSED SUCCESSFULLY!` with exit code 0.
 
-2. **Run Milestone M1 Kinematics & Rig Unit Tests**:
+2. **Verify Bedtime Storybook Suite**:
    ```powershell
-   node .agents/teamwork/worker_m1_1/test_m1_rig_and_kinematics.mjs
+   node scratch/verify_bedtime_storybook.mjs
    ```
-   *Expected Result*: 119/119 tests pass with 0 failures, exit code 0.
+   *Expected*: 131/131 checks pass with exit code 0.
 
-3. **Run Production Build**:
+3. **Verify Routine Approvals Regression Suite**:
+   ```powershell
+   node scratch/verify_routine_approvals_pipeline.mjs
+   ```
+   *Expected*: 28/28 checks pass with exit code 0.
+
+4. **Verify Production Build**:
    ```powershell
    npm run build
    ```
-   *Expected Result*: Vite builds production bundle into `dist/`, exit code 0.
-
-4. **Invalidation Conditions**:
-   - If `avatarRig.bones` misses any of the 21 specified bones.
-   - If any bone rotation in `workoutKinematicsEngine.js` fails to respond to `theta` or `clock`.
-   - If `webglcontextlost` causes an unhandled rejection rather than falling back to `WorkoutHeroDuoCanvas`.
-   - If any pink or purple hex codes appear in `STITCH_COLORS` or mesh definitions.
+   *Expected*: Vite builds bundle with exit code 0.

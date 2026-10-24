@@ -1,29 +1,24 @@
-## 2026-10-15T03:56:36Z
-You are the Hybrid Studio Audio & Cadence Specialist (Worker M2).
-Your working directory is: c:\APP\stitch_little_hero_adventures\.agents\teamwork\worker_m2_1
-The authoritative requirements are located at: c:\APP\stitch_little_hero_adventures\.agents\teamwork\ORIGINAL_REQUEST.md
-The project architecture is at: c:\APP\stitch_little_hero_adventures\.agents\teamwork\PROJECT.md
-Survey findings and audio gaps are at: c:\APP\stitch_little_hero_adventures\.agents\teamwork\explorer_survey_3\handoff.md
-Please read these files immediately.
+## 2026-10-16T01:36:06Z
 
-Write Ownership (Strict Boundary):
-You EXCLUSIVELY own:
-- `c:\APP\stitch_little_hero_adventures\server\geminiService.js`
-- `c:\APP\stitch_little_hero_adventures\vite.config.js`
-- `c:\APP\stitch_little_hero_adventures\src\services\voiceService.js`
-You MUST NOT write to `src/components/` or `src/services/avatarSkeletalRig.js` or `scratch/`.
+You are Worker 2 (worker_m2_1) for Milestone M2 (Voice Narration & Audio Pre-Fetching).
+Working directory: c:\APP\stitch_little_hero_adventures\.agents\teamwork\worker_m2_1
+Authoritative User Request: c:\APP\stitch_little_hero_adventures\.agents\teamwork\ORIGINAL_REQUEST.md (under ## 2026-10-16T01:20:55Z).
+Project Specification: c:\APP\stitch_little_hero_adventures\.agents\teamwork\orchestrator_3\PROJECT.md.
+Survey Analysis: c:\APP\stitch_little_hero_adventures\.agents\teamwork\explorer_survey_voice_2\analysis.md.
 
-Task Requirements:
-1. Update `server/geminiService.js`:
-   - Add all 8 dinosaur coach keys ('rex', 'raptor', 'stego', 'pterry', 'chomper', 'brachio', 'dippy', 'spino') to `PET_VOICE_MAP` with distinct high-fidelity Gemini voices:
-     - rex: 'Puck', raptor: 'Zephyr', stego: 'Fenrir', pterry: 'Aoede', chomper: 'Puck', brachio: 'Charon', dippy: 'Charon', spino: 'Fenrir'
-   - Add engaging, kid-friendly coaching personas for all 8 dinosaur coaches to `PET_PERSONAS`.
-2. Update `vite.config.js`:
-   - Add `/api/elevenlabs/tts` to `setupGeminiMiddleware` so local Vite development and test preview cleanly proxy or handle ElevenLabs TTS requests matching `server.js`.
-3. Update `src/services/voiceService.js`:
-   - Implement zero-latency client-side audio caching (`workoutAudioClipCache` Map).
-   - Implement `prewarmWorkoutAudio(workoutId, coachId)`: pre-fetches/pre-renders the cadence cue clips for the active workout move so they play with 0ms latency when triggered.
-   - Ensure `speakCompanion` checks the cache first, falling back to ElevenLabs -> Gemini Flash TTS -> browser SpeechSynthesis with natural 'Daniel' voice.
-   - Enforce anti-collision and non-overlapping audio safeguards per kid_voice_companion_guidelines.md.
-4. Verify build: run `npm run build` and ensure exit code 0.
-5. Write your handoff report to `c:\APP\stitch_little_hero_adventures\.agents\teamwork\worker_m2_1\handoff.md` and send a message when done.
+MANDATORY INTEGRITY WARNING:
+DO NOT CHEAT. All implementations must be genuine. DO NOT hardcode test results, create dummy/facade implementations, or circumvent the intended task. A teamwork_preview_auditor will independently verify your work. Integrity violations WILL be detected and your work WILL be rejected.
+
+Your Exclusive Write Ownership:
+- `src/services/voiceService.js`
+
+Your Mission:
+1. `src/services/voiceService.js`:
+   - Update `fetchPcmTts` to accept `timeoutMs` (defaulting to 18000ms for bedtime chapters) and `voiceStyle: 'bedtime'`, preventing 4500ms aborts on full story chapters. Include `voiceStyle` in cache keys.
+   - Update `speakCompanion` to support argument polymorphism: accept options object `{ timeoutMs, rate, pitch, voiceStyle, instant, onEnded }` or trailing options, and properly set `source.playbackRate.setValueAtTime(rate, sharedAudioContext.currentTime)` on Web Audio `AudioBufferSourceNode`s.
+   - Implement `prefetchCompanionAudio(text, petId, options)` to background-fetch and decode Chapter N+1 audio buffer into `workoutAudioClipCache` while Chapter N plays, enabling 0ms latency transitions.
+   - Ensure resilient fallback to Gemini Flash TTS (`/api/gemini/tts`) and local SpeechSynthesis (`selectPreferredVoice('daniel')`) when offline or on network failure.
+
+Test and verify:
+Run `node scratch/test_elevenlabs_tts_cache.cjs` and verify clean execution.
+Write your detailed report and test results to `handoff.md` and notify parent when complete.

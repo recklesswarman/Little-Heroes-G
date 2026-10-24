@@ -25,6 +25,7 @@ let autoAdvanceActive = false;
 let selectedRealmId = 'space';
 let activeBookshelfFilter = 'all'; // 'all' | 'favorites'
 let activeStage3D = null;
+let displayStageMode = 'auto'; // 'auto' | '3d' | 'illustration'
 
 /**
  * Helper to render Kid Hero Avatar with active Pet Companion badge overlay
@@ -477,9 +478,33 @@ function renderStoryStage(session, pet, hero) {
       <div id="interactive-illustration-container" class="relative bg-surface-container-lowest rounded-3xl sm:rounded-4xl border-3 sm:border-4 border-surface-container-highest shadow-[0_12px_0_0_#030910] min-h-[220px] sm:min-h-[340px] md:min-h-[400px] max-h-[48vh] overflow-hidden flex items-center justify-center transition-all cursor-pointer" title="Tap stars or scenery for gentle lullaby chimes!">
         
         <!-- 3D WebGL / Fallback Mount -->
-        <div id="bedtime-3d-stage-mount" class="w-full h-full flex items-center justify-center select-none pointer-events-auto">
-          ${currentAct.svgArt || '<div class="text-slate-500">Starlight scene loading...</div>'}
-        </div>
+        ${(displayStageMode !== '3d' && currentAct.imageUrl) ? `
+          <!-- 3D Pixar / Claymation AI Illustration with Ken Burns Subtle Motion -->
+          <div class="relative w-full h-full min-h-[220px] sm:min-h-[340px] md:min-h-[400px] flex items-center justify-center overflow-hidden rounded-3xl group bg-[#050f18] select-none">
+            <img 
+              src="${currentAct.imageUrl}" 
+              alt="${escapeHtml(currentAct.title || 'Bedtime Illustration')}" 
+              class="w-full h-full object-cover transition-transform duration-1000 ease-out group-hover:scale-105 pointer-events-none" 
+            />
+            <div class="absolute inset-0 bg-radial-[circle_at_center,_transparent_50%,_#09141e_100%] opacity-60 pointer-events-none"></div>
+            <div class="absolute bottom-2.5 left-2.5 sm:bottom-3 sm:left-3 bg-[#09141e]/85 backdrop-blur-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-bold text-[#00d2d3] border border-[#00d2d3]/40 flex items-center gap-1 shadow-md pointer-events-none">
+              <span>🎨</span>
+              <span>3D Pixar AI Art</span>
+            </div>
+          </div>
+        ` : `
+          <!-- 3D WebGL / Fallback Mount -->
+          <div id="bedtime-3d-stage-mount" class="w-full h-full flex items-center justify-center select-none pointer-events-auto">
+            ${currentAct.svgArt || '<div class="text-slate-500">Starlight scene loading...</div>'}
+          </div>
+        `}
+
+        ${currentAct.imageUrl ? `
+          <button id="toggle-stage-view-btn" class="absolute bottom-2.5 right-2.5 sm:bottom-3 sm:right-3 bg-[#09141e]/90 hover:bg-[#0f2334] text-[10px] sm:text-xs font-bold text-white px-2.5 py-1 rounded-xl border border-surface-container-highest shadow-md flex items-center gap-1 z-10 active:scale-95 transition-all cursor-pointer" title="Toggle between 3D Stage and AI Art">
+            <span class="material-symbols-outlined text-xs sm:text-sm">${displayStageMode === '3d' ? 'image' : 'view_in_ar'}</span>
+            <span>${displayStageMode === '3d' ? 'Show AI Art' : 'Show 3D Stage'}</span>
+          </button>
+        ` : ''}
 
         <!-- Tap-To-Chime Hint Overlay -->
         <div class="absolute top-2.5 left-2.5 sm:top-3 sm:left-3 bg-[#09141e]/85 backdrop-blur-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-bold text-[#00d2d3] border border-[#00d2d3]/30 pointer-events-none flex items-center gap-1">
@@ -625,7 +650,15 @@ function renderBookshelfLibrary(library) {
         </div>
 
         <div class="relative bg-surface-container-lowest rounded-3xl sm:rounded-4xl border-4 border-surface-container-highest shadow-[0_16px_0_0_#030910] min-h-[300px] overflow-hidden flex items-center justify-center">
-          ${act.svgArt || ''}
+          ${act.imageUrl ? `
+            <div class="relative w-full h-full min-h-[300px] max-h-[50vh] flex items-center justify-center bg-[#050f18] group">
+              <img src="${act.imageUrl}" alt="${escapeHtml(act.title || 'Saved Story Chapter')}" class="w-full h-full object-cover select-none" />
+              <div class="absolute inset-0 bg-radial-[circle_at_center,_transparent_50%,_#09141e_100%] opacity-50 pointer-events-none"></div>
+              <div class="absolute bottom-3 left-3 bg-[#09141e]/85 backdrop-blur-xs px-2.5 py-1 rounded-full text-[10px] font-bold text-[#00d2d3] border border-[#00d2d3]/40 flex items-center gap-1 shadow-md">
+                <span>🎨</span><span>3D AI Storybook Art</span>
+              </div>
+            </div>
+          ` : (act.svgArt || '')}
         </div>
 
         <div class="bg-[#09141e] border-2 border-surface-container-highest rounded-3xl p-5 text-left flex flex-col gap-3">
@@ -705,6 +738,14 @@ function renderBookshelfLibrary(library) {
             return `
               <div class="bg-[#09141e] rounded-3xl p-4 border-2 border-surface-container-highest shadow-md hover:border-[#00d2d3]/50 transition-all flex flex-col justify-between gap-3 relative">
                 <div>
+                  ${(story.acts?.[0]?.imageUrl || story.imageUrl) ? `
+                    <div class="w-full h-32 rounded-2xl overflow-hidden mb-3 border border-surface-container-highest relative bg-[#050f18]">
+                      <img src="${story.acts?.[0]?.imageUrl || story.imageUrl}" alt="${escapeHtml(story.title)}" class="w-full h-full object-cover select-none" loading="lazy" />
+                      <div class="absolute top-2 right-2 bg-[#09141e]/85 backdrop-blur-xs px-2 py-0.5 rounded-full text-[9px] font-bold text-[#00d2d3] border border-[#00d2d3]/30">
+                        🎨 3D AI Art
+                      </div>
+                    </div>
+                  ` : ''}
                   <div class="flex items-center justify-between text-xs text-slate-400 font-bold mb-2">
                     <span class="flex items-center gap-1">
                       <span>${story.realmEmoji || '📖'}</span>
@@ -830,6 +871,14 @@ export function setupBedtimeStoryListeners() {
   document.getElementById('step-goto-customizer-btn')?.addEventListener('click', () => {
     Sound.tap();
     document.getElementById('storybook-customizer-anchor')?.scrollIntoView({ behavior: 'smooth' });
+  });
+
+  // Stage View Mode Toggle (3D Stage vs AI Art)
+  document.getElementById('toggle-stage-view-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    Sound.tap();
+    displayStageMode = displayStageMode === '3d' ? 'illustration' : '3d';
+    store.notify();
   });
 
   // Narration Mode Toggle (Rex vs Parent)
@@ -1129,7 +1178,7 @@ export function setupBedtimeStoryListeners() {
     const petId = String(hero?.activePetId || '1');
     const pet = (store.getState().pets || []).find(p => String(p.id) === petId) || { name: 'Rex the Dino', key: 'rex' };
 
-    const mount = document.getElementById('bedtime-3d-stage-mount') || document.getElementById('interactive-illustration-container');
+    const mount = document.getElementById('bedtime-3d-stage-mount');
     if (mount) {
       if (!activeStage3D || activeStage3D.container !== mount || activeStage3D.isDestroyed) {
         if (activeStage3D) activeStage3D.destroy();
@@ -1146,6 +1195,11 @@ export function setupBedtimeStoryListeners() {
         });
       } else {
         activeStage3D.setSceneDescriptor(currentAct.sceneDescriptor, currentActNumber - 1);
+      }
+    } else {
+      if (activeStage3D) {
+        activeStage3D.destroy();
+        activeStage3D = null;
       }
     }
 

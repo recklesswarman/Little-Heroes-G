@@ -4,6 +4,7 @@ import { defineConfig } from 'vite';
 async function setupGeminiMiddleware(server) {
   let geminiService = null;
   let elevenLabsService = null;
+  let imageGenService = null;
   try {
     geminiService = await import('./server/geminiService.js');
   } catch (err) {
@@ -14,10 +15,16 @@ async function setupGeminiMiddleware(server) {
   } catch (err) {
     console.warn('ElevenLabs server middleware notice:', err.message);
   }
-  if (!geminiService && !elevenLabsService) return;
+  try {
+    imageGenService = await import('./server/imageGenService.js');
+  } catch (err) {
+    console.warn('ImageGen server middleware notice:', err.message);
+  }
+  if (!geminiService && !elevenLabsService && !imageGenService) return;
 
   const { handleTTSRequest, handleChatRequest, handleBedtimeStoryRequest, attachGeminiLiveWebSocket } = geminiService || {};
   const { handleElevenLabsTTSRequest } = elevenLabsService || {};
+  const { handleStoryIllustrationRequest } = imageGenService || {};
 
   const parseJsonBody = (req) => new Promise((resolve, reject) => {
     let body = '';
@@ -134,6 +141,31 @@ async function setupGeminiMiddleware(server) {
       }
     }
 
+    if ((url === '/api/story/illustration' || url === '/api/ai/image') && req.method === 'POST') {
+      try {
+        req.body = await parseJsonBody(req);
+        res.json = (data) => {
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify(data));
+        };
+        res.status = (code) => {
+          res.statusCode = code;
+          return res;
+        };
+        if (typeof handleStoryIllustrationRequest === 'function') {
+          return await handleStoryIllustrationRequest(req, res);
+        } else {
+          res.statusCode = 503;
+          res.setHeader('Content-Type', 'application/json');
+          return res.end(JSON.stringify({ error: 'Story illustration handler not available' }));
+        }
+      } catch (err) {
+        res.statusCode = 500;
+        res.setHeader('Content-Type', 'application/json');
+        return res.end(JSON.stringify({ error: err.message }));
+      }
+    }
+
     next();
   });
 
@@ -167,5 +199,3 @@ export default defineConfig({
     open: false
   }
 });
-
-

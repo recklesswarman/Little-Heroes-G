@@ -1,13 +1,18 @@
-# BRIEFING — 2026-10-15T04:26:00Z
+# BRIEFING — 2026-10-16T02:27:00Z
 
 ## Mission
-Perform comprehensive quality review and adversarial challenge of 3D Graphics & Skeletal Animation modules (`src/services/avatarSkeletalRig.js`, `src/services/workoutKinematicsEngine.js`, `src/components/WorkoutHero3DStage.js`), verify acceptance criteria, test suite execution, integrity compliance, and issue an evidence-based verdict.
+Conduct a rigorous code review and adversarial challenge of Milestone M-FINAL (Bedtime AI Storybook Revamp):
+- Story Engine & Server: `src/data/bedtimeStoryData.js`, `src/services/bedtimeStoryService.js`, `server/geminiService.js`, `server.js`, `vite.config.js`, `functions/src/voiceApi.ts`.
+- Voice Pipeline: `server/elevenLabsService.js`, `src/services/voiceService.js`.
+- 3D Stage & View: `src/components/BedtimeStoryStage3D.js`, `src/views/BedtimeStoryView.js`.
+- Store & Currency: `src/state/store.js`.
+- Tests: `scratch/verify_bedtime_storybook.mjs`, `scratch/run_all_tests.js`.
 
 ## 🔒 My Identity
 - Archetype: reviewer
 - Roles: reviewer, critic
 - Working directory: c:\APP\stitch_little_hero_adventures\.agents\teamwork\reviewer_mfinal_1
-- Original parent: 95945b0b-5f74-4471-935a-2738aaef81cc
+- Original parent: 53bed4f6-4a95-4168-a4c5-b43e3302abb3
 - Milestone: M-FINAL
 - Instance: 1 of 2
 
@@ -18,51 +23,61 @@ Perform comprehensive quality review and adversarial challenge of 3D Graphics & 
 - Output handoff report to `handoff.md` and communicate with caller via `send_message`
 
 ## Current Parent
-- Conversation ID: 95945b0b-5f74-4471-935a-2738aaef81cc
-- Updated: 2026-10-15T04:26:00Z
+- Conversation ID: 53bed4f6-4a95-4168-a4c5-b43e3302abb3
+- Updated: 2026-10-16T02:10:03Z
 
 ## Review Scope
-- **Files to review**:
-  - `src/services/avatarSkeletalRig.js`
-  - `src/services/workoutKinematicsEngine.js`
-  - `src/components/WorkoutHero3DStage.js`
-  - `src/views/DinoWorkoutView.js`
-  - `scratch/verify_dino_workout_e2e.mjs`
-  - `.agents/teamwork/worker_m1_1/test_m1_rig_and_kinematics.mjs`
+- **Files reviewed**:
+  - `src/data/bedtimeStoryData.js`
+  - `src/services/bedtimeStoryService.js`
+  - `server/geminiService.js`
+  - `server.js`
+  - `vite.config.js`
+  - `functions/src/voiceApi.ts`
+  - `server/elevenLabsService.js`
+  - `src/services/voiceService.js`
+  - `src/components/BedtimeStoryStage3D.js`
+  - `src/views/BedtimeStoryView.js`
+  - `src/state/store.js`
+  - `scratch/verify_bedtime_storybook.mjs`
+  - `scratch/run_all_tests.js`
 - **Interface contracts**:
-  - `PROJECT.md` avatar skeletal rig & kinematics contracts
-  - 3D Stage / 2D Canvas parity contract
+  - `c:\APP\stitch_little_hero_adventures\.agents\teamwork\orchestrator_3\PROJECT.md`
+  - `c:\APP\stitch_little_hero_adventures\.agents\teamwork\ORIGINAL_REQUEST.md` (## 2026-10-16T01:20:55Z)
 - **Review criteria**:
-  - 21-bone hierarchy & Float32Array forward kinematics
-  - 8 dinosaur coach 3D rigs
-  - 8 gross-motor kinematic formulas & Diplodocus 30s switch
-  - WebGL context creation, scene mounting, context loss fallback
-  - Stitch palette (Electric Cyan, Emerald Green, Solar Amber, Midnight Slate)
-  - `npm run build` and `scratch/verify_dino_workout_e2e.mjs` execution
+  - Schema correctness, error handling, edge cases
+  - Integrity violation checks (no dummy facades, no hardcoded cheating)
+  - Color palette (zero pink/purple)
+  - Currency lifecycle invariants (1 completion payout at a time, reversible pending points)
+  - Verification test suite 100% pass, run_all_tests 100% pass, npm run build exit code 0
 
 ## Review Checklist
 - **Items reviewed**:
-  - `src/services/avatarSkeletalRig.js`: 21-bone hierarchy, Float32Array linear algebra, 8 coach 3D rigs.
-  - `src/services/workoutKinematicsEngine.js`: 8 gross-motor kinematic formulas, 30s Diplodocus switch, Hermite blend.
-  - `src/components/WorkoutHero3DStage.js`: WebGL2/WebGL context initialization, Blinn-Phong lighting, side-by-side positioning, parity contract, `webglcontextlost` fallback.
-  - `src/views/DinoWorkoutView.js`: Integration with `WorkoutHero3DStage`, cadence and 30s switch sync.
-  - Build & Tests: `npm run build` (0 exit code), `verify_dino_workout_e2e.mjs` (66/66 passed), `test_m1_rig_and_kinematics.mjs` (119/119 passed).
-- **Verdict**: APPROVE
-- **Unverified claims**: None. All claims independently verified.
+  - `scratch/verify_bedtime_storybook.mjs`: PASSED (131/131 assertions passed).
+  - `npm run build`: PASSED (Exit code 0, 26.37s).
+  - `scratch/run_all_tests.js`: FAILED (Exit code 1 on suite 54 `scratch/verify_routine_approvals_pipeline.mjs`).
+  - `src/state/store.js`: `completeBedtimeStory` queues `taskId: 'sleep_on_time'`, breaking `scratch/verify_routine_approvals_pipeline.mjs` which checks `findApproval('bedtime_story')`.
+  - `src/components/BedtimeStoryStage3D.js`: Contains monkey-patching of `store.rejectParentRequest` and `store.getBedtimeSanctuaryState()` at module load time (lines 55-83).
+  - Explorer Palette: Clean (zero pink or purple in active color arrays, shaders, or SVGs).
+  - Voice Pipeline: Universal ElevenLabs fallback (`e9sQs6aLWU82SSolkPYZ`) verified; bedtime parameter tuning (`stability: 0.65`, `similarity_boost: 0.80`, `style: 0.35`) verified.
+- **Verdict**: REQUEST_CHANGES
+- **Unverified claims**: None.
 
 ## Attack Surface
 - **Hypotheses tested**:
-  - Non-invertible transform matrix: Handled safely in `WorkoutHero3DStage.js` via fallback to identity normal matrix.
-  - WebGL context loss (`webglcontextlost`): Clean event listener prevents default and hot-swaps to `WorkoutHeroDuoCanvas`.
-  - Boundary time conditions (negative or null `remainingTime`): Handled safely without NaN or divide-by-zero.
-  - Extreme BPM values (60 to 180): Tested in E2E suite with stable periodic oscillations.
-  - Integrity violation check: No facade implementations or hardcoded shortcuts detected.
-- **Vulnerabilities found**: None.
-- **Untested angles**: Hardware GPU performance under constrained mobile devices; covered by procedural low-poly buffer geometries and 2D canvas fallback.
+  - Test suite completeness: Ran `run_all_tests.js` to see if all project suites pass without regressions. Discovered regression in `verify_routine_approvals_pipeline.mjs`.
+  - Direct execution of `verify_bedtime_storybook.mjs`: 100% pass across all 4 tiers.
+  - Production build: `npm run build` succeeds with zero errors.
+  - Sibling isolation & multi-child concurrent submission: Verified isolated pending approvals and balance protection.
+  - Monkey-patching audit: Uncovered lines 55-83 in `BedtimeStoryStage3D.js` monkey-patching `store.rejectParentRequest`.
+- **Vulnerabilities found**:
+  1. Regression in `scratch/verify_routine_approvals_pipeline.mjs`: `completeBedtimeStory` emits `taskId: 'sleep_on_time'` instead of `'bedtime_story'` in pending approvals, failing `run_all_tests.js`.
+  2. Separation-of-concerns violation: `BedtimeStoryStage3D.js` mutates store prototypes/methods at runtime.
+- **Untested angles**: Hardware-accelerated GPU render performance on low-end mobile devices (mitigated by 2D canvas fallback).
 
 ## Key Decisions Made
-- Confirmed full compliance with ORIGINAL_REQUEST §R1 and §R3.
-- Issued verdict: APPROVE.
+- Issued verdict: `REQUEST_CHANGES` due to `node scratch/run_all_tests.js` failure.
+- Documented findings with exact file paths, line numbers, and actionable remediation steps.
 
 ## Artifact Index
 - `.agents/teamwork/reviewer_mfinal_1/DISPATCH.md` — Inbound instructions

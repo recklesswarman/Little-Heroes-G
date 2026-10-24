@@ -1,4 +1,4 @@
-const CACHE_NAME = 'little-heroes-v3.5.1-firestore-rules-sync-20261019';
+const CACHE_NAME = 'little-heroes-v3.6.0-ai-illustrations-20261024';
 const STATIC_ASSETS = [
   './',
   './index.html',

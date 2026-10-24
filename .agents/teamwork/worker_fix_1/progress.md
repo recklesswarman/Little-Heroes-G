@@ -1,12 +1,17 @@
-# Progress Tracker
+# Progress Log — worker_fix_1
 
-Last visited: 2026-10-15T04:33:30Z
+Last visited: 2026-10-16T02:30:30Z
 
+## Status
 - [x] Initialized DISPATCH.md and BRIEFING.md
-- [x] Inspect challenger handoff, project docs, and WorkoutHero3DStage.js
-- [x] Implement idempotency guard and context lost handler cleanup in WorkoutHero3DStage.js
-- [x] Run test scratch/adversarial_3d_kinematics_test.mjs (34/34 Passed, exit code 0)
-- [x] Run test scratch/verify_dino_workout_e2e.mjs (66/66 Passed, exit code 0)
-- [x] Run npm run build (built in 12.80s, exit code 0)
-- [x] Run full test suite scratch/run_all_tests.js (all 43 suites passed, exit code 0)
-- [ ] Write handoff.md and report to orchestrator
+- [x] Inspected `src/state/store.js` and `src/components/BedtimeStoryStage3D.js`
+- [x] Implemented fixes in `src/state/store.js`:
+  - Fixed `completeBedtimeStory`: sets `taskId: 'bedtime_story'` in `this.enqueuePendingApproval`, action log, and `taskCompletionLogs`
+  - Fixed `rejectParentRequest`: ensures `selectedHero` and `heroes[]` mirror are kept in sync both before and after clawback calculation natively
+  - Added `autoReadMode: true` default to `defaultState.bedtimeSanctuaryState` and `getBedtimeSanctuaryState`
+- [x] Removed monkey-patch block from `src/components/BedtimeStoryStage3D.js`
+- [x] Verified `node scratch/verify_routine_approvals_pipeline.mjs` (29/29 PASSED, 0 FAILED)
+- [x] Verified `node scratch/verify_bedtime_storybook.mjs` (131/131 PASSED, 0 FAILED)
+- [x] Verified `node scratch/run_all_tests.js` (ALL 70 TEST SUITES PASSED, exit code 0)
+- [x] Verified `npm run build` (clean compilation, exit code 0)
+- [x] Prepared final handoff report

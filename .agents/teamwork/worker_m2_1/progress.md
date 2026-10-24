@@ -1,16 +1,18 @@
-# Progress — Worker M2 (Audio & Cadence Specialist)
+# Progress — worker_m2_1
 
-Last visited: 2026-10-15T04:06:00Z
+Last visited: 2026-10-16T01:46:40Z
+Status: Completed - Milestone M2 Voice Narration & Audio Pre-Fetching
 
-## Status: All changes implemented and verified
-
-- [x] Initialized DISPATCH.md and BRIEFING.md
-- [x] Inspected existing `server/geminiService.js`, `server.js`, `server/elevenLabsService.js`
-- [x] Inspected existing `vite.config.js`
-- [x] Inspected existing `src/services/voiceService.js` and `src/data/petsData.js`
-- [x] Implemented `server/geminiService.js` additions (8 dinosaur voices and personas + numeric aliases)
-- [x] Implemented `vite.config.js` `/api/elevenlabs/tts` middleware matching `server.js`
-- [x] Implemented `src/services/voiceService.js` audio caching (`workoutAudioClipCache`), prewarming (`prewarmWorkoutAudio`), and anti-collision playback safeguards
-- [x] Verified build (`npm run build` exits 0)
-- [x] Verified full regression test suite (`node scratch/run_all_tests.js` passes with 0 failures)
-- [x] Documented handoff in `handoff.md` and notified orchestrator
+## Completed Steps
+- [x] Read DISPATCH.md, ORIGINAL_REQUEST.md, PROJECT.md, and explorer analysis.md
+- [x] Initialized DISPATCH.md, BRIEFING.md, and progress.md
+- [x] Inspected existing implementation and limitations in `src/services/voiceService.js`
+- [x] Updated `getAudioCacheKey` to incorporate optional `voiceStyle` (`${norm}:${style}:${clean}`)
+- [x] Updated `fetchPcmTts` to accept `timeoutMs` (defaulting to 18000ms for bedtime) and `voiceStyle: 'bedtime'`, sending `voiceStyle` in POST body and preventing 4500ms aborts
+- [x] Updated `playPcmTtsResponse` to configure `source.playbackRate.setValueAtTime(rate, sharedAudioContext.currentTime)` on Web Audio `AudioBufferSourceNode`s
+- [x] Updated `speakWithSpeechSynthesis` to accept custom rate, pitch, and volume overrides
+- [x] Implemented `prefetchCompanionAudio(text, petId, options)` to background-fetch and pre-decode Chapter N+1 into `workoutAudioClipCache`
+- [x] Updated `speakCompanion` with complete argument polymorphism (`{ timeoutMs, rate, pitch, voiceStyle, instant, onEnded }` or trailing options) and resilient multi-tier fallback (ElevenLabs -> Gemini Flash TTS -> Daniel SpeechSynthesis)
+- [x] Verified execution with `node scratch/test_elevenlabs_tts_cache.cjs` (0 failures, exit code 0)
+- [x] Updated `BRIEFING.md`
+- [x] Authored 5-component `handoff.md` and prepared message to parent

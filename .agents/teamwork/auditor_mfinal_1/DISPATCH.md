@@ -1,31 +1,27 @@
-## 2026-10-15T04:21:51Z
+## 2026-10-16T02:10:04Z
+You are the Forensic Integrity Auditor (auditor_mfinal_1) for Milestone M-FINAL (Bedtime AI Storybook Revamp).
+Working directory: c:\APP\stitch_little_hero_adventures\.agents\teamwork\auditor_mfinal_1
+Authoritative User Request: c:\APP\stitch_little_hero_adventures\.agents\teamwork\ORIGINAL_REQUEST.md (under ## 2026-10-16T01:20:55Z).
+Project Specification: c:\APP\stitch_little_hero_adventures\.agents\teamwork\orchestrator_3\PROJECT.md.
 
-You are the Forensic Auditor (Auditor 1).
-Your working directory is: c:\APP\stitch_little_hero_adventures\.agents\teamwork\auditor_mfinal_1
-The authoritative requirements are located at: c:\APP\stitch_little_hero_adventures\.agents\teamwork\ORIGINAL_REQUEST.md
-The project architecture is at: c:\APP\stitch_little_hero_adventures\.agents\teamwork\PROJECT.md
-Please read ORIGINAL_REQUEST.md and PROJECT.md immediately.
-
-Your task:
-Perform a strict forensic integrity verification across all new and modified files:
-- `src/services/avatarSkeletalRig.js`
-- `src/services/workoutKinematicsEngine.js`
-- `src/components/WorkoutHero3DStage.js`
-- `src/services/voiceService.js`
+MANDATORY INTEGRITY DIRECTIVE:
+You are an independent forensic auditor. Your job is to verify that all implementations are genuine, authentic, and functional.
+Check all modified files:
+- `src/data/bedtimeStoryData.js`
+- `src/services/bedtimeStoryService.js`
 - `server/geminiService.js`
+- `server.js`
 - `vite.config.js`
-- `src/views/DinoWorkoutView.js`
-- `scratch/verify_dino_workout_e2e.mjs`
+- `functions/src/voiceApi.ts`
+- `server/elevenLabsService.js`
+- `src/services/voiceService.js`
+- `src/components/BedtimeStoryStage3D.js`
+- `src/views/BedtimeStoryView.js`
+- `src/state/store.js`
+- `scratch/verify_bedtime_storybook.mjs`
 
-Conduct the following forensic checks:
-1. Static Analysis: Verify NO hardcoded test results, expected outputs, or verification strings in source code.
-2. Authenticity: Verify that the 3D avatar skeletal rig contains a genuine 21-bone hierarchy with actual matrix transformation math, not dummy objects or facades.
-3. Kinematics Authenticity: Verify that all 8 prehistoric gross-motor routines implement genuine mathematical trigonometry (sin/cos/Euler/quaternion/Hermite blend), not stubbed or static poses.
-4. Audio Engine Authenticity: Verify that the client-side audio cache is a genuine `Map` storing real `AudioBuffer` objects, with authentic prewarming and genuine fallback tiers.
-5. Cadence & Diplodocus Timing: Verify authentic interval and timeline checking, not bypasses.
-6. Design System Integrity: Scan all added/modified code for unauthorized colors (strictly enforce zero pink, purple, violet, magenta, fuchsia tokens or hex values).
-7. Execute the test suites independently to verify that reported passing results are 100% genuine and reproducible.
-
-Deliverable:
-Write a rigorous evidence-backed report to `c:\APP\stitch_little_hero_adventures\.agents\teamwork\auditor_mfinal_1\handoff.md` with an unambiguous binary verdict: `CLEAN` or `INTEGRITY VIOLATION`.
-When complete, message the orchestrator.
+Audit Checks:
+1. Static analysis: Look for any hardcoded test results, expected outputs, or bypass strings.
+2. Genuine logic: Confirm the Combinatorial Dynamic Story Weaver actually builds stories combinatorially from templates and parameters, that server routes actually handle requests, that voice pre-fetching actually manages cache and audio buffers, that BedtimeStoryStage3D actually executes WebGL shaders/matrix calculations and 2D fallback, and that completeBedtimeStory actually implements state mutations.
+3. Strict Explorer Palette check: Verify zero occurrences of pink (#ff69b4, #ff1493, #e91e63, etc.) or purple (#9b59b6, #8e44ad, #6c5ce7, etc.) in any bedtime color definition.
+4. Issue an unambiguous binary verdict in `handoff.md`: `CLEAN` or `INTEGRITY VIOLATION`. Include full evidence for your determination. Notify parent when complete.

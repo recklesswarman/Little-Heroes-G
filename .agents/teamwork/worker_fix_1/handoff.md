@@ -1,131 +1,82 @@
-# Handoff Report: Worker Fix 1 (Fallback Canvas Idempotency & Lifecycle Remediation)
+# Remediation Handoff Report — Milestone M-FINAL
+
+**Worker**: Worker Fix (`worker_fix_1`)  
+**Roles**: implementer, qa  
+**Working Directory**: `c:\APP\stitch_little_hero_adventures\.agents\teamwork\worker_fix_1`  
+**Milestone**: M-FINAL Remediation (Bedtime AI Storybook Revamp)  
+**Date**: 2026-10-16T02:31:00Z  
+
+---
 
 ## 1. Observation
 
-### Code Inspection
-In `src/components/WorkoutHero3DStage.js` prior to the fix, `initFallback(reason = '')` (lines 239-254) lacked an idempotency guard and did not detach the `webglcontextlost` listener:
-```javascript
-  initFallback(reason = '') {
-    this.isFallback = true;
-    if (this.animId && typeof cancelAnimationFrame === 'function') {
-      cancelAnimationFrame(this.animId);
-      this.animId = null;
-    }
-    if (typeof document !== 'undefined') {
-      this.fallbackCanvas = new WorkoutHeroDuoCanvas(this.container, {
-        ...this.options,
-        workoutId: this.workoutId,
-        coachId: this.coachId,
-        tempoBpm: this.tempoBpm
-      });
-      this.fallbackCanvas.setTimeRemaining(this.workoutTimeRemaining);
-    }
-  }
-```
+### 1.1 Reviewer 2 Findings
+Reviewer 2 identified two primary issues:
+1. **Regression Failure**: `scratch/verify_routine_approvals_pipeline.mjs` test #47 failed because `store.completeBedtimeStory()` was queueing pending approvals with `taskId: 'sleep_on_time'`, whereas test #47 explicitly searched for `taskId === 'bedtime_story'`.
+2. **Architectural Code Leak**: `src/components/BedtimeStoryStage3D.js` contained lines 56–83 that monkey-patched `store.rejectParentRequest` and mutated `store.getBedtimeSanctuaryState` upon module import.
 
-### Adversarial Failure Observed
-When running `node scratch/adversarial_3d_kinematics_test.mjs`, redundant `webglcontextlost` events triggered repeated calls to `initFallback()`, overwriting `this.fallbackCanvas` and abandoning prior instances with active animation loops:
-```
-  ❌ ADVERSARIAL FAIL: Fallback canvas lifecycle idempotency: redundant webglcontextlost must not leak active orphan canvas instances :: Leaked prior fallbackCanvas instance with active animation loop
-```
-
-### Applied Remediation
-In `src/components/WorkoutHero3DStage.js`:
-```javascript
-  initFallback(reason = '') {
-    if (this.isFallback && this.fallbackCanvas) {
-      return;
-    }
-    this.isFallback = true;
-    if (this.canvas && this._contextLostHandler) {
-      this.canvas.removeEventListener('webglcontextlost', this._contextLostHandler);
-    }
-    if (this.animId && typeof cancelAnimationFrame === 'function') {
-      cancelAnimationFrame(this.animId);
-      this.animId = null;
-    }
-    if (typeof document !== 'undefined') {
-      this.fallbackCanvas = new WorkoutHeroDuoCanvas(this.container, {
-        ...this.options,
-        workoutId: this.workoutId,
-        coachId: this.coachId,
-        tempoBpm: this.tempoBpm
-      });
-      this.fallbackCanvas.setTimeRemaining(this.workoutTimeRemaining);
-    }
-  }
-```
-
-### Empirical Verification Commands & Results
-1. `node scratch/adversarial_3d_kinematics_test.mjs`:
-   - Assertions: 34 passed, 0 failed.
-   - Result: Exit code 0.
-   - Output: `🎉 VERDICT: APPROVE — 3D Graphics & Kinematics engine is exceptionally robust under adversarial load.`
-2. `node scratch/verify_dino_workout_e2e.mjs`:
-   - Assertions: 66/66 passed, 0 failed.
-   - Result: Exit code 0.
-   - Output: `🎉 ALL 4 TIERS PASSED WITH 100% SUCCESS!`
-3. `npm run build`:
-   - Built in 12.80s.
-   - Result: Exit code 0.
-4. `node scratch/run_all_tests.js`:
-   - Result: All 43 test suites passed cleanly with exit code 0.
+### 1.2 Implemented Changes
+1. **`src/state/store.js`**:
+   - In `defaultState.bedtimeSanctuaryState` (line 513) and `getBedtimeSanctuaryState()` (lines 9326–9331), included `autoReadMode: true` by default natively.
+   - In `rejectParentRequest` (lines 5525–5570), added native synchronization between `this.state.selectedHero` and `this.state.heroes[]`:
+     - Synchronizes values prior to clawback calculation if `this.state.selectedHero.id === req.kidId`.
+     - Synchronizes clawed-back `coins`, `tokens`, `xp`, `sparks`, and `evolutionSparks` across both `selectedHero` and the corresponding mirrored entry in `this.state.heroes`.
+   - In `completeBedtimeStory` (lines 9673, 9679, 9706), updated `taskId` to `'bedtime_story'` for both `this.state.taskCompletionLogs` and `this.enqueuePendingApproval()`.
+2. **`src/components/BedtimeStoryStage3D.js`**:
+   - Completely deleted the monkey-patch block (previously lines 56–83) that mutated `store.rejectParentRequest` and `store.getBedtimeSanctuaryState`. The 3D presentation component now cleanly imports `store` without side-effect mutations.
 
 ---
 
 ## 2. Logic Chain
 
-1. **Root Cause Identification**:
-   - `WorkoutHero3DStage` registers `this._contextLostHandler` on `this.canvas` for the `'webglcontextlost'` event.
-   - If subsequent or duplicate context lost events are dispatched by the browser or runtime, `initFallback()` re-executes.
-   - Because `this.fallbackCanvas` is created with `new WorkoutHeroDuoCanvas(...)`, which starts its internal `requestAnimationFrame` loop immediately in `startLoop()`, assigning a new instance to `this.fallbackCanvas` without destroying the old one leaves the old instance as an orphan running in memory.
-2. **Remediation Mechanism**:
-   - Adding `if (this.isFallback && this.fallbackCanvas) return;` guarantees idempotency: subsequent invocations immediately exit without allocating another canvas.
-   - Calling `this.canvas.removeEventListener('webglcontextlost', this._contextLostHandler)` immediately unhooks the listener from the dead WebGL canvas, preventing duplicate event handling and avoiding memory retention of the listener closure.
-3. **Safety & Zero Regressions**:
-   - The fix does not alter the initial fallback flow or the initial construction of `WorkoutHeroDuoCanvas`.
-   - All delegated parity methods (`setWorkout`, `setTimeRemaining`, `triggerBeat`, etc.) continue delegating to the single active `this.fallbackCanvas`.
-   - `WorkoutHero3DStage.destroy()` cleanly terminates the active `fallbackCanvas` without orphaned leaks.
-   - All 34 adversarial assertions, 66 E2E assertions, 43 test runner suites, and Vite production bundle build succeed with 100% pass rate.
+1. **Step 1**: `store.getTaskAliasGroup('sleep_on_time')` returns `['sleep_on_time', 'night_bedtime', 'wp_bedtime', 'bedtime_story', 'sleep']`. Because `'bedtime_story'` is explicitly part of this alias group, calling `isTaskPendingApproval('sleep_on_time', heroId)` matches pending approvals with `taskId: 'bedtime_story'`.
+2. **Step 2**: By enqueuing with `taskId: 'bedtime_story'`, `scratch/verify_routine_approvals_pipeline.mjs` line 93 (`findApproval('bedtime_story')`) immediately finds the entry with `pendingPoints: 15`.
+3. **Step 3**: `scratch/verify_bedtime_storybook.mjs` lines 1338, 1354, 1731, 1745 filter using `p.taskId === 'sleep_on_time' || p.taskId === 'bedtime_story'`. Both scripts now pass with 0 failures.
+4. **Step 4**: Moving the hero mirror synchronization directly into `store.rejectParentRequest` ensures that whenever parent denial claws back rewards, both `this.state.selectedHero` and `this.state.heroes` remain strictly consistent, eliminating the need for presentation components to monkey-patch core business logic.
+5. **Step 5**: The full project test suite (`node scratch/run_all_tests.js`) and production build (`npm run build`) both succeed with exit code 0.
 
 ---
 
 ## 3. Caveats
 
-- **No Caveats**: The fix was strictly localized to `initFallback` in `src/components/WorkoutHero3DStage.js`, completely matching the challenger's specification and verified across all test dimensions.
+- Web Audio SFX warnings in headless Node.js tests (e.g. `Audio error TypeError: gain.gain.exponentialRampToValueAtTime is not a function`) occur because Node.js lacks the native browser Web Audio API; these are safely caught by internal try/catch blocks in `src/audio/sfx.js` and do not affect test assertions.
+- Live ElevenLabs synthesis defaults cleanly to fallback narration when no API key is provided, matching designed behavior.
 
 ---
 
 ## 4. Conclusion
 
-The fallback canvas lifecycle leak has been completely resolved. `WorkoutHero3DStage` now provides full idempotency during WebGL context loss recovery, clean event listener teardown, and zero orphaned animation loop instances. All project test suites and the production build pass with 0 errors.
+All remediation requirements assigned by the orchestrator and reviewer have been cleanly implemented:
+1. `src/state/store.js` now enqueues bedtime story approvals with `taskId: 'bedtime_story'` and natively synchronizes hero state mirrors during reward clawback.
+2. `src/components/BedtimeStoryStage3D.js` has all monkey-patching code removed.
+3. Both targeted test suites, the complete project regression suite, and the Vite production build pass with 100% success and exit code 0.
 
 ---
 
 ## 5. Verification Method
 
-To independently reproduce and verify this fix:
+To independently verify this remediation, run the following commands from the project root (`c:\APP\stitch_little_hero_adventures`):
 
-1. **Adversarial Kinematics & Context Loss Test**:
+1. **Verify Routine Approvals Pipeline**:
    ```powershell
-   node scratch/adversarial_3d_kinematics_test.mjs
+   node scratch/verify_routine_approvals_pipeline.mjs
    ```
-   *Expected Output*: Exit code 0; 34/34 assertions pass.
+   *Result*: 29 PASSED, 0 FAILED (Exit code 0).
 
-2. **Dino Workout E2E Test Suite**:
+2. **Verify Bedtime AI Storybook**:
    ```powershell
-   node scratch/verify_dino_workout_e2e.mjs
+   node scratch/verify_bedtime_storybook.mjs
    ```
-   *Expected Output*: Exit code 0; 66/66 assertions pass.
+   *Result*: 131 Checks Passed, 0 Failed (Exit code 0).
 
-3. **Full System Test Suite**:
+3. **Verify All Test Suites**:
    ```powershell
    node scratch/run_all_tests.js
    ```
-   *Expected Output*: Exit code 0; 43/43 suites pass.
+   *Result*: All 70 test suites pass ("🎉 ALL TEST SUITES PASSED SUCCESSFULLY!", Exit code 0).
 
-4. **Production Build**:
+4. **Verify Production Build**:
    ```powershell
    npm run build
    ```
-   *Expected Output*: Exit code 0; bundle completes in `dist/`.
+   *Result*: Clean compilation (Exit code 0).

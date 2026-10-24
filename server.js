@@ -5,6 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { handleTTSRequest, handleChatRequest, handleBedtimeStoryRequest, attachGeminiLiveWebSocket } from './server/geminiService.js';
 import { handleElevenLabsTTSRequest } from './server/elevenLabsService.js';
+import { handleStoryIllustrationRequest } from './server/imageGenService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -27,6 +28,10 @@ app.post('/api/rex/bedtime-story', handleBedtimeStoryRequest);
 
 // ElevenLabs voice endpoint (primary companion voice tier; see voiceService.js)
 app.post('/api/elevenlabs/tts', handleElevenLabsTTSRequest);
+
+// Bedtime storybook illustration endpoint (Cloudflare Workers AI free image generator)
+app.post('/api/story/illustration', handleStoryIllustrationRequest);
+app.post('/api/ai/image', handleStoryIllustrationRequest);
 
 const distPath = path.join(__dirname, 'dist');
 

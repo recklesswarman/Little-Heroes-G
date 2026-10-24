@@ -22,6 +22,7 @@ import {
 } from '../data/bedtimeStoryData.js';
 import { PETS_DATABASE } from '../data/petsData.js';
 import { generateBedtimeChapterAGY } from './heroAgentService.js';
+import { bedtimeIllustrationService } from './bedtimeIllustrationService.js';
 
 /**
  * Builds a comprehensive real-time child story context snapshot.
@@ -640,6 +641,41 @@ Return ONLY raw JSON with these exact keys (no markdown code blocks, just raw JS
     // 4. Resilient offline Combinatorial Dynamic Story Weaver
     if (!generatedAct) {
       generatedAct = this.createOfflineAct(actNumber, realm, moral, heroName, petName, customWish, previousChoice);
+    }
+
+    // Attach 3D Pixar / Claymation illustration from Cloudflare Workers AI
+    if (generatedAct) {
+      try {
+        const illResult = await bedtimeIllustrationService.generateChapterIllustration({
+          chapterNumber: actNumber,
+          chapterTitle: generatedAct.title,
+          chapterText: generatedAct.text,
+          realmId: realm.id,
+          realmName: realm.name,
+          heroName,
+          petName,
+          petArchetype: session?.childContext?.activePet?.archetype || 'dino',
+          magicItem: session?.childContext?.gearAndChoices?.magicItem || 'Starlight Lantern'
+        });
+        if (illResult && illResult.imageUrl) {
+          generatedAct.imageUrl = illResult.imageUrl;
+        }
+      } catch (illErr) {
+        console.warn('Illustration attachment notice:', illErr.message);
+      }
+
+      // Pre-fetch next chapter illustration in background for instant transition
+      if (actNumber < 4) {
+        bedtimeIllustrationService.prefetchNextChapterIllustration({
+          chapterNumber: actNumber,
+          realmId: realm.id,
+          realmName: realm.name,
+          heroName,
+          petName,
+          petArchetype: session?.childContext?.activePet?.archetype || 'dino',
+          magicItem: session?.childContext?.gearAndChoices?.magicItem || 'Starlight Lantern'
+        });
+      }
     }
 
     return generatedAct;

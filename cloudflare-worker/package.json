@@ -1,0 +1,14 @@
+{
+  "name": "little-heroes-free-image-api",
+  "version": "1.0.0",
+  "description": "Free AI Image Generation Worker for Bedtime Storybook Illustrations using Cloudflare Workers AI",
+  "main": "worker.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "dependencies": {
+    "wrangler": "^4.152.0"
+  }
+}

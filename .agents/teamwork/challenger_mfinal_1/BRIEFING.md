@@ -1,56 +1,70 @@
-# BRIEFING — 2026-10-15T04:29:00Z
+# BRIEFING — 2026-10-16T02:20:45Z
 
 ## Mission
-Adversarially stress-test 3D graphics & skeletal kinematics engine (Three.js rig, kinematics formulas, WebGL context loss recovery, boundary dt/tempo/workout swaps, matrix stability) and render an empirical verdict.
+Adversarially stress-test the AI Story Engine, Combinatorial Weaver, Personalization Context, and Sibling Bookshelf Isolation for Milestone M-FINAL.
 
 ## 🔒 My Identity
-- Archetype: EMPIRICAL CHALLENGER
+- Archetype: Empirical Challenger
 - Roles: critic, specialist
 - Working directory: c:\APP\stitch_little_hero_adventures\.agents\teamwork\challenger_mfinal_1
-- Original parent: 95945b0b-5f74-4471-935a-2738aaef81cc
+- Original parent: 53bed4f6-4a95-4168-a4c5-b43e3302abb3
 - Milestone: M-FINAL
 - Instance: 1 of 1
 
 ## 🔒 Key Constraints
-- Review-only — do NOT modify implementation code (do not fix issues yourself; challenge and report findings)
-- `.agents/teamwork/` must contain ONLY agent metadata (plans, progress, handoffs) — NEVER place test scripts, source code, or data files here!
-- Tests must be executed empirically — no unverified assumptions
-- Deliver verdict: APPROVE or REQUEST_CHANGES in handoff.md
+- Review-only — do NOT modify implementation code
+- Write stress test harnesses in scratch/
+- Never place code/data files inside .agents/teamwork/
+- Must empirically reproduce and verify all claims with code execution
 
 ## Current Parent
-- Conversation ID: 95945b0b-5f74-4471-935a-2738aaef81cc
-- Updated: 2026-10-15T04:22:00Z
+- Conversation ID: 53bed4f6-4a95-4168-a4c5-b43e3302abb3
+- Updated: 2026-10-16T02:10:30Z
 
 ## Review Scope
 - **Files to review**:
-  - `src/services/avatarSkeletalRig.js`
-  - `src/services/workoutKinematicsEngine.js`
-  - `src/components/WorkoutHero3DStage.js`
-  - `src/components/WorkoutHeroDuoCanvas.js`
-  - `src/views/DinoWorkoutView.js`
-- **Interface contracts**: PROJECT.md, ORIGINAL_REQUEST.md
-- **Review criteria**: WebGL context loss recovery, degenerate/boundary frame deltas, extreme tempo modulation (40-240 BPM), rapid workout switching, matrix invertibility/numerical stability (NaN/Infinity guards).
+  - `src/data/bedtimeStoryData.js` — Combinatorial Dynamic Story Weaver, 12+ archetypes, palette
+  - `src/services/bedtimeStoryService.js` — Context builder, audio pre-fetching, story orchestration
+  - `src/state/store.js` — `completeBedtimeStory`, `saveBedtimeStory`, `getBedtimeStoryLibrary`, 25-history FIFO
+  - `server/geminiService.js` & `server.js` — Bedtime story endpoint handlers (`/api/gemini/bedtime-story`, `/api/rex/bedtime-story`)
+  - `functions/src/voiceApi.ts` — Firebase Cloud Functions endpoints
+  - `src/views/BedtimeStoryView.js` — Bookshelf view and narration toggles
+  - `src/components/BedtimeStoryStage3D.js` — 3D diorama stage & Explorer Palette compliance
+- **Interface contracts**: `c:\APP\stitch_little_hero_adventures\.agents\teamwork\orchestrator_3\PROJECT.md`, `c:\APP\stitch_little_hero_adventures\.agents\teamwork\ORIGINAL_REQUEST.md`
+- **Review criteria**:
+  1. Zero hardcoded "Rex" references across all 24 pets.
+  2. Non-repeating story plots / anti-repetition 25-history FIFO tracking.
+  3. Strict adherence to Explorer Palette (zero pink/purple hex codes in any sceneDescriptor or story color).
+  4. Validation of required sceneDescriptor fields: environmentBiome, timeOfNight, weatherParticles, cameraWork, heroAction, petAction, keyProps, lightingPalette.
+  5. Sibling bookshelf isolation (Child A cannot see Child B's bedtime stories).
+
+## Key Decisions Made
+- Created comprehensive adversarial stress test harness: `scratch/adversarial_story_engine_stress.mjs`
+- Executed `scratch/verify_bedtime_storybook.mjs` (131/131 passing assertions)
+- Forensically verified zero hardcoded Rex across all 24 pets in the Story Weaver & prompt generators
+- Confirmed anti-repetition 25-history FIFO eviction capping at 25 entries in `hero.bedtimeHistory`
+- Verified strict Explorer Palette (#09141e, #2ecc71, #00d2d3, #f39c12, #ffb961) with zero pink/purple across all biomes and lighting palettes
+- Verified all 8 required `sceneDescriptor` fields across all chapter indices
+- Verified sibling bookshelf isolation per `heroId` via `store.getBedtimeStoryLibrary(heroId)` and `targetHero.bedtimeStoryLibrary`
+- Determined final verdict: **APPROVE**
+
+## Artifact Index
+- `scratch/adversarial_story_engine_stress.mjs` — Comprehensive adversarial test harness (6 test suites)
+- `scratch/verify_bedtime_storybook.mjs` — 4-Tier test suite (131 tests executed, 100% pass)
+- `.agents/teamwork/challenger_mfinal_1/handoff.md` — 5-Component handoff report with final confirmation
 
 ## Attack Surface
 - **Hypotheses tested**:
-  - WebGL context loss recovery: 1st context loss recovers cleanly to WorkoutHeroDuoCanvas with full parity method delegation, but redundant `webglcontextlost` events leak prior canvas animation loops.
-  - Degenerate frame deltas (dt = 0, dt = 1e-9, dt = 5000ms wake spikes, negative timers, NaN input): Verified 100% stable, finite, and bounded.
-  - Extreme tempo (40 to 240 BPM) and rapid step-function modulation (40 <-> 240 BPM every frame): Verified 100% stable.
-  - Rapid sequential workout routine changes (1,000 switches at 1ms intervals): Verified 100% stable; `root.reset()` ensures zero posture accumulation.
-  - Bone transformation matrices across 10,000 frames (450,000 evaluations): 0 NaN, 0 Infinity, 0 singular matrices, max inversion error 1.0494e-7.
+  1. Does any story generation for non-Rex pets leak "Rex"? (Tested: 0 occurrences in generator output)
+  2. Can `hero.bedtimeHistory` grow unbounded beyond 25 entries? (Tested: strictly capped at 25 via FIFO)
+  3. Does any sceneDescriptor or realm contain pink/purple colors? (Tested: 0 pink/purple detected)
+  4. Are any required sceneDescriptor fields omitted? (Tested: all 8 required fields present and valid)
+  5. Can Child A see Child B's saved bedtime stories? (Tested: filtered by `heroId`, isolation preserved)
 - **Vulnerabilities found**:
-  - `WorkoutHero3DStage.initFallback()` lacks an idempotency guard: redundant `webglcontextlost` events recreate `WorkoutHeroDuoCanvas` without destroying the previous instance, leaking background `requestAnimationFrame` timers and memory.
-- **Untested angles**: Hardware-accelerated GPU driver crashes.
+  - `BedtimeStoryView.js` has static button labels (`Rex Narrates`, `SPEAK TO REX`, `Rex Read Aloud`) in the UI markup that mention Rex even when another pet is selected, though the narrative itself personalizes properly.
+  - In `src/state/store.js` line 9495, `getBedtimeStoryLibrary(heroId = null)` returns the global un-isolated array if `heroId` is omitted. Callers should pass `hero.id` to guarantee isolation.
+- **Untested angles**:
+  - Live Gemini API network connectivity (fallback weaver and mock routes tested).
 
 ## Loaded Skills
-- None required externally; using project unit/node test harnesses
-
-## Key Decisions Made
-- Authored adversarial test harness in `scratch/adversarial_3d_kinematics_test.mjs`.
-- Rendered explicit empirical verdict: `REQUEST_CHANGES` due to the fallback canvas lifecycle leakage bug during redundant WebGL context loss.
-
-## Artifact Index
-- `c:\APP\stitch_little_hero_adventures\.agents\teamwork\challenger_mfinal_1\DISPATCH.md` — Initial dispatch log
-- `c:\APP\stitch_little_hero_adventures\.agents\teamwork\challenger_mfinal_1\progress.md` — Liveness & progress tracker
-- `c:\APP\stitch_little_hero_adventures\.agents\teamwork\challenger_mfinal_1\handoff.md` — 5-component adversarial findings & verdict report
-- `c:\APP\stitch_little_hero_adventures\scratch\adversarial_3d_kinematics_test.mjs` — Reproducible adversarial test harness
+- None requested

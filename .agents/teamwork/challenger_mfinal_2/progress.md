@@ -1,12 +1,16 @@
-# Progress — Challenger 2 (Hybrid Audio & Cadence Adversarial Challenger)
+# Progress — challenger_mfinal_2
 
-Last visited: 2026-10-15T04:29:35Z
-Status: Completed (Verdict: APPROVE)
+Last visited: 2026-10-16T02:20:00Z
 
-## Milestones & Steps
-- [x] Step 1: Initialize DISPATCH.md, BRIEFING.md, and progress.md
-- [x] Step 2: Codebase investigation of voiceService.js, DinoWorkoutView.js, server/geminiService.js, workoutKinematicsEngine.js
-- [x] Step 3: Author empirical adversarial stress harness (`scratch/adversarial_audio_cadence_stress_test.mjs`)
-- [x] Step 4: Execute stress harness and collect metrics (29/29 tests passed across all 5 adversarial dimensions)
-- [x] Step 5: Verify build integrity (`npm run build` exited 0) and full regression suite (`run_all_tests.js` passed)
-- [x] Step 6: Author handoff.md and send final assessment to orchestrator (APPROVE verdict delivered)
+## Status: COMPLETE (APPROVE)
+
+### Completed Steps:
+- [x] Initialized DISPATCH.md and updated BRIEFING.md with append-only preserved identity & constraints.
+- [x] Analyzed requirements from ORIGINAL_REQUEST.md, PROJECT.md, and task_and_currency_lifecycle_rules.md.
+- [x] Inspected source implementations in `src/components/BedtimeStoryStage3D.js`, `src/services/voiceService.js`, `src/views/BedtimeStoryView.js`, `src/state/store.js`, `src/data/petsData.js`.
+- [x] Authored comprehensive adversarial stress harness in `scratch/adversarial_3d_and_currency_stress.mjs`.
+- [x] Ran automated verification suite `scratch/verify_bedtime_storybook.mjs`: 131/131 checks passed (0 failures).
+- [x] Ran production build `npm run build`: exited code 0 in 27.90s.
+- [x] Audited all 6 stress areas: WebGL context loss & 2D fallback, 24 pet rigs, raycast chimes & 4s/4s breathing timer, audio prefetch concurrency, currency one-completion invariant, and parent denial clawback.
+- [x] Documented 5-component report in `handoff.md` with explicit verdict: `APPROVE`.
+- [ ] Send completion message to parent orchestrator.

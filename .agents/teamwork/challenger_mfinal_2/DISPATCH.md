@@ -1,17 +1,18 @@
-## 2026-10-15T04:21:51Z
-You are Challenger 2 (Hybrid Audio & Cadence Adversarial Challenger).
-Your working directory is: c:\APP\stitch_little_hero_adventures\.agents\teamwork\challenger_mfinal_2
-The authoritative requirements are located at: c:\APP\stitch_little_hero_adventures\.agents\teamwork\ORIGINAL_REQUEST.md
-The project architecture is at: c:\APP\stitch_little_hero_adventures\.agents\teamwork\PROJECT.md
-Please read ORIGINAL_REQUEST.md and PROJECT.md immediately.
+## 2026-10-16T02:10:04Z
+You are Challenger 2 (challenger_mfinal_2) for Milestone M-FINAL (Bedtime AI Storybook Revamp).
+Working directory: c:\APP\stitch_little_hero_adventures\.agents\teamwork\challenger_mfinal_2
+Authoritative User Request: c:\APP\stitch_little_hero_adventures\.agents\teamwork\ORIGINAL_REQUEST.md (under ## 2026-10-16T01:20:55Z).
+Project Specification: c:\APP\stitch_little_hero_adventures\.agents\teamwork\orchestrator_3\PROJECT.md.
+Rules: `.agents/rules/task_and_currency_lifecycle_rules.md`.
 
-Your task:
-Empirically stress-test the hybrid studio audio companion and cadence timing engine:
-1. Author an adversarial test script that subjects the audio pipeline to severe stress:
-   - Audio collision & barge-in: trigger simultaneous `speakCompanion` calls in rapid succession (e.g. 50 concurrent requests) to verify that `speechGeneration` and `stopRex()` prevent overlapping or runaway audio playback.
-   - Cache retrieval speed: benchmark latency of pre-warmed cache hits vs cache misses; verify 0ms instantaneous retrieval for cached audio buffers.
-   - Cadence timer resilience: simulate 100 rapid pause/resume cycles, background tab suspension (timer drift), and verify cadence cues at 0s, 10s, 20s, 30s, 40s, 50s, 58s never fire out of order or double-fire.
-   - Diplodocus 30s sync: verify that at exactly 30s remaining, the halfway announcement triggers synchronously with `isHalfwayFlipped` state.
-   - Network failure injection: simulate 500 internal server errors on `/api/gemini/tts` and `/api/elevenlabs/tts`, verifying seamless graceful degradation to browser SpeechSynthesis without unhandled promise rejections.
-2. Execute the adversarial test harness and collect empirical metrics.
-3. Record findings and your explicit verdict (APPROVE or REQUEST_CHANGES) in `c:\APP\stitch_little_hero_adventures\.agents\teamwork\challenger_mfinal_2\handoff.md` and message the orchestrator.
+Your Mission:
+Adversarially stress-test the 3D Story Stage, Audio Pipeline, and Store Currency Lifecycle:
+1. Write and execute an adversarial stress test script (e.g. `scratch/adversarial_3d_and_currency_stress.mjs`).
+2. Test edge cases and stress scenarios:
+   - 3D diorama stage WebGL context loss and 2D canvas fallback switching.
+   - Articulated pet companion rendering across all 24 pet archetypes.
+   - Raycast constellation chime frequencies and 4s/4s harmonic breathing ring timer accuracy.
+   - Audio prefetching concurrency (rapid chapter skipping, network delays, cache hit verification).
+   - Currency lifecycle invariants: attempt concurrent duplicate `completeBedtimeStory` calls while `sleep_on_time` is pending; verify second call is rejected without minting extra currency.
+   - Parent denial clawback: verify auto-issued tokens, XP, and sparks are decremented floored at 0 without affecting prior purchased assets.
+3. Record test outputs and state your explicit confirmation in `handoff.md`: `APPROVE` or `CHALLENGE_FAILED`. Notify parent when complete.

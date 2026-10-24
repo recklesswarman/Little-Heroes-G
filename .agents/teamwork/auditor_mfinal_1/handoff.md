@@ -1,181 +1,199 @@
-# Forensic Audit Report: 3D Avatar Skeletal Rig & Hybrid Studio Audio Companion
+# Forensic Audit Report — Milestone M-FINAL (Bedtime AI Storybook Revamp)
 
-**Work Product**: 3D Character Avatar Skeletal Animation & Hybrid Studio Audio Upgrade (`src/services/avatarSkeletalRig.js`, `src/services/workoutKinematicsEngine.js`, `src/components/WorkoutHero3DStage.js`, `src/services/voiceService.js`, `server/geminiService.js`, `vite.config.js`, `src/views/DinoWorkoutView.js`, `scratch/verify_dino_workout_e2e.mjs`)  
-**Profile**: General Project (Development Mode, `ORIGINAL_REQUEST.md` line 8)  
-**Auditor**: Forensic Auditor 1 (`auditor_mfinal_1`)  
-**Date**: 2026-10-15  
-**Verdict**: **CLEAN**
+**Work Product**: Bedtime AI Storybook Revamp implementation files:
+- `src/data/bedtimeStoryData.js`
+- `src/services/bedtimeStoryService.js`
+- `server/geminiService.js`
+- `server.js`
+- `vite.config.js`
+- `functions/src/voiceApi.ts`
+- `server/elevenLabsService.js`
+- `src/services/voiceService.js`
+- `src/components/BedtimeStoryStage3D.js`
+- `src/views/BedtimeStoryView.js`
+- `src/state/store.js`
+- `scratch/verify_bedtime_storybook.mjs`
+
+**Profile**: General Project (Development Mode, per `ORIGINAL_REQUEST.md` ## 2026-10-16T01:20:55Z)
+**Verdict**: **INTEGRITY VIOLATION**
 
 ---
 
 ## 1. Observation
 
-Direct empirical observations across all audited source files, mathematical formulas, data structures, and test suites:
+### Observation 1: Static Analysis & Palette Check (CLEAN)
+- **Explorer Palette Verification**:
+  - Searched `src/`, `server/`, and `functions/` for pink/purple color keywords, color names, and hex codes (`#ff69b4`, `#ff1493`, `#e91e63`, `#9b59b6`, `#8e44ad`, `#6c5ce7`, `#9c27b0`, `#673ab7`, `violet`, `magenta`, `indigo`, `lavender`, etc.).
+  - Output: 0 matches found in any material, shader, SVG, CSS, or data definition. All colors strictly conform to the Explorer Palette: Midnight Slate (`#09141e`), Emerald Green (`#2ecc71`), Electric Cyan (`#00d2d3`), Solar Orange (`#f39c12`), and Warm Amber (`#ffb961`).
+- **Hardcoded Test Results / Bypass Strings**:
+  - Searched for test bypass flags (`isTest`, `process.env.NODE_ENV === 'test'`) across all modified files. Zero test sniffer flags found.
+  - In `scratch/verify_bedtime_storybook.mjs` lines 823, 1253, 1389, 1761, and 1800, 5 instances of `assert(true)` exist as defensive fallback branches when optional methods are missing; empirical execution confirms all 5 corresponding methods exist (`cleanDialogueText`, `setTaskConfig`, `approveParentRequest`, `rejectParentRequest`), and genuine assertions executed in 100% of checks.
 
-### Check 1: Static Analysis & Facade Detection
-- Across all audited files (`src/services/avatarSkeletalRig.js`, `src/services/workoutKinematicsEngine.js`, `src/components/WorkoutHero3DStage.js`, `src/services/voiceService.js`, `server/geminiService.js`, `vite.config.js`, `src/views/DinoWorkoutView.js`), case-insensitive ripgrep searches for prohibited facade keywords (`dummy`, `mock`, `fake`, `stub`, `PASS`) returned **0 matches**.
-- No hardcoded test results, expected test strings, or artificial return values exist in the codebase.
-- In `scratch/verify_dino_workout_e2e.mjs`, all 66 assertions evaluate real runtime expressions (e.g., line 139: `Array.isArray(DINO_WORKOUTS) && DINO_WORKOUTS.length === 8`, line 156: `allIdsPresent`, line 164: `allWorkoutsHaveCoachesAndMoves`, line 191: `bpmsMatch`, line 417: `cachedHit === mockBuffer && tElapsed < 5`, line 557: `side1Arms.reachingArm === 'R' && side2Arms.reachingArm === 'L'`). Zero trivial assertions (`assert(true)`).
+### Observation 2: Genuine Implementation Verification (CLEAN)
+- **Combinatorial Dynamic Story Weaver (`src/data/bedtimeStoryData.js`)**:
+  - Lines 711-830 define 12 distinct combinatorial plot archetypes (`lost_baby_constellation`, `bridge_of_whispers`, `magic_lantern_glow`, `singing_crystal_pond`, `cloud_sheep_blanket`, `yawning_ancient_tree`, `tidepool_night_chimes`, `glowing_stardust_trail`, `floating_island_hammock`, `moonstone_lullaby`, `kind_dragon_hearth`, `peaceful_slumber_bell`).
+  - Lines 840-1025 dynamically weave active child profile, pet companion, equipped gear, and 3-chapter narrative arc with rich, structured `sceneDescriptor` payloads.
+  - Zero hardcoded "Rex" references in story templates; `pName` defaults to `activePetName || 'Rex'`.
+  - Canonical 4 realms (`space`, `dino_jungle`, `pirate_lagoon`, `enchanted_castle`) preserved for backwards compatibility.
+- **Server Routes & API (`server.js`, `server/geminiService.js`, `vite.config.js`, `functions/src/voiceApi.ts`)**:
+  - Routes `/api/rex/bedtime-story` and `/api/gemini/bedtime-story` mounted in `server.js` (lines 25-26), proxied in `vite.config.js` (lines 112-135), and declared in Cloud Functions `functions/src/voiceApi.ts` (lines 316-410).
+- **Universal ElevenLabs Voice Resolution (`server/elevenLabsService.js`, `functions/src/voiceApi.ts`)**:
+  - Resolves main voice ID `process.env.ELEVENLABS_REX_VOICE_ID || 'e9sQs6aLWU82SSolkPYZ'` for all 24 pets and bedtime storytelling, preventing HTTP 404s. Bedtime voice tuning (`stability: 0.65`, `similarity_boost: 0.80`, `style: 0.35`, `use_speaker_boost: true`) and cache key differentiation by `voiceStyle` are genuinely implemented.
+- **Voice Service Pipeline (`src/services/voiceService.js`)**:
+  - `prefetchCompanionAudio` (lines 826-920) pre-fetches and decodes Chapter N+1 into `workoutAudioClipCache`.
+  - Web Audio `AudioBufferSourceNode.playbackRate.value = rate` is applied (line 633, 636) for slow whisper narration.
+- **Automated 3D Stage & 2D Fallback (`src/components/BedtimeStoryStage3D.js`)**:
+  - Implements WebGL shader program (`BEDTIME_VS_SOURCE`, `BEDTIME_FS_SOURCE`), matrix transforms (`mat4Perspective`, `mat4LookAt`, `uProjectionMatrix`, `uViewMatrix`, `uModelMatrix`), 24 procedural articulated pet rigs, chapter choreography, interactive pentatonic chimes, and 4s/4s harmonic breathing pacer.
+  - `BedtimeStoryStage2DFallback` (line 1281) provides high-resolution 2D Canvas fallback with zero runtime errors when WebGL context is lost or unavailable.
 
-### Check 2: 3D Avatar Skeletal Rig & Matrix Linear Algebra Math
-- `src/services/avatarSkeletalRig.js` (lines 53–242):
-  - Pure JavaScript 4x4 matrix algebra implemented from scratch using `Float32Array(16)`:
-    - `mat4Create()` (lines 53–57): Identity initialization.
-    - `mat4Multiply(out, a, b)` (lines 72–102): Full 64-multiplication 4x4 matrix multiplication.
-    - `mat4FromTranslationRotationScale(out, tx, ty, tz, rx, ry, rz, sx, sy, sz)` (lines 104–143): Composes Euler XYZ rotation matrix $R = R_z R_y R_x$ with scale and translation vector.
-    - `mat4Perspective` (lines 145–165), `mat4LookAt` (lines 167–192), `mat4Invert` (lines 194–234: analytic 2x2 sub-determinant inversion with adjugate transpose), and `mat4Transpose` (lines 236–242).
-- `BoneNode` class (lines 248–322):
-  - Articulated node with `parent`, `children`, `localMatrix`, and `worldMatrix`.
-  - Lines 299–316:
+### Observation 3: Dedicated Verification Suite & Build (PASS)
+- Command: `node scratch/verify_bedtime_storybook.mjs`
+  - Output:
+    ```
+    ======================================================================
+    📊 BEDTIME AI STORYBOOK TEST SUITE SUMMARY
+    Total Checks Executed : 131
+    Passed Checks         : 131
+    Failed Checks         : 0
+    ======================================================================
+    🎉 ALL 4 TIERS OF THE BEDTIME STORYBOOK E2E TEST SUITE PASSED SUCCESSFULLY!
+    ```
+  - Exit code: 0
+- Command: `npm run build`
+  - Output: `✓ built in 21.68s`
+  - Exit code: 0
+
+### Observation 4: Full Regression Test Suite Execution (FAILURE)
+- Command: `node scratch/run_all_tests.js`
+  - Result: Failed with exit code 1 at test file 48: `scratch/verify_routine_approvals_pipeline.mjs`.
+  - Verbatim error log:
+    ```
+    ▶️  Executing: scratch/verify_routine_approvals_pipeline.mjs
+    🔥 Firebase initialized successfully for project: little-heroes-quest-8842 (DB: , Storage: little-heroes-quest-8842.firebasestorage.app)
+
+    --- 1. completeWaypointChore() queues points for approval instead of self-granting ---
+      ✅ PASS: completeWaypointChore() reports success
+      ✅ PASS: hero.points is NOT incremented synchronously by the call
+      ✅ PASS: hero.coins IS auto-issued immediately (tokens auto-issue)
+      ✅ PASS: A pendingApprovals entry was created for the waypoint chore
+      ✅ PASS: Approval entry has type "task_point_approval"
+      ✅ PASS: Approval entry has the correct pendingPoints (8, got 8)
+      ✅ PASS: Approval entry has status "pending"
+      ✅ PASS: Matching taskCompletionLogs entry has status "pending" (not auto_approved)
+      ✅ PASS: approveParentRequest() credits hero.points by the full pendingPoints amount
+      ✅ PASS: Approved request is removed from pendingApprovals
+
+    --- 2. completePajamasTidyStep() queues points for approval instead of self-granting ---
+      ✅ PASS: hero.points is NOT incremented synchronously by the call
+      ✅ PASS: hero.coins IS auto-issued immediately
+      ✅ PASS: A pendingApprovals entry was created for the pajamas/tidy step
+      ✅ PASS: Approval entry has the correct pendingPoints (8, got 8)
+      ✅ PASS: Matching taskCompletionLogs entry has status "pending"
+      ✅ PASS: approveParentRequest() credits hero.points correctly
+
+    --- 3. completeBedtimeStory() queues points for approval instead of self-granting ---
+      ✅ PASS: hero.points is NOT incremented synchronously by the call
+      ✅ PASS: hero.coins IS auto-issued immediately
+      ❌ FAIL: A pendingApprovals entry was created for the bedtime story
+      ❌ FAIL: Approval entry has the correct pendingPoints (15, got undefined)
+      ✅ PASS: heroes[] mirror does NOT prematurely carry the un-awarded points either
+
+    --- 4. completeMovementRoutine() queues points for approval instead of (fake-)self-granting ---
+      ✅ PASS: completeMovementRoutine() returns a result
+      ✅ PASS: hero.points is NOT incremented synchronously by the call
+      ✅ PASS: hero.coins IS auto-issued immediately
+      ✅ PASS: A pendingApprovals entry was created for the movement routine
+      ✅ PASS: Approval entry has the correct pendingPoints (10, got 10)
+      ✅ PASS: Matching taskCompletionLogs entry has status "pending" (was falsely "approved" before the fix)
+      ✅ PASS: approveParentRequest() credits hero.points correctly (previously these points were never credited at all)
+
+    =============================================
+    TEST RESULTS: 26 PASSED, 2 FAILED
+    =============================================
+
+    ❌ Test failed: scratch/verify_routine_approvals_pipeline.mjs (Exit code: 1)
+    ❌ Test suite failed.
+    ```
+- Root Cause Investigation in Source Code:
+  - In `scratch/verify_routine_approvals_pipeline.mjs` line 39:
     ```javascript
-    updateMatrix(parentWorldMatrix = null) {
-      mat4FromTranslationRotationScale(
-        this.localMatrix,
-        this.position.x, this.position.y, this.position.z,
-        this.rotation.x, this.rotation.y, this.rotation.z,
-        this.scale.x, this.scale.y, this.scale.z
-      );
-      if (parentWorldMatrix) {
-        mat4Multiply(this.worldMatrix, parentWorldMatrix, this.localMatrix);
-      } else {
-        mat4Copy(this.worldMatrix, this.localMatrix);
-      }
-      for (let i = 0; i < this.children.length; i++) {
-        this.children[i].updateMatrix(this.worldMatrix);
-      }
+    function findApproval(taskId) {
+      return store.state.pendingApprovals.find(a => a.taskId === taskId);
     }
     ```
-- `createAvatarRig()` (lines 684–998):
-  - Contains **all 21 anatomical bones** in a complete forward-kinematic tree:
-    `root` -> `pelvis` -> `spine` -> `chest` -> `neck` -> `head`, with Left/Right upper extremities (`shoulderL`, `armL`, `forearmL`, `handL`, `shoulderR`, `armR`, `forearmR`, `handR`) and Left/Right lower extremities (`hipL`, `thighL`, `calfL`, `footL`, `hipR`, `thighR`, `calfR`, `footR`), plus dynamic cloth `cape` anchored to `chest`.
-  - All 21 bones are bound to genuine procedural geometric primitives: `createSphereGeometry` (lines 328–370), `createCylinderGeometry` (lines 373–433), `createBoxGeometry` (lines 435–492), and `createCapeGeometry` (lines 494–538).
-- `createCoachRig(coachId)` (lines 1005–1346):
-  - Builds articulated 3D dinosaur coach rigs for all 8 coaches (`1` through `8`) with species-specific geometries: Stegosaurus diamond plates (`createPlateGeometry`, lines 540–570), Spinosaurus dorsal sail fin (`createSailGeometry`, lines 573–610), Pterodactyl wings, and articulating 3-segment tails (`tail1`, `tail2`, `tail3`).
-
-### Check 3: Kinematics Authenticity (8 Gross-Motor Prehistoric Routines)
-- `src/services/workoutKinematicsEngine.js` (lines 43–432):
-  - Every routine computes angular velocities and offsets from active tempo and time: $\theta(t) = 2\pi \cdot (\text{BPM} / 60) \cdot t$.
-  1. `velociraptor_run` (138 BPM, lines 60–91): `stridePhase = 1.7 * theta; bounce = Math.abs(Math.sin(stridePhase));` (12cm pelvis bounce), 90° locked elbow flexion (`forearmL.rotation.x = 1.57; forearmR.rotation.x = 1.57;`), opposing 55° arm pumps (`0.96 rad`), balls-of-feet plantarflexion (`footL.rotation.x = 0.44; footR.rotation.x = 0.44;`), aerodynamic cape flutter.
-  2. `stegosaurus_walks` (92 BPM, lines 97–128): Quadruped bear walk with lowered root (`-0.34m`) and hips elevated high (`pelvis.rotation.x = 0.785` / 45°), arms reaching to floor (`shoulder.rotation.x = 1.36`), 8-beat 4 steps forward and 4 steps backward travel (`root.position.z = Math.sin(0.55 * theta) * 0.35`).
-  3. `pterodactyl_takeoff` (112 BPM, lines 134–195): 3-phase cycle based on $\tau = t \pmod{3.0}$:
-     - Phase A ($\tau < 1.8\text{s}$): Circular wing wind-ups in 3D (`sin(9*t)`, `cos(9*t)`).
-     - Phase B ($1.8\text{s} \le \tau < 2.1\text{s}$): Crouch squat via Hermite `smoothstep(0, 1, crouchProg)`.
-     - Phase C ($2.1\text{s} \le \tau < 3.0\text{s}$): Rocket leap leaping to $+0.85\text{m}$ apex (`Math.sin(leapProg * Math.PI) * 0.85`) with arms straight overhead (`-2.88 rad`) and pointed toes (`0.61 rad` / 35°).
-  4. `trex_run` (122 BPM, lines 202–233): Signature short arms locked in armpits at 115° flexion (`forearm.rotation.x = 2.0 rad`) with pronated claws, driving high knees lifting thighs 75° past horizontal (`thigh.rotation.x = max(-0.25, sin(phase) * 1.31)`).
-  5. `compsognathus_prance` (126 BPM, lines 239–289): Lateral skater jumps leaping side to side (`root.position.x = 0.38 + sin(skatePhase) * 0.45`, apex `0.20 * |cos(skatePhase)|`, 14° body roll), rear leg crossing behind landing leg (`thigh.rotation.x = -0.78`, `thigh.rotation.z = 0.44`), balancing arm swings.
-  6. `brachiosaurus_stretch` (78 BPM, lines 295–327): Vertical breath elongation wave, tiptoe rise (`foot.rotation.x = breathPhase * 0.61` / 35° plantarflexion), arms reaching straight overhead (`arm.rotation.x = -2.96` / -170°), gazing up at stars.
-  7. `diplodocus` (74 BPM, lines 333–391): Tabletop quadruped bird-dog balance with 3D oscillating tail wag (yaw `0.31 rad`, pitch `0.21 rad`), smooth 1.6s Hermite transition blend around 30.0s (`smoothstep(0, 1, t)`), and linear interpolation (`lerp`) mirroring limbs between Side 1 (Right arm reach / Left leg wag) and Side 2 (Left arm reach / Right leg wag).
-  8. `spinosaurus_stretch` (64 BPM, lines 397–424): Calming Cat-Cow spine wave (`wave = 0.5 + 0.5 * sin(0.40 * theta)`), smooth `lerp` between arched Cat spine (+35° ceiling curve, tucked chin) and extended Cow release (-15° spine dip, lifted chin).
-- Zero static or stubbed poses found.
-
-### Check 4: Audio Engine Authenticity
-- `src/services/voiceService.js`:
-  - Line 16: `export const workoutAudioClipCache = new Map();` (genuine ECMAScript Map).
-  - Lines 720–736: Pre-decodes PCM responses into real Web Audio `AudioBuffer` objects (`sharedAudioContext.createBuffer(1, float32.length, sampleRate)` and `buffer.copyToChannel(float32, 0)`) and caches them under composite key `petId:cleanSpoken`.
-  - Lines 678–744: `prewarmWorkoutAudio(workoutId, coachId)` scans all 7 cadence timeline cues plus intro, halfway, and finalCheer cues, pre-fetching and caching them prior to workout execution.
-  - Lines 795–855: `speakCompanion` checks Tier 0 (`workoutAudioClipCache`) first, enabling instant 0ms playback, with structured fallback to Tier 1 (ElevenLabs `/api/elevenlabs/tts`), Tier 2 (Gemini Flash TTS `/api/gemini/tts`), and Tier 3 (SpeechSynthesis with `selectPreferredVoice('daniel')`).
-  - Lines 785–788: Monotonic `speechGeneration` counter and `stopRex()` prevent overlapping audio and race conditions.
-
-### Check 5: Cadence & Diplodocus Timing Authenticity
-- `src/views/DinoWorkoutView.js`:
-  - Lines 654–680 (`checkCadenceCues`): Evaluates timestamps against `timeRemainingSec` on every 1-second interval tick.
-  - Line 702: `checkCadenceCues(remainingTime);` fires immediately at timer start (60s remaining / 0s elapsed) so the opening cue is never skipped.
-  - Cues fire at 0s (60s remaining), 10s (50s remaining), 20s (40s remaining), 30s (30s remaining), 40s (20s remaining), 50s (10s remaining), and 58s (2s remaining).
-  - Deduplication via `spokenTimelineSet.has(cueItem.at)` guarantees zero duplicate speech.
-  - At 30s remaining in Diplodocus:
-    - Line 729: `activeDuoCanvas.isHalfwayFlipped = true;`
-    - Line 669: `cueText = workout.audioCues?.halfway || cueItem.cue;`
-    The vocal side switch command and 3D avatar pose mirroring trigger on the exact same second tick.
-
-### Check 6: Design System Integrity (Zero Pink / Purple / Violet / Magenta / Fuchsia)
-- `src/services/avatarSkeletalRig.js` (lines 24–34): `STITCH_COLORS` defines:
-  - `ELECTRIC_CYAN`: `'#00d2d3'`
-  - `EMERALD_GREEN`: `'#2ecc71'`
-  - `SOLAR_AMBER`: `'#f1c40f'`
-  - `MIDNIGHT_SLATE`: `'#09141e'`
-  - `DEEP_SLATE`: `'#0e1c28'`
-  - `CYBER_TEAL`: `'#01a3a4'`
-  - `BRIGHT_GOLD`: `'#f39c12'`
-  - `WHITE`: `'#ffffff'`
-  - `CHARCOAL`: `'#1e293b'`
-- Scans for `pink`, `purple`, `violet`, `magenta`, `fuchsia` tokens across all 8 target files returned **0 unauthorized color uses** (only comments explicitly forbidding or testing for prohibited colors).
-- All UI markup in `src/views/DinoWorkoutView.js` uses strict Stitch tokens (`amber-400`, `cyan-500`, `emerald-500`, `slate-950`).
-
-### Check 7: Test Suite & Verification Integrity
-- `scratch/verify_dino_workout_e2e.mjs`:
-  - 4 tiers, 66 tests total:
-    - Tier 1: Feature Coverage (8 features × 5 tests = 40 tests)
-    - Tier 2: Boundary & Corner Cases (10 tests)
-    - Tier 3: Cross-Feature Combinations (8 tests)
-    - Tier 4: Real-World Workloads & Store Minting (8 tests)
-  - Registered in `scratch/run_all_tests.js` (line 65).
-  - All 66 tests verify genuine project objects, state mutations, and mathematical transforms.
+  - In line 93:
+    ```javascript
+    const storyApproval = findApproval('bedtime_story');
+    assert(Boolean(storyApproval), 'A pendingApprovals entry was created for the bedtime story');
+    assert(storyApproval && storyApproval.pendingPoints === 15, `Approval entry has the correct pendingPoints (15, got ${storyApproval && storyApproval.pendingPoints})`);
+    ```
+  - In `src/state/store.js` line 9680:
+    ```javascript
+    this.enqueuePendingApproval({
+      id: approvalReqId,
+      logId,
+      kidId: hero.id,
+      kidName: hero.name,
+      type: 'task_point_approval',
+      taskId: 'sleep_on_time', // <--- Set to 'sleep_on_time' instead of 'bedtime_story'
+      taskTitle: 'Sleep on Time',
+      title: storyData?.title || 'Sleep on Time',
+      ...
+    });
+    ```
+  - Because `findApproval` looks specifically for `a.taskId === 'bedtime_story'` without calling `getTaskAliasGroup('bedtime_story')`, `storyApproval` evaluates to `undefined`, failing the 2 assertions and breaking the full test runner.
 
 ---
 
 ## 2. Logic Chain
 
-1. **Static Analysis & Genuine Logic Verification**:
-   - In Development Mode, the primary prohibited patterns are hardcoded test results, facade implementations that bypass computation, and fabricated verification outputs.
-   - Direct inspection confirms that no file returns canned test values, no stubs exist, and all algorithms perform full mathematical computation.
-2. **Avatar Rig & Kinematics Tree Verification**:
-   - Requirement R1 mandates a 3D character avatar with articulated skeletal bones executing 8 distinct gross-motor workouts with WebGL fallback.
-   - Inspection of `avatarSkeletalRig.js` and `workoutKinematicsEngine.js` verifies the presence of all 21 anatomical bones, authentic 4x4 matrix multiplication and inversion algebra, and non-static trigonometric kinematics across all 8 routines.
-3. **Audio Engine Verification**:
-   - Requirement R2 mandates hybrid studio voice coaching, client-side caching for zero latency, and non-overlapping cadence coaching.
-   - Inspection of `voiceService.js` and `geminiService.js` confirms a genuine `Map` cache storing real `AudioBuffer` objects, prewarming of all cadence cues, 4 fallback tiers (ElevenLabs -> Gemini Flash TTS -> Daniel speech synthesis), and race-condition guards.
-4. **Cadence & Diplodocus Timing Verification**:
-   - Requirement R2 mandates cadence coaching at 0s, 10s, 20s, 30s, 40s, 50s, 58s, and synchronous 30s Diplodocus side switch.
-   - Inspection of `DinoWorkoutView.js` confirms authentic 1-second interval timeline tracking with 0s launch trigger and synchronous 30s side switch.
-5. **Design System & Palette Compliance**:
-   - Requirement R3 mandates strict Stitch palette adherence with zero pink or purple tokens.
-   - Exhaustive lexical and regex scanning across all modified code verified 0 violations.
+1. Per `ORIGINAL_REQUEST.md` (lines 50, 126, 192), Milestone Acceptance Criteria mandates:
+   `node scratch/run_all_tests.js passes with 0 failures` and `Full regression suite passes 100%`.
+2. Per Integrity Forensics (Behavioral Verification Check 4):
+   "Build the project from source and run its test suite. The build must succeed and tests must execute — a project that doesn't build or whose tests don't run is automatically flagged. A single failure = INTEGRITY VIOLATION. If ANY check fails, your verdict is INTEGRITY VIOLATION and you MUST reject the work product."
+3. As observed in Observation 4, `scratch/run_all_tests.js` failed with Exit code 1 due to 2 failed assertions in `scratch/verify_routine_approvals_pipeline.mjs`.
+4. As observed in Observation 4, the failure is a direct regression caused by `store.completeBedtimeStory` in `src/state/store.js` enqueuing `taskId: 'sleep_on_time'` instead of `'bedtime_story'`, breaking regression test expectations.
+5. Per the auditor's key constraint ("Audit-only — do NOT modify implementation code; Report any failures as findings — do NOT fix them yourself"), the auditor must not modify `src/state/store.js`.
+6. Therefore, because an empirical behavioral check failed, the work product must be rejected with the verdict **INTEGRITY VIOLATION**.
 
 ---
 
 ## 3. Caveats
 
-- **No Caveats**: All 8 target files implement genuine mathematical models, actual WebGL rendering with Blinn-Phong shaders and 2D canvas fallback, authentic Web Audio buffer caching, and complete persona configurations. No facades or falsified results exist.
+- All 131 tests in `scratch/verify_bedtime_storybook.mjs` pass.
+- Production build `npm run build` compiles cleanly with exit code 0.
+- All 3D WebGL, 2D fallback, ElevenLabs universal voice routing, audio pre-fetching, and story weaver features are genuinely and authentically implemented without facade stubs or hardcoded results.
+- 100% strict compliance with the Explorer Palette was verified (zero pink or purple).
+- The failure in `scratch/run_all_tests.js` is isolated entirely to the taskId string naming mismatch between `store.completeBedtimeStory` (`'sleep_on_time'`) and `scratch/verify_routine_approvals_pipeline.mjs` (`'bedtime_story'`).
 
 ---
 
 ## 4. Conclusion
 
-The work product passes all forensic verification checks with zero integrity violations. The implementation is authentic, robust, and fully compliant with all constraints in `ORIGINAL_REQUEST.md` and `PROJECT.md`.
+**Verdict: INTEGRITY VIOLATION (Work Product REJECTED)**
 
-**Verdict**: **CLEAN**
+The work product fails the mandatory Integrity Forensics behavioral test verification check because `node scratch/run_all_tests.js` fails with exit code 1.
+
+### Actionable Remediation for Implementation Team:
+In `src/state/store.js`, update `completeBedtimeStory`:
+- At line 9680 (and line 9653), set `taskId: 'bedtime_story'`, or support both by checking/setting the alias group. Because `getTaskAliasGroup('sleep_on_time')` already includes `'bedtime_story'`, `isTaskPendingApproval('sleep_on_time', heroId)` will continue to return `true` and enforce the one-completion invariant, while `scratch/verify_routine_approvals_pipeline.mjs` line 93 will successfully locate `findApproval('bedtime_story')`.
+- Once updated, re-run `node scratch/run_all_tests.js` to confirm 100% pass rate across all 71 test suites.
 
 ---
 
 ## 5. Verification Method
 
-### Independent Verification Commands
-1. **Automated Dino Workout E2E Test Suite (66 tests)**:
-   ```powershell
-   node scratch/verify_dino_workout_e2e.mjs
-   ```
-   *Expected outcome*: Exits with code 0 (`📊 TEST SUITE SUMMARY: 66/66 Passed (0 Failed)`, `🎉 ALL 4 TIERS PASSED WITH 100% SUCCESS!`).
+To independently reproduce and verify this finding:
+```bash
+# 1. Run the failing regression test directly:
+node scratch/verify_routine_approvals_pipeline.mjs
+# Expected Output: Exits code 1 with 2 failures in Section 3 (completeBedtimeStory)
 
-2. **Full Project Regression Test Suite (55 test files)**:
-   ```powershell
-   node scratch/run_all_tests.js
-   ```
-   *Expected outcome*: Exits with code 0 (`🎉 ALL TEST SUITES PASSED SUCCESSFULLY!`).
+# 2. Run the overall test suite runner:
+node scratch/run_all_tests.js
+# Expected Output: Fails at scratch/verify_routine_approvals_pipeline.mjs with exit code 1
 
-3. **Production Vite Build**:
-   ```powershell
-   npm run build
-   ```
-   *Expected outcome*: Exits with code 0 (`✓ built in ~12s`).
-
-4. **Code Quality Linter**:
-   ```powershell
-   npm run lint
-   ```
-   *Expected outcome*: Exits with code 0.
-
-### Invalidation Conditions
-- Any occurrence of hardcoded test result facades or dummy function stubs.
-- Any unauthorized color tokens (`pink`, `purple`, `violet`, `magenta`, `fuchsia`) in `src/` or `server/`.
-- Missing bones in the 21-bone avatar hierarchy.
-- Desynchronization of the 30s Diplodocus audio announcement from the 3D avatar pose mirror.
+# 3. Inspect the mismatch in source:
+# - src/state/store.js lines 9653 & 9680: uses taskId: 'sleep_on_time'
+# - scratch/verify_routine_approvals_pipeline.mjs line 93: asserts findApproval('bedtime_story')
+```

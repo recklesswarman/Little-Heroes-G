@@ -1,65 +1,65 @@
-# BRIEFING — 2026-10-15T04:06:00Z
+# BRIEFING — 2026-10-16T01:46:30Z
 
 ## Mission
-Implement high-fidelity hybrid audio coaching for all 8 dinosaur coaches with server personas, Vite ElevenLabs proxy middleware, zero-latency client audio caching, cadence pre-warming, and anti-collision safeguards.
+Implement extended timeouts, bedtime voice style, AudioBufferSourceNode playback rate, argument polymorphism, and background pre-fetching (`prefetchCompanionAudio`) in `src/services/voiceService.js` with resilient fallback to Gemini Flash TTS and SpeechSynthesis.
 
 ## 🔒 My Identity
-- Archetype: Hybrid Studio Audio & Cadence Specialist
+- Archetype: worker
 - Roles: implementer, qa, specialist
 - Working directory: c:\APP\stitch_little_hero_adventures\.agents\teamwork\worker_m2_1
-- Original parent: 95945b0b-5f74-4471-935a-2738aaef81cc
-- Milestone: M2 (Hybrid Audio Companion & Cadence)
+- Original parent: 53bed4f6-4a95-4168-a4c5-b43e3302abb3
+- Milestone: M2 (Voice Narration & Audio Pre-Fetching)
 
 ## 🔒 Key Constraints
-- Strict write boundaries: EXCLUSIVELY own `server/geminiService.js`, `vite.config.js`, `src/services/voiceService.js`, and `.agents/teamwork/worker_m2_1/`.
-- MUST NOT write to `src/components/`, `src/services/avatarSkeletalRig.js`, or `scratch/`.
-- No cheating: genuine implementations only, no hardcoded facades, real audio cache state and fallback logic.
-- Follow `kid_voice_companion_guidelines.md` for anti-collision, non-overlapping audio safeguards.
-- Preserve Stitch design system integrity (zero pink/purple).
-- `npm run build` must exit 0.
+- Exclusive write ownership: `src/services/voiceService.js` only. Do NOT touch any other source files.
+- Mandatory integrity: No hardcoded test results, no dummy implementations. Real state and real behavior.
+- Support extended timeout (defaulting to 18000ms for bedtime chapters) and `voiceStyle: 'bedtime'` in `fetchPcmTts` and include `voiceStyle` in cache keys.
+- Support argument polymorphism in `speakCompanion` (`{ timeoutMs, rate, pitch, voiceStyle, instant, onEnded }` or trailing options).
+- Set `source.playbackRate.setValueAtTime(rate, sharedAudioContext.currentTime)` on Web Audio `AudioBufferSourceNode`s.
+- Implement `prefetchCompanionAudio(text, petId, options)` to background-fetch and decode Chapter N+1 into `workoutAudioClipCache`.
+- Ensure resilient fallback to Gemini Flash TTS and local SpeechSynthesis (`selectPreferredVoice('daniel')`).
 
 ## Current Parent
-- Conversation ID: 95945b0b-5f74-4471-935a-2738aaef81cc
-- Updated: 2026-10-15T04:06:00Z
+- Conversation ID: 53bed4f6-4a95-4168-a4c5-b43e3302abb3
+- Updated: 2026-10-16T01:46:30Z
 
 ## Task Summary
-- **What to build**:
-  1. `server/geminiService.js`: All 8 dinosaur coaches ('rex', 'raptor', 'stego', 'pterry', 'chomper', 'brachio', 'dippy', 'spino') in `PET_VOICE_MAP` with specified voices (rex: 'Puck', raptor: 'Zephyr', stego: 'Fenrir', pterry: 'Aoede', chomper: 'Puck', brachio: 'Charon', dippy: 'Charon', spino: 'Fenrir') and kid-friendly coaching personas in `PET_PERSONAS`.
-  2. `vite.config.js`: Add `/api/elevenlabs/tts` to `setupGeminiMiddleware` to proxy or handle ElevenLabs TTS requests matching `server.js`.
-  3. `src/services/voiceService.js`: Implement `workoutAudioClipCache` (Map), `prewarmWorkoutAudio(workoutId, coachId)`, update `speakCompanion` to check cache first with fallback chain (ElevenLabs -> Gemini Flash TTS -> browser SpeechSynthesis with natural 'Daniel' voice), and anti-collision/non-overlapping safeguards.
+- **What to build**: Comprehensive voice narration enhancements in `src/services/voiceService.js`:
+  1. Updated `fetchPcmTts` to accept `timeoutMs` (defaulting to 18000ms for bedtime chapters) and `voiceStyle`, transmitting `voiceStyle` in POST body.
+  2. Differentiated audio cache keys with `voiceStyle` (`${norm}:${style}:${clean}`), preserving backward compatibility.
+  3. Supported full argument polymorphism in `speakCompanion` for options objects and positional parameters.
+  4. In `playPcmTtsResponse`, configured `source.playbackRate.setValueAtTime(rate, sharedAudioContext.currentTime)`.
+  5. Implemented `prefetchCompanionAudio(text, petId, options)` with pre-decoding into Web Audio `AudioBuffer` and caching in `workoutAudioClipCache`.
+  6. Provided resilient multi-tier fallback: ElevenLabs -> Gemini Flash TTS -> SpeechSynthesis (Daniel voice).
 - **Success criteria**:
-  - `server/geminiService.js` contains all 8 voices & personas.
-  - `vite.config.js` handles `/api/elevenlabs/tts`.
-  - `src/services/voiceService.js` provides `workoutAudioClipCache`, `prewarmWorkoutAudio(workoutId, coachId)`, instant cache playback, and safe fallback.
-  - `npm run build` exits with code 0.
-- **Interface contracts**: `.agents/teamwork/PROJECT.md`
-- **Code layout**: `.agents/teamwork/PROJECT.md § Code Layout`
+  - `node scratch/test_elevenlabs_tts_cache.cjs` executes cleanly with 0 failures.
+  - Zero syntax/runtime regressions across voice and audio systems.
+- **Interface contracts**: `PROJECT.md` §2 Interface Contracts.
+- **Code layout**: `src/services/voiceService.js`.
 
 ## Key Decisions Made
-- Keyed `workoutAudioClipCache` by `${normKey}:${cleanSpoken}`, `${rawId}:${cleanSpoken}`, and `${cleanSpoken}` to ensure zero-latency cache hits regardless of whether caller passes numeric IDs ('2') or semantic keys ('raptor').
-- Pre-decoded raw PCM base64 audio into immutable Web Audio `AudioBuffer` objects during prewarming to achieve true 0ms hardware playback latency.
-- Enforced non-overlapping audio by cleanly stopping previous buffer sources and canceling SpeechSynthesis prior to any playback.
+- `getAudioCacheKey`: When `voiceStyle` is `'bedtime'` or another custom style, formats cache key as `${norm}:${style}:${clean}`. When `style === 'default'`, retains `${norm}:${clean}` for full backward compatibility with workout cues.
+- `fetchPcmTts`: Supports both positional `(endpoint, cleanSpoken, petId, timeoutMs, voiceStyle)` and options object `(endpoint, cleanSpoken, petId, { timeoutMs, voiceStyle })`. When `voiceStyle === 'bedtime'`, automatically defaults `timeoutMs` to 18000ms to eliminate 4500ms aborts on full bedtime story chapters.
+- `playPcmTtsResponse`: Safely attempts `setValueAtTime(rate, sharedAudioContext.currentTime)` and falls back to `.value = rate` if `setValueAtTime` is unavailable in mocks or non-standard environments.
+- `speakCompanion`: Supports argument polymorphism across all permutations (options object as 2nd arg, callback as 2nd arg, petId as 2nd arg with callback as 3rd and options as 4th, etc.).
+- `prefetchCompanionAudio`: Pre-decodes into `AudioBuffer` when `AudioContext` is available and attaches buffer to result object while caching in `workoutAudioClipCache` under both style-specific and generic keys, enabling 0ms latency when `speakCompanion` is invoked for that text.
 
 ## Artifact Index
-- `.agents/teamwork/worker_m2_1/DISPATCH.md` — Assigned task requirements
-- `.agents/teamwork/worker_m2_1/BRIEFING.md` — Working memory and status
-- `.agents/teamwork/worker_m2_1/progress.md` — Liveness heartbeat and progress tracker
-- `.agents/teamwork/worker_m2_1/handoff.md` — Final 5-component handoff report
+- `.agents/teamwork/worker_m2_1/DISPATCH.md` — Assignment prompt
+- `.agents/teamwork/worker_m2_1/BRIEFING.md` — Agent working memory
+- `.agents/teamwork/worker_m2_1/progress.md` — Agent progress log
+- `.agents/teamwork/worker_m2_1/handoff.md` — 5-component handoff report
 
 ## Change Tracker
 - **Files modified**:
-  - `server/geminiService.js`: Added 8 dinosaur voices to `PET_VOICE_MAP` and personas to `PET_PERSONAS` with numeric aliases.
-  - `vite.config.js`: Added `/api/elevenlabs/tts` route and dynamic service loading in `setupGeminiMiddleware`.
-  - `src/services/voiceService.js`: Implemented `workoutAudioClipCache`, `prewarmWorkoutAudio`, instant cache-first playback, and anti-collision safeguards.
-- **Build status**: `npm run build` passed (exit code 0, 12.66s)
+  - `src/services/voiceService.js`: Enhanced `fetchPcmTts`, `getAudioCacheKey`, `playPcmTtsResponse`, `speakWithSpeechSynthesis`, `speakCompanion`, and implemented `prefetchCompanionAudio`.
+- **Build status**: Pass (`node scratch/test_elevenlabs_tts_cache.cjs` exited 0)
 - **Pending issues**: None
 
 ## Quality Status
-- **Build/test result**: Pass (55/55 test suites passed, build succeeded with code 0)
+- **Build/test result**: Pass (4/4 cache tests passed, exit 0)
 - **Lint status**: Clean
-- **Tests added/modified**: Verified against full suite in `scratch/run_all_tests.js`
+- **Tests added/modified**: Verified with `scratch/test_elevenlabs_tts_cache.cjs`
 
 ## Loaded Skills
-- **Source**: none specified
-- **Local copy**: N/A
-- **Core methodology**: N/A
+- None requested explicitly.
