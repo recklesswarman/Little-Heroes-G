@@ -534,7 +534,7 @@ class BedtimeStoryService {
 
         if (agyChapter && agyChapter.text) {
           const fallbackSvg = generateFallbackSvg(realm.id, actNumber, previousChoice || (agyChapter.suggestion_chips && agyChapter.suggestion_chips[0]) || '');
-          const proceduralForDescriptor = generateProceduralBedtimeStory(realm.id, moral.id, heroName, petName, customWish, actNumber - 1, session.userChoices || []);
+          const proceduralForDescriptor = generateProceduralBedtimeStory(realm.id, moral.id, heroName, petName, customWish, actNumber - 1, session.userChoices || [], session.childContext?.antiRepetition || {});
           generatedAct = {
             actNumber,
             chapterNumber: actNumber,
@@ -572,7 +572,7 @@ class BedtimeStoryService {
     if (!generatedAct && firebaseAI.isAiReady && firebaseAI.model) {
       try {
         this.isGenerating = true;
-        const prompt = `You are ${petName}, a sweet, gentle cartoon companion narrating a children's (ages 3-7) bedtime story.
+        const prompt = `You are a sweet, gentle cartoon companion narrating a children's (ages 3-7) bedtime story.
 The setting is "${realm.name}".
 The child hero is "${heroName}".
 Today's bedtime moral theme: "${moral.name}" (${moral.tagline}).
@@ -580,13 +580,16 @@ ${customWish ? `Parent/Child Special Bedtime Wish: "${customWish}". Weave this g
 Current chapter: Chapter ${actNumber} of 4.
 ${previousChoice ? `The child chose: "${previousChoice}".` : ''}
 
+COMPANION NAMING RULE:
+Never use the companion pet's actual name. Refer to it only as "the Faithful Companion" the first time it appears in this chapter, then with pronouns ("it"/"its") afterward. If this chapter doesn't need the companion to act, it's fine to leave it out entirely rather than naming it in every chapter.
+
 ANTI-REPETITION MANDATE:
-Do NOT repeat or copy any of these past story titles or plots: ${pastTitles.join(', ') || 'None yet'}. Make this story unique and refreshing!
+Do NOT repeat or copy any of these past story titles or plots: ${pastTitles.join(', ') || 'None yet'}. Do NOT reuse these plot archetypes: ${recentArchetypes.join(', ') || 'None yet'}. Make this story unique and refreshing, varying your phrasing even when the realm and moral repeat from an earlier story.
 
 CHAPTER GUIDELINES:
 - Chapter 1: The Evening Departure. Introduce twilight, packing bedtime hero gear or pajamas, and the soothing calm of dusk. (Target: ~110-130 words).
-- Chapter 2: The Curious Discovery. The active pet (${petName}) uses their gentle senses to discover a sleepy creature or gentle bedtime mystery. (Target: ~120-140 words).
-- Chapter 3: Overcoming the Challenge with the Daily Moral. The hurdle is resolved through ${moral.name} (${moral.moralGuidance}). ${petName} helps by ${moral.petAction}. (Target: ~130-150 words).
+- Chapter 2: The Curious Discovery. The Faithful Companion uses its gentle senses to discover a sleepy creature or gentle bedtime mystery. (Target: ~120-140 words).
+- Chapter 3: Overcoming the Challenge with the Daily Moral. The hurdle is resolved through ${moral.name} (${moral.moralGuidance}). The Faithful Companion helps by ${moral.petAction}. (Target: ~130-150 words).
 - Chapter 4: Peaceful Cozy Slumber. Tucking in, deep calming breaths, yawns, and soft goodnight whispers as ambient stars shine. (Target: ~110-130 words).
 
 STRICT PALETTE RULE: NEVER use pink or purple words or hex colors in SVG. Only slate (#09141e), emerald green (#2ecc71), starlight cyan (#00d2d3), solar orange (#f39c12), and warm amber (#ffb961).
@@ -604,7 +607,7 @@ Return ONLY raw JSON with these exact keys (no markdown code blocks, just raw JS
         const parsed = JSON.parse(rawText);
 
         const fallbackSvg = generateFallbackSvg(realm.id, actNumber, previousChoice || (parsed.suggestionChips && parsed.suggestionChips[0]) || '');
-        const proceduralForDescriptor = generateProceduralBedtimeStory(realm.id, moral.id, heroName, petName, customWish, actNumber - 1, session.userChoices || []);
+        const proceduralForDescriptor = generateProceduralBedtimeStory(realm.id, moral.id, heroName, petName, customWish, actNumber - 1, session.userChoices || [], session.childContext?.antiRepetition || {});
 
         generatedAct = {
           actNumber,
@@ -640,7 +643,7 @@ Return ONLY raw JSON with these exact keys (no markdown code blocks, just raw JS
 
     // 4. Resilient offline Combinatorial Dynamic Story Weaver
     if (!generatedAct) {
-      generatedAct = this.createOfflineAct(actNumber, realm, moral, heroName, petName, customWish, previousChoice);
+      generatedAct = this.createOfflineAct(actNumber, realm, moral, heroName, petName, customWish, previousChoice, session.childContext?.antiRepetition || {});
     }
 
     // Attach 3D Pixar / Claymation illustration from Cloudflare Workers AI
@@ -681,7 +684,7 @@ Return ONLY raw JSON with these exact keys (no markdown code blocks, just raw JS
     return generatedAct;
   }
 
-  createOfflineAct(actNumber, realm, moral, heroName, petName, customWish, previousChoice) {
+  createOfflineAct(actNumber, realm, moral, heroName, petName, customWish, previousChoice, antiRepetition = {}) {
     const procedural = generateProceduralBedtimeStory(
       realm.id,
       moral?.id || 'brave_dark',
@@ -689,7 +692,8 @@ Return ONLY raw JSON with these exact keys (no markdown code blocks, just raw JS
       petName,
       customWish,
       actNumber - 1,
-      this.activeSession?.userChoices || []
+      this.activeSession?.userChoices || [],
+      antiRepetition
     );
 
     const fallbackSvg = generateFallbackSvg(realm.id, actNumber, previousChoice || '');
@@ -763,7 +767,8 @@ Return ONLY raw JSON with these exact keys (no markdown code blocks, just raw JS
       context.child.name,
       context.activePet.name,
       options.customWish || '',
-      options.userChoices || []
+      options.userChoices || [],
+      context.antiRepetition || {}
     );
   }
 

@@ -9,7 +9,11 @@ account_id = "938feaeb0d1bd6758765519c032e9bb3"
 binding = "AI"
 
 [vars]
-API_KEY = "little-heroes-secret-key"
+# IMPORTANT: this value is a placeholder only. Set the real API_KEY as a
+# Cloudflare Worker secret instead (wrangler secret put API_KEY), never commit
+# it here. Any previously committed key value must be treated as leaked and
+# rotated in the Cloudflare dashboard.
+API_KEY = "CHANGE_ME_SET_VIA_WRANGLER_SECRET"
 
 [observability]
 enabled = true

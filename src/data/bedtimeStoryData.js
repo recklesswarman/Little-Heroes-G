@@ -843,7 +843,8 @@ export function generateProceduralBedtimeStory(
   activePetName = 'Rex',
   customWish = '',
   chapterIndex = 0,
-  userChoices = []
+  userChoices = [],
+  antiRepetition = {}
 ) {
   const realm = getBedtimeRealm(realmId);
   const moral = BEDTIME_MORALS.find(m => m.id === moralId) || BEDTIME_MORALS[0];
@@ -851,12 +852,22 @@ export function generateProceduralBedtimeStory(
   const pName = activePetName || 'Rex';
   const choiceText = (userChoices[chapterIndex - 1] || '').trim();
 
-  // Deterministic rotation of archetypes based on names & realm
+  // Deterministic rotation of archetypes based on names & realm, nudged by a
+  // per-story seed so that repeated requests for the same hero/pet/realm/moral
+  // combination don't keep producing byte-identical stories.
+  const seed = typeof antiRepetition.deterministicSeed === 'number' ? antiRepetition.deterministicSeed : 0;
+  const recentArchetypes = Array.isArray(antiRepetition.recentArchetypes) ? antiRepetition.recentArchetypes : [];
   const hash = String(hName + pName + realm.id + moral.id).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  const archetypeIdx = (hash + Number(chapterIndex || 0)) % PLOT_ARCHETYPES.length;
+  let archetypeIdx = ((hash + Number(chapterIndex || 0) + seed) % PLOT_ARCHETYPES.length + PLOT_ARCHETYPES.length) % PLOT_ARCHETYPES.length;
+  let archetypeGuard = 0;
+  while (recentArchetypes.includes(PLOT_ARCHETYPES[archetypeIdx]?.id) && archetypeGuard < PLOT_ARCHETYPES.length) {
+    archetypeIdx = (archetypeIdx + 1) % PLOT_ARCHETYPES.length;
+    archetypeGuard++;
+  }
   const archetype = PLOT_ARCHETYPES[archetypeIdx] || PLOT_ARCHETYPES[0];
 
-  const subBiome = realm.subBiomes[chapterIndex % realm.subBiomes.length];
+  const subBiomeOffset = realm.subBiomes.length > 0 ? ((seed % realm.subBiomes.length) + realm.subBiomes.length) % realm.subBiomes.length : 0;
+  const subBiome = realm.subBiomes[(chapterIndex + subBiomeOffset) % realm.subBiomes.length];
   const choiceProp = choiceText ? choiceText.replace(/[^\w\s]/gi, '').trim() : archetype.keyProp;
 
   // Scene descriptor weather particles mapping based on realm
@@ -874,7 +885,7 @@ export function generateProceduralBedtimeStory(
 
   if (chapterIndex === 0) {
     // Chapter 1: The Evening Departure & Arrival (~120 words)
-    const text = `The golden sun had dipped peacefully below the horizon, painting the sky in deep shades of midnight slate and starlight cyan. Tonight, ${hName} and faithful companion ${pName} stood at the edge of ${subBiome}. Their cozy bedtime adventure was just beginning. ${pName} adjusted their soft explorer collar with quiet excitement. ${pName} looked over with a warm, comforting smile: "Every great bedtime explorer knows that sweet dreams begin with preparation! What special hero gadget should we pack into our backpack tonight?" ${customWish ? `Tonight was extra special because ${hName} whispered a bedtime wish: "${customWish}". ` : ''}The cool evening air was quiet and peaceful, filled with the gentle hum of twilight.`;
+    const text = `The golden sun had dipped peacefully below the horizon, painting the sky in deep shades of midnight slate and starlight cyan. Tonight, ${hName} stood at the edge of ${subBiome}, ready for a cozy bedtime adventure. ${hName} adjusted a soft explorer badge with quiet excitement, smiling at the thought: "Every great bedtime explorer knows that sweet dreams begin with preparation! What special hero gadget should we pack into our backpack tonight?" ${customWish ? `Tonight was extra special because ${hName} whispered a bedtime wish: "${customWish}". ` : ''}The cool evening air was quiet and peaceful, filled with the gentle hum of twilight.`;
 
     const sceneDescriptor = {
       environmentBiome: subBiome,
@@ -910,8 +921,8 @@ export function generateProceduralBedtimeStory(
   }
 
   if (chapterIndex === 1) {
-    // Chapter 2: Pet Companion's Discovery & Gentle Mystery (~130 words)
-    const text = `With ${choiceText || 'their favorite hero gear'} snugly tucked into their pack, ${hName} and ${pName} ventured deeper along the glowing pathway. The stars overhead twinkled like cheerful fireflies. Suddenly, ${pName}'s ears perked up! The loyal pet padded ahead toward a patch of shimmering moon-flowers in ${subBiome}. ${pName} gave a soft, curious boof and gestured with their paws. There, nestled beneath a canopy of gentle starlight, was ${archetype.act2Discovery}. It blinked its sleepy eyes, looking just a little bit nervous in the big, quiet night. ${pName} leaned in gently, giving a warm, reassuring nuzzle to let the creature know it was completely safe with friends nearby.`;
+    // Chapter 2: Faithful Companion's Discovery & Gentle Mystery (~130 words)
+    const text = `With ${choiceText || 'their favorite hero gear'} snugly tucked into their pack, ${hName} ventured deeper along the glowing pathway. The stars overhead twinkled like cheerful fireflies. Suddenly, the Faithful Companion's ears perked up! It padded ahead toward a patch of shimmering moon-flowers in ${subBiome} with a soft, curious boof. There, nestled beneath a canopy of gentle starlight, was ${archetype.act2Discovery}. It blinked its sleepy eyes, looking just a little bit nervous in the big, quiet night. The companion leaned in gently, giving a warm, reassuring nuzzle to let the creature know it was completely safe with friends nearby.`;
 
     const sceneDescriptor = {
       environmentBiome: subBiome,
@@ -928,7 +939,7 @@ export function generateProceduralBedtimeStory(
       chapterIndex: 1,
       chapterNumber: 2,
       title: 'Chapter 2: The Curious Discovery',
-      subtitle: `${pName}'s Helpful Senses`,
+      subtitle: `A Helpful Discovery`,
       text,
       chapterText: text,
       whisperLine: `You are safe with friends nearby, little one. The night is gentle and kind.`,
@@ -948,7 +959,7 @@ export function generateProceduralBedtimeStory(
 
   if (chapterIndex === 2) {
     // Chapter 3: Overcoming the Challenge with the Daily Moral (~140 words)
-    const text = `The gentle creature looked up at ${hName} with wide, hopeful eyes. It seemed they had encountered a little bedtime hurdle: ${moral.tagline.toLowerCase()}. ${archetype.act3Challenge} ${pName} stepped forward with gentle understanding: "Remember, little explorer, ${moral.moralGuidance.toLowerCase()}" ${hName} smiled, remembering the importance of ${moral.name.toLowerCase()}. Working together with ${pName}, ${hName} demonstrated true hero character through ${archetype.act3Resolution}. ${pName} ${moral.petAction}, showing how simple and wonderful it feels to do the right thing. The creature let out a tiny, contented sigh. The whole clearing glowed with a soft, warm amber light as the challenge melted away into peace.`;
+    const text = `The gentle creature looked up at ${hName} with wide, hopeful eyes. It seemed they had encountered a little bedtime hurdle: ${moral.tagline.toLowerCase()}. ${archetype.act3Challenge} The Faithful Companion stepped forward with gentle understanding: "Remember, little explorer, ${moral.moralGuidance.toLowerCase()}" ${hName} smiled, remembering the importance of ${moral.name.toLowerCase()}. Working together, ${hName} demonstrated true hero character through ${archetype.act3Resolution}. The companion ${moral.petAction}, showing how simple and wonderful it feels to do the right thing. The creature let out a tiny, contented sigh. The whole clearing glowed with a soft, warm amber light as the challenge melted away into peace.`;
 
     const sceneDescriptor = {
       environmentBiome: subBiome,
@@ -984,7 +995,7 @@ export function generateProceduralBedtimeStory(
   }
 
   // Chapter 4 (or Legacy Index 3): Peaceful Cozy Slumber (~130 words)
-  const text = `All was quiet now across the vast expanse of ${realm.name}. The little creature was safely tucked into its cozy mossy hammock, purring softly in deep slumber. ${hName} felt a wonderful, heavy warmth spreading from their toes all the way up to their eyelids. ${pName} curled up into a soft, fluffy ball at ${hName}'s side, letting out a giant, sleepy yawn that made everyone yawn too. ${pName} softly snuggled down under the glowing bedtime lantern and whispered into the quiet twilight: "You did wonderful today, brave hero. You brushed your teeth, showed kindness, and conquered the day. Now, let the stars watch over your dreams." The ambient night chimes began to play their soothing song as sleep arrived.`;
+  const text = `All was quiet now across the vast expanse of ${realm.name}. The little creature was safely tucked into its cozy mossy hammock, purring softly in deep slumber. ${hName} felt a wonderful, heavy warmth spreading from their toes all the way up to their eyelids, curling up softly with a giant, sleepy yawn that made everyone yawn too. Snuggled down under the glowing bedtime lantern, a soft whisper filled the quiet twilight: "You did wonderful today, brave hero. You brushed your teeth, showed kindness, and conquered the day. Now, let the stars watch over your dreams." The ambient night chimes began to play their soothing song as sleep arrived.`;
 
   const sceneDescriptor = {
     environmentBiome: subBiome,
@@ -1029,28 +1040,30 @@ export function generateFullBedtimeStory(
   heroName = 'Little Hero',
   activePetName = 'Rex',
   customWish = '',
-  userChoices = []
+  userChoices = [],
+  antiRepetition = {}
 ) {
   const realm = getBedtimeRealm(realmId);
   const moral = BEDTIME_MORALS.find(m => m.id === moralId) || BEDTIME_MORALS[0];
   const hName = heroName || 'Little Hero';
   const pName = activePetName || 'Rex';
 
-  const ch1 = generateProceduralBedtimeStory(realm.id, moral.id, hName, pName, customWish, 0, userChoices);
-  const ch2 = generateProceduralBedtimeStory(realm.id, moral.id, hName, pName, customWish, 1, userChoices);
+  const ch1 = generateProceduralBedtimeStory(realm.id, moral.id, hName, pName, customWish, 0, userChoices, antiRepetition);
+  const ch2 = generateProceduralBedtimeStory(realm.id, moral.id, hName, pName, customWish, 1, userChoices, antiRepetition);
   // In the 3-chapter narrative arc, Chapter 3 is the Slumber Sanctuary conclusion
-  const ch3 = generateProceduralBedtimeStory(realm.id, moral.id, hName, pName, customWish, 3, userChoices);
+  const ch3 = generateProceduralBedtimeStory(realm.id, moral.id, hName, pName, customWish, 3, userChoices, antiRepetition);
   ch3.chapterIndex = 2;
   ch3.chapterNumber = 3;
   ch3.title = 'Chapter 3: The Slumber Sanctuary';
 
+  const seed = typeof antiRepetition.deterministicSeed === 'number' ? antiRepetition.deterministicSeed : 0;
   const hash = String(hName + pName + realm.id + moral.id).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  const archetype = PLOT_ARCHETYPES[hash % PLOT_ARCHETYPES.length];
+  const archetype = PLOT_ARCHETYPES[((hash + seed) % PLOT_ARCHETYPES.length + PLOT_ARCHETYPES.length) % PLOT_ARCHETYPES.length];
 
   return {
     success: true,
     storyId: `story_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-    title: `${hName} and ${pName}'s ${realm.name} Journey`,
+    title: `${hName}'s ${realm.name} Journey`,
     theme: moral.id,
     realm: realm.id,
     realmId: realm.id,
