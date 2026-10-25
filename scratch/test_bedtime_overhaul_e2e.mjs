@@ -686,6 +686,60 @@ runTest('tier1', 'F8', 'T1_F8_5: Chapter 4 completion triggers bedtime routine r
   assertTrue(isFinal, 'Index 3 must be detected as final chapter');
 });
 
+runTest('tier1', 'F8', 'T1_F8_6: Speech watchdog budget scales with the chapter\'s playback rate, not just word count', () => {
+  // Regression test for a bug where chapters 3/4 (played back more slowly,
+  // rate 0.82/0.76) could get cut off before narration actually finished:
+  // the watchdog's timeout budget was computed from word count alone and
+  // didn't account for the slower real-world playback duration of those
+  // chapters. It must now divide the word-count budget by the chapter's
+  // rate, so slower chapters get a proportionally larger safety margin.
+  const service = new BedtimeStoryService();
+  service.activeSession = {
+    id: 'test_session_watchdog',
+    actNumber: 4,
+    completed: false,
+    narrationMode: 'rex',
+    acts: []
+  };
+
+  const originalSetTimeout = global.setTimeout;
+  let scheduledDelays = [];
+  global.setTimeout = (fn, delay) => {
+    scheduledDelays.push(delay);
+    return 0;
+  };
+  const originalClearTimeout = global.clearTimeout;
+  global.clearTimeout = () => {};
+
+  const chapterText = Array(150).fill('word').join(' '); // 150-word chapter
+  let ch4Watchdog, ch1Watchdog;
+  try {
+    // The watchdog's setTimeout is registered synchronously as the first
+    // line of narrateAct, strictly before speakCompanion is invoked -- so
+    // resetting the capture array right before each call and reading index
+    // 0 isolates it from any setTimeout calls speakCompanion's own
+    // (unawaited, fire-and-forget) internals might also register.
+    scheduledDelays = [];
+    service.narrateAct(chapterText, 'rex', 4); // Chapter 4: rate 0.76
+    assertTrue(scheduledDelays.length >= 1, 'narrateAct must schedule a watchdog timer');
+    ch4Watchdog = scheduledDelays[0];
+
+    scheduledDelays = [];
+    service.narrateAct(chapterText, 'rex', 1); // Chapter 1: rate 0.94
+    assertTrue(scheduledDelays.length >= 1, 'narrateAct must schedule a watchdog timer');
+    ch1Watchdog = scheduledDelays[0];
+  } finally {
+    global.setTimeout = originalSetTimeout;
+    global.clearTimeout = originalClearTimeout;
+  }
+
+  const expectedCh4 = Math.max(90000, Math.ceil((150 * 750) / 0.76));
+  const expectedCh1 = Math.max(90000, Math.ceil((150 * 750) / 0.94));
+  assertEqual(ch4Watchdog, expectedCh4, `Chapter 4 watchdog must scale budget by its rate (expected ${expectedCh4}, got ${ch4Watchdog})`);
+  assertEqual(ch1Watchdog, expectedCh1, `Chapter 1 watchdog must scale budget by its rate (expected ${expectedCh1}, got ${ch1Watchdog})`);
+  assertTrue(ch4Watchdog > ch1Watchdog, 'Chapter 4 (slower rate) must get a larger watchdog budget than chapter 1 for the same word count');
+});
+
 // -----------------------------------------------------------------------------
 // FEATURE 9: Unified Canonical ElevenLabs Voice (M3, R4)
 // -----------------------------------------------------------------------------

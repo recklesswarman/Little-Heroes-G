@@ -1,4 +1,4 @@
-const CACHE_NAME = 'little-heroes-v3.6.4-bedtime-no-choices-20261025';
+const CACHE_NAME = 'little-heroes-v3.6.5-bedtime-voice-pitch-fix-20261025';
 const STATIC_ASSETS = [
   './',
   './index.html',
