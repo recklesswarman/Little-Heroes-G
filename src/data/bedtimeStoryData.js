@@ -854,37 +854,37 @@ export const BEDTIME_OPENING_BANKS = [
   // Chapter 1 Openings (Departure & Gentle Curiosity, subBiome 0) - 6 variants
   [
     (hName, pName, subBiome) => `Deep dusk settled softly over the horizon as velvet midnight slate embraced the outer boundaries of ${subBiome}.`,
-    (hName, pName, subBiome) => `With gentle paws stepping lightly on the cool evening path, ${pName} accompanied ${hName} toward the peaceful threshold of ${subBiome}.`,
+    (hName, pName, subBiome) => `With quiet footsteps on the cool evening path, ${hName} ventured toward the peaceful threshold of ${subBiome}.`,
     (hName, pName, subBiome) => `A soothing twilight hush drifted across ${subBiome}, carrying the faint, sweet scent of sleepy night-blossoms.`,
-    (hName, pName, subBiome) => `The evening breeze whispered a tranquil welcome as ${hName} and loyal companion ${pName} arrived at the quiet entryway to ${subBiome}.`,
-    (hName, pName, subBiome) => `Lantern light shimmered with a comforting amber glow around ${hName} and steadfast friend ${pName} at the beginning of their journey into ${subBiome}.`,
-    (hName, pName, subBiome) => `The vast twilight sky glowed in calm electric cyan and deep indigo as ${hName} and ${pName} paused to take in the quiet beauty of ${subBiome}.`
+    (hName, pName, subBiome) => `The evening breeze whispered a tranquil welcome as ${hName} arrived at the quiet entryway to ${subBiome}.`,
+    (hName, pName, subBiome) => `Lantern light shimmered with a comforting amber glow around ${hName} at the beginning of the journey into ${subBiome}.`,
+    (hName, pName, subBiome) => `The vast twilight sky glowed in calm electric cyan and deep indigo as ${hName} paused to take in the quiet beauty of ${subBiome}.`
   ],
   // Chapter 2 Openings (Whimsical Encounter & Gentle Mystery, subBiome 1) - 6 variants
   [
     (hName, pName, subBiome) => `Moving deeper into ${subBiome}, the winding pathway glowed with faint ribbons of bioluminescent emerald and starlight cyan.`,
-    (hName, pName, subBiome) => `Perking up with soft curiosity, ${pName} padded forward across the mossy floor of ${subBiome}.`,
-    (hName, pName, subBiome) => `Beneath the tranquil starlit boughs of ${subBiome}, a delicate nighttime mystery unfolded before ${hName} and ${pName}.`,
+    (hName, pName, subBiome) => `Walking forward with soft curiosity, footsteps padded gently across the mossy floor of ${subBiome}.`,
+    (hName, pName, subBiome) => `Beneath the tranquil starlit boughs of ${subBiome}, a delicate nighttime mystery unfolded before ${hName}.`,
     (hName, pName, subBiome) => `A tiny, musical chime drifted through the peaceful air of ${subBiome}, catching ${hName}'s attention.`,
-    (hName, pName, subBiome) => `Soft twilight shadows danced gently across the glistening terrain of ${subBiome} as ${pName} paused to investigate a curious nook.`,
-    (hName, pName, subBiome) => `High overhead, tranquil constellations traced slow, dreamy circles as ${hName} and ${pName} navigated the quiet trails of ${subBiome}.`
+    (hName, pName, subBiome) => `Soft twilight shadows danced gently across the glistening terrain of ${subBiome} around a curious nook.`,
+    (hName, pName, subBiome) => `High overhead, tranquil constellations traced slow, dreamy circles as ${hName} navigated the quiet trails of ${subBiome}.`
   ],
   // Chapter 3 Openings (Calming Cooperative Resolution, subBiome 2) - 6 variants
   [
     (hName, pName, subBiome) => `In the quiet heart of ${subBiome}, a tender bedtime moment called for gentle understanding and cooperation.`,
-    (hName, pName, subBiome) => `Facing the gentle nighttime hurdle together, ${hName} and ${pName} knelt down beside the sleepy friend in ${subBiome}.`,
-    (hName, pName, subBiome) => `The soft glow of evening illuminated ${subBiome} as ${hName} listened closely to the quiet needs of their little companion.`,
-    (hName, pName, subBiome) => `With reassuring gentleness, ${pName} stepped beside ${hName} along the tranquil clearing of ${subBiome}.`,
+    (hName, pName, subBiome) => `Facing the gentle nighttime hurdle with quiet focus, ${hName} knelt down beside the sleepy friend in ${subBiome}.`,
+    (hName, pName, subBiome) => `The soft glow of evening illuminated ${subBiome} as ${hName} listened closely to the quiet sounds of the glade.`,
+    (hName, pName, subBiome) => `With reassuring gentleness, calm footsteps moved along the tranquil clearing of ${subBiome}.`,
     (hName, pName, subBiome) => `A peaceful hush settled over ${subBiome} as the gentle challenge of the evening presented itself.`,
     (hName, pName, subBiome) => `Looking into the tired eyes of the woodland traveler in ${subBiome}, ${hName} felt a wave of comforting empathy.`
   ],
   // Chapter 4 Openings (Curling up in Cozy Starlight Nest, subBiome 3) - 6 variants
   [
-    (hName, pName, subBiome) => `Guided by the softest glow of twilight, ${hName} and faithful ${pName} reached the secluded sanctuary of ${subBiome}.`,
-    (hName, pName, subBiome) => `In the quietest hollow of ${subBiome}, a plush nest of woven moss and velvet cloud blankets welcomed the weary heroes.`,
+    (hName, pName, subBiome) => `Guided by the softest glow of twilight, ${hName} reached the secluded sanctuary of ${subBiome}.`,
+    (hName, pName, subBiome) => `In the quietest hollow of ${subBiome}, a plush nest of woven moss and velvet cloud blankets welcomed the weary adventurer.`,
     (hName, pName, subBiome) => `A blanket of deep tranquility draped across ${subBiome}, where every leaf and stardust crystal rested in total peace.`,
-    (hName, pName, subBiome) => `The night had softened into perfect stillness as ${hName} and ${pName} settled into their slumber sanctuary in ${subBiome}.`,
-    (hName, pName, subBiome) => `With heavy limbs and happy hearts, ${hName} and ${pName} stepped into the comforting warmth of ${subBiome}.`,
+    (hName, pName, subBiome) => `The night had softened into perfect stillness as ${hName} settled into the slumber sanctuary in ${subBiome}.`,
+    (hName, pName, subBiome) => `With heavy limbs and happy hearts, ${hName} stepped into the comforting warmth of ${subBiome}.`,
     (hName, pName, subBiome) => `The tranquil melody of nocturnal chimes echoed through ${subBiome}, signaling that the grand adventure had reached its bedtime home.`
   ]
 ];
@@ -1018,7 +1018,7 @@ export function generateProceduralBedtimeStory(
       ? `Tonight was extra comforting because ${hName}'s family had shared a tender bedtime wish: "${customWish}". `
       : `${hName} paused to reflect on today's heroic moments, from brushing teeth thoroughly to speaking kindly to family and friends. `;
 
-    const text = `${openingSentence} Their calming bedtime journey was just unfolding, guided by the soft, rhythmic hum of evening crickets and gentle night breezes. Together, they made sure their bedtime satchel was packed with care, placing ${choiceProp} securely alongside warm woolly socks and their favorite explorer journal. ${pName} adjusted their soft explorer collar with quiet satisfaction, giving a cheerful tail swish to signal that everything was in its proper place. ${pName} nudged the satchel closed and murmured reassuringly: "Every brave explorer knows that true comfort begins with a calm mind, tidy preparations, and a peaceful heart." ${wishSentence}The cool evening air brushed gently against their cheeks, carrying away the busy energy of the afternoon. Each slow, relaxed step along the emerald-bordered trail felt lighter than the last, as the world prepared for peaceful slumber. With their shoulders loosening and minds settling into quiet comfort, they walked forward into the embrace of the tranquil twilight.`;
+    const text = `${openingSentence} Their calming bedtime journey was just unfolding, guided by the soft, rhythmic hum of evening crickets and gentle night breezes. Together, they made sure their bedtime satchel was packed with care, placing ${choiceProp} securely alongside warm woolly socks and their favorite explorer journal. A faithful companion adjusted their soft explorer collar with quiet satisfaction, giving a cheerful tail swish to signal that everything was in its proper place, nudging the satchel closed with a reassuring murmur: "Every brave explorer knows that true comfort begins with a calm mind, tidy preparations, and a peaceful heart." ${wishSentence}The cool evening air brushed gently against their cheeks, carrying away the busy energy of the afternoon. Each slow, relaxed step along the emerald-bordered trail felt lighter than the last, as the world prepared for peaceful slumber. With their shoulders loosening and minds settling into quiet comfort, they walked forward into the embrace of the tranquil twilight.`;
 
     const sceneDescriptor = {
       environmentBiome: subBiome,
@@ -1055,7 +1055,7 @@ export function generateProceduralBedtimeStory(
 
   if (chIdx === 1) {
     // Chapter 2: Whimsical Encounter & Gentle Mystery (~180-220 words)
-    const text = `${openingSentence} The soothing atmosphere surrounded them with a blanket of quiet, as dew drops sparkled peacefully along the sleepy fern leaves. Suddenly, ${pName}'s ears twitched with alertness, sniffing the gentle evening breeze before stepping softly toward a sheltered alcove. There, resting quietly under a canopy of velvety night leaves, was ${archetype.act2Discovery}. The little friend blinked drowsy eyes, shivering just a tiny bit in the stillness of the unfamiliar evening. ${hName} stepped forward with slow, gentle care, holding up ${choiceProp} to cast a warm, comforting amber glow across the moss. ${pName} leaned down beside the small traveler, offering a gentle, warm nuzzle and a soft purr that washed away every trace of nervousness. "You are completely safe with us," ${pName} whispered softly, "because true friends always watch over each other in the quiet dark." The sweet creature snuggled closer against the moss, feeling the reassuring presence of two kind companions who were ready to help. A profound sense of peaceful companionship filled the glade as they prepared to solve the evening's gentle puzzle together.`;
+    const text = `${openingSentence} The soothing atmosphere surrounded the glade with a blanket of quiet, as dew drops sparkled peacefully along the sleepy fern leaves. Soft rustling guided the way forward toward a sheltered alcove. There, resting quietly under a canopy of velvety night leaves, was ${archetype.act2Discovery}. The little friend blinked drowsy eyes, shivering just a tiny bit in the stillness of the unfamiliar evening. ${hName} stepped forward with slow, gentle care, holding up ${choiceProp} to cast a warm, comforting amber glow across the moss. Offering gentle, warm reassurance that washed away every trace of nervousness, a quiet voice whispered: "You are completely safe here, because true friends always watch over each other in the quiet dark." The sweet creature snuggled closer against the moss, feeling the reassuring presence of kindness and warmth. A profound sense of peaceful friendship filled the glade as they prepared to solve the evening's gentle puzzle together.`;
 
     const sceneDescriptor = {
       environmentBiome: subBiome,
@@ -1072,7 +1072,7 @@ export function generateProceduralBedtimeStory(
       chapterIndex: 1,
       chapterNumber: 2,
       title: 'Chapter 2: The Curious Discovery',
-      subtitle: `${pName}'s Helpful Senses`,
+      subtitle: 'Helpful Senses & Quiet Wonders',
       text,
       chapterText: text,
       whisperLine,
@@ -1092,7 +1092,7 @@ export function generateProceduralBedtimeStory(
 
   if (chIdx === 2) {
     // Chapter 3: Calming Cooperative Resolution (~180-220 words)
-    const text = `${openingSentence} In this tranquil setting, it became clear that their new companion was facing a bedtime hurdle: ${moral.tagline.toLowerCase()}. ${archetype.act3Challenge} ${pName} stepped forward with gentle understanding: "Remember, brave explorer, ${moral.moralGuidance.toLowerCase()}" ${hName} nodded with a peaceful smile, practicing ${moral.name.toLowerCase()} with heartfelt care. Working together with quiet patience, ${hName} demonstrated true heroic character through ${archetype.act3Resolution}. Loyal companion ${pName} ${moral.petAction}, showing how simple and wonderfully rewarding it feels to do the right thing. The little friend let out a long, contented sigh of pure relief, nuzzling deep into the soft, warm blanket. A gentle amber glow illuminated the entire clearing, dissolving every worry into nighttime stillness. ${hName} felt every muscle soften, knowing kindness had made the world a safer, cozier place tonight. With peaceful harmony restored, the journey turned toward sweet slumber.`;
+    const text = `${openingSentence} In this tranquil setting, it became clear that their new little friend was facing a bedtime hurdle: ${moral.tagline.toLowerCase()}. ${archetype.act3Challenge} A gentle thought came to mind: "Remember, brave explorer, ${moral.moralGuidance.toLowerCase()}" ${hName} nodded with a peaceful smile, practicing ${moral.name.toLowerCase()} with heartfelt care. Working together with quiet patience, ${hName} demonstrated true heroic character through ${archetype.act3Resolution}. A gentle action of warmth and care showed how simple and wonderfully rewarding it feels to do the right thing. The little friend let out a long, contented sigh of pure relief, nuzzling deep into the soft, warm blanket. A gentle amber glow illuminated the entire clearing, dissolving every worry into nighttime stillness. ${hName} felt every muscle soften, knowing kindness had made the world a safer, cozier place tonight. With peaceful harmony restored, the journey turned toward sweet slumber.`;
 
     const sceneDescriptor = {
       environmentBiome: subBiome,
@@ -1128,7 +1128,7 @@ export function generateProceduralBedtimeStory(
   }
 
   // Chapter 4: Curling Up in Cozy Starlight Nest, Drifting off to Sleep (~180-220 words)
-  const text = `${openingSentence} The little forest creature was already nestled in its hammock, breathing peacefully with soft, rhythmic murmurs of deep content. ${hName} climbed into the cozy bed, feeling a wonderful, heavy warmth spreading from their toes all the way up to their eyelids. ${pName} curled into a soft, fluffy circle at ${hName}'s side, resting their chin on paws and letting out an enormous, sleepy yawn. That gentle yawn was so wonderfully contagious that ${hName} let out a slow, cozy yawn too, sinking deeper into the soft pillows. ${pName} whispered into the calm twilight: "You were magnificent today, brave hero; you helped others, showed courage, and brought warmth wherever you walked." Now breathe in the cool stillness for four slow, peaceful counts... hold the quiet comfort... and breathe out softly for four relaxing counts. The sky dimmed to midnight slate as glowing aurora ribbons faded into a gentle, sleepy lullaby. Close your eyes, brave champion, and drift into sweet dreams where starlight watches over you until the sun returns.`;
+  const text = `${openingSentence} The little forest creature was already nestled in its hammock, breathing peacefully with soft, rhythmic murmurs of deep content. ${hName} climbed into the cozy bed, feeling a wonderful, heavy warmth spreading from their toes all the way up to their eyelids. A faithful companion curled into a soft, fluffy circle at ${hName}'s side, resting a sleepy chin on paws and letting out an enormous, cozy yawn. That gentle yawn was so wonderfully contagious that ${hName} let out a slow, cozy yawn too, sinking deeper into the soft pillows. A warm whisper echoed into the calm twilight: "You were magnificent today, brave hero; you helped others, showed courage, and brought warmth wherever you walked." Now breathe in the cool stillness for four slow, peaceful counts... hold the quiet comfort... and breathe out softly for four relaxing counts. The sky dimmed to midnight slate as glowing aurora ribbons faded into a gentle, sleepy lullaby. Close your eyes, brave champion, and drift into sweet dreams where starlight watches over you until the sun returns.`;
 
   const sceneDescriptor = {
     environmentBiome: subBiome,
