@@ -545,8 +545,8 @@ class BedtimeStoryService {
               title: chData.title || `Chapter ${actNumber}: ${realm.name}`,
               text: chData.chapterText || chData.text,
               chapterText: chData.chapterText || chData.text,
-              promptQuestion: chData.choices?.[0] ? 'What should we do next?' : (actNumber < 4 ? 'What should we do next?' : 'Sleep tight, little hero.'),
-              prompt: chData.choices?.[0] ? 'What should we do next?' : (actNumber < 4 ? 'What should we do next?' : 'Sleep tight, little hero.'),
+              promptQuestion: chData.choices?.[0] ? '' : (actNumber < 4 ? '' : 'Sleep tight, little hero.'),
+              prompt: chData.choices?.[0] ? '' : (actNumber < 4 ? '' : 'Sleep tight, little hero.'),
               suggestionChips: Array.isArray(chData.choices) && chData.choices.length > 0
                 ? chData.choices.map(c => typeof c === 'string' ? { text: c, icon: 'stars' } : c)
                 : (actNumber === 1 ? realm.act1DefaultChips : actNumber === 2 ? realm.act2DefaultChips : realm.act3DefaultChips),
@@ -598,8 +598,8 @@ class BedtimeStoryService {
             title: agyChapter.title || `Chapter ${actNumber}: ${realm.name}`,
             text: agyChapter.text,
             chapterText: agyChapter.text,
-            promptQuestion: agyChapter.prompt_question || (actNumber < 4 ? 'What should we do next?' : 'Sleep tight, little hero.'),
-            prompt: agyChapter.prompt_question || (actNumber < 4 ? 'What should we do next?' : 'Sleep tight, little hero.'),
+            promptQuestion: agyChapter.prompt_question || (actNumber < 4 ? '' : 'Sleep tight, little hero.'),
+            prompt: agyChapter.prompt_question || (actNumber < 4 ? '' : 'Sleep tight, little hero.'),
             suggestionChips: Array.isArray(agyChapter.suggestion_chips) && agyChapter.suggestion_chips.length > 0
               ? agyChapter.suggestion_chips.map(c => typeof c === 'string' ? { text: c, icon: 'stars' } : c)
               : (actNumber === 1 ? realm.act1DefaultChips : actNumber === 2 ? realm.act2DefaultChips : realm.act3DefaultChips),
@@ -650,12 +650,14 @@ CHAPTER GUIDELINES:
 
 STRICT PALETTE RULE: NEVER use pink or purple words or hex colors in SVG. Only slate (#09141e), emerald green (#2ecc71), starlight cyan (#00d2d3), solar orange (#f39c12), and warm amber (#ffb961).
 
+CONTINUOUS NARRATION RULE:
+- This is a continuous read-aloud story. Do NOT ask the child any questions, offer choices, or say things like "What should we do next?".
+- Never repeat a sentence or signature phrase within the story or across chapters. Every sentence must be fresh.
+
 Return ONLY raw JSON with these exact keys (no markdown code blocks, just raw JSON):
 {
   "title": "Chapter ${actNumber}: Short Title (max 4 words)",
-  "text": "The rich soothing narrative text (target ~120-150 words)",
-  "promptQuestion": "${actNumber < 4 ? 'A playful bedtime question or choice for the child' : 'A gentle sleepy goodnight whisper'}",
-  "suggestionChips": [${actNumber === 1 ? '"Laser Toothbrush 🪥", "Star Map 🗺️", "Cozy Pajamas 🧸"' : actNumber === 2 ? '"A Baby Creature! 🦕", "A Glowing Star! ⭐", "A Lost Blanket! 🧶"' : actNumber === 3 ? '"Share Our Warmth! 🤝", "Take 3 Deep Breaths! 🧘", "Tidy Up Together! 🧹"' : '""'}]
+  "text": "The rich soothing narrative text (target ~120-150 words), with no questions to the child"
 }`;
 
         const result = await firebaseAI.model.generateContent(prompt);
@@ -672,14 +674,10 @@ Return ONLY raw JSON with these exact keys (no markdown code blocks, just raw JS
           title: parsed.title || `Chapter ${actNumber}: ${realm.name}`,
           text: parsed.text || `${petName} smiled happily beside ${heroName} as they gazed at the quiet, starry night.`,
           chapterText: parsed.text || `${petName} smiled happily beside ${heroName} as they gazed at the quiet, starry night.`,
-          promptQuestion: parsed.promptQuestion || (actNumber < 4 ? 'What should we do next?' : 'Sleep tight, little hero.'),
-          prompt: parsed.promptQuestion || (actNumber < 4 ? 'What should we do next?' : 'Sleep tight, little hero.'),
-          suggestionChips: Array.isArray(parsed.suggestionChips) && parsed.suggestionChips.length > 0
-            ? parsed.suggestionChips.map(c => typeof c === 'string' ? { text: c, icon: 'stars' } : c)
-            : (actNumber === 1 ? realm.act1DefaultChips : actNumber === 2 ? realm.act2DefaultChips : realm.act3DefaultChips),
-          defaultChips: Array.isArray(parsed.suggestionChips) && parsed.suggestionChips.length > 0
-            ? parsed.suggestionChips.map(c => typeof c === 'string' ? { text: c, icon: 'stars' } : c)
-            : (actNumber === 1 ? realm.act1DefaultChips : actNumber === 2 ? realm.act2DefaultChips : realm.act3DefaultChips),
+          promptQuestion: actNumber === 4 ? 'Sleep tight, little hero.' : '',
+          prompt: actNumber === 4 ? 'Sleep tight, little hero.' : '',
+          suggestionChips: [],
+          defaultChips: [],
           svgArt: fallbackSvg,
           whisperLine: proceduralForDescriptor.whisperLine,
           sleepyCue: proceduralForDescriptor.sleepyCue,
