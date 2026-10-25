@@ -53,5 +53,14 @@ env:
     secret: GEMINI_API_KEY
     availability:
       - RUNTIME
+  # Cloudflare Workers AI free image generator for Bedtime AI Storybook
+  - variable: CLOUDFLARE_IMAGE_API_URL
+    value: https://little-heroes-free-image-api.recklesswarman.workers.dev
+    availability:
+      - RUNTIME
+  - variable: CLOUDFLARE_IMAGE_API_KEY
+    value: little-heroes-secret-key
+    availability:
+      - RUNTIME
 
 

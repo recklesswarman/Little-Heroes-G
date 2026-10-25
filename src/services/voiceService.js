@@ -536,6 +536,38 @@ function speakWithSpeechSynthesis(text, petId = 'rex', onEnded = null, options =
       }
     };
 
+    // Chromium SpeechSynthesis keepalive (prevents Chrome from freezing after ~15s)
+    let keepAliveInterval = null;
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      keepAliveInterval = setInterval(() => {
+        if (!window.speechSynthesis.speaking) {
+          clearInterval(keepAliveInterval);
+          keepAliveInterval = null;
+        } else {
+          window.speechSynthesis.pause();
+          window.speechSynthesis.resume();
+        }
+      }, 10000);
+    }
+
+    const originalOnEnd = utterance.onend;
+    utterance.onend = () => {
+      if (keepAliveInterval) {
+        clearInterval(keepAliveInterval);
+        keepAliveInterval = null;
+      }
+      if (typeof originalOnEnd === 'function') originalOnEnd();
+    };
+
+    const originalOnError = utterance.onerror;
+    utterance.onerror = (e) => {
+      if (keepAliveInterval) {
+        clearInterval(keepAliveInterval);
+        keepAliveInterval = null;
+      }
+      if (typeof originalOnError === 'function') originalOnError(e);
+    };
+
     window.speechSynthesis.speak(utterance);
   } catch (err) {
     console.warn('SpeechSynthesis error:', err);
@@ -683,7 +715,20 @@ async function playPcmTtsResponse(data, cleanSpoken, petId, callback, myGenerati
  * Defaults to 18000ms for bedtime chapters (or when voiceStyle === 'bedtime')
  * to prevent 4500ms aborts on long story chapters.
  */
+export function getVoiceApiBaseUrl() {
+  if (typeof window === 'undefined') return '';
+  const hostname = (typeof window !== 'undefined' && window.location?.hostname) || '';
+  // When running on GitHub Pages (recklesswarman.github.io), proxy voice calls to live production Firebase backend
+  if (hostname.includes('github.io')) {
+    return 'https://little-heroes-quest-8842.web.app';
+  }
+  return '';
+}
+
 export async function fetchPcmTts(endpoint, cleanSpoken, petId, timeoutMsOrOptions = 4500, voiceStyle = 'default') {
+  const fullEndpoint = (endpoint.startsWith('http://') || endpoint.startsWith('https://'))
+    ? endpoint
+    : `${getVoiceApiBaseUrl()}${endpoint}`;
   let timeoutMs = 4500;
   let style = voiceStyle || 'default';
 
@@ -716,7 +761,7 @@ export async function fetchPcmTts(endpoint, cleanSpoken, petId, timeoutMsOrOptio
       bodyPayload.voiceStyle = style;
     }
 
-    const response = await fetch(endpoint, {
+    const response = await fetch(fullEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(bodyPayload),

@@ -23,6 +23,17 @@ import { createHash } from "crypto";
 import express, { Request, Response } from "express";
 
 const app = express();
+app.use((req: Request, res: Response, next) => {
+  const origin = req.headers.origin;
+  res.header("Access-Control-Allow-Origin", (typeof origin === "string" ? origin : "*"));
+  res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+  if (req.method === "OPTIONS") {
+    res.sendStatus(200);
+    return;
+  }
+  next();
+});
 app.use(express.json({ limit: "2mb" }));
 
 // --- Minimal in-memory per-IP rate limiter (same shape as server/geminiService.js) ---
@@ -480,6 +491,7 @@ Return ONLY a valid JSON object matching this schema (no markdown, no backticks,
     }
   ]
 };
+`;
 
         const response = await ai.models.generateContent({
           model: "gemini-2.5-flash",
@@ -491,7 +503,7 @@ Return ONLY a valid JSON object matching this schema (no markdown, no backticks,
         });
 
         const rawText = (response as any).text || "";
-        const cleanJson = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
+        const cleanJson = rawText.replace(/\`\`\`json/gi, "").replace(/\`\`\`/g, "").trim();
         const parsed = JSON.parse(cleanJson);
 
         if (parsed && Array.isArray(parsed.chapters) && parsed.chapters.length >= 4) {

@@ -119,10 +119,10 @@ export async function handleStoryIllustrationRequest(req, res) {
 
     const workerUrl = process.env.CLOUDFLARE_IMAGE_API_URL ||
                       process.env.CLOUDFLARE_WORKER_URL ||
-                      process.env.FREE_IMAGE_API_URL || '';
+                      process.env.FREE_IMAGE_API_URL || 'https://little-heroes-free-image-api.recklesswarman.workers.dev';
 
     const apiKey = process.env.CLOUDFLARE_IMAGE_API_KEY ||
-                   process.env.FREE_IMAGE_API_KEY || '';
+                   process.env.FREE_IMAGE_API_KEY || 'little-heroes-secret-key';
 
     if (workerUrl && apiKey) {
       try {

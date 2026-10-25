@@ -361,6 +361,9 @@ class BedtimeStoryService {
 
       // 4 chapters total
       if (currentActNumber >= 4 || this.activeSession.completed) {
+        this.activeSession.completed = true;
+        store.completeBedtimeStory(this.activeSession);
+        store.notify();
         return this.activeSession.acts[this.activeSession.acts.length - 1];
       }
 
@@ -397,6 +400,9 @@ class BedtimeStoryService {
         // Complete bedtime story quietly per guidelines
         store.completeBedtimeStory(this.activeSession);
       }
+
+      // Reactive UI refresh so Chapter 2/3/4 renders immediately on screen
+      store.notify();
 
       // Narrate act aloud
       const petId = this.activeSession.petId;
@@ -452,11 +458,13 @@ class BedtimeStoryService {
       this.startAutoAdvance(() => this.advanceStory());
     };
 
-    // 45-second audio watchdog timeout so auto-advance activates if speech stalls
+    // Dynamic speech watchdog timeout (~150s for 200 words so narration is never cut off prematurely)
+    const wordCount = (text || '').trim().split(/\s+/).length;
+    const dynamicWatchdogMs = Math.max(90000, Math.ceil(wordCount * 750));
     this.speechWatchdogTimer = setTimeout(() => {
-      console.warn('Story speech watchdog (45s) triggered, advancing auto-advance countdown');
+      console.warn(`Story speech watchdog (${Math.round(dynamicWatchdogMs / 1000)}s) triggered, advancing auto-advance countdown`);
       handleSpeechEnded();
-    }, 45000);
+    }, dynamicWatchdogMs);
 
     try {
       speakCompanion(text, petId, handleSpeechEnded, {

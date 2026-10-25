@@ -404,10 +404,10 @@ function renderSanctuaryHub(library, sanctuary, hero, pet, availableMorals) {
  */
 function renderStoryStage(session, pet, hero) {
   if (!session) return '';
-  const currentActNumber = session.actNumber;
-  const currentAct = session.acts[currentActNumber - 1] || session.acts[0] || {};
-  const totalActs = (session.acts && session.acts.length) || 4;
-  const isLastAct = currentActNumber >= totalActs;
+  const currentActNumber = session.actNumber || 1;
+  const currentAct = (session.acts && session.acts[currentActNumber - 1]) || (session.acts && session.acts[0]) || {};
+  const totalActs = 4; // Canonical 4-chapter narrative arc
+  const isLastAct = currentActNumber >= totalActs || Boolean(session.completed);
   const isParentMode = session.narrationMode === 'parent';
   const sanctuary = store.getBedtimeSanctuaryState();
   const isAutoRead = sanctuary.autoReadMode !== false;

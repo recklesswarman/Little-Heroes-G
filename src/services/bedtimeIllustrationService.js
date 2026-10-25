@@ -127,28 +127,8 @@ export class BedtimeIllustrationService {
 
         let imageUrl = '';
 
-        // 1. Try local/backend proxy route first (/api/story/illustration)
-        try {
-          const baseUrl = typeof window !== 'undefined' && window.location?.origin ? '' : '';
-          const proxyRes = await fetch(`${baseUrl}/api/story/illustration`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-            signal: AbortSignal.timeout(18000)
-          });
-
-          if (proxyRes.ok) {
-            const data = await proxyRes.json();
-            if (data && data.imageUrl) {
-              imageUrl = data.imageUrl;
-            }
-          }
-        } catch (proxyErr) {
-          // Fall through to direct Cloudflare Worker endpoint
-        }
-
-        // 2. Direct Cloudflare Worker endpoint call if proxy not reachable or in static mode
-        if (!imageUrl && this.apiUrl) {
+        // 1. Client-Direct Cloudflare Workers AI call (Primary Path across all 3 hosts: GitHub Pages, Firebase Hosting, App Hosting)
+        if (this.apiUrl) {
           try {
             const cleanUrl = this.apiUrl.endsWith('/') ? this.apiUrl : `${this.apiUrl}/`;
             const cfPrompt = customPrompt || this.buildPrompt({
@@ -174,7 +154,7 @@ export class BedtimeIllustrationService {
                 negative_prompt,
                 format: 'base64'
               }),
-              signal: AbortSignal.timeout(20000)
+              signal: AbortSignal.timeout(22000)
             });
 
             if (directRes.ok) {
@@ -182,7 +162,29 @@ export class BedtimeIllustrationService {
               imageUrl = cfData.dataUri || cfData.imageUrl || '';
             }
           } catch (cfErr) {
-            console.warn('Direct Cloudflare Worker call note:', cfErr.message);
+            console.warn('Direct Cloudflare Workers AI call note:', cfErr.message);
+          }
+        }
+
+        // 2. Secondary fallback: backend proxy route if direct call failed
+        if (!imageUrl) {
+          try {
+            const baseUrl = typeof window !== 'undefined' && window.location?.origin ? '' : '';
+            const proxyRes = await fetch(`${baseUrl}/api/story/illustration`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+              signal: AbortSignal.timeout(18000)
+            });
+
+            if (proxyRes.ok) {
+              const data = await proxyRes.json();
+              if (data && data.imageUrl && !data.imageUrl.includes('<svg') && !data.imageUrl.includes('image/svg+xml')) {
+                imageUrl = data.imageUrl;
+              }
+            }
+          } catch (proxyErr) {
+            // Ignored
           }
         }
 
