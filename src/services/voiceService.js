@@ -668,6 +668,31 @@ async function playPcmTtsResponse(data, cleanSpoken, petId, callback, myGenerati
     source.playbackRate.value = rate;
   }
 
+  // AudioBufferSourceNode.playbackRate is a naive resample: slowing it down
+  // (as the progressively hushed bedtime chapter cadence does) also drops the
+  // pitch, since Web Audio has no built-in pitch-preserving time-stretch.
+  // Without compensation, the later (slower) chapters end up sounding like a
+  // noticeably different, deeper voice than the earlier ones even though the
+  // same ElevenLabs voice is used throughout. Counteract that with `detune`
+  // (in cents) so the net pitch stays consistent across every rate, then
+  // layer the caller's own small deliberate `options.pitch` multiplier (e.g.
+  // a touch sleepier for later chapters) on top of the now-neutral baseline.
+  if (source.detune) {
+    const callerPitch = typeof options?.pitch === 'number' && Number.isFinite(options.pitch) && options.pitch > 0
+      ? options.pitch
+      : 1.0;
+    const detuneCents = (-1200 * Math.log2(rate)) + (1200 * Math.log2(callerPitch));
+    try {
+      if (typeof source.detune.setValueAtTime === 'function') {
+        source.detune.setValueAtTime(detuneCents, sharedAudioContext.currentTime);
+      } else {
+        source.detune.value = detuneCents;
+      }
+    } catch {
+      source.detune.value = detuneCents;
+    }
+  }
+
   source.connect(sharedAudioContext.destination);
   currentAudioSource = source;
 

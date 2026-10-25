@@ -458,9 +458,15 @@ class BedtimeStoryService {
       this.startAutoAdvance(() => this.advanceStory());
     };
 
-    // Dynamic speech watchdog timeout (~150s for 200 words so narration is never cut off prematurely)
+    // Dynamic speech watchdog timeout (~150s for 200 words at normal cadence
+    // so narration is never cut off prematurely). The later, more slowly
+    // paced chapters (rate < 1) take proportionally longer to actually play
+    // back, so scale the budget by the same rate used for playback -- a flat
+    // word-count budget would otherwise leave progressively less real-world
+    // safety margin for chapters 3 and 4, where the audio is deliberately
+    // slowed down the most.
     const wordCount = (text || '').trim().split(/\s+/).length;
-    const dynamicWatchdogMs = Math.max(90000, Math.ceil(wordCount * 750));
+    const dynamicWatchdogMs = Math.max(90000, Math.ceil((wordCount * 750) / rate));
     this.speechWatchdogTimer = setTimeout(() => {
       console.warn(`Story speech watchdog (${Math.round(dynamicWatchdogMs / 1000)}s) triggered, advancing auto-advance countdown`);
       handleSpeechEnded();

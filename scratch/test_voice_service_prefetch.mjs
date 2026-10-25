@@ -22,6 +22,7 @@ class MockAudioBufferSourceNode {
     this.ctx = ctx;
     this.buffer = null;
     this.playbackRate = new MockAudioParam(1.0);
+    this.detune = new MockAudioParam(0);
     this.onended = null;
     this.started = false;
     this.stopped = false;
@@ -264,6 +265,15 @@ async function runTests() {
     assert.strictEqual(activeNode.playbackRate.setValueAtTimeCalls.length, 1, 'playbackRate.setValueAtTime must be called');
     assert.strictEqual(activeNode.playbackRate.setValueAtTimeCalls[0].val, 0.82);
 
+    // 4.1b detune must compensate the pitch shift that playbackRate alone
+    // introduces (bug: chapters 3/4's slower rate made the voice sound
+    // noticeably different/deeper than chapters 1/2's). Expected cents:
+    // -1200*log2(rate) to cancel the rate-induced shift, plus
+    // +1200*log2(pitch) for the caller's own small deliberate adjustment.
+    const expectedDetune = (-1200 * Math.log2(0.82)) + (1200 * Math.log2(0.95));
+    assert.ok(Math.abs(activeNode.detune.value - expectedDetune) < 0.01,
+      `detune must cancel playbackRate's inherent pitch shift (expected ~${expectedDetune.toFixed(2)}, got ${activeNode.detune.value})`);
+
     // Simulate playback finish
     activeNode.onended();
     assert.strictEqual(endedCallbackCalled, true, 'onEnded callback from options object must be invoked onended');
@@ -280,7 +290,20 @@ async function runTests() {
     node2.onended();
     assert.strictEqual(endedCallback2, true, 'Trailing callback invoked on completion');
 
-    console.log('  ✅ PASS: speakCompanion supports options object & trailing options and sets source.playbackRate.setValueAtTime');
+    // 4.3 With no explicit pitch, rate 0.76 (chapter 4) and rate 0.94 (chapter 1)
+    // must produce the SAME net pitch after compensation (only differing by
+    // rate-cancelling detune, not by an uncompensated pitch drop) -- this is
+    // the actual "chapters sound like a different voice" regression guard.
+    createdAudioNodes = [];
+    await speakCompanion(testStoryLine, 'rex', null, { rate: 0.76, voiceStyle: 'bedtime' });
+    const ch4Node = createdAudioNodes[createdAudioNodes.length - 1];
+    createdAudioNodes = [];
+    await speakCompanion(testStoryLine, 'rex', null, { rate: 0.94, voiceStyle: 'bedtime' });
+    const ch1Node = createdAudioNodes[createdAudioNodes.length - 1];
+    assert.ok(Math.abs(ch4Node.detune.value - (-1200 * Math.log2(0.76))) < 0.01, 'Chapter 4 detune fully cancels its own rate-induced pitch shift');
+    assert.ok(Math.abs(ch1Node.detune.value - (-1200 * Math.log2(0.94))) < 0.01, 'Chapter 1 detune fully cancels its own rate-induced pitch shift');
+
+    console.log('  ✅ PASS: speakCompanion supports options object & trailing options, sets source.playbackRate.setValueAtTime, and compensates pitch via detune so chapters do not sound like a different voice');
   }
 
   // --- Test Suite 5: Resilient Fallback to Gemini Flash TTS & SpeechSynthesis ---
