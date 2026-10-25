@@ -1,20 +1,35 @@
-## 2026-10-19T04:26:56Z
-You are Challenger 2 for Little Hero Adventures.
+# Task: Adversarial Verification 2 - Audio Ducking, Auto-Advance & Concurrency Stress
+Working directory: c:\APP\stitch_little_hero_adventures\.agents\teamwork\challenger_2
+Original request file: c:\APP\stitch_little_hero_adventures\.agents\teamwork\ORIGINAL_REQUEST.md
+Project specification: c:\APP\stitch_little_hero_adventures\PROJECT.md
+
+You are an empirical Challenger. Your goal is to write stress harnesses, generators, and boundary oracles to aggressively probe the implementation for flaws:
+1. Probe audio ducking and swelling:
+   - Validate that `Sound.duckLullaby(true)` reduces gain to 0.15 (15% volume) and `duckLullaby(false)` swells to 1.0.
+   - Verify ducked note gains scale properly.
+2. Probe auto-advance timing and concurrency:
+   - Verify that auto-advance countdown is exactly 3 seconds upon narration finish.
+   - Rapidly simulate manual page-turn clicks during countdown and speech generation. Assert no chapter counter skips or race conditions occur.
+   - Verify Parent Mode completely disables 3-second auto-advance.
+3. Probe ElevenLabs voice resolution:
+   - Request bedtime speech for all 24 pets and heroes. Assert every single one resolves to voice ID `e9sQs6aLWU82SSolkPYZ` with bedtime settings.
+4. Run your adversarial test script:
+   - Write and run `scratch/test_adversarial_challenger_2.mjs`.
+5. Provide a clear verdict: **APPROVE** or **REQUEST_CHANGES** in `c:\APP\stitch_little_hero_adventures\.agents\teamwork\challenger_2\handoff.md`.
+Communicate back via send_message.
+## 2026-10-25T03:10:58Z
+You are Challenger 2 for Milestone 4 Gate Verification.
 Your working directory is: c:\APP\stitch_little_hero_adventures\.agents\teamwork\challenger_2
-Read ORIGINAL_REQUEST.md at c:\APP\stitch_little_hero_adventures\.agents\teamwork\ORIGINAL_REQUEST.md (section ## 2026-10-19T04:04:09Z).
-Read Worker 1's handoff report at c:\APP\stitch_little_hero_adventures\.agents\teamwork\worker_1\handoff.md.
+Read instructions at: c:\APP\stitch_little_hero_adventures\.agents\teamwork\challenger_2\DISPATCH.md
+Read original request: c:\APP\stitch_little_hero_adventures\.agents\teamwork\ORIGINAL_REQUEST.md
+Read project specification: c:\APP\stitch_little_hero_adventures\PROJECT.md
 
-Scope of Challenge:
-1. Adversarial verification of `firestore.rules` security boundaries and attack models:
-   - Collection enumeration attack: does `allow list: if false;` prevent listing `/households`?
-   - Cross-household snooping: does `isOwner(resource.data)` prevent snooping on `/users/{userId}` and `/user_households/{linkId}`?
-   - Revoked device attack: does `isNotRevokedDevice()` block requests with a revoked `deviceId`?
-   - Account takeover attack: does `firestore.rules` reject requests that attempt to overwrite or hijack `parentUids` / `parentEmails`?
-   - Schema poisoning attack: does `hasOnlyAllowedFields` reject unknown injected keys beyond the 76 allowed keys?
-2. Empirical testing:
-   - Verify that `scratch/verify_firestore_rules_and_sync.mjs` comprehensively exercises these attack cases.
-   - Run verification scripts or targeted stress tests.
+Empirically probe audio ducking, auto-advance, and voice routing:
+1. Write scratch/test_adversarial_challenger_2.mjs to probe:
+   - Audio ducking: gain scales to 0.15 on speech, smoothly swells to 1.0 on completion
+   - Auto-advance: exactly 3 seconds countdown upon speech end; rapid page turns do not skip chapters
+   - Parent mode: auto-advance is disabled
+   - Voice routing: all 24 pets and heroes resolve to e9sQs6aLWU82SSolkPYZ with bedtime parameters
+2. Run your adversarial test script and project test suites.
 
-Write your empirical evaluation and explicit verdict (APPROVE or REQUEST_CHANGES) in:
-`c:\APP\stitch_little_hero_adventures\.agents\teamwork\challenger_2\handoff.md`
-and notify the orchestrator via `send_message`.
+Write handoff report to c:\APP\stitch_little_hero_adventures\.agents\teamwork\challenger_2\handoff.md with explicit verdict APPROVE or REQUEST_CHANGES. Notify orchestrator via send_message.

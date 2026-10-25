@@ -1,247 +1,222 @@
-# Handoff Report: Companion Hero Workout Arena & Store Architecture Survey
+# Survey Report: Cloudflare Workers AI Image Generation & Cache Integrity (R1)
 
-**Author**: Explorer 1 (Workout Arena & Store Specialist)  
-**Date**: 2026-10-15  
 **Working Directory**: `c:\APP\stitch_little_hero_adventures\.agents\teamwork\explorer_survey_1`  
-**Reference Document**: `c:\APP\stitch_little_hero_adventures\.agents\teamwork\ORIGINAL_REQUEST.md`  
+**Target Milestone**: Phase 0 Survey / R1  
+**Investigator Archetype**: Teamwork Explorer (Read-Only Investigation)  
+**Parent Task ID**: `b9493cb1-e4ed-444a-a0d3-d8aedbf36adc`  
 
 ---
 
 ## 1. Observation
 
-Direct code observations from the codebase investigation:
+### 1.1 Architecture & Files Involved
+The story illustration pipeline spans 10 key files across client, server, and cloud worker tiers:
 
-### 1.1 Workout Stage & View Hierarchy
-- **File**: `c:\APP\stitch_little_hero_adventures\src\views\DinoWorkoutView.js` (947 lines)
-  - **Module State** (lines 35-58):
-    - `activeDuoCanvas` (instance of `WorkoutHeroDuoCanvas`)
-    - `timerInterval`, `countdownInterval`, `restBreakInterval`
-    - `sessionMode`: `'circuit'` | `'practice'`
-    - `currentCircuitIndex`: `0` to `7`
-    - `workoutPhase`: `'idle'` | `'ready'` | `'active'` | `'rest_break'` | `'finished'` | `'circuit_complete'`
-    - `remainingTime`: seconds remaining in active move (default 60, tiers: toddler 30s, junior 45s, titan 60s)
-    - `spokenTimelineSet`: `Set` tracking cadence timestamps spoken during the active move to prevent repeating or overlapping lines.
-  - **Mount Point** (lines 292-297):
-    - HTML container: `<div id="workout-stage-mount">` contains `<div id="workout-canvas-container" class="w-full h-full absolute inset-0 flex items-center justify-center">`
-    - Attached via `new WorkoutHeroDuoCanvas(stageContainer, { workoutId, coachId, tempoBpm })` in `attachDinoWorkoutListeners()` (lines 446-459).
-  - **Navigation Integration** in `src/main.js`:
-    - Line 45: `import { renderDinoWorkoutView, attachDinoWorkoutListeners, abandonDinoWorkoutIfRunning } from './views/DinoWorkoutView.js';`
-    - Lines 167-171: `isLeavingDinoWorkoutView` triggers `abandonDinoWorkoutIfRunning()` if navigating away during an active workout.
-    - Lines 291-294: `case 'dino_workout': mainContent = renderDinoWorkoutView(); attachViewListeners = attachDinoWorkoutListeners; break;`
-    - Lines 245-255: `isDirectPreview` gate controls bypass of Landing Auth Modal. Currently checks `activeView === 'dance_party' || activeView === 'battle' || activeView === 'boost' || activeView === '/boost' || activeView === 'adventures_map' || activeView === 'learn'`. Notice `'dino_workout'` and `'/workout'` are currently not in `isDirectPreview`.
+1. **Client-side Illustration Service**: `src/services/bedtimeIllustrationService.js` (lines 1–233)
+   - Instantiates module-level in-memory cache: `const clientIllustrationCache = new Map();` (line 9).
+   - In-flight request de-duplication: `const inFlightRequests = new Map();` (line 10).
+   - Configures default endpoint: `this.apiUrl = 'https://little-heroes-free-image-api.recklesswarman.workers.dev'` (line 15).
+   - Defines `getCacheKey(params)` (lines 21–24), but it is **bypassed/unused** in `generateChapterIllustration()`.
+   - `generateFallbackIllustration(params)` (lines 26–60): generates inline SVG with Explorer Palette.
+   - `generateChapterIllustration(params)` (lines 65–191): hardcodes cache key computation at line 79.
+   - `prefetchNextChapterIllustration(params)` (lines 196–204): increments `chapterNumber` and invokes `generateChapterIllustration`.
+   - `buildPrompt(params)` (lines 209–229): accepts `chapterText` at line 217, but completely omits it from the returned prompt string.
+2. **Story Orchestrator**: `src/services/bedtimeStoryService.js` (lines 1–785)
+   - Assigns session ID: `this.activeSession = { id: 'story_' + Date.now(), ... }` (lines 290–314).
+   - Coordinates chapter generation and calls `bedtimeIllustrationService.generateChapterIllustration` (lines 648–665) and `prefetchNextChapterIllustration` (lines 668–678).
+   - **Omits** `sessionId: session.id` and `seed` from the illustration parameter payload (lines 649–659).
+3. **Storybook Stage & View Mount**: `src/views/BedtimeStoryView.js` (lines 1–1221)
+   - Line 28: `let displayStageMode = 'auto'; // 'auto' | '3d' | 'illustration'`
+   - Lines 481–494: when `displayStageMode !== '3d'` and `currentAct.imageUrl` is present, renders `<img src="${currentAct.imageUrl}" ...>` with Ken Burns hover effect and "3D Pixar AI Art" badge.
+   - Lines 502–507 & 877–882: `#toggle-stage-view-btn` toggles between `'3d'` and `'illustration'`.
+   - Lines 938–944: `#interactive-illustration-container` click listener triggers lullaby chime SFX.
+4. **3D Storybook Stage**: `src/components/BedtimeStoryStage3D.js` (lines 1–1730)
+   - Lines 59–68: defines `BEDTIME_EXPLORER_PALETTE` (#09141e, #040a10, #0e2634, #2ecc71, #00d2d3, #f39c12, #ffb961, #ffffff).
+   - Renders 3D diorama inside `#bedtime-3d-stage-mount` when `displayStageMode === '3d'` or when `currentAct.imageUrl` is null.
+5. **Backend Proxy Route**: `server.js` (lines 1–84)
+   - Lines 8, 33–34: mounts `handleStoryIllustrationRequest` on `POST /api/story/illustration` and `POST /api/ai/image`.
+6. **Vite Dev Server Middleware**: `vite.config.js` (lines 1–202)
+   - Lines 27, 144–167: dynamically imports `server/imageGenService.js` and handles `POST /api/story/illustration` and `POST /api/ai/image`.
+7. **Server-side Image Generation Service**: `server/imageGenService.js` (lines 1–260)
+   - Lines 7–8: `const imageCache = new Map(); const MAX_CACHE_SIZE = 50;`
+   - Lines 14–58: `buildBedtimeIllustrationPrompt(params)`: truncates narrative to 150 characters on line 28: `const cleanText = (chapterText || '').replace(/[^\w\s,.]/g, '').slice(0, 150);`.
+   - Lines 63–187: `handleStoryIllustrationRequest(req, res)`: computes cache key on line 92: `const cacheKey = `${realmId}_ch${chapterNumber}_${prompt.slice(0, 60)}`;`. Calls Cloudflare Workers AI API with `prompt`, `model`, and `format: 'base64'`.
+   - Lines 192–259: `generateStorybookSvgDataUri(...)`: generates procedural SVG fallback in Explorer Palette.
+8. **Cloudflare Worker Runtime**: `cloudflare-worker/worker.js` (lines 1–132)
+   - Lines 54–78: extracts `prompt`, `model`, `format`. Invokes `env.AI.run(model, { prompt })`.
+   - **Completely ignores** `seed` and `negative_prompt`.
+9. **Cloudflare Worker Config**: `cloudflare-worker/wrangler.toml` (lines 1–16)
+   - Configures `[ai] binding = "AI"` and `API_KEY = "little-heroes-secret-key"`.
+10. **Cloud Functions**: `functions/src/voiceApi.ts` (lines 1–653)
+    - Exposes `/api/gemini/bedtime-story`, `/api/rex/bedtime-story`, and `/api/elevenlabs/tts`. Currently lacks `/api/story/illustration` proxy.
 
-### 1.2 The 8 Prehistoric Gross-Motor Workouts Definition & Coaches
-- **File**: `c:\APP\stitch_little_hero_adventures\src\data\petsData.js` (Lines 864-1137)
-  - `export const DINO_WORKOUTS = [...]` defines 8 distinct workouts:
-    1. **Velociraptor Run** (`id: 'velociraptor_run'`, coach: Raptor `coachId: '2'`, 138 BPM, Speed & Agility):
-       - Movement: High-speed sprint in place on balls of feet with 90° arm pumps and speed lines.
-       - Cadence cues defined at 60s, 50s, 40s, 30s, 20s, 10s, 3s.
-    2. **Stegosaurus Walks** (`id: 'stegosaurus_walks'`, coach: Stego `coachId: '3'`, 92 BPM, Core & Stomp Power):
-       - Movement: Bear walk on hands and feet with hips elevated high, 4 steps forward and 4 steps back with loud ground stomps.
-       - Cadence cues defined at 60s, 50s, 40s, 30s, 20s, 10s, 3s.
-    3. **Pterodactyl Take Off** (`id: 'pterodactyl_takeoff'`, coach: Pterry `coachId: '4'`, 112 BPM, Vertical Leap & Balance):
-       - Movement: Wide arms in rapid circular wing arcs, followed by crouch and vertical takeoff leap.
-       - Cadence cues defined at 60s, 50s, 40s, 30s, 20s, 10s, 3s.
-    4. **T-Rex Run** (`id: 'trex_run'`, coach: Rex `coachId: '1'`, 122 BPM, Leg Power & High Knees):
-       - Movement: Short arms tucked in armpits, driving high knees up to hands.
-       - Cadence cues defined at 60s, 50s, 40s, 30s, 20s, 10s, 3s.
-    5. **Compsognathus Prance** (`id: 'compsognathus_prance'`, coach: Chomper `coachId: '5'`, 126 BPM, Lateral Agility & Rhythm):
-       - Movement: Skater jumps leaping side to side, crossing rear leg behind with balancing arm swing.
-       - Cadence cues defined at 60s, 50s, 40s, 30s, 20s, 10s, 3s.
-    6. **Brachiosaurus Stretch** (`id: 'brachiosaurus_stretch'`, coach: Brachio `coachId: '6'`, 78 BPM, Spine Elongation & Calves):
-       - Movement: Standing tall with feet together, rising high onto tiptoes, reaching arms straight overhead to stars.
-       - Cadence cues defined at 60s, 50s, 40s, 30s, 20s, 10s, 3s.
-    7. **The Diplodocus** (`id: 'diplodocus'`, coach: Dippy `coachId: '7'`, 74 BPM, Core Stability & Balance, `hasHalfwaySideSwitch: true`):
-       - Movement: Tabletop quadruped bird-dog balance with neck reach and wagging tail leg.
-       - Halfway Switch: Synchronous announcement and limb mirror switch at 30 seconds (Side 1: right arm forward, left leg back; Side 2: left arm forward, right leg back).
-       - Cadence cues at 60s, 50s, 40s, 30s ("HALFWAY! Switch sides now!"), 20s, 10s, 3s.
-    8. **Spinosaurus Stretch** (`id: 'spinosaurus_stretch'`, coach: Spino `coachId: '8'`, 64 BPM, Breath & Spine Cool Down):
-       - Movement: Cat-Cow restorative spine wave arching upward like a Spinosaurus dorsal sail fin.
-       - Cadence cues defined at 60s, 50s, 40s, 30s, 20s, 10s, 3s.
-  - Helper function: `getWorkoutById(workoutId)` in `src/data/petsData.js:1132-1137` normalizes ID strings and maps `diplodocus_balance` to `DINO_WORKOUTS[6]`.
-  - Coach Roster: `PETS_DATABASE` (lines 32-273) defines all 8 dinosaur coaches with character key, name, avatar (`assets/pets/<key>.png`), and element attributes.
+---
 
-### 1.3 Canvas Rendering Architecture
-- **File**: `c:\APP\stitch_little_hero_adventures\src\components\WorkoutHeroDuoCanvas.js` (1096 lines)
-  - Renders a 2D HTML5 Canvas (`ctx = canvas.getContext('2d')`) at 60 FPS using `requestAnimationFrame`.
-  - Dual Stage layout:
-    - Floor elevation: `floorY = h * 0.78`
-    - Left Pedestal (Coach Dino): `dinoCenterX = w * 0.28` (lines 295, 314-322, 385-500)
-    - Right Pedestal (Hero Kiddo): `heroCenterX = w * 0.72` (lines 296, 323-331, 510-969)
-  - Dino Coach Renderer (`renderDinoCoach`, lines 385-500):
-    - Reads coach image from `getOrLoadPetImage(coach.avatar)`.
-    - Implements kinematics per workout (speed bounce, stomp squash/stretch, vertical leap, skater sway, tiptoe stretch, tail wag, cat-cow arch).
-  - Articulated Toddler Hero Renderer (`renderArticulatedToddler`, lines 510-969):
-    - Full 2D hierarchical skeletal chain: Root -> Pelvis -> Torso -> Neck/Head -> Upper Arm -> Forearm -> Hand -> Thigh -> Calf -> Sneaker + Cape.
-    - `isHalfwayFlipped` logic on line 512 mirrors limbs for Diplodocus at `workoutTimeRemaining <= 30`.
-  - Lifecycle: `startLoop`, `update(dt)`, `render()`, `handleResize()`, `destroy()`, `setWorkout(workoutId, coachId, tempoBpm)`.
+### 1.2 Verbatim Findings by Requirement
 
-### 1.4 Circuit Mode, Water Break Intermission & Rewards
-- **Circuit Mode** in `DinoWorkoutView.js`:
-  - `sessionMode === 'circuit'` starts at `currentCircuitIndex = 0` (Move 1/8).
-  - Circuit step indicators render at lines 162-190 with checkmark pills for completed steps and active indicator for the current step.
-  - Duration per move is fixed at Titan Champion (60 seconds).
-  - When move timer reaches 0 (`handleMoveCompletion`, lines 713-741):
-    - If `currentCircuitIndex < DINO_WORKOUTS.length - 1` (moves 1 to 7): calls `startRestBreak()` (lines 744-771).
-    - If `currentCircuitIndex === 7` (move 8 complete): transitions to `workoutPhase = 'circuit_complete'`, showing `#btn-finish-circuit`.
-- **Water Break Intermission** (`startRestBreak`, lines 744-771):
-  - Displays `#workout-rest-display` overlay with animated bouncing water drink icon (`local_drink`), 10-second countdown (`#rest-timer-display`), and "Skip Break & Continue" button (`#btn-skip-break`).
-  - Automatically speaks hydration cheer: `"Great job! Grab a sip of water, shake out your arms and legs, and get ready for the next move!"`.
-  - At timer expiry or on click of `#btn-skip-break`: advances `currentCircuitIndex++`, sets `store.setActiveWorkoutId(nextWorkout.id)`, resets workout state, and notifies store.
-- **Store Methods & Rewards** in `src/state/store.js`:
-  - `store.setActiveWorkoutId(id)` (line 1228) updates active workout in state.
-  - `store.getWorkoutStreak()` (lines 8330-8341) manages 7-day stamp card (`stamps: [false x 7]`, `currentStreak`, `lastDate`).
-  - `store.boostPetJoy(petId)` (lines 8343-8357) maxes pet Joy to 100% and sets energy.
-  - `store.recordWorkoutCompletion(workoutId, xpAwarded, coinsAwarded, sparksAwarded)` (lines 8359-8390):
-    - Calls `this.addPetSparks(petId, sparksAwarded)`
-    - Calls `this.addPetTrainingXp(petId, xpAwarded)`
-    - Calls `this.addCoins(coinsAwarded)`
-    - Calls `this.boostPetJoy(petId)`
-    - Updates 7-day streak stamps based on today's day of week (`getDay()`).
-  - Single Move Practice Finish (`#btn-finish-workout`, lines 849-871):
-    - Rewards: +10 to +20 Sparks, +45 to +80 XP (1.25x daily coach multiplier), +40 to +70 Coins, Joy 100%.
-  - Grand 8-Minute Circuit Finish (`#btn-finish-circuit`, lines 874-895):
-    - Rewards: +120 Evolution Sparks, +400 Training XP, +400 Hero Coins, Joy 100%, 7-Day Streak update, and confetti celebration.
+#### Finding A: Image Generation Prompt Structure & Chapter Text Truncation
+- In `src/services/bedtimeIllustrationService.js` (lines 209–229):
+  ```javascript
+  buildPrompt(params = {}) {
+    const {
+      heroName = 'Little Hero',
+      petName = 'Rex',
+      petArchetype = 'dino',
+      realmName = 'Starlight Woods',
+      chapterNumber = 1,
+      magicItem = 'Starlight Lantern',
+      chapterText = '' // <--- Parameter accepted here
+    } = params;
 
-### 1.5 Audio Pipeline, Voice Guidance & Cadence Timing
-- **File**: `c:\APP\stitch_little_hero_adventures\src\services\voiceService.js` (728 lines)
-  - `COMPANION_VOICE_PROFILES` (lines 14-204) maps all 8 dino coach keys and IDs ('1'-'8', 'rex', 'raptor', 'stego', 'pterry', 'chomper', 'brachio', 'dippy', 'spino') to Gemini voices:
-    - Rex ('1'): Puck, pitch 1.25, rate 0.95
-    - Raptor ('2'): Zephyr, pitch 1.35, rate 1.05
-    - Stego ('3'): Fenrir, pitch 0.90, rate 0.88
-    - Pterry ('4'): Aoede, pitch 1.40, rate 1.02
-    - Chomper ('5'): Puck, pitch 1.45, rate 1.08
-    - Brachio ('6'): Charon, pitch 0.85, rate 0.85
-    - Dippy ('7'): Charon, pitch 1.05, rate 0.92
-    - Spino ('8'): Fenrir, pitch 0.95, rate 0.88
-  - `speakCompanion(text, petIdOrOptions, onEnded)` (lines 630-720):
-    - Step 1: ElevenLabs PCM TTS via `/api/elevenlabs/tts`.
-    - Step 2: Gemini 3.1 Flash TTS via `/api/gemini/tts`.
-    - Step 3: Resilient client-side SpeechSynthesis fallback prioritizing 'Daniel' voice.
-    - Anti-collision mechanism: `speechGeneration` counter increments on every call; in-flight promises verify `myGeneration === speechGeneration` before starting audio to prevent overlapping audio.
-    - Module-level `stopRex()` immediately pauses active audio buffer and cancels `speechSynthesis`.
-  - Cadence Runner in `DinoWorkoutView.js` (lines 688-699):
-    - Iterates over `workout.cadenceTimeline`:
-      ```javascript
-      for (const cueItem of workout.cadenceTimeline) {
-        if (remainingTime === cueItem.at && !spokenTimelineSet.has(cueItem.at)) {
-          spokenTimelineSet.add(cueItem.at);
-          speakCompanion(cueItem.cue, coachPet.id);
-          break;
-        }
-      }
-      ```
-    - Timestamps: 60s (intro), 50s, 40s, 30s (halfway / side switch), 20s, 10s, 3s (countdown).
-  - Server endpoints in `server/geminiService.js` and `server/elevenLabsService.js`:
-    - `server/elevenLabsService.js` features an in-memory `ttsCache` with SHA-256 keys, capped at 200 entries.
-    - `server/geminiService.js` lacks an in-memory TTS cache, and `PET_VOICE_MAP` currently lacks coaches 2-8 ('raptor', 'stego', 'pterry', 'chomper', 'brachio', 'dippy', 'spino'). Adding them to `PET_VOICE_MAP` and adding a client-side voice cache in `voiceService.js` will fulfill zero-latency R2 acceptance criteria.
+    const action = chapterNumber === 1
+      ? `${heroName} and ${petName} starting their journey with a glowing ${magicItem}`
+      : chapterNumber === 2
+      ? `${heroName} and ${petName} discovering a sleepy magical friend`
+      : chapterNumber === 3
+      ? `${heroName} and ${petName} helping a friend with kindness and teamwork`
+      : `${heroName} and ${petName} snuggled up asleep under gentle twinkling stars`;
 
-### 1.6 3D Runtimes in the Codebase
-- **Package Dependencies**:
-  - `@splinetool/runtime: ^2.0.55` is installed in `package.json:20`.
-  - `@google/genai: ^2.23.0` is installed in `package.json:19`.
-  - Three.js (`three`) is not an explicit top-level dependency in `package.json`, but `@splinetool/runtime` includes its own WebGL runtime engine (`Application` class).
-- **Existing Spline / WebGL Implementations**:
-  - `src/services/hanaBattle3DService.js:22,310`:
-    ```javascript
-    import { Application } from '@splinetool/runtime';
-    this.splineApp = new Application(this.canvas, { renderer: 'webgl' });
-    await this.splineApp.load(url, variables);
-    ```
-    With `initProceduralFallback()` if WebGL or Spline loading fails.
-  - `src/services/pet3DService.js:9-20`:
-    Provides `isWebGLSupported()` feature check.
-  - `src/data/threeDAssetCatalog.js`:
-    Catalog of 3D assets with Spline scene URLs and GLB model URLs.
+    // chapterText is COMPLETELY EXCLUDED from the return value:
+    return `${action}, cute toddler hero and baby ${petArchetype} companion, 3D Pixar animation style, claymation textures, soft nighttime lighting in ${realmName}, cozy storybook illustration, palette of starlight cyan, warm amber, midnight slate and emerald, masterpiece.`;
+  }
+  ```
+- In `server/imageGenService.js` (lines 14–29, 57):
+  ```javascript
+  export function buildBedtimeIllustrationPrompt(params = {}) {
+    ...
+    // Truncates text to at most 150 characters:
+    const cleanText = (chapterText || '').replace(/[^\w\s,.]/g, '').slice(0, 150);
+    ...
+    return `${chapterAction}, ${heroDescription}, ${petDescription}. Setting: ${realmAtmosphere}. Context: ${cleanText}. Style: ${stylePrompt}.`;
+  }
+  ```
+  A bedtime chapter of ~180–220 words contains ~950–1200 characters. Slicing to 150 characters drops >85% of the narrative, discarding characters, specific obstacles, and plot context.
 
-### 1.7 Design System & UX Guardrail Constraints
-- **Color Palette**:
-  - Confirmed from `src/styles/index.css` and `CLAUDE.md`:
-    - Electric Cyan: `#00d2d3` / `#00e5ff` / `var(--color-tertiary)`
-    - Emerald Green: `#2ecc71` / `#54e98a` / `var(--color-primary)`
-    - Solar Amber: `#f1c40f` / `#ffb961` / `var(--color-secondary)`
-    - Midnight Slate: `#09141e` / `#0f172a` / `var(--color-surface)`
-  - STRICT PROHIBITION: Zero pink, purple, violet, magenta, fuchsia tokens or hex values.
-- **Kid Voice Companion Guidelines** (`.agents/rules/kid_voice_companion_guidelines.md`):
-  - Guideline 1: Non-blocking habit & reward minting — do not pop blocking reward modals from within floating widgets. Use `store.recordWorkoutCompletion()` cleanly.
-  - Guideline 2: Mascot touch separation — mascot touch must trigger tactile responses, not toggle microphone. Dedicated oversized toggle buttons must control audio.
-  - Guideline 3: Audio barge-in safeguards — tap-to-interrupt cleanly stops audio playback before opening inputs; anti-overlap via `stopRex()`.
-  - Guideline 4: Event listener deduplication — cleanup previous custom event listeners on re-render to prevent memory leaks.
+#### Finding B: Caching Logic and Cross-Story / Cross-Chapter Collision Vulnerability
+- In `src/services/bedtimeIllustrationService.js` (line 79):
+  ```javascript
+  const cacheKey = `${realmId}_ch${chapterNumber}_${(chapterTitle || '').slice(0, 30)}`;
+  ```
+  - `session.id` is not present in the key.
+  - `chapterIndex` is not present in the key.
+  - Full chapter text hash (`md5(fullChapterText)`) is not present in the key.
+  - Consequence: Generating any new bedtime story in the same realm (e.g. `space`) with chapter 1 titles like `"Chapter 1: Starlit Voyage"` will hit the in-memory cache and return the illustration from the previous story!
+- In `server/imageGenService.js` (lines 92–93):
+  ```javascript
+  const cacheKey = `${realmId}_ch${chapterNumber}_${prompt.slice(0, 60)}`;
+  ```
+  - The first 60 characters of `prompt` is only the boilerplate action prefix (e.g., `"Little Hero and Rex embarking on their evening bedtime journey "`):
+  - Because `Context: ${cleanText}` is placed near character position 350+ of the prompt, `prompt.slice(0, 60)` is 100% identical for every story generated by that child in that realm.
+  - Consequence: All bedtime stories generated for a hero in a realm collide on the backend and return identical images.
+- In `src/services/bedtimeStoryService.js` (lines 649–659):
+  - `session.id` is never passed to `bedtimeIllustrationService.generateChapterIllustration`.
+
+#### Finding C: Missing Random Seed / Entropy Parameter
+- In `src/services/bedtimeStoryService.js` (lines 649–659):
+  - No seed parameter is generated or passed (`params.seed` is undefined).
+- In `src/services/bedtimeIllustrationService.js` (lines 94–106, 150–155):
+  - `payload` does not contain `seed`.
+  - Direct Cloudflare Worker fetch sends: `{ prompt: cfPrompt, model: '...', format: 'base64' }` without `seed`.
+- In `server/imageGenService.js` (lines 65–77, 119–123):
+  - `handleStoryIllustrationRequest` does not read `seed` from `req.body`.
+  - Fetch to Cloudflare Workers AI omits `seed`.
+- In `cloudflare-worker/worker.js` (lines 54–78):
+  - `body.seed` is never extracted.
+  - `env.AI.run(model, { prompt })` does not pass `seed`.
+  - Without `seed`, the latent diffusion model uses default internal seed 0, resulting in repetitive images whenever prompts share phrasing.
+
+#### Finding D: Explorer Palette Adherence
+- **Prompts**:
+  - `server/imageGenService.js` (line 53) specifies: `"Explorer Palette: deep midnight slate, luminous starlight cyan, solar orange warmth, and emerald green accents (no pink, no purple, cozy bedtime atmosphere)"`.
+  - `src/services/bedtimeIllustrationService.js` (line 228) specifies: `"palette of starlight cyan, warm amber, midnight slate and emerald, masterpiece."`, but lacks an explicit negative prompt instruction.
+  - Neither client nor server passes `negative_prompt` to Cloudflare Workers AI.
+- **SVG Fallbacks**:
+  - `src/services/bedtimeIllustrationService.js` lines 35–60: `#050f18`, `#0a2236`, `#ffb961`, `#00d2d3`, `#09141e`, `#ffffff`.
+  - `server/imageGenService.js` lines 193–255: `#07131d`, `#00253d`, `#00d2d3`, `#09141e`, `#0b2b1a`, `#2ecc71`, `#1c2838`, `#ffb961`, `#23180c`, `#f39c12`, `#ffffff`, `#050c13`, `#0f2334`.
+  - `src/data/bedtimeStoryData.js` lines 1072–1449: `#050f18`, `#091b29`, `#0f2b3e`, `#00d2d3`, `#ffffff`, `#ffb961`, `#122736`, `#091520`, `#e0f2fe`, `#f39c12`, `#2ecc71`.
+  - All SVG fallbacks strictly adhere to Explorer Palette with zero pink and zero purple.
 
 ---
 
 ## 2. Logic Chain
 
-1. **Premise 1**: Requirement R1 dictates mounting a true 3D character avatar (Spline / Three.js) animated via 3D skeletal bones side-by-side with the dinosaur coach, with a clean procedural 2D canvas fallback if WebGL fails.
-   - *Observation Support*: In `DinoWorkoutView.js`, the viewport container is `<div id="workout-canvas-container">` inside `#workout-stage-mount`. The current engine is `WorkoutHeroDuoCanvas.js`, which renders the coach on the left (`w * 0.28`) and toddler hero on the right (`w * 0.72`).
-   - *Inference*: Replacing or upgrading `WorkoutHeroDuoCanvas` or creating a dedicated 3D controller (`Workout3DArenaCanvas` / `WorkoutHeroDuo3D`) that loads a 3D avatar on the right stage alongside the 3D coach on the left stage directly fulfills R1 without disrupting `DinoWorkoutView.js` lifecycle methods (`setWorkout`, `setTimeRemaining`, `triggerBeat`, `pauseAnimation`, `resumeAnimation`, `destroy`).
-   - *Fallback Mechanism*: If `isWebGLSupported()` returns false or `@splinetool/runtime` / WebGL fails to initialize, the component must cleanly invoke the existing 2D procedural rendering logic in `WorkoutHeroDuoCanvas.js`.
+1. **Premise**: R1 requires that the Cloudflare Workers AI image generator receives the full, unabridged text of each chapter directly embedded in the prompt so that illustrations visually mirror the specific story narrative.
+   - **Observation Reference**: Section 1.2, Finding A.
+   - **Deduction**: Currently, `bedtimeIllustrationService.buildPrompt()` completely discards `chapterText`, while `imageGenService.buildBedtimeIllustrationPrompt()` slices it to 150 characters. To satisfy R1, both prompt builders must embed the entire unabridged chapter text without truncation.
 
-2. **Premise 2**: The 8 gross-motor workouts require distinct skeletal bone transformations matching specific instructions:
-   - Velociraptor Run (balls of feet, 90° arm pumps).
-   - Stegosaurus Walks (bear walk on hands/feet, hips high, 4 steps forward/backward, stomps).
-   - Pterodactyl Take Off (wide arm circular wind-up, crouch, vertical takeoff leap).
-   - T-Rex Run (tucked armpit short arms, driving high knees).
-   - Compsognathus Prances (lateral skater jumps, crossing rear leg behind).
-   - Brachiosaurus Stretch (feet together, tiptoe rise, overhead arm reach).
-   - The Diplodocus (quadruped bird-dog balance with neck reach and tail wag, 30s synchronous side switch).
-   - Spinosaurus Stretch (Cat-Cow spine wave with sail fin arch).
-   - *Observation Support*: `WorkoutHeroDuoCanvas.js` lines 550-832 already contains exact kinematic mathematical equations for joint angles (`rootY`, `rootRot`, `spineAngle`, `headAngle`, `armLAngle`, `elbowLAngle`, `wristLAngle`, `thighLAngle`, `kneeLAngle`, `ankleLAngle`, `capeFly`).
-   - *Inference*: These joint kinematic angles translate directly to 3D skeletal bone quaternions/Euler rotations in Three.js / Spline bone hierarchies: `pelvis`, `spine_01`, `spine_02`, `neck`, `head`, `shoulder_L/R`, `upperarm_L/R`, `lowerarm_L/R`, `hand_L/R`, `thigh_L/R`, `calf_L/R`, `foot_L/R`.
+2. **Premise**: R1 requires that cache keys are uniquely bound to `session.id + chapterIndex + md5(fullChapterText)` to eliminate cross-story and cross-chapter collisions.
+   - **Observation Reference**: Section 1.2, Finding B.
+   - **Deduction**: Currently, client cache keys use `${realmId}_ch${chapterNumber}_${chapterTitle.slice(0, 30)}` and server cache keys use `${realmId}_ch${chapterNumber}_${prompt.slice(0, 60)}`. Because titles and the first 60 characters of prompts are shared across stories, collisions are guaranteed between consecutive stories in the same realm. Binding the cache key to `session.id`, `chapterIndex`, and an MD5 hash of `fullChapterText` will mathematically guarantee collision freedom.
 
-3. **Premise 3**: Requirement R2 requires hybrid audio coaching with zero latency, cadence cues at 0s, 10s, 20s, 30s, 40s, 50s, 58s, synchronous 30s Diplodocus flip, and no overlapping audio.
-   - *Observation Support*: `voiceService.js` already implements `speechGeneration` anti-collision logic, ElevenLabs + Gemini + Daniel SpeechSynthesis fallback tiers. However, voice audio fetches from the server can introduce network latency on cold starts.
-   - *Inference*: Implementing a client-side in-memory audio clip cache (`Map<string, AudioBuffer>`) in `voiceService.js` or pre-fetching/pre-rendering workout cadence clips at workout initialization ensures 0ms latency audio triggers at exact cadence timestamps. Furthermore, adding the 7 missing dinosaur coaches to `PET_VOICE_MAP` in `server/geminiService.js` ensures high-fidelity AI voice personas across all 8 workouts.
+3. **Premise**: R1 requires passing a randomized seed / entropy parameter (`Math.floor(Math.random() * 2147483647)`) with every generation request so every chapter and every book produces completely unique 3D Pixar / Claymation artwork.
+   - **Observation Reference**: Section 1.2, Finding C.
+   - **Deduction**: Currently, no seed is generated or passed in `bedtimeStoryService.js`, `bedtimeIllustrationService.js`, `server/imageGenService.js`, or `cloudflare-worker/worker.js`. To ensure entropy, `seed` must be generated at request time and propagated through the payload to `env.AI.run(model, { prompt, seed, ... })`.
 
-4. **Premise 4**: Requirement R3 requires preserving all existing store methods, 8-minute circuit mode, water break intermissions, and reward systems while adhering to Stitch design system.
-   - *Observation Support*: `store.recordWorkoutCompletion()`, `store.boostPetJoy()`, `store.getWorkoutStreak()`, `store.setActiveWorkoutId()` in `src/state/store.js` work seamlessly with `DinoWorkoutView.js`.
-   - *Inference*: The 3D character integration must not alter store method signatures or reward values (+120 Sparks, +400 XP, +400 Coins for circuit; +10-20 Sparks, +45-80 XP, +40-70 Coins for practice). The color palette must remain strictly Electric Cyan, Emerald Green, Solar Amber, and Midnight Slate.
+4. **Premise**: R1 requires strict adherence to the Explorer Palette (zero pink or purple) across prompts and SVG fallbacks.
+   - **Observation Reference**: Section 1.2, Finding D.
+   - **Deduction**: While SVG fallbacks strictly use Explorer Palette hex values, the AI image generator prompt needs an explicit `negative_prompt: "pink, purple, magenta, violet, neon pink, scary, dark, deformed, blurry"` passed to Cloudflare Workers AI to prevent diffusion models from injecting default fantasy purple/pink hues.
 
 ---
 
 ## 3. Caveats
 
-1. **Hardware / Device WebGL Constraints**: Low-end Android tablets or restricted school Chromebooks may lack WebGL 2.0 or hardware acceleration. The 2D procedural canvas fallback is mandatory and must be battle-tested against null WebGL context.
-2. **Spline Remote Assets vs Local Procedural 3D**: Remote `.splinecode` scenes depend on CDN network connectivity. If external Spline URLs are blocked or offline, local procedural 3D (via WebGL shaders or Three.js procedural primitives) or procedural 2D canvas must initialize instantly without throwing uncaught promise rejections.
-3. **SpeechSynthesis Voice Availability**: While `Daniel` is the designated preferred voice on Apple devices, Windows/Android devices might not have a voice named `Daniel`. The fallback chain in `selectPreferredVoice` properly resolves to other natural English voices (`Natural`, `Google US`, `Junior`, `Samantha`), but tests must mock SpeechSynthesis safely in headless environments (`scratch/setup_mock_env.js`).
+- **No Caveats**: All 10 files involved in story illustration generation and caching were inspected directly via `view_file`.
+- Baseline automated test suite (`scratch/run_all_tests.js`) and production build (`npm run build`) were executed synchronously and verified at 100% pass (0 failures).
 
 ---
 
-## 4. Conclusion
+## 4. Conclusion & Proposed Implementation Plan
 
-1. **Arena Mounting Point**: `c:\APP\stitch_little_hero_adventures\src\components\WorkoutHeroDuoCanvas.js` mounted by `c:\APP\stitch_little_hero_adventures\src\views\DinoWorkoutView.js` into `#workout-canvas-container` is the exact, canonical integration point.
-2. **Kinematic Choreography Ready**: All 8 gross-motor choreographies are completely mathematically defined in `WorkoutHeroDuoCanvas.js` (lines 550-832) and can be mapped directly to 3D skeletal bones (`root`, `pelvis`, `spine`, `neck`, `head`, `shoulders`, `elbows`, `hands`, `hips`, `knees`, `feet`, `cape`).
-3. **Synchronous 30s Diplodocus Switch**: In `DINO_WORKOUTS[6]`, `hasHalfwaySideSwitch: true` triggers at `remainingTime === 30`. At 30s, the coach announces the switch ("HALFWAY! Switch sides now!"), the timer subtitle updates to "Switched Sides • Push to Finish!", and the avatar mirrors its pose from Right-Arm/Left-Leg to Left-Arm/Right-Leg.
-4. **Hybrid Audio Enhancement**: The voice pipeline in `voiceService.js` is structurally sound. To achieve zero latency (R2), a client-side audio cache (`workoutAudioClipCache`) and pre-caching mechanism during the 3-2-1 countdown should be added, along with updating `PET_VOICE_MAP` in `server/geminiService.js`.
-5. **Design & Guardrail Integrity**: All existing store methods (`setActiveWorkoutId`, `getWorkoutStreak`, `recordWorkoutCompletion`), circuit mode steps (1-8 with 10s water breaks), and Electric Cyan/Emerald/Amber/Slate palette are fully documented and ready for 3D specialist implementation.
+The codebase has the core Cloudflare Workers AI integration and SVG fallbacks in place, but has 4 critical architectural gaps relative to R1:
+1. **Truncated / Omitted Narrative Context**: Prompts truncate chapter text to 150 chars (server) or drop it entirely (client).
+2. **Defective Cache Key Structure**: Cache keys do not bind to `session.id`, `chapterIndex`, or `md5(chapterText)`, causing cross-story collisions in the same realm.
+3. **Missing Seed Entropy**: Random seed (`Math.floor(Math.random() * 2147483647)`) is neither generated nor passed anywhere in the call chain.
+4. **Missing Negative Prompt Enforcement**: Cloudflare Worker and prompt generators lack explicit `negative_prompt` parameters to strictly exclude pink/purple.
+
+### Proposed Implementation Plan (Targeting Implementation Agent)
+
+1. **Lightweight Pure JS MD5 Helper (`src/utils/md5.js`)**:
+   - Provide a zero-dependency, pure JS `computeMd5(str)` function producing a 32-character hexadecimal string, compatible with both browser and Node/Cloudflare environments.
+2. **Update `src/services/bedtimeIllustrationService.js`**:
+   - Update `getCacheKey({ sessionId, chapterIndex, chapterNumber, chapterText, ... })` to return:
+     `${sessionId || 'story'}_ch${chapterIndex ?? (chapterNumber - 1)}_${computeMd5(chapterText || '')}`
+   - Update `generateChapterIllustration(params)` to use `this.getCacheKey(params)`.
+   - Update `buildPrompt(params)`: Include the full unabridged `chapterText` into the prompt context:
+     `"Full Chapter Narrative: \"${chapterText.trim()}\". Visual Illustration Instruction: In 3D Pixar animation style with claymation textures, illustrate this exact scene depicting ${heroName} and baby ${petArchetype} companion in ${realmName}..."`
+   - Generate `seed = params.seed ?? Math.floor(Math.random() * 2147483647)` and include in request payload to both proxy and direct worker endpoints.
+   - Pass `negative_prompt: "pink, purple, magenta, violet, neon pink, dark, scary, deformed, blurry"`.
+3. **Update `server/imageGenService.js`**:
+   - Import or implement `computeMd5`.
+   - Extract `sessionId`, `chapterIndex`, `seed`, `chapterText` from `req.body`.
+   - Remove `.slice(0, 150)` from `buildBedtimeIllustrationPrompt`; incorporate the entire unabridged chapter text.
+   - Update `cacheKey` to:
+     `${sessionId || 'story'}_ch${chapterIndex ?? (chapterNumber - 1)}_${computeMd5(chapterText || prompt)}`
+   - Pass `seed` and `negative_prompt` in fetch call to Cloudflare Workers AI.
+4. **Update `cloudflare-worker/worker.js`**:
+   - Extract `const seed = body.seed !== undefined ? Number(body.seed) : Math.floor(Math.random() * 2147483647);`
+   - Extract `const negative_prompt = body.negative_prompt || "pink, purple, magenta, violet, neon pink, scary, dark, deformed, blurry";`
+   - Pass `{ prompt, seed, negative_prompt }` to `env.AI.run(model, ...)`.
+5. **Update `src/services/bedtimeStoryService.js`**:
+   - In `generateAct` (lines 648–665):
+     Pass `sessionId: session.id`, `chapterIndex: actNumber - 1`, and `seed: Math.floor(Math.random() * 2147483647)` to `generateChapterIllustration`.
 
 ---
 
 ## 5. Verification Method
 
-### 5.1 Automated Test Execution
-Run the complete Little Hero Adventures regression test suite:
-```powershell
-node scratch/run_all_tests.js
-```
-Expected result: `🎉 ALL TEST SUITES PASSED SUCCESSFULLY!` with 0 failures.
+To verify R1 implementation independently:
 
-### 5.2 Build Verification
-Run Vite production build:
-```powershell
-npm run build
-```
-Expected result: Vite builds `dist/` with exit code 0 and zero bundling or syntax errors.
-
-### 5.3 Targeted Workout & Store Verification
-Inspect key files:
-- `src/views/DinoWorkoutView.js`: Check mount of duo stage, 8-minute circuit loop, water break timer, and reward minting.
-- `src/components/WorkoutHeroDuoCanvas.js`: Check side-by-side positioning, 8 workout kinematic switches, and 30s Diplodocus mirror flip.
-- `src/data/petsData.js`: Verify DINO_WORKOUTS definitions (tempo, form cues, cadenceTimeline).
-- `src/services/voiceService.js`: Verify anti-overlapping `speechGeneration` and Daniel voice selection.
-
-### 5.4 Invalidation Conditions
-- Any introduction of pink or purple colors (`#ff00ff`, `purple-500`, `pink-500`, etc.) in views or styles.
-- Modifying `recordWorkoutCompletion` arguments or breaking 7-day streak stamp array in `store.js`.
-- Breaking the 10-second water break intermission in circuit mode.
-- WebGL initialization throwing unhandled errors when `canvas.getContext('webgl')` returns null.
+1. **Cache Collision Verification**:
+   - Generate two distinct stories in the same realm (`space`) with different chapter narratives.
+   - Assert `bedtimeIllustrationService.getCacheKey()` generates distinct keys for Chapter 1 of Story 1 vs Chapter 1 of Story 2.
+   - Assert neither key collides with previous cached entries.
+2. **Full Text in Prompt Verification**:
+   - Inspect the prompt string received by `buildBedtimeIllustrationPrompt` and direct Cloudflare call with a 200-word chapter text.
+   - Assert the generated prompt contains the complete chapter narrative (>800 characters) without truncation (`slice(0, 150)`).
+3. **Random Seed Verification**:
+   - Verify that requests to `/api/story/illustration` and Cloudflare Worker contain a numeric `seed` between `0` and `2147483647`.
+4. **Explorer Palette Verification**:
+   - Assert all fallback SVGs and prompt instructions exclude `#ec4899`, `#a855f7`, `pink`, `purple`, `magenta`.
+5. **Automated Test Suite & Build Verification**:
+   - Run `node scratch/run_all_tests.js` -> must exit with code 0 (0 failures).
+   - Run `npm run build` -> must compile cleanly with exit code 0.

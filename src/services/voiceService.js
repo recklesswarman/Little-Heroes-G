@@ -698,10 +698,10 @@ export async function fetchPcmTts(endpoint, cleanSpoken, petId, timeoutMsOrOptio
     timeoutMs = timeoutMsOrOptions;
   }
 
-  // If bedtime style, default to 18000ms unless a custom timeout was explicitly specified (other than default 4500)
+  // If bedtime style, default to 25000ms unless a custom timeout was explicitly specified (other than default 4500)
   if (style === 'bedtime') {
     if (timeoutMs === 4500 || !timeoutMs) {
-      timeoutMs = 18000;
+      timeoutMs = 25000;
     }
   }
 

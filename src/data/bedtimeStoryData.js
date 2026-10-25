@@ -832,7 +832,132 @@ export const PLOT_ARCHETYPES = [
 ];
 
 /**
- * Procedural Combinatorial Bedtime Story Generator (~120-150 words per chapter)
+ * Anti-Repetition Banned Phrases Registry
+ * Little Hero Adventures - Bedtime Storybook Engine
+ */
+export const BANNED_BEDTIME_STOCK_PHRASES = [
+  'smiled happily beside',
+  'looked up at the starry sky',
+  'gazed with wonder',
+  'twinkled like cheerful fireflies',
+  'golden sun had dipped peacefully',
+  'all was quiet now',
+  'gazed at the quiet, starry night',
+  'flew across the starry sky'
+];
+
+/**
+ * Dynamic Combinatorial Sentence Banks
+ * 5+ opening structures per chapter (6 defined per chapter)
+ */
+export const BEDTIME_OPENING_BANKS = [
+  // Chapter 1 Openings (Departure & Gentle Curiosity, subBiome 0) - 6 variants
+  [
+    (hName, pName, subBiome) => `Deep dusk settled softly over the horizon as velvet midnight slate embraced the outer boundaries of ${subBiome}.`,
+    (hName, pName, subBiome) => `With gentle paws stepping lightly on the cool evening path, ${pName} accompanied ${hName} toward the peaceful threshold of ${subBiome}.`,
+    (hName, pName, subBiome) => `A soothing twilight hush drifted across ${subBiome}, carrying the faint, sweet scent of sleepy night-blossoms.`,
+    (hName, pName, subBiome) => `The evening breeze whispered a tranquil welcome as ${hName} and loyal companion ${pName} arrived at the quiet entryway to ${subBiome}.`,
+    (hName, pName, subBiome) => `Lantern light shimmered with a comforting amber glow around ${hName} and steadfast friend ${pName} at the beginning of their journey into ${subBiome}.`,
+    (hName, pName, subBiome) => `The vast twilight sky glowed in calm electric cyan and deep indigo as ${hName} and ${pName} paused to take in the quiet beauty of ${subBiome}.`
+  ],
+  // Chapter 2 Openings (Whimsical Encounter & Gentle Mystery, subBiome 1) - 6 variants
+  [
+    (hName, pName, subBiome) => `Moving deeper into ${subBiome}, the winding pathway glowed with faint ribbons of bioluminescent emerald and starlight cyan.`,
+    (hName, pName, subBiome) => `Perking up with soft curiosity, ${pName} padded forward across the mossy floor of ${subBiome}.`,
+    (hName, pName, subBiome) => `Beneath the tranquil starlit boughs of ${subBiome}, a delicate nighttime mystery unfolded before ${hName} and ${pName}.`,
+    (hName, pName, subBiome) => `A tiny, musical chime drifted through the peaceful air of ${subBiome}, catching ${hName}'s attention.`,
+    (hName, pName, subBiome) => `Soft twilight shadows danced gently across the glistening terrain of ${subBiome} as ${pName} paused to investigate a curious nook.`,
+    (hName, pName, subBiome) => `High overhead, tranquil constellations traced slow, dreamy circles as ${hName} and ${pName} navigated the quiet trails of ${subBiome}.`
+  ],
+  // Chapter 3 Openings (Calming Cooperative Resolution, subBiome 2) - 6 variants
+  [
+    (hName, pName, subBiome) => `In the quiet heart of ${subBiome}, a tender bedtime moment called for gentle understanding and cooperation.`,
+    (hName, pName, subBiome) => `Facing the gentle nighttime hurdle together, ${hName} and ${pName} knelt down beside the sleepy friend in ${subBiome}.`,
+    (hName, pName, subBiome) => `The soft glow of evening illuminated ${subBiome} as ${hName} listened closely to the quiet needs of their little companion.`,
+    (hName, pName, subBiome) => `With reassuring gentleness, ${pName} stepped beside ${hName} along the tranquil clearing of ${subBiome}.`,
+    (hName, pName, subBiome) => `A peaceful hush settled over ${subBiome} as the gentle challenge of the evening presented itself.`,
+    (hName, pName, subBiome) => `Looking into the tired eyes of the woodland traveler in ${subBiome}, ${hName} felt a wave of comforting empathy.`
+  ],
+  // Chapter 4 Openings (Curling up in Cozy Starlight Nest, subBiome 3) - 6 variants
+  [
+    (hName, pName, subBiome) => `Guided by the softest glow of twilight, ${hName} and faithful ${pName} reached the secluded sanctuary of ${subBiome}.`,
+    (hName, pName, subBiome) => `In the quietest hollow of ${subBiome}, a plush nest of woven moss and velvet cloud blankets welcomed the weary heroes.`,
+    (hName, pName, subBiome) => `A blanket of deep tranquility draped across ${subBiome}, where every leaf and stardust crystal rested in total peace.`,
+    (hName, pName, subBiome) => `The night had softened into perfect stillness as ${hName} and ${pName} settled into their slumber sanctuary in ${subBiome}.`,
+    (hName, pName, subBiome) => `With heavy limbs and happy hearts, ${hName} and ${pName} stepped into the comforting warmth of ${subBiome}.`,
+    (hName, pName, subBiome) => `The tranquil melody of nocturnal chimes echoed through ${subBiome}, signaling that the grand adventure had reached its bedtime home.`
+  ]
+];
+
+/**
+ * Dynamic Soothing Whisper Lines Banks
+ * 12+ soothing whisper lines per chapter
+ */
+export const BEDTIME_WHISPER_BANKS = [
+  // Chapter 1 Whispers (12 lines)
+  [
+    (hName) => `The evening sky is calm and restful, ${hName}. Soften your shoulders and welcome the peaceful dusk.`,
+    (hName) => `Breathe in the cool evening stillness, ${hName}. Tonight is full of gentle rest.`,
+    (hName) => `Every little hero rests their weary feet when the evening stars begin to glow, ${hName}.`,
+    (hName) => `Feel the quiet blanket of night settling around your room, cozy and snug, ${hName}.`,
+    (hName) => `Your hero heart worked hard today, ${hName}; now let the twilight cradle your thoughts.`,
+    (hName) => `A soft breath in, a gentle sigh out; peace is here to keep you safe, ${hName}.`,
+    (hName) => `The path ahead is tranquil and kind, lighted by warm memories of your day, ${hName}.`,
+    (hName) => `Let go of all the busy daytime running, ${hName}; night is your personal peaceful haven.`,
+    (hName) => `Listen to the quiet rhythm of the world settling down to rest, ${hName}.`,
+    (hName) => `You are cherished and protected, little champion. Dusk brings sweet slumber near.`,
+    (hName) => `The soft evening wind whispers that it is safe to close your eyes whenever you wish, ${hName}.`,
+    (hName) => `Rest easy, brave explorer; tonight's gentle journey is made of quiet starlight and comfort.`
+  ],
+  // Chapter 2 Whispers (12 lines)
+  [
+    (hName) => `You are completely safe with loyal friends nearby, ${hName}. The night is soft and kind.`,
+    (hName) => `Every curious mystery in the quiet dark is just a friendly bedtime surprise, ${hName}.`,
+    (hName) => `Let your eyelids grow heavy as you follow the gentle glowing path, ${hName}.`,
+    (hName) => `Small creatures are finding their cozy nests, just like you are finding yours, ${hName}.`,
+    (hName) => `The night holds only kindness and wonder for brave, sleepy heroes like you, ${hName}.`,
+    (hName) => `Feel the quiet calm in the air, wrapping around you like a velvet quilt, ${hName}.`,
+    (hName) => `Soft footsteps, gentle thoughts, and peaceful breathing guide our way tonight, ${hName}.`,
+    (hName) => `When we walk together with patience, every shadow turns into a warm friend, ${hName}.`,
+    (hName) => `Notice how still the night has become, humming a sweet and quiet lullaby, ${hName}.`,
+    (hName) => `Rest your brave mind, ${hName}; every bedtime mystery resolves into peaceful slumber.`,
+    (hName) => `Kindness shines brighter than any lantern in the tranquil night, ${hName}.`,
+    (hName) => `A peaceful world rests all around you, watching over your cozy bedtime journey, ${hName}.`
+  ],
+  // Chapter 3 Whispers (12 lines)
+  [
+    (hName) => `Kindness and gentle patience always light the quiet way home, ${hName}.`,
+    (hName) => `Feel your muscles soften and melt, letting go of every little worry, ${hName}.`,
+    (hName) => `When we help someone else rest easy, our own hearts grow warm and peaceful, ${hName}.`,
+    (hName) => `Take a long, slow breath out, ${hName}; the challenge is softly resolved, and all is well.`,
+    (hName) => `A gentle heart is the greatest superpower in the whole universe, ${hName}.`,
+    (hName) => `Everything is solved with quiet teamwork; now sweet slumber can arrive, ${hName}.`,
+    (hName) => `Let the warm glow of kindness wrap around your shoulders like a soft blanket, ${hName}.`,
+    (hName) => `Breathe in peace, breathe out calm; you have done something truly wonderful tonight, ${hName}.`,
+    (hName) => `Sweet dreams belong to those who share their warmth with the world, ${hName}.`,
+    (hName) => `The gentle night shines with proud affection for the kindness you showed today, ${hName}.`,
+    (hName) => `Quiet confidence fills your chest as night tucks every friend into bed, ${hName}.`,
+    (hName) => `Rest peacefully knowing that patience and goodness made someone safe tonight, ${hName}.`
+  ],
+  // Chapter 4 Whispers (12 lines)
+  [
+    (hName) => `Close your tired eyes, brave hero. Sleep is here, warm, safe, and sweet. Goodnight, ${hName}.`,
+    (hName) => `Inhale peaceful dreams for four slow counts, exhale all thoughts for four slow counts, ${hName}.`,
+    (hName) => `Your bed is soft, your room is safe, and tomorrow awaits with joyful adventures, ${hName}.`,
+    (hName) => `Let your breathing become as slow and rhythmic as gentle ocean waves, ${hName}.`,
+    (hName) => `Snuggle deep under your blankets, little champion; you have earned this sweet rest, ${hName}.`,
+    (hName) => `The stars keep a quiet vigil over your sleeping room until the morning arrives, ${hName}.`,
+    (hName) => `Feel the heavy, warm comfort spreading from your toes all the way to your forehead, ${hName}.`,
+    (hName) => `Rest your brave head on the pillow, ${hName}; your loyal pet is purring softly at your side.`,
+    (hName) => `All quests are done, all toys are sleeping, and the night belongs to your sweet dreams, ${hName}.`,
+    (hName) => `Drift away on gentle starlight clouds into the softest, happiest slumber, ${hName}.`,
+    (hName) => `Whisper goodnight to the adventure, and hello to the most peaceful dreams, ${hName}.`,
+    (hName) => `Sleep tight, sweet hero. You are loved, you are safe, and all is wonderfully well, ${hName}.`
+  ]
+];
+
+/**
+ * Procedural Combinatorial Bedtime Story Generator (~180-220 words per chapter)
  * Combinatorial Dynamic Story Weaver with 12+ distinct archetypes per realm.
  * Output rich structured sceneDescriptor payloads and strictly zero pink/purple palette.
  */
@@ -843,21 +968,36 @@ export function generateProceduralBedtimeStory(
   activePetName = 'Rex',
   customWish = '',
   chapterIndex = 0,
-  userChoices = []
+  userChoices = [],
+  seed = null
 ) {
   const realm = getBedtimeRealm(realmId);
   const moral = BEDTIME_MORALS.find(m => m.id === moralId) || BEDTIME_MORALS[0];
   const hName = heroName || 'Little Hero';
   const pName = activePetName || 'Rex';
-  const choiceText = (userChoices[chapterIndex - 1] || '').trim();
+  const safeChoices = Array.isArray(userChoices) ? userChoices : [];
+  const choiceText = (safeChoices[chapterIndex - 1] || '').trim();
 
-  // Deterministic rotation of archetypes based on names & realm
-  const hash = String(hName + pName + realm.id + moral.id).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  const archetypeIdx = (hash + Number(chapterIndex || 0)) % PLOT_ARCHETYPES.length;
+  // High-entropy rotation incorporating seed entropy and child/realm inputs
+  const nameHash = String(hName + pName + realm.id + moral.id).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  const entropy = (typeof seed === 'number' && !isNaN(seed))
+    ? seed
+    : (Date.now() + Math.floor(Math.random() * 2147483647));
+  const combinedSeed = Math.abs((entropy ^ (nameHash * 31) ^ (Number(chapterIndex || 0) * 1009)) | 0);
+
+  const archetypeIdx = (combinedSeed + Number(chapterIndex || 0)) % PLOT_ARCHETYPES.length;
   const archetype = PLOT_ARCHETYPES[archetypeIdx] || PLOT_ARCHETYPES[0];
 
-  const subBiome = realm.subBiomes[chapterIndex % realm.subBiomes.length];
+  const chIdx = Math.max(0, Math.min(3, Number(chapterIndex || 0)));
+  const subBiome = realm.subBiomes[chIdx % realm.subBiomes.length];
   const choiceProp = choiceText ? choiceText.replace(/[^\w\s]/gi, '').trim() : archetype.keyProp;
+
+  // Select dynamic opening and whisper line from combinatorial banks
+  const openingFn = BEDTIME_OPENING_BANKS[chIdx][combinedSeed % BEDTIME_OPENING_BANKS[chIdx].length];
+  const openingSentence = openingFn(hName, pName, subBiome);
+
+  const whisperFn = BEDTIME_WHISPER_BANKS[chIdx][combinedSeed % BEDTIME_WHISPER_BANKS[chIdx].length];
+  const whisperLine = whisperFn(hName);
 
   // Scene descriptor weather particles mapping based on realm
   let weatherParticles = 'fireflies';
@@ -872,9 +1012,13 @@ export function generateProceduralBedtimeStory(
     accent: '#ffb961'
   };
 
-  if (chapterIndex === 0) {
-    // Chapter 1: The Evening Departure & Arrival (~120 words)
-    const text = `The golden sun had dipped peacefully below the horizon, painting the sky in deep shades of midnight slate and starlight cyan. Tonight, ${hName} and faithful companion ${pName} stood at the edge of ${subBiome}. Their cozy bedtime adventure was just beginning. ${pName} adjusted their soft explorer collar with quiet excitement. ${pName} looked over with a warm, comforting smile: "Every great bedtime explorer knows that sweet dreams begin with preparation! What special hero gadget should we pack into our backpack tonight?" ${customWish ? `Tonight was extra special because ${hName} whispered a bedtime wish: "${customWish}". ` : ''}The cool evening air was quiet and peaceful, filled with the gentle hum of twilight.`;
+  if (chIdx === 0) {
+    // Chapter 1: Departure & Gentle Curiosity (~180-220 words)
+    const wishSentence = customWish
+      ? `Tonight was extra comforting because ${hName}'s family had shared a tender bedtime wish: "${customWish}". `
+      : `${hName} paused to reflect on today's heroic moments, from brushing teeth thoroughly to speaking kindly to family and friends. `;
+
+    const text = `${openingSentence} Their calming bedtime journey was just unfolding, guided by the soft, rhythmic hum of evening crickets and gentle night breezes. Together, they made sure their bedtime satchel was packed with care, placing ${choiceProp} securely alongside warm woolly socks and their favorite explorer journal. ${pName} adjusted their soft explorer collar with quiet satisfaction, giving a cheerful tail swish to signal that everything was in its proper place. ${pName} nudged the satchel closed and murmured reassuringly: "Every brave explorer knows that true comfort begins with a calm mind, tidy preparations, and a peaceful heart." ${wishSentence}The cool evening air brushed gently against their cheeks, carrying away the busy energy of the afternoon. Each slow, relaxed step along the emerald-bordered trail felt lighter than the last, as the world prepared for peaceful slumber. With their shoulders loosening and minds settling into quiet comfort, they walked forward into the embrace of the tranquil twilight.`;
 
     const sceneDescriptor = {
       environmentBiome: subBiome,
@@ -894,14 +1038,14 @@ export function generateProceduralBedtimeStory(
       subtitle: `${realm.name} - Under the Twilight Sky`,
       text,
       chapterText: text,
-      whisperLine: `The evening sky is calm and quiet, ${hName}. Rest your shoulders and breathe in the peaceful dusk.`,
-      sleepyCue: 'Take one slow, deep breath as the stars begin to twinkle.',
-      moralReflection: `Every great journey begins with a brave little first step into the quiet evening.`,
+      whisperLine,
+      sleepyCue: 'Take one slow, deep breath as the evening stars begin to glow.',
+      moralReflection: 'Every great journey begins with a brave little first step into the quiet evening.',
       choices: realm.act1DefaultChips.map(c => c.text),
       sceneMood: 'tranquil',
       sceneDescriptor,
-      prompt: realm.act1Prompts[0],
-      promptQuestion: realm.act1Prompts[0],
+      prompt: 'The evening trail is quiet and welcoming.',
+      promptQuestion: 'The evening trail is quiet and welcoming.',
       defaultChips: realm.act1DefaultChips,
       suggestionChips: realm.act1DefaultChips,
       isSleepingEnd: false,
@@ -909,9 +1053,9 @@ export function generateProceduralBedtimeStory(
     };
   }
 
-  if (chapterIndex === 1) {
-    // Chapter 2: Pet Companion's Discovery & Gentle Mystery (~130 words)
-    const text = `With ${choiceText || 'their favorite hero gear'} snugly tucked into their pack, ${hName} and ${pName} ventured deeper along the glowing pathway. The stars overhead twinkled like cheerful fireflies. Suddenly, ${pName}'s ears perked up! The loyal pet padded ahead toward a patch of shimmering moon-flowers in ${subBiome}. ${pName} gave a soft, curious boof and gestured with their paws. There, nestled beneath a canopy of gentle starlight, was ${archetype.act2Discovery}. It blinked its sleepy eyes, looking just a little bit nervous in the big, quiet night. ${pName} leaned in gently, giving a warm, reassuring nuzzle to let the creature know it was completely safe with friends nearby.`;
+  if (chIdx === 1) {
+    // Chapter 2: Whimsical Encounter & Gentle Mystery (~180-220 words)
+    const text = `${openingSentence} The soothing atmosphere surrounded them with a blanket of quiet, as dew drops sparkled peacefully along the sleepy fern leaves. Suddenly, ${pName}'s ears twitched with alertness, sniffing the gentle evening breeze before stepping softly toward a sheltered alcove. There, resting quietly under a canopy of velvety night leaves, was ${archetype.act2Discovery}. The little friend blinked drowsy eyes, shivering just a tiny bit in the stillness of the unfamiliar evening. ${hName} stepped forward with slow, gentle care, holding up ${choiceProp} to cast a warm, comforting amber glow across the moss. ${pName} leaned down beside the small traveler, offering a gentle, warm nuzzle and a soft purr that washed away every trace of nervousness. "You are completely safe with us," ${pName} whispered softly, "because true friends always watch over each other in the quiet dark." The sweet creature snuggled closer against the moss, feeling the reassuring presence of two kind companions who were ready to help. A profound sense of peaceful companionship filled the glade as they prepared to solve the evening's gentle puzzle together.`;
 
     const sceneDescriptor = {
       environmentBiome: subBiome,
@@ -931,14 +1075,14 @@ export function generateProceduralBedtimeStory(
       subtitle: `${pName}'s Helpful Senses`,
       text,
       chapterText: text,
-      whisperLine: `You are safe with friends nearby, little one. The night is gentle and kind.`,
+      whisperLine,
       sleepyCue: 'Notice how soft the night sounds are, like a whispered lullaby.',
-      moralReflection: `Noticing when someone needs a friend is a true superhero superpower.`,
+      moralReflection: 'Noticing when someone needs a friend is a true superhero superpower.',
       choices: realm.act2DefaultChips.map(c => c.text),
       sceneMood: 'mystical',
       sceneDescriptor,
-      prompt: realm.act2Prompts[0],
-      promptQuestion: realm.act2Prompts[0],
+      prompt: 'A gentle bedtime mystery unfolds peacefully.',
+      promptQuestion: 'A gentle bedtime mystery unfolds peacefully.',
       defaultChips: realm.act2DefaultChips,
       suggestionChips: realm.act2DefaultChips,
       isSleepingEnd: false,
@@ -946,9 +1090,9 @@ export function generateProceduralBedtimeStory(
     };
   }
 
-  if (chapterIndex === 2) {
-    // Chapter 3: Overcoming the Challenge with the Daily Moral (~140 words)
-    const text = `The gentle creature looked up at ${hName} with wide, hopeful eyes. It seemed they had encountered a little bedtime hurdle: ${moral.tagline.toLowerCase()}. ${archetype.act3Challenge} ${pName} stepped forward with gentle understanding: "Remember, little explorer, ${moral.moralGuidance.toLowerCase()}" ${hName} smiled, remembering the importance of ${moral.name.toLowerCase()}. Working together with ${pName}, ${hName} demonstrated true hero character through ${archetype.act3Resolution}. ${pName} ${moral.petAction}, showing how simple and wonderful it feels to do the right thing. The creature let out a tiny, contented sigh. The whole clearing glowed with a soft, warm amber light as the challenge melted away into peace.`;
+  if (chIdx === 2) {
+    // Chapter 3: Calming Cooperative Resolution (~180-220 words)
+    const text = `${openingSentence} In this tranquil setting, it became clear that their new companion was facing a bedtime hurdle: ${moral.tagline.toLowerCase()}. ${archetype.act3Challenge} ${pName} stepped forward with gentle understanding: "Remember, brave explorer, ${moral.moralGuidance.toLowerCase()}" ${hName} nodded with a peaceful smile, practicing ${moral.name.toLowerCase()} with heartfelt care. Working together with quiet patience, ${hName} demonstrated true heroic character through ${archetype.act3Resolution}. Loyal companion ${pName} ${moral.petAction}, showing how simple and wonderfully rewarding it feels to do the right thing. The little friend let out a long, contented sigh of pure relief, nuzzling deep into the soft, warm blanket. A gentle amber glow illuminated the entire clearing, dissolving every worry into nighttime stillness. ${hName} felt every muscle soften, knowing kindness had made the world a safer, cozier place tonight. With peaceful harmony restored, the journey turned toward sweet slumber.`;
 
     const sceneDescriptor = {
       environmentBiome: subBiome,
@@ -968,23 +1112,23 @@ export function generateProceduralBedtimeStory(
       subtitle: moral.name,
       text,
       chapterText: text,
-      whisperLine: `Kindness and patience always light the way home. Feel your muscles melt and relax.`,
+      whisperLine,
       sleepyCue: 'Breathe out slowly, blowing away all the day\'s busy thoughts like dandelion seeds.',
       moralReflection: moral.slumberResolution,
       choices: realm.act3DefaultChips.map(c => c.text),
       sceneMood: 'gentle',
       sceneDescriptor,
-      prompt: realm.act3Prompts[0],
-      promptQuestion: realm.act3Prompts[0],
+      prompt: 'Kindness and cooperation bring peaceful harmony.',
+      promptQuestion: 'Kindness and cooperation bring peaceful harmony.',
       defaultChips: realm.act3DefaultChips,
       suggestionChips: realm.act3DefaultChips,
-      isSleepingEnd: userChoices.length >= 2,
+      isSleepingEnd: false,
       archetypeId: archetype.id
     };
   }
 
-  // Chapter 4 (or Legacy Index 3): Peaceful Cozy Slumber (~130 words)
-  const text = `All was quiet now across the vast expanse of ${realm.name}. The little creature was safely tucked into its cozy mossy hammock, purring softly in deep slumber. ${hName} felt a wonderful, heavy warmth spreading from their toes all the way up to their eyelids. ${pName} curled up into a soft, fluffy ball at ${hName}'s side, letting out a giant, sleepy yawn that made everyone yawn too. ${pName} softly snuggled down under the glowing bedtime lantern and whispered into the quiet twilight: "You did wonderful today, brave hero. You brushed your teeth, showed kindness, and conquered the day. Now, let the stars watch over your dreams." The ambient night chimes began to play their soothing song as sleep arrived.`;
+  // Chapter 4: Curling Up in Cozy Starlight Nest, Drifting off to Sleep (~180-220 words)
+  const text = `${openingSentence} The little forest creature was already nestled in its hammock, breathing peacefully with soft, rhythmic murmurs of deep content. ${hName} climbed into the cozy bed, feeling a wonderful, heavy warmth spreading from their toes all the way up to their eyelids. ${pName} curled into a soft, fluffy circle at ${hName}'s side, resting their chin on paws and letting out an enormous, sleepy yawn. That gentle yawn was so wonderfully contagious that ${hName} let out a slow, cozy yawn too, sinking deeper into the soft pillows. ${pName} whispered into the calm twilight: "You were magnificent today, brave hero; you helped others, showed courage, and brought warmth wherever you walked." Now breathe in the cool stillness for four slow, peaceful counts... hold the quiet comfort... and breathe out softly for four relaxing counts. The sky dimmed to midnight slate as glowing aurora ribbons faded into a gentle, sleepy lullaby. Close your eyes, brave champion, and drift into sweet dreams where starlight watches over you until the sun returns.`;
 
   const sceneDescriptor = {
     environmentBiome: subBiome,
@@ -1004,14 +1148,14 @@ export function generateProceduralBedtimeStory(
     subtitle: 'Cozy Dreams & Goodnight',
     text,
     chapterText: text,
-    whisperLine: `Close your eyes, brave hero. Sleep is here, warm and sweet. Goodnight.`,
+    whisperLine,
     sleepyCue: 'Inhale peace for 4 seconds... exhale dreams for 4 seconds...',
     moralReflection: moral.slumberResolution,
     choices: [],
     sceneMood: 'deep_slumber',
     sceneDescriptor,
-    prompt: realm.act4Prompt,
-    promptQuestion: realm.act4Prompt,
+    prompt: 'Sleep tight, brave hero. Sweet dreams.',
+    promptQuestion: 'Sleep tight, brave hero. Sweet dreams.',
     defaultChips: [],
     suggestionChips: [],
     isSleepingEnd: true,
@@ -1020,7 +1164,7 @@ export function generateProceduralBedtimeStory(
 }
 
 /**
- * Generate a complete 3-Chapter Bedtime Story Payload
+ * Generate a complete 4-Chapter Bedtime Story Payload
  * Conforms to PROJECT.md § Interface Contracts.
  */
 export function generateFullBedtimeStory(
@@ -1029,23 +1173,26 @@ export function generateFullBedtimeStory(
   heroName = 'Little Hero',
   activePetName = 'Rex',
   customWish = '',
-  userChoices = []
+  userChoices = [],
+  seed = null
 ) {
   const realm = getBedtimeRealm(realmId);
   const moral = BEDTIME_MORALS.find(m => m.id === moralId) || BEDTIME_MORALS[0];
   const hName = heroName || 'Little Hero';
   const pName = activePetName || 'Rex';
 
-  const ch1 = generateProceduralBedtimeStory(realm.id, moral.id, hName, pName, customWish, 0, userChoices);
-  const ch2 = generateProceduralBedtimeStory(realm.id, moral.id, hName, pName, customWish, 1, userChoices);
-  // In the 3-chapter narrative arc, Chapter 3 is the Slumber Sanctuary conclusion
-  const ch3 = generateProceduralBedtimeStory(realm.id, moral.id, hName, pName, customWish, 3, userChoices);
-  ch3.chapterIndex = 2;
-  ch3.chapterNumber = 3;
-  ch3.title = 'Chapter 3: The Slumber Sanctuary';
+  const baseEntropy = (typeof seed === 'number' && !isNaN(seed))
+    ? seed
+    : (Date.now() + Math.floor(Math.random() * 2147483647));
 
-  const hash = String(hName + pName + realm.id + moral.id).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  const archetype = PLOT_ARCHETYPES[hash % PLOT_ARCHETYPES.length];
+  const ch1 = generateProceduralBedtimeStory(realm.id, moral.id, hName, pName, customWish, 0, userChoices, baseEntropy);
+  const ch2 = generateProceduralBedtimeStory(realm.id, moral.id, hName, pName, customWish, 1, userChoices, baseEntropy);
+  const ch3 = generateProceduralBedtimeStory(realm.id, moral.id, hName, pName, customWish, 2, userChoices, baseEntropy);
+  const ch4 = generateProceduralBedtimeStory(realm.id, moral.id, hName, pName, customWish, 3, userChoices, baseEntropy);
+
+  const nameHash = String(hName + pName + realm.id + moral.id).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  const combinedSeed = Math.abs((baseEntropy ^ (nameHash * 31)) | 0);
+  const archetype = PLOT_ARCHETYPES[combinedSeed % PLOT_ARCHETYPES.length];
 
   return {
     success: true,
@@ -1058,9 +1205,9 @@ export function generateFullBedtimeStory(
     moralId: moral.id,
     heroName: hName,
     petName: pName,
-    seed: hash,
+    seed: baseEntropy,
     archetypeId: archetype.id,
-    chapters: [ch1, ch2, ch3]
+    chapters: [ch1, ch2, ch3, ch4]
   };
 }
 

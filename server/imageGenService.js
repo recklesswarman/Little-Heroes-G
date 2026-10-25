@@ -4,6 +4,8 @@
  * (saurav-z/free-image-generation-api) with in-memory caching and resilient fallbacks.
  */
 
+import { computeMd5 } from '../src/utils/md5.js';
+
 const imageCache = new Map();
 const MAX_CACHE_SIZE = 50;
 
@@ -24,12 +26,14 @@ export function buildBedtimeIllustrationPrompt(params = {}) {
     magicItem = 'Starlight Lantern'
   } = params;
 
-  // Extract key action or mood from chapter text
-  const cleanText = (chapterText || '').replace(/[^\w\s,.]/g, '').slice(0, 150);
+  // Unabridged chapter narrative without truncation
+  const fullNarrativeText = (chapterText || '').trim();
 
-  // Core character depiction
-  const heroDescription = `a cute cheerful toddler adventurer named ${heroName} wearing cozy pajamas and a soft heroic cape`;
-  const petDescription = `a friendly lovable companion pet named ${petName} (${petArchetype})`;
+  // Core character depiction (null-safe guard)
+  const safeHeroName = (params.heroName || heroName || 'Little Hero').trim() || 'Little Hero';
+  const safePetName = (params.petName || petName || 'Rex').trim() || 'Rex';
+  const heroDescription = `a cute cheerful toddler adventurer named ${safeHeroName} wearing cozy pajamas and a soft heroic cape`;
+  const petDescription = `a friendly lovable companion pet named ${safePetName} (${petArchetype})`;
 
   // Realm atmosphere
   const realmAtmosphere = `peaceful nighttime atmosphere in the magical realm of ${realmName}, gentle glowing fireflies, soft twilight sky with twinkling stars, cozy storybook diorama`;
@@ -37,13 +41,13 @@ export function buildBedtimeIllustrationPrompt(params = {}) {
   // Chapter-specific focus
   let chapterAction = '';
   if (chapterNumber === 1) {
-    chapterAction = `${heroName} and ${petName} embarking on their evening bedtime journey holding a glowing ${magicItem}`;
+    chapterAction = `${safeHeroName} and ${safePetName} embarking on their evening bedtime journey holding a glowing ${magicItem}`;
   } else if (chapterNumber === 2) {
-    chapterAction = `${heroName} and ${petName} discovering a sleepy gentle bedtime friend under moonbeams`;
+    chapterAction = `${safeHeroName} and ${safePetName} discovering a sleepy gentle bedtime friend under moonbeams`;
   } else if (chapterNumber === 3) {
-    chapterAction = `${heroName} and ${petName} solving a gentle puzzle with kindness and friendship`;
+    chapterAction = `${safeHeroName} and ${safePetName} solving a gentle puzzle with kindness and friendship`;
   } else {
-    chapterAction = `${heroName} and ${petName} curled up cozily asleep in a warm starlight nest drifting to peaceful dreams`;
+    chapterAction = `${safeHeroName} and ${safePetName} curled up cozily asleep in a warm starlight nest drifting to peaceful dreams`;
   }
 
   // 3D Pixar / Claymation style guidelines with strict Explorer Palette enforcement
@@ -54,7 +58,8 @@ export function buildBedtimeIllustrationPrompt(params = {}) {
     `award-winning children's storybook illustration, cozy, peaceful, 8k render, masterpiece`
   ].join(', ');
 
-  return `${chapterAction}, ${heroDescription}, ${petDescription}. Setting: ${realmAtmosphere}. Context: ${cleanText}. Style: ${stylePrompt}.`;
+  const contextPart = fullNarrativeText ? ` Context: ${fullNarrativeText}.` : '';
+  return `${chapterAction}, ${heroDescription}, ${petDescription}. Setting: ${realmAtmosphere}.${contextPart} Style: ${stylePrompt}.`;
 }
 
 /**
@@ -63,7 +68,8 @@ export function buildBedtimeIllustrationPrompt(params = {}) {
 export async function handleStoryIllustrationRequest(req, res) {
   try {
     const {
-      prompt: customPrompt,
+      sessionId = '',
+      chapterIndex,
       chapterNumber = 1,
       chapterTitle = '',
       chapterText = '',
@@ -73,8 +79,14 @@ export async function handleStoryIllustrationRequest(req, res) {
       petName = 'Rex',
       petArchetype = 'dino',
       magicItem = 'Starlight Lantern',
-      format = 'base64'
+      format = 'base64',
+      seed: reqSeed,
+      negative_prompt: reqNegPrompt,
+      prompt: customPrompt
     } = req.body || {};
+
+    const chIdx = chapterIndex ?? (chapterNumber - 1);
+    const cacheKey = `${sessionId || 'story'}_ch${chIdx}_${computeMd5(chapterText || '')}`;
 
     const prompt = customPrompt || buildBedtimeIllustrationPrompt({
       chapterTitle,
@@ -88,14 +100,20 @@ export async function handleStoryIllustrationRequest(req, res) {
       magicItem
     });
 
+    const seed = reqSeed !== undefined && reqSeed !== null
+      ? Number(reqSeed)
+      : Math.floor(Math.random() * 2147483647);
+    const negative_prompt = reqNegPrompt || "pink, purple, magenta, violet, neon pink, scary, dark, deformed, blurry";
+
     // Check in-memory cache
-    const cacheKey = `${realmId}_ch${chapterNumber}_${prompt.slice(0, 60)}`;
     if (imageCache.has(cacheKey)) {
       return res.json({
         success: true,
         imageUrl: imageCache.get(cacheKey),
         cached: true,
-        prompt
+        cacheKey,
+        prompt,
+        seed
       });
     }
 
@@ -119,6 +137,8 @@ export async function handleStoryIllustrationRequest(req, res) {
           body: JSON.stringify({
             prompt,
             model: process.env.CLOUDFLARE_AI_MODEL || '@cf/bytedance/stable-diffusion-xl-lightning',
+            seed,
+            negative_prompt,
             format: 'base64'
           }),
           signal: AbortSignal.timeout(25000)
@@ -150,7 +170,9 @@ export async function handleStoryIllustrationRequest(req, res) {
               success: true,
               imageUrl: dataUri,
               provider: 'cloudflare-workers-ai',
-              prompt
+              prompt,
+              seed,
+              cacheKey
             });
           }
         }
@@ -175,6 +197,8 @@ export async function handleStoryIllustrationRequest(req, res) {
       isFallback: true,
       provider: 'storybook-procedural-fallback',
       prompt,
+      seed,
+      cacheKey,
       message: workerUrl ? 'Cloudflare Workers AI unavailable; used fallback' : 'Configure CLOUDFLARE_IMAGE_API_URL to enable live AI illustrations'
     });
 

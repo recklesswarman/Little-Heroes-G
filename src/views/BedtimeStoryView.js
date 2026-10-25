@@ -20,7 +20,7 @@ let isMicListening = false;
 let isGeneratingScene = false;
 let readingSavedStory = null;
 let currentSavedActIndex = 0;
-let autoAdvanceSeconds = 15;
+let autoAdvanceSeconds = 3;
 let autoAdvanceActive = false;
 let selectedRealmId = 'space';
 let activeBookshelfFilter = 'all'; // 'all' | 'favorites'
@@ -406,7 +406,7 @@ function renderStoryStage(session, pet, hero) {
   if (!session) return '';
   const currentActNumber = session.actNumber;
   const currentAct = session.acts[currentActNumber - 1] || session.acts[0] || {};
-  const totalActs = (session.acts && session.acts.length) || 3;
+  const totalActs = (session.acts && session.acts.length) || 4;
   const isLastAct = currentActNumber >= totalActs;
   const isParentMode = session.narrationMode === 'parent';
   const sanctuary = store.getBedtimeSanctuaryState();
@@ -436,7 +436,7 @@ function renderStoryStage(session, pet, hero) {
             isAutoRead
               ? 'bg-[#00d2d3]/20 text-[#00d2d3] border-[#00d2d3]/60 shadow-[0_0_10px_rgba(0,210,211,0.25)]'
               : 'bg-[#0f2334] text-slate-400 border-surface-container-highest hover:text-white'
-          }" title="Toggle Hands-Free Auto-Read All 3 Chapters">
+          }" title="Toggle Hands-Free Auto-Read All 4 Chapters">
             <span class="material-symbols-outlined text-xs sm:text-sm">auto_mode</span>
             <span class="hidden xs:inline">${isAutoRead ? 'Auto-Read: ON' : 'Auto-Read: OFF'}</span>
             <span class="xs:hidden">${isAutoRead ? 'Auto: ON' : 'Auto: OFF'}</span>
@@ -468,7 +468,7 @@ function renderStoryStage(session, pet, hero) {
         <div class="bg-[#0e2634]/90 border border-[#00d2d3]/40 px-3 py-1.5 rounded-xl flex items-center justify-between text-[11px] font-bold text-[#00d2d3] animate-fade-in">
           <span class="flex items-center gap-1.5">
             <span class="material-symbols-outlined text-xs">headphones</span>
-            <span>Hands-Free Auto-Read Mode: Relax and listen as all 3 chapters unfold seamlessly.</span>
+            <span>Hands-Free Auto-Read Mode: Relax and listen as all 4 chapters unfold seamlessly.</span>
           </span>
           <span class="text-[10px] text-[#ffb961] font-mono">Auto-Play</span>
         </div>
@@ -547,41 +547,18 @@ function renderStoryStage(session, pet, hero) {
           </p>
         </div>
 
-        ${currentAct.promptQuestion ? `
-          <div class="bg-[#0c2233] p-3 rounded-2xl border border-[#00d2d3]/30 text-xs sm:text-sm text-[#ffb961] font-headline font-bold flex items-center gap-2">
-            <span class="text-lg shrink-0">❓</span>
-            <span>${currentAct.promptQuestion}</span>
-          </div>
-        ` : ''}
-
-        <!-- TODDLER INTERACTION CONTROLS -->
+        <!-- SLUMBER CONTROLS & MANUAL TURN PAGE -->
         ${!isLastAct ? `
-          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 pt-2">
-            
-            <!-- Microphone Button -->
-            <button id="story-mic-btn" class="w-full sm:w-auto px-5 py-3 sm:px-6 sm:py-3.5 min-h-[48px] rounded-2xl font-headline font-black text-xs sm:text-sm tracking-wide shadow-[0_4px_0_0_#050f18] active:translate-y-1 active:shadow-none flex items-center justify-center gap-2 cursor-pointer transition-all ${
-              isMicListening
-                ? 'bg-red-500 text-white animate-pulse border-2 border-white'
-                : 'bg-linear-to-r from-[#00d2d3] to-[#0284c7] text-surface-container-lowest'
-            }">
-              <span class="material-symbols-outlined text-xl">${isMicListening ? 'mic' : 'mic_none'}</span>
-              <span>${isMicListening ? 'LISTENING... SPEAK!' : 'SPEAK TO REX'}</span>
-            </button>
-
-            <!-- Quick Suggestion Chips -->
-            <div class="flex items-center gap-2 flex-wrap w-full sm:w-auto justify-start">
-              ${(currentAct.suggestionChips || []).map((chip) => `
-                <button data-select-chip="${chip.text || chip}" class="px-3 py-2 min-h-lg rounded-xl bg-[#1b3d58] hover:bg-[#255073] text-white border border-surface-container-highest text-xs font-bold active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer">
-                  <span>${chip.text || chip}</span>
-                </button>
-              `).join('')}
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
+            <div class="flex items-center gap-2 text-xs text-slate-400">
+              <span class="material-symbols-outlined text-sm text-[#00d2d3] animate-pulse">bedtime</span>
+              <span>Gentle Slumber Pacing • Page advances after chapter narration</span>
             </div>
-
-            <!-- Manual Next Page Button -->
-            <button id="story-manual-turn-page-btn" class="sm:ml-auto w-full sm:w-auto px-4 py-3 min-h-[48px] rounded-xl bg-[#0f2334] hover:bg-[#1a3850] text-[#00d2d3] border border-[#00d2d3]/40 font-headline font-black text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer">
+            
+            <!-- Manual Turn Page Button -->
+            <button id="story-manual-turn-page-btn" class="w-full sm:w-auto px-6 py-3 min-h-[48px] rounded-xl bg-[#0f2334] hover:bg-[#1a3850] text-[#00d2d3] border border-[#00d2d3]/40 font-headline font-black text-sm flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer shadow-md">
               <span>Turn Page ➡️</span>
             </button>
-
           </div>
         ` : `
           <!-- CHAPTER 4 SLUMBER CONCLUSION & STAMPED STICKER -->
@@ -947,59 +924,6 @@ export function setupBedtimeStoryListeners() {
     });
   }
 
-  // Mic Button Speech Recognition
-  const micBtn = document.getElementById('story-mic-btn');
-  if (micBtn) {
-    micBtn.addEventListener('click', () => {
-      Sound.tap();
-      bedtimeStoryService.cancelAutoAdvance();
-      if (isMicListening) {
-        bedtimeStoryService.stopListening();
-        isMicListening = false;
-        store.notify();
-      } else {
-        isMicListening = true;
-        store.notify();
-
-        bedtimeStoryService.startListening(
-          async (transcript) => {
-            isMicListening = false;
-            isGeneratingScene = true;
-            store.notify();
-
-            await bedtimeStoryService.advanceStory(transcript);
-            isGeneratingScene = false;
-            store.notify();
-          },
-          (err) => {
-            console.warn('Speech err:', err);
-            isMicListening = false;
-            store.notify();
-          },
-          () => {
-            isMicListening = false;
-            store.notify();
-          }
-        );
-      }
-    });
-  }
-
-  // Quick Suggestion Chips
-  document.querySelectorAll('[data-select-chip]').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const chipText = btn.getAttribute('data-select-chip');
-      Sound.tap();
-      bedtimeStoryService.cancelAutoAdvance();
-      isGeneratingScene = true;
-      store.notify();
-
-      await bedtimeStoryService.advanceStory(chipText);
-      isGeneratingScene = false;
-      store.notify();
-    });
-  });
-
   // Manual Turn Page Button
   document.getElementById('story-manual-turn-page-btn')?.addEventListener('click', async () => {
     Sound.whoosh();
@@ -1020,7 +944,7 @@ export function setupBedtimeStoryListeners() {
     if (session && session.acts) {
       const currentAct = session.acts[session.actNumber - 1];
       if (currentAct) {
-        speakCompanion(currentAct.text, session.petId);
+        speakCompanion(currentAct.text, session.petId, null, { voiceStyle: 'bedtime', timeoutMs: 25000 });
       }
     }
   });
@@ -1139,7 +1063,7 @@ export function setupBedtimeStoryListeners() {
       const act = chapters[currentSavedActIndex];
       if (act) {
         Sound.bloop();
-        speakCompanion(act.text, readingSavedStory.petId || '1');
+        speakCompanion(act.text, readingSavedStory.petId || '1', null, { voiceStyle: 'bedtime', timeoutMs: 25000 });
       }
     }
   });

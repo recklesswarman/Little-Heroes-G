@@ -496,7 +496,7 @@ export class BedtimeStoryStage3D {
     this.magicItem = options.magicItem || 'Starlight Lantern';
     this.gentleObstacle = options.gentleObstacle || 'Sleepy Bridge Troll';
     this.onConstellationTapped = options.onConstellationTapped || null;
-    this.isBreathingActive = options.isBreathingActive ?? (this.chapterIndex === 2);
+    this.isBreathingActive = options.isBreathingActive ?? (this.chapterIndex === 3);
 
     this.isFallback = false;
     this.fallbackEngine = null;
@@ -794,7 +794,7 @@ export class BedtimeStoryStage3D {
     }
     this.sceneDescriptor = descriptor || this.sceneDescriptor;
     this.chapterIndex = Number.isInteger(chapterIndex) ? chapterIndex : this.chapterIndex;
-    this.isBreathingActive = (this.chapterIndex === 2);
+    this.isBreathingActive = (this.chapterIndex === 3);
   }
 
   setChapter(chapterIndex) {
@@ -949,8 +949,8 @@ export class BedtimeStoryStage3D {
         if (pb.thighR) pb.thighR.rotation.x = walkCycle * 0.35;
         if (pb.tail1) pb.tail1.rotation.y = Math.sin(t * 6.0) * 0.35;
 
-      } else if (this.chapterIndex === 1) {
-        // Ch 2: Helping obstacle + Pet magic glow
+      } else if (this.chapterIndex === 1 || this.chapterIndex === 2) {
+        // Ch 2 & 3: Helping obstacle & cooperative resolution + Pet magic glow
         if (hb.thighL) hb.thighL.rotation.x = 0;
         if (hb.thighR) hb.thighR.rotation.x = 0;
         // Helping hands forward
@@ -963,7 +963,7 @@ export class BedtimeStoryStage3D {
         if (pb.tail1) pb.tail1.rotation.y = Math.sin(t * 4.0) * 0.2;
 
       } else {
-        // Ch 3: Curled slumber in cozy nest
+        // Ch 4 (index 3): Curled slumber in cozy nest
         if (this.heroRig.root) {
           this.heroRig.root.position.y = -0.05;
           this.heroRig.root.rotation.z = 1.35; // lying down sideways
@@ -1016,7 +1016,7 @@ export class BedtimeStoryStage3D {
     // Clear color according to timeOfNight
     if (this.chapterIndex === 0) {
       gl.clearColor(0.055, 0.149, 0.204, 1.0); // #0e2634 twilight
-    } else if (this.chapterIndex === 1) {
+    } else if (this.chapterIndex === 1 || this.chapterIndex === 2) {
       gl.clearColor(0.035, 0.078, 0.118, 1.0); // #09141e midnight slate
     } else {
       gl.clearColor(0.015, 0.039, 0.063, 1.0); // #040a10 deep slumber
@@ -1037,8 +1037,8 @@ export class BedtimeStoryStage3D {
     // Render Scenery Props
     for (let i = 0; i < this.sceneryMeshes.length; i++) {
       const item = this.sceneryMeshes[i];
-      if (item.renderMesh.name === 'nest_woven_bed' && this.chapterIndex !== 2) continue;
-      if (item.renderMesh.name === 'obstacle_arch' && this.chapterIndex === 2) continue;
+      if (item.renderMesh.name === 'nest_woven_bed' && this.chapterIndex !== 3) continue;
+      if (item.renderMesh.name === 'obstacle_arch' && (this.chapterIndex !== 1 && this.chapterIndex !== 2)) continue;
 
       this.renderMeshNode(item.bone, item.renderMesh);
     }
@@ -1059,8 +1059,8 @@ export class BedtimeStoryStage3D {
       }
     }
 
-    // Render Chapter 3 Breathing Ring Pacer
-    if (this.chapterIndex === 2 && this.nestNode) {
+    // Render Chapter 4 Breathing Ring Pacer
+    if (this.chapterIndex === 3 && this.nestNode) {
       const s = this.breathingCycle.scale;
       mat4FromTranslationRotationScale(
         this.modelMatrix,
@@ -1557,8 +1557,8 @@ export class BedtimeStoryStage2DFallback {
       ctx.quadraticCurveTo(px - 44, py - 18 + Math.sin(t * 6.0) * 8, px - 40, py - 24);
       ctx.stroke();
 
-    } else if (this.chapterIndex === 1) {
-      // Chapter 2: Arched Bridge / Obstacle + Helping Gesture + Particle Burst
+    } else if (this.chapterIndex === 1 || this.chapterIndex === 2) {
+      // Chapter 2 & 3: Arched Bridge / Obstacle + Helping Gesture + Particle Burst
       const ox = w * 0.50;
       const oy = h * 0.65;
 
@@ -1604,7 +1604,7 @@ export class BedtimeStoryStage2DFallback {
       ctx.stroke();
 
     } else {
-      // Chapter 3: Cozy Slumber Nest + 4s/4s Breathing Ring Pacer
+      // Chapter 4 (index 3): Cozy Slumber Nest + 4s/4s Breathing Ring Pacer
       const nx = w * 0.50;
       const ny = h * 0.68;
       const bScale = this.breathingCycle.scale;

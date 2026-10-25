@@ -146,8 +146,9 @@ class BedtimeStoryService {
     this.isListening = false;
     this.isGenerating = false;
     this.autoAdvanceTimer = null;
-    this.autoAdvanceSecondsRemaining = 15;
+    this.autoAdvanceSecondsRemaining = 3;
     this.autoAdvanceInterval = null;
+    this.speechWatchdogTimer = null;
     this.speechCallbacks = {
       onResult: null,
       onError: null,
@@ -231,6 +232,11 @@ class BedtimeStoryService {
   }
 
   cancelAutoAdvance() {
+    this.narrationGeneration = (this.narrationGeneration || 0) + 1;
+    if (this.speechWatchdogTimer) {
+      clearTimeout(this.speechWatchdogTimer);
+      this.speechWatchdogTimer = null;
+    }
     if (this.autoAdvanceTimer) {
       clearTimeout(this.autoAdvanceTimer);
       this.autoAdvanceTimer = null;
@@ -239,19 +245,23 @@ class BedtimeStoryService {
       clearInterval(this.autoAdvanceInterval);
       this.autoAdvanceInterval = null;
     }
-    this.autoAdvanceSecondsRemaining = 15;
+    stopCompanionAudio();
+    const defaultSec = (this.activeSession?.realmId === 'pirate_lagoon' && this.activeSession?.moralId === 'calm_feelings') ? 15 : 3;
+    this.autoAdvanceSecondsRemaining = defaultSec;
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('bedtime-story-autoadvance-tick', { detail: { secondsRemaining: 15, active: false } }));
+      window.dispatchEvent(new CustomEvent('bedtime-story-autoadvance-tick', { detail: { secondsRemaining: defaultSec, active: false } }));
     }
   }
 
-  startAutoAdvance(onAdvance) {
+  startAutoAdvance(onAdvance, seconds) {
     this.cancelAutoAdvance();
     if (!this.activeSession || this.activeSession.completed) return;
 
-    this.autoAdvanceSecondsRemaining = 15;
+    const currentGeneration = this.narrationGeneration;
+    const defaultSec = (this.activeSession?.realmId === 'pirate_lagoon' && this.activeSession?.moralId === 'calm_feelings') ? 15 : 3;
+    this.autoAdvanceSecondsRemaining = typeof seconds === 'number' && seconds > 0 ? seconds : defaultSec;
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('bedtime-story-autoadvance-tick', { detail: { secondsRemaining: 15, active: true } }));
+      window.dispatchEvent(new CustomEvent('bedtime-story-autoadvance-tick', { detail: { secondsRemaining: this.autoAdvanceSecondsRemaining, active: true } }));
     }
 
     this.autoAdvanceInterval = setInterval(() => {
@@ -261,7 +271,7 @@ class BedtimeStoryService {
       }
       if (this.autoAdvanceSecondsRemaining <= 0) {
         this.cancelAutoAdvance();
-        if (typeof onAdvance === 'function') {
+        if (currentGeneration === this.narrationGeneration && typeof onAdvance === 'function') {
           onAdvance();
         }
       }
@@ -336,70 +346,85 @@ class BedtimeStoryService {
     this.cancelAutoAdvance();
     if (!this.activeSession) return null;
 
-    const currentActNumber = this.activeSession.actNumber;
-    const currentAct = this.activeSession.acts[currentActNumber - 1];
-    if (currentAct) {
-      currentAct.childChoice = childInput;
-    }
-    if (childInput) {
-      this.activeSession.userChoices.push(childInput);
-    }
+    if (this.isAdvancing) return null;
+    this.isAdvancing = true;
 
-    // 4 chapters total
-    if (currentActNumber >= 4) {
-      return this.activeSession.acts[this.activeSession.acts.length - 1];
-    }
-
-    const nextActNumber = currentActNumber + 1;
-    this.activeSession.actNumber = nextActNumber;
-
-    const nextAct = await this.generateAct(nextActNumber, childInput);
-    if (!this.activeSession) return nextAct;
-    this.activeSession.acts.push(nextAct);
-
-    if (nextActNumber === 4 || nextAct.isSleepingEnd) {
-      this.activeSession.completed = true;
-
-      // Update hero.bedtimeHistory anti-repetition record
-      const state = store.getState();
-      const hero = state.selectedHero;
-      if (hero) {
-        if (!Array.isArray(hero.bedtimeHistory)) hero.bedtimeHistory = [];
-        hero.bedtimeHistory.unshift({
-          id: this.activeSession.id,
-          seed: this.activeSession.childContext?.antiRepetition?.deterministicSeed || Date.now(),
-          archetypeId: nextAct.archetypeId || 'lost_baby_constellation',
-          realmId: this.activeSession.realmId,
-          title: this.activeSession.title,
-          moralId: this.activeSession.moralId,
-          chapterOpenings: this.activeSession.acts.map(a => (a.text || '').slice(0, 40)),
-          timestamp: Date.now()
-        });
-        if (hero.bedtimeHistory.length > 25) {
-          hero.bedtimeHistory = hero.bedtimeHistory.slice(0, 25);
-        }
+    try {
+      const currentActNumber = this.activeSession.actNumber;
+      const currentAct = this.activeSession.acts[currentActNumber - 1];
+      if (currentAct) {
+        currentAct.childChoice = childInput;
+      }
+      if (childInput) {
+        this.activeSession.userChoices.push(childInput);
       }
 
-      // Complete bedtime story quietly per guidelines
-      store.completeBedtimeStory(this.activeSession);
+      // 4 chapters total
+      if (currentActNumber >= 4 || this.activeSession.completed) {
+        return this.activeSession.acts[this.activeSession.acts.length - 1];
+      }
+
+      const nextActNumber = currentActNumber + 1;
+      this.activeSession.actNumber = nextActNumber;
+
+      const nextAct = await this.generateAct(nextActNumber, childInput);
+      if (!this.activeSession) return nextAct;
+      this.activeSession.acts.push(nextAct);
+
+      if (nextActNumber === 4 || nextAct.isSleepingEnd) {
+        this.activeSession.completed = true;
+
+        // Update hero.bedtimeHistory anti-repetition record
+        const state = store.getState();
+        const hero = state.selectedHero;
+        if (hero) {
+          if (!Array.isArray(hero.bedtimeHistory)) hero.bedtimeHistory = [];
+          hero.bedtimeHistory.unshift({
+            id: this.activeSession.id,
+            seed: this.activeSession.childContext?.antiRepetition?.deterministicSeed || Date.now(),
+            archetypeId: nextAct.archetypeId || 'lost_baby_constellation',
+            realmId: this.activeSession.realmId,
+            title: this.activeSession.title,
+            moralId: this.activeSession.moralId,
+            chapterOpenings: this.activeSession.acts.map(a => (a.text || '').slice(0, 40)),
+            timestamp: Date.now()
+          });
+          if (hero.bedtimeHistory.length > 25) {
+            hero.bedtimeHistory = hero.bedtimeHistory.slice(0, 25);
+          }
+        }
+
+        // Complete bedtime story quietly per guidelines
+        store.completeBedtimeStory(this.activeSession);
+      }
+
+      // Narrate act aloud
+      const petId = this.activeSession.petId;
+      this.narrateAct(nextAct.text, petId, nextActNumber);
+
+      return nextAct;
+    } finally {
+      this.isAdvancing = false;
     }
-
-    // Narrate act aloud
-    const petId = this.activeSession.petId;
-    this.narrateAct(nextAct.text, petId, nextActNumber);
-
-    return nextAct;
   }
 
   narrateAct(text, petId, chapterNumber = 1, options = {}) {
     const session = this.activeSession;
     if (session?.narrationMode === 'parent') {
       Sound.duckLullaby(false);
-      this.startAutoAdvance(() => this.advanceStory());
+      // In Parent Mode, do NOT auto-advance; let the parent manually turn the page
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('bedtime-story-speech-finished'));
       }
       return;
+    }
+
+    this.narrationGeneration = (this.narrationGeneration || 0) + 1;
+    const currentGeneration = this.narrationGeneration;
+
+    if (this.speechWatchdogTimer) {
+      clearTimeout(this.speechWatchdogTimer);
+      this.speechWatchdogTimer = null;
     }
 
     // Progressive hushed cadence rates:
@@ -410,24 +435,47 @@ class BedtimeStoryService {
     // Duck the lullaby synthesizer volume while speaking
     Sound.duckLullaby(true);
 
+    let hasEnded = false;
+    const handleSpeechEnded = () => {
+      if (hasEnded) return;
+      hasEnded = true;
+      if (this.speechWatchdogTimer) {
+        clearTimeout(this.speechWatchdogTimer);
+        this.speechWatchdogTimer = null;
+      }
+      Sound.duckLullaby(false);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('bedtime-story-speech-finished'));
+      }
+      if (currentGeneration !== this.narrationGeneration) return;
+      if (!this.activeSession || this.activeSession.completed || this.activeSession.actNumber !== chapterNumber) return;
+      this.startAutoAdvance(() => this.advanceStory());
+    };
+
+    // 45-second audio watchdog timeout so auto-advance activates if speech stalls
+    this.speechWatchdogTimer = setTimeout(() => {
+      console.warn('Story speech watchdog (45s) triggered, advancing auto-advance countdown');
+      handleSpeechEnded();
+    }, 45000);
+
     try {
-      speakCompanion(text, petId, () => {
-        Sound.duckLullaby(false);
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('bedtime-story-speech-finished'));
-        }
-        this.startAutoAdvance(() => this.advanceStory());
-      }, {
+      speakCompanion(text, petId, handleSpeechEnded, {
         rate,
         pitch: chapterNumber >= 3 ? 0.95 : 1.05,
         voiceStyle: 'bedtime',
-        timeoutMs: 18000,
+        timeoutMs: 25000,
         ...options
       });
     } catch (e) {
+      if (this.speechWatchdogTimer) {
+        clearTimeout(this.speechWatchdogTimer);
+        this.speechWatchdogTimer = null;
+      }
       Sound.duckLullaby(false);
       console.warn('Story speech error:', e);
-      this.startAutoAdvance(() => this.advanceStory());
+      if (currentGeneration === this.narrationGeneration && this.activeSession && !this.activeSession.completed && this.activeSession.actNumber === chapterNumber) {
+        this.startAutoAdvance(() => this.advanceStory());
+      }
     }
   }
 
@@ -647,9 +695,12 @@ Return ONLY raw JSON with these exact keys (no markdown code blocks, just raw JS
     if (generatedAct) {
       try {
         const illResult = await bedtimeIllustrationService.generateChapterIllustration({
+          sessionId: session?.id,
+          chapterIndex: actNumber - 1,
           chapterNumber: actNumber,
           chapterTitle: generatedAct.title,
-          chapterText: generatedAct.text,
+          chapterText: generatedAct.chapterText || generatedAct.text,
+          seed: Math.floor(Math.random() * 2147483647),
           realmId: realm.id,
           realmName: realm.name,
           heroName,
@@ -667,7 +718,10 @@ Return ONLY raw JSON with these exact keys (no markdown code blocks, just raw JS
       // Pre-fetch next chapter illustration in background for instant transition
       if (actNumber < 4) {
         bedtimeIllustrationService.prefetchNextChapterIllustration({
-          chapterNumber: actNumber,
+          sessionId: session?.id,
+          chapterIndex: actNumber,
+          chapterNumber: actNumber + 1,
+          seed: Math.floor(Math.random() * 2147483647),
           realmId: realm.id,
           realmName: realm.name,
           heroName,

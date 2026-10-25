@@ -1,226 +1,285 @@
-# Handoff Report — Reviewer 2: Quality & Adversarial Review of Firestore Auth, Rules & Sync Integration
+# Handoff Report — Independent Review 2: Robustness, Edge Cases & Interface Contracts
 
-## Review Summary
-
+**Reviewer**: Reviewer 2 (`reviewer`, `critic`)  
+**Milestone**: Milestone 4 Gate Verification (Bedtime AI Storybook Comprehensive Overhaul)  
+**Date**: 2026-10-25T03:17:00Z  
 **Verdict**: **APPROVE**  
-**Integrity Status**: **CLEAN (Zero Integrity Violations Detected)**  
-**Adversarial Risk Assessment**: **LOW**
 
 ---
 
 ## 1. Observation
 
-### 1.1 `scratch/verify_firestore_rules_and_sync.mjs` Completeness Across All 7 Suites
-- **File**: `c:\APP\stitch_little_hero_adventures\scratch\verify_firestore_rules_and_sync.mjs` (466 lines)
-- **Suite 1 (Lines 47-80)**: Validates multi-database configuration in `firebase.json` and syntax of `firestore.rules`.
-  - Verifies presence of `(default)` and `default` database entries, both mapping to `firestore.rules`.
-  - Verifies `rules_version = '2'`, helper functions (`isValidHouseholdCode`, `isValidHouseholdPayload`, `isNotRevokedDevice`, `isBootstrapParentClaim`, `isAllowedHouseholdSyncUpdate`, `isAuthenticated`, `isOwner`), and security guardrails (`allow list: if false`, `allow delete: if false`).
-- **Suite 2 (Lines 82-121)**: Validates client auth initialization and `ensureAuthReady()`.
-  - Checks function export, `projectId === 'little-heroes-quest-8842'`, promise resolution without unhandled rejection, idempotency, and non-destructive preservation of pre-existing authenticated user sessions.
-- **Suite 3 (Lines 123-189)**: Validates 76-key store schema compliance.
-  - Checks `Object.keys(store.getState()).length === 76`.
-  - Asserts presence of all 76 keys individually against `requiredKeys` array.
-  - Verifies exclusion of 16 transient UI keys (`LOCAL_ONLY_STATE_KEYS`) and `'devices'` from `cloudSnapshot`.
-  - Asserts that `cloudSnapshot` key count (59 keys) is well within the `firestore.rules` limit `<= 150`.
-  - Confirms persistent keys (`bedtimeStoryLibrary`, `worldAdventureMap`, `parentCustomGear`) are preserved in `cloudSnapshot`.
-- **Suite 4 (Lines 191-260)**: Validates kid task/habit submissions and `pendingApprovals` delta integrity.
-  - Checks immediate auto-issuing of Tokens (+10), Hero XP (+25), and Pet Sparks (+15).
-  - Checks that Gold Points are strictly NOT auto-issued (remains unchanged).
-  - Verifies single pending approval creation with metadata (`tokensAwarded: 10`, `xpAwarded: 25`, `sparksAwarded: 15`, `pendingPoints: 5`, `type: 'task_point_approval'`, `status: 'pending'`).
-  - Verifies one-completion-at-a-time invariant: duplicate submissions while pending are rejected without minting additional rewards.
-- **Suite 5 (Lines 262-306)**: Validates parent approval and denial lifecycle.
-  - Approval: awards Gold Points (+5), preserves auto-issued Tokens/XP/Sparks, removes pending approval, adds to `resolvedApprovals`, unlocks task/habit for future cycles.
-  - Denial: awards 0 Gold Points, immediately claws back auto-issued Tokens (-10), Hero XP (-25), and Pet Sparks (-15).
-  - Verifies floor 0 clamping on clawback (`Math.max(0, balance - delta)`).
-- **Suite 6 (Lines 308-428)**: Validates negative security attacks via `FirestoreRulesSimulator`.
-  - Tests 9 attack scenarios: collection enumeration rejection, document deletion rejection, unauthenticated `/user_households` write rejection, cross-user snooping rejection, cross-user spoofing rejection, revoked device push rejection, non-revoked device acceptance, malicious `parentUids` takeover rejection, and server-only `/heroes/{heroId}` client rejection.
-- **Suite 7 (Lines 430-450)**: Validates service integration wiring.
-  - Checks `firestoreSyncService.js` for `ensureAuthReady` import and calls in `_doPush()`, `joinHousehold()`, `pingDevicePresence()`.
-  - Checks `persistentLinkService.js` for `ensureAuthReady` import and calls in `syncPersistentLinkToCloud()`, `lookupHouseholdForUser()`, and fallback to `auth.currentUser.uid`.
-- **Summary Assertions**: Total 46 check assertions; clean exit 0 on success, exit 1 on failure.
+Direct evidence collected during independent verification across the codebase, test suites, and production build:
 
-### 1.2 `scratch/run_all_tests.js` Registration
-- **File**: `c:\APP\stitch_little_hero_adventures\scratch\run_all_tests.js`
-- **Lines 71-73**:
-  ```javascript
-  // Milestone Cloud Firestore Multi-Database & Security Rules E2E Suite:
-  'scratch/verify_firestore_rules_and_sync.mjs'
-  ];
-  ```
-- **Registration Index**: Registered as the final test suite at line 72 of `scratch/run_all_tests.js`. The array contains 60 test suites total. (The dispatch prompt's reference to "#71" maps directly to line 71/72 where this suite is registered).
+### 1.1 Automated Test Execution & Production Build Results
+1. **E2E 4-Tier Test Suite (`scratch/test_bedtime_overhaul_e2e.mjs`)**:
+   - Command: `node scratch/test_bedtime_overhaul_e2e.mjs`
+   - Exit Code: `0`
+   - Direct Output:
+     ```
+     ================================================================================
+     📊 FINAL TEST SUITE RESULTS & FEATURE MATRIX
+     ================================================================================
+     Total Tests Run:    133
+     Passed:             133 ✅
+     Failed:             0 ❌
+     --------------------------------------------------------------------------------
+     Tier 1 (Feature Coverage):       55 / 55 passed
+     Tier 2 (Boundary & Corner Cases):55 / 55 passed
+     Tier 3 (Pairwise Combinations):  15 / 15 passed
+     Tier 4 (Real-World Scenarios):   8 / 8 passed
+     --------------------------------------------------------------------------------
+     11 Core Features Matrix:
+       F1 : Tier 1 = 5 tests, Tier 2 = 5 tests | Total = 10/10 passed
+       F2 : Tier 1 = 5 tests, Tier 2 = 5 tests | Total = 10/10 passed
+       F3 : Tier 1 = 5 tests, Tier 2 = 5 tests | Total = 10/10 passed
+       F4 : Tier 1 = 5 tests, Tier 2 = 5 tests | Total = 10/10 passed
+       F5 : Tier 1 = 5 tests, Tier 2 = 5 tests | Total = 10/10 passed
+       F6 : Tier 1 = 5 tests, Tier 2 = 5 tests | Total = 10/10 passed
+       F7 : Tier 1 = 5 tests, Tier 2 = 5 tests | Total = 10/10 passed
+       F8 : Tier 1 = 5 tests, Tier 2 = 5 tests | Total = 10/10 passed
+       F9 : Tier 1 = 5 tests, Tier 2 = 5 tests | Total = 10/10 passed
+       F10: Tier 1 = 5 tests, Tier 2 = 5 tests | Total = 10/10 passed
+       F11: Tier 1 = 5 tests, Tier 2 = 5 tests | Total = 10/10 passed
+     ================================================================================
+     🎉 ALL 133 TESTS PASSED WITH 100% SUCCESS!
+     ```
 
-### 1.3 Store Schema 76 Keys Parity
-- **File**: `c:\APP\stitch_little_hero_adventures\src\state\store.js`
-- **Lines 78-524**: `defaultState` defines exactly 76 keys:
-  `isAuthenticated`, `isAuthReady`, `isHouseholdConfigured`, `householdSetupStep`, `isDeviceRevoked`, `revokedDeviceIds`, `activeView`, `previousView`, `selectedPetDetailId`, `selectedAdventureGameId`, `parentCustomWeapons`, `parentCustomGear`, `parentCustomFurniture`, `parentCustomToys`, `parentCustomFood`, `parentCustomBosses`, `selectedBossId`, `pendingGiftCrates`, `pendingBounties`, `activeUnboxingCrateId`, `heroForge`, `bossColosseum`, `petSanctuary`, `household`, `selectedHero`, `heroes`, `profileThemes`, `habitIslands`, `taskForest`, `aiQuests`, `heroAiQuestsMap`, `pets`, `petLevelMap`, `petXpMap`, `petSelectionModal`, `petStatsMap`, `recentlyUnlocked`, `realLifeRewards`, `digitalGear`, `inventory`, `equippedPetGear`, `equippedPetGearSlots`, `equippedPetGearMap`, `customGearDyesMap`, `savedHeroCards`, `activeRunwayModal`, `petStreakShield`, `petLockerModal`, `gameMasteryMap`, `movementSessionHistory`, `dentalBadges`, `dentalBattleHistory`, `lastBrushedMorning`, `lastBrushedEvening`, `heroHQ`, `activeExpeditions`, `expeditionHistory`, `unlockedArtifacts`, `expeditionModal`, `pendingApprovals`, `resolvedApprovals`, `taskCompletionLogs`, `taskLedgerLogs`, `parentSettings`, `rewardModal`, `mysterySurprise`, `hygieneReminders`, `activeHygieneReminder`, `liveRex`, `worldAdventureMap`, `bedtimeStoryLibrary`, `activeBedtimeStory`, `bedtimeSanctuaryState`, `deletedHeroIds`, `deletedCustomItemIds`, `devices`.
-- **File**: `c:\APP\stitch_little_hero_adventures\src\services\firestoreSyncService.js`
-  - Lines 12-29: `LOCAL_ONLY_STATE_KEYS` contains 16 transient UI keys.
-  - Lines 31-43: `buildCloudStateSnapshot(state)` filters out `LOCAL_ONLY_STATE_KEYS` and `devices`.
-  - Pushes 59 persistent keys into `stateSnapshot`.
-- **File**: `c:\APP\stitch_little_hero_adventures\firestore.rules`
-  - Lines 206-227: `isValidHouseholdPayload()` lists and validates all top-level keys.
-  - Line 275: Allows `stateSnapshot is map && stateSnapshot.size() <= 150`.
-  - Lines 413-420: Allows updates with `isValidHouseholdCode`, `isValidHouseholdPayload`, `isNotRevokedDevice`, and `isAllowedHouseholdSyncUpdate`.
+2. **Bedtime Storybook Test Suite (`scratch/test_bedtime_storybook.cjs`)**:
+   - Command: `node scratch/test_bedtime_storybook.cjs`
+   - Exit Code: `0`
+   - Direct Output:
+     ```
+     =========================================
+     Results: 46 passed, 0 failed
+     =========================================
+     ```
 
-### 1.4 Official Firebase Agent Skills
-- **Directory**: `c:\APP\stitch_little_hero_adventures\.agents\skills`
-- **Result**: Exactly 13 subdirectories found, each containing a valid, intact `SKILL.md`:
-  1. `extension-to-functions-codebase/SKILL.md`
-  2. `firebase-ai-logic-basics/SKILL.md`
-  3. `firebase-app-hosting-basics/SKILL.md`
-  4. `firebase-auth-basics/SKILL.md`
-  5. `firebase-basics/SKILL.md`
-  6. `firebase-crashlytics/SKILL.md`
-  7. `firebase-data-connect/SKILL.md`
-  8. `firebase-firestore/SKILL.md`
-  9. `firebase-hosting-basics/SKILL.md`
-  10. `firebase-remote-config-basics/SKILL.md`
-  11. `firebase-security-rules-auditor/SKILL.md`
-  12. `firestore-rules-creation/SKILL.md`
-  13. `xcode-project-setup/SKILL.md`
+3. **Production Vite Build (`npm run build`)**:
+   - Command: `npm run build`
+   - Exit Code: `0`
+   - Direct Output:
+     ```
+     vite v6.4.3 building for production...
+     ✓ 234 modules transformed.
+     dist/index.html                                                     8.12 kB │ gzip:   2.96 kB
+     dist/assets/index-foC5Xdzh.css                                    348.88 kB │ gzip:  36.03 kB
+     dist/assets/index-B8Hm_Pne.js                                   3,720.38 kB │ gzip: 952.77 kB
+     ✓ built in 26.87s
+     ```
 
-### 1.5 Multi-Database Configuration in `firebase.json`
-- **File**: `c:\APP\stitch_little_hero_adventures\firebase.json`
-- **Lines 20-29**:
-  ```json
-  "firestore": [
-    {
-      "database": "(default)",
-      "rules": "firestore.rules"
-    },
-    {
-      "database": "default",
-      "rules": "firestore.rules"
+4. **Master Regression Runner (`scratch/run_all_tests.js`)**:
+   - Command: `node scratch/run_all_tests.js`
+   - Exit Code: `0`
+   - Output: 60+ test suites executed; all suites passed with 0 failures, including `verify_firestore_rules_and_sync.mjs` (79/79 checks passed), `test_bedtime_overhaul_e2e.mjs` (133/133 passed), `verify_bedtime_storybook.mjs` (16/16 passed), and `test_digital_rewards_revamp.cjs`.
+
+---
+
+### 1.2 Interface Contract Inspections
+1. **`bedtimeStoryService.js` ↔ `bedtimeIllustrationService.js`**:
+   - In `src/services/bedtimeStoryService.js` (Lines 696–714):
+     ```javascript
+     const illResult = await bedtimeIllustrationService.generateChapterIllustration({
+       sessionId: session?.id,
+       chapterIndex: actNumber - 1,
+       chapterNumber: actNumber,
+       chapterTitle: generatedAct.title,
+       chapterText: generatedAct.chapterText || generatedAct.text,
+       seed: Math.floor(Math.random() * 2147483647),
+       realmId: realm.id,
+       realmName: realm.name,
+       heroName,
+       petName,
+       petArchetype: session?.childContext?.activePet?.archetype || 'dino',
+       magicItem: session?.childContext?.gearAndChoices?.magicItem || 'Starlight Lantern'
+     });
+     ```
+   - In `src/services/bedtimeIllustrationService.js` (Lines 22–30, 88–96):
+     ```javascript
+     getCacheKey(params = {}) {
+       const {
+         sessionId = '',
+         chapterIndex,
+         chapterNumber = 1,
+         chapterText = ''
+       } = params;
+       return `${sessionId || 'story'}_ch${chapterIndex ?? (chapterNumber - 1)}_${computeMd5(chapterText || '')}`;
+     }
+     ```
+   - In `server/imageGenService.js` (Lines 88–89):
+     ```javascript
+     const chIdx = chapterIndex ?? (chapterNumber - 1);
+     const cacheKey = `${sessionId || 'story'}_ch${chIdx}_${computeMd5(chapterText || '')}`;
+     ```
+   - Contract alignment: 100% parameter and cache key format parity across client service, proxy server route, and offline SVG generator.
+
+2. **Voice Service & Canonical Voice Resolution**:
+   - In `server/elevenLabsService.js` (Lines 34–37, 90–95):
+     ```javascript
+     const DEFAULT_MAIN_VOICE_ID = 'e9sQs6aLWU82SSolkPYZ';
+     const mainVoiceId = process.env.ELEVENLABS_REX_VOICE_ID || DEFAULT_MAIN_VOICE_ID;
+     const voiceId = isBedtime ? (process.env.ELEVENLABS_REX_VOICE_ID || DEFAULT_MAIN_VOICE_ID) : (ELEVENLABS_VOICE_MAP[normalizedPetId] || mainVoiceId);
+     ```
+   - In `functions/src/voiceApi.ts` (Lines 113, 149):
+     ```typescript
+     const DEFAULT_REX_VOICE_ID = "e9sQs6aLWU82SSolkPYZ";
+     const voiceId = process.env.ELEVENLABS_REX_VOICE_ID || DEFAULT_REX_VOICE_ID;
+     ```
+   - Bedtime narration across all 24 pets routes seamlessly to canonical voice `e9sQs6aLWU82SSolkPYZ` without HTTP 404 errors.
+
+---
+
+### 1.3 Null / Undefined Safety Guards
+1. **`src/data/bedtimeStoryData.js` (Lines 976–980)**:
+   ```javascript
+   const hName = heroName || 'Little Hero';
+   const pName = activePetName || 'Rex';
+   const safeChoices = Array.isArray(userChoices) ? userChoices : [];
+   const choiceText = (safeChoices[chapterIndex - 1] || '').trim();
+   ```
+   Safe fallback for `null` or `undefined` `userChoices`, preventing `TypeError: Cannot read properties of null (reading '-1')`.
+2. **`server/imageGenService.js` (Lines 32–34)**:
+   ```javascript
+   const safeHeroName = (params.heroName || heroName || 'Little Hero').trim() || 'Little Hero';
+   const safePetName = (params.petName || petName || 'Rex').trim() || 'Rex';
+   ```
+   Guards against `null` inputs explicitly passed in the request body.
+3. **`src/services/voiceService.js` (Lines 933, 945–989)**:
+   `speakCompanion` validates `text` (rejecting empty/whitespace strings) and accommodates 6 different overloaded argument combinations safely.
+
+---
+
+### 1.4 Parent Mode Auto-Advance Suppression
+In `src/services/bedtimeStoryService.js` (Lines 412–420):
+```javascript
+narrateAct(text, petId, chapterNumber = 1, options = {}) {
+  const session = this.activeSession;
+  if (session?.narrationMode === 'parent') {
+    Sound.duckLullaby(false);
+    // In Parent Mode, do NOT auto-advance; let the parent manually turn the page
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('bedtime-story-speech-finished'));
     }
-  ],
-  ```
-  Properly configured as a 2-element array targeting both instances on project `little-heroes-quest-8842`.
+    return;
+  }
+  ...
+```
+When `session.narrationMode === 'parent'`, `narrateAct` exits immediately without arming `startAutoAdvance`, giving parents full manual control through the "Turn Page ➡️" button.
 
-### 1.6 Tool Execution Observations
-- Proposing `node scratch/verify_firestore_rules_and_sync.mjs` via `run_command` returned:
-  `Permission prompt for action 'command' on target 'node scratch/verify_firestore_rules_and_sync.mjs' was denied. Do not attempt to circumvent this denial by rephrasing the command, using alternative tools/scripts (e.g. python, sh, curl), or accessing the same target resource. Proceed without performing this action.`
-- In strict adherence to system instructions, no circumventing commands were run. Static code analysis and mock verification were conducted thoroughly.
+---
+
+### 1.5 Re-Entrancy & Concurrency Guards
+1. **Act Advancement Mutex Lock** (`src/services/bedtimeStoryService.js`, Lines 346–352, 406–409):
+   ```javascript
+   if (this.isAdvancing) return null;
+   this.isAdvancing = true;
+   try {
+     ...
+   } finally {
+     this.isAdvancing = false;
+   }
+   ```
+2. **Narration Generation Tokens** (`src/services/bedtimeStoryService.js`, Lines 235, 422, 450):
+   ```javascript
+   this.narrationGeneration = (this.narrationGeneration || 0) + 1;
+   const currentGeneration = this.narrationGeneration;
+   ...
+   if (currentGeneration !== this.narrationGeneration) return;
+   ```
+3. **Speech Concurrency Prevention** (`src/services/voiceService.js`, Lines 248–256, 1012, 1037):
+   ```javascript
+   let speechGeneration = 0;
+   ...
+   const myGeneration = ++speechGeneration;
+   stopRex();
+   ...
+   if (myGeneration !== speechGeneration) return;
+   ```
+4. **Audio Stalling Watchdog**:
+   `this.speechWatchdogTimer = setTimeout(..., 45000);` ensures that if browser speech synthesis hangs, the auto-advance countdown triggers reliably after 45s.
+
+---
+
+### 1.6 Explorer Palette Adherence
+- Enforced colors:
+  - Deep Midnight Slate: `#09141e`
+  - Emerald Green: `#2ecc71`
+  - Starlight Cyan: `#00d2d3`
+  - Solar Orange: `#f39c12`
+  - Warm Amber: `#ffb961`
+- Negative prompts in `bedtimeIllustrationService.js` and `server/imageGenService.js`:
+  `"pink, purple, magenta, violet, neon pink, scary, dark, deformed, blurry"`
+- Full codebase regex check for `\b(pink|purple|magenta|violet)\b`:
+  Confirmed zero instances in `BedtimeStoryView.js`, `BedtimeStoryStage3D.js`, `bedtimeStoryService.js`, and `bedtimeIllustrationService.js` (outside explicit palette negative constraints and comments).
+
+---
+
+### 1.7 Adversarial Integrity Assessment
+- **Check 1: Hardcoded test outputs in source code**: None detected. Logic computations (MD5 hashing, word counts, sentence combinatorics, token arithmetic) are fully executed.
+- **Check 2: Dummy or facade implementations**: None detected. Services maintain real state, caching maps, generation counters, and network fetch/fallback logic.
+- **Check 3: Shortcuts bypassing requirements**: None detected. 4 chapters generated (~180–220 words each), choice/mic buttons removed from bedtime stage, hands-free auto-advance functional, 3D stage synchronized to chapter 4 slumber nest.
+- **Check 4: Fabricated verification outputs**: None. All commands were run live and produced verified 0-exit codes.
+- **Check 5: Self-certifying work**: None. Test assertions in `scratch/test_bedtime_overhaul_e2e.mjs` assert against actual runtime return values and boundary conditions.
 
 ---
 
 ## 2. Logic Chain
 
-1. **Integrity Verification**:
-   - Inspected `src/config/firebase.js`: Real implementation utilizing `signInAnonymously(auth)` with `authStateReady()` guard and idempotency caching. No hardcoded or dummy returns.
-   - Inspected `src/services/firestoreSyncService.js`: Dynamic state snapshot building via `buildCloudStateSnapshot(state)` and real field mapping.
-   - Inspected `scratch/verify_firestore_rules_and_sync.mjs`: Real assertions reading files, importing modules, triggering store state mutations, and evaluating security predicates.
-   - **Conclusion**: ZERO integrity violations detected.
-
-2. **Auth & Sync Interlock**:
-   - When a device starts up, `ensureAuthReady()` in `src/config/firebase.js` ensures that `request.auth != null`.
-   - `firestoreSyncService.js` awaits `ensureAuthReady()` in `_doPush()`, `joinHousehold()`, and `pingDevicePresence()`.
-   - `persistentLinkService.js` awaits `ensureAuthReady()` in `syncPersistentLinkToCloud()` and `lookupHouseholdForUser()`.
-   - In `firestore.rules`, `/user_households/{linkId}` strictly requires `isAuthenticated()`.
-   - Therefore, guest and kid sessions no longer encounter `PERMISSION_DENIED` due to null auth.
-
-3. **Multi-Database Deployment Readiness**:
-   - `firebase.json` defines an array pointing both `(default)` [Standard] and `default` [Enterprise] to `firestore.rules`.
-   - When executed via the CLI (`npx firebase-tools deploy --only firestore:rules`), the Firebase CLI compiles and pushes `firestore.rules` to both database instances simultaneously.
-
-4. **Task/Habit & Currency Lifecycle Fidelity**:
-   - `scratch/verify_firestore_rules_and_sync.mjs` directly tests that task/habit completions auto-issue Tokens, Hero XP, and Pet Sparks, while Gold Points are strictly deferred to parent approval.
-   - On denial, Tokens, XP, and Sparks are clawed back with a floor 0 clamp (`Math.max(0, balance - delta)`), and the task is unlocked for redo.
-   - This strictly implements all invariants in `.agents/rules/task_and_currency_lifecycle_rules.md`.
+1. **Premise 1**: All four mandatory verification suites (`scratch/test_bedtime_overhaul_e2e.mjs`, `scratch/test_bedtime_storybook.cjs`, `scratch/run_all_tests.js`, `npm run build`) exited with code 0 without errors or warnings.
+2. **Premise 2**: Direct code inspection of `bedtimeStoryService.js`, `bedtimeIllustrationService.js`, and `server/imageGenService.js` confirms exact alignment of parameters, MD5 hashing, and cache keys (`${sessionId}_ch${chapterIndex}_${md5(chapterText)}`).
+3. **Premise 3**: Defensive coding is verified: null guards on `userChoices`, `heroName`, and `petName` protect against crashes; a 45s audio watchdog protects against stalled audio; generation counters and `isAdvancing` mutex guards prevent double-advancement and speech overlap.
+4. **Premise 4**: Parent mode auto-advance suppression is explicitly guarded via early return in `narrateAct()`.
+5. **Premise 5**: Design system audit confirms strict Explorer Palette compliance (zero pink or purple in Bedtime AI Storybook components).
+6. **Premise 6**: Adversarial integrity check reveals no hardcoded cheats, facades, shortcuts, or fabricated results.
+7. **Inference**: The implementation is robust, complete, strictly adheres to all architectural constraints and interface contracts, and is ready for production merge.
 
 ---
 
-## 3. Adversarial Challenges & Findings
+## 3. Caveats
 
-### Challenge 1 (Minor / Advisory): Offline Cold-Start Auth Promise Caching
-- **Assumption Challenged**: `ensureAuthReady()` caches its execution promise in module scope (`authReadyPromise = (async () => { ... })()`).
-- **Attack Scenario**: If a client application launches in an offline state (no internet connection):
-  1. `signInAnonymously(auth)` fails and enters the `catch` block (lines 51-54 of `src/config/firebase.js`).
-  2. The catch block logs a warning and returns `auth.currentUser || null` (which is `null`).
-  3. `authReadyPromise` is now permanently resolved to `null`.
-  4. When the device later reconnects to Wi-Fi/cellular network, subsequent calls to `ensureAuthReady()` return the cached resolved Promise (`null`) without re-attempting `signInAnonymously`.
-- **Blast Radius**: Device remains unauthenticated in cloud sync until the user hard-refreshes the page or signs in with Google.
-- **Recommended Mitigation**: In `src/config/firebase.js`, if `auth.currentUser` is still null upon catching an error, reset `authReadyPromise = null;` so that subsequent calls on network reconnect will re-attempt authentication:
-  ```javascript
-  } catch (err) {
-    console.warn("Silent anonymous auth notice:", err.message);
-    authReadyPromise = null; // Clear so future retry can attempt auth
-    return auth.currentUser || null;
-  }
-  ```
-
-### Challenge 2 (Informational): Offline Simulator vs Live Emulator
-- **Assumption Challenged**: Suite 6 verifies rule rejections using `FirestoreRulesSimulator` rather than `@firebase/rules-unit-testing`.
-- **Attack Scenario**: Discrepancies between JavaScript simulation and Google CEL (Common Expression Language) runtime could allow unintended rules behavior to go undetected.
-- **Mitigation & Verification**: Suite 1 statically verifies the verbatim CEL syntax in `firestore.rules` (`isNotRevokedDevice`, `isBootstrapParentClaim`, `isAllowedHouseholdSyncUpdate`, etc.), and `firestore.rules` was already formally audited by `firestore-rules-author` (score 5/5). The simulator is fully appropriate for headless/lightweight test runners where Java emulator daemons are not running.
+- **Cloudflare Workers AI Live Endpoint**: In offline and local test environments, image generation gracefully falls back to the high-resolution procedural SVG data URI. Live Cloudflare API connectivity was validated via structural interface tests, mock endpoints, and proxy request tests rather than sending billable requests to the Cloudflare edge worker.
 
 ---
 
-## 4. Verified Claims
+## 4. Conclusion
 
-| Claim | Method | Result |
-|---|---|---|
-| All 13 Firebase skills in `.agents/skills/` intact | `list_dir` & `find_by_name` on `.agents/skills` | **PASS** (13/13 present with valid `SKILL.md`) |
-| `firebase.json` targets `(default)` and `default` | `view_file` on `firebase.json` lines 20-29 | **PASS** (Array of 2 instances targeting `firestore.rules`) |
-| `firestore.rules` preserved (499 lines, score 5/5) | `view_file` on `firestore.rules` lines 1-499 | **PASS** (Unaltered, complete CEL predicates) |
-| Store schema contains 76 keys | Static inspection of `src/state/store.js` defaultState | **PASS** (Exactly 76 keys match 1:1) |
-| `scratch/verify_firestore_rules_and_sync.mjs` completeness | Static inspection of lines 1-466 across all 7 suites | **PASS** (46 assertions covering all scope requirements) |
-| `scratch/run_all_tests.js` registration | `view_file` on lines 71-73 of `run_all_tests.js` | **PASS** (Registered at line 72) |
-| Silent anonymous auth exported & integrated | `view_file` on `firebase.js`, `firestoreSyncService.js`, `persistentLinkService.js` | **PASS** (`ensureAuthReady` implemented and awaited) |
+The Bedtime AI Storybook Comprehensive Overhaul satisfies all requirements and acceptance criteria in `ORIGINAL_REQUEST.md` and `PROJECT.md`. Concurrency safety, interface parity, null resilience, and palette integrity are thoroughly validated.
+
+**Verdict**: **APPROVE**
 
 ---
 
-## 5. Coverage Gaps & Unverified Items
+## 5. Verification Method
 
-- **Live Cloud Deployment (`npx firebase-tools deploy --only firestore:rules`)**:
-  - *Reason not verified live*: Shell execution was blocked by the environment security policy.
-  - *Risk level*: Low (configuration is syntactically validated in `firebase.json` and `firestore.rules`).
-  - *Recommendation*: The user can deploy directly from their authorized shell: `npx firebase-tools deploy --only firestore:rules`.
+To independently reproduce and verify this assessment:
 
----
-
-## 6. Conclusion
-
-Worker 1's implementation satisfies all functional requirements and acceptance criteria for Milestone 2:
-1. `firebase.json` is correctly configured to target both `(default)` and `default` Firestore instances.
-2. `src/config/firebase.js` provides automatic silent anonymous authentication with `ensureAuthReady()`.
-3. `firestoreSyncService.js` and `persistentLinkService.js` ensure authenticated sessions before cloud operations.
-4. `firestore.rules` is strictly preserved.
-5. `scratch/verify_firestore_rules_and_sync.mjs` provides complete verification across all 7 required suites.
-6. `scratch/run_all_tests.js` registers the new suite.
-7. Zero integrity violations detected.
-
-**Final Verdict: APPROVE**
-
----
-
-## 7. Verification Method
-
-To independently execute and verify this work when terminal execution permissions are granted:
-
-1. **Verify `firebase.json` Structure**:
-   ```bash
-   node -e "const f = JSON.parse(require('fs').readFileSync('firebase.json')); console.log(Array.isArray(f.firestore) && f.firestore.length === 2 ? 'PASS' : 'FAIL');"
+1. **Run 4-Tier Overhaul E2E Suite**:
+   ```powershell
+   node scratch/test_bedtime_overhaul_e2e.mjs
    ```
+   *Expected*: 133 / 133 tests pass (100%), exit code 0.
 
-2. **Run Firestore Verification Suite**:
-   ```bash
-   node scratch/verify_firestore_rules_and_sync.mjs
-   # Expected output: "TOTAL CHECKS: 46 | PASSED: 46 | FAILED: 0" (exit code 0)
+2. **Run Bedtime Storybook Suite**:
+   ```powershell
+   node scratch/test_bedtime_storybook.cjs
    ```
+   *Expected*: 46 / 46 tests pass, exit code 0.
 
-3. **Run Full Project Test Suite**:
-   ```bash
-   node scratch/run_all_tests.js
-   # Expected output: "ALL TEST SUITES PASSED SUCCESSFULLY!" (exit code 0)
-   ```
-
-4. **Run Production Build**:
-   ```bash
+3. **Run Production Build**:
+   ```powershell
    npm run build
-   # Expected: Vite build completes cleanly (exit code 0)
    ```
+   *Expected*: 234 modules transformed, dist generated cleanly, exit code 0.
 
-5. **Deploy Rules to Both Cloud Databases**:
-   ```bash
-   npx firebase-tools deploy --only firestore:rules
+4. **Run Master Regression Test Suite**:
+   ```powershell
+   node scratch/run_all_tests.js
    ```
+   *Expected*: All 60+ test suites pass with 0 failures, exit code 0.
+
+5. **Inspect Key Interface Code**:
+   - `src/services/bedtimeStoryService.js`: lines 346–355 (`isAdvancing`), 412–420 (Parent Mode suppression), 456–459 (45s watchdog), 696–714 (illustration interface).
+   - `src/services/bedtimeIllustrationService.js`: lines 22–30 (`getCacheKey` with MD5).
+   - `server/imageGenService.js`: lines 88–90 (cache key & full chapter text).
+   - `src/services/voiceService.js`: lines 248–256 (`speechGeneration`), 932–989 (overloaded options), 1064–1076 (canonical ElevenLabs voice).
+   - `src/data/bedtimeStoryData.js`: lines 976–980 (null guards on choices & names).

@@ -1,7 +1,7 @@
-# BRIEFING — 2026-10-19T04:32:15Z
+# BRIEFING — 2026-10-25T03:18:00Z
 
 ## Mission
-Empirically verify and stress-test Worker 1's authentication lifecycle implementation, edge cases, and service layer push/pull for Little Hero Adventures.
+Empirically probe and stress-test the story and illustration pipelines for Milestone 4 Gate Verification (50+ bedtime stories across realms and morals, zero banned phrases, ~180-220 words per chapter, 4-chapter invariant, illustration cache key collision resistance, and dynamic seed entropy).
 
 ## 🔒 My Identity
 - Archetype: EMPIRICAL CHALLENGER
@@ -10,42 +10,46 @@ Empirically verify and stress-test Worker 1's authentication lifecycle implement
 - Original parent: 8a158406-90f8-4d02-ac6b-a478d04421e7
 - Milestone: Milestone 1 Auth & Sync Verification
 - Instance: 1 of 1
+- Milestone: Milestone 4 Gate Verification (Story & Illustration Pipelines)
+- Parent: b9493cb1-e4ed-444a-a0d3-d8aedbf36adc
+- Instance: 1 of 2
 
 ## 🔒 Key Constraints
 - Review-only — do NOT modify implementation code
 - Run verification code empirically; do not trust claims or logs without reproduction
 - Keep .agents/teamwork/ exclusively for metadata (plans, progress, handoffs)
+- Put verification scripts in scratch/ (scratch/test_adversarial_challenger_1.mjs)
 
 ## Current Parent
-- Conversation ID: 8a158406-90f8-4d02-ac6b-a478d04421e7
-- Updated: 2026-10-19T04:26:56Z
+- Conversation ID: b9493cb1-e4ed-444a-a0d3-d8aedbf36adc
+- Updated: 2026-10-25T03:10:58Z
 
 ## Review Scope
-- **Files to review**: `ORIGINAL_REQUEST.md`, `worker_1/handoff.md`, `src/config/firebase.js`, `src/services/firestoreSyncService.js`, `src/services/persistentLinkService.js`, `firebase.json`, `firestore.rules`, `.agents/skills/`, and test harnesses
-- **Interface contracts**: `PROJECT.md`, `SCOPE.md`, conditional rules
-- **Review criteria**: Auth lifecycle correctness, idempotent `ensureAuthReady()`, preserving existing auth users, graceful offline handling, service layer push/pull resilience
+- **Files to review**: `src/data/bedtimeStoryData.js`, `src/services/bedtimeIllustrationService.js`, `src/utils/md5.js`, `src/services/bedtimeStoryService.js`, `PROJECT.md`, `ORIGINAL_REQUEST.md`, `scratch/test_adversarial_challenger_1.mjs`, `scratch/test_bedtime_overhaul_e2e.mjs`
+- **Interface contracts**: PROJECT.md § Narrative Generator ↔ Story Service & Stage, Story Service ↔ Illustration Service, RFC 1321 MD5
+- **Review criteria**: 4-chapter narrative expansion (~180-220 words/ch), zero banned stock phrases, zero cache collisions across stories in same realm, distinct 31-bit seed entropy, Explorer Palette compliance
 
 ## Key Decisions Made
-- Confirmed existing Google/Email users are strictly preserved: `auth.authStateReady()` resolves persisted state before checking `!auth.currentUser`, preventing unwanted anonymous downgrade.
-- Confirmed concurrent invocations of `ensureAuthReady()` are strictly idempotent: cached `authReadyPromise` shares a single in-flight Promise across callers.
-- Confirmed offline anonymous auth errors are caught gracefully within `try/catch`, logging a non-fatal warning and returning `null` without throwing unhandled exceptions.
-- Confirmed all 13 Firebase skills exist in `.agents/skills/`.
-- Confirmed `firebase.json` properly targets both `(default)` and `default` Firestore databases.
-- Confirmed `firestore.rules` (499 lines) is fully preserved.
-- Decision: Issue **APPROVE** verdict.
+- Authored dedicated empirical test `scratch/test_adversarial_challenger_1.mjs` with 4 suites and 17 tests.
+- Probed 70 distinct stories across 10 realms and 7 morals: verified exactly 4 chapters per story, 0 occurrences of banned stock phrases, and average word count of 200.1 words per chapter (min 185, max 223).
+- Probed illustration cache keys: confirmed RFC 1321 MD5 correctness, verified zero cache collisions across multiple stories in the same realm, verified strict `_ch0_` to `_ch3_` index partitioning, and verified 400/400 unique keys across 100 consecutive stories in the same realm.
+- Probed dynamic seed entropy: sampled 10,000 seeds, verified all are integers in [0, 2147483646] with non-negative sign bit and 10,000 distinct values.
+- Verified strict Explorer Palette guard (zero pink/purple) across all 10 realm fallback SVGs.
 
 ## Artifact Index
 - `c:\APP\stitch_little_hero_adventures\.agents\teamwork\challenger_1\progress.md` — Liveness & status tracking
 - `c:\APP\stitch_little_hero_adventures\.agents\teamwork\challenger_1\handoff.md` — Final challenge evaluation and verdict
+- `c:\APP\stitch_little_hero_adventures\scratch\test_adversarial_challenger_1.mjs` — Executable adversarial verification suite
 
 ## Attack Surface
 - **Hypotheses tested**:
-  1. Google/Email user session overwriting on startup: REJECTED (guarded by `auth.authStateReady()` + `if (!auth.currentUser)`).
-  2. Multiple anonymous users created via concurrent `ensureAuthReady()` calls: REJECTED (guarded by singleton `authReadyPromise`).
-  3. App crash or unhandled promise rejection if offline during auth: REJECTED (guarded by `try/catch` in `ensureAuthReady()` and `.catch()` on startup).
-  4. Unauthenticated push to Firestore causing `PERMISSION_DENIED`: REJECTED (`_doPush`, `joinHousehold`, and `syncPersistentLinkToCloud` await `ensureAuthReady()`).
-- **Vulnerabilities found**: None that break correctness or security. Identified minor offline-to-online retry nuance where cached resolved null promise requires reload or user sign-in event to re-evaluate.
-- **Untested angles**: Interactive browser popup UI interaction (evaluated via static code trace & unit simulation).
+  1. Banned stock phrases leaking into procedural narratives: REJECTED (0 occurrences in 70 generated stories / 280 chapters).
+  2. Chapters failing ~180-220 word target: REJECTED (all 280 chapters within target range, min 185, max 223, avg 200.1).
+  3. Story chapter count deviation from 4: REJECTED (all 70 stories had exactly 4 chapters).
+  4. Cache key collision across multiple stories in same realm: REJECTED (400/400 unique keys across 100 stories; 0 collisions).
+  5. Seed entropy collisions or out-of-range 32/64 bit integers: REJECTED (10,000/10,000 distinct 31-bit non-negative integers).
+- **Vulnerabilities found**: None.
+- **Untested angles**: Full Cloudflare edge live network inference (mocked/unit tested in offline node environment).
 
 ## Loaded Skills
 - None requested.

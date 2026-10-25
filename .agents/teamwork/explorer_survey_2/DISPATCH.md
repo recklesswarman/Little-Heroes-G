@@ -1,24 +1,37 @@
-## 2026-10-15T03:48:32Z
-[Message] timestamp=2026-10-15T03:48:32Z sender=95945b0b-5f74-4471-935a-2738aaef81cc priority=MESSAGE_PRIORITY_HIGH content=You are Explorer 2 (3D Avatar & Skeletal Animation Specialist).
+# Survey Task: R2 - Rich, Extended Non-Repetitive Story Generation Engine
+Working directory: c:\APP\stitch_little_hero_adventures\.agents\teamwork\explorer_survey_2
+Original request file: c:\APP\stitch_little_hero_adventures\.agents\teamwork\ORIGINAL_REQUEST.md
+
+You are an Explorer. Investigate the codebase to map all aspects of R2:
+1. Identify all files involved in story generation (online Gemini/AGY, server routes `/api/gemini/bedtime-story`, `/api/rex/bedtime-story`, client Firebase AI Logic, and offline procedural weaver in `src/data/bedtimeStoryData.js` or `bedtimeStoryService.js`).
+2. Analyze current chapter length and structure. Notice the shift from 3 chapters to 4 chapters (~180–220 words per chapter, ~750–850 words total, lasting 7–8 minutes) and the 4 progressive story arcs:
+   - Ch 1: departure & gentle curiosity
+   - Ch 2: whimsical encounter & gentle mystery
+   - Ch 3: calming cooperative resolution
+   - Ch 4: curling up in a cozy starlight nest, drifting off to sleep
+3. Analyze current repetition issues: check for stock sentences, formulaic whisper lines, repetitive openings (e.g. "smiled happily beside", "looked up at the starry sky", "gazed with wonder").
+4. Inspect anti-repetition registries, history persistence (`hero.bedtimeHistory`), seed rotation, and prompt negative constraints.
+5. Document exact file paths, line numbers, current behavior, gaps relative to R2 requirements, and proposed architectural solutions.
+6. Write your detailed analysis and report to `handoff.md` in your working directory.
+
+
+## 2026-10-25T02:19:30Z
+Sender: b9493cb1-e4ed-444a-a0d3-d8aedbf36adc
+Priority: MESSAGE_PRIORITY_HIGH
+Content:
+You are an Explorer for Phase 0 Survey (R2: Rich, Extended Non-Repetitive Story Generation Engine).
 Your working directory is: c:\APP\stitch_little_hero_adventures\.agents\teamwork\explorer_survey_2
-The authoritative requirements are located at: c:\APP\stitch_little_hero_adventures\.agents\teamwork\ORIGINAL_REQUEST.md
-Please read ORIGINAL_REQUEST.md immediately.
+Read your task instructions at: c:\APP\stitch_little_hero_adventures\.agents\teamwork\explorer_survey_2\DISPATCH.md
+Read the original request at: c:\APP\stitch_little_hero_adventures\.agents\teamwork\ORIGINAL_REQUEST.md
 
-Your task:
-1. Inspect the project dependencies (package.json, node_modules) for Three.js, Spline runtime (@splinetool/runtime), and any 3D asset loaders or canvas libraries.
-2. Determine the best architecture for mounting and rendering a true 3D character avatar (Three.js SkinnedMesh / Bone hierarchy or Spline runtime) that runs reliably across desktop and mobile browsers.
-3. Detail how to implement the 8 distinct prehistoric gross-motor skeletal bone animations with anatomically accurate bone rotations/positions:
-   - Velociraptor Run (balls of feet, 90° arm pumps)
-   - Stegosaurus Walks (bear walk quadruped, hips elevated, 4 steps forward / backward with ground stomps)
-   - Pterodactyl Take Off (circular wing arcs wind-up, crouch, vertical takeoff leap)
-   - T-Rex Run (short arms tucked in armpits, driving high knees up to hands)
-   - Compsognathus Prances (lateral skater jumps, rear leg crossing behind, balancing arm swing)
-   - Brachiosaurus Stretch (standing tall, tiptoes rise, overhead arm reach)
-   - The Diplodocus (tabletop bird-dog balance with neck reach and tail wag, 30s side switch)
-   - Spinosaurus Stretch (cat-cow spine waves with dorsal sail arching)
-4. Detail the resilient fallback architecture to 2D procedural canvas when WebGL is unavailable or fails.
-5. Identify file boundaries and code structure needed to implement this cleanly.
-
-Deliverable:
-Write a thorough, structured report to c:\APP\stitch_little_hero_adventures\.agents\teamwork\explorer_survey_2\handoff.md.
-When finished, send a message to the orchestrator with your summary and file path. Do NOT modify source code files.
+Investigate:
+1. All files involved in story generation (online Gemini/AGY, server routes `/api/gemini/bedtime-story`, `/api/rex/bedtime-story`, client Firebase AI Logic, and offline procedural weaver in `src/data/bedtimeStoryData.js` or `bedtimeStoryService.js`).
+2. Expansion from 3 chapters to 4 chapters (~180–220 words per chapter, ~750–850 words total, lasting 7–8 minutes) and the 4 progressive story arcs:
+   - Ch 1: departure & gentle curiosity
+   - Ch 2: whimsical encounter & gentle mystery
+   - Ch 3: calming cooperative resolution
+   - Ch 4: curling up in a cozy starlight nest, drifting off to sleep
+3. Current repetition issues: check for stock sentences, formulaic whisper lines, repetitive openings (e.g. "smiled happily beside", "looked up at the starry sky", "gazed with wonder").
+4. Anti-repetition registries, history persistence (`hero.bedtimeHistory`), seed rotation, and prompt negative constraints.
+Document findings, file paths, line numbers, gaps, and proposed implementation plan in `c:\APP\stitch_little_hero_adventures\.agents\teamwork\explorer_survey_2\handoff.md`.
+Communicate back via send_message when done.

@@ -1,16 +1,27 @@
-## 2026-10-15T03:48:32Z
-[Message] timestamp=2026-10-15T03:48:32Z sender=95945b0b-5f74-4471-935a-2738aaef81cc priority=MESSAGE_PRIORITY_HIGH content=You are Explorer 1 (Workout Arena & Store Specialist).
+# Survey Task: R1 - Cloudflare Workers AI Image Generation & Cache Integrity
+Working directory: c:\APP\stitch_little_hero_adventures\.agents\teamwork\explorer_survey_1
+Original request file: c:\APP\stitch_little_hero_adventures\.agents\teamwork\ORIGINAL_REQUEST.md
+
+You are an Explorer. Investigate the codebase to map all aspects of R1:
+1. Identify all files involved in story illustration generation and caching (e.g. `src/services/bedtimeStoryService.js`, `src/components/BedtimeStoryStage3D.js`, `src/views/BedtimeStoryView.js`, server endpoints, cloudflare integration).
+2. Trace how image generation prompts are currently constructed and how chapter text is passed.
+3. Trace how caching is implemented, cache key generation, and where cross-story or cross-chapter collisions could occur.
+4. Check how seeds/entropy are handled (or missing) and how to pass `Math.floor(Math.random() * 2147483647)`.
+5. Check palette enforcement in prompts and fallback SVGs (strict Explorer Palette: #09141e, #2ecc71, #00d2d3, #f39c12, #ffb961; zero pink/purple).
+6. Document exact file paths, line numbers, current behavior, gaps relative to R1 requirements, and proposed architectural solutions.
+7. Write your detailed analysis and report to `handoff.md` in your working directory.
+
+## 2026-10-25T02:19:30Z
+You are an Explorer for Phase 0 Survey (R1: Cloudflare Workers AI Image Generation & Cache Integrity).
 Your working directory is: c:\APP\stitch_little_hero_adventures\.agents\teamwork\explorer_survey_1
-The authoritative requirements are located at: c:\APP\stitch_little_hero_adventures\.agents\teamwork\ORIGINAL_REQUEST.md
-Please read ORIGINAL_REQUEST.md immediately.
+Read your task instructions at: c:\APP\stitch_little_hero_adventures\.agents\teamwork\explorer_survey_1\DISPATCH.md
+Read the original request at: c:\APP\stitch_little_hero_adventures\.agents\teamwork\ORIGINAL_REQUEST.md
 
-Your task:
-1. Explore the existing codebase for the Companion Hero Workout arena in Little Hero Adventures (find all workout view components, store methods, workout definitions, dinosaur coaches, and canvas animations).
-2. Examine how the 8 prehistoric gross-motor workouts are currently defined, timed, rendered, and stored.
-3. Inspect how circuit mode (8-minute circuit), water break intermissions, rewards, and dinosaur coaches are implemented.
-4. Document the exact file paths, component hierarchy, state models, and integration points for mounting a true 3D character avatar side-by-side with the dinosaur coach.
-5. Identify all constraints from the Stitch design system (Electric Cyan, Emerald Green, Solar Amber, Midnight Slate — no pink/purple) and kid voice companion guidelines (.agents/rules/kid_voice_companion_guidelines.md).
-
-Deliverable:
-Write a thorough, structured report to c:\APP\stitch_little_hero_adventures\.agents\teamwork\explorer_survey_1\handoff.md.
-When finished, send a message to the orchestrator with your summary and file path. Do NOT modify source code files.
+Investigate:
+1. All files involved in story illustration generation and caching (e.g. `src/services/bedtimeStoryService.js`, `src/components/BedtimeStoryStage3D.js`, `src/views/BedtimeStoryView.js`, `server.js`, `server/`, `functions/`).
+2. Current image generation prompt structure and how chapter text is incorporated.
+3. Current caching logic, cache key format, and how cross-story/cross-chapter collisions occur.
+4. Randomized seed/entropy parameter passing (`Math.floor(Math.random() * 2147483647)`).
+5. Explorer Palette adherence (#09141e, #2ecc71, #00d2d3, #f39c12, #ffb961; zero pink/purple) in prompts and SVG fallbacks.
+Document findings, file paths, line numbers, gaps, and proposed implementation plan in `c:\APP\stitch_little_hero_adventures\.agents\teamwork\explorer_survey_1\handoff.md`.
+Communicate back via send_message when done.

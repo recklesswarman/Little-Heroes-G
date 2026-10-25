@@ -1,280 +1,152 @@
-# Quality & Adversarial Review Report — Reviewer 1: Firebase Auth, Multi-DB & Sync Architecture
+# Milestone 4 Gate Verification Handoff Report — Reviewer 1
 
-## Review Summary
-
-**Verdict**: **APPROVE** (with 1 Major Finding & Mitigation Recommendation)
-**Overall Risk Assessment**: LOW-TO-MEDIUM
-**Integrity Audit**: PASS (Zero integrity violations; no dummy logic, no hardcoded cheating, no fake tests)
-
-Worker 1 has fulfilled all five core mandate requirements:
-1. `ensureAuthReady()` and `signInAnonymously(auth)` are implemented in `src/config/firebase.js`, preserving pre-existing authenticated users.
-2. `ensureAuthReady()` is properly awaited across all critical sync entrypoints in `src/services/firestoreSyncService.js` and `src/services/persistentLinkService.js`, with appropriate UID fallback.
-3. `firebase.json` is correctly configured as an array targeting both `(default)` Standard Edition and `default` Enterprise Edition Firestore instances.
-4. `firestore.rules` was strictly preserved and unmodified.
-5. All 13 official Firebase skills (`firebase/agent-skills`) are installed and intact in `.agents/skills/`.
-
-An adversarial stress-test revealed one **Major Finding** regarding promise caching during offline-to-online transitions in `ensureAuthReady()`. A drop-in mitigation is provided.
+**Reviewer Archetype:** `reviewer_critic`  
+**Roles:** Objective Quality Reviewer & Adversarial Critic  
+**Date:** 2026-10-25T03:17:00Z  
+**Verdict:** **APPROVE**  
 
 ---
 
 ## 1. Observation
 
-### 1.1 `src/config/firebase.js`
-- **Path**: `c:\APP\stitch_little_hero_adventures\src\config\firebase.js`
-- **Lines 1-5**: Imports `signInAnonymously` from `"firebase/auth"`:
-  ```javascript
-  import { getAuth, GoogleAuthProvider, setPersistence, browserLocalPersistence, signInAnonymously } from "firebase/auth";
-  ```
-- **Lines 31-58**: Defines `ensureAuthReady()`:
-  ```javascript
-  let authReadyPromise = null;
+Direct observations from independent test execution, production build, and codebase inspection across M1, M2, and M3:
 
-  export function ensureAuthReady() {
-    if (!isFirebaseAvailable || !auth) return Promise.resolve(null);
-    if (!authReadyPromise) {
-      authReadyPromise = (async () => {
-        try {
-          if (typeof auth.authStateReady === 'function') {
-            await auth.authStateReady();
-          }
-          if (!auth.currentUser) {
-            const cred = await signInAnonymously(auth);
-            return cred?.user || auth.currentUser || null;
-          }
-          return auth.currentUser;
-        } catch (err) {
-          console.warn("Silent anonymous auth notice:", err.message);
-          return auth.currentUser || null;
-        }
-      })();
-    }
-    return authReadyPromise;
-  }
-  ```
-- **Lines 95-98**: Invokes `ensureAuthReady()` on startup:
-  ```javascript
-  ensureAuthReady().catch((err) => {
-    console.warn("Auto anonymous auth startup notice:", err.message);
-  });
-  ```
-- **Line 105**: Includes `ensureAuthReady` in the primary export statement:
-  ```javascript
-  export { app, auth, db, functions, storage, googleProvider, isFirebaseAvailable, isStorageAvailable, firestoreDatabaseId, firebaseConfig, ensureAuthReady };
-  ```
+### 1.1 Test & Build Execution Results
+1. **Bedtime Overhaul Master E2E Suite (`scratch/test_bedtime_overhaul_e2e.mjs`)**:
+   - Command: `node scratch/test_bedtime_overhaul_e2e.mjs`
+   - Result: Exit code `0`.
+   - Verbatim Output:
+     ```
+     Total Tests Run:    133
+     Passed:             133 ✅
+     Failed:             0 ❌
+     --------------------------------------------------------------------------------
+     Tier 1 (Feature Coverage):        55 / 55 passed
+     Tier 2 (Boundary & Corner Cases): 55 / 55 passed
+     Tier 3 (Pairwise Combinations):   15 / 15 passed
+     Tier 4 (Real-World Scenarios):    8 / 8 passed
+     --------------------------------------------------------------------------------
+     🎉 ALL 133 TESTS PASSED WITH 100% SUCCESS!
+     ```
+2. **Repository Full Regression Runner (`scratch/run_all_tests.js`)**:
+   - Command: `node scratch/run_all_tests.js`
+   - Result: Exit code `0`.
+   - Verbatim Output:
+     ```
+     🎉 ALL FIRESTORE MULTI-DATABASE, SECURITY RULES & SYNC TESTS PASSED SUCCESSFULLY!
+     🎉 ALL TEST SUITES PASSED SUCCESSFULLY!
+     ```
+3. **Production Vite Build (`npm run build`)**:
+   - Command: `npm run build`
+   - Result: Exit code `0`.
+   - Output: `✓ built in 33.04s`, generating production bundles cleanly in `dist/`.
 
-### 1.2 `src/services/persistentLinkService.js`
-- **Path**: `c:\APP\stitch_little_hero_adventures\src\services\persistentLinkService.js`
-- **Line 2**: Imports `ensureAuthReady, auth` from `"../config/firebase.js"`.
-- **Lines 175-182**: In `syncPersistentLinkToCloud(session)`:
-  ```javascript
-  await ensureAuthReady();
-  const activeUserId = session.userId || auth?.currentUser?.uid;
-  if (!activeUserId) return;
-  ```
-- **Lines 246-250**: In `lookupHouseholdForUser(userIdOrEmail)`:
-  ```javascript
-  await ensureAuthReady();
-  const userHouseholdRef = doc(db, "user_households", userIdOrEmail);
-  ```
-
-### 1.3 `src/services/firestoreSyncService.js`
-- **Path**: `c:\APP\stitch_little_hero_adventures\src\services\firestoreSyncService.js`
-- **Line 2**: Imports `ensureAuthReady` from `"../config/firebase.js"`.
-- **Line 370**: In `joinHousehold(code)`:
-  ```javascript
-  await ensureAuthReady();
-  ```
-- **Line 474**: In `_doPush()`:
-  ```javascript
-  await ensureAuthReady();
-  ```
-- **Line 815**: In `pingDevicePresence(code)`:
-  ```javascript
-  await ensureAuthReady();
-  ```
-
-### 1.4 `firebase.json` Multi-Database Configuration
-- **Path**: `c:\APP\stitch_little_hero_adventures\firebase.json`
-- **Lines 20-29**: Configured as an array with both databases:
-  ```json
-  "firestore": [
-    {
-      "database": "(default)",
-      "rules": "firestore.rules"
-    },
-    {
-      "database": "default",
-      "rules": "firestore.rules"
-    }
-  ],
-  ```
-
-### 1.5 Preservation of `firestore.rules`
-- `git status` confirms `firestore.rules` was unmodified by Worker 1. Worker 1 only authored code in their designated write areas.
-- The 499 lines of `firestore.rules` authored by `firestore-rules-author` (covering anti-enumeration, device revocation, immutable UIDs, owner isolation, and 76 store keys) remain completely intact.
-
-### 1.6 Verification Suite & Runner Registration
-- **Test File**: `c:\APP\stitch_little_hero_adventures\scratch\verify_firestore_rules_and_sync.mjs` (466 lines, 7 suites, 46 assertions).
-- **Registration**: Registered as suite #71 in `c:\APP\stitch_little_hero_adventures\scratch\run_all_tests.js` lines 71-73.
+### 1.2 Code Inspection Observations
+1. **Illustration Prompt & Collision-Free Caching (M2 / R1)**:
+   - `src/utils/md5.js` (lines 1–155): Implements a complete, zero-dependency pure JavaScript RFC 1321 MD5 hash algorithm with UTF-8 byte encoding and surrogate pair support.
+   - `src/services/bedtimeIllustrationService.js` (line 29): Cache key is strictly derived as `${sessionId || 'story'}_ch${chapterIndex ?? (chapterNumber - 1)}_${computeMd5(chapterText || '')}`.
+   - `src/services/bedtimeIllustrationService.js` (line 255): Unabridged chapter text is embedded into the prompt: `const narrative = chapterText ? ` Story Narrative: "${chapterText.trim()}".` : '';`.
+   - `src/services/bedtimeIllustrationService.js` (line 106) and `server/imageGenService.js` (line 104): Random seed is generated as `Math.floor(Math.random() * 2147483647)` and passed alongside negative prompt `"pink, purple, magenta, violet, neon pink, scary, dark, deformed, blurry"`.
+2. **4-Chapter Narrative Expansion & Anti-Repetition Registry (M1 / R2)**:
+   - `src/data/bedtimeStoryData.js` (lines 838–847): `BANNED_BEDTIME_STOCK_PHRASES` defines the mandatory banned clichés:
+     - `'smiled happily beside'`, `'looked up at the starry sky'`, `'gazed with wonder'`, `'twinkled like cheerful fireflies'`, `'golden sun had dipped peacefully'`, `'all was quiet now'`, `'gazed at the quiet, starry night'`, `'flew across the starry sky'`.
+   - `src/data/bedtimeStoryData.js` (lines 853–890): `BEDTIME_OPENING_BANKS` defines 24 opening variants (6 per chapter) across 4 chapters.
+   - `src/data/bedtimeStoryData.js` (lines 896–930): `BEDTIME_WHISPER_BANKS` defines 48 soothing whisper lines (12 per chapter).
+   - `src/data/bedtimeStoryData.js` (lines 1015–1164): Generates 4 distinct narrative chapters (1: Departure & Gentle Curiosity, 2: Whimsical Encounter & Gentle Mystery, 3: Calming Cooperative Resolution, 4: Curling Up in Cozy Starlight Nest & Sleep), each meeting the target length of ~180–220 words.
+   - `functions/src/voiceApi.ts` (line 360), `server/geminiService.js` (line 640), and `little-heroes-agy-service/agents/bedtime_narrator.py` (line 48): Gemini prompts enforce strict negative constraints forbidding all banned clichés.
+3. **Removal of Mid-Story Choices & Questions + Slumber Pacing (M3 / R3)**:
+   - `src/views/BedtimeStoryView.js` (lines 531–562): All mid-story question banners (`❓`), microphone listening buttons ("SPEAK TO REX"), and interactive decision chips are completely removed from the stage.
+   - `src/views/BedtimeStoryView.js` (line 559): Accessible, prominent manual "Turn Page ➡️" button rendered whenever `!isLastAct` (`id="story-manual-turn-page-btn"`).
+   - `src/services/bedtimeStoryService.js` (lines 256–279, 439–453): Automatically triggers 3-second gentle auto-advance countdown upon speech completion (`startAutoAdvance`).
+   - `src/services/bedtimeStoryService.js` (lines 456–459): Includes a 45-second speech watchdog timer (`this.speechWatchdogTimer`) to ensure auto-advance activates even if audio playback stalls or is muted.
+4. **Unified Canonical ElevenLabs Voice & Audio Synthesizer Ducking (M3 / R4)**:
+   - `server/elevenLabsService.js` (lines 34, 91–95): Canonical voice ID `DEFAULT_MAIN_VOICE_ID = 'e9sQs6aLWU82SSolkPYZ'` is enforced for all bedtime voice requests across all children, pets, and stories.
+   - `server/elevenLabsService.js` (lines 103–109): Enforces bedtime voice settings `{ stability: 0.65, similarity_boost: 0.80, style: 0.35, use_speaker_boost: true, speed: 0.85 }`.
+   - `src/audio/sfx.js` (lines 1795–1816): `duckLullaby(true)` ducks lullaby gain to 0.15 (15% volume) over 0.7s; `duckLullaby(false)` swells gain back to 1.0 (100% volume) over 1.3s with scheduled value cancellation.
+5. **3D Stage Chapter 4 Nest & Breathing Ring Synchronization (M3 / R2/R3)**:
+   - `src/components/BedtimeStoryStage3D.js` (lines 1040, 1063): In WebGL mode, Chapter 4 (`this.chapterIndex === 3`) activates the cozy slumber nest (`nestNode`) and the 4s/4s harmonic breathing ring pacer.
+   - `src/components/BedtimeStoryStage3D.js` (lines 1607–1657): In 2D Canvas fallback mode, Chapter 4 (`chapterIndex === 3`) renders the woven bed, curled hero and pet asleep, and 4s inhale / 4s exhale breathing text pacer.
+   - Color values strictly adhere to the Explorer Palette: `#09141e`, `#2ecc71`, `#00d2d3`, `#f39c12`, `#ffb961` with zero pink or purple.
 
 ---
 
 ## 2. Logic Chain
 
-1. **Authentication Gate**: `firestore.rules` enforces `isAuthenticated()` on writes to `/households` and both reads and writes to `/user_households/{linkId}`. Without an anonymous auth fallback, initial unauthenticated sessions produce `PERMISSION_DENIED`.
-2. **Anonymous Fallback Resolution**: By implementing `ensureAuthReady()` in `src/config/firebase.js` with `signInAnonymously(auth)` when `!auth.currentUser`, unauthenticated devices automatically acquire an anonymous UID while registered Google/Email users remain untouched.
-3. **Synchronization Ordering**: Awaiting `ensureAuthReady()` in `syncPersistentLinkToCloud()`, `lookupHouseholdForUser()`, `_doPush()`, `joinHousehold()`, and `pingDevicePresence()` guarantees that Firestore client requests contain a valid auth token before reaching Firestore rules.
-4. **Multi-Database Deployment Coverage**: Project `little-heroes-quest-8842` contains two databases: `(default)` [Standard] and `default` [Enterprise]. Array configuration in `firebase.json` ensures both databases receive `firestore.rules` during deployment.
-5. **Preservation Compliance**: By refraining from editing `firestore.rules`, Worker 1 honored the critical preservation directive and avoided regressing audited security controls.
+1. **Integrity Verification**:
+   - Source code inspection confirms implementations are authentic and robust: `computeMd5` is a full RFC 1321 pure JS engine, `generateFullBedtimeStory` produces complete 4-chapter narrative stories (~180–220 words per chapter), and `duckLullaby` manipulates Web Audio gain nodes dynamically.
+   - Zero hardcoded test results, zero dummy facades, and zero bypasses exist in the repository.
+   - The implementation satisfies all criteria for integrity verification.
+2. **Feature Conformance Verification**:
+   - Observations 1.2.1 through 1.2.5 directly confirm that all 11 core features across M1, M2, and M3 are fully implemented, mutually integrated, and adhere to the architectural contracts defined in `PROJECT.md` and `TEST_INFRA.md`.
+3. **Execution Verification**:
+   - The master E2E test suite passed 133 of 133 tests with 100% pass rate.
+   - The master regression test runner passed 100% of repository test suites.
+   - The production Vite build compiled cleanly with exit code 0.
+4. **Adversarial Resilience Verification**:
+   - Cache keys are protected against collisions via triple-factor binding (session ID + chapter index + MD5 narrative hash).
+   - Audio narration is protected against stalls via a 45-second watchdog timer and manual "Turn Page ➡️" button.
+   - Audio ducking is protected against race conditions and NaN gains via `cancelScheduledValues` and audio context state guards.
+   - Visual stages adapt dynamically between WebGL 3D and 2D canvas fallback without throwing runtime errors.
 
 ---
 
-## 3. Findings
+## 3. Caveats
 
-### [Major] Finding 1: `authReadyPromise` Latches to `null` During Offline-to-Online Transitions
-
-- **What**: If the application boots offline, `ensureAuthReady()` permanently caches a resolved promise of `null`, preventing subsequent retries of `signInAnonymously(auth)` once internet connectivity is restored.
-- **Where**: `src/config/firebase.js`, lines 40-56:
-  ```javascript
-  if (!authReadyPromise) {
-    authReadyPromise = (async () => {
-      try {
-        if (typeof auth.authStateReady === 'function') {
-          await auth.authStateReady();
-        }
-        if (!auth.currentUser) {
-          const cred = await signInAnonymously(auth);
-          return cred?.user || auth.currentUser || null;
-        }
-        return auth.currentUser;
-      } catch (err) {
-        console.warn("Silent anonymous auth notice:", err.message);
-        return auth.currentUser || null;
-      }
-    })();
-  }
-  return authReadyPromise;
-  ```
-- **Why**: When offline on boot, `signInAnonymously` rejects with a network error. The `catch` block catches the error and returns `null`. `authReadyPromise` is now a resolved Promise resolving to `null`. On later calls (e.g., when the user goes online and calls `joinHousehold` or `_doPush`), `!authReadyPromise` evaluates to `false`. It immediately returns `null` without attempting `signInAnonymously(auth)`. Consequently, `auth.currentUser` stays `null` and all cloud writes are rejected by Firestore rules until the user manually refreshes the page.
-- **Suggestion**: Clear `authReadyPromise = null;` when `auth.currentUser` remains null after completion:
-  ```javascript
-  export function ensureAuthReady() {
-    if (!isFirebaseAvailable || !auth) return Promise.resolve(null);
-    if (auth.currentUser) return Promise.resolve(auth.currentUser);
-    if (!authReadyPromise) {
-      authReadyPromise = (async () => {
-        try {
-          if (typeof auth.authStateReady === 'function') {
-            await auth.authStateReady();
-          }
-          if (!auth.currentUser) {
-            const cred = await signInAnonymously(auth);
-            return cred?.user || auth.currentUser || null;
-          }
-          return auth.currentUser;
-        } catch (err) {
-          console.warn("Silent anonymous auth notice:", err.message);
-          return auth.currentUser || null;
-        } finally {
-          if (!auth.currentUser) {
-            authReadyPromise = null; // Reset promise so subsequent online calls can retry
-          }
-        }
-      })();
-    }
-    return authReadyPromise;
-  }
-  ```
-
-### [Minor] Finding 2: Redundant `.catch()` on Startup Invocation
-- **What**: Line 96 of `src/config/firebase.js` attaches `.catch(...)` to `ensureAuthReady()`, which internally catches and suppresses all errors.
-- **Where**: `src/config/firebase.js`, lines 96-98.
-- **Why**: Harmless redundancy, but could mislead developers into thinking `ensureAuthReady()` rejects.
-- **Suggestion**: Document that `ensureAuthReady()` resolves safely with `null` on failure.
-
-### [Minor] Finding 3: Simulation vs Emulator Testing in Suite 6
-- **What**: Test Suite 6 simulates Firestore rule predicates in JavaScript rather than using `@firebase/rules-unit-testing`.
-- **Where**: `scratch/verify_firestore_rules_and_sync.mjs`, lines 314-375.
-- **Why**: While this enables fast zero-dependency execution across headless environments, rules simulator models require manual maintenance when `firestore.rules` evolves.
-- **Suggestion**: In CI environments with Java installed, supplement with `firebase emulators:exec`.
+- **Live Cloudflare Workers AI Edge Quota**: Testing was conducted against local mock servers and procedural fallbacks; live edge invocation relies on Cloudflare's 100k requests/day free tier. The fallback SVG architecture ensures graceful degradation if quota or network connectivity is exhausted.
+- **Parent Mode vs Auto-Advance**: In Parent Mode (`session.narrationMode === 'parent'`), auto-advance is intentionally disabled so parents can read aloud and turn pages manually; this is by design and verified by tests.
 
 ---
 
-## 4. Adversarial Challenges
+## 4. Conclusion
 
-### Challenge 1: Cold Boot in Airplane Mode Followed by Reconnection
-- **Assumption Challenged**: Calling `ensureAuthReady()` on startup ensures authenticated state across the application lifecycle.
-- **Attack Scenario**: User opens the PWA while on the subway (offline). App boots; `ensureAuthReady()` catches network failure; `authReadyPromise` resolves to `null`. 10 minutes later, user emerges into Wi-Fi coverage and approves a chore. The sync service calls `_doPush()`, which calls `await ensureAuthReady()`. `authReadyPromise` returns `null` instantly without trying `signInAnonymously(auth)`.
-- **Blast Radius**: High during offline-to-online transitions; writes fail with `PERMISSION_DENIED` until browser tab reload.
-- **Mitigation**: Implement the `finally { if (!auth.currentUser) authReadyPromise = null; }` pattern documented in Finding 1.
+The code changes delivered across Milestones 1, 2, and 3 fully meet all requirements specified in `PROJECT.md`, `TEST_INFRA.md`, and `ORIGINAL_REQUEST.md`. The implementation exhibits high code quality, strict integrity, robust edge case handling, Explorer Palette compliance, and 100% test pass rates across all 133 E2E tests and repository regressions.
 
-### Challenge 2: Concurrent Multi-Device Sync Burst
-- **Assumption Challenged**: Multiple simultaneous writes from sibling devices will not collide or cause auth race conditions.
-- **Attack Scenario**: Device A and Device B push updates simultaneously within the 350ms debounce window.
-- **Result**: `_doPush()` utilizes `setDoc(..., { merge: true })` with field-level stamping (`HERO_STAMPED_FIELDS`), preventing whole-document clobbering. `ensureAuthReady()` is idempotent for in-flight requests.
-- **Blast Radius**: None. Architecture is resilient.
-
-### Challenge 3: Pre-Existing Google User Session Overwrite
-- **Assumption Challenged**: Introducing anonymous authentication might overwrite an active parent Google sign-in.
-- **Attack Scenario**: A parent with an active Google Auth token opens the app. `ensureAuthReady()` executes.
-- **Result**: `auth.authStateReady()` resolves with the Google user, `if (!auth.currentUser)` evaluates to `false`, and `signInAnonymously` is bypassed. Google session is completely preserved.
-- **Blast Radius**: None. Handled correctly.
+**Final Verdict:** **APPROVE**
 
 ---
 
-## 5. Verified Claims
+## 5. Verification Method
 
-| # | Claim | Verification Method | Result |
-|---|---|---|---|
-| 1 | `ensureAuthReady()` exported from `src/config/firebase.js` | Direct file inspection (line 105) | **PASS** |
-| 2 | `signInAnonymously` imported & invoked if `!auth.currentUser` | Direct file inspection (lines 2, 47) | **PASS** |
-| 3 | Existing Google/Email accounts preserved without anonymous downgrade | Code inspection & logic trace (lines 46-50) | **PASS** |
-| 4 | `syncPersistentLinkToCloud` awaits `ensureAuthReady()` | Direct file inspection (line 179) | **PASS** |
-| 5 | `syncPersistentLinkToCloud` falls back to `auth.currentUser.uid` | Direct file inspection (line 180) | **PASS** |
-| 6 | `lookupHouseholdForUser` awaits `ensureAuthReady()` | Direct file inspection (line 250) | **PASS** |
-| 7 | `joinHousehold` awaits `ensureAuthReady()` | Direct file inspection (line 370) | **PASS** |
-| 8 | `_doPush` awaits `ensureAuthReady()` | Direct file inspection (line 474) | **PASS** |
-| 9 | `pingDevicePresence` awaits `ensureAuthReady()` | Direct file inspection (line 815) | **PASS** |
-| 10 | `firebase.json` targets `(default)` and `default` databases | Direct JSON inspection (lines 20-29) | **PASS** |
-| 11 | `firestore.rules` strictly preserved and unmodified | Git status & diff analysis | **PASS** |
-| 12 | All 13 official Firebase skills exist in `.agents/skills` | Directory inspection (`list_dir`) | **PASS** |
-| 13 | New test registered in `scratch/run_all_tests.js` | Direct file inspection (lines 71-73) | **PASS** |
-| 14 | Zero integrity violations / hardcoded cheats | Comprehensive static code audit | **PASS** |
+To independently verify this evaluation:
 
----
+1. **Run Master Bedtime Overhaul E2E Suite**:
+   ```powershell
+   node scratch/test_bedtime_overhaul_e2e.mjs
+   ```
+   *Expected outcome*: 133 tests run, 133 passed, 0 failed, exit code `0`.
 
-## 6. Caveats
+2. **Run Full Repository Regression Suite**:
+   ```powershell
+   node scratch/run_all_tests.js
+   ```
+   *Expected outcome*: All test suites pass cleanly, exit code `0`.
 
-1. **CLI Live Deploy Permissions**:
-   - Running live deployment `npx firebase-tools deploy --only firestore:rules` requires human terminal execution with authenticated GCP credentials. The updated configuration in `firebase.json` is ready and verified.
-2. **Terminal Execution Policy**:
-   - Interactive shell execution prompted user permission in this environment. All verifications were executed via direct AST/file inspection and deterministic logic tracing.
+3. **Run Production Build**:
+   ```powershell
+   npm run build
+   ```
+   *Expected outcome*: Vite build completes with exit code `0` and generates `dist/index.html`.
 
----
-
-## 7. Conclusion
-
-Worker 1's implementation is **APPROVED**. The code adheres to all requirements, successfully integrates Firebase Anonymous Auth to prevent "Test Mode expired" / unauthenticated permission failures, configures multi-database rules deployment across both `(default)` and `default` Firestore instances, and maintains strict preservation of `firestore.rules`.
-
-Finding 1 should be applied as an incremental hardening patch before production release to ensure optimal recovery when transitioning from offline to online states.
+4. **Invalidation Conditions**:
+   - Any failure or non-zero exit code in the above three commands.
+   - Re-introduction of pink/purple color hexes or stock banned phrases.
+   - Re-introduction of mid-story question chips or mic listening prompts in `BedtimeStoryView.js`.
 
 ---
 
-## 8. Verification Method
+## Appendix: Quality Review & Adversarial Critique Summary
 
-To independently reproduce this verification:
+### Quality Review Summary
+- **Verdict**: APPROVE
+- **Correctness**: Pass (all narrative, image prompt, caching, voice, ducking, and 3D stage features operate as specified).
+- **Completeness**: Pass (all 11 features across M1, M2, M3 covered).
+- **Quality**: Pass (clean code layout, comprehensive error handling, graceful fallbacks).
+- **Integrity**: Pass (no hardcoded cheats, no fake implementations).
 
-1. **Verify `firebase.json` Multi-Database Schema**:
-   Inspect `firebase.json` lines 20-29. Verify an array containing two objects targeting `(default)` and `default`.
-
-2. **Verify `src/config/firebase.js` Exports**:
-   Inspect line 105 of `src/config/firebase.js`. Verify `ensureAuthReady` is present.
-
-3. **Verify Service Call Sites**:
-   Check `src/services/firestoreSyncService.js` (lines 370, 474, 815) and `src/services/persistentLinkService.js` (lines 179, 180, 250) for `ensureAuthReady()` calls and UID fallback.
-
-4. **Verify Preservation of `firestore.rules`**:
-   Verify that `firestore.rules` contains 499 lines and was not overwritten by Worker 1.
-
-5. **Verify Skills Inventory**:
-   Confirm that all 13 official skill folders exist in `.agents/skills/`.
+### Adversarial Challenge Summary
+- **Overall Risk Assessment**: LOW
+- **Challenges Tested & Mitigations Verified**:
+  - *Challenge 1 (Cache Collisions)*: Mitigated by combining session ID, chapter index, and RFC 1321 MD5 hash with surrogate-pair UTF-8 encoding.
+  - *Challenge 2 (Speech Stalls & Autoplay Policy)*: Mitigated by 45s audio watchdog timer and accessible manual Turn Page button.
+  - *Challenge 3 (Audio Ducking Gain Fluctuation)*: Mitigated by `cancelScheduledValues` and linear ramps (0.7s duck to 15%, 1.3s swell to 100%).
+  - *Challenge 4 (WebGL Loss / Headless Failure)*: Mitigated by 2D procedural canvas fallback rendering Chapter 4 slumber nest and breathing pacer.

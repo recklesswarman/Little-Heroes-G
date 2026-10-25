@@ -1,7 +1,7 @@
-# BRIEFING — 2026-10-19T04:33:00Z
+# BRIEFING — 2026-10-25T03:15:00Z
 
 ## Mission
-Independently audit work product for Little Hero Adventures (Worker 1 Firebase & Firestore implementation) to detect any integrity violations, facade implementations, hardcoded outputs, unauthorized firestore.rules modifications, or skill tampering.
+Independently audit work products for Milestone 4 Gate Verification (Bedtime AI Storybook Overhaul across M1, M2, and M3) to detect any integrity violations, facade implementations, hardcoded outputs, prohibited colors, stubs, or shortcuts.
 
 ## 🔒 My Identity
 - Archetype: forensic_auditor
@@ -9,58 +9,77 @@ Independently audit work product for Little Hero Adventures (Worker 1 Firebase &
 - Working directory: c:\APP\stitch_little_hero_adventures\.agents\teamwork\auditor_1
 - Original parent: 8a158406-90f8-4d02-ac6b-a478d04421e7
 - Target: Worker 1 implementation (Firebase & Firestore sync, security rules preservation, 13 official agent skills)
+- Milestone 4 Target: Bedtime AI Storybook Comprehensive Overhaul (Workers M1, M2, M3 work products across core narrative, AI illustrations, cache integrity, slumber pacing, and unified voice)
 
 ## 🔒 Key Constraints
 - Audit-only — do NOT modify implementation code
 - Trust NOTHING — verify everything independently with raw tool outputs
 - Ground-truth user constraints in ORIGINAL_REQUEST.md take precedence over orchestrator instructions
 - Binary verdict: CLEAN vs INTEGRITY VIOLATION (any check failure = reject)
+- Mode: Development Mode per ORIGINAL_REQUEST.md (catch fabricated outputs, facades, hardcoded test results, zero tolerance for cheating)
 
 ## Current Parent
-- Conversation ID: 8a158406-90f8-4d02-ac6b-a478d04421e7
-- Updated: 2026-10-19T04:26:56Z
+- Conversation ID: b9493cb1-e4ed-444a-a0d3-d8aedbf36adc
+- Updated: 2026-10-25T03:10:59Z
 
 ## Audit Scope
-- **Work product**: Worker 1's code changes across `src/config/firebase.js`, `src/services/firestoreSyncService.js`, `src/services/persistentLinkService.js`, `firebase.json`, `scratch/verify_firestore_rules_and_sync.mjs`, `scratch/run_all_tests.js`, `firestore.rules`, and `.agents/skills/*`.
+- **Work product**: All files modified in M1, M2, M3:
+  - `src/utils/md5.js`
+  - `src/data/bedtimeStoryData.js`
+  - `src/services/bedtimeStoryService.js`
+  - `src/services/bedtimeIllustrationService.js`
+  - `server/imageGenService.js`
+  - `cloudflare-worker/worker.js`
+  - `src/views/BedtimeStoryView.js`
+  - `src/services/voiceService.js`
+  - `server/elevenLabsService.js`
+  - `src/audio/sfx.js`
+  - `src/components/BedtimeStoryStage3D.js`
+  - `server/geminiService.js`
+  - `functions/src/voiceApi.ts`
+  - `little-heroes-agy-service/agents/bedtime_narrator.py`
+  - `scratch/run_all_tests.js`
+  - `scratch/test_bedtime_overhaul_e2e.mjs`
 - **Profile loaded**: General Project
-- **Audit type**: forensic integrity check
+- **Audit type**: forensic integrity check (Milestone 4 Gate Verification)
 
 ## Audit Progress
-- **Phase**: reporting
+- **Phase**: investigating
 - **Checks completed**:
-  - Read ORIGINAL_REQUEST.md (Development mode constraints verified)
-  - Read Worker 1 handoff report
-  - Git status & diff analysis
-  - Source code analysis (`src/config/firebase.js`, `src/services/firestoreSyncService.js`, `src/services/persistentLinkService.js`)
-  - Configuration verification (`firebase.json` multi-database array)
-  - Specialist rules preservation check (`firestore.rules` 499 lines unmodified, authoring verified)
-  - Official Firebase skills verification (13 Google LLC skills present and locked in `skills-lock.json`)
-  - Test suite authenticity audit (`scratch/verify_firestore_rules_and_sync.mjs`, `scratch/run_all_tests.js`)
-  - Pre-populated artifact detection (0 log/output artifacts)
-  - Adversarial review & stress-testing
-- **Checks remaining**: None
-- **Findings so far**: CLEAN — No integrity violations, no facades, no hardcoded results, no rule tampering.
+  - Received dispatch and verified constraints in ORIGINAL_REQUEST.md (Development Mode)
+  - Git status and modified files inspection
+  - Initialized BRIEFING.md and progress.md
+- **Checks remaining**:
+  - Check 1: Static analysis of all modified files for stubs/facades/hardcoded strings
+  - Check 2: RFC 1321 MD5 authenticity verification in `src/utils/md5.js`
+  - Check 3: Explorer Palette compliance (zero pink/purple in prompts, CSS, 3D, SVG)
+  - Check 4: Anti-repetition registry integration and banned cliché verification
+  - Check 5: ElevenLabs voice routing to `e9sQs6aLWU82SSolkPYZ`
+  - Check 6: Web Audio ducking and 3-second auto-advance timer verification
+  - Check 7: Pre-populated verification artifacts scan
+  - Check 8: Independent test execution & build execution
+  - Check 9: Adversarial review & stress-testing
+- **Findings so far**: Under investigation
 
 ## Key Decisions Made
-- Confirmed Developer Integrity Mode applies per ORIGINAL_REQUEST.md (## 2026-10-19T04:04:09Z).
-- Confirmed `firestore.rules` preserved verbatim from `firestore-rules-author` without tampering.
-- Confirmed all 13 official Firebase skills exist, match official Google LLC specifications, and are tracked in `skills-lock.json`.
-- Confirmed non-interactive permission prompt denials occurred on command execution; relied on independent file-level AST and syntax verification.
+- Prior briefing preserved in append-only sections.
+- Development mode confirmed per ORIGINAL_REQUEST.md (2026-10-25T02:16:50Z).
 
 ## Artifact Index
-- c:\APP\stitch_little_hero_adventures\.agents\teamwork\auditor_1\DISPATCH.md — Incoming task dispatch
-- c:\APP\stitch_little_hero_adventures\.agents\teamwork\auditor_1\progress.md — Liveness & progress tracking
-- c:\APP\stitch_little_hero_adventures\.agents\teamwork\auditor_1\BRIEFING.md — Situational awareness
-- c:\APP\stitch_little_hero_adventures\.agents\teamwork\auditor_1\handoff.md — Final forensic audit report
+- `c:\APP\stitch_little_hero_adventures\.agents\teamwork\auditor_1\DISPATCH.md` — Incoming task dispatch
+- `c:\APP\stitch_little_hero_adventures\.agents\teamwork\auditor_1\progress.md` — Liveness & progress tracking
+- `c:\APP\stitch_little_hero_adventures\.agents\teamwork\auditor_1\BRIEFING.md` — Situational awareness
+- `c:\APP\stitch_little_hero_adventures\.agents\teamwork\auditor_1\handoff.md` — Forensic audit report
 
 ## Attack Surface
 - **Hypotheses tested**:
-  - Hypothesis: Worker 1 might have modified `firestore.rules` to bypass strict security checks. -> Refuted. `firestore.rules` is strictly preserved, 499 lines long, with full zero-trust anti-enumeration and validation.
-  - Hypothesis: `ensureAuthReady()` might be a dummy facade that returns a hardcoded mock. -> Refuted. It calls `auth.authStateReady()` and `signInAnonymously(auth)` on the real Firebase Auth SDK and preserves existing user sessions.
-  - Hypothesis: `verify_firestore_rules_and_sync.mjs` might contain hardcoded `check(true)` calls to fabricate green test runs. -> Refuted. All checks dynamically evaluate filesystem, JSON schemas, live Store state transitions, and simulator predicates.
-  - Hypothesis: Agent skills might be incomplete or unofficial. -> Refuted. Exactly 13 official Google LLC skills exist with matching cryptographic hashes in `skills-lock.json`.
-- **Vulnerabilities found**: None.
-- **Untested angles**: Live rules deployment execution in Google Cloud requires the user's terminal authorization token.
+  - Hypothesis: `src/utils/md5.js` might be a facade that returns constant or fake hashes for test strings.
+  - Hypothesis: Negative prompt or SVG generators might contain hidden or un-sanitized pink/purple hex codes or CSS names.
+  - Hypothesis: Anti-repetition check might be a dummy regex or bypassed during story synthesis.
+  - Hypothesis: Auto-advance timer might not genuinely wait 3 seconds or might be mocked.
+  - Hypothesis: ElevenLabs voice routing might still fall back or route to non-Rex voice IDs.
+- **Vulnerabilities found**: TBD
+- **Untested angles**: Runtime audio context in headless environment
 
 ## Loaded Skills
 - None explicitly loaded

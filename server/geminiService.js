@@ -611,7 +611,8 @@ export async function handleBedtimeStoryRequest(req, res) {
       actNumber,
       userChoices = [],
       recentTitles = [],
-      recentArchetypes = []
+      recentArchetypes = [],
+      recentOpenings = []
     } = req.body || {};
 
     const realm = getBedtimeRealm(realmId);
@@ -621,7 +622,7 @@ export async function handleBedtimeStoryRequest(req, res) {
     // If Gemini client is available, attempt generative AI story synthesis
     if (ai) {
       try {
-        const prompt = `You are an expert children's bedtime author and soothing cartoon companion creating a deeply personalized, 3-chapter bedtime story for a young child (ages 3-7).
+        const prompt = `You are an expert children's bedtime author and soothing cartoon companion creating a deeply personalized, 4-chapter bedtime story for a young child (ages 3-7).
 Child's Name: "${heroName}"
 Companion Pet: "${petName}" (Species/Archetype: ${petId})
 Bedtime Realm: "${realm.name}" (${realm.subtitle})
@@ -633,19 +634,23 @@ ${customWish ? `Parent Bedtime Wish: "${customWish}". Weave this gently into Cha
 ${userChoices.length > 0 ? `Child's choices: ${JSON.stringify(userChoices)}` : ''}
 
 ANTI-REPETITION MANDATE:
-Do NOT copy or repeat any of these recently generated titles: ${JSON.stringify(recentTitles.slice(0, 15))}.
-Do NOT reuse these plot archetypes: ${JSON.stringify(recentArchetypes.slice(0, 10))}.
-Create a completely fresh, enchanting tale!
+1. NEVER copy or repeat any of these recently generated titles: ${JSON.stringify(recentTitles.slice(0, 15))}.
+2. NEVER reuse these plot archetypes: ${JSON.stringify(recentArchetypes.slice(0, 10))}.
+3. NEVER repeat any of these recent chapter openings: ${JSON.stringify(recentOpenings.slice(0, 15))}.
+4. BANNED CLICHÉS: Strictly NEVER use stock phrases such as "smiled happily beside", "looked up at the starry sky", "gazed with wonder", "twinkled like cheerful fireflies", "golden sun had dipped peacefully", "all was quiet now", "gazed at the quiet, starry night", or "flew across the starry sky". Craft fresh, vivid, soothing prose!
 
 COLOR & PALETTE RULE:
 Strict Explorer Palette only: Midnight Slate (#09141e), Emerald Green (#2ecc71), Electric Cyan (#00d2d3), Solar Orange (#f39c12), and Warm Amber (#ffb961).
 STRICTLY NEVER mention or use pink or purple!
 
 STRUCTURE:
-Generate exactly 3 chapters:
-Chapter 1 (Twilight Arrival & Discovery): ~110-130 words. Packing hero gear/magic item, entering ${realm.name}, celebrating daytime achievements.
-Chapter 2 (Starlit Journey & Gentle Obstacle): ~120-140 words. Discovering a sleepy creature or gentle obstacle, resolving it with ${moral.name} and ${petName}'s help.
-Chapter 3 (Deep Slumber Sanctuary): ~110-130 words. Tucking in, cozy nest, synchronized 4s inhale / 4s exhale breathing, sleepy yawns, whispered goodnight.
+Generate exactly 4 chapters (~180-220 words per chapter, ~750-850 words total across 4 chapters, lasting 7-8 minutes of calm bedtime storytelling):
+- Chapter 1 (Departure & Gentle Curiosity): ~180-220 words. Packing hero gear/magic item, entering ${realm.subBiomes[0]}, celebrating daytime achievements.
+- Chapter 2 (Whimsical Encounter & Gentle Mystery): ~180-220 words. Entering ${realm.subBiomes[1] || realm.subBiomes[0]}, discovering a sleepy creature or gentle obstacle with ${petName}'s help.
+- Chapter 3 (Calming Cooperative Resolution): ~180-220 words. In ${realm.subBiomes[2] || realm.subBiomes[0]}, resolving the hurdle with ${moral.name} and calm cooperation.
+- Chapter 4 (Cozy Starlight Slumber Sanctuary): ~180-220 words. In ${realm.subBiomes[3] || realm.subBiomes[0]}, tucking into the cozy nest, 4s inhale / 4s exhale breathing, sleepy yawns, whispered goodnight.
+
+NO QUESTIONS: Do NOT ask questions like "What should we do next?". Tell a calm, continuous, soothing narrative.
 
 Return ONLY a valid JSON object matching this schema (no markdown, no backticks, just raw JSON):
 {
@@ -657,11 +662,11 @@ Return ONLY a valid JSON object matching this schema (no markdown, no backticks,
       "chapterIndex": 0,
       "chapterNumber": 1,
       "title": "Chapter 1: Short Chapter Title",
-      "chapterText": "Soothing narrative text (~110-130 words)",
+      "chapterText": "Soothing narrative text (~180-220 words)",
       "whisperLine": "A comforting whisper line for bedtime",
       "sleepyCue": "A physical relaxation prompt (e.g. relaxing shoulders)",
       "moralReflection": "A sweet sentence celebrating courage or kindness",
-      "choices": ["Choice 1", "Choice 2", "Choice 3"],
+      "choices": [],
       "sceneMood": "tranquil",
       "sceneDescriptor": {
         "environmentBiome": "${realm.subBiomes[0]}",
@@ -682,16 +687,41 @@ Return ONLY a valid JSON object matching this schema (no markdown, no backticks,
       "chapterIndex": 1,
       "chapterNumber": 2,
       "title": "Chapter 2: Short Chapter Title",
-      "chapterText": "Soothing narrative text (~120-140 words)",
+      "chapterText": "Soothing narrative text (~180-220 words)",
       "whisperLine": "A comforting whisper line",
       "sleepyCue": "A slow deep breath prompt",
       "moralReflection": "A sweet reflection on ${moral.name}",
-      "choices": ["Choice 1", "Choice 2", "Choice 3"],
+      "choices": [],
       "sceneMood": "mystical",
       "sceneDescriptor": {
         "environmentBiome": "${realm.subBiomes[1] || realm.subBiomes[0]}",
         "timeOfNight": "starlit_journey",
         "weatherParticles": "aurora_ribbons",
+        "cameraWork": "follow_walk",
+        "heroAction": "discovering_landmark",
+        "petAction": "sniffing_clue",
+        "keyProps": ["Sleeping Friend", "Amber Beacon"],
+        "lightingPalette": {
+          "ambient": "#09141e",
+          "directional": "${realm.accentColor || '#00d2d3'}",
+          "accent": "#ffb961"
+        }
+      }
+    },
+    {
+      "chapterIndex": 2,
+      "chapterNumber": 3,
+      "title": "Chapter 3: Short Chapter Title",
+      "chapterText": "Soothing narrative text (~180-220 words)",
+      "whisperLine": "Kindness and patience always light the way home",
+      "sleepyCue": "A muscle relaxation cue",
+      "moralReflection": "${moral.slumberResolution}",
+      "choices": [],
+      "sceneMood": "gentle",
+      "sceneDescriptor": {
+        "environmentBiome": "${realm.subBiomes[2] || realm.subBiomes[0]}",
+        "timeOfNight": "starlit_journey",
+        "weatherParticles": "fireflies",
         "cameraWork": "follow_walk",
         "heroAction": "helping_obstacle",
         "petAction": "glowing_magic",
@@ -704,17 +734,17 @@ Return ONLY a valid JSON object matching this schema (no markdown, no backticks,
       }
     },
     {
-      "chapterIndex": 2,
-      "chapterNumber": 3,
-      "title": "Chapter 3: The Slumber Sanctuary",
-      "chapterText": "Soothing narrative text (~110-130 words)",
+      "chapterIndex": 3,
+      "chapterNumber": 4,
+      "title": "Chapter 4: The Slumber Sanctuary",
+      "chapterText": "Soothing narrative text (~180-220 words)",
       "whisperLine": "Goodnight little hero, sweet dreams",
       "sleepyCue": "4s inhale, 4s exhale breathing pacer",
       "moralReflection": "${moral.slumberResolution}",
       "choices": [],
       "sceneMood": "deep_slumber",
       "sceneDescriptor": {
-        "environmentBiome": "${realm.subBiomes[2] || realm.subBiomes[0]}",
+        "environmentBiome": "${realm.subBiomes[3] || realm.subBiomes[0]}",
         "timeOfNight": "deep_slumber_sanctuary",
         "weatherParticles": "starlight_snow",
         "cameraWork": "crane_descend_nest",
@@ -744,8 +774,8 @@ Return ONLY a valid JSON object matching this schema (no markdown, no backticks,
         const cleanJson = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
         const parsed = JSON.parse(cleanJson);
 
-        if (parsed && Array.isArray(parsed.chapters) && parsed.chapters.length >= 3) {
-          const normalizedChapters = parsed.chapters.slice(0, 3).map((ch, idx) => ({
+        if (parsed && Array.isArray(parsed.chapters) && parsed.chapters.length >= 4) {
+          const normalizedChapters = parsed.chapters.slice(0, 4).map((ch, idx) => ({
             ...ch,
             chapterIndex: idx,
             chapterNumber: idx + 1,
@@ -754,11 +784,11 @@ Return ONLY a valid JSON object matching this schema (no markdown, no backticks,
             choices: Array.isArray(ch.choices) ? ch.choices : [],
             sceneDescriptor: {
               environmentBiome: ch.sceneDescriptor?.environmentBiome || realm.subBiomes[idx % realm.subBiomes.length],
-              timeOfNight: idx === 0 ? 'twilight_arrival' : idx === 1 ? 'starlit_journey' : 'deep_slumber_sanctuary',
-              weatherParticles: ch.sceneDescriptor?.weatherParticles || (idx === 1 ? 'aurora_ribbons' : idx === 2 ? 'starlight_snow' : 'fireflies'),
-              cameraWork: idx === 0 ? 'orbit_pan' : idx === 1 ? 'follow_walk' : 'crane_descend_nest',
-              heroAction: idx === 0 ? 'walking_with_lantern' : idx === 1 ? 'helping_obstacle' : 'curled_asleep',
-              petAction: idx === 0 ? 'trotting_beside' : idx === 1 ? 'glowing_magic' : 'sleeping_curled',
+              timeOfNight: idx === 0 ? 'twilight_arrival' : (idx === 1 || idx === 2) ? 'starlit_journey' : 'deep_slumber_sanctuary',
+              weatherParticles: ch.sceneDescriptor?.weatherParticles || (idx === 1 ? 'aurora_ribbons' : idx === 3 ? 'starlight_snow' : 'fireflies'),
+              cameraWork: idx === 0 ? 'orbit_pan' : (idx === 1 || idx === 2) ? 'follow_walk' : 'crane_descend_nest',
+              heroAction: idx === 0 ? 'walking_with_lantern' : idx === 1 ? 'discovering_landmark' : idx === 2 ? 'helping_obstacle' : 'curled_asleep',
+              petAction: idx === 0 ? 'trotting_beside' : idx === 1 ? 'sniffing_clue' : idx === 2 ? 'glowing_magic' : 'sleeping_curled',
               keyProps: Array.isArray(ch.sceneDescriptor?.keyProps) ? ch.sceneDescriptor.keyProps : ['Starlight Lantern', realm.name],
               lightingPalette: {
                 ambient: '#09141e',
@@ -792,11 +822,11 @@ Return ONLY a valid JSON object matching this schema (no markdown, no backticks,
               ...ch,
               text: ch.text,
               title: ch.title,
-              prompt: ch.choices?.[0] ? 'What should we do next?' : 'Sleep tight, brave hero.',
-              promptQuestion: ch.choices?.[0] ? 'What should we do next?' : 'Sleep tight, brave hero.',
+              prompt: reqIdx >= 3 ? 'Sleep tight, brave hero. Sweet dreams.' : 'The evening trail is quiet and welcoming.',
+              promptQuestion: reqIdx >= 3 ? 'Sleep tight, brave hero. Sweet dreams.' : 'The evening trail is quiet and welcoming.',
               defaultChips: ch.choices.map(c => ({ text: c, icon: 'stars' })),
               suggestionChips: ch.choices.map(c => ({ text: c, icon: 'stars' })),
-              isSleepingEnd: reqIdx >= 2
+              isSleepingEnd: reqIdx >= 3
             });
           }
 

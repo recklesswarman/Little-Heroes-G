@@ -1,215 +1,371 @@
-# 3D Character Avatar & Prehistoric Skeletal Bone Animation Survey Report
+# Handoff Report: Phase 0 Survey (R2 - Rich, Extended Non-Repetitive Story Generation Engine)
+
+**Agent Role**: AI Story Engine & Anti-Repetition Specialist (Explorer)  
+**Task**: Phase 0 Architecture & Codebase Survey for Requirement R2  
+**Working Directory**: `c:\APP\stitch_little_hero_adventures\.agents\teamwork\explorer_survey_2`  
+**Timestamp**: 2026-10-25T02:26:00Z  
+
+---
 
 ## 1. Observation
 
-### Codebase & Dependency Analysis
-1. **`package.json` Dependencies (`c:\APP\stitch_little_hero_adventures\package.json`)**:
-   - Line 20: `"@splinetool/runtime": "^2.0.55"` is present in `dependencies`.
-   - Line 22: `"canvas-confetti": "^1.9.4"` is present.
-   - Neither `three` nor `@types/three` is listed in `dependencies` or `devDependencies`.
-   - Running `npm test` (`node scratch/run_all_tests.js`) passes all 64 test suites (100% pass, 0 failures).
-   - Running `npm run build` succeeds (`vite build` completes with exit code 0, bundling 228 modules in 15.2s). Spline runtime chunks (`runtime-webgpu-*.js`, `runtime-classicRuntime-*.js`, `physics-*.js`) are bundled into `dist/`.
+### 1.1 Complete Codebase Map of Files Involved in Story Generation
+Direct inspection reveals that story generation in Little Hero Adventures spans 15 key files across server routes, serverless functions, multi-agent frameworks, client services, procedural weavers, and 3D/UI stages:
 
-2. **Spline Runtime Internal Architecture (`node_modules/@splinetool/runtime`)**:
-   - Direct inspection of `runtime.d.ts` (lines 70–75) confirms: *"Structural stand-in for THREE.Material — pass an instance from YOUR three install (this package never re-exports three, and the copy it bundles is a different module instance from yours)..."*.
-   - `@splinetool/runtime` exposes the `Application` class designed for loading external binary `.splinecode` scenes (`application.load(path)` or `application.start(arrayBuffer)`).
-   - There are **0 local `.splinecode` files** and **0 local `.glb`/`.gltf` files** in the entire project repository.
-   - Spline runtime does not expose an accessible low-level skeletal bone transform API for programmatic runtime bone rigging. All skeletal hierarchies in Spline must be authored, rigged, and keyed inside the proprietary Spline cloud editor and published to Spline CDN.
+| Component / Layer | File Path | Lines | Key Responsibility |
+|---|---|---|---|
+| **Online Gemini Server Route** | `server/geminiService.js` | 590–845 | `handleBedtimeStoryRequest`: HTTP POST `/api/rex/bedtime-story` & `/api/gemini/bedtime-story` via `gemini-2.5-flash`, schema formatting, rate limiting, and procedural fallback. |
+| **Server Route Mount** | `server.js` | 26–27 | Production Express mounting of `/api/gemini/bedtime-story` and `/api/rex/bedtime-story`. |
+| **Vite Dev Server Middleware** | `vite.config.js` | 119–142 | Local development proxy intercepting `/api/gemini/bedtime-story` and executing `handleBedtimeStoryRequest`. |
+| **Cloud Functions API** | `functions/src/voiceApi.ts` | 316–600 | Firebase serverless Cloud Functions implementing `/api/rex/bedtime-story` and `/api/gemini/bedtime-story` with GoogleGenAI SDK and embedded fallback. |
+| **Google Antigravity (AGY) Agent** | `little-heroes-agy-service/agents/bedtime_narrator.py` | 1–153 | Autonomous AGY Bedtime Story Narrator agent (`generate_bedtime_chapter`, `BedtimeChapterResponse`, LocalAgentConfig). |
+| **Client AGY Bridge** | `src/services/heroAgentService.js` | 339–355 | `generateBedtimeChapterAGY`: client HTTP invocation of AGY service with `AbortSignal.timeout(10000)`. |
+| **Client Firebase AI Logic** | `src/services/firebaseAILogicService.js` & `bedtimeStoryService.js` | 572–639 | Client-side Gemini API fallback via Firebase AI Logic (`gemini-2.5-flash`). |
+| **Client Story Service** | `src/services/bedtimeStoryService.js` | 1–785 | Bedtime story orchestrator: `buildChildStoryContext`, `startStory`, `advanceStory`, `generateAct`, `narrateAct`, `generateBedtimeStory`, auto-advance, speech recognition. |
+| **Offline Combinatorial Weaver** | `src/data/bedtimeStoryData.js` | 711–1065 | Catalogs (`BEDTIME_MORALS`, `PLOT_ARCHETYPES`, `BEDTIME_REALMS`, `EXTENDED_BEDTIME_REALMS`), `generateProceduralBedtimeStory`, `generateFullBedtimeStory`, `generateFallbackSvg`. |
+| **Audio Voice Engine** | `src/services/voiceService.js` | 38–733, 818–1065 | Audio playback via Web Audio API, `prefetchCompanionAudio`, playback rate scaling, lullaby ducking, `timeoutMs: 18000`. |
+| **ElevenLabs Voice Backend** | `server/elevenLabsService.js` | 32–120 | Universal voice ID resolution (`e9sQs6aLWU82SSolkPYZ`) for all pets and bedtime storytelling, voice tuning (`stability: 0.65`, `similarity_boost: 0.80`, `style: 0.35`). |
+| **Storybook UI Stage** | `src/views/BedtimeStoryView.js` | 405–623 | Cinema screen UI (`renderStoryStage`), chapter navigation, progress indicators, hands-free auto-advance, manual page turn. |
+| **Articulated 3D Stage** | `src/components/BedtimeStoryStage3D.js` | 490–1070, 1250–1360 | WebGL/Canvas diorama stage: `setSceneDescriptor`, `setChapter`, camera choreography, scenery props, breathing ring. |
+| **Store & State Engine** | `src/state/store.js` | 9400–9680 | `hero.bedtimeHistory` persistence (last 25 records), `completeBedtimeStory`, `saveBedtimeStory`, `getBedtimeStoryLibrary`, task completions integration. |
+| **Verification Suites** | `scratch/verify_bedtime_storybook.mjs`, `scratch/test_bedtime_storybook.cjs`, `scratch/test_bedtime_sanctuary.cjs` | All | Automated regression and E2E verification suites. |
 
-3. **Existing 2D Articulated Kinematic Engine (`src/components/WorkoutHeroDuoCanvas.js`)**:
-   - `WorkoutHeroDuoCanvas.js` contains a 1096-line high-performance 2D procedural canvas stage.
-   - It implements a complete hierarchical articulated Toddler Hero Character (Pelvis, Spine, Torso, Neck, Head, Shoulders, Elbows, Hands, Hips, Knees, Calves, Chunky Sneakers, Billowing Cape) and Dinosaur Pet Coach.
-   - It already contains mathematical kinematic phase logic for all 8 workouts (`velociraptor_run`, `stegosaurus_walks`, `pterodactyl_takeoff`, `trex_run`, `compsognathus_prance`, `brachiosaurus_stretch`, `diplodocus`, `spinosaurus_stretch`).
-   - It renders an arena background adhering to Stitch design colors (Electric Cyan `#00d2d3`, Emerald Green `#2ecc71`, Solar Amber `#f39c12`/`#f1c40f`, Midnight Slate `#09141e`/`#0e1c28`) with zero pink/purple.
+---
 
-4. **Integration Point in Workout Stage (`src/views/DinoWorkoutView.js`)**:
-   - Lines 291–297: `#workout-canvas-container` inside `#workout-stage-mount`.
-   - Lines 452–458: Instantiates `activeDuoCanvas = new WorkoutHeroDuoCanvas(stageContainer, { workoutId, coachId, tempoBpm })`.
-   - Lines 653–657, 662, 681: Calls `setWorkout()`, `setTimeRemaining()`, `triggerBeat()`, and `startAnimation()`.
-   - Lines 565–568: Cleanly calls `activeDuoCanvas.destroy()`.
+### 1.2 Current Chapter Length, Word Counts, and Chapter Count Gaps
+Direct inspection reveals that all online and offline story generators currently generate **only 3 chapters** with short lengths of **~100–140 words per chapter**, falling significantly short of the R2 mandate (~180–220 words per chapter, ~750–850 words total, lasting 7–8 minutes):
+
+1. **`server/geminiService.js`**:
+   - Line 624:
+     ```javascript
+     const prompt = `You are an expert children's bedtime author and soothing cartoon companion creating a deeply personalized, 3-chapter bedtime story for a young child (ages 3-7).
+     ```
+   - Lines 644–649:
+     ```javascript
+     STRUCTURE:
+     Generate exactly 3 chapters:
+     Chapter 1 (Twilight Arrival & Discovery): ~110-130 words. Packing hero gear/magic item, entering ${realm.name}, celebrating daytime achievements.
+     Chapter 2 (Starlit Journey & Gentle Obstacle): ~120-140 words. Discovering a sleepy creature or gentle obstacle, resolving it with ${moral.name} and ${petName}'s help.
+     Chapter 3 (Deep Slumber Sanctuary): ~110-130 words. Tucking in, cozy nest, synchronized 4s inhale / 4s exhale breathing, sleepy yawns, whispered goodnight.
+     ```
+   - Line 747:
+     ```javascript
+     if (parsed && Array.isArray(parsed.chapters) && parsed.chapters.length >= 3) {
+       const normalizedChapters = parsed.chapters.slice(0, 3).map((ch, idx) => ({
+     ```
+   - Line 799: Hardcoded `isSleepingEnd: reqIdx >= 2`.
+   - **Observed word count**: ~350–400 words total across 3 chapters, lasting only ~3.5 minutes.
+
+2. **`functions/src/voiceApi.ts`**:
+   - Line 345: `creating a deeply personalized, 3-chapter bedtime story`
+   - Lines 364–369: Specifies 3 chapters with ~110–140 words.
+   - Line 468: `parsed.chapters.slice(0, 3)`
+   - Lines 531–599: Fallback generates only 3 chapters (`chapters: [ch1, ch2, ch3]`).
+
+3. **`src/data/bedtimeStoryData.js`**:
+   - Lines 876–987: `generateProceduralBedtimeStory` generates:
+     - Chapter 0 (Ch 1): ~106 words.
+     - Chapter 1 (Ch 2): ~115 words.
+     - Chapter 2 (Ch 3): ~126 words.
+     - Chapter 3 (Ch 4): ~114 words.
+   - Lines 1039–1064: `generateFullBedtimeStory` explicitly **drops Chapter 2** and produces only 3 chapters:
+     ```javascript
+     const ch1 = generateProceduralBedtimeStory(realm.id, moral.id, hName, pName, customWish, 0, userChoices);
+     const ch2 = generateProceduralBedtimeStory(realm.id, moral.id, hName, pName, customWish, 1, userChoices);
+     // In the 3-chapter narrative arc, Chapter 3 is the Slumber Sanctuary conclusion
+     const ch3 = generateProceduralBedtimeStory(realm.id, moral.id, hName, pName, customWish, 3, userChoices);
+     ch3.chapterIndex = 2;
+     ch3.chapterNumber = 3;
+     ch3.title = 'Chapter 3: The Slumber Sanctuary';
+     ...
+     chapters: [ch1, ch2, ch3]
+     ```
+   - **Critical defect**: In `generateFullBedtimeStory`, chapter index 2 (the cooperative resolution of the moral hurdle) is completely omitted, jumping directly from initial encounter (index 1) to falling asleep (index 3).
+
+4. **`src/components/BedtimeStoryStage3D.js`**:
+   - Lines 499, 797, 1040–1041, 1063, 1262, 1337:
+     ```javascript
+     this.isBreathingActive = (this.chapterIndex === 2);
+     if (item.renderMesh.name === 'nest_woven_bed' && this.chapterIndex !== 2) continue;
+     if (item.renderMesh.name === 'obstacle_arch' && this.chapterIndex === 2) continue;
+     if (this.chapterIndex === 2 && this.nestNode) { ... }
+     ```
+   - The 3D stage assumes index 2 is the slumber nest and breathing pacer. In a 4-chapter arc, index 2 is the cooperative resolution, and index 3 is the slumber sanctuary.
+
+5. **`src/views/BedtimeStoryView.js`**:
+   - Line 409: `const totalActs = (session.acts && session.acts.length) || 3;`
+   - Line 439: `title="Toggle Hands-Free Auto-Read All 3 Chapters"`
+   - Line 471: `Relax and listen as all 3 chapters unfold seamlessly.`
+
+---
+
+### 1.3 Identification of Repetition Issues
+The investigation uncovered several specific repetition issues:
+
+#### A. Verbatim Stock Sentences
+1. **`src/services/bedtimeStoryService.js:614-615`**:
+   ```javascript
+   text: parsed.text || `${petName} smiled happily beside ${heroName} as they gazed at the quiet, starry night.`,
+   chapterText: parsed.text || `${petName} smiled happily beside ${heroName} as they gazed at the quiet, starry night.`,
+   ```
+   *Quoted directly: contains both `"smiled happily beside"` and `"gazed at the quiet, starry night"`.*
+
+2. **`src/services/rexCompanionEngine.js:563` and `src/services/geminiLiveService.js:724`**:
+   ```javascript
+   fallbackReply = `Once upon a time, a brave little hero flew across the starry sky with their dinosaur buddy, dreaming happy dreams. Close your eyes, superhero! 🌙⭐`;
+   ```
+
+#### B. Repetitive Stock Chapter Openings in `src/data/bedtimeStoryData.js`
+In the procedural weaver, every chapter currently uses a single, rigid string template with zero opening variation:
+1. **Chapter 1 Opening (Line 877)**: Always starts with:
+   > `"The golden sun had dipped peacefully below the horizon, painting the sky in deep shades of midnight slate and starlight cyan. Tonight, ${hName} and faithful companion ${pName} stood at the edge of ${subBiome}."`
+2. **Chapter 2 Opening (Line 914)**: Always starts with:
+   > `"With ${choiceText || 'their favorite hero gear'} snugly tucked into their pack, ${hName} and ${pName} ventured deeper along the glowing pathway. The stars overhead twinkled like cheerful fireflies."`
+3. **Chapter 3 Opening (Line 951)**: Always starts with:
+   > `"The gentle creature looked up at ${hName} with wide, hopeful eyes. It seemed they had encountered a little bedtime hurdle: ${moral.tagline.toLowerCase()}."`
+4. **Chapter 4 Opening (Line 987)**: Always starts with:
+   > `"All was quiet now across the vast expanse of ${realm.name}. The little creature was safely tucked into its cozy mossy hammock, purring softly in deep slumber."`
+
+#### C. Static, Formulaic Whisper Lines
+Both `src/data/bedtimeStoryData.js` (lines 897, 934, 971, 1007) and `functions/src/voiceApi.ts` (lines 546, 568, 590) return fixed, unvarying whisper lines:
+- Chapter 1: `"The evening sky is calm and quiet, ${hName}. Rest your shoulders and breathe in the peaceful dusk."`
+- Chapter 2: `"You are safe with friends nearby, little one. The night is gentle and kind."`
+- Chapter 3: `"Kindness and patience always light the way home. Feel your muscles melt and relax."`
+- Chapter 4: `"Close your eyes, brave hero. Sleep is here, warm and sweet. Goodnight."`
+
+#### D. Invariant Seed Hash in Procedural Weaver
+In `src/data/bedtimeStoryData.js` lines 855–857:
+```javascript
+const hash = String(hName + pName + realm.id + moral.id).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+const archetypeIdx = (hash + Number(chapterIndex || 0)) % PLOT_ARCHETYPES.length;
+const archetype = PLOT_ARCHETYPES[archetypeIdx] || PLOT_ARCHETYPES[0];
+```
+Because `hName`, `pName`, `realm.id`, and `moral.id` remain identical when a child selects the same favorite realm and moral on consecutive nights, `hash` is **100% constant**. It does not incorporate `Date.now()`, random seed entropy, or prior history, forcing the child to receive the exact same plot archetype night after night.
+
+#### E. Anti-Repetition Gaps in AI Prompts
+In `server/geminiService.js` (lines 635–638) and `functions/src/voiceApi.ts` (lines 355–358):
+```javascript
+ANTI-REPETITION MANDATE:
+Do NOT copy or repeat any of these recently generated titles: ${JSON.stringify(recentTitles.slice(0, 15))}.
+Do NOT reuse these plot archetypes: ${JSON.stringify(recentArchetypes.slice(0, 10))}.
+Create a completely fresh, enchanting tale!
+```
+- **Gaps**:
+  1. No negative constraints forbidding stock clichés: `"smiled happily beside"`, `"looked up at the starry sky"`, `"gazed with wonder"`, `"twinkled like cheerful fireflies"`, `"golden sun had dipped peacefully"`, `"all was quiet now"`.
+  2. `recentChapterOpenings` stored in `hero.bedtimeHistory` are **never passed** to the prompt.
+  3. Prompts still request mid-story interactive choice chips (`"choices": ["Choice 1", "Choice 2", "Choice 3"]`) and question prompts (`"What should we do next?"`), which break hands-free slumber.
+
+---
+
+### 1.4 History Persistence (`hero.bedtimeHistory`) Inspection
+In `src/state/store.js` (lines 9640–9670):
+```javascript
+// Anti-Repetition Story Memory:
+// Track last 25 story records containing { seed, archetype, title, chapterOpenings, timestamp } per child (heroId)
+const chapterOpenings = Array.isArray(storyData?.chapters)
+  ? storyData.chapters.map(ch => (ch.chapterText || ch.text || '').slice(0, 120)).filter(Boolean)
+  : (Array.isArray(storyData?.acts) ? storyData.acts.map(a => (a.text || '').slice(0, 120)).filter(Boolean) : []);
+
+if (!Array.isArray(hero.bedtimeHistory)) {
+  hero.bedtimeHistory = [];
+}
+hero.bedtimeHistory.unshift({
+  id: storyData?.id || `story_${Date.now()}`,
+  seed: storyData?.seed || storyData?.combinatorialSeed || Date.now(),
+  archetype: storyData?.archetype || storyData?.archetypeId || storyData?.realmId || 'calm_journey',
+  archetypeId: storyData?.archetypeId || storyData?.archetype || storyData?.realmId || 'calm_journey',
+  title: storyData?.title || 'Bedtime Story',
+  moralId: storyData?.moralId || 'brave_dark',
+  chapterOpenings,
+  timestamp: Date.now()
+});
+if (hero.bedtimeHistory.length > 25) {
+  hero.bedtimeHistory = hero.bedtimeHistory.slice(0, 25);
+}
+```
+In `src/services/bedtimeStoryService.js` (lines 74–77):
+```javascript
+const bedtimeHistory = Array.isArray(hero.bedtimeHistory) ? hero.bedtimeHistory : [];
+const recentTitles = bedtimeHistory.map(h => h.title).filter(Boolean).slice(0, 25);
+const recentArchetypes = bedtimeHistory.map(h => h.archetypeId).filter(Boolean).slice(0, 25);
+```
+- **Observation**: `hero.bedtimeHistory` correctly stores the last 25 records with `chapterOpenings` (120 chars each), but `buildChildStoryContext` extracts only `recentTitles` and `recentArchetypes`, discarding `chapterOpenings`.
 
 ---
 
 ## 2. Logic Chain
 
-### Step 1: Evaluating 3D Avatar Runtimes (Spline vs Three.js)
-1. **Network Independence & Offline PWA Reliability**:
-   - Little Hero Adventures is a kid-safe PWA intended for home and classroom environments with intermittent or zero internet connectivity.
-   - Spline runtime requires fetching external multi-megabyte `.splinecode` binary files from `prod.spline.design` over the public internet. If the tablet is offline, in airplane mode, or behind restrictive school firewalls, Spline scenes completely fail to load.
-   - In contrast, Three.js allows building a 100% procedural 3D model (Toddler Hero Avatar + Dinosaur Coach) in code using standard geometric primitives (`CapsuleGeometry`, `CylinderGeometry`, `SphereGeometry`, `ExtrudeGeometry`) and materials. It requires **zero external network requests**, bundles cleanly into Vite, and instantiates in under 20 milliseconds.
-2. **Programmatic Skeletal Bone Animation Control**:
-   - The user specification mandates **anatomically accurate 3D skeletal bone animations** for 8 distinct gross-motor exercises, including real-time tempo locking to BPM, metronome beat pulses, and dynamic 30-second Diplodocus side-switching.
-   - Spline runtime does not provide programmatic access to skeletal joint matrices or bone rotations at runtime without pre-baking animations in their cloud tool.
-   - Three.js provides native `THREE.Bone`, `THREE.Skeleton`, `THREE.SkinnedMesh`, and hierarchical forward-kinematics `THREE.Group` joint trees. Every single joint angle (Euler angles / Quaternions) and position vector can be updated frame-by-frame with exact trigonometric equations locked to the workout's elapsed time and audio cadence.
-3. **Runtime Memory & Cross-Platform Performance**:
-   - Spline runtime loads WebGPU/WebGL render pipelines, Rapier3D physics WASM, and heavy font engines, consuming 35MB–50MB of memory and causing WebGL context exhaustion on lower-end mobile devices (e.g. Amazon Fire tablets, older iPads, budget Android phones).
-   - A dedicated Three.js procedural renderer uses lightweight WebGL, minimal shaders, low draw calls (<15 draw calls per frame), and runs locked at 60 FPS across all desktop and mobile browsers.
-
-### Step 2: 3D Anatomical Skeletal Hierarchy Architecture
-To achieve robust gross-motor animation without skinning deformation artifacts, the optimal architecture uses a forward-kinematic joint hierarchy where each body segment is anchored to a rotational pivot joint:
-
 ```
-[World Center / Floor Pedestal]
-       │
-       ▼
-   [Root Node] (World Translation X, Y, Z & Global Yaw/Pitch)
-       │
-       ├── [Pelvis Joint] (Hip tilt, pelvic sway)
-       │     │
-       │     ├── [Spine/Lumbar Joint] (Torso flexion/extension, lateral bending)
-       │     │     │
-       │     │     ├── [Chest/Thorax Joint] (Thoracic breathing arch, shoulder base)
-       │     │     │     │
-       │     │     │     ├── [Neck Joint] -> [Head Joint] (Chin pitch, yaw, star-gaze)
-       │     │     │     │     └── [Face/Visor Feature Meshes, Blinking Eyes, Cowl]
-       │     │     │     │
-       │     │     │     ├── [Left Clavicle/Shoulder Joint]
-       │     │     │     │     └── [Left Upper Arm] -> [Left Elbow Joint] -> [Left Forearm] -> [Left Wrist/Hand]
-       │     │     │     │
-       │     │     │     ├── [Right Clavicle/Shoulder Joint]
-       │     │     │     │     └── [Right Upper Arm] -> [Right Elbow Joint] -> [Right Forearm] -> [Right Wrist/Hand]
-       │     │     │     │
-       │     │     │     └── [Cape Anchor Joint] -> [Dynamic Multi-Segment Cape Ribbon]
-       │     │
-       │     ├── [Left Hip Joint]
-       │     │     └── [Left Thigh] -> [Left Knee Joint] -> [Left Shin/Calf] -> [Left Ankle Joint] -> [Left Chunky Sneaker]
-       │     │
-       │     └── [Right Hip Joint]
-       │           └── [Right Thigh] -> [Right Knee Joint] -> [Right Shin/Calf] -> [Right Ankle Joint] -> [Right Chunky Sneaker]
+[Observation 1.1, 1.2] ─────────┐
+All 5 story generators        │
+hardwired to 3 chapters       ├──> [Step 1: Universal 4-Chapter Data Contract Required]
+(Gemini, Functions, AGY,      │    Schema, prompts, normalizers, and generators must emit
+procedural weaver, 3D stage)   │    exactly 4 structured chapters across all routes and fallbacks.
+                              │
+[Observation 1.2] ────────────┘
+Words per chapter: ~100-140   ───> [Step 2: Narrative Expansion to ~180-220 Words]
+Total words: ~350-400 words        Each chapter needs rich, multi-sentence progression: sensory setting,
+Lasting: ~3.5 minutes              personalization hook, daytime task celebration, pet interaction,
+Target: ~180-220 words/ch          gentle pacing, and somatic relaxation cues without repetitive filler.
+Total: ~750-850 words (7-8m)
+
+[Observation 1.2] ────────────┐
+generateFullBedtimeStory      │
+omits Chapter index 2          ├──> [Step 3: 4 Progressive Story Arcs Alignment]
+(skips moral resolution)      │    Ch 1: Departure & gentle curiosity (subBiome 0)
+                              │    Ch 2: Whimsical encounter & gentle mystery (subBiome 1)
+                              │    Ch 3: Calming cooperative resolution (subBiome 2)
+                              │    Ch 4: Cozy starlight nest & slumber (subBiome 3)
+
+[Observation 1.3A, B, C] ─────┐
+Stock phrases in code         │
+("smiled happily beside",     ├──> [Step 4: Anti-Repetition Registry & Sentence Builders]
+"starry sky", "gazed")        │    Create combinatorial sentence builders in bedtimeStoryData.js
+Rigid single templates        │    with 5+ distinct opening formulas (sensory, pet-action, celestial,
+Static whisper lines          │    dialogue, environmental) and 12+ whisper lines per chapter.
+
+[Observation 1.3D, E, 1.4] ───┐
+Constant hash equation        │
+No ban-list in prompts        ├──> [Step 5: Dynamic Entropy & Prompt Negative Constraints]
+recentOpenings ignored        │    Inject high-entropy seed (seed || Date.now() ^ historyHash).
+                              │    Extract recentOpenings from hero.bedtimeHistory.
+                              │    Add strict negative constraints banning all stock phrases.
+
+[Observation 1.2, 1.3E] ──────┐
+3D Stage: isBreathingActive   │
+on chapterIndex === 2         ├──> [Step 6: Stage 3D & View Synchronization]
+BedtimeStoryView: choice chips│    Update BedtimeStoryStage3D.js to activate nest and breathing on
+and 15s countdown timer       │    chapterIndex === 3. Remove prompt choices/mic in BedtimeStoryView.js.
 ```
-
-### Step 3: Mathematical Kinematic Implementation of the 8 Prehistoric Workouts
-Let progress phase $\theta(t) = 2\pi \cdot \frac{\text{BPM}}{60} \cdot t$, where $t$ is the elapsed workout time in seconds:
-
-1. **Velociraptor Run (138 BPM)**:
-   - *Gross-motor cue*: High-speed sprint on balls of feet, 90° arm pumps, forward chest lean.
-   - *Pelvis*: Vertical bounce $Y = Y_0 - 0.12 \cdot |\sin(1.7\theta)|$; forward pitch $+14^\circ$ ($+0.24\text{ rad}$).
-   - *Legs*: Running on balls of feet (plantarflexion $+25^\circ$ on both ankles). Alternating hip swing: $\text{thighL} = \sin(1.7\theta) \cdot 55^\circ$, $\text{kneeL} = \max(10^\circ, -\sin(1.7\theta) \cdot 80^\circ)$; opposing phase on right leg.
-   - *Arms*: Elbows locked firmly at $90^\circ$ ($1.57\text{ rad}$). Shoulders pump vigorously: $\text{armL} = \sin(1.7\theta + \pi) \cdot 55^\circ$, $\text{armR} = \sin(1.7\theta) \cdot 55^\circ$.
-   - *Cape*: Swept backwards by aerodynamic speed drag with high-frequency fluttering.
-
-2. **Stegosaurus Walks (92 BPM)**:
-   - *Gross-motor cue*: Bear walk quadruped on hands and feet, hips elevated high, 4 steps forward and 4 steps backward with ground stomps.
-   - *Posture*: Root lowered close to ground ($Y = -0.34\text{m}$), pelvis pitched forward $+45^\circ$ keeping hips higher than shoulders.
-   - *Travel*: 8-step periodic displacement: $X = \sin(0.55\theta) \cdot 0.35\text{m}$ (forward for 4 beats, backward for 4 beats).
-   - *Arms (Front Legs)*: Reaching to floor ($\text{shoulder} = +78^\circ$, elbows bent $15^\circ$, palms planted). Alternating step lift $\pm 18^\circ$ at $4\times$ phase.
-   - *Legs (Back Legs)*: Hips at $-50^\circ$, knees slightly bent $25^\circ$. Alternating heavy stomps triggering shockwave particle rings when $\sin(4\times \text{phase}) \approx \pm 1$.
-
-3. **Pterodactyl Take Off (112 BPM)**:
-   - *Gross-motor cue*: Fast circular wing wind-up, crouch squat, vertical takeoff leap.
-   - *3-Phase Periodic Cycle ($T = 3.0\text{s}$)*:
-     - *Phase A (0.0s – 1.8s)*: Standing tall. Arms spread wide ($70^\circ$ abduction), rotating rapidly in full 3D circles ($\text{rot}_X = \sin(9t) \cdot 1.5 - 1.2$, $\text{rot}_Z = \cos(9t) \cdot 0.8$).
-     - *Phase B (1.8s – 2.1s)*: Deep crouch squat. Root drops by $-0.45\text{m}$, knees flex deeply to $85^\circ$ ($1.48\text{ rad}$), arms cock back.
-     - *Phase C (2.1s – 3.0s)*: BLAST OFF LEAP. Root rockets vertically into the air ($+0.85\text{m}$ apex height). Arms explode straight up overhead ($-165^\circ$, fully extended). Legs extend straight with toes pointed down ($+35^\circ$ plantarflexion). Starlight sparkles emit at apex.
-
-4. **T-Rex Run (122 BPM)**:
-   - *Gross-motor cue*: Short arms tucked in armpits, driving high knees up to hands.
-   - *Arms (Signature Short Arms)*: Shoulders held forward $+25^\circ$, **elbows locked tight into armpits at $115^\circ$ ($2.0\text{ rad}$ flexion)**, wrists pronated $-25^\circ$. Short arms stay locked in front of chest throughout.
-   - *Legs (Apex High Knees)*: Alternating explosive drive lifting thighs past horizontal to $+75^\circ$ ($1.31\text{ rad}$), knees flexed $95^\circ$, driving up to tap the hands on every beat.
-   - *Pelvis*: Rhythmic stomp bounce $Y = -0.15 \cdot |\sin(1.25\theta)|$.
-
-5. **Compsognathus Prances (126 BPM)**:
-   - *Gross-motor cue*: Lateral skater jumps leaping side to side, rear leg crossing behind, balancing arm swing.
-   - *Lateral Leap*: $X = \sin(0.85\theta) \cdot 0.45\text{m}$; vertical apex $Y = -0.20 \cdot |\cos(0.85\theta)|$; lateral body lean $\text{roll} = \sin(0.85\theta) \cdot 14^\circ$.
-   - *Leg Cross-Behind*:
-     - When leaping right ($\sin > 0$): Right leg lands and absorbs impact (knee bent $40^\circ$); Left leg **crosses diagonally behind right leg** (hip adducted $+25^\circ$, extended backward $-45^\circ$).
-     - When leaping left ($\sin < 0$): Left leg lands; Right leg **crosses diagonally behind left leg**.
-   - *Arms*: Athletic counter-balancing swing across chest and behind back.
-
-6. **Brachiosaurus Stretch (78 BPM)**:
-   - *Gross-motor cue*: Feet together, tiptoes rise, reaching arms straight overhead for the stars.
-   - *Elongation*: Vertical breath rise $Y = Y_0 - (0.5 + 0.5\sin(0.45\theta)) \cdot 0.25\text{m}$.
-   - *Head*: Tilted back $-25^\circ$ gazing directly up at the stars.
-   - *Arms*: Both upper arms extended straight overhead ($-170^\circ$, fully straightened elbows), fingers reaching up toward the sky.
-   - *Feet*: Feet together ($0^\circ$ hip abduction), knees straight, **ankles rising fully onto tiptoes ($+35^\circ$ plantarflexion)**. Sparkles drift down from reaching hands.
-
-7. **The Diplodocus (74 BPM)**:
-   - *Gross-motor cue*: Tabletop quadruped bird-dog balance with neck reach and tail wag, 30s side switch.
-   - *Posture*: Tabletop quadruped on floor ($Y = -0.38\text{m}$, spine flat $+55^\circ$).
-   - *First 30 Seconds (Side 1)*: Right arm reaches straight forward horizontally (long dinosaur neck); Left hand plants on floor. Left leg extends straight back horizontally (long tail); Right knee plants on floor. Left tail leg wags rhythmically in 3D: $\Delta\text{yaw} = \sin(1.5\theta) \cdot 18^\circ$, $\Delta\text{pitch} = \cos(1.5\theta) \cdot 12^\circ$.
-   - *At 30.0s (Side Switch)*: Triggered synchronously with coach voice announcement. Smooth 1-second transition mirrors poses: Left arm reaches forward (neck), Right hand plants; Right leg extends straight back (tail wag), Left knee plants.
-
-8. **Spinosaurus Stretch (64 BPM)**:
-   - *Gross-motor cue*: Restorative cat-cow spine waves with dorsal sail arching.
-   - *Hands & Knees*: Quadruped base firmly planted on floor.
-   - *Respiratory Wave ($B = 0.5 + 0.5\sin(0.4\theta)$)*:
-     - *Inhale (Cat Sail Arch)*: Spine curves upwards into a high dorsal arch ($+35^\circ$ curvature toward ceiling); head tucks chin to chest; dorsal sail crest radiates an Emerald Green starlight glow.
-     - *Exhale (Cow Release)*: Spine softens downward into gentle extension ($-15^\circ$); head gently lifts to look forward.
-
-### Step 4: Resilient Fallback Architecture to 2D Procedural Canvas
-To guarantee zero-breakage on mobile or headless devices:
-1. **Detection & Safe Instantiation**:
-   - Helper function `isWebGLSupported()` checks `window.WebGLRenderingContext` and attempts a mock canvas `.getContext('webgl2') || getContext('webgl')`.
-   - The 3D component constructor (`WorkoutHero3DStage`) wraps all WebGL operations inside `try ... catch`.
-   - If WebGL is unsupported or throws at any point during canvas creation, shader compiling, or context acquisition, it logs a clean diagnostic warning and falls back immediately to `new WorkoutHeroDuoCanvas(container, options)`.
-2. **Unified Control Contract**:
-   - Both `WorkoutHero3DStage` (3D WebGL) and `WorkoutHeroDuoCanvas` (2D Canvas) expose the identical public lifecycle interface:
-     - `setWorkout(workoutId, coachId, tempoBpm)`
-     - `setTimeRemaining(seconds)`
-     - `triggerBeat()`
-     - `startAnimation()`
-     - `pauseAnimation()`
-     - `resumeAnimation()`
-     - `stopAnimation()`
-     - `destroy()`
-   - `DinoWorkoutView.js` calls this interface without needing to know which rendering engine is active under the hood.
-3. **Runtime WebGL Context Loss Recovery**:
-   - The 3D canvas registers a `webglcontextlost` event listener.
-   - If mobile memory pressure forces the GPU to evict the WebGL context, the event handler calls `e.preventDefault()`, safely disposes the Three.js scene, and hot-swaps to `WorkoutHeroDuoCanvas` without interrupting the workout countdown timer or audio cues.
-
-### Step 5: Clean Modular File Boundaries
-To maintain clean code architecture and maintainability:
-- **`src/components/WorkoutHero3DStage.js`**: Main view component mounting the Three.js WebGL canvas or falling back to 2D. Manages camera, lighting, render loop, resize observer, and lifecycle.
-- **`src/services/avatarSkeletalRig.js`**: Builds the procedural 3D Toddler Superhero Avatar and 3D Dinosaur Coach meshes and joint hierarchy using Three.js.
-- **`src/services/workoutKinematicsEngine.js`**: Pure mathematical calculations for joint rotations and translations across all 8 workouts given `(clock, tempoBpm, remainingTime, isHalfwayFlipped)`.
-- **`src/components/WorkoutHeroDuoCanvas.js`**: Untouched and preserved as the battle-tested 2D fallback.
-- **`src/views/DinoWorkoutView.js`**: Mounts `WorkoutHero3DStage` with zero disruption to state, timers, or audio.
 
 ---
 
 ## 3. Caveats
-1. **Three.js Dependency Requirement**:
-   - While `@splinetool/runtime` is currently installed in `package.json`, Three.js is not installed as an explicit top-level dependency.
-   - For a production-ready procedural 3D skeletal avatar, `three: "^0.160.0"` (or compatible) should be added to `dependencies` in `package.json` so Vite bundles and treeshakes it with zero external network requests.
-   - If adding `three` to `package.json` is deferred, Three.js can also be imported dynamically via modern ESM CDN (`https://esm.sh/three@0.160.0`), but the local npm package is strongly recommended for offline PWA compliance.
-2. **3D Asset Format**:
-   - Pre-baked `.splinecode` scenes are not present locally. Relying on remote Spline URLs introduces latency and network failure modes for kids on mobile devices. Procedurally generated 3D character rigs in Three.js eliminate this risk entirely.
-3. **Design System Constraints**:
-   - Zero pink or purple materials: The 3D Toddler Hero avatar must be styled strictly in Electric Cyan (`#00d2d3`), Emerald Green (`#2ecc71`), Solar Amber (`#f1c40f`/`#f39c12`), and Midnight Slate (`#09141e`/`#0e1c28`).
+
+1. **Test Suite Invariants**: `scratch/verify_bedtime_storybook.mjs` currently contains assertions expecting `chapters.length === 3` and `isBreathingActive` on chapter index 2 (lines 468, 671, 707, 1515). When the implementer updates the codebase to 4 chapters, these test assertions must be systematically updated to assert `chapters.length === 4` and chapter index 3.
+2. **Audio Generation Duration**: Spoken narration for ~180–220 words at bedtime rate (0.88–0.76) will take ~100–130 seconds per chapter. In `voiceService.js`, the network fetch timeout (`timeoutMs: 18000`) applies only to the HTTP request to synthesize audio, not playback. However, generating audio for ~200 words over ElevenLabs HTTP API may occasionally take 8–15 seconds; raising `timeoutMs` to `25000ms` for bedtime style is recommended to prevent premature aborts.
+3. **No Code Written**: In accordance with the Explorer archetype rules, no production source code has been modified during this survey. All analysis is read-only.
 
 ---
 
-## 4. Conclusion
-1. **Recommended Architecture**: A standalone procedural Three.js 3D character and dinosaur coach stage (`WorkoutHero3DStage`) powered by a pure forward-kinematic skeletal joint hierarchy (`avatarSkeletalRig.js` and `workoutKinematicsEngine.js`).
-2. **8 Prehistoric Workouts**: All 8 gross-motor routines can be implemented with exact joint rotations, tempo-locking, and dynamic 30s Diplodocus side-switching via mathematical forward kinematics.
-3. **Resilient Fallback**: If WebGL context creation fails or crashes, the system gracefully and seamlessly hot-swaps to the existing `WorkoutHeroDuoCanvas` 2D procedural canvas stage with zero UI breakage.
-4. **Build & Test Safety**: The implementation can be structured cleanly without touching existing store methods, 8-minute circuit modes, or water break intermissions, preserving 100% pass rates across all 64 automated test suites.
+## 4. Conclusion & Proposed Architectural Plan
+
+To achieve the requirements of R2, the implementation should be executed across the following modules:
+
+### 4.1 Module 1: Comprehensive Anti-Repetition Registry & Dynamic Combinatorial Story Weaver (`src/data/bedtimeStoryData.js`)
+1. **Define Anti-Repetition Ban-List Constants**:
+   ```javascript
+   export const BANNED_BEDTIME_STOCK_PHRASES = [
+     'smiled happily beside',
+     'looked up at the starry sky',
+     'gazed with wonder',
+     'twinkled like cheerful fireflies',
+     'golden sun had dipped peacefully',
+     'all was quiet now across the vast expanse',
+     'gazed at the quiet, starry night',
+     'flew across the starry sky'
+   ];
+   ```
+2. **Combinatorial Whisper Line Registry**:
+   Expand whisper lines into a categorized matrix of 12+ soothing whisper lines per chapter, keyed by moral and atmosphere, rotated deterministically away from recent history.
+3. **Dynamic Combinatorial Chapter Builders**:
+   Replace the monolithic single template with dynamic sentence banks for each of the 4 arcs:
+   - **Chapter 1 (Departure & Gentle Curiosity, ~180–220 words)**:
+     - 4 distinct opening structures (Atmospheric twilight, Companion anticipation, Cozy bedroom threshold, Realm horizon view).
+     - Hero gear & magic item packing with sensory tactile descriptions.
+     - Daytime habit celebration hook integrated naturally.
+     - Companion pet species-specific animation and vocalization (purr, chirp, boof, tail swish).
+     - Relaxing shoulder breathing prompt.
+   - **Chapter 2 (Whimsical Encounter & Gentle Mystery, ~180–220 words)**:
+     - Progression into second subBiome.
+     - Novel encounter description driven by realm and archetype.
+     - Pet companion's playful investigative senses.
+     - Gentle reassurance establishing safety in the quiet night.
+   - **Chapter 3 (Calming Cooperative Resolution, ~180–220 words)**:
+     - Progression into third subBiome.
+     - The bedtime hurdle resolved through the specific moral guidance.
+     - Hero and pet cooperative action yielding warm amber/cyan particle transformation.
+     - Release of tension, soothing sigh of relief, muscle relaxation cue.
+   - **Chapter 4 (Curling Up in Cozy Starlight Nest, ~180–220 words)**:
+     - Final sanctuary subBiome.
+     - Nest preparation: tucking into cloud quilt / moss hollow / hammock.
+     - Pet curling up together with sleepy yawns.
+     - 4-second inhale / 4-second exhale somatic breathing guidance.
+     - Celestial dimming, soothing ambient chime fade, whispered goodnight with parent's bedtime wish.
+4. **Update `generateFullBedtimeStory`**:
+   Return all 4 chapters: `chapters: [ch1, ch2, ch3, ch4]`, each conforming to ~180–220 words.
+5. **High-Entropy Seed Rotation**:
+   Incorporate `Date.now()`, random seed entropy, and recent archetype history into index calculation to ensure successive stories never repeat plot archetypes.
+
+### 4.2 Module 2: AI Prompt Overhaul & Negative Constraints (`server/geminiService.js`, `functions/src/voiceApi.ts`, `little-heroes-agy-service/agents/bedtime_narrator.py`)
+1. **Prompts Update to 4 Chapters**:
+   - Target length: `~180-220 words per chapter (~750-850 words total)`.
+   - Update JSON schema to define 4 chapters.
+   - Remove `"choices"` array and prompt questions (`"What should we do next?"`).
+2. **Inject Strict Negative Constraints**:
+   ```
+   ANTI-REPETITION MANDATE:
+   1. NEVER copy or repeat any of these recent story titles: ${JSON.stringify(recentTitles)}.
+   2. NEVER reuse these recent plot archetypes: ${JSON.stringify(recentArchetypes)}.
+   3. NEVER repeat any of these recent chapter opening sentences: ${JSON.stringify(recentOpenings)}.
+   4. BANNED PHRASES: Strictly NEVER use stock clichés such as "smiled happily beside", "looked up at the starry sky", "gazed with wonder", "twinkled like cheerful fireflies", "golden sun had dipped peacefully", or "all was quiet now". Craft fresh, vivid, soothing prose!
+   ```
+3. **Update Truncation and End Condition**:
+   - Change `slice(0, 3)` to `slice(0, 4)`.
+   - Change `isSleepingEnd: reqIdx >= 2` to `isSleepingEnd: reqIdx >= 3`.
+
+### 4.3 Module 3: Client Story Service & History Integration (`src/services/bedtimeStoryService.js`)
+1. In `buildChildStoryContext`:
+   - Extract `recentOpenings` from `hero.bedtimeHistory`:
+     ```javascript
+     const recentOpenings = bedtimeHistory
+       .flatMap(h => h.chapterOpenings || [])
+       .filter(Boolean)
+       .slice(0, 25);
+     ```
+   - Pass `recentOpenings` to `/api/gemini/bedtime-story` and `generateFullBedtimeStory`.
+2. Replace stock sentence fallback in lines 614–615 with a dynamic procedural fallback.
+3. Update `generateBedtimeStory(options)` to return 4 chapters.
+
+### 4.4 Module 4: 3D Stage & UI Pacing Synchronization (`BedtimeStoryStage3D.js` & `BedtimeStoryView.js`)
+1. In `src/components/BedtimeStoryStage3D.js`:
+   - Change `this.isBreathingActive = (this.chapterIndex === 3)` (was 2).
+   - In scenery meshes rendering: show `obstacle_arch` in chapters 1 and 2; show `nest_woven_bed` and breathing ring in chapter 3.
+2. In `src/views/BedtimeStoryView.js`:
+   - Update header to `Chapter ${currentActNumber} of 4`.
+   - Update auto-read badges from "All 3 Chapters" to "All 4 Chapters".
+   - Support smooth continuous hands-free auto-advance 3 seconds after narration completes.
 
 ---
 
 ## 5. Verification Method
 
-### Automated Independent Verification Commands
-1. **Full Automated Test Suite**:
+To independently verify the findings and proposed solution:
+
+1. **Verify Exact Current File Paths and Line Numbers**:
+   - `server/geminiService.js:624, 645, 747` (3 chapters, ~110-130 words).
+   - `functions/src/voiceApi.ts:345, 365, 468` (3 chapters, ~110-140 words).
+   - `src/data/bedtimeStoryData.js:876-1020, 1039-1064` (`generateFullBedtimeStory` omits index 2; words ~106, ~115, ~126, ~114).
+   - `src/services/bedtimeStoryService.js:614-615` (stock sentence `"smiled happily beside"`).
+   - `src/components/BedtimeStoryStage3D.js:499, 797, 1337` (`this.isBreathingActive = (this.chapterIndex === 2)`).
+
+2. **Verify Baseline Test Suite Execution**:
+   Run the full project test suite in terminal:
    ```powershell
    node scratch/run_all_tests.js
    ```
-   *Expected outcome*: Exits with code 0; all 64 test suites pass with 0 failures.
+   *Expected*: Passes with 0 failures across all existing test suites.
 
-2. **Production Bundle Verification**:
+3. **Verify Bedtime Storybook Suite**:
    ```powershell
-   npm run build
+   node scratch/verify_bedtime_storybook.mjs
+   node scratch/test_bedtime_storybook.cjs
+   node scratch/test_bedtime_sanctuary.cjs
    ```
-   *Expected outcome*: Exits with code 0; Vite compiles clean production bundles in `dist/`.
 
-3. **Linter / Syntax Check**:
-   ```powershell
-   npm run lint
-   ```
-   *Expected outcome*: Exits with code 0; `src/main.js` and imported modules pass check.
-
-### Inspection Verification
-- Inspect `src/components/WorkoutHeroDuoCanvas.js` to verify fallback interface parity.
-- Verify `#workout-canvas-container` in `src/views/DinoWorkoutView.js` mounts the stage cleanly.
-- Verify Diplodocus side-switch triggers at `remainingTime === 30`.
-- Verify colors strictly adhere to the Stitch design system (Electric Cyan, Emerald Green, Solar Amber, Midnight Slate — no pink/purple).
+4. **Invalidation Conditions**:
+   - Any chapter containing stock phrases: `"smiled happily beside"`, `"looked up at the starry sky"`, `"gazed with wonder"`.
+   - Word count of any chapter falling below 160 or exceeding 240 words.
+   - Generation of fewer or more than 4 chapters.
+   - `BedtimeStoryStage3D` failing to display the nest and breathing ring on Chapter 4 (index 3).
+   - Identical chapter openings across 5 consecutive stories generated for the same child and realm.

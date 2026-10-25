@@ -1,14 +1,13 @@
-# Progress — Explorer 2 (3D Avatar & Skeletal Animation Specialist)
-Last visited: 2026-10-15T03:54:00Z
+# Progress — explorer_survey_2
 
-- [x] Initialized DISPATCH.md and BRIEFING.md
-- [x] Read ORIGINAL_REQUEST.md
-- [x] Inspected package.json and node_modules for Three.js, Spline, 3D loaders
-- [x] Inspected current source code structure for avatar/canvas/rendering (`WorkoutHeroDuoCanvas.js`, `DinoWorkoutView.js`, `petsData.js`)
-- [x] Analyzed Three.js SkinnedMesh vs Spline runtime vs fallback
-- [x] Formulated 8 prehistoric gross-motor skeletal bone rotation/position animations with exact mathematical kinematics
-- [x] Designed WebGL failure/unavailability 2D procedural canvas fallback
-- [x] Documented file boundaries and modular implementation plan
-- [x] Verified full test suite (`npm test`, 64/64 passed) and production build (`npm run build`, exit 0)
-- [x] Wrote comprehensive 5-component handoff report (`handoff.md`)
-- [ ] Notify orchestrator via send_message
+Last visited: 2026-10-25T02:27:10Z
+Status: Complete — Survey R2 (Rich, Extended Non-Repetitive Story Generation Engine)
+
+## Tasks
+- [x] Received dispatch instructions and updated DISPATCH.md and BRIEFING.md
+- [x] Task 1: Identify all story generation files (online Gemini/AGY, server routes, client Firebase AI Logic, offline procedural weaver) — 15 files mapped
+- [x] Task 2: Analyze chapter length and structure, 3->4 chapters transition (~180-220 words/ch, 750-850 words total, 7-8 min) & 4 arcs (Departure, Encounter, Resolution, Cozy Slumber Nest)
+- [x] Task 3: Analyze repetition issues (stock phrases: "smiled happily beside", "looked up at the starry sky", "gazed with wonder"; formulaic whisper lines; repetitive openings)
+- [x] Task 4: Inspect anti-repetition registries, history persistence (`hero.bedtimeHistory`), seed rotation, negative constraints
+- [x] Task 5: Synthesize gaps and propose comprehensive architectural plan
+- [x] Task 6: Write 5-component handoff.md and send_message to parent agent

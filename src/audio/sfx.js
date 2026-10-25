@@ -14,8 +14,23 @@ let lullabyInterval = null;
 let lullabyNoteIndex = 0;
 let lullabyActive = false;
 let lullabyDucked = false;
+let lullabyMasterGain = null;
 let battleBpm = 118;
 let lastBloopTime = 0;
+
+function getLullabyMasterGain(context) {
+  if (!context) return null;
+  if (!lullabyMasterGain || lullabyMasterGain.context !== context) {
+    try {
+      lullabyMasterGain = context.createGain();
+      lullabyMasterGain.gain.setValueAtTime(lullabyDucked ? 0.15 : 1.0, context.currentTime);
+      lullabyMasterGain.connect(context.destination);
+    } catch {
+      return null;
+    }
+  }
+  return lullabyMasterGain;
+}
 
 function getAudioContext() {
   if (typeof window === 'undefined') return null;
@@ -1718,9 +1733,9 @@ export const Sound = {
         filter.frequency.setValueAtTime(2600, now);
         filter.frequency.exponentialRampToValueAtTime(900, now + 0.9);
 
-        // Clear, soothing volume designed for bedtime listening (scaled by ducking)
-        const peakGain = lullabyDucked ? 0.07 : 0.24;
-        const overtoneGain = lullabyDucked ? 0.02 : 0.07;
+        // Clear, soothing volume designed for bedtime listening (scaled by ducking to 15%)
+        const peakGain = lullabyDucked ? 0.036 : 0.24;
+        const overtoneGain = lullabyDucked ? 0.0105 : 0.07;
 
         gain.gain.setValueAtTime(0.001, now);
         gain.gain.linearRampToValueAtTime(peakGain, now + 0.035);
@@ -1730,12 +1745,18 @@ export const Sound = {
         gain2.gain.linearRampToValueAtTime(overtoneGain, now + 0.025);
         gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.55);
 
-        // Route osc through gain and osc2 through gain2, then through lowpass filter to destination
+        // Route osc through gain and osc2 through gain2, then through lowpass filter to master gain
         osc.connect(gain);
         gain.connect(filter);
         osc2.connect(gain2);
         gain2.connect(filter);
-        filter.connect(context.destination);
+
+        const masterGain = getLullabyMasterGain(context);
+        if (masterGain) {
+          filter.connect(masterGain);
+        } else {
+          filter.connect(context.destination);
+        }
 
         osc.start(now);
         osc2.start(now);
@@ -1773,6 +1794,25 @@ export const Sound = {
 
   duckLullaby(ducked = true) {
     lullabyDucked = Boolean(ducked);
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    try {
+      const master = getLullabyMasterGain(ctx);
+      if (master) {
+        const now = ctx.currentTime;
+        master.gain.cancelScheduledValues(now);
+        master.gain.setValueAtTime(master.gain.value, now);
+        if (lullabyDucked) {
+          // Ramps gain to 0.15 (15% volume) over 0.6–0.8s during speech
+          master.gain.linearRampToValueAtTime(0.15, now + 0.7);
+        } else {
+          // Smoothly swells gain from 0.15 back to 1.0 (100% volume) over 1.2–1.5s on chapter transitions
+          master.gain.linearRampToValueAtTime(1.0, now + 1.3);
+        }
+      }
+    } catch (e) {
+      // AudioContext state handling
+    }
   },
 
   isLullabyDucked() {
@@ -1822,6 +1862,15 @@ export const Sound = {
       lullabyInterval = null;
     }
     lullabyNoteIndex = 0;
+    if (lullabyMasterGain) {
+      try {
+        const ctx = getAudioContext();
+        if (ctx) {
+          lullabyMasterGain.gain.cancelScheduledValues(ctx.currentTime);
+          lullabyMasterGain.gain.setValueAtTime(1.0, ctx.currentTime);
+        }
+      } catch (e) {}
+    }
   },
 
   isLullabyPlaying() {

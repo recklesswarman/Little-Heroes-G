@@ -1,7 +1,7 @@
-# BRIEFING — 2026-10-19T05:04:00Z
+# BRIEFING — 2026-10-25T02:18:00Z
 
 ## Mission
-Resolve Cloud Firestore Test Mode expiration, verify all 13 official Firebase agent skills, configure multi-database rules ((default) & default), ensure seamless silent device authentication, and deploy/verify production-ready firestore.rules on little-heroes-quest-8842.
+Comprehensive overhaul of the Bedtime AI Storybook in Little Hero Adventures to deliver unique per-chapter 3D Pixar illustrations via Cloudflare Workers AI with full chapter text context and dynamic seed entropy, longer narrative chapters (~180–220 words per chapter, ~7–8 minutes total) with strict anti-repetition filtering, removal of mid-story toddler choice/question interruptions for continuous hands-free slumber reading, and unified ElevenLabs voice narration across all kids and pets.
 
 ## 🔒 My Identity
 - Archetype: sentinel
@@ -12,6 +12,8 @@ Resolve Cloud Firestore Test Mode expiration, verify all 13 official Firebase ag
 - Active Victory Auditor: 410de0e6-0123-4eab-9963-7b15d9c52b14
 - Current Orchestrator: 8a158406-90f8-4d02-ac6b-a478d04421e7
 - Current Victory Auditor: 7c1fcd24-cb0a-440a-b201-b8900429843b
+- Active Orchestrator 5: b9493cb1-e4ed-444a-a0d3-d8aedbf36adc
+- Active Victory Auditor 6: [TBD]
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
@@ -20,36 +22,30 @@ Resolve Cloud Firestore Test Mode expiration, verify all 13 official Firebase ag
 - One completion payout at a time across task/currency lifecycle
 - Mandatory specialist subagent firestore-rules-author for firestore.rules modifications; do NOT overwrite directly
 - Multi-database deployment targeting both (default) and default instances on little-heroes-quest-8842
+- Bedtime story voice unified to canonical ID e9sQs6aLWU82SSolkPYZ across all kids and pets
+- Full unabridged chapter text + randomized seed entropy passed to Cloudflare Workers AI image generator
+- Unique cache keys: session.id + chapterIndex + md5(fullChapterText)
+- Extended narrative chapters ~180-220 words with anti-repetition registry
+- Continuous hands-free slumber reading (no mid-story toddler choice chips or question prompts) with 3s auto-advance
 
 ## User Context
-- **Last user request**: Resolve Cloud Firestore Test Mode expired lockouts, verify 13 official Firebase agent skills, ensure silent client device authentication & household sync, configure firebase.json for both (default) and default databases, deploy firestore.rules live to little-heroes-quest-8842, and verify with test suite.
+- **Last user request**: Comprehensive overhaul of Bedtime AI Storybook in Little Hero Adventures (unique 3D Pixar illustrations via Cloudflare Workers AI with full text and randomized seed entropy, extended narrative ~180-220 words/chapter with anti-repetition filtering, removal of mid-story toddler choice/question interruptions for hands-free auto-advance, and unified ElevenLabs voice narration).
 - **Pending clarifications**: none
-- **Delivered results**:
-  - All 13 official Firebase agent skills confirmed installed and active in `.agents/skills/`.
-  - `firestore.rules` (499 lines) authored by `firestore-rules-author` strictly preserved with zero tampering; full anti-enumeration, device revocation, owner isolation, and 76-key schema support verified.
-  - Silent anonymous auth fallback with session preservation implemented in `src/config/firebase.js` (`ensureAuthReady()`).
-  - `firestoreSyncService.js` and `persistentLinkService.js` hardened to await `ensureAuthReady()` before cloud operations.
-  - Multi-database array targeting `(default)` Standard and `default` Enterprise databases configured in `firebase.json`.
-  - Comprehensive automated suite `scratch/verify_firestore_rules_and_sync.mjs` (79/79 checks passed).
-  - Full repository test runner `scratch/run_all_tests.js` (71/71 suites passed).
-  - Production build `npm run build` exits 0.
-  - Independent Victory Audit: **VICTORY CONFIRMED**.
+- **Delivered results**: [TBD]
 
 ## Project Status
-- **Phase**: complete
+- **Phase**: in progress
 
 ## Routing Decision
 - **Chosen path**: General (`teamwork_preview_orchestrator`)
+- **Rationale**: Multi-system feature overhaul touching AI image generation, story generation engine, UI flow, and TTS voice pipeline.
 
 ## Victory Audit Status
-- **Triggered**: yes
-- **Verdict**: VICTORY CONFIRMED
+- **Triggered**: no
+- **Verdict**: pending
 - **Retry count**: 0
 
 ## Artifact Index
 - .agents/teamwork/ORIGINAL_REQUEST.md — Authoritative user requirements
 - .agents/teamwork/BRIEFING.md — Sentinel persistent memory
-- .agents/teamwork/orchestrator_4/handoff.md — Orchestrator completion handoff
-- .agents/teamwork/orchestrator_4/GATE_STATUS.md — Milestone gate evaluation
-- .agents/teamwork/victory_auditor_5/handoff.md — Independent Victory Auditor handoff (VICTORY CONFIRMED)
-- .agents/teamwork/handoff.md — Sentinel final completion handoff
+- .agents/teamwork/orchestrator_5/ — Orchestrator 5 working directory

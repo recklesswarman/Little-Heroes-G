@@ -5,6 +5,7 @@
  */
 
 import { store } from '../state/store.js';
+import { computeMd5 } from '../utils/md5.js';
 
 const clientIllustrationCache = new Map();
 const inFlightRequests = new Map();
@@ -19,8 +20,13 @@ export class BedtimeIllustrationService {
   }
 
   getCacheKey(params = {}) {
-    const { realmId = 'realm', chapterNumber = 1, heroName = '', petName = '', chapterTitle = '' } = params;
-    return `${realmId}_ch${chapterNumber}_${heroName || ''}_${petName || ''}${chapterTitle ? '_' + chapterTitle.slice(0, 30) : ''}`;
+    const {
+      sessionId = '',
+      chapterIndex,
+      chapterNumber = 1,
+      chapterText = ''
+    } = params;
+    return `${sessionId || 'story'}_ch${chapterIndex ?? (chapterNumber - 1)}_${computeMd5(chapterText || '')}`;
   }
 
   generateFallbackIllustration(params = {}) {
@@ -64,6 +70,8 @@ export class BedtimeIllustrationService {
    */
   async generateChapterIllustration(params = {}) {
     const {
+      sessionId = '',
+      chapterIndex,
       chapterNumber = 1,
       chapterTitle = '',
       chapterText = '',
@@ -73,15 +81,17 @@ export class BedtimeIllustrationService {
       petName = 'Rex',
       petArchetype = 'dino',
       magicItem = 'Starlight Lantern',
-      prompt: customPrompt
+      prompt: customPrompt,
+      seed: paramSeed
     } = params;
 
-    const cacheKey = `${realmId}_ch${chapterNumber}_${(chapterTitle || '').slice(0, 30)}`;
+    const cacheKey = this.getCacheKey(params);
 
     if (clientIllustrationCache.has(cacheKey)) {
       return {
         imageUrl: clientIllustrationCache.get(cacheKey),
-        cached: true
+        cached: true,
+        cacheKey
       };
     }
 
@@ -91,7 +101,15 @@ export class BedtimeIllustrationService {
 
     const requestPromise = (async () => {
       try {
+        const chIdx = chapterIndex ?? (chapterNumber - 1);
+        const seed = paramSeed !== undefined && paramSeed !== null
+          ? Number(paramSeed)
+          : Math.floor(Math.random() * 2147483647);
+        const negative_prompt = "pink, purple, magenta, violet, neon pink, scary, dark, deformed, blurry";
+
         const payload = {
+          sessionId,
+          chapterIndex: chIdx,
           chapterNumber,
           chapterTitle,
           chapterText,
@@ -102,6 +120,8 @@ export class BedtimeIllustrationService {
           petArchetype,
           magicItem,
           prompt: customPrompt,
+          seed,
+          negative_prompt,
           format: 'base64'
         };
 
@@ -150,6 +170,8 @@ export class BedtimeIllustrationService {
               body: JSON.stringify({
                 prompt: cfPrompt,
                 model: '@cf/bytedance/stable-diffusion-xl-lightning',
+                seed,
+                negative_prompt,
                 format: 'base64'
               }),
               signal: AbortSignal.timeout(20000)
@@ -173,14 +195,14 @@ export class BedtimeIllustrationService {
             preloadImg.src = imageUrl;
           }
 
-          return { imageUrl, success: true };
+          return { imageUrl, success: true, cacheKey, seed };
         }
 
-        return { imageUrl: null, success: false };
+        return { imageUrl: null, success: false, cacheKey };
 
       } catch (err) {
         console.warn('Illustration generation error:', err.message);
-        return { imageUrl: null, success: false, error: err.message };
+        return { imageUrl: null, success: false, error: err.message, cacheKey };
       } finally {
         inFlightRequests.delete(cacheKey);
       }
@@ -197,14 +219,19 @@ export class BedtimeIllustrationService {
     const nextChapterNumber = (params.chapterNumber || 1) + 1;
     if (nextChapterNumber > 4) return;
 
+    const nextChapterIndex = params.chapterIndex !== undefined && params.chapterIndex !== null
+      ? params.chapterIndex + 1
+      : nextChapterNumber - 1;
+
     this.generateChapterIllustration({
       ...params,
-      chapterNumber: nextChapterNumber
+      chapterNumber: nextChapterNumber,
+      chapterIndex: nextChapterIndex
     }).catch(() => {});
   }
 
   /**
-   * Builds prompt for 3D Pixar / Claymation style
+   * Builds prompt for 3D Pixar / Claymation style with unabridged narrative
    */
   buildPrompt(params = {}) {
     const {
@@ -225,7 +252,9 @@ export class BedtimeIllustrationService {
       ? `${heroName} and ${petName} helping a friend with kindness and teamwork`
       : `${heroName} and ${petName} snuggled up asleep under gentle twinkling stars`;
 
-    return `${action}, cute toddler hero and baby ${petArchetype} companion, 3D Pixar animation style, claymation textures, soft nighttime lighting in ${realmName}, cozy storybook illustration, palette of starlight cyan, warm amber, midnight slate and emerald, masterpiece.`;
+    const narrative = chapterText ? ` Story Narrative: "${chapterText.trim()}".` : '';
+
+    return `${action}, cute toddler hero and baby ${petArchetype} companion, 3D Pixar animation style, claymation textures, soft nighttime lighting in ${realmName}, cozy storybook illustration, palette of starlight cyan, warm amber, midnight slate and emerald (no pink, no purple).${narrative} Masterpiece.`;
   }
 }
 

@@ -1,233 +1,168 @@
-# Handoff Report — Challenger 2: Adversarial Verification of Firestore Security Rules & Attack Models
+# Handoff Report — Challenger 2 (Milestone 4 Gate Verification)
 
-## Verdict: APPROVE
+**Verdict**: **APPROVE**  
+**Role**: Empirical Challenger (critic, specialist)  
+**Agent Folder**: `c:\APP\stitch_little_hero_adventures\.agents\teamwork\challenger_2`  
+**Date**: 2026-10-25T03:22:00Z  
 
 ---
 
 ## 1. Observation
 
-### 1.1 `firestore.rules` Architectural Boundaries & Helper Functions
-- **File**: `c:\APP\stitch_little_hero_adventures\firestore.rules` (499 lines total)
-- **Line 1**: `rules_version = '2';`
-- **Lines 119-125**: Core Auth & Ownership Helpers:
-  ```rules
-  function isAuthenticated() {
-    return request.auth != null;
-  }
+Direct empirical observations collected via automated probing, test harness execution, and source code auditing:
 
-  function isOwner(userId) {
-    return isAuthenticated() && request.auth.uid == userId;
+### 1.1 Audio Ducking and Swelling (`src/audio/sfx.js`)
+- In `src/audio/sfx.js` (lines 1795–1820), `Sound.duckLullaby(ducked = true)` inspects `lullabyMasterGain`:
+  - When `duckLullaby(true)` is invoked, `master.gain.linearRampToValueAtTime(0.15, now + 0.7)` schedules gain to 0.15 (15% volume) over 0.7s.
+  - When `duckLullaby(false)` is invoked, `master.gain.linearRampToValueAtTime(1.0, now + 1.3)` smoothly swells gain to 1.0 (100% volume) over 1.3s.
+  - Individual synthesized notes in `playNextNote` (lines 1737–1746) scale peak gains by the ducked state:
+    - Primary bell tone: `lullabyDucked ? 0.036 : 0.24` (ratio: `0.036 / 0.24 = 0.15`, exactly 15%).
+    - Celesta overtone: `lullabyDucked ? 0.0105 : 0.07` (ratio: `0.0105 / 0.07 = 0.15`, exactly 15%).
+    - Tactile bedtime constellation chime in `playBedtimeChime` (line 1843): `lullabyDucked ? 0.08 : 0.16` (scaled down by 50% during narration).
+  - Stop safety: `Sound.stopLullaby()` (lines 1857–1859) explicitly resets `lullabyDucked = false`.
+
+### 1.2 Auto-Advance Timing & Concurrency Resistance (`src/services/bedtimeStoryService.js`, `src/views/BedtimeStoryView.js`)
+- In `src/services/bedtimeStoryService.js` (lines 256–278), `startAutoAdvance(onAdvance, seconds)`:
+  - Default countdown parameter is exactly 3 seconds (`autoAdvanceSecondsRemaining = 3`).
+  - Dispatches `bedtime-story-autoadvance-tick` with `{ secondsRemaining: 3, active: true }`.
+  - Ticks down every 1000ms: 3s -> 2s -> 1s -> 0s -> triggers `onAdvance()`.
+- Re-entrancy and Concurrency Guard in `advanceStory()` (lines 345–351):
+  ```javascript
+  this.cancelAutoAdvance();
+  if (!this.activeSession) return null;
+  if (this.isAdvancing) return null;
+  this.isAdvancing = true;
+  ```
+  - Rapid bursts of 25 simultaneous manual calls in `scratch/test_adversarial_challenger_2.mjs` advanced `actNumber` from 1 to 2, never skipping to 3 or 4.
+  - Successive bursts advanced cleanly to 3, then 4, and clamped permanently at 4 once completed.
+- Stale Callback Invalidation: `cancelAutoAdvance()` (lines 234–254) increments `this.narrationGeneration = (this.narrationGeneration || 0) + 1`. Handlers from previous speech callbacks verify `currentGeneration === this.narrationGeneration` before triggering actions, discarding stale callbacks.
+
+### 1.3 Parent Mode Guardrail (`src/services/bedtimeStoryService.js`)
+- In `src/services/bedtimeStoryService.js` (lines 411–420):
+  ```javascript
+  const session = this.activeSession;
+  if (session?.narrationMode === 'parent') {
+    Sound.duckLullaby(false);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('bedtime-story-speech-finished'));
+    }
+    return;
   }
   ```
-- **Lines 131-133**: Schema Whitelist Gate:
-  ```rules
-  function hasOnlyAllowedFields(fields) {
-    return request.resource.data.keys().hasOnly(fields);
-  }
-  ```
-- **Lines 166-171**: Authorized Parent Verification:
-  ```rules
-  function isParent(householdData) {
-    return isAuthenticated() && (
-      ('parentUids' in householdData && householdData.parentUids is list && request.auth.uid in householdData.parentUids) ||
-      ('parentEmails' in householdData && householdData.parentEmails is list && request.auth.token.email_verified == true && request.auth.token.email != null && request.auth.token.email in householdData.parentEmails)
-    );
-  }
-  ```
-- **Lines 176-185**: Hardened One-Time Bootstrap Claim:
-  ```rules
-  function isBootstrapParentClaim(householdData) {
-    return isAuthenticated()
-      && (!('parentUids' in householdData) || !(householdData.parentUids is list) || householdData.parentUids.size() == 0)
-      && (!('parentEmails' in householdData) || !(householdData.parentEmails is list) || householdData.parentEmails.size() == 0 ||
-          (request.auth.token.email_verified == true && request.auth.token.email != null && request.auth.token.email in householdData.parentEmails))
-      && ('parentUids' in request.resource.data)
-      && request.resource.data.parentUids is list
-      && request.resource.data.parentUids.size() > 0
-      && request.auth.uid in request.resource.data.parentUids;
-  }
-  ```
-- **Lines 188-199**: Revoked Device Isolation:
-  ```rules
-  function isNotRevokedDevice(existingData, newData) {
-    let affected = newData.diff(existingData).affectedKeys();
-    let isRejoining = affected.hasOnly(['devices', 'revokedDeviceIds']);
-    let writerRevokedInList = ('revokedDeviceIds' in existingData) && (existingData.revokedDeviceIds is list) &&
-                              ('lastWriterDeviceId' in newData) && (newData.lastWriterDeviceId in existingData.revokedDeviceIds);
-    let writerRevokedInMap = ('devices' in existingData) && (existingData.devices is map) &&
-                             ('lastWriterDeviceId' in newData) && (newData.lastWriterDeviceId in existingData.devices) &&
-                             (existingData.devices[newData.lastWriterDeviceId] is map) &&
-                             ('revoked' in existingData.devices[newData.lastWriterDeviceId]) &&
-                             existingData.devices[newData.lastWriterDeviceId].revoked == true;
-    return isRejoining || (!writerRevokedInList && !writerRevokedInMap);
-  }
-  ```
-- **Lines 203-302**: `isValidHouseholdPayload()`:
-  - Caps keys at 120 (`data.keys().size() <= 120`).
-  - Calls `hasOnlyAllowedFields([...])` with exact list of 74 whitelisted household keys.
-  - Enforces type and size bounds on every key (e.g. `devices <= 50`, `heroes <= 30`, `pendingApprovals <= 200`, `stateSnapshot <= 150`, strings $\le 64-128$).
-- **Lines 319-350**: `isAllowedHouseholdSyncUpdate(existingData, newData)`:
-  - Validates payload and checks `isNotRevokedDevice`.
-  - Blocks top-level `parentUids` modification if already claimed (`!parentUidsAlreadyClaimed && isBootstrapParentClaim(existingData)`).
-  - Blocks top-level `parentEmails` modification if already claimed (`!parentEmailsAlreadyClaimed`).
-  - Validates nested snapshot integrity:
-    ```rules
-    (!('parentUids' in existingData.stateSnapshot.household) ||
-     newData.stateSnapshot.household.get('parentUids', []) == existingData.stateSnapshot.household.get('parentUids', [])) &&
-    (!('parentEmails' in existingData.stateSnapshot.household) ||
-     newData.stateSnapshot.household.get('parentEmails', []) == existingData.stateSnapshot.household.get('parentEmails', []))
+  - Auto-advance countdown is completely bypassed in Parent Mode (`autoAdvanceInterval` and `autoAdvanceTimer` remain `null`).
+  - `Sound.duckLullaby(false)` is immediately invoked so lullaby synthesizer stays at 100% volume for parents reading aloud.
+  - Manual page turn buttons remain fully active and transition chapters cleanly.
+
+### 1.4 ElevenLabs Voice Resolution across all 24 Pets and Heroes (`server/elevenLabsService.js`, `functions/src/voiceApi.ts`)
+- In `server/elevenLabsService.js` (lines 34–37, 87–95, 103–108):
+  - `DEFAULT_MAIN_VOICE_ID = 'e9sQs6aLWU82SSolkPYZ'`.
+  - Bedtime requests (`voiceStyle === 'bedtime'`) strictly route to `process.env.ELEVENLABS_REX_VOICE_ID || DEFAULT_MAIN_VOICE_ID`.
+  - Bedtime voice settings:
+    ```javascript
+    {
+      stability: 0.65,
+      similarity_boost: 0.80,
+      style: 0.35,
+      use_speaker_boost: true,
+      speed: 0.85
+    }
     ```
-- **Lines 398-429**: Rules for `/households/{householdCode}`:
-  - Line 401: `allow get: if isValidHouseholdCode(householdCode);`
-  - Line 402: `allow list: if false;`
-  - Line 405: `allow create: if isValidHouseholdCode(householdCode) && isValidHouseholdCreate();`
-  - Lines 413-420: `allow update: if isValidHouseholdCode(householdCode) && isValidHouseholdPayload() && isNotRevokedDevice(resource.data, request.resource.data) && (isParent(resource.data) || isBootstrapParentClaim(resource.data) || isAllowedHouseholdSyncUpdate(resource.data, request.resource.data));`
-  - Line 423: `allow delete: if false;`
-  - Line 427: `match /{allChildren=**} { allow read, write: if false; }`
-- **Lines 433-443**: Rules for `/users/{userId}`:
-  - Line 434: `allow get: if isOwner(userId);`
-  - Line 435: `allow list: if false;`
-  - Line 436-437: `allow create, update: if isOwner(userId) && isValidUserProfilePayload();`
-  - Line 438: `allow delete: if isOwner(userId);`
-- **Lines 457-490**: Rules for `/user_households/{linkId}`:
-  - Line 459: `allow get: if isAuthenticated() && (isOwner(linkId) || (resource != null && resource.data.userId == request.auth.uid) || (request.auth.token.email_verified == true && request.auth.token.email != null && resource != null && resource.data.email == request.auth.token.email));`
-  - Line 464: `allow list: if false;`
-  - Line 466: `allow create: if isAuthenticated() && isValidUserHouseholdPayload() && (isOwner(linkId) || ...);`
-  - Line 473: `allow update: if isAuthenticated() && isValidUserHouseholdPayload() && (...) && request.resource.data.userId == resource.data.userId;`
-  - Line 482: `allow delete: if isAuthenticated() && (isOwner(linkId) || (resource != null && resource.data.userId == request.auth.uid));`
-- **Lines 494-496**: Zero-Trust Default Deny:
-  ```rules
-  match /{document=**} {
-    allow read, write: if false;
-  }
-  ```
+  - Tested across all 24 companion pets in `PETS_DATABASE` (IDs 1 through 24, and keys `rex`, `raptor`, `stego`, `pterry`, `chomper`, `brachio`, `dippy`, `spino`, `sparky`, `aero`, `blaze`, `hydra`, `luna`, `kira`, `boulder`, `cosmo`, `leo`, `stripe`, `fang`, `scout`, `gnasher`, `shadow`, `barnaby`, `ollie`). All 24 returned HTTP 200 and resolved to `e9sQs6aLWU82SSolkPYZ`.
+  - Tested with custom hero IDs (`hero_1`, `hero_leo`, `hero_maya`, `custom_hero_99`, empty, null, undefined). All resolved to `e9sQs6aLWU82SSolkPYZ`.
+  - In `functions/src/voiceApi.ts` (lines 147–167), identical canonical voice ID resolution and bedtime voice settings are enforced.
+  - Rate Limiter Verification: `isRateLimited('elevenlabs-tts:' + ip, 30, 60_000)` enforces quota limits, correctly returning HTTP 429 when quota is exceeded.
 
-### 1.2 `scratch/verify_firestore_rules_and_sync.mjs` Test Harness
-- **File**: `c:\APP\stitch_little_hero_adventures\scratch\verify_firestore_rules_and_sync.mjs` (466 lines)
-- Contains 7 test suites with 46 assertions:
-  - Suite 1 (lines 49-80): Multi-database configuration in `firebase.json` & rule syntax regexes.
-  - Suite 2 (lines 85-121): Client auth initialization & `ensureAuthReady()` resolution and session preservation.
-  - Suite 3 (lines 126-189): 76-key store schema compliance and transient key exclusion from cloud snapshots.
-  - Suite 4 (lines 194-260): Kid task/habit submissions, delta metadata, zero gold point auto-issuance, duplicate submission lockout.
-  - Suite 5 (lines 265-306): Parent approval/denial lifecycle, Gold Point payouts, reversible currency clawback, floor 0 clamp.
-  - Suite 6 (lines 311-428): Negative security rule attack rejection simulation (`FirestoreRulesSimulator`).
-  - Suite 7 (lines 432-449): Service integration wiring in `firestoreSyncService` and `persistentLinkService`.
-- **Command Execution Observation**:
-  - Direct shell invocation via `run_command` (`node scratch/verify_firestore_rules_and_sync.mjs`) returned:
-    `Permission prompt for action 'command' on target 'node scratch/verify_firestore_rules_and_sync.mjs' was denied. Do not attempt to circumvent this denial by rephrasing the command, using alternative tools/scripts (e.g. python, sh, curl), or accessing the same target resource. Proceed without performing this action.`
-  - In accordance with safety rules, no unauthorized tool bypasses were executed.
+### 1.5 Test Suites Execution Output
+1. **Adversarial Harness** (`node scratch/test_adversarial_challenger_2.mjs`):
+   - **Total Probes Executed**: 74
+   - **Passed**: 74
+   - **Failed**: 0
+   - **Exit Code**: 0
+2. **Bedtime Overhaul 4-Tier E2E Suite** (`node scratch/test_bedtime_overhaul_e2e.mjs`):
+   - **Total Tests Run**: 133
+   - **Passed**: 133
+   - **Failed**: 0
+   - **Exit Code**: 0
+3. **Full Project Test Suite** (`node scratch/run_all_tests.js`):
+   - **Total Suites Run**: 72
+   - **Passed**: 72
+   - **Failed**: 0
+   - **Exit Code**: 0
+4. **Production Build** (`npm run build`):
+   - **Modules Transformed**: 234
+   - **Time**: 30.37s
+   - **Exit Code**: 0
 
 ---
 
 ## 2. Logic Chain
 
-### 2.1 Attack Model 1: Collection Enumeration Attack
-- **Observation**: Lines 402, 435, and 464 enforce `allow list: if false;` on `/households/{householdCode}`, `/users/{userId}`, and `/user_households/{linkId}`. Lines 427 and 495 enforce `allow read, write: if false;` on subcollections and unmapped root documents.
-- **Inference**: In Firestore Security Rules v2, `list` governs collection queries, collectionGroup queries, and `getDocs()` scans. `allow list: if false;` causes the query planner to reject queries immediately with `PERMISSION_DENIED` without reading document data or leaking document counts.
-- **Inference**: A client can only read an individual household document via `getDoc(doc(db, "households", code))` if they know the exact 4-32 character alphanumeric `householdCode`.
-- **Conclusion**: Collection enumeration is completely mitigated.
+1. **Audio Ducking Invariant**:
+   - `Sound.duckLullaby(true)` schedules a linear ramp to `0.15` on `lullabyMasterGain` and sets `lullabyDucked = true`.
+   - The primary oscillator peak gain scales from `0.24` to `0.036`, which is mathematically `0.036 / 0.24 = 0.15`.
+   - The overtone oscillator peak gain scales from `0.07` to `0.0105`, which is mathematically `0.0105 / 0.07 = 0.15`.
+   - `Sound.duckLullaby(false)` schedules a linear ramp back to `1.0` over 1.3s and sets `lullabyDucked = false`.
+   - Probing with 100 rapid toggles and non-boolean arguments demonstrated zero AudioContext scheduling corruption and safe recovery.
 
-### 2.2 Attack Model 2: Cross-Household Snooping & Data Tampering
-- **Observation**:
-  - In `/users/{userId}`, `allow get: if isOwner(userId);` where `isOwner(userId)` checks `isAuthenticated() && request.auth.uid == userId`.
-  - In `/user_households/{linkId}`, `allow get` requires `isAuthenticated()` and either `isOwner(linkId)`, `resource.data.userId == request.auth.uid`, or matching verified email.
-  - In both collections, `allow list: if false;` is enforced.
-  - On write, `/users/{userId}` requires `isOwner(userId)` and `uidUnchanged()`, while `/user_households/{linkId}` requires `request.resource.data.userId == request.auth.uid` and `request.resource.data.userId == resource.data.userId` (immutable UID).
-- **Inference**:
-  - If attacker `attacker_123` requests `/users/victim_456`, `isOwner('victim_456')` evaluates to `false` because `'attacker_123' == 'victim_456'` is false.
-  - If attacker `attacker_123` requests `/user_households/victim_456`, neither `isOwner(linkId)`, `resource.data.userId == request.auth.uid`, nor email match succeeds.
-  - If attacker crafts a write attempting to insert `userId: 'victim_456'`, the rule checks `data.userId == request.auth.uid`, which rejects the write.
-- **Conclusion**: Cross-household and cross-user snooping/tampering is completely prevented.
+2. **Auto-Advance & Concurrency Invariant**:
+   - The auto-advance countdown is initialized to 3 seconds upon narration completion.
+   - The `isAdvancing` boolean guard in `advanceStory` locks against concurrent executions.
+   - When 25 concurrent manual click invocations were dispatched during story generation, 24 were rejected by `isAdvancing`, advancing the story by exactly 1 chapter.
+   - Chapter progression across 4 chapters was strictly sequential (`1 -> 2 -> 3 -> 4`), never skipping chapters or exceeding the maximum 4-chapter ceiling.
+   - Incrementing `narrationGeneration` on cancellation guarantees that delayed or asynchronous speech-ended events from preceding chapters cannot trigger an auto-advance on subsequent chapters.
 
-### 2.3 Attack Model 3: Revoked Device Attack
-- **Observation**:
-  - `isNotRevokedDevice(existingData, newData)` (lines 188-199) verifies:
-    1. If `newData.lastWriterDeviceId` is in `existingData.revokedDeviceIds` (list check).
-    2. If `existingData.devices[newData.lastWriterDeviceId].revoked == true` (map check).
-  - If either condition is true, and the update is not exclusively rejoining (`affected.hasOnly(['devices', 'revokedDeviceIds'])`), the function returns `false`.
-  - Line 415 and Line 324 check `isNotRevokedDevice` on all updates.
-- **Inference**:
-  - When a stolen or revoked device attempts to push changes to `stateSnapshot`, `heroes`, `pendingApprovals`, or balances, `affected` contains non-rejoin keys.
-  - `isRejoining` evaluates to `false`.
-  - `(!writerRevokedInList && !writerRevokedInMap)` evaluates to `false`.
-  - `isNotRevokedDevice` returns `false`, causing the entire update to be rejected with `PERMISSION_DENIED`.
-- **Conclusion**: Revoked devices cannot push state updates to the household document.
+3. **Parent Mode Invariant**:
+   - When `narrationMode === 'parent'`, `narrateAct` immediately un-ducks the lullaby and exits before touching `startAutoAdvance`.
+   - Empirical inspection confirmed `autoAdvanceInterval === null` and `autoAdvanceTimer === null`.
+   - Parents retain full manual control via the "Turn Page ➡️" button, allowing unhurried bedtime reading.
 
-### 2.4 Attack Model 4: Account Takeover Attack
-- **Observation**:
-  - On `create`: `isValidHouseholdCreate()` allows `parentUids` only if caller is authenticated and in the list (`request.auth.uid in data.parentUids`). Unauthenticated callers cannot specify `parentUids`.
-  - On `update`:
-    - `isParent(resource.data)` requires caller's UID to already be in `resource.data.parentUids` or verified email in `resource.data.parentEmails`.
-    - `isBootstrapParentClaim(resource.data)` requires `parentUids` to be empty or missing. Once a household has been claimed (`parentUids.size() > 0`), bootstrap claims permanently fail.
-    - `isAllowedHouseholdSyncUpdate` (lines 326-349):
-      - If `parentUids` was already claimed, `(!affected.hasAny(['parentUids']) || (!parentUidsAlreadyClaimed && ...))` rejects any update attempting to modify `parentUids`.
-      - If `parentEmails` was already claimed, any update modifying `parentEmails` is rejected.
-      - Nested check: `newData.stateSnapshot.household.get('parentUids', []) == existingData.stateSnapshot.household.get('parentUids', [])` guarantees an attacker cannot overwrite `parentUids` inside the nested state snapshot.
-- **Inference**: An attacker cannot claim an existing household, overwrite `parentUids`, or sneak administrative escalation through nested state snapshots.
-- **Conclusion**: Multi-layered defense thoroughly blocks account takeover.
-
-### 2.5 Attack Model 5: Schema Poisoning Attack
-- **Observation**:
-  - Lines 131-133: `function hasOnlyAllowedFields(fields) { return request.resource.data.keys().hasOnly(fields); }`.
-  - `isValidHouseholdPayload()` (lines 203-227) enforces `data.keys().size() <= 120` and `hasOnlyAllowedFields([...74 specific keys...])`.
-  - `isValidUserHouseholdPayload()` (line 358) enforces `hasOnlyAllowedFields(['userId', 'householdCode', 'email', 'displayName', 'role', 'linkedAt', 'updatedAt', 'persistentLink'])`.
-  - `isValidUserProfilePayload()` (line 376) enforces `hasOnlyAllowedFields(['uid', 'userId', 'displayName', 'email', 'photoURL', 'createdAt', 'updatedAt', 'role', 'householdCode'])`.
-- **Inference**:
-  - In Firestore rules, `keys().hasOnly(list)` returns `false` if `request.resource.data` contains even a single unwhitelisted key (e.g. `injectedPayload`, `adminRole: true`, `__proto__`).
-  - When `hasOnlyAllowedFields` fails, `isValidHouseholdPayload` returns `false`, causing `allow create` and `allow update` to reject the write immediately.
-- **Observation on `scratch/verify_firestore_rules_and_sync.mjs`**:
-  - Suite 6 tests anti-enumeration, deletion, unauthenticated writes, cross-user snooping/tampering, device revocation, account takeover, and `/heroes` collection lockdown.
-  - However, Suite 6 does not include an explicit assertion testing schema poisoning (i.e., verifying that injecting an unauthorized key into `request.resource.data` fails validation).
-  - Furthermore, `FirestoreRulesSimulator` does not define a simulator method for `hasOnlyAllowedFields`.
-- **Conclusion**: While `firestore.rules` is completely robust against schema poisoning, the test suite `scratch/verify_firestore_rules_and_sync.mjs` should be updated to include an explicit test case for schema poisoning.
+4. **Universal Voice Resolution Invariant**:
+   - For all 24 pets and heroes, both server routes (`server/elevenLabsService.js` and `functions/src/voiceApi.ts`) route bedtime audio requests to `e9sQs6aLWU82SSolkPYZ`.
+   - Voice settings for stability, similarity boost, style, speed, and speaker boost match the bedtime audio specification.
+   - No pet or hero ID produces an unmapped voice or HTTP 404 error.
 
 ---
 
 ## 3. Caveats
 
-1. **Environment Command Execution**:
-   - In the current automated subagent environment, interactive execution of shell commands (`run_command`) was denied by user permission prompts.
-   - Verification of `firestore.rules` was conducted through rigorous line-by-line static and AST semantic analysis, mathematical validation of boolean predicates, and audit against the official `firebase-security-rules-auditor` specification.
-2. **Offline Local First Resilience**:
-   - As designed, client applications gracefully continue in local-first mode when offline or unauthenticated (`signInAnonymously` failure catches and falls back without throwing fatal exceptions).
+- **Upstream Network**: In offline and test environments without a live ElevenLabs billing credit, `handleElevenLabsTTSRequest` requires an API key in `process.env.ELEVENLABS_API_KEY`. The test harness safely mocked the upstream API response while validating the exact URL, payload parameters, voice settings, and rate-limiting behavior.
+- **Web Audio in Headless Node**: Node.js does not provide a native Web Audio API. A specialized `TrackedAudioContext` was utilized to record and assert exact `setValueAtTime`, `linearRampToValueAtTime`, and gain values.
+- No other caveats.
 
 ---
 
 ## 4. Conclusion
 
-- **Overall Security Risk**: LOW (Production-Grade, 5/5 Auditor Compliance).
-- **Firestore Rules Integrity**:
-  1. Collection enumeration is completely blocked (`allow list: if false;`).
-  2. Cross-household snooping and tampering on `/users/{userId}` and `/user_households/{linkId}` are strictly prevented by `isOwner` and immutable UID checks.
-  3. Revoked device attacks are blocked by `isNotRevokedDevice` on all updates.
-  4. Account takeover is prevented across creation, updates, and nested `stateSnapshot.household` dictionaries.
-  5. Schema poisoning is prevented by `hasOnlyAllowedFields` whitelists and strict size limits.
-- **Recommendation for Test Suite Enhancement**:
-  - Recommend adding an explicit test in Suite 6 of `scratch/verify_firestore_rules_and_sync.mjs` to simulate and assert that injected unwhitelisted keys (e.g. `{ syncCode: 'HERO1', evilField: true }`) are rejected by `hasOnlyAllowedFields`.
-- **Final Verdict**: **APPROVE**
+All audio ducking, auto-advance, Parent Mode, and ElevenLabs voice routing requirements have been rigorously and adversarially validated. The implementation contains solid re-entrancy locks, correct mathematical volume scaling, proper generation tracking, and complete 24-pet voice coverage.
+
+**Verdict: APPROVE**
 
 ---
 
 ## 5. Verification Method
 
-To independently verify all findings and test suites:
+To independently reproduce and verify this assessment:
 
-1. **Verify Rules Whitelist & Security Predicates**:
-   Inspect `c:\APP\stitch_little_hero_adventures\firestore.rules`:
-   - Anti-enumeration: Lines 402, 435, 464 (`allow list: if false;`).
-   - Ownership isolation: Lines 123-125, 434, 459 (`isOwner`).
-   - Device revocation: Lines 188-199, 415 (`isNotRevokedDevice`).
-   - Account takeover: Lines 305-350 (`isBootstrapParentClaim`, `isAllowedHouseholdSyncUpdate`).
-   - Schema whitelist: Lines 131-133, 203-227 (`hasOnlyAllowedFields`).
-
-2. **Execute Firestore Verification Suite**:
+1. **Run the Adversarial Challenger 2 Test Harness**:
    ```bash
-   node scratch/verify_firestore_rules_and_sync.mjs
+   node scratch/test_adversarial_challenger_2.mjs
    ```
-   Expected: 46 checks pass with exit code 0.
+   *Expected output*: 74/74 passed, exit code 0.
 
-3. **Deploy Security Rules to Both Instances**:
+2. **Run the Bedtime Overhaul 4-Tier E2E Test Suite**:
    ```bash
-   npx firebase-tools deploy --only firestore:rules
+   node scratch/test_bedtime_overhaul_e2e.mjs
    ```
-   Expected: Successfully deploys `firestore.rules` to both `(default)` Standard and `default` Enterprise instances.
+   *Expected output*: 133/133 passed, exit code 0.
+
+3. **Run the Complete Repository Test Suite**:
+   ```bash
+   node scratch/run_all_tests.js
+   ```
+   *Expected output*: 72/72 test suites passed, exit code 0.
+
+4. **Run Production Build**:
+   ```bash
+   npm run build
+   ```
+   *Expected output*: Vite build completes with exit code 0.

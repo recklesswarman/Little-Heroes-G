@@ -1,4 +1,4 @@
-const CACHE_NAME = 'little-heroes-v3.6.0-ai-illustrations-20261024';
+const CACHE_NAME = 'little-heroes-v3.6.1-bedtime-overhaul-20261025';
 const STATIC_ASSETS = [
   './',
   './index.html',

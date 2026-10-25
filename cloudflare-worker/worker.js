@@ -55,6 +55,10 @@ export default {
       const prompt = body.prompt;
       const model = body.model || "@cf/bytedance/stable-diffusion-xl-lightning";
       const format = body.format || "image"; // "image" | "base64" | "json"
+      const seed = body.seed !== undefined && body.seed !== null
+        ? Number(body.seed)
+        : Math.floor(Math.random() * 2147483647);
+      const negative_prompt = body.negative_prompt || "pink, purple, magenta, violet, neon pink, scary, dark, deformed, blurry";
 
       if (!prompt || typeof prompt !== "string") {
         return json({ error: "Prompt is required and must be a string" }, 400, corsHeaders);
@@ -67,14 +71,20 @@ export default {
         }, 500, corsHeaders);
       }
 
+      const aiOptions = {
+        prompt,
+        seed,
+        negative_prompt
+      };
+
       // Generate image using Cloudflare Workers AI
       let result;
       try {
-        result = await env.AI.run(model, { prompt });
+        result = await env.AI.run(model, aiOptions);
       } catch (aiErr) {
         // Fallback to SDXL base 1.0 if selected model is busy or unavailable
         console.warn(`Model ${model} failed, falling back to SDXL base:`, aiErr.message);
-        result = await env.AI.run("@cf/stabilityai/stable-diffusion-xl-base-1.0", { prompt });
+        result = await env.AI.run("@cf/stabilityai/stable-diffusion-xl-base-1.0", aiOptions);
       }
 
       // Return raw JPEG image
@@ -98,7 +108,8 @@ export default {
         success: true,
         dataUri,
         mimeType: "image/jpeg",
-        prompt
+        prompt,
+        seed
       }, 200, corsHeaders);
 
     } catch (err) {

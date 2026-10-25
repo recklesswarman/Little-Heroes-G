@@ -83,27 +83,29 @@ export async function handleElevenLabsTTSRequest(req, res) {
       return res.status(400).json({ error: 'No readable speech text found.' });
     }
 
+    // Bedtime narration tuning vs companion/workout tuning
+    const isBedtime = voiceStyle === 'bedtime';
+
     // Resolve pet and voice ID
     // Universal resolution: All 24 pets and bedtime narration default to the main ElevenLabs voice
+    // Strictly route bedtime voice requests (voiceStyle === 'bedtime') to canonical voice ID e9sQs6aLWU82SSolkPYZ across all children, pets, and stories
     const normalizedPetId = (getPetById(petId)?.key || String(petId || 'rex')).toLowerCase();
     const mainVoiceId = process.env.ELEVENLABS_REX_VOICE_ID || DEFAULT_MAIN_VOICE_ID;
-    const voiceId = ELEVENLABS_VOICE_MAP[normalizedPetId] || mainVoiceId;
+    const voiceId = isBedtime ? (process.env.ELEVENLABS_REX_VOICE_ID || DEFAULT_MAIN_VOICE_ID) : (ELEVENLABS_VOICE_MAP[normalizedPetId] || mainVoiceId);
 
-    const speechSpeed = getSpeechSpeed();
+    const speechSpeed = isBedtime ? 0.85 : getSpeechSpeed();
     const cacheKey = getTtsCacheKey(cleanText, voiceId, speechSpeed, voiceStyle);
     const cached = ttsCache.get(cacheKey);
     if (cached) {
       return res.json({ ...cached, cached: true });
     }
 
-    // Bedtime narration tuning vs companion/workout tuning
-    const isBedtime = voiceStyle === 'bedtime';
     const voiceSettings = isBedtime ? {
       stability: 0.65,
       similarity_boost: 0.80,
       style: 0.35,
       use_speaker_boost: true,
-      speed: speechSpeed
+      speed: 0.85
     } : {
       stability: 0.5,
       similarity_boost: 0.75,
