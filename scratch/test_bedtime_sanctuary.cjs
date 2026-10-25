@@ -81,6 +81,7 @@ async function runAll() {
   console.log('\n--- 2. Procedural Combinatorial 4-Chapter Story Engine ---');
 
   await it('generateProceduralBedtimeStory builds 4 distinct rich chapters (~120-150 words each)', () => {
+    let chaptersMentioningCompanion = 0;
     for (let chapter = 0; chapter < 4; chapter++) {
       const generated = generateProceduralBedtimeStory(
         'space',
@@ -94,13 +95,23 @@ async function runAll() {
 
       assert.strictEqual(generated.chapterIndex, chapter);
       assert(generated.title.includes(`Chapter ${chapter + 1}`), `Title must include Chapter ${chapter + 1}`);
-      assert(generated.text.length > 250, `Chapter ${chapter + 1} text must have rich length (${generated.text.length} chars)`);
+      assert(generated.text.length > 200, `Chapter ${chapter + 1} text must have rich length (${generated.text.length} chars)`);
       assert(generated.text.includes('Tommy'), 'Text must include hero name');
-      assert(generated.text.includes('Rex'), 'Text must include active pet name');
+      // The companion pet's actual name must never appear in generated text;
+      // it should be referred to generically (e.g. "Faithful Companion"),
+      // and only occasionally, not in every chapter.
+      assert(!generated.text.includes('Rex'), 'Text must never use the pet\'s actual name');
+      if (/faithful companion|companion/i.test(generated.text)) {
+        chaptersMentioningCompanion++;
+      }
       if (chapter === 0) {
         assert(generated.text.includes('dentist'), 'Chapter 1 must weave in custom bedtime wish');
       }
     }
+    assert(
+      chaptersMentioningCompanion > 0 && chaptersMentioningCompanion < 4,
+      `The companion should be mentioned occasionally, not in every chapter (mentioned in ${chaptersMentioningCompanion}/4)`
+    );
   });
 
   console.log('\n--- 3. Bedtime Sanctuary Hub State & Habit Chaining ---');

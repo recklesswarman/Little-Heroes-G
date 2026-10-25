@@ -122,10 +122,9 @@ export async function handleStoryIllustrationRequest(req, res) {
                       process.env.FREE_IMAGE_API_URL || '';
 
     const apiKey = process.env.CLOUDFLARE_IMAGE_API_KEY ||
-                   process.env.FREE_IMAGE_API_KEY ||
-                   'little-heroes-secret-key';
+                   process.env.FREE_IMAGE_API_KEY || '';
 
-    if (workerUrl) {
+    if (workerUrl && apiKey) {
       try {
         const cleanWorkerUrl = workerUrl.endsWith('/') ? workerUrl : `${workerUrl}/`;
         const cfRes = await fetch(cleanWorkerUrl, {

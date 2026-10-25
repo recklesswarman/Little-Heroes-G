@@ -89,7 +89,7 @@ console.log(`✓ Server Route handleStoryIllustrationRequest verified! Image sou
 console.log('5. Testing Procedural Bedtime Story Integration...');
 const realm = getBedtimeRealm('space');
 assert(realm && realm.id === 'space', 'Realm space must exist');
-const proceduralAct = generateProceduralBedtimeStory('space', 'bravery', 'Liam', 'Rex', 'Lost Blue Socks', 0, []);
+const proceduralAct = generateProceduralBedtimeStory('space', 'brave_dark', 'Liam', 'Rex', 'Lost Blue Socks', 0, []);
 assert(proceduralAct.title && proceduralAct.chapterText, 'Procedural act must generate title and text');
 console.log(`✓ Procedural act generated: "${proceduralAct.title}"`);
 
