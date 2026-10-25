@@ -1,4 +1,4 @@
-const CACHE_NAME = 'little-heroes-v3.6.2-bedtime-multihost-sync-20261025';
+const CACHE_NAME = 'little-heroes-v3.6.3-bedtime-multihost-parity-20261025';
 const STATIC_ASSETS = [
   './',
   './index.html',

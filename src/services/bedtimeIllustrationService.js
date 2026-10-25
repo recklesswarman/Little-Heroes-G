@@ -158,8 +158,25 @@ export class BedtimeIllustrationService {
             });
 
             if (directRes.ok) {
-              const cfData = await directRes.json();
-              imageUrl = cfData.dataUri || cfData.imageUrl || '';
+              const contentType = directRes.headers.get('content-type') || '';
+              if (contentType.includes('application/json')) {
+                const cfData = await directRes.json();
+                imageUrl = cfData.dataUri || cfData.imageUrl || '';
+              } else {
+                // Raw binary image (JPEG/PNG) from Cloudflare Workers AI
+                const arrayBuffer = await directRes.arrayBuffer();
+                if (typeof btoa !== 'undefined') {
+                  let binary = '';
+                  const bytes = new Uint8Array(arrayBuffer);
+                  const len = bytes.byteLength;
+                  for (let i = 0; i < len; i += 8192) {
+                    binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + 8192, len)));
+                  }
+                  imageUrl = `data:${contentType || 'image/jpeg'};base64,${btoa(binary)}`;
+                } else if (typeof Buffer !== 'undefined') {
+                  imageUrl = `data:${contentType || 'image/jpeg'};base64,${Buffer.from(arrayBuffer).toString('base64')}`;
+                }
+              }
             }
           } catch (cfErr) {
             console.warn('Direct Cloudflare Workers AI call note:', cfErr.message);
