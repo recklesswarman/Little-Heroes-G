@@ -1,25 +1,24 @@
-// HTTPS proxy for the two companion-voice TTS endpoints (ElevenLabs,
-// Gemini). The app has three live URLs, but only the App Hosting backend
-// (server.js) runs a real Express server -- GitHub Pages and the plain
-// Firebase Hosting site (.web.app/.firebaseapp.com) serve static files
-// only, so a relative fetch('/api/elevenlabs/tts') from those origins has
-// nothing to answer it and voiceService.js silently falls back to the
-// browser's generic speechSynthesis voice. firebase.json's hosting.rewrites
-// routes "/api/elevenlabs/**" and "/api/gemini/tts" here instead, so the
-// companion voice works the same way everywhere. Everything else --
-// /api/gemini/chat (already has its own client-side fallback to the
-// chatWithPet callable below) and the WebSocket-only /api/gemini/live Rex
-// companion (can't be proxied through a Hosting rewrite at all) -- is
-// intentionally left alone.
+// Bedtime AI Storybook generation (text only -- voice narration is no
+// longer handled here). The app has three live URLs, but only the App
+// Hosting backend (server.js) runs a real Express server -- GitHub Pages
+// and the plain Firebase Hosting site (.web.app/.firebaseapp.com) serve
+// static files only, so a relative fetch('/api/gemini/bedtime-story') from
+// those origins has nothing to answer it. firebase.json's hosting.rewrites
+// routes "/api/rex/bedtime-story" and "/api/gemini/bedtime-story" here
+// instead. Everything else -- /api/gemini/chat (already has its own
+// client-side fallback to the chatWithPet callable below), the
+// WebSocket-only /api/gemini/live Rex companion (can't be proxied through a
+// Hosting rewrite at all), and voice narration (now served by the
+// standalone little-heroes-tts-service, called directly by the client) --
+// is intentionally left alone / out of scope for this file.
 //
-// This mirrors server/elevenLabsService.js and the TTS half of
-// server/geminiService.js as closely as possible, kept as a standalone copy
-// rather than an import: `firebase deploy --only functions` only uploads
-// this functions/ directory, so a relative import reaching outside it would
-// build fine locally and then fail at runtime once deployed.
+// This mirrors the bedtime-story half of server/geminiService.js as
+// closely as possible, kept as a standalone copy rather than an import:
+// `firebase deploy --only functions` only uploads this functions/
+// directory, so a relative import reaching outside it would build fine
+// locally and then fail at runtime once deployed.
 
 import { onRequest } from "firebase-functions/v2/https";
-import { createHash } from "crypto";
 import express, { Request, Response } from "express";
 
 const app = express();
@@ -59,266 +58,9 @@ function getRequestIp(req: Request): string {
   return req.socket?.remoteAddress || req.ip || "unknown";
 }
 
-function cleanSpeechText(text: string): string {
-  return text
-    .replace(/\*.*?\*/g, " ")
-    .replace(/\[.*?\]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
 }
-
-// Only Rex has an ElevenLabs voice configured today; every other companion
-// pet is meant to fall straight through to the Gemini tier. The roster's id
-// "1" and any id/key containing "rex" both resolve to Rex here, matching
-// getPetById's resolution in src/data/petsData.js (which defaults to Rex,
-// PETS_DATABASE[0], for an unrecognized id) closely enough without needing
-// to import that much larger, UI-focused pet roster into this bundle.
-function normalizePetId(petId: unknown): string {
-  if (petId === undefined || petId === null || petId === "") return "rex";
-  const idStr = String(petId).toLowerCase().trim();
-  if (idStr === "1" || idStr.includes("rex")) return "rex";
-  return idStr;
-}
-
-// ===========================================================================
-// ElevenLabs TTS (primary companion voice tier) -- /api/elevenlabs/tts
-// ===========================================================================
-
-interface TtsCachePayload {
-  success: true;
-  audio: string;
-  mimeType: string;
-  voice: string;
-  sampleRate: number;
-  petId: string;
-}
-
-const ttsCache = new Map<string, TtsCachePayload>();
-const TTS_CACHE_MAX_ENTRIES = 200;
-
-function getTtsCacheKey(cleanText: string, voiceId: string, speed: number, voiceStyle: string = "companion"): string {
-  return createHash("sha256").update(`${cleanText}|${voiceId}|${speed}|${voiceStyle}`).digest("hex");
-}
-
-function cacheTtsResponse(key: string, payload: TtsCachePayload): void {
-  ttsCache.set(key, payload);
-  if (ttsCache.size > TTS_CACHE_MAX_ENTRIES) {
-    const oldestKey = ttsCache.keys().next().value;
-    if (oldestKey !== undefined) ttsCache.delete(oldestKey);
-  }
-}
-
-function elevenLabsTtsUrl(voiceId: string): string {
-  return `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}/stream?output_format=pcm_24000`;
-}
-
-// ElevenLabs' speed setting is valid from 0.7 (slowest) to 1.2 (fastest),
-// default 1.0. Slower reads better for toddlers/young kids; configurable via
-// env so it can be tuned without a code change or redeploy. Clamped so a bad
-// env value can never send an out-of-range request upstream.
-const DEFAULT_SPEECH_SPEED = 0.85;
-const DEFAULT_REX_VOICE_ID = "e9sQs6aLWU82SSolkPYZ";
-function getSpeechSpeed(): number {
-  const raw = Number(process.env.ELEVENLABS_SPEECH_SPEED);
-  if (!Number.isFinite(raw)) return DEFAULT_SPEECH_SPEED;
-  return Math.min(1.2, Math.max(0.7, raw));
-}
-
-app.post("/api/elevenlabs/tts", async (req: Request, res: Response) => {
-  try {
-    if (isRateLimited(`elevenlabs-tts:${getRequestIp(req)}`, 30, 60_000)) {
-      res.status(429).json({ error: "Too many requests, please slow down." });
-      return;
-    }
-
-    const apiKey = process.env.ELEVENLABS_API_KEY;
-    if (!apiKey) {
-      // Not configured -- this is an expected, silent "not available" state
-      // (the client falls back to Gemini TTS), not a server error.
-      res.status(503).json({ error: "ElevenLabs is not configured in server environment." });
-      return;
-    }
-
-    const { text, petId, voiceStyle } = (req.body || {}) as { text?: unknown; petId?: unknown; voiceStyle?: string };
-    if (!text || typeof text !== "string" || !text.trim()) {
-      res.status(400).json({ error: "Text prompt is required." });
-      return;
-    }
-
-    const cleanText = cleanSpeechText(text);
-    if (!cleanText) {
-      res.status(400).json({ error: "No readable speech text found." });
-      return;
-    }
-
-    const normalizedPetId = normalizePetId(petId);
-    // Universal resolution: All 24 pets and bedtime storytelling fall back to the main voice, eliminating 404s
-    const voiceId = process.env.ELEVENLABS_REX_VOICE_ID || DEFAULT_REX_VOICE_ID;
-
-    const speechSpeed = getSpeechSpeed();
-    const styleKey = typeof voiceStyle === "string" ? voiceStyle : "companion";
-    const cacheKey = getTtsCacheKey(cleanText, voiceId, speechSpeed, styleKey);
-    const cached = ttsCache.get(cacheKey);
-    if (cached) {
-      res.json({ ...cached, cached: true });
-      return;
-    }
-
-    const isBedtime = styleKey === "bedtime";
-    const voiceSettings = isBedtime ? {
-      stability: 0.65,
-      similarity_boost: 0.80,
-      style: 0.35,
-      use_speaker_boost: true,
-      speed: speechSpeed
-    } : {
-      stability: 0.5,
-      similarity_boost: 0.75,
-      style: 0.3,
-      use_speaker_boost: true,
-      speed: speechSpeed
-    };
-
-    const upstream = await fetch(elevenLabsTtsUrl(voiceId), {
-      method: "POST",
-      headers: {
-        "xi-api-key": apiKey,
-        "Content-Type": "application/json",
-        "Accept": "audio/pcm"
-      },
-      body: JSON.stringify({
-        text: cleanText,
-        model_id: "eleven_turbo_v2_5",
-        voice_settings: voiceSettings
-      })
-    });
-
-    if (!upstream.ok) {
-      const errText = await upstream.text().catch(() => "");
-      console.warn("ElevenLabs TTS upstream error:", upstream.status, errText.slice(0, 300));
-      res.status(502).json({ error: "ElevenLabs voice generation failed." });
-      return;
-    }
-
-    const arrayBuffer = await upstream.arrayBuffer();
-    const audioBase64 = Buffer.from(arrayBuffer).toString("base64");
-
-    const responsePayload: TtsCachePayload = {
-      success: true,
-      audio: audioBase64,
-      mimeType: "audio/pcm;rate=24000",
-      voice: voiceId,
-      sampleRate: 24000,
-      petId: normalizedPetId
-    };
-    cacheTtsResponse(cacheKey, responsePayload);
-
-    res.json(responsePayload);
-  } catch (error) {
-    const message = errorMessage(error, "Failed to generate ElevenLabs voice speech");
-    console.error("ElevenLabs TTS proxy error:", message);
-    res.status(500).json({ error: message });
-  }
-});
-
-// ===========================================================================
-// Gemini TTS (secondary companion voice tier) -- /api/gemini/tts
-// ===========================================================================
-
-const PET_VOICE_MAP: Record<string, string> = {
-  rex: "Puck",
-  bella: "Aoede",
-  barnaby: "Fenrir",
-  pip: "Zephyr",
-  aqua: "Charon",
-  aqua_drake: "Charon"
-};
-
-const PET_NAMES: Record<string, string> = {
-  rex: "Rex the Dino",
-  bella: "Bella the Bunny",
-  barnaby: "Barnaby the Bear",
-  pip: "Pip the Phoenix",
-  aqua: "Aqua Drake",
-  aqua_drake: "Aqua Drake"
-};
-
-app.post("/api/gemini/tts", async (req: Request, res: Response) => {
-  try {
-    if (isRateLimited(`gemini-tts:${getRequestIp(req)}`, 30, 60_000)) {
-      res.status(429).json({ error: "Too many requests, please slow down." });
-      return;
-    }
-
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      res.status(503).json({ error: "Gemini service is not initialized in server environment." });
-      return;
-    }
-
-    const { text, petId, voice } = (req.body || {}) as { text?: unknown; petId?: unknown; voice?: unknown };
-    if (!text || typeof text !== "string" || !text.trim()) {
-      res.status(400).json({ error: "Text prompt is required." });
-      return;
-    }
-
-    const cleanText = cleanSpeechText(text);
-    if (!cleanText) {
-      res.status(400).json({ error: "No readable speech text found." });
-      return;
-    }
-
-    const normalizedPetId = String(petId || "rex").toLowerCase();
-    const selectedVoice = (typeof voice === "string" && voice) || PET_VOICE_MAP[normalizedPetId] || "Puck";
-    const personaName = PET_NAMES[normalizedPetId] || PET_NAMES.rex;
-
-    const { GoogleGenAI, Modality } = await import("@google/genai");
-    const ai = new GoogleGenAI({ apiKey });
-
-    const response = await ai.models.generateContent({
-      model: "gemini-3.1-flash-tts-preview",
-      contents: [{
-        parts: [{
-          text: `Read cheerfully and warmly in a kid-friendly companion tone for ${personaName}: "${cleanText}"`
-        }]
-      }],
-      config: {
-        responseModalities: [Modality.AUDIO],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: selectedVoice }
-          }
-        }
-      }
-    });
-
-    const part = response.candidates?.[0]?.content?.parts?.[0];
-    const audioData = part?.inlineData?.data;
-    const mimeType = part?.inlineData?.mimeType || "audio/pcm;rate=24000";
-
-    if (!audioData) {
-      res.status(502).json({ error: "No audio generated by Gemini TTS" });
-      return;
-    }
-
-    res.json({
-      success: true,
-      audio: audioData,
-      mimeType,
-      voice: selectedVoice,
-      sampleRate: 24000,
-      petId: normalizedPetId
-    });
-  } catch (error) {
-    const message = errorMessage(error, "Failed to generate voice speech");
-    console.error("Gemini TTS proxy error:", message);
-    res.status(500).json({ error: message });
-  }
-});
 
 // ===========================================================================
 // Bedtime AI Storybook Routes -- /api/rex/bedtime-story & /api/gemini/bedtime-story
@@ -712,6 +454,6 @@ Return ONLY a valid JSON object matching this schema (no markdown, no backticks,
 });
 
 export const api = onRequest(
-  { secrets: ["ELEVENLABS_API_KEY", "GEMINI_API_KEY"] },
+  { secrets: ["GEMINI_API_KEY"] },
   app
 );

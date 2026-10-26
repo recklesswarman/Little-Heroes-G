@@ -1,20 +1,21 @@
 #!/usr/bin/env node
 // One-off, safe-to-re-run helper that pre-populates the toothbrush battle's
-// coaching lines in the ElevenLabs TTS server-side cache (see
-// server/elevenLabsService.js) by asking a running server to generate each
-// one, exactly as a kid's browser would during a real battle. Purely an
-// optimization: the cache also warms up organically from real gameplay (the
-// battle's lines are a small, repeating set), so running this is optional --
-// it just means the FIRST kid to hit each line after a deploy/restart
-// doesn't get the one-time cold-cache delay.
+// coaching lines in the Kokoro TTS microservice's server-side cache (see
+// little-heroes-tts-service/main.py) by asking a running instance to
+// generate each one, exactly as a kid's browser would during a real battle.
+// Purely an optimization: the cache also warms up organically from real
+// gameplay (the battle's lines are a small, repeating set), so running this
+// is optional -- it just means the FIRST kid to hit each line after a
+// deploy/restart doesn't get the one-time cold-cache delay.
 //
 // Usage:
-//   BATTLE_VOICE_CACHE_BASE_URL=https://your-deployed-app.example node scripts/warm-battle-voice-cache.mjs
-// Defaults to http://localhost:3000 if the env var isn't set.
+//   BATTLE_VOICE_CACHE_BASE_URL=https://your-deployed-tts-service.example node scripts/warm-battle-voice-cache.mjs
+// Defaults to http://localhost:8080 (the Kokoro service's local dev port) if
+// the env var isn't set.
 //
-// Requires network access to the target server (and, on a cache miss, from
-// that server out to api.elevenlabs.io) -- run this from an environment
-// that actually has it, such as your own machine or CI, not a sandboxed one.
+// Requires network access to the target Kokoro TTS service -- run this from
+// an environment that actually has it, such as your own machine or CI, not a
+// sandboxed one.
 
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
@@ -27,7 +28,7 @@ const { HYGIENE_BOSSES, SUGAR_ATTACK_HAZARDS, DENTAL_QUADRANTS } = await import(
   path.join(repoRoot, 'src/data/hygieneBossesData.js')
 );
 
-const BASE_URL = process.env.BATTLE_VOICE_CACHE_BASE_URL || 'http://localhost:3000';
+const BASE_URL = process.env.BATTLE_VOICE_CACHE_BASE_URL || 'http://localhost:8080';
 
 // Plain double-quoted literals passed straight to voicePrompts.speak(...) or
 // assigned to the battle's coach-text variable -- these are the static
@@ -47,7 +48,7 @@ const STATIC_LINE_PATTERNS = [
   // Only calls actually marked { instant: true } -- these three files also
   // contain non-battle voicePrompts.speak(...) calls (e.g. a bedtime-mode
   // announcement in WorldAdventureMapView.js) that go through the normal
-  // ElevenLabs/Gemini tiers already and have no need for this cache.
+  // Kokoro TTS tier already and have no need for this cache.
   /voicePrompts\.speak\(\s*"([^"]+)"[^)]*instant:\s*true[^)]*\)/g
 ];
 
@@ -92,7 +93,7 @@ function buildLineSet() {
 }
 
 async function warmLine(text) {
-  const res = await fetch(`${BASE_URL}/api/elevenlabs/tts`, {
+  const res = await fetch(`${BASE_URL}/tts`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text, petId: 'rex' })

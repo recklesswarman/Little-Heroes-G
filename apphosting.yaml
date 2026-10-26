@@ -25,27 +25,17 @@ env:
     availability:
       - BUILD
       - RUNTIME
-  # ElevenLabs voice for Rex the Dino. The voice id isn't sensitive (just an
-  # account identifier), so it's a plain value; the API key IS sensitive and
-  # is bound to a Secret Manager secret of the same name instead of a value
-  # -- set its real value once with:
-  #   firebase apphosting:secrets:set ELEVENLABS_API_KEY
-  # (interactive prompt, never written to this file or to git). RUNTIME-only
-  # and never VITE_-prefixed, so it's never bundled into client JS.
-  - variable: ELEVENLABS_REX_VOICE_ID
-    value: e9sQs6aLWU82SSolkPYZ
+  # Self-hosted Kokoro TTS microservice (little-heroes-tts-service), replacing
+  # the former ElevenLabs/Gemini TTS tiers. No API key needed -- Kokoro runs
+  # fully offline/locally. BUILD-scoped (and VITE_-prefixed) because this
+  # origin serves the client bundle directly rather than via the
+  # firebase.json `/api/tts` Hosting rewrite, so the client needs the real
+  # Cloud Run URL baked in at build time. Update this value once the service
+  # is deployed (see little-heroes-tts-service/README.md).
+  - variable: VITE_KOKORO_TTS_URL
+    value: https://little-heroes-tts-kokoro-REPLACE_WITH_REAL_URL.a.run.app
     availability:
-      - RUNTIME
-  # 0.7 (slowest) - 1.2 (fastest), default 1.0. Slowed down for toddlers/young
-  # kids -- tune here (no Secret Manager round-trip needed, it's not sensitive).
-  - variable: ELEVENLABS_SPEECH_SPEED
-    value: "0.85"
-    availability:
-      - RUNTIME
-  - variable: ELEVENLABS_API_KEY
-    secret: ELEVENLABS_API_KEY
-    availability:
-      - RUNTIME
+      - BUILD
   # Google Gemini API key for live voice companion and AI storybook.
   # Bound to a Secret Manager secret so it is never exposed in client URLs or bundles.
   # -- set once with: firebase apphosting:secrets:set GEMINI_API_KEY

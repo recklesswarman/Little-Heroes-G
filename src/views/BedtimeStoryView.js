@@ -11,7 +11,7 @@ import { store, KID_AVATARS } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
 import { BEDTIME_REALMS, BEDTIME_MORALS, CONSTELLATION_STICKERS } from '../data/bedtimeStoryData.js';
-import { bedtimeStoryService } from '../services/bedtimeStoryService.js';
+import { bedtimeStoryService, resolveBedtimeNarratorPetId } from '../services/bedtimeStoryService.js';
 import { speakCompanion, stopCompanionAudio, prefetchCompanionAudio } from '../services/voiceService.js';
 import { BedtimeStoryStage3D } from '../components/BedtimeStoryStage3D.js';
 
@@ -944,7 +944,7 @@ export function setupBedtimeStoryListeners() {
     if (session && session.acts) {
       const currentAct = session.acts[session.actNumber - 1];
       if (currentAct) {
-        speakCompanion(currentAct.text, session.petId, null, { voiceStyle: 'bedtime', timeoutMs: 25000 });
+        speakCompanion(currentAct.text, resolveBedtimeNarratorPetId(session.petId), null, { voiceStyle: 'bedtime', timeoutMs: 25000 });
       }
     }
   });
@@ -1063,7 +1063,7 @@ export function setupBedtimeStoryListeners() {
       const act = chapters[currentSavedActIndex];
       if (act) {
         Sound.bloop();
-        speakCompanion(act.text, readingSavedStory.petId || '1', null, { voiceStyle: 'bedtime', timeoutMs: 25000 });
+        speakCompanion(act.text, resolveBedtimeNarratorPetId(readingSavedStory.petId || '1'), null, { voiceStyle: 'bedtime', timeoutMs: 25000 });
       }
     }
   });
@@ -1132,7 +1132,7 @@ export function setupBedtimeStoryListeners() {
       const nextAct = session.acts[currentActNumber];
       const nextText = nextAct.chapterText || nextAct.text;
       if (nextText) {
-        prefetchCompanionAudio(nextText, session.petId || pet?.id || 'rex', {
+        prefetchCompanionAudio(nextText, resolveBedtimeNarratorPetId(session.petId || pet?.id || 'rex'), {
           voiceStyle: 'bedtime',
           rate: [0.94, 0.88, 0.82, 0.76][Math.min(currentActNumber, 3)]
         }).catch(() => {});

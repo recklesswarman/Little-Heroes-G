@@ -1,16 +1,16 @@
 // Pet Companion & Rex the Dino Spoken Voice Guidance Service
 // Architecture:
-// 1. Primary: ElevenLabs voice, where a pet has one configured (/api/elevenlabs/tts)
-// 2. Secondary: Realistic Human Kid-Friendly Voice via Gemini 3.1 Flash TTS (/api/gemini/tts)
-// 3. Resilient Fallback: High-Fidelity Cartoon Speech Synthesis with device-native voice
-// 4. Multi-Pet Pitch & Persona Tuning (Rex the Dino, Aqua Drake, Bella, Barnaby, Pip)
-// 5. Browser Autoplay & Gesture Pre-Unlock Engine
+// 1. Primary: self-hosted Kokoro TTS microservice (/api/tts), with a distinct
+//    voice per companion pet resolved centrally in that service (see
+//    little-heroes-tts-service/voices.py)
+// 2. Resilient Fallback: High-Fidelity Cartoon Speech Synthesis with device-native voice
+// 3. Multi-Pet Pitch & Persona Tuning (24 companion pets)
+// 4. Browser Autoplay & Gesture Pre-Unlock Engine
 
 import { store } from '../state/store.js';
 import { DINO_WORKOUTS } from '../data/petsData.js';
 
-const ELEVENLABS_TTS_ENDPOINT = '/api/elevenlabs/tts';
-const TTS_ENDPOINT = '/api/gemini/tts';
+const KOKORO_TTS_ENDPOINT = '/api/tts';
 
 // Zero-latency client-side audio cache for gross-motor cadence cues and companion audio clips
 export const workoutAudioClipCache = new Map();
@@ -29,7 +29,23 @@ export function normalizePetKey(petId) {
     '5': 'chomper',
     '6': 'brachio',
     '7': 'dippy',
-    '8': 'spino'
+    '8': 'spino',
+    '9': 'sparky',
+    '10': 'aero',
+    '11': 'blaze',
+    '12': 'hydra',
+    '13': 'luna',
+    '14': 'kira',
+    '15': 'boulder',
+    '16': 'cosmo',
+    '17': 'leo',
+    '18': 'stripe',
+    '19': 'fang',
+    '20': 'scout',
+    '21': 'gnasher',
+    '22': 'shadow-sm',
+    '23': 'barnaby',
+    '24': 'ollie'
   };
   return idMap[raw] || raw;
 }
@@ -44,197 +60,52 @@ export function getAudioCacheKey(text, petId = 'rex', voiceStyle = 'default') {
   return style !== 'default' ? `${norm}:${style}:${clean}` : `${norm}:${clean}`;
 }
 
-export const COMPANION_VOICE_PROFILES = {
-  rex: {
-    id: 'rex',
-    name: 'Rex the Dino',
-    pitch: 1.25,
-    rate: 0.95,
-    volume: 1.0,
-    geminiVoice: 'Puck',
-    preferredVoice: 'daniel'
-  },
-  '1': {
-    id: '1',
-    name: 'Rex the Dino',
-    pitch: 1.25,
-    rate: 0.95,
-    volume: 1.0,
-    geminiVoice: 'Puck',
-    preferredVoice: 'daniel'
-  },
-  raptor: {
-    id: 'raptor',
-    name: 'Raptor the Velociraptor',
-    pitch: 1.35,
-    rate: 1.05,
-    volume: 1.0,
-    geminiVoice: 'Zephyr',
-    preferredVoice: 'daniel'
-  },
-  '2': {
-    id: '2',
-    name: 'Raptor the Velociraptor',
-    pitch: 1.35,
-    rate: 1.05,
-    volume: 1.0,
-    geminiVoice: 'Zephyr',
-    preferredVoice: 'daniel'
-  },
-  stego: {
-    id: 'stego',
-    name: 'Stego the Stegosaurus',
-    pitch: 0.90,
-    rate: 0.88,
-    volume: 1.0,
-    geminiVoice: 'Fenrir',
-    preferredVoice: 'daniel'
-  },
-  '3': {
-    id: '3',
-    name: 'Stego the Stegosaurus',
-    pitch: 0.90,
-    rate: 0.88,
-    volume: 1.0,
-    geminiVoice: 'Fenrir',
-    preferredVoice: 'daniel'
-  },
-  pterry: {
-    id: 'pterry',
-    name: 'Pterry the Pterodactyl',
-    pitch: 1.40,
-    rate: 1.02,
-    volume: 1.0,
-    geminiVoice: 'Aoede',
-    preferredVoice: 'daniel'
-  },
-  '4': {
-    id: '4',
-    name: 'Pterry the Pterodactyl',
-    pitch: 1.40,
-    rate: 1.02,
-    volume: 1.0,
-    geminiVoice: 'Aoede',
-    preferredVoice: 'daniel'
-  },
-  chomper: {
-    id: 'chomper',
-    name: 'Chomper the Compsognathus',
-    pitch: 1.45,
-    rate: 1.08,
-    volume: 1.0,
-    geminiVoice: 'Puck',
-    preferredVoice: 'daniel'
-  },
-  '5': {
-    id: '5',
-    name: 'Chomper the Compsognathus',
-    pitch: 1.45,
-    rate: 1.08,
-    volume: 1.0,
-    geminiVoice: 'Puck',
-    preferredVoice: 'daniel'
-  },
-  brachio: {
-    id: 'brachio',
-    name: 'Brachio the Brachiosaurus',
-    pitch: 0.85,
-    rate: 0.85,
-    volume: 1.0,
-    geminiVoice: 'Charon',
-    preferredVoice: 'daniel'
-  },
-  '6': {
-    id: '6',
-    name: 'Brachio the Brachiosaurus',
-    pitch: 0.85,
-    rate: 0.85,
-    volume: 1.0,
-    geminiVoice: 'Charon',
-    preferredVoice: 'daniel'
-  },
-  dippy: {
-    id: 'dippy',
-    name: 'Dippy the Diplodocus',
-    pitch: 1.05,
-    rate: 0.92,
-    volume: 1.0,
-    geminiVoice: 'Charon',
-    preferredVoice: 'daniel'
-  },
-  '7': {
-    id: '7',
-    name: 'Dippy the Diplodocus',
-    pitch: 1.05,
-    rate: 0.92,
-    volume: 1.0,
-    geminiVoice: 'Charon',
-    preferredVoice: 'daniel'
-  },
-  spino: {
-    id: 'spino',
-    name: 'Spino the Spinosaurus',
-    pitch: 0.95,
-    rate: 0.88,
-    volume: 1.0,
-    geminiVoice: 'Fenrir',
-    preferredVoice: 'daniel'
-  },
-  '8': {
-    id: '8',
-    name: 'Spino the Spinosaurus',
-    pitch: 0.95,
-    rate: 0.88,
-    volume: 1.0,
-    geminiVoice: 'Fenrir',
-    preferredVoice: 'daniel'
-  },
-  aqua_drake: {
-    id: 'aqua_drake',
-    name: 'Aqua Drake',
-    pitch: 1.05,
-    rate: 0.92,
-    volume: 1.0,
-    geminiVoice: 'Charon',
-    preferredVoice: 'daniel'
-  },
-  aqua: {
-    id: 'aqua',
-    name: 'Aqua Drake',
-    pitch: 1.05,
-    rate: 0.92,
-    volume: 1.0,
-    geminiVoice: 'Charon',
-    preferredVoice: 'daniel'
-  },
-  bella: {
-    id: 'bella',
-    name: 'Bella the Bunny',
-    pitch: 1.45,
-    rate: 1.05,
-    volume: 1.0,
-    geminiVoice: 'Aoede',
-    preferredVoice: 'daniel'
-  },
-  barnaby: {
-    id: 'barnaby',
-    name: 'Barnaby the Bear',
-    pitch: 0.85,
-    rate: 0.90,
-    volume: 1.0,
-    geminiVoice: 'Fenrir',
-    preferredVoice: 'daniel'
-  },
-  pip: {
-    id: 'pip',
-    name: 'Pip the Phoenix',
-    pitch: 1.35,
-    rate: 1.00,
-    volume: 1.0,
-    geminiVoice: 'Zephyr',
-    preferredVoice: 'daniel'
-  }
-};
+// Per-pet voice tuning. `kokoroVoice` must match the pet->voice casting
+// table centralized in little-heroes-tts-service/voices.py (the service
+// resolves its own copy server-side from petId; this client-side field is
+// only used by the device-native speechSynthesis fallback, which has no
+// concept of Kokoro voice ids but still benefits from per-pet pitch/rate
+// variety so pets sound different from each other even offline).
+// `pitch`/`rate`/`preferredVoice` drive that browser fallback tier only.
+const PET_VOICE_PROFILE_DATA = [
+  { key: 'rex', id: '1', name: 'Rex the T-Rex', pitch: 1.25, rate: 0.95, kokoroVoice: 'am_puck' },
+  { key: 'raptor', id: '2', name: 'Raptor the Velociraptor', pitch: 1.35, rate: 1.05, kokoroVoice: 'am_echo' },
+  { key: 'stego', id: '3', name: 'Stego the Stegosaurus', pitch: 0.90, rate: 0.88, kokoroVoice: 'af_nicole' },
+  { key: 'pterry', id: '4', name: 'Pterry the Pterodactyl', pitch: 1.40, rate: 1.02, kokoroVoice: 'af_sky' },
+  { key: 'chomper', id: '5', name: 'Chomper the Compsognathus', pitch: 1.45, rate: 1.08, kokoroVoice: 'af_bella' },
+  { key: 'brachio', id: '6', name: 'Brachio the Brachiosaurus', pitch: 0.85, rate: 0.85, kokoroVoice: 'am_fenrir' },
+  { key: 'dippy', id: '7', name: 'Dippy the Diplodocus', pitch: 1.05, rate: 0.92, kokoroVoice: 'am_adam' },
+  { key: 'spino', id: '8', name: 'Spino the Spinosaurus', pitch: 0.95, rate: 0.88, kokoroVoice: 'am_onyx' },
+  { key: 'sparky', id: '9', name: 'Sparky the Dragon', pitch: 1.30, rate: 1.05, kokoroVoice: 'am_liam' },
+  { key: 'aero', id: '10', name: 'Aero the Griffin', pitch: 1.20, rate: 1.00, kokoroVoice: 'af_aoede' },
+  { key: 'blaze', id: '11', name: 'Blaze the Phoenix', pitch: 1.15, rate: 0.98, kokoroVoice: 'af_kore' },
+  { key: 'hydra', id: '12', name: 'Hydra the Sea Serpent', pitch: 0.90, rate: 0.90, kokoroVoice: 'am_eric' },
+  { key: 'luna', id: '13', name: 'Luna the Unicorn', pitch: 1.10, rate: 0.90, kokoroVoice: 'af_heart' },
+  { key: 'kira', id: '14', name: 'Kira the Kirin', pitch: 1.25, rate: 1.00, kokoroVoice: 'af_nova' },
+  { key: 'boulder', id: '15', name: 'Boulder the Crystal Golem', pitch: 0.80, rate: 0.82, kokoroVoice: 'am_onyx' },
+  { key: 'cosmo', id: '16', name: 'Cosmo the Cyber Mech', pitch: 1.20, rate: 1.05, kokoroVoice: 'af_sky' },
+  { key: 'leo', id: '17', name: 'Leo the Lion', pitch: 1.00, rate: 0.95, kokoroVoice: 'am_michael' },
+  { key: 'stripe', id: '18', name: 'Stripe the Tiger', pitch: 1.30, rate: 1.05, kokoroVoice: 'af_bella' },
+  { key: 'fang', id: '19', name: 'Fang the Wolf', pitch: 0.95, rate: 0.90, kokoroVoice: 'am_fenrir' },
+  { key: 'scout', id: '20', name: 'Scout the Eagle', pitch: 1.15, rate: 1.00, kokoroVoice: 'af_nicole' },
+  { key: 'gnasher', id: '21', name: 'Gnasher the Shark', pitch: 0.90, rate: 0.92, kokoroVoice: 'am_michael' },
+  { key: 'shadow-sm', id: '22', name: 'Shadow the Panther', pitch: 1.05, rate: 0.95, kokoroVoice: 'am_echo' },
+  { key: 'barnaby', id: '23', name: 'Barnaby the Bear', pitch: 0.85, rate: 0.90, kokoroVoice: 'am_adam' },
+  { key: 'ollie', id: '24', name: 'Ollie the Otter', pitch: 1.30, rate: 1.05, kokoroVoice: 'af_river' },
+  // Legacy/extra aliases referenced in older content, not part of the
+  // numbered 24-pet roster but kept for backward compatibility.
+  { key: 'aqua_drake', name: 'Aqua Drake', pitch: 1.05, rate: 0.92, kokoroVoice: 'am_eric' },
+  { key: 'aqua', name: 'Aqua Drake', pitch: 1.05, rate: 0.92, kokoroVoice: 'am_eric' },
+  { key: 'bella', name: 'Bella the Bunny', pitch: 1.45, rate: 1.05, kokoroVoice: 'af_bella' },
+  { key: 'pip', name: 'Pip the Phoenix', pitch: 1.35, rate: 1.00, kokoroVoice: 'am_liam' }
+];
+
+export const COMPANION_VOICE_PROFILES = PET_VOICE_PROFILE_DATA.reduce((acc, pet) => {
+  const profile = { id: pet.id || pet.key, name: pet.name, pitch: pet.pitch, rate: pet.rate, volume: 1.0, kokoroVoice: pet.kokoroVoice, preferredVoice: 'daniel' };
+  acc[pet.key] = profile;
+  if (pet.id) acc[pet.id] = profile;
+  return acc;
+}, {});
 
 let currentAudio = null;
 let currentAudioSource = null;
@@ -590,9 +461,9 @@ function base64ToFloat32Array(base64Data) {
 }
 
 /**
- * Plays a base64 raw-PCM16 TTS response (shared shape returned by both the
- * ElevenLabs and Gemini TTS server routes) through the shared AudioContext,
- * wiring up the same speech-start/syllable/end events used for lip-sync.
+ * Plays a base64 raw-PCM16 TTS response (the shape returned by the Kokoro
+ * TTS microservice) through the shared AudioContext, wiring up the same
+ * speech-start/syllable/end events used for lip-sync.
  * Returns true if playback started.
  */
 async function playPcmTtsResponse(data, cleanSpoken, petId, callback, myGeneration, options = {}) {
@@ -673,7 +544,7 @@ async function playPcmTtsResponse(data, cleanSpoken, petId, callback, myGenerati
   // pitch, since Web Audio has no built-in pitch-preserving time-stretch.
   // Without compensation, the later (slower) chapters end up sounding like a
   // noticeably different, deeper voice than the earlier ones even though the
-  // same ElevenLabs voice is used throughout. Counteract that with `detune`
+  // same Kokoro voice is used throughout. Counteract that with `detune`
   // (in cents) so the net pitch stays consistent across every rate, then
   // layer the caller's own small deliberate `options.pitch` multiplier (e.g.
   // a touch sleepier for later chapters) on top of the now-neutral baseline.
@@ -741,9 +612,17 @@ async function playPcmTtsResponse(data, cleanSpoken, petId, callback, myGenerati
  * to prevent 4500ms aborts on long story chapters.
  */
 export function getVoiceApiBaseUrl() {
+  // Direct-to-service override, same pattern as VITE_AGY_REX_URL for the
+  // AGY companion-chat microservice: when set, every build/host calls the
+  // Kokoro Cloud Run service directly instead of relying on a same-origin
+  // rewrite.
+  const directUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_KOKORO_TTS_URL) || '';
+  if (directUrl) return directUrl.replace(/\/+$/, '');
+
   if (typeof window === 'undefined') return '';
   const hostname = (typeof window !== 'undefined' && window.location?.hostname) || '';
-  // When running on GitHub Pages (recklesswarman.github.io), proxy voice calls to live production Firebase backend
+  // When running on GitHub Pages (recklesswarman.github.io), proxy voice calls to live production Firebase backend,
+  // whose firebase.json rewrite forwards /api/tts/** to the Kokoro Cloud Run service.
   if (hostname.includes('github.io')) {
     return 'https://little-heroes-quest-8842.web.app';
   }
@@ -842,12 +721,7 @@ export async function prewarmWorkoutAudio(workoutId, coachId = null) {
       return;
     }
 
-    // Try ElevenLabs first
-    let data = await fetchPcmTts(ELEVENLABS_TTS_ENDPOINT, cleanSpoken, targetCoach, 3000);
-    // If ElevenLabs fails or is unconfigured, fall back to Gemini TTS
-    if (!data) {
-      data = await fetchPcmTts(TTS_ENDPOINT, cleanSpoken, targetCoach, 4500);
-    }
+    const data = await fetchPcmTts(KOKORO_TTS_ENDPOINT, cleanSpoken, targetCoach, 4500);
 
     if (data && data.audio) {
       // Pre-decode into AudioBuffer if AudioContext is available
@@ -880,9 +754,8 @@ export async function prewarmWorkoutAudio(workoutId, coachId = null) {
  * Unified Spoken Voice Entrypoint for Pet Companions
  * 0. Zero-Latency Client-Side Cache Check (`workoutAudioClipCache`).
  * 1. Prepares dialogue text by stripping asterisks/stage directions.
- * 2. Primary: ElevenLabs voice, where this pet has one configured (/api/elevenlabs/tts).
- * 3. Secondary: Realistic kid-friendly voice via Gemini 3.1 Flash TTS (/api/gemini/tts).
- * 4. Resilient Fallback: Cartoon Speech Synthesis with natural 'Daniel' voice if offline.
+ * 2. Primary: self-hosted Kokoro TTS microservice (/api/tts), voice resolved per pet.
+ * 3. Resilient Fallback: Cartoon Speech Synthesis with natural 'Daniel' voice if offline.
  */
 /**
  * Pre-fetches and pre-decodes audio for an upcoming dialogue or bedtime chapter
@@ -942,11 +815,8 @@ export async function prefetchCompanionAudio(text, petIdOrOptions = 'rex', optio
     return res;
   }
 
-  // 2. Background fetch via ElevenLabs first, then Gemini Flash TTS fallback
-  let data = await fetchPcmTts(ELEVENLABS_TTS_ENDPOINT, cleanSpoken, petId, timeoutMs, voiceStyle);
-  if (!data) {
-    data = await fetchPcmTts(TTS_ENDPOINT, cleanSpoken, petId, Math.min(timeoutMs, 8000), voiceStyle);
-  }
+  // 2. Background fetch via the Kokoro TTS microservice
+  const data = await fetchPcmTts(KOKORO_TTS_ENDPOINT, cleanSpoken, petId, timeoutMs, voiceStyle);
 
   if (!data || !data.audio) return null;
 
@@ -995,9 +865,8 @@ export async function prefetchCompanionAudio(text, petIdOrOptions = 'rex', optio
  * Unified Spoken Voice Entrypoint for Pet Companions
  * 0. Zero-Latency Client-Side Cache Check (`workoutAudioClipCache`).
  * 1. Prepares dialogue text by stripping asterisks/stage directions.
- * 2. Primary: ElevenLabs voice, where this pet has one configured (/api/elevenlabs/tts).
- * 3. Secondary: Realistic kid-friendly voice via Gemini 3.1 Flash TTS (/api/gemini/tts).
- * 4. Resilient Fallback: Cartoon Speech Synthesis with natural 'Daniel' voice if offline.
+ * 2. Primary: self-hosted Kokoro TTS microservice (/api/tts), voice resolved per pet.
+ * 3. Resilient Fallback: Cartoon Speech Synthesis with natural 'Daniel' voice if offline.
  */
 export const speakCompanion = async (text, petIdOrOptions = 'rex', onEndedOrOptions = null, options = {}) => {
   if (!text || typeof text !== 'string' || !text.trim()) return;
@@ -1110,8 +979,8 @@ export const speakCompanion = async (text, petIdOrOptions = 'rex', onEndedOrOpti
   }
 
   if (opts.instant) {
-    const INSTANT_ELEVENLABS_TIMEOUT_MS = 700;
-    const fastData = await fetchPcmTts(ELEVENLABS_TTS_ENDPOINT, cleanSpoken, petId, INSTANT_ELEVENLABS_TIMEOUT_MS, voiceStyle);
+    const INSTANT_KOKORO_TIMEOUT_MS = 700;
+    const fastData = await fetchPcmTts(KOKORO_TTS_ENDPOINT, cleanSpoken, petId, INSTANT_KOKORO_TIMEOUT_MS, voiceStyle);
     if (myGeneration !== speechGeneration) return;
     if (fastData) {
       if (voiceStyle && voiceStyle !== 'default') {
@@ -1131,38 +1000,20 @@ export const speakCompanion = async (text, petIdOrOptions = 'rex', onEndedOrOpti
   let ttsSucceeded = false;
   const timeoutMs = opts.timeoutMs || (voiceStyle === 'bedtime' ? 18000 : 4500);
 
-  // 1. Primary: ElevenLabs voice (only pets with a configured voice get one;
-  // the server responds 404 for anyone else, and we fall through below).
-  const elevenLabsData = await fetchPcmTts(ELEVENLABS_TTS_ENDPOINT, cleanSpoken, petId, timeoutMs, voiceStyle);
+  // 1. Primary: self-hosted Kokoro TTS microservice.
+  const kokoroData = await fetchPcmTts(KOKORO_TTS_ENDPOINT, cleanSpoken, petId, timeoutMs, voiceStyle);
   if (myGeneration !== speechGeneration) return;
-  if (elevenLabsData) {
+  if (kokoroData) {
     if (voiceStyle && voiceStyle !== 'default') {
-      workoutAudioClipCache.set(`${normKey}:${voiceStyle}:${cleanSpoken}`, elevenLabsData);
-      workoutAudioClipCache.set(`${rawId}:${voiceStyle}:${cleanSpoken}`, elevenLabsData);
+      workoutAudioClipCache.set(`${normKey}:${voiceStyle}:${cleanSpoken}`, kokoroData);
+      workoutAudioClipCache.set(`${rawId}:${voiceStyle}:${cleanSpoken}`, kokoroData);
     }
-    workoutAudioClipCache.set(`${normKey}:${cleanSpoken}`, elevenLabsData);
-    workoutAudioClipCache.set(cleanSpoken, elevenLabsData);
-    ttsSucceeded = await playPcmTtsResponse(elevenLabsData, cleanSpoken, petId, callback, myGeneration, opts);
+    workoutAudioClipCache.set(`${normKey}:${cleanSpoken}`, kokoroData);
+    workoutAudioClipCache.set(cleanSpoken, kokoroData);
+    ttsSucceeded = await playPcmTtsResponse(kokoroData, cleanSpoken, petId, callback, myGeneration, opts);
   }
 
-  // 2. Secondary: Server-Side Realistic Gemini TTS Engine (/api/gemini/tts)
-  if (!ttsSucceeded) {
-    if (myGeneration !== speechGeneration) return;
-    const geminiTimeout = Math.min(timeoutMs, 8000);
-    const geminiData = await fetchPcmTts(TTS_ENDPOINT, cleanSpoken, petId, geminiTimeout, voiceStyle);
-    if (myGeneration !== speechGeneration) return;
-    if (geminiData) {
-      if (voiceStyle && voiceStyle !== 'default') {
-        workoutAudioClipCache.set(`${normKey}:${voiceStyle}:${cleanSpoken}`, geminiData);
-        workoutAudioClipCache.set(`${rawId}:${voiceStyle}:${cleanSpoken}`, geminiData);
-      }
-      workoutAudioClipCache.set(`${normKey}:${cleanSpoken}`, geminiData);
-      workoutAudioClipCache.set(cleanSpoken, geminiData);
-      ttsSucceeded = await playPcmTtsResponse(geminiData, cleanSpoken, petId, callback, myGeneration, opts);
-    }
-  }
-
-  // 3. Resilient Client-Side Speech Synthesis Fallback (Daniel Voice)
+  // 2. Resilient Client-Side Speech Synthesis Fallback (Daniel Voice)
   if (!ttsSucceeded) {
     if (myGeneration !== speechGeneration) return;
     speakWithSpeechSynthesis(cleanSpoken, petId, callback, opts);

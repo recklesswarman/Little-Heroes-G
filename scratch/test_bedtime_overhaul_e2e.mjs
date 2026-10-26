@@ -19,7 +19,7 @@
  *   F6.  Seed Rotation & History Memory (M1, R2)
  *   F7.  Removal of Mid-Story Choices & Questions (M3, R3)
  *   F8.  Hands-Free Auto-Advance & Turn Page (M3, R3)
- *   F9.  Unified Canonical ElevenLabs Voice (M3, R4)
+ *   F9.  Centralized Kokoro Voice Casting (M3, R4)
  *   F10. Dynamic Lullaby Synthesizer Ducking (M3, R4)
  *   F11. 3D Stage 4-Chapter Synchronization (M3, R2/R3)
  */
@@ -38,7 +38,7 @@ import { bedtimeStoryService } from '../src/services/bedtimeStoryService.js';
 const BedtimeStoryService = bedtimeStoryService.constructor;
 import { renderBedtimeStoryView } from '../src/views/BedtimeStoryView.js';
 import { Sound } from '../src/audio/sfx.js';
-import { handleElevenLabsTTSRequest } from '../server/elevenLabsService.js';
+import { getCompanionVoiceParams } from '../src/services/voiceService.js';
 import { BedtimeStoryStage3D, BEDTIME_EXPLORER_PALETTE } from '../src/components/BedtimeStoryStage3D.js';
 import { store } from '../src/state/store.js';
 import { PETS_DATABASE, getPetById } from '../src/data/petsData.js';
@@ -741,58 +741,45 @@ runTest('tier1', 'F8', 'T1_F8_6: Speech watchdog budget scales with the chapter\
 });
 
 // -----------------------------------------------------------------------------
-// FEATURE 9: Unified Canonical ElevenLabs Voice (M3, R4)
+// FEATURE 9: Centralized Kokoro Voice Casting (M3, R4)
 // -----------------------------------------------------------------------------
-runTest('tier1', 'F9', 'T1_F9_1: ElevenLabs route defaults all 24 companion pets to canonical voice ID e9sQs6aLWU82SSolkPYZ', () => {
-  const elServicePath = path.join(REPO_ROOT, 'server', 'elevenLabsService.js');
-  assertTrue(fs.existsSync(elServicePath), 'elevenLabsService.js must exist');
-  const code = fs.readFileSync(elServicePath, 'utf8');
-  assertTrue(code.includes('e9sQs6aLWU82SSolkPYZ'), 'elevenLabsService must define canonical voice e9sQs6aLWU82SSolkPYZ');
+runTest('tier1', 'F9', 'T1_F9_1: little-heroes-tts-service centralizes a distinct Kokoro voice per companion pet', () => {
+  const voicesPyPath = path.join(REPO_ROOT, 'little-heroes-tts-service', 'voices.py');
+  assertTrue(fs.existsSync(voicesPyPath), 'little-heroes-tts-service/voices.py must exist');
+  const code = fs.readFileSync(voicesPyPath, 'utf8');
+  assertTrue(/DEFAULT_VOICE\s*=\s*"/.test(code), 'voices.py must define a DEFAULT_VOICE fallback');
+  assertTrue(/PET_VOICE_MAP/.test(code), 'voices.py must define PET_VOICE_MAP');
 });
 
-runTest('tier1', 'F9', 'T1_F9_2: Bedtime voice settings specify stability 0.65, similarity 0.80, style 0.35, speed 0.85', () => {
+runTest('tier1', 'F9', 'T1_F9_2: Old ElevenLabs bedtime voice tuning (server/elevenLabsService.js) has been decommissioned', () => {
   const elServicePath = path.join(REPO_ROOT, 'server', 'elevenLabsService.js');
-  const code = fs.readFileSync(elServicePath, 'utf8');
-  assertTrue(code.includes('0.65'), 'Stability must be 0.65');
-  assertTrue(code.includes('0.80') || code.includes('0.8'), 'Similarity boost must be 0.80');
-  assertTrue(code.includes('0.35'), 'Style must be 0.35');
-  assertTrue(code.includes('0.85'), 'Speech speed must be 0.85');
+  assertTrue(!fs.existsSync(elServicePath), 'server/elevenLabsService.js must no longer exist (replaced by little-heroes-tts-service)');
 });
 
-runTest('tier1', 'F9', 'T1_F9_3: Non-Rex pets (e.g. Luna, Raptor, Sparky) resolve to canonical voice without HTTP 404', async () => {
-  const petsToTest = ['luna', 'raptor', 'sparky', 'aquata', 'rex'];
+runTest('tier1', 'F9', 'T1_F9_3: Non-Rex pets (e.g. Luna, Raptor, Sparky) resolve to a configured, distinct Kokoro voice', () => {
+  const petsToTest = ['luna', 'raptor', 'sparky', 'rex'];
+  const resolvedVoices = new Set();
   for (const petId of petsToTest) {
-    const { req, res } = createMockReqRes({
-      text: 'Goodnight little hero, rest well.',
-      petId,
-      voiceStyle: 'bedtime'
-    });
-    // Call handler; without API key it returns 503 (expected in mock environment), NOT 404!
-    await handleElevenLabsTTSRequest(req, res);
-    const status = res.getStatusCode();
-    assertTrue(status !== 404, `Pet ${petId} must never return 404 Not Found, got ${status}`);
+    const profile = getCompanionVoiceParams(petId);
+    assertTrue(Boolean(profile?.kokoroVoice), `Pet ${petId} must resolve to a configured Kokoro voice`);
+    resolvedVoices.add(profile.kokoroVoice);
   }
+  assertTrue(resolvedVoices.size > 1, 'Distinct pets must not all collapse onto a single universal voice');
 });
 
-runTest('tier1', 'F9', 'T1_F9_4: ElevenLabs cache key differentiates between bedtime and companion voice styles', () => {
-  const text = 'Sleep softly under the gentle stars.';
-  const voiceId = 'e9sQs6aLWU82SSolkPYZ';
-  const speed = 0.85;
-  
-  // Hash calculation checking distinction
-  const keyBedtime = `${text}|${voiceId}|${speed}|bedtime`;
-  const keyCompanion = `${text}|${voiceId}|${speed}|companion`;
-  assertTrue(keyBedtime !== keyCompanion, 'Bedtime voice cache key must differ from companion cache key');
+runTest('tier1', 'F9', 'T1_F9_4: Kokoro service cache key (little-heroes-tts-service/main.py) differentiates voice and speed', () => {
+  const mainPyPath = path.join(REPO_ROOT, 'little-heroes-tts-service', 'main.py');
+  const code = fs.readFileSync(mainPyPath, 'utf8');
+  assertTrue(/_cache_key/.test(code), 'main.py must define a cache-key function');
+  assertTrue(/clean_text.*voice.*speed|voice.*speed/.test(code), 'Cache key must incorporate voice and speed, not just text');
 });
 
-runTest('tier1', 'F9', 'T1_F9_5: Functions voiceApi.ts enforces canonical voice e9sQs6aLWU82SSolkPYZ', () => {
+runTest('tier1', 'F9', 'T1_F9_5: Functions voiceApi.ts no longer carries the decommissioned ElevenLabs/Gemini TTS endpoints', () => {
   const voiceApiPath = path.join(REPO_ROOT, 'functions', 'src', 'voiceApi.ts');
-  if (fs.existsSync(voiceApiPath)) {
-    const code = fs.readFileSync(voiceApiPath, 'utf8');
-    assertTrue(code.includes('e9sQs6aLWU82SSolkPYZ'), 'functions/src/voiceApi.ts must reference canonical voice ID');
-  } else {
-    assertTrue(true, 'voiceApi.ts verified');
-  }
+  assertTrue(fs.existsSync(voiceApiPath), 'voiceApi.ts must still exist (serves bedtime story generation)');
+  const code = fs.readFileSync(voiceApiPath, 'utf8');
+  assertTrue(!code.includes('api/elevenlabs/tts'), 'voiceApi.ts must not define the decommissioned ElevenLabs TTS endpoint');
+  assertTrue(!code.includes('ELEVENLABS_API_KEY'), 'voiceApi.ts must not reference ELEVENLABS_API_KEY');
 });
 
 // -----------------------------------------------------------------------------
@@ -1208,17 +1195,19 @@ runTest('tier2', 'F8', 'T2_F8_5: Replaying current chapter resets auto-advance c
   assertEqual(remaining, 3, 'Timer reset to 3s on chapter replay');
 });
 
-// Feature 9 Boundaries (Unified Canonical ElevenLabs Voice)
-runTest('tier2', 'F9', 'T2_F9_1: Calling TTS with null or undefined petId defaults to canonical voice ID', async () => {
-  const { req, res } = createMockReqRes({ text: 'Sleep tight.', petId: null });
-  await handleElevenLabsTTSRequest(req, res);
-  assertTrue(res.getStatusCode() !== 404, 'Must not return 404');
+// Feature 9 Boundaries (Centralized Kokoro Voice Casting)
+runTest('tier2', 'F9', 'T2_F9_1: Calling getCompanionVoiceParams with null or undefined petId defaults to Rex\'s voice profile', () => {
+  const profileNull = getCompanionVoiceParams(null);
+  const profileUndefined = getCompanionVoiceParams(undefined);
+  assertTrue(Boolean(profileNull?.kokoroVoice), 'null petId must still resolve to a configured voice');
+  assertTrue(Boolean(profileUndefined?.kokoroVoice), 'undefined petId must still resolve to a configured voice');
 });
 
-runTest('tier2', 'F9', 'T2_F9_2: Calling TTS with whitespace-only text returns 400 without crashing server', async () => {
-  const { req, res } = createMockReqRes({ text: '   \n  \t  ' });
-  await handleElevenLabsTTSRequest(req, res);
-  assertEqual(res.getStatusCode(), 400, 'Whitespace-only text must return 400 Bad Request');
+runTest('tier2', 'F9', 'T2_F9_2: Kokoro service (main.py) returns 400 for whitespace-only text without crashing', () => {
+  const mainPyPath = path.join(REPO_ROOT, 'little-heroes-tts-service', 'main.py');
+  const code = fs.readFileSync(mainPyPath, 'utf8');
+  assertTrue(/status_code=400/.test(code), 'main.py must define a 400 Bad Request path for empty/unreadable text');
+  assertTrue(/No readable speech text found/.test(code), 'main.py must reject whitespace-only text after cleaning');
 });
 
 runTest('tier2', 'F9', 'T2_F9_3: Asterisk action tags (*whispers softly*) stripped from spoken text', async () => {
@@ -1331,12 +1320,10 @@ runTest('tier3', null, 'T3_C1: Long Narrative Chapter + Full Illustration Prompt
   assertTrue(cacheKey.includes(hash), 'Cache key derived from narrative hash');
 });
 
-runTest('tier3', null, 'T3_C2: Non-Rex Pet (Luna) + Unified ElevenLabs Voice + Dynamic Seed + Fallback Palette Guard', async () => {
-  const seed = Math.floor(Math.random() * 2147483647);
-  const { req, res } = createMockReqRes({ text: 'Luna breathes soft sparkles.', petId: 'luna', voiceStyle: 'bedtime', seed });
-  await handleElevenLabsTTSRequest(req, res);
-  assertTrue(res.getStatusCode() !== 404, 'Non-Rex pet routes cleanly without 404');
-  
+runTest('tier3', null, 'T3_C2: Non-Rex Pet (Luna) + Centralized Kokoro Voice + Dynamic Seed + Fallback Palette Guard', () => {
+  const lunaProfile = getCompanionVoiceParams('luna');
+  assertTrue(Boolean(lunaProfile?.kokoroVoice), 'Non-Rex pet (Luna) resolves to a configured Kokoro voice');
+
   const svg = bedtimeIllustrationService.generateFallbackIllustration({ petName: 'Luna' });
   assertNotMatches(decodeURIComponent(svg), /magenta|purple|pink/i, 'Palette guard maintained');
 });

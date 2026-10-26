@@ -334,27 +334,29 @@ async function runTestSuite() {
     'COMPANION_VOICE_PROFILES includes dedicated voice profiles for all 8 dinosaur coaches'
   );
 
-  // Test 1.4.2: Gemini voice mapping across personas
+  // Test 1.4.2: Kokoro voice mapping across personas (centralized voice
+  // casting for the self-hosted Kokoro TTS microservice, replacing the old
+  // Gemini Flash voice names)
   const coachVoices = {
-    '1': 'Puck',
-    '2': 'Zephyr',
-    '3': 'Fenrir',
-    '4': 'Aoede',
-    '5': 'Puck',
-    '6': 'Charon',
-    '7': 'Charon',
-    '8': 'Fenrir'
+    '1': 'am_puck',
+    '2': 'am_echo',
+    '3': 'af_nicole',
+    '4': 'af_sky',
+    '5': 'af_bella',
+    '6': 'am_fenrir',
+    '7': 'am_adam',
+    '8': 'am_onyx'
   };
   let voicesAccurate = true;
   for (const [id, voice] of Object.entries(coachVoices)) {
-    if (COMPANION_VOICE_PROFILES[id]?.geminiVoice !== voice) {
+    if (COMPANION_VOICE_PROFILES[id]?.kokoroVoice !== voice) {
       voicesAccurate = false;
       break;
     }
   }
   assert(
     voicesAccurate,
-    'All 8 dinosaur coaches are mapped to distinct kid-friendly Gemini Flash voices (Puck, Zephyr, Fenrir, Aoede, Charon)'
+    'All 8 dinosaur coaches are mapped to distinct kid-friendly Kokoro voices'
   );
 
   // Test 1.4.3: Custom pitch and rate tuning

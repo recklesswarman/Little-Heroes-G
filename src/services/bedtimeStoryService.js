@@ -25,6 +25,21 @@ import { generateBedtimeChapterAGY } from './heroAgentService.js';
 import { bedtimeIllustrationService } from './bedtimeIllustrationService.js';
 
 /**
+ * Resolves which pet's voice should narrate bedtime stories: a parent-chosen
+ * override (store.getBedtimeSanctuaryState().bedtimeVoicePetId, set from the
+ * Parent Portal settings tab) takes precedence over whichever pet the child
+ * currently has active, so a parent can pick a calmer/different narrator
+ * voice without changing the child's active companion.
+ */
+export function resolveBedtimeNarratorPetId(fallbackPetId) {
+  try {
+    const override = store.getBedtimeSanctuaryState?.()?.bedtimeVoicePetId;
+    if (override) return override;
+  } catch {}
+  return fallbackPetId;
+}
+
+/**
  * Builds a comprehensive real-time child story context snapshot.
  * Integrates child profile, daytime habits/tasks completed today, active pet companion
  * from PETS_DATABASE, equipped hero gear, and anti-repetition negative constraints.
@@ -416,6 +431,7 @@ class BedtimeStoryService {
 
   narrateAct(text, petId, chapterNumber = 1, options = {}) {
     const session = this.activeSession;
+    const narratorPetId = resolveBedtimeNarratorPetId(petId);
     if (session?.narrationMode === 'parent') {
       Sound.duckLullaby(false);
       // In Parent Mode, do NOT auto-advance; let the parent manually turn the page
@@ -473,7 +489,7 @@ class BedtimeStoryService {
     }, dynamicWatchdogMs);
 
     try {
-      speakCompanion(text, petId, handleSpeechEnded, {
+      speakCompanion(text, narratorPetId, handleSpeechEnded, {
         rate,
         pitch: chapterNumber >= 3 ? 0.95 : 1.05,
         voiceStyle: 'bedtime',

@@ -510,7 +510,11 @@ const defaultState = {
     selectedMoralId: 'brave_dark',
     customBedtimeWish: '',
     narrationMode: 'rex',
-    autoReadMode: true
+    autoReadMode: true,
+    // Parent-selected companion voice for bedtime narration, overriding
+    // whichever pet the child currently has active. null = match active
+    // companion (default, matches pre-existing behavior).
+    bedtimeVoicePetId: null
   },
 
   // Deleted kid profiles tracked to prevent resurrection across concurrent devices
@@ -9324,11 +9328,15 @@ class Store {
         selectedMoralId: 'brave_dark',
         customBedtimeWish: '',
         narrationMode: 'rex',
-        autoReadMode: true
+        autoReadMode: true,
+        bedtimeVoicePetId: null
       };
     }
     if (this.state.bedtimeSanctuaryState.autoReadMode === undefined) {
       this.state.bedtimeSanctuaryState.autoReadMode = true;
+    }
+    if (this.state.bedtimeSanctuaryState.bedtimeVoicePetId === undefined) {
+      this.state.bedtimeSanctuaryState.bedtimeVoicePetId = null;
     }
     return this.state.bedtimeSanctuaryState;
   }

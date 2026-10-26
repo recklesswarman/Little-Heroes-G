@@ -3,7 +3,6 @@ import { defineConfig } from 'vite';
 
 async function setupGeminiMiddleware(server) {
   let geminiService = null;
-  let elevenLabsService = null;
   let imageGenService = null;
   try {
     geminiService = await import('./server/geminiService.js');
@@ -11,19 +10,13 @@ async function setupGeminiMiddleware(server) {
     console.warn('Gemini server middleware notice:', err.message);
   }
   try {
-    elevenLabsService = await import('./server/elevenLabsService.js');
-  } catch (err) {
-    console.warn('ElevenLabs server middleware notice:', err.message);
-  }
-  try {
     imageGenService = await import('./server/imageGenService.js');
   } catch (err) {
     console.warn('ImageGen server middleware notice:', err.message);
   }
-  if (!geminiService && !elevenLabsService && !imageGenService) return;
+  if (!geminiService && !imageGenService) return;
 
-  const { handleTTSRequest, handleChatRequest, handleBedtimeStoryRequest, attachGeminiLiveWebSocket } = geminiService || {};
-  const { handleElevenLabsTTSRequest } = elevenLabsService || {};
+  const { handleChatRequest, handleBedtimeStoryRequest, attachGeminiLiveWebSocket } = geminiService || {};
   const { handleStoryIllustrationRequest } = imageGenService || {};
 
   const parseJsonBody = (req) => new Promise((resolve, reject) => {
@@ -41,55 +34,9 @@ async function setupGeminiMiddleware(server) {
 
   server.middlewares.use(async (req, res, next) => {
     const url = req.url ? req.url.split('?')[0] : '';
-    if (url === '/api/gemini/tts' && req.method === 'POST') {
-      try {
-        req.body = await parseJsonBody(req);
-        res.json = (data) => {
-          res.setHeader('Content-Type', 'application/json');
-          res.end(JSON.stringify(data));
-        };
-        res.status = (code) => {
-          res.statusCode = code;
-          return res;
-        };
-        if (typeof handleTTSRequest === 'function') {
-          return await handleTTSRequest(req, res);
-        } else {
-          res.statusCode = 503;
-          res.setHeader('Content-Type', 'application/json');
-          return res.end(JSON.stringify({ error: 'Gemini TTS handler not available' }));
-        }
-      } catch (err) {
-        res.statusCode = 500;
-        res.setHeader('Content-Type', 'application/json');
-        return res.end(JSON.stringify({ error: err.message }));
-      }
-    }
-
-    if (url === '/api/elevenlabs/tts' && req.method === 'POST') {
-      try {
-        req.body = await parseJsonBody(req);
-        res.json = (data) => {
-          res.setHeader('Content-Type', 'application/json');
-          res.end(JSON.stringify(data));
-        };
-        res.status = (code) => {
-          res.statusCode = code;
-          return res;
-        };
-        if (typeof handleElevenLabsTTSRequest === 'function') {
-          return await handleElevenLabsTTSRequest(req, res);
-        } else {
-          res.statusCode = 503;
-          res.setHeader('Content-Type', 'application/json');
-          return res.end(JSON.stringify({ error: 'ElevenLabs service not loaded' }));
-        }
-      } catch (err) {
-        res.statusCode = 500;
-        res.setHeader('Content-Type', 'application/json');
-        return res.end(JSON.stringify({ error: err.message }));
-      }
-    }
+    // Voice narration (/api/tts) is served by the standalone
+    // little-heroes-tts-service (Kokoro) -- the client calls it directly via
+    // VITE_KOKORO_TTS_URL, so no dev-server proxy middleware is needed here.
 
     if (url === '/api/gemini/chat' && req.method === 'POST') {
       try {
