@@ -76,10 +76,31 @@ gcloud run deploy little-heroes-tts-kokoro \
   concern.
 
 After deploying, note the service URL and wire it in as `VITE_KOKORO_TTS_URL`
-(see root `.env.example`) for client builds that call it directly, and
-confirm `firebase.json`'s `/api/tts/**` rewrite points at the same service
-name/region for the same-origin fallback path used on Firebase Hosting and
-GitHub Pages.
+(see root `.env.example`) for client builds that call it directly.
+
+**⚠️ `firebase.json`'s `/api/tts` rewrite was removed** (it originally
+pointed `run: { serviceId: "little-heroes-tts-kokoro", region: "us-central1" }`,
+mirroring the `/api/rex/**` → AGY-service rewrite) because Firebase Hosting
+validates every `run:` rewrite target at deploy time and refuses to
+publish *any* hosting version if the referenced Cloud Run service doesn't
+exist yet — which broke `firebase-hosting-deploy.yml` entirely right after
+this service was merged, before it had been deployed. Once you've deployed
+`little-heroes-tts-kokoro` with the command above, add this rewrite back
+to `firebase.json`'s `hosting.rewrites` array (before the catch-all `**`
+entry):
+
+```json
+{
+  "source": "/api/tts",
+  "run": { "serviceId": "little-heroes-tts-kokoro", "region": "us-central1" }
+}
+```
+
+Until that's restored, the client's same-origin `/api/tts` fallback path
+(used on Firebase Hosting and GitHub Pages when `VITE_KOKORO_TTS_URL` isn't
+set) will 404 and voice narration will fall back to the browser's native
+`speechSynthesis` on those hosts — direct calls via `VITE_KOKORO_TTS_URL`
+are unaffected once that env var points at the deployed service.
 
 ## API
 
