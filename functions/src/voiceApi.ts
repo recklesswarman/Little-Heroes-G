@@ -245,7 +245,7 @@ Return ONLY a valid JSON object matching this schema (no markdown, no backticks,
         });
 
         const rawText = (response as any).text || "";
-        const cleanJson = rawText.replace(/\`\`\`json/gi, "").replace(/\`\`\`/g, "").trim();
+        const cleanJson = rawText.replace(/```json/gi, "").replace(/```/g, "").trim();
         const parsed = JSON.parse(cleanJson);
 
         if (parsed && Array.isArray(parsed.chapters) && parsed.chapters.length >= 4) {

@@ -112,13 +112,6 @@
     ],
     "rewrites": [
       {
-        "source": "/api/tts",
-        "run": {
-          "serviceId": "little-heroes-tts-kokoro",
-          "region": "us-central1"
-        }
-      },
-      {
         "source": "/api/rex/**",
         "run": {
           "serviceId": "little-heroes-rex-agy",
