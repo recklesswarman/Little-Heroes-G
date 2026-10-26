@@ -112,16 +112,9 @@
     ],
     "rewrites": [
       {
-        "source": "/api/elevenlabs/**",
-        "function": {
-          "functionId": "api",
-          "region": "us-central1"
-        }
-      },
-      {
-        "source": "/api/gemini/tts",
-        "function": {
-          "functionId": "api",
+        "source": "/api/tts",
+        "run": {
+          "serviceId": "little-heroes-tts-kokoro",
           "region": "us-central1"
         }
       },

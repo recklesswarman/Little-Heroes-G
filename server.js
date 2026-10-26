@@ -3,8 +3,7 @@ import express from 'express';
 import http from 'http';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { handleTTSRequest, handleChatRequest, handleBedtimeStoryRequest, attachGeminiLiveWebSocket } from './server/geminiService.js';
-import { handleElevenLabsTTSRequest } from './server/elevenLabsService.js';
+import { handleChatRequest, handleBedtimeStoryRequest, attachGeminiLiveWebSocket } from './server/geminiService.js';
 import { handleStoryIllustrationRequest } from './server/imageGenService.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -21,13 +20,13 @@ app.get('/healthz', (req, res) => {
 });
 
 // Gemini API Endpoints
-app.post('/api/gemini/tts', handleTTSRequest);
 app.post('/api/gemini/chat', handleChatRequest);
 app.post('/api/gemini/bedtime-story', handleBedtimeStoryRequest);
 app.post('/api/rex/bedtime-story', handleBedtimeStoryRequest);
 
-// ElevenLabs voice endpoint (primary companion voice tier; see voiceService.js)
-app.post('/api/elevenlabs/tts', handleElevenLabsTTSRequest);
+// Voice narration is served by the standalone little-heroes-tts-service
+// (Kokoro TTS), which the client calls directly -- see
+// src/services/voiceService.js's getVoiceApiBaseUrl()/VITE_KOKORO_TTS_URL.
 
 // Bedtime storybook illustration endpoint (Cloudflare Workers AI free image generator)
 app.post('/api/story/illustration', handleStoryIllustrationRequest);

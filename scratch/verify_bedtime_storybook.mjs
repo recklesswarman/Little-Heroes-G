@@ -193,7 +193,6 @@ async function runBedtimeStorybookVerification() {
   const bedtimeStoryData = await import('../src/data/bedtimeStoryData.js');
   const bedtimeStoryService = await import('../src/services/bedtimeStoryService.js');
   const voiceService = await import('../src/services/voiceService.js');
-  const elevenLabsService = await import('../server/elevenLabsService.js');
 
   // Safe load 3D stage component if available
   let BedtimeStoryStage3D = null;
@@ -666,71 +665,63 @@ async function runBedtimeStorybookVerification() {
   }
 
   // --------------------------------------------------------------------------
-  // Feature 7: Universal ElevenLabs Voice Fallback
+  // Feature 7: Centralized Kokoro Voice Casting (little-heroes-tts-service)
   // --------------------------------------------------------------------------
-  console.log('\n--- Feature 7: Universal ElevenLabs Voice Fallback ---');
+  console.log('\n--- Feature 7: Centralized Kokoro Voice Casting ---');
   {
-    // F7.1: Server elevenLabsService default main voice configuration
-    const defaultVoiceId = process.env.ELEVENLABS_REX_VOICE_ID || 'e9sQs6aLWU82SSolkPYZ';
+    // F7.1: Self-hosted Kokoro TTS microservice exists with a centralized
+    // pet->voice casting table (replaces the old ElevenLabs/Gemini TTS tiers).
+    const voicesPyPath = path.join(REPO_ROOT, 'little-heroes-tts-service', 'voices.py');
     assert(
-      defaultVoiceId === 'e9sQs6aLWU82SSolkPYZ' || Boolean(defaultVoiceId),
-      'Universal ElevenLabs main voice ID configured (e9sQs6aLWU82SSolkPYZ)',
-      'Voice ID must match canonical main voice'
+      fs.existsSync(voicesPyPath),
+      'little-heroes-tts-service/voices.py exists (centralized pet->voice casting table)',
+      'Expected the Kokoro TTS microservice to define voices.py'
+    );
+    const voicesPyContent = fs.existsSync(voicesPyPath) ? fs.readFileSync(voicesPyPath, 'utf8') : '';
+    assert(
+      /DEFAULT_VOICE\s*=\s*"/.test(voicesPyContent),
+      'voices.py defines a DEFAULT_VOICE fallback so unrecognized pets never error',
+      'Expected a DEFAULT_VOICE constant'
     );
 
-    // F7.2: Voice resolution for non-Rex pet (Raptor - petId: '2')
-    // Test endpoint handler behavior
-    const { req: reqRaptor, res: resRaptor } = createMockReqRes({ text: 'Time for bed, brave hero!', petId: '2' });
-    let raptorStatusCode = 200;
-    try {
-      await elevenLabsService.handleElevenLabsTTSRequest(reqRaptor, resRaptor);
-      raptorStatusCode = resRaptor.getStatusCode();
-    } catch {
-      raptorStatusCode = 503; // expected if no API key in mock env
-    }
-    // Must NOT return 404
+    // F7.2: Voice resolution for non-Rex pet (Raptor - petId: '2') resolves
+    // to a distinct Kokoro voice via the client-side profile catalog.
+    const raptorProfile = voiceService.getCompanionVoiceParams('2');
     assert(
-      raptorStatusCode !== 404,
-      'Request for non-Rex pet (Raptor) does NOT return HTTP 404',
-      `Got status ${raptorStatusCode}, expected non-404 (e.g. 503 or 200)`
+      Boolean(raptorProfile?.kokoroVoice),
+      'Non-Rex pet (Raptor, petId 2) resolves to a configured Kokoro voice',
+      `Got profile: ${JSON.stringify(raptorProfile)}`
     );
 
     // F7.3: Voice resolution for Stego (petId: '3')
-    const { req: reqStego, res: resStego } = createMockReqRes({ text: 'Soft footsteps lead to sleepy dreams.', petId: '3' });
-    let stegoStatusCode = 200;
-    try {
-      await elevenLabsService.handleElevenLabsTTSRequest(reqStego, resStego);
-      stegoStatusCode = resStego.getStatusCode();
-    } catch {
-      stegoStatusCode = 503;
-    }
+    const stegoProfile = voiceService.getCompanionVoiceParams('3');
     assert(
-      stegoStatusCode !== 404,
-      'Request for Stegosaurus (petId: 3) resolves cleanly without HTTP 404',
-      `Got status ${stegoStatusCode}`
+      Boolean(stegoProfile?.kokoroVoice) && stegoProfile.kokoroVoice !== raptorProfile.kokoroVoice,
+      'Stegosaurus (petId: 3) resolves to its own distinct Kokoro voice (not collapsed to Raptor\'s)',
+      `Got profile: ${JSON.stringify(stegoProfile)}`
     );
 
-    // F7.4: Bedtime Storyteller alias resolution
-    const { req: reqStoryteller, res: resStoryteller } = createMockReqRes({ text: 'Once upon a starlight sky...', petId: 'storyteller' });
-    let storyStatusCode = 200;
-    try {
-      await elevenLabsService.handleElevenLabsTTSRequest(reqStoryteller, resStoryteller);
-      storyStatusCode = resStoryteller.getStatusCode();
-    } catch {
-      storyStatusCode = 503;
-    }
+    // F7.4: Unknown/alias pet id falls back cleanly (never throws, never undefined)
+    const unknownProfile = voiceService.getCompanionVoiceParams('storyteller');
     assert(
-      storyStatusCode !== 404,
-      'Storyteller voice request resolves to main ElevenLabs voice without 404',
-      `Got status ${storyStatusCode}`
+      Boolean(unknownProfile?.kokoroVoice),
+      'Unrecognized pet id falls back to the default voice profile without throwing',
+      `Got profile: ${JSON.stringify(unknownProfile)}`
     );
 
-    // F7.5: Cloud function voiceApi.ts inspection
+    // F7.5: Cloud function voiceApi.ts no longer carries the decommissioned
+    // ElevenLabs/Gemini TTS endpoints (voice narration now lives in the
+    // standalone Kokoro microservice), but bedtime story generation remains.
     const voiceApiContent = fs.readFileSync(path.join(REPO_ROOT, 'functions/src/voiceApi.ts'), 'utf8');
     assert(
-      voiceApiContent.includes('DEFAULT_REX_VOICE_ID') || voiceApiContent.includes('e9sQs6aLWU82SSolkPYZ'),
-      'Cloud Function voiceApi.ts has default voice fallback configured',
-      'voiceApi.ts must define universal voice resolution'
+      !voiceApiContent.includes('api/elevenlabs/tts') && !voiceApiContent.includes('ELEVENLABS_API_KEY'),
+      'voiceApi.ts no longer defines the decommissioned ElevenLabs TTS endpoint',
+      'Expected ElevenLabs TTS code to be removed from voiceApi.ts'
+    );
+    assert(
+      voiceApiContent.includes('api/rex/bedtime-story') || voiceApiContent.includes('api/gemini/bedtime-story'),
+      'voiceApi.ts still serves bedtime story generation (unaffected by the voice migration)',
+      'Expected bedtime-story routes to remain in voiceApi.ts'
     );
   }
 

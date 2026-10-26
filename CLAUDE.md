@@ -13,6 +13,15 @@
     2. **Classic Firebase Hosting**: Deployed via `.github/workflows/firebase-hosting-deploy.yml` on push to `main` (`https://little-heroes-quest-8842.web.app`). Can also be triggered via `npx firebase deploy --only hosting`.
     3. **Firebase App Hosting**: Deployed via backend `littleheroes-g1` (`https://littleheroes-g1--little-heroes-quest-8842.us-east4.hosted.app`). Verify or trigger via `npx firebase apphosting:rollouts:create littleheroes-g1 --git-branch main --force`.
   - Confirm both GitHub Actions deploy workflows finish successfully against the merge commit before concluding the task.
+- **Standalone Python microservices (manual deploy, not in this checklist)**:
+  `little-heroes-agy-service/` (AI companion agents, Cloud Run service
+  `little-heroes-rex-agy`) and `little-heroes-tts-service/` (Kokoro
+  text-to-speech, Cloud Run service `little-heroes-tts-kokoro`) are each
+  deployed manually (`gcloud run deploy`, see their own READMEs) -- there is
+  no CI automation for either, and "Deploy Everywhere" above doesn't cover
+  them. Reached from the main app via `firebase.json`'s hosting rewrites
+  (`/api/rex/**`, `/api/tts`) and, for direct client calls, `VITE_AGY_REX_URL`
+  / `VITE_KOKORO_TTS_URL`.
 
 ## Cache Sync, Store Migrations & Multi-Host Base Path
 

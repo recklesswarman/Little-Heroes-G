@@ -19,6 +19,7 @@ import {
   WORLD_BIOMES,
   SEASONS_DATA
 } from '../data/worldMapData.js';
+import { PETS_DATABASE } from '../data/petsData.js';
 
 let activeAdminTab = 'approvals'; // approvals, screentime, reports, kids, tasks, rewards, pricing, studio, analytics, settings
 export function setActiveAdminTab(tab) {
@@ -3245,6 +3246,42 @@ export function renderParentPortalView() {
             </div>
           </div>
 
+          <!-- Bedtime AI Storybook Narrator Voice -->
+          <div class="bg-surface-container rounded-3xl p-6 border-2 border-primary/30 card-shadow flex flex-col gap-5">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-2xl bg-primary/20 text-primary border border-primary/40 flex items-center justify-center text-2xl shadow-xs">
+                📖
+              </div>
+              <div>
+                <h3 class="font-headline text-base sm:text-lg font-black text-inverse-surface">Bedtime Storybook Narrator Voice</h3>
+                <p class="text-xs text-on-surface-variant font-bold">Choose which companion voice reads bedtime stories aloud, regardless of which pet the child has active.</p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
+              ${(() => {
+                const sanctuary = store.getBedtimeSanctuaryState();
+                const selectedVoicePetId = sanctuary.bedtimeVoicePetId || '';
+                const options = [
+                  { id: '', emoji: '🔄', name: 'Match Active Companion', desc: 'Default' },
+                  ...PETS_DATABASE.map(p => ({ id: p.id, emoji: p.emoji || '🦖', name: p.shortName || p.name, desc: p.archetype || '' }))
+                ];
+                return options.map(opt => {
+                  const isSelected = selectedVoicePetId === opt.id;
+                  return `
+                    <button data-bedtime-voice-pet-id="${escapeHtml(opt.id)}" class="bedtime-voice-select-btn rounded-2xl p-3 flex flex-col items-center justify-center gap-1 border-2 transition-all active:scale-95 ${
+                      isSelected ? 'bg-primary text-on-primary border-primary-container shadow-xs font-black' : 'bg-surface-container-high hover:bg-surface-bright text-inverse-surface border-surface-container-highest'
+                    }">
+                      <span class="text-2xl">${opt.emoji}</span>
+                      <span class="font-headline text-[11px] font-black text-center leading-tight">${escapeHtml(opt.name)}</span>
+                      <span class="text-[9px] text-center leading-tight capitalize ${isSelected ? 'text-on-primary/90' : 'text-on-surface-variant'}">${escapeHtml(opt.desc)}</span>
+                    </button>
+                  `;
+                }).join('');
+              })()}
+            </div>
+          </div>
+
           <!-- Parental Security & Biometric Locking Settings -->
           <div class="bg-surface-container rounded-3xl p-6 border-2 border-secondary-container card-shadow flex flex-col gap-5">
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -4105,6 +4142,15 @@ export function attachParentPortalListeners() {
         Sound.click();
         store.setLiveRexVoice(voice);
       }
+    });
+  });
+
+  document.querySelectorAll('.bedtime-voice-select-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const petId = btn.getAttribute('data-bedtime-voice-pet-id') || '';
+      Sound.click();
+      store.updateBedtimeSanctuaryState({ bedtimeVoicePetId: petId || null });
+      store.notify();
     });
   });
 

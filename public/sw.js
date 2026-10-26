@@ -1,4 +1,4 @@
-const CACHE_NAME = 'little-heroes-v3.6.5-bedtime-voice-pitch-fix-20261025';
+const CACHE_NAME = 'little-heroes-v3.7.0-kokoro-tts-migration-20261026';
 const STATIC_ASSETS = [
   './',
   './index.html',

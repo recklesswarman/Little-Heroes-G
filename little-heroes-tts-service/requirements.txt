@@ -1,0 +1,6 @@
+fastapi
+uvicorn[standard]
+pydantic>=2.0
+kokoro>=0.9.4
+numpy
+huggingface_hub

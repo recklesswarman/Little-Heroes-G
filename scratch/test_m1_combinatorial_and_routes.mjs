@@ -12,7 +12,8 @@ import {
 import { store } from '../src/state/store.js';
 import { buildChildStoryContext, bedtimeStoryService } from '../src/services/bedtimeStoryService.js';
 import { handleBedtimeStoryRequest } from '../server/geminiService.js';
-import { handleElevenLabsTTSRequest } from '../server/elevenLabsService.js';
+import { COMPANION_VOICE_PROFILES, normalizePetKey } from '../src/services/voiceService.js';
+import { PETS_DATABASE } from '../src/data/petsData.js';
 
 console.log('🧪 Starting Milestone M1 Verification Suite...\n');
 
@@ -140,23 +141,7 @@ async function run() {
     assert.ok(Array.isArray(context.antiRepetition.recentTitles), 'has recentTitles array');
   });
 
-  console.log('\n--- 8. Universal ElevenLabs Voice Fallback (No 404 for Non-Rex Pets) ---');
-  process.env.ELEVENLABS_API_KEY = 'test-key';
-  process.env.ELEVENLABS_REX_VOICE_ID = 'e9sQs6aLWU82SSolkPYZ';
-
-  let capturedUpstreamBody = null;
-  global.fetch = async (url, options) => {
-    if (options && options.body) {
-      try {
-        capturedUpstreamBody = JSON.parse(options.body);
-      } catch (e) {}
-    }
-    return {
-      ok: true,
-      arrayBuffer: async () => new Uint8Array([1, 2, 3, 4]).buffer
-    };
-  };
-
+  console.log('\n--- 8. Distinct Per-Pet Kokoro Voice Casting (All 24 Companion Pets) ---');
   const makeRes = () => {
     const res = { statusCode: 200 };
     res.status = (code) => { res.statusCode = code; return res; };
@@ -170,28 +155,18 @@ async function run() {
     socket: { remoteAddress: '127.0.0.1' }
   });
 
-  await (async () => {
-    // Test petId: 'bella' (not rex) -> must resolve to main voice and not return 404!
-    const res1 = makeRes();
-    await handleElevenLabsTTSRequest(makeReq({ text: 'Goodnight little hero!', petId: 'bella' }), res1);
-    check('Non-Rex pet (bella) successfully resolves to main voice without HTTP 404', () => {
-      assert.strictEqual(res1.statusCode, 200);
-      assert.strictEqual(res1.body.success, true);
-      assert.strictEqual(res1.body.voice, 'e9sQs6aLWU82SSolkPYZ');
-    });
+  check('COMPANION_VOICE_PROFILES has an entry (with a Kokoro voice id) for all 24 PETS_DATABASE pets', () => {
+    for (const pet of PETS_DATABASE) {
+      const profile = COMPANION_VOICE_PROFILES[normalizePetKey(pet.id)] || COMPANION_VOICE_PROFILES[pet.key];
+      assert.ok(profile, `Missing voice profile for pet ${pet.id} (${pet.key})`);
+      assert.ok(profile.kokoroVoice, `Pet ${pet.key} is missing a kokoroVoice id`);
+    }
+  });
 
-    // Test bedtime voice tuning
-    const res2 = makeRes();
-    await handleElevenLabsTTSRequest(makeReq({ text: 'Inhale peace, exhale sweet dreams.', petId: 'raptor', voiceStyle: 'bedtime' }), res2);
-    check('Bedtime narration tuning applies stability: 0.65, similarity_boost: 0.80, style: 0.35', () => {
-      assert.strictEqual(res2.statusCode, 200);
-      assert.ok(capturedUpstreamBody, 'captured upstream body');
-      assert.strictEqual(capturedUpstreamBody.voice_settings.stability, 0.65);
-      assert.strictEqual(capturedUpstreamBody.voice_settings.similarity_boost, 0.80);
-      assert.strictEqual(capturedUpstreamBody.voice_settings.style, 0.35);
-      assert.strictEqual(capturedUpstreamBody.voice_settings.use_speaker_boost, true);
-    });
-  })();
+  check('Distinct pets are cast to more than one voice (not all collapsed to a single universal voice)', () => {
+    const uniqueVoices = new Set(PETS_DATABASE.map(pet => (COMPANION_VOICE_PROFILES[normalizePetKey(pet.id)] || {}).kokoroVoice));
+    assert.ok(uniqueVoices.size > 1, `Expected more than one distinct voice across 24 pets, got ${uniqueVoices.size}`);
+  });
 
   console.log('\n--- 9. Server Bedtime Story Endpoint (handleBedtimeStoryRequest) ---');
   await (async () => {
