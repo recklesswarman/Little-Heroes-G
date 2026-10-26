@@ -42,19 +42,19 @@ async function run() {
     assert.strictEqual(sanctuary.bedtimeVoicePetId, null);
   });
 
-  check('resolveBedtimeNarratorPetId falls back to the provided petId when no override is set', () => {
+  check('resolveBedtimeNarratorPetId defaults to unified narrator (luna) when no override is set', () => {
     store.updateBedtimeSanctuaryState({ bedtimeVoicePetId: null });
-    assert.strictEqual(resolveBedtimeNarratorPetId('raptor'), 'raptor');
-  });
-
-  check('resolveBedtimeNarratorPetId prefers the parent-chosen override over the active companion', () => {
-    store.updateBedtimeSanctuaryState({ bedtimeVoicePetId: 'luna' });
     assert.strictEqual(resolveBedtimeNarratorPetId('raptor'), 'luna');
   });
 
-  check('Clearing the override (back to null) restores default match-active-companion behavior', () => {
+  check('resolveBedtimeNarratorPetId prefers the parent-chosen override over the active companion', () => {
+    store.updateBedtimeSanctuaryState({ bedtimeVoicePetId: 'stego' });
+    assert.strictEqual(resolveBedtimeNarratorPetId('raptor'), 'stego');
+  });
+
+  check('Clearing the override (back to null) restores default unified storyteller (luna)', () => {
     store.updateBedtimeSanctuaryState({ bedtimeVoicePetId: null });
-    assert.strictEqual(resolveBedtimeNarratorPetId('raptor'), 'raptor');
+    assert.strictEqual(resolveBedtimeNarratorPetId('raptor'), 'luna');
   });
 
   check('Parent Portal settings tab renders a selectable voice option for all 24 companion pets plus the default', () => {

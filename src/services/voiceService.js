@@ -97,7 +97,8 @@ const PET_VOICE_PROFILE_DATA = [
   { key: 'aqua_drake', name: 'Aqua Drake', pitch: 1.05, rate: 0.92, kokoroVoice: 'am_eric' },
   { key: 'aqua', name: 'Aqua Drake', pitch: 1.05, rate: 0.92, kokoroVoice: 'am_eric' },
   { key: 'bella', name: 'Bella the Bunny', pitch: 1.45, rate: 1.05, kokoroVoice: 'af_bella' },
-  { key: 'pip', name: 'Pip the Phoenix', pitch: 1.35, rate: 1.00, kokoroVoice: 'am_liam' }
+  { key: 'pip', name: 'Pip the Phoenix', pitch: 1.35, rate: 1.00, kokoroVoice: 'am_liam' },
+  { key: 'bedtime_narrator', name: 'Bedtime Narrator', pitch: 1.00, rate: 0.85, kokoroVoice: 'af_heart' }
 ];
 
 export const COMPANION_VOICE_PROFILES = PET_VOICE_PROFILE_DATA.reduce((acc, pet) => {

@@ -193,7 +193,7 @@ async def voices():
 @app.post("/tts", response_model=TtsResponse)
 @app.post("/api/tts", response_model=TtsResponse)
 async def tts(req: TtsRequest, request: Request):
-    if is_rate_limited(f"tts:{get_request_ip(request)}", 30, 60_000):
+    if is_rate_limited(f"tts:{get_request_ip(request)}", 60, 60_000):
         raise HTTPException(status_code=429, detail="Too many requests, please slow down.")
 
     clean_text = clean_dialogue_text(req.text)

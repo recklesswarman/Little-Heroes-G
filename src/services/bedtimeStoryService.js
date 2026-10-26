@@ -36,7 +36,8 @@ export function resolveBedtimeNarratorPetId(fallbackPetId) {
     const override = store.getBedtimeSanctuaryState?.()?.bedtimeVoicePetId;
     if (override) return override;
   } catch {}
-  return fallbackPetId;
+  // Dedicated unified bedtime narrator (af_heart / Luna) for cohesive storybook narration
+  return 'luna';
 }
 
 /**

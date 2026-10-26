@@ -9,6 +9,7 @@ import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import confetti from 'canvas-confetti';
 import { escapeHtml } from '../utils/escapeHtml.js';
+import { speakCompanion } from '../services/voiceService.js';
 
 export function renderGiftCrateWidget() {
   const state = store.getState();
@@ -259,15 +260,10 @@ export function attachGiftCrateListeners() {
   };
 
   window.speakCompanionText = (text) => {
-    if (!text || typeof window === 'undefined' || !window.speechSynthesis) return;
-    try {
-      window.speechSynthesis.cancel();
-      const utter = new SpeechSynthesisUtterance(text);
-      utter.rate = 1.05;
-      utter.pitch = 1.25; // Cartoon friendly pitch
-      window.speechSynthesis.speak(utter);
-    } catch (e) {
-      console.warn('Speech synthesis error:', e);
-    }
+    if (!text) return;
+    const petId = store.state?.equippedPetId || 'rex';
+    speakCompanion(text, petId).catch((err) => {
+      console.warn('Gift crate companion speech notice:', err);
+    });
   };
 }

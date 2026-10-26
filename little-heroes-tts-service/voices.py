@@ -40,6 +40,7 @@ PET_VOICE_MAP: dict[str, str] = {
     "aero": "af_aoede",      # Aero the Griffin -- soaring, noble
     "blaze": "af_kore",      # Blaze the Phoenix -- warm, dramatic
     "luna": "af_heart",      # Luna the Unicorn -- soft, soothing (default voice)
+    "bedtime_narrator": "af_heart", # Dedicated unified bedtime storyteller (af_heart)
     "kira": "af_nova",       # Kira the Kirin -- bright, wise-beyond-years
 
     # Aquatic (3)
