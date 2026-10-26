@@ -333,9 +333,13 @@ function speakWithSpeechSynthesis(text, petId = 'rex', onEnded = null, options =
   }
 
   try {
-    window.speechSynthesis.cancel();
+    const synth = typeof window !== 'undefined' ? window.speechSynthesis : (typeof speechSynthesis !== 'undefined' ? speechSynthesis : null);
+    if (!synth) return;
+    synth.cancel();
 
-    const utterance = new SpeechSynthesisUtterance(cleanSpokenText);
+    const UtteranceClass = (typeof window !== 'undefined' && window.SpeechSynthesisUtterance) || (typeof SpeechSynthesisUtterance !== 'undefined' ? SpeechSynthesisUtterance : null);
+    if (!UtteranceClass) return;
+    const utterance = new UtteranceClass(cleanSpokenText);
     const profile = getCompanionVoiceParams(petId);
 
     // Natural English voice selection prioritizing 'Daniel'

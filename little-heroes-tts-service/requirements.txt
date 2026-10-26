@@ -1,3 +1,7 @@
+# CPU-only PyTorch wheels: Cloud Run has no GPU, and the default PyPI torch
+# wheel bundles CUDA libraries (several GB), bloating the image and builds.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
 fastapi
 uvicorn[standard]
 pydantic>=2.0

@@ -60,6 +60,11 @@ PET_VOICE_MAP: dict[str, str] = {
     "barnaby": "am_adam",    # Barnaby the Bear -- warm, cuddly
 }
 
+# Every voice id this service is allowed to synthesize with (casting table +
+# default). Used to validate explicit `voice` overrides and to pre-download
+# all voicepacks into the Docker image at build time.
+KNOWN_VOICES: frozenset[str] = frozenset({DEFAULT_VOICE, *PET_VOICE_MAP.values()})
+
 # Legacy numeric ids (1-24) map 1:1 onto the keys above in PETS_DATABASE
 # order, so numeric-id lookups resolve the same voice as the pet's key.
 _NUMERIC_ID_TO_KEY = {

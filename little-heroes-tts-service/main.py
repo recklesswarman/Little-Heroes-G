@@ -49,6 +49,7 @@ app.add_middleware(
         "https://little-heroes-quest-8842.web.app",
         "https://little-heroes-quest-8842.firebaseapp.com",
         "https://recklesswarman.github.io",
+        "https://littleheroes-g1--little-heroes-quest-8842.us-east4.hosted.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -187,7 +188,10 @@ async def voices():
     return {"defaultVoice": DEFAULT_VOICE, "langCode": LANG_CODE, "petVoiceMap": PET_VOICE_MAP}
 
 
+# /api/tts alias: the client calls {base}/api/tts, and the Firebase Hosting
+# rewrite (firebase.json) forwards the original /api/tts path unchanged.
 @app.post("/tts", response_model=TtsResponse)
+@app.post("/api/tts", response_model=TtsResponse)
 async def tts(req: TtsRequest, request: Request):
     if is_rate_limited(f"tts:{get_request_ip(request)}", 30, 60_000):
         raise HTTPException(status_code=429, detail="Too many requests, please slow down.")

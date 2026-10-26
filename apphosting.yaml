@@ -33,7 +33,7 @@ env:
   # Cloud Run URL baked in at build time. Update this value once the service
   # is deployed (see little-heroes-tts-service/README.md).
   - variable: VITE_KOKORO_TTS_URL
-    value: https://little-heroes-tts-kokoro-REPLACE_WITH_REAL_URL.a.run.app
+    value: https://little-heroes-tts-kokoro-592754457115.us-central1.run.app
     availability:
       - BUILD
   # Google Gemini API key for live voice companion and AI storybook.

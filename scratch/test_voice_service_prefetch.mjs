@@ -107,6 +107,8 @@ const mockSpeechSynthesis = {
   }
 };
 
+global.SpeechSynthesisUtterance = MockSpeechSynthesisUtterance;
+global.speechSynthesis = mockSpeechSynthesis;
 global.window = {
   AudioContext: MockAudioContext,
   webkitAudioContext: MockAudioContext,
@@ -306,43 +308,47 @@ async function runTests() {
     console.log('  ✅ PASS: speakCompanion supports options object & trailing options, sets source.playbackRate.setValueAtTime, and compensates pitch via detune so chapters do not sound like a different voice');
   }
 
-  // --- Test Suite 5: Resilient Fallback to Gemini Flash TTS & SpeechSynthesis ---
-  console.log('\n--- Test Suite 5: Resilient Fallbacks (Gemini Flash TTS & SpeechSynthesis) ---');
+  // --- Test Suite 5: Primary Kokoro TTS & SpeechSynthesis fallback ---
+  console.log('\n--- Test Suite 5: Primary Kokoro TTS & Resilient SpeechSynthesis Fallback ---');
   {
     workoutAudioClipCache.clear();
     stopRex();
 
-    // 5.1 Test fallback to Gemini Flash TTS when ElevenLabs fails
-    let elevenLabsAttempted = false;
-    let geminiAttempted = false;
+    // 5.1 Kokoro microservice (/api/tts) is the single primary voice tier;
+    // the retired ElevenLabs and Gemini TTS routes must never be called.
+    let kokoroAttempted = false;
+    let kokoroPetId = null;
+    let retiredRouteCalled = false;
 
-    global.fetch = async (url) => {
-      if (url.includes('/api/elevenlabs/tts')) {
-        elevenLabsAttempted = true;
-        return { ok: false, status: 503, json: async () => ({ error: 'Service Unavailable' }) };
+    global.fetch = async (url, init = {}) => {
+      if (url.includes('/api/elevenlabs/') || url.includes('/api/gemini/tts')) {
+        retiredRouteCalled = true;
+        return { ok: false, status: 404 };
       }
-      if (url.includes('/api/gemini/tts')) {
-        geminiAttempted = true;
+      if (url.endsWith('/api/tts')) {
+        kokoroAttempted = true;
+        try { kokoroPetId = JSON.parse(init.body || '{}').petId; } catch { kokoroPetId = null; }
         return {
           ok: true,
           json: async () => ({
             success: true,
             audio: generateFakeBase64Pcm(80),
             sampleRate: 24000,
-            voice: 'Puck'
+            voice: 'am_puck'
           })
         };
       }
       return { ok: false, status: 404 };
     };
 
-    const fallbackLine = 'The silver moon smiled down on our little explorer.';
-    await speakCompanion(fallbackLine, 'rex', null, { rate: 0.90 });
+    const kokoroLine = 'The silver moon smiled down on our little explorer.';
+    await speakCompanion(kokoroLine, 'rex', null, { rate: 0.90 });
 
-    assert.strictEqual(elevenLabsAttempted, true, 'Primary ElevenLabs must be attempted first');
-    assert.strictEqual(geminiAttempted, true, 'Fallback to Gemini TTS must be executed when ElevenLabs fails');
+    assert.strictEqual(kokoroAttempted, true, 'Primary Kokoro TTS (/api/tts) must be attempted');
+    assert.ok(['rex', '1'].includes(String(kokoroPetId)), 'Rex petId (key or numeric id) must be forwarded so the service can cast the per-pet voice');
+    assert.strictEqual(retiredRouteCalled, false, 'Retired ElevenLabs/Gemini TTS routes must never be called');
     const node3 = createdAudioNodes[createdAudioNodes.length - 1];
-    assert.ok(node3 && node3.started, 'Audio buffer from Gemini Flash TTS must be played');
+    assert.ok(node3 && node3.started, 'Audio buffer from Kokoro TTS must be played');
 
     // 5.2 Test offline fallback to SpeechSynthesis when both server routes fail
     global.fetch = async () => {
@@ -362,7 +368,7 @@ async function runTests() {
     assert.strictEqual(lastUtterance.pitch, 0.95, 'SpeechSynthesis pitch option must be applied');
     assert.strictEqual(lastUtterance.voice?.name, 'Daniel (English UK)', 'SpeechSynthesis must prioritize Daniel voice');
 
-    console.log('  ✅ PASS: Resilient fallback to Gemini Flash TTS and SpeechSynthesis (Daniel voice) works cleanly');
+    console.log('  ✅ PASS: Primary Kokoro TTS plays, and SpeechSynthesis (Daniel voice) fallback works cleanly when offline');
   }
 
   console.log('\n🎉 ALL VOICE SERVICE & PRE-FETCH UNIT TESTS PASSED (5/5)!');
