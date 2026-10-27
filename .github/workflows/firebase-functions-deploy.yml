@@ -44,5 +44,9 @@ jobs:
         with:
           credentials_json: "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}"
 
+      - name: Show which service account is deploying
+        run: |
+          echo "Deploying as: $(jq -r '.client_email // "unknown"' "$GOOGLE_APPLICATION_CREDENTIALS")"
+
       - name: Deploy to Firebase Functions
         run: npx firebase-tools@latest deploy --only functions --project little-heroes-quest-8842 --non-interactive
