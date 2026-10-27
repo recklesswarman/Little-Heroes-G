@@ -23,7 +23,7 @@ import { renderHygieneReminderModal, attachHygieneReminderModalListeners } from 
 import { renderLiveRexWidget, attachLiveRexWidgetListeners } from './components/LiveRexWidget.js';
 import { geminiLiveService } from './services/geminiLiveService.js';
 import { rexEngine } from './services/rexCompanionEngine.js';
-import { stopRex } from './services/voiceService.js';
+import { stopRex, warmUpKokoroTts } from './services/voiceService.js';
 import { renderGiftCrateWidget, renderGiftCrateModal, attachGiftCrateListeners } from './components/GiftCrateModal.js';
 
 // Views
@@ -572,6 +572,9 @@ window.addEventListener('popstate', () => {
 
 // Initial Render
 renderApp();
+
+// Wake the scale-to-zero Kokoro TTS service so the first spoken line isn't a cold start.
+warmUpKokoroTts();
 
 // Expose Live Rex Companion Service & Firebase Storage Service on window for convenient console testing
 import('./services/heroAgentService.js').then(({ talkToRex, playRexVoice }) => {
