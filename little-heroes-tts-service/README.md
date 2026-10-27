@@ -44,10 +44,24 @@ in at build time instead, so this download never happens in production.
 ## Deployment (Cloud Run)
 
 This repo has no CI automation for Python service deploys — same as the
-existing `little-heroes-agy-service`, this is a manual `gcloud` deploy:
+existing `little-heroes-agy-service`, this is a manual `gcloud` deploy.
+
+**Step 1 — get the latest code into Cloud Shell** (first time: clone; after
+that: pull), then go into the service folder and check you are in the right
+place. `--source .` uploads the *current folder*, so deploying from the wrong
+folder ships the wrong app and the container fails to start:
 
 ```bash
+cd ~
+[ -d Little-Heroes-G ] || git clone https://github.com/recklesswarman/Little-Heroes-G.git
+cd ~/Little-Heroes-G && git pull origin main
 cd little-heroes-tts-service
+ls          # must show: Dockerfile  main.py  requirements.txt  voices.py
+```
+
+**Step 2 — deploy:**
+
+```bash
 gcloud run deploy little-heroes-tts-kokoro \
   --source . \
   --region us-central1 \
