@@ -12,6 +12,10 @@ import { DINO_WORKOUTS } from '../data/petsData.js';
 
 const KOKORO_TTS_ENDPOINT = '/api/tts';
 
+// How long a normal (non-bedtime, non-instant) line waits for Kokoro before the
+// browser voice takes over. Kokoro on CPU needs roughly 0.7s per second of speech.
+export const KOKORO_DEFAULT_TIMEOUT_MS = 7000;
+
 // Zero-latency client-side audio cache for gross-motor cadence cues and companion audio clips
 export const workoutAudioClipCache = new Map();
 
@@ -614,7 +618,7 @@ async function playPcmTtsResponse(data, cleanSpoken, petId, callback, myGenerati
  * non-2xx response (so callers can fall through to the next voice tier).
  *
  * Defaults to 18000ms for bedtime chapters (or when voiceStyle === 'bedtime')
- * to prevent 4500ms aborts on long story chapters.
+ * to prevent short-timeout aborts on long story chapters.
  */
 export function getVoiceApiBaseUrl() {
   // Direct-to-service override, same pattern as VITE_AGY_REX_URL for the
@@ -651,11 +655,11 @@ export function warmUpKokoroTts() {
     .finally(() => { if (timeoutId) clearTimeout(timeoutId); });
 }
 
-export async function fetchPcmTts(endpoint, cleanSpoken, petId, timeoutMsOrOptions = 4500, voiceStyle = 'default') {
+export async function fetchPcmTts(endpoint, cleanSpoken, petId, timeoutMsOrOptions = KOKORO_DEFAULT_TIMEOUT_MS, voiceStyle = 'default') {
   const fullEndpoint = (endpoint.startsWith('http://') || endpoint.startsWith('https://'))
     ? endpoint
     : `${getVoiceApiBaseUrl()}${endpoint}`;
-  let timeoutMs = 4500;
+  let timeoutMs = KOKORO_DEFAULT_TIMEOUT_MS;
   let style = voiceStyle || 'default';
 
   if (timeoutMsOrOptions && typeof timeoutMsOrOptions === 'object') {
@@ -669,9 +673,9 @@ export async function fetchPcmTts(endpoint, cleanSpoken, petId, timeoutMsOrOptio
     timeoutMs = timeoutMsOrOptions;
   }
 
-  // If bedtime style, default to 25000ms unless a custom timeout was explicitly specified (other than default 4500)
+  // If bedtime style, default to 25000ms unless a custom timeout was explicitly specified (other than the default)
   if (style === 'bedtime') {
-    if (timeoutMs === 4500 || !timeoutMs) {
+    if (timeoutMs === KOKORO_DEFAULT_TIMEOUT_MS || !timeoutMs) {
       timeoutMs = 25000;
     }
   }
@@ -743,7 +747,7 @@ export async function prewarmWorkoutAudio(workoutId, coachId = null) {
       return;
     }
 
-    const data = await fetchPcmTts(KOKORO_TTS_ENDPOINT, cleanSpoken, targetCoach, 4500);
+    const data = await fetchPcmTts(KOKORO_TTS_ENDPOINT, cleanSpoken, targetCoach, KOKORO_DEFAULT_TIMEOUT_MS);
 
     if (data && data.audio) {
       // Pre-decode into AudioBuffer if AudioContext is available
@@ -812,7 +816,7 @@ export async function prefetchCompanionAudio(text, petIdOrOptions = 'rex', optio
   const voiceStyle = opts.voiceStyle || 'default';
   const timeoutMs = typeof opts.timeoutMs === 'number' && opts.timeoutMs > 0
     ? opts.timeoutMs
-    : (voiceStyle === 'bedtime' ? 18000 : 4500);
+    : (voiceStyle === 'bedtime' ? 18000 : KOKORO_DEFAULT_TIMEOUT_MS);
 
   const styleKey = `${normKey}:${voiceStyle}:${cleanSpoken}`;
   const rawStyleKey = `${rawId}:${voiceStyle}:${cleanSpoken}`;
@@ -896,7 +900,7 @@ export const speakCompanion = async (text, petIdOrOptions = 'rex', onEndedOrOpti
   let petId = 'rex';
   let callback = null;
   let opts = {
-    timeoutMs: 4500,
+    timeoutMs: KOKORO_DEFAULT_TIMEOUT_MS,
     rate: 1.0,
     pitch: 1.0,
     voiceStyle: 'default',
@@ -948,8 +952,8 @@ export const speakCompanion = async (text, petIdOrOptions = 'rex', onEndedOrOpti
     }
   }
 
-  // If voiceStyle is 'bedtime' and timeoutMs wasn't explicitly changed from 4500, default to 18000ms
-  if (opts.voiceStyle === 'bedtime' && (!opts.timeoutMs || opts.timeoutMs === 4500)) {
+  // If voiceStyle is 'bedtime' and timeoutMs wasn't explicitly changed from the default, default to 18000ms
+  if (opts.voiceStyle === 'bedtime' && (!opts.timeoutMs || opts.timeoutMs === KOKORO_DEFAULT_TIMEOUT_MS)) {
     opts.timeoutMs = 18000;
   }
 
@@ -1020,7 +1024,7 @@ export const speakCompanion = async (text, petIdOrOptions = 'rex', onEndedOrOpti
   }
 
   let ttsSucceeded = false;
-  const timeoutMs = opts.timeoutMs || (voiceStyle === 'bedtime' ? 18000 : 4500);
+  const timeoutMs = opts.timeoutMs || (voiceStyle === 'bedtime' ? 18000 : KOKORO_DEFAULT_TIMEOUT_MS);
 
   // 1. Primary: self-hosted Kokoro TTS microservice.
   const kokoroData = await fetchPcmTts(KOKORO_TTS_ENDPOINT, cleanSpoken, petId, timeoutMs, voiceStyle);

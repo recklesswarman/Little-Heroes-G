@@ -33,7 +33,7 @@ async function run() {
     return Promise.reject(new Error('network down'));
   };
 
-  const { warmUpKokoroTts } = await import('../src/services/voiceService.js');
+  const { warmUpKokoroTts, KOKORO_DEFAULT_TIMEOUT_MS } = await import('../src/services/voiceService.js');
 
   await check('warmUpKokoroTts pings /api/tts/health and swallows network errors', async () => {
     warmUpKokoroTts();
@@ -47,6 +47,11 @@ async function run() {
     warmUpKokoroTts();
     await new Promise((r) => setTimeout(r, 20));
     assert.strictEqual(urls.length, 1);
+  });
+
+  await check('normal lines wait longer than 4.5s for Kokoro but less than the bedtime budget', () => {
+    assert.ok(KOKORO_DEFAULT_TIMEOUT_MS > 4500, `timeout ${KOKORO_DEFAULT_TIMEOUT_MS} should exceed 4500ms`);
+    assert.ok(KOKORO_DEFAULT_TIMEOUT_MS < 18000, 'normal lines must time out sooner than bedtime chapters');
   });
 
   console.log(`\n${passed} passed, ${failed} failed.`);
