@@ -38,8 +38,8 @@ curl http://localhost:8080/health
 
 The first request after a fresh install downloads Kokoro's model weights
 from Hugging Face Hub (~300MB) — subsequent requests are fast. The Docker
-image (below) bakes the weights in at build time instead, so this download
-never happens in production.
+image (below) bakes the base model and every voicepack in the casting table
+in at build time instead, so this download never happens in production.
 
 ## Deployment (Cloud Run)
 
@@ -53,21 +53,39 @@ gcloud run deploy little-heroes-tts-kokoro \
   --region us-central1 \
   --project little-heroes-quest-8842 \
   --allow-unauthenticated \
-  --cpu 2 \
-  --memory 2Gi \
+  --cpu 4 \
+  --memory 4Gi \
+  --cpu-boost \
   --min-instances 0 \
   --max-instances 5 \
-  --concurrency 10
+  --concurrency 4 \
+  --timeout 60
 ```
 
-- `--min-instances 0`: scales to zero when idle (no cost while unused). Note
-  this means the first request after an idle period pays a cold-start cost
-  — container start plus loading the Kokoro model into memory (the model
-  weights themselves are baked into the image at build time, so this is
-  "load into RAM," not "download from the internet," but it's still on the
-  order of a few seconds). If that latency becomes a problem in practice,
-  raising `--min-instances` to `1` keeps the model warm at the cost of a
-  small continuous Cloud Run bill.
+- `--cpu 4 --memory 4Gi`: Kokoro on CPU is compute-bound. A first live test
+  on 2 vCPU measured *slower than real time* (7.7s to synthesize a 4.6s
+  clip), which is far too slow for the app's client timeouts. The service
+  now sizes PyTorch's thread pool from the container's CPU quota (it used to
+  default to the host's core count and thrash), and 4 vCPU gives more
+  headroom. Cloud Run only bills while a request is being served.
+- `--cpu-boost`: extra CPU during container startup to shorten cold starts.
+- `--concurrency 4`: synthesis is serialized inside the process, so a high
+  concurrency just queues requests behind each other.
+- `--timeout 60`: Firebase Hosting rewrites cut off requests at 60s anyway.
+- Every synthesis logs `audio=…s synth=…ms rtf=…` (and returns `X-Synth-Ms` /
+  `X-Audio-Seconds` headers). `rtf` below 1.0 means faster than real time —
+  check Cloud Run logs after deploying to confirm the fix.
+- The model is loaded and warmed up in the app's startup (FastAPI lifespan),
+  so a request is never routed to a half-loaded instance. The web app also
+  pings `/api/tts/health` on page load to wake a scaled-down instance.
+- `--min-instances 0`: scales to zero when idle (no cost while unused). The
+  first request after an idle period still pays container start + model
+  load (measured ~22s before warm-up was added). If that is a problem in
+  practice, `--min-instances 1` keeps one instance warm at a small
+  continuous Cloud Run bill.
+- Optional env vars: `CORS_ORIGINS` (comma-separated extra allowed origins),
+  `TORCH_NUM_THREADS` (override the auto-detected thread count),
+  `SKIP_WARMUP=1` (skip the startup warm-up, e.g. for local dev).
 - `--allow-unauthenticated`: the client calls this service directly (same
   pattern the AGY service already uses via `VITE_AGY_REX_URL`), so it needs
   to be publicly reachable. There's no sensitive data or paid API behind
@@ -78,29 +96,13 @@ gcloud run deploy little-heroes-tts-kokoro \
 After deploying, note the service URL and wire it in as `VITE_KOKORO_TTS_URL`
 (see root `.env.example`) for client builds that call it directly.
 
-**⚠️ `firebase.json`'s `/api/tts` rewrite was removed** (it originally
-pointed `run: { serviceId: "little-heroes-tts-kokoro", region: "us-central1" }`,
-mirroring the `/api/rex/**` → AGY-service rewrite) because Firebase Hosting
-validates every `run:` rewrite target at deploy time and refuses to
-publish *any* hosting version if the referenced Cloud Run service doesn't
-exist yet — which broke `firebase-hosting-deploy.yml` entirely right after
-this service was merged, before it had been deployed. Once you've deployed
-`little-heroes-tts-kokoro` with the command above, add this rewrite back
-to `firebase.json`'s `hosting.rewrites` array (before the catch-all `**`
-entry):
-
-```json
-{
-  "source": "/api/tts",
-  "run": { "serviceId": "little-heroes-tts-kokoro", "region": "us-central1" }
-}
-```
-
-Until that's restored, the client's same-origin `/api/tts` fallback path
-(used on Firebase Hosting and GitHub Pages when `VITE_KOKORO_TTS_URL` isn't
-set) will 404 and voice narration will fall back to the browser's native
-`speechSynthesis` on those hosts — direct calls via `VITE_KOKORO_TTS_URL`
-are unaffected once that env var points at the deployed service.
+`firebase.json` routes `/api/tts` and `/api/tts/**` to this Cloud Run service.
+Firebase Hosting validates every `run:` rewrite target at deploy time and
+refuses to publish *any* hosting version if the referenced service doesn't
+exist, so the service must be deployed **before** those rewrites are merged
+(this is what broke `firebase-hosting-deploy.yml` right after the first
+merge). The client calls the service same-origin via these rewrites unless
+`VITE_KOKORO_TTS_URL` is set at build time.
 
 ## API
 

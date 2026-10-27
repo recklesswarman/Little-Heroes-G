@@ -634,6 +634,23 @@ export function getVoiceApiBaseUrl() {
   return '';
 }
 
+let kokoroWarmUpStarted = false;
+
+/**
+ * Wakes the (scale-to-zero) Kokoro Cloud Run instance and its model so the
+ * first spoken line of a session doesn't hit a cold start and silently fall
+ * back to the browser voice. Fire-and-forget, once per page load.
+ */
+export function warmUpKokoroTts() {
+  if (kokoroWarmUpStarted || typeof fetch !== 'function') return;
+  kokoroWarmUpStarted = true;
+  const controller = typeof AbortController === 'function' ? new AbortController() : null;
+  const timeoutId = controller ? setTimeout(() => controller.abort(), 90000) : null;
+  fetch(`${getVoiceApiBaseUrl()}${KOKORO_TTS_ENDPOINT}/health`, controller ? { signal: controller.signal } : undefined)
+    .catch(() => {})
+    .finally(() => { if (timeoutId) clearTimeout(timeoutId); });
+}
+
 export async function fetchPcmTts(endpoint, cleanSpoken, petId, timeoutMsOrOptions = 4500, voiceStyle = 'default') {
   const fullEndpoint = (endpoint.startsWith('http://') || endpoint.startsWith('https://'))
     ? endpoint
@@ -984,7 +1001,7 @@ export const speakCompanion = async (text, petIdOrOptions = 'rex', onEndedOrOpti
   }
 
   if (opts.instant) {
-    const INSTANT_KOKORO_TIMEOUT_MS = 700;
+    const INSTANT_KOKORO_TIMEOUT_MS = 1800;
     const fastData = await fetchPcmTts(KOKORO_TTS_ENDPOINT, cleanSpoken, petId, INSTANT_KOKORO_TIMEOUT_MS, voiceStyle);
     if (myGeneration !== speechGeneration) return;
     if (fastData) {

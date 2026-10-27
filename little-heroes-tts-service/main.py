@@ -19,15 +19,20 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import logging
+import math
 import os
 import re
+import threading
 import time
 from collections import OrderedDict, defaultdict
+from contextlib import asynccontextmanager
 from typing import Optional
 
 import numpy as np
 import uvicorn
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -35,39 +40,120 @@ from voices import DEFAULT_VOICE, LANG_CODE, PET_VOICE_MAP, resolve_voice
 
 SAMPLE_RATE = 24000
 
-app = FastAPI(
-    title="Little Heroes TTS Microservice",
-    description="Self-hosted text-to-speech for all companion/narration voice, powered by Kokoro.",
-    version="1.0.0",
-)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:4173",
-        "https://little-heroes-quest-8842.web.app",
-        "https://little-heroes-quest-8842.firebaseapp.com",
-        "https://recklesswarman.github.io",
-        "https://littleheroes-g1--little-heroes-quest-8842.us-east4.hosted.app",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+logger = logging.getLogger("tts")
+logging.basicConfig(level=logging.INFO)
 
 
-# ── Kokoro pipeline (loaded once at process start, not per-request) ─────────
+# ── CPU / thread tuning ──────────────────────────────────────────────────────
+# PyTorch sizes its thread pool from the *host's* core count, but Cloud Run
+# only grants the container a CPU quota (e.g. 2 vCPU). Running 8+ threads on a
+# 2-vCPU quota thrashes and makes synthesis slower than real time, so size the
+# pool from the cgroup quota instead.
+
+def detect_cpu_quota() -> int:
+    override = os.environ.get("TORCH_NUM_THREADS", "").strip()
+    if override.isdigit() and int(override) > 0:
+        return int(override)
+    try:  # cgroup v2
+        with open("/sys/fs/cgroup/cpu.max") as f:
+            quota, period = f.read().split()
+        if quota != "max":
+            return max(1, math.ceil(int(quota) / int(period)))
+    except Exception:
+        pass
+    try:  # cgroup v1
+        with open("/sys/fs/cgroup/cpu/cpu.cfs_quota_us") as f:
+            quota = int(f.read())
+        with open("/sys/fs/cgroup/cpu/cpu.cfs_period_us") as f:
+            period = int(f.read())
+        if quota > 0:
+            return max(1, math.ceil(quota / period))
+    except Exception:
+        pass
+    try:
+        return max(1, len(os.sched_getaffinity(0)))
+    except Exception:
+        return os.cpu_count() or 1
+
+
+def configure_threads() -> int:
+    threads = detect_cpu_quota()
+    try:
+        import torch
+        torch.set_num_threads(threads)
+    except Exception as exc:  # pragma: no cover - torch always present in prod
+        logger.warning("Could not set torch threads: %s", exc)
+    logger.info("Torch intra-op threads set to %d", threads)
+    return threads
+
+
+# ── Kokoro pipeline (built once, then reused for every request) ─────────────
 
 _pipeline = None
+_pipeline_lock = threading.Lock()
+# Kokoro's pipeline is not safe to run concurrently and extra parallel
+# inference only oversubscribes the CPU, so synthesis is serialized.
+_synth_lock = threading.Lock()
 
 
 def get_pipeline():
     global _pipeline
     if _pipeline is None:
-        from kokoro import KPipeline
-        _pipeline = KPipeline(lang_code=LANG_CODE)
+        with _pipeline_lock:
+            if _pipeline is None:
+                configure_threads()
+                from kokoro import KPipeline
+                started = time.time()
+                _pipeline = KPipeline(lang_code=LANG_CODE)
+                logger.info("Kokoro pipeline loaded in %.1fs", time.time() - started)
     return _pipeline
+
+
+def warm_up() -> None:
+    """Loads the model and runs one short synthesis so the first real request
+    doesn't pay for model load, voicepack load, and first-inference setup."""
+    started = time.time()
+    try:
+        synthesize("Hello, little hero.", DEFAULT_VOICE, DEFAULT_COMPANION_SPEED)
+        logger.info("Warm-up complete in %.1fs", time.time() - started)
+    except Exception as exc:  # never block startup on a failed warm-up
+        logger.warning("Warm-up failed: %s", exc)
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    # Runs before uvicorn starts accepting connections, so Cloud Run only
+    # routes traffic once the model is loaded and warm.
+    if os.environ.get("SKIP_WARMUP") != "1":
+        await run_in_threadpool(warm_up)
+    yield
+
+
+app = FastAPI(
+    title="Little Heroes TTS Microservice",
+    description="Self-hosted text-to-speech for all companion/narration voice, powered by Kokoro.",
+    version="1.1.0",
+    lifespan=lifespan,
+)
+
+_DEFAULT_CORS_ORIGINS = [
+    "http://localhost:5173",
+    "http://localhost:4173",
+    "https://little-heroes-quest-8842.web.app",
+    "https://little-heroes-quest-8842.firebaseapp.com",
+    "https://recklesswarman.github.io",
+    "https://littleheroes-g1--little-heroes-quest-8842.us-east4.hosted.app",
+]
+_EXTRA_CORS_ORIGINS = [o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if o.strip()]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_DEFAULT_CORS_ORIGINS + _EXTRA_CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["X-Synth-Ms", "X-Audio-Seconds"],
+)
 
 
 # ── In-memory response cache (mirrors the Node ttsCache pattern, now in one
@@ -145,8 +231,11 @@ def synthesize(text: str, voice: str, speed: float) -> bytes:
     playPcmTtsResponse() already decodes."""
     pipeline = get_pipeline()
     chunks: list[np.ndarray] = []
-    for _, _, audio in pipeline(text, voice=voice, speed=speed, split_pattern=r"\n+"):
-        chunks.append(np.asarray(audio, dtype=np.float32))
+    with _synth_lock:
+        for _, _, audio in pipeline(text, voice=voice, speed=speed, split_pattern=r"\n+"):
+            if hasattr(audio, "detach"):
+                audio = audio.detach().cpu().numpy()
+            chunks.append(np.asarray(audio, dtype=np.float32))
 
     if not chunks:
         raise RuntimeError("Kokoro produced no audio for this text.")
@@ -179,8 +268,17 @@ class TtsResponse(BaseModel):
 # ── Routes ───────────────────────────────────────────────────────────────────
 
 @app.get("/health")
+@app.get("/api/tts/health")
 async def health():
-    return {"status": "ok", "service": "little-heroes-tts-kokoro", "version": "1.0.0"}
+    # /api/tts/health is reachable through the Firebase Hosting rewrite
+    # (/api/tts/**), so the client can ping it on app load to wake a
+    # scaled-to-zero instance before the first spoken line.
+    return {
+        "status": "ok",
+        "service": "little-heroes-tts-kokoro",
+        "version": "1.1.0",
+        "modelLoaded": _pipeline is not None,
+    }
 
 
 @app.get("/voices")
@@ -192,7 +290,7 @@ async def voices():
 # rewrite (firebase.json) forwards the original /api/tts path unchanged.
 @app.post("/tts", response_model=TtsResponse)
 @app.post("/api/tts", response_model=TtsResponse)
-async def tts(req: TtsRequest, request: Request):
+async def tts(req: TtsRequest, request: Request, response: Response):
     if is_rate_limited(f"tts:{get_request_ip(request)}", 60, 60_000):
         raise HTTPException(status_code=429, detail="Too many requests, please slow down.")
 
@@ -208,10 +306,23 @@ async def tts(req: TtsRequest, request: Request):
     if cached:
         return TtsResponse(**cached, cached=True)
 
+    started = time.time()
     try:
-        audio_b64 = synthesize(clean_text, voice, speed)
+        # Off the event loop so /health and queued requests stay responsive.
+        audio_b64 = await run_in_threadpool(synthesize, clean_text, voice, speed)
     except Exception as exc:  # pragma: no cover - defensive, surfaced to client as 502
+        logger.exception("Synthesis failed")
         raise HTTPException(status_code=502, detail=f"Voice generation failed: {exc}") from exc
+
+    synth_ms = (time.time() - started) * 1000
+    audio_seconds = (len(audio_b64) * 3 / 4) / 2 / SAMPLE_RATE
+    logger.info(
+        "tts voice=%s chars=%d audio=%.1fs synth=%.0fms rtf=%.2f",
+        voice, len(clean_text), audio_seconds, synth_ms,
+        (synth_ms / 1000) / audio_seconds if audio_seconds else 0.0,
+    )
+    response.headers["X-Synth-Ms"] = f"{synth_ms:.0f}"
+    response.headers["X-Audio-Seconds"] = f"{audio_seconds:.2f}"
 
     payload = {
         "success": True,
