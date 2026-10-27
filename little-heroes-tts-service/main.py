@@ -122,10 +122,12 @@ def warm_up() -> None:
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    # Runs before uvicorn starts accepting connections, so Cloud Run only
-    # routes traffic once the model is loaded and warm.
+    # Warm up in a background thread so uvicorn opens its port immediately
+    # (Cloud Run fails the deploy if the container doesn't listen on $PORT in
+    # time). A request that arrives mid-warm-up simply waits on the pipeline
+    # lock; /health reports modelLoaded=false until warm-up finishes.
     if os.environ.get("SKIP_WARMUP") != "1":
-        await run_in_threadpool(warm_up)
+        threading.Thread(target=warm_up, name="tts-warmup", daemon=True).start()
     yield
 
 
