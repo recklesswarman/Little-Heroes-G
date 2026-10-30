@@ -22,7 +22,7 @@ import {
   BEDTIME_EXPLORER_PALETTE
 } from '../src/components/BedtimeStoryStage3D.js';
 
-import { PETS_DATABASE, PET_ARCHETYPES, getPetById } from '../data/petsData.js';
+import { PETS_DATABASE, PET_ARCHETYPES, getPetById } from '../src/data/petsData.js';
 import {
   prefetchCompanionAudio,
   workoutAudioClipCache,

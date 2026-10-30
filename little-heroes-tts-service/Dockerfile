@@ -21,6 +21,14 @@ ENV HF_HOME=/app/.cache/huggingface
 # fetches each voice's .pt file from Hugging Face on its first use.
 RUN python -c "from kokoro import KPipeline; from voices import KNOWN_VOICES; p = KPipeline(lang_code='a'); [p.load_voice(v) for v in sorted(KNOWN_VOICES)]"
 
+# Lock Hugging Face Hub into strict offline mode at runtime so KPipeline and
+# load_voice() read exclusively from baked local disk without network HEAD checks,
+# and pin OpenMP/MKL threads to match Cloud Run CPU quota.
+ENV HF_HUB_OFFLINE=1
+ENV TRANSFORMERS_OFFLINE=1
+ENV OMP_NUM_THREADS=4
+ENV MKL_NUM_THREADS=4
+
 # Cloud Run expects PORT env var
 ENV PORT=8080
 EXPOSE 8080

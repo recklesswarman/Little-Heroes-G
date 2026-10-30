@@ -9,34 +9,39 @@ TTS). Centralizes pet->voice casting (see voices.py) in one place instead of
 duplicating it across the Node server and Firebase Functions.
 
 Endpoints:
-  POST /tts     — synthesize speech for a pet/voiceStyle; returns base64 PCM16
-                  @ 24kHz in the same JSON shape the client already expects
-                  from the old ElevenLabs/Gemini TTS routes.
-  GET  /voices  — introspection: lists the pet -> voice casting table.
-  GET  /health  — Cloud Run health check.
+  POST /tts         — synthesize speech for a pet/voiceStyle; returns base64 PCM16
+                      @ 24kHz in the same JSON shape the client expects.
+  POST /tts/stream  — real-time NDJSON chunked PCM16 streaming (Kokoro-FastAPI
+                      pattern) yielding each sentence/clause audio segment as soon
+                      as it finishes (~1.0-1.5s first-chunk latency on CPU).
+  GET  /voices      — introspection: lists the pet -> voice casting table.
+  GET  /health      — Cloud Run health check.
 """
 from __future__ import annotations
 
 import base64
 import hashlib
+import json
 import logging
 import math
 import os
+import queue
 import re
 import threading
 import time
 from collections import OrderedDict, defaultdict
 from contextlib import asynccontextmanager
-from typing import Optional
+from typing import Iterator, Optional
 
 import numpy as np
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from voices import DEFAULT_VOICE, LANG_CODE, PET_VOICE_MAP, resolve_voice
+from voices import DEFAULT_VOICE, KNOWN_VOICES, LANG_CODE, PET_VOICE_MAP, resolve_voice
 
 SAMPLE_RATE = 24000
 
@@ -44,11 +49,10 @@ logger = logging.getLogger("tts")
 logging.basicConfig(level=logging.INFO)
 
 
-# ── CPU / thread tuning ──────────────────────────────────────────────────────
-# PyTorch sizes its thread pool from the *host's* core count, but Cloud Run
-# only grants the container a CPU quota (e.g. 2 vCPU). Running 8+ threads on a
-# 2-vCPU quota thrashes and makes synthesis slower than real time, so size the
-# pool from the cgroup quota instead.
+# ── CPU / thread tuning (Kokoro-FastAPI CPU optimization pattern) ────────────
+# PyTorch sizes its thread pool from the *host's* core count, while OpenMP/MKL
+# can oversubscribe vCPUs unless pinned. Match intra-op threads to cgroup quota
+# and pin inter-op threads to 1 so CPU inference runs without contention.
 
 def detect_cpu_quota() -> int:
     override = os.environ.get("TORCH_NUM_THREADS", "").strip()
@@ -78,26 +82,33 @@ def detect_cpu_quota() -> int:
 
 def configure_threads() -> int:
     threads = detect_cpu_quota()
+    os.environ.setdefault("OMP_NUM_THREADS", str(threads))
+    os.environ.setdefault("MKL_NUM_THREADS", str(threads))
     try:
         import torch
         torch.set_num_threads(threads)
+        try:
+            torch.set_num_interop_threads(1)
+        except Exception:
+            pass
     except Exception as exc:  # pragma: no cover - torch always present in prod
         logger.warning("Could not set torch threads: %s", exc)
-    logger.info("Torch intra-op threads set to %d", threads)
+    logger.info("Torch intra-op threads set to %d (interop=1)", threads)
     return threads
 
 
-# ── Kokoro pipeline (built once, then reused for every request) ─────────────
+# ── Kokoro pipeline (built once, all pet voices preloaded into RAM) ─────────
 
 _pipeline = None
 _pipeline_lock = threading.Lock()
+_voices_preloaded = False
 # Kokoro's pipeline is not safe to run concurrently and extra parallel
 # inference only oversubscribes the CPU, so synthesis is serialized.
 _synth_lock = threading.Lock()
 
 
 def get_pipeline():
-    global _pipeline
+    global _pipeline, _voices_preloaded
     if _pipeline is None:
         with _pipeline_lock:
             if _pipeline is None:
@@ -105,13 +116,24 @@ def get_pipeline():
                 from kokoro import KPipeline
                 started = time.time()
                 _pipeline = KPipeline(lang_code=LANG_CODE)
-                logger.info("Kokoro pipeline loaded in %.1fs", time.time() - started)
+                for voice_id in sorted(KNOWN_VOICES):
+                    try:
+                        _pipeline.load_voice(voice_id)
+                    except Exception as v_exc:
+                        logger.warning("Could not preload voice %s: %s", voice_id, v_exc)
+                _voices_preloaded = True
+                logger.info(
+                    "Kokoro pipeline + %d voicepacks loaded in %.1fs",
+                    len(KNOWN_VOICES),
+                    time.time() - started,
+                )
     return _pipeline
 
 
 def warm_up() -> None:
-    """Loads the model and runs one short synthesis so the first real request
-    doesn't pay for model load, voicepack load, and first-inference setup."""
+    """Loads the model, preloads all 24-pet voice tensors into RAM, and runs one
+    short inference synchronously so the very first real request has zero model,
+    voicepack, or PyTorch JIT setup delay."""
     started = time.time()
     try:
         synthesize("Hello, little hero.", DEFAULT_VOICE, DEFAULT_COMPANION_SPEED)
@@ -122,19 +144,18 @@ def warm_up() -> None:
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    # Warm up in a background thread so uvicorn opens its port immediately
-    # (Cloud Run fails the deploy if the container doesn't listen on $PORT in
-    # time). A request that arrives mid-warm-up simply waits on the pipeline
-    # lock; /health reports modelLoaded=false until warm-up finishes.
+    # Run warm_up synchronously before opening traffic so Cloud Run marks the
+    # instance ready ONLY after model weights + all pet voicepacks are hot in RAM
+    # (~3-4s from baked /app/.cache/huggingface during --cpu-boost startup).
     if os.environ.get("SKIP_WARMUP") != "1":
-        threading.Thread(target=warm_up, name="tts-warmup", daemon=True).start()
+        await run_in_threadpool(warm_up)
     yield
 
 
 app = FastAPI(
     title="Little Heroes TTS Microservice",
     description="Self-hosted text-to-speech for all companion/narration voice, powered by Kokoro.",
-    version="1.1.0",
+    version="1.2.0",
     lifespan=lifespan,
 )
 
@@ -158,10 +179,9 @@ app.add_middleware(
 )
 
 
-# ── In-memory response cache (mirrors the Node ttsCache pattern, now in one
-#    place instead of duplicated across two backends) ───────────────────────
+# ── In-memory response cache ────────────────────────────────────────────────
 
-_CACHE_MAX_ENTRIES = 200
+_CACHE_MAX_ENTRIES = 600
 _tts_cache: "OrderedDict[str, dict]" = OrderedDict()
 
 
@@ -180,8 +200,7 @@ def _cache_set(key: str, payload: dict) -> None:
         _tts_cache.popitem(last=False)
 
 
-# ── Simple per-IP rate limiting (mirrors server/geminiService.js's
-#    isRateLimited token-bucket pattern) ────────────────────────────────────
+# ── Simple per-IP rate limiting ─────────────────────────────────────────────
 
 _rate_limit_hits: dict[str, list[float]] = defaultdict(list)
 
@@ -202,8 +221,10 @@ def get_request_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
-# ── Text cleanup (mirrors the existing cleanDialogueText/cleanSpeechText
-#    pattern already used server-side: strip stage directions/brackets) ────
+# ── Text cleanup & Token-Safe Chunking (Kokoro-FastAPI pattern) ─────────────
+# Kokoro-82M has a hard 510-token window per inference call. Splitting on
+# sentence boundaries and breaking overly long clauses (>300 chars) keeps every
+# chunk well inside the safe budget and ensures fast first-chunk synthesis.
 
 def clean_dialogue_text(text: str) -> str:
     cleaned = re.sub(r"\*.*?\*", " ", text or "")
@@ -212,8 +233,57 @@ def clean_dialogue_text(text: str) -> str:
     return cleaned
 
 
-# ── Speed resolution: bedtime narration reads slower than companion chat,
-#    matching the app's existing bedtime-vs-companion tuning convention ────
+SENTENCE_SPLIT_PATTERN = r"(?<=[.!?])\s+|(?<=[.!?][\"'\u201d\u2019])\s+|\n+"
+CLAUSE_SPLIT_PATTERN = r"(?<=[,;:\u2014])\s+"
+PAUSE_SAMPLES = int(SAMPLE_RATE * 0.22)
+PAUSE_CHUNK = np.zeros(PAUSE_SAMPLES, dtype=np.float32)
+
+
+def split_into_safe_chunks(text: str, first_max_chars: int = 180, max_chars: int = 320) -> list[str]:
+    """Splits clean dialogue text into natural sentence/clause segments so:
+    1) Chunk 0 is concise (<= first_max_chars) for ~1.0-1.4s time-to-first-audio.
+    2) Every chunk stays safely below Kokoro's 510-token ceiling."""
+    raw_sentences = [s.strip() for s in re.split(SENTENCE_SPLIT_PATTERN, text) if s and s.strip()]
+    if not raw_sentences:
+        return [text] if text else []
+
+    safe_chunks: list[str] = []
+    for sent in raw_sentences:
+        limit = first_max_chars if not safe_chunks else max_chars
+        if len(sent) <= limit:
+            safe_chunks.append(sent)
+            continue
+        clauses = [c.strip() for c in re.split(CLAUSE_SPLIT_PATTERN, sent) if c and c.strip()]
+        buf = ""
+        for clause in clauses:
+            cur_limit = first_max_chars if not safe_chunks else max_chars
+            candidate = f"{buf} {clause}".strip() if buf else clause
+            if len(candidate) <= cur_limit:
+                buf = candidate
+            else:
+                if buf:
+                    safe_chunks.append(buf)
+                if len(clause) <= max_chars:
+                    buf = clause
+                else:
+                    # Hard word-wrap fallback for unpunctuated run-on strings
+                    words = clause.split()
+                    wbuf = ""
+                    for w in words:
+                        wcand = f"{wbuf} {w}".strip() if wbuf else w
+                        if len(wcand) <= max_chars:
+                            wbuf = wcand
+                        else:
+                            if wbuf:
+                                safe_chunks.append(wbuf)
+                            wbuf = w
+                    buf = wbuf
+        if buf:
+            safe_chunks.append(buf)
+    return safe_chunks
+
+
+# ── Speed resolution ────────────────────────────────────────────────────────
 
 DEFAULT_COMPANION_SPEED = 0.95
 DEFAULT_BEDTIME_SPEED = 0.85
@@ -225,27 +295,37 @@ def resolve_speed(voice_style: str, requested_speed: Optional[float]) -> float:
     return DEFAULT_BEDTIME_SPEED if voice_style == "bedtime" else DEFAULT_COMPANION_SPEED
 
 
-# ── Synthesis ────────────────────────────────────────────────────────────────
+# ── Synthesis ───────────────────────────────────────────────────────────────
 
-SENTENCE_SPLIT_PATTERN = r"(?<=[.!?])\s+|(?<=[.!?][\"'])\s+|\n+"
-PAUSE_SAMPLES = int(SAMPLE_RATE * 0.25)
-PAUSE_CHUNK = np.zeros(PAUSE_SAMPLES, dtype=np.float32)
+def _float32_to_b64_pcm16(audio_arr: np.ndarray) -> str:
+    clamped = np.clip(audio_arr, -1.0, 1.0)
+    pcm16 = (clamped * 32767.0).astype(np.int16)
+    return base64.b64encode(pcm16.tobytes()).decode("ascii")
 
 
-def synthesize(text: str, voice: str, speed: float) -> bytes:
-    """Runs Kokoro, concatenates all chunks, and returns base64-encoded PCM16
-    mono audio at SAMPLE_RATE, matching the wire format the client's
-    playPcmTtsResponse() already decodes."""
+def iter_synthesized_chunks(text: str, voice: str, speed: float) -> Iterator[np.ndarray]:
+    """Yields float32 @ 24kHz audio arrays segment-by-segment, releasing and
+    re-acquiring _synth_lock per segment so concurrent short phrase requests
+    are never starved behind a multi-sentence storybook chapter."""
     pipeline = get_pipeline()
-    chunks: list[np.ndarray] = []
-    with _synth_lock:
-        for _, _, audio in pipeline(text, voice=voice, speed=speed, split_pattern=SENTENCE_SPLIT_PATTERN):
-            if hasattr(audio, "detach"):
-                audio = audio.detach().cpu().numpy()
-            arr = np.asarray(audio, dtype=np.float32)
-            if arr.size > 0:
-                chunks.append(arr)
+    segments = split_into_safe_chunks(text)
+    for seg in segments:
+        seg_parts: list[np.ndarray] = []
+        with _synth_lock:
+            for _, _, audio in pipeline(seg, voice=voice, speed=speed, split_pattern=SENTENCE_SPLIT_PATTERN):
+                if hasattr(audio, "detach"):
+                    audio = audio.detach().cpu().numpy()
+                arr = np.asarray(audio, dtype=np.float32)
+                if arr.size > 0:
+                    seg_parts.append(arr)
+        if seg_parts:
+            yield np.concatenate(seg_parts) if len(seg_parts) > 1 else seg_parts[0]
 
+
+def synthesize(text: str, voice: str, speed: float) -> str:
+    """Runs Kokoro across token-safe chunks, concatenates with natural sentence
+    pauses, and returns base64-encoded PCM16 mono audio at SAMPLE_RATE."""
+    chunks = list(iter_synthesized_chunks(text, voice, speed))
     if not chunks:
         raise RuntimeError("Kokoro produced no audio for this text.")
 
@@ -259,9 +339,7 @@ def synthesize(text: str, voice: str, speed: float) -> bytes:
     else:
         full_audio = chunks[0]
 
-    clamped = np.clip(full_audio, -1.0, 1.0)
-    pcm16 = (clamped * 32767.0).astype(np.int16)
-    return base64.b64encode(pcm16.tobytes()).decode("ascii")
+    return _float32_to_b64_pcm16(full_audio)
 
 
 # ── Request / response models ───────────────────────────────────────────────
@@ -288,14 +366,12 @@ class TtsResponse(BaseModel):
 @app.get("/health")
 @app.get("/api/tts/health")
 async def health():
-    # /api/tts/health is reachable through the Firebase Hosting rewrite
-    # (/api/tts/**), so the client can ping it on app load to wake a
-    # scaled-to-zero instance before the first spoken line.
     return {
         "status": "ok",
         "service": "little-heroes-tts-kokoro",
-        "version": "1.1.0",
+        "version": "1.2.0",
         "modelLoaded": _pipeline is not None,
+        "voicesPreloaded": _voices_preloaded,
     }
 
 
@@ -304,14 +380,9 @@ async def voices():
     return {"defaultVoice": DEFAULT_VOICE, "langCode": LANG_CODE, "petVoiceMap": PET_VOICE_MAP}
 
 
-# /api/tts alias: the client calls {base}/api/tts, and the Firebase Hosting
-# rewrite (firebase.json) forwards the original /api/tts path unchanged.
 @app.post("/tts", response_model=TtsResponse)
 @app.post("/api/tts", response_model=TtsResponse)
 async def tts(req: TtsRequest, request: Request, response: Response):
-    if is_rate_limited(f"tts:{get_request_ip(request)}", 60, 60_000):
-        raise HTTPException(status_code=429, detail="Too many requests, please slow down.")
-
     clean_text = clean_dialogue_text(req.text)
     if not clean_text:
         raise HTTPException(status_code=400, detail="No readable speech text found.")
@@ -319,14 +390,17 @@ async def tts(req: TtsRequest, request: Request, response: Response):
     pet_key, voice = resolve_voice(req.petId)
     speed = resolve_speed(req.voiceStyle, req.speed)
 
+    # Serve cache hits immediately before rate-limiting so client pre-warm checks are free.
     cache_key = _cache_key(clean_text, voice, speed)
     cached = _cache_get(cache_key)
     if cached:
         return TtsResponse(**cached, cached=True)
 
+    if is_rate_limited(f"tts:{get_request_ip(request)}", 300, 60_000):
+        raise HTTPException(status_code=429, detail="Too many requests, please slow down.")
+
     started = time.time()
     try:
-        # Off the event loop so /health and queued requests stay responsive.
         audio_b64 = await run_in_threadpool(synthesize, clean_text, voice, speed)
     except Exception as exc:  # pragma: no cover - defensive, surfaced to client as 502
         logger.exception("Synthesis failed")
@@ -352,6 +426,89 @@ async def tts(req: TtsRequest, request: Request, response: Response):
     }
     _cache_set(cache_key, payload)
     return TtsResponse(**payload, cached=False)
+
+
+@app.post("/tts/stream")
+@app.post("/api/tts/stream")
+async def tts_stream(req: TtsRequest, request: Request):
+    """Real-time NDJSON chunked PCM16 streaming endpoint (Kokoro-FastAPI pattern).
+    Yields each synthesized sentence/clause as soon as Kokoro finishes generating it
+    (~1.0-1.5s time-to-first-chunk on CPU), then caches the assembled full audio
+    so subsequent replays return instantly in 0ms."""
+    clean_text = clean_dialogue_text(req.text)
+    if not clean_text:
+        raise HTTPException(status_code=400, detail="No readable speech text found.")
+
+    pet_key, voice = resolve_voice(req.petId)
+    speed = resolve_speed(req.voiceStyle, req.speed)
+    cache_key = _cache_key(clean_text, voice, speed)
+
+    cached = _cache_get(cache_key)
+    if cached:
+        def _cached_gen():
+            yield json.dumps({
+                "chunkIndex": 0,
+                "isFinal": True,
+                "cached": True,
+                **cached,
+            }) + "\n"
+        return StreamingResponse(_cached_gen(), media_type="application/x-ndjson")
+
+    if is_rate_limited(f"tts:{get_request_ip(request)}", 300, 60_000):
+        raise HTTPException(status_code=429, detail="Too many requests, please slow down.")
+
+    def _stream_generator():
+        q: "queue.Queue[Optional[tuple[int, np.ndarray]]]" = queue.Queue()
+        collected: list[np.ndarray] = []
+
+        def _producer():
+            try:
+                for idx, arr in enumerate(iter_synthesized_chunks(clean_text, voice, speed)):
+                    collected.append(arr)
+                    q.put((idx, arr))
+            except Exception as exc:
+                logger.exception("Streaming synthesis error: %s", exc)
+            finally:
+                q.put(None)
+
+        threading.Thread(target=_producer, name="tts-stream-producer", daemon=True).start()
+
+        while True:
+            item = q.get()
+            if item is None:
+                break
+            idx, arr = item
+            # Append subtle sentence pause to streamed chunks so sequential playback sounds natural
+            padded = np.concatenate([arr, PAUSE_CHUNK])
+            b64 = _float32_to_b64_pcm16(padded)
+            yield json.dumps({
+                "success": True,
+                "chunkIndex": idx,
+                "isFinal": False,
+                "audio": b64,
+                "sampleRate": SAMPLE_RATE,
+                "voice": voice,
+                "petId": pet_key,
+            }) + "\n"
+
+        if collected:
+            interleaved: list[np.ndarray] = []
+            for i, c in enumerate(collected):
+                interleaved.append(c)
+                if i < len(collected) - 1:
+                    interleaved.append(PAUSE_CHUNK)
+            full_b64 = _float32_to_b64_pcm16(np.concatenate(interleaved) if len(interleaved) > 1 else interleaved[0])
+            _cache_set(cache_key, {
+                "success": True,
+                "audio": full_b64,
+                "mimeType": f"audio/pcm;rate={SAMPLE_RATE}",
+                "sampleRate": SAMPLE_RATE,
+                "voice": voice,
+                "petId": pet_key,
+            })
+        yield json.dumps({"success": True, "isFinal": True}) + "\n"
+
+    return StreamingResponse(_stream_generator(), media_type="application/x-ndjson")
 
 
 # ── Dev server ───────────────────────────────────────────────────────────────

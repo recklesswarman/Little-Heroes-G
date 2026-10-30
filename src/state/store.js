@@ -35,6 +35,7 @@ import { WORLD_BIOMES, PATH_OF_VALOR_WAYPOINTS, SECRET_SHRINES, TOY_BOX_ENTITIES
 import { BEDTIME_MORALS, CONSTELLATION_STICKERS } from '../data/bedtimeStoryData.js';
 import { DIGITAL_REWARDS_CATALOG } from '../data/digitalRewardsCatalog.js';
 import { THREE_D_ASSETS } from '../data/threeDAssetCatalog.js';
+import { DEFAULT_COMPANION_PHRASES } from '../data/companionPhrasesData.js';
 
 export const KID_AVATARS = [
   { id: 'avatar_dragon', label: 'Dragon Explorer', url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZfP7_Cwlp4sz41asI8ymuapAKvjmqHtvI4zcMAF_XwUmibj8IheGrS5cA5QD5gmXgVxEkZM9FlWJPRZnct3x6-9SQB7zJKqkEDjJ3m95tAy3zRqS-PbmcQ4kv_9pmIfm2Py4mh3Fw083hkDookz1w4_r50SBA1jc9igDaAPFLYBFgSP2aQBz7Q4jVE-DwhMOyUEHlxDkQk6Gwc2EAFCSKs1c0QuhUOi3tkrk5MXRARKqZcYVzyJe6gA' },
@@ -433,7 +434,8 @@ const defaultState = {
     voicePromptsEnabled: true,
     autoApproveHabits: false,
     dailyScreenTimeLimitMins: 45,
-    biometricCredentialId: null
+    biometricCredentialId: null,
+    companionPhrases: DEFAULT_COMPANION_PHRASES.map(p => ({ ...p }))
   },
 
   // Reward celebration modal
@@ -1051,6 +1053,15 @@ class Store {
         if (!parsed.bedtimeStoryLibrary || !Array.isArray(parsed.bedtimeStoryLibrary)) {
           parsed.bedtimeStoryLibrary = [];
         }
+        if (!parsed.parentSettings || typeof parsed.parentSettings !== 'object') {
+          parsed.parentSettings = { ...defaultState.parentSettings };
+        }
+        if (!Array.isArray(parsed.parentSettings.companionPhrases) || parsed.parentSettings.companionPhrases.length === 0) {
+          parsed.parentSettings.companionPhrases = Array.isArray(parsed.companionPhrases) && parsed.companionPhrases.length > 0
+            ? parsed.companionPhrases
+            : DEFAULT_COMPANION_PHRASES.map(p => ({ ...p }));
+        }
+        delete parsed.companionPhrases;
 
         const loaded = { ...defaultState, ...parsed };
         this.state = loaded;
@@ -9614,17 +9625,20 @@ class Store {
     const hero = this.state.selectedHero || (this.state.heroes && this.state.heroes[0]);
     const heroId = hero?.id || 'hero_1';
 
+    // Always save/update the story in the bookshelf first so no story is ever lost,
+    // even if today's sleep_on_time reward is already pending parent approval.
+    const savedStory = this.saveBedtimeStory(storyData, heroId);
+
     // Enforce the one completion payout at a time invariant:
     // Call isTaskPendingApproval('sleep_on_time', hero.id). If true, return failure message.
     if (this.isTaskPendingApproval('sleep_on_time', heroId)) {
       return {
         success: false,
         alreadyPending: true,
+        story: savedStory,
         message: 'Bedtime story completion is already pending parent approval.'
       };
     }
-
-    const savedStory = this.saveBedtimeStory(storyData, heroId);
 
     // Dynamically calculate rewards from parent-configured settings using getWaypointRewards('wp_bedtime')
     const wpRewards = this.getWaypointRewards('wp_bedtime') || {
@@ -9763,6 +9777,117 @@ class Store {
       rewardXp: xpAwarded,
       pendingPoints: pointsToQueue
     };
+  }
+
+  // --- Companion Preset Phrases CRUD & Zero-Lag Shuffle Rotation ---
+  getCompanionPhrases() {
+    if (!this.state.parentSettings || typeof this.state.parentSettings !== 'object') {
+      this.state.parentSettings = { ...defaultState.parentSettings };
+    }
+    if (!Array.isArray(this.state.parentSettings.companionPhrases) || this.state.parentSettings.companionPhrases.length === 0) {
+      this.state.parentSettings.companionPhrases = DEFAULT_COMPANION_PHRASES.map(p => ({ ...p }));
+    }
+    return this.state.parentSettings.companionPhrases;
+  }
+
+  addCompanionPhrase(text, category = 'custom') {
+    const cleaned = String(text || '').replace(/\s+/g, ' ').trim();
+    if (!cleaned) return null;
+    const phrases = this.getCompanionPhrases();
+    const newPhrase = {
+      id: generateId('cp_', 8),
+      category: category || 'custom',
+      text: cleaned
+    };
+    phrases.unshift(newPhrase);
+    this.saveState(true);
+    if (typeof window !== 'undefined') {
+      try {
+        window.dispatchEvent(new CustomEvent('companion-phrases-updated', {
+          detail: { phrases: [cleaned], petId: this.getActivePet?.()?.id || 'rex' }
+        }));
+      } catch {}
+    }
+    return newPhrase;
+  }
+
+  updateCompanionPhrase(phraseId, newTextOrPatch, category) {
+    const rawText = (newTextOrPatch && typeof newTextOrPatch === 'object')
+      ? newTextOrPatch.text
+      : newTextOrPatch;
+    const rawCategory = (newTextOrPatch && typeof newTextOrPatch === 'object')
+      ? newTextOrPatch.category
+      : category;
+    const cleaned = String(rawText || '').replace(/\s+/g, ' ').trim();
+    if (!phraseId || !cleaned) return false;
+    const phrases = this.getCompanionPhrases();
+    const target = phrases.find(p => p.id === phraseId);
+    if (!target) return false;
+    target.text = cleaned;
+    if (rawCategory && typeof rawCategory === 'string') {
+      target.category = rawCategory.trim();
+    }
+    this.saveState(true);
+    if (typeof window !== 'undefined') {
+      try {
+        window.dispatchEvent(new CustomEvent('companion-phrases-updated', {
+          detail: { phrases: [cleaned], petId: this.getActivePet?.()?.id || 'rex' }
+        }));
+      } catch {}
+    }
+    return true;
+  }
+
+  deleteCompanionPhrase(phraseId) {
+    const phrases = this.getCompanionPhrases();
+    if (phrases.length <= 1) return false; // Always keep at least 1 phrase
+    const next = phrases.filter(p => p.id !== phraseId);
+    if (next.length === phrases.length) return false;
+    this.state.parentSettings.companionPhrases = next;
+    this.saveState(true);
+    return true;
+  }
+
+  resetCompanionPhrasesToDefault() {
+    if (!this.state.parentSettings || typeof this.state.parentSettings !== 'object') {
+      this.state.parentSettings = { ...defaultState.parentSettings };
+    }
+    this.state.parentSettings.companionPhrases = DEFAULT_COMPANION_PHRASES.map(p => ({ ...p }));
+    this._recentCompanionPhraseIds = [];
+    this.saveState(true);
+    if (typeof window !== 'undefined') {
+      try {
+        window.dispatchEvent(new CustomEvent('companion-phrases-updated', {
+          detail: {
+            phrases: this.state.parentSettings.companionPhrases.map(p => p.text),
+            petId: this.getActivePet?.()?.id || 'rex'
+          }
+        }));
+      } catch {}
+    }
+    return this.state.parentSettings.companionPhrases;
+  }
+
+  pickRandomCompanionPhrase() {
+    const phrases = this.getCompanionPhrases();
+    if (phrases.length === 0) {
+      return { id: 'cp_fallback', text: 'Rawr! You are doing an amazing job today, Little Hero!' };
+    }
+    if (phrases.length === 1) return phrases[0];
+
+    if (!Array.isArray(this._recentCompanionPhraseIds)) {
+      this._recentCompanionPhraseIds = [];
+    }
+    const maxRecent = Math.min(8, Math.floor(phrases.length / 2));
+    const candidates = phrases.filter(p => !this._recentCompanionPhraseIds.includes(p.id));
+    const pool = candidates.length > 0 ? candidates : phrases;
+    const chosen = pool[Math.floor(Math.random() * pool.length)];
+
+    this._recentCompanionPhraseIds.push(chosen.id);
+    if (this._recentCompanionPhraseIds.length > maxRecent) {
+      this._recentCompanionPhraseIds.shift();
+    }
+    return chosen;
   }
 
   resetAllProgress() {

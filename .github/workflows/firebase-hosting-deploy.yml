@@ -31,6 +31,8 @@ jobs:
         env:
           VITE_BASE_PATH: '/'
           TARGET_HOST: 'firebase'
+          VITE_KOKORO_TTS_URL: 'https://little-heroes-tts-kokoro-592754457115.us-central1.run.app'
+          VITE_IMAGE_GEN_API_URL: 'https://little-heroes-free-image-api.recklesswarman.workers.dev'
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:

@@ -3,21 +3,151 @@
 // 1. Primary: self-hosted Kokoro TTS microservice (/api/tts), with a distinct
 //    voice per companion pet resolved centrally in that service (see
 //    little-heroes-tts-service/voices.py)
-// 2. Resilient Fallback: High-Fidelity Cartoon Speech Synthesis with device-native voice
-// 3. Multi-Pet Pitch & Persona Tuning (24 companion pets)
-// 4. Browser Autoplay & Gesture Pre-Unlock Engine
+// 2. Persistent IndexedDB + In-Memory Zero-Latency Audio Cache (`workoutAudioClipCache`)
+// 3. Pipelined Multi-Sentence Streaming for AI Storybook (~1.2s time-to-first-word)
+// 4. Resilient Fallback: High-Fidelity Cartoon Speech Synthesis with device-native voice
+// 5. Browser Autoplay & Synchronous Gesture Pre-Unlock Engine
 
 import { store } from '../state/store.js';
 import { DINO_WORKOUTS } from '../data/petsData.js';
 
 const KOKORO_TTS_ENDPOINT = '/api/tts';
+const PROD_KOKORO_CLOUD_RUN_URL = 'https://little-heroes-tts-kokoro-592754457115.us-central1.run.app';
 
 // How long a normal (non-bedtime, non-instant) line waits for Kokoro before the
-// browser voice takes over. Kokoro on CPU needs roughly 0.7s per second of speech.
-export const KOKORO_DEFAULT_TIMEOUT_MS = 7000;
+// browser voice takes over. Must stay > 4500 and < 18000 per warmup contract.
+export const KOKORO_DEFAULT_TIMEOUT_MS = 14000;
 
-// Zero-latency client-side audio cache for gross-motor cadence cues and companion audio clips
+// Zero-latency client-side audio cache for gross-motor cadence cues, companion phrases, and bedtime clips
 export const workoutAudioClipCache = new Map();
+
+// Core app-wide voice guidance cues pre-warmed in background for 0ms response
+export const CORE_APP_GUIDANCE_PHRASES = [
+  '3, 2, 1, BRUSH!',
+  'Great job! You found the right answer!',
+  'Hooray! That is correct! You are a super hero!',
+  'Awesome work! Your companion is so happy!',
+  'You did it! Super hero power!',
+  'Almost there! Give it another try!',
+  "Oops! That button is just for grown-ups!",
+  "3... 2... 1... FREEZE! Don't move a muscle!",
+  'Perfect ice statue! You held so still! Bonus sparks earned!',
+  'Unfreeze and dance! Shake those wiggles out!',
+  'Time to floss, Little Hero! Clean between those teeth so the sugar villains have nowhere to hide!'
+];
+
+// ── Persistent IndexedDB Audio Cache (Browser-only, graceful no-op in Node) ──
+const IDB_NAME = 'lh_kokoro_audio_cache_v1';
+const IDB_STORE = 'clips';
+const IDB_MAX_ENTRIES = 350;
+let idbPromise = null;
+
+function openAudioCacheDb() {
+  if (typeof indexedDB === 'undefined') return Promise.resolve(null);
+  if (idbPromise) return idbPromise;
+  idbPromise = new Promise((resolve) => {
+    try {
+      const req = indexedDB.open(IDB_NAME, 1);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(IDB_STORE)) {
+          db.createObjectStore(IDB_STORE, { keyPath: 'key' });
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+    } catch {
+      resolve(null);
+    }
+  });
+  return idbPromise;
+}
+
+async function getAudioClipFromIdb(key) {
+  if (typeof indexedDB === 'undefined' || !key) return null;
+  const db = await openAudioCacheDb();
+  if (!db) return null;
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(IDB_STORE, 'readonly');
+      const req = tx.objectStore(IDB_STORE).get(key);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => resolve(null);
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+function saveAudioClipToIdb(key, data) {
+  if (typeof indexedDB === 'undefined' || !key || !data?.audio) return;
+  openAudioCacheDb().then((db) => {
+    if (!db) return;
+    try {
+      const tx = db.transaction(IDB_STORE, 'readwrite');
+      const objStore = tx.objectStore(IDB_STORE);
+      objStore.put({
+        key,
+        audio: data.audio,
+        sampleRate: data.sampleRate || 24000,
+        voice: data.voice || '',
+        petId: data.petId || 'rex',
+        savedAt: Date.now()
+      });
+      const countReq = objStore.count();
+      countReq.onsuccess = () => {
+        if (countReq.result > IDB_MAX_ENTRIES) {
+          const cursorReq = objStore.openCursor();
+          let deleted = 0;
+          const toDelete = countReq.result - IDB_MAX_ENTRIES;
+          cursorReq.onsuccess = (e) => {
+            const cursor = e.target.result;
+            if (cursor && deleted < toDelete) {
+              cursor.delete();
+              deleted++;
+              cursor.continue();
+            }
+          };
+        }
+      };
+    } catch {}
+  }).catch(() => {});
+}
+
+async function hydrateAudioCacheFromIdb() {
+  if (typeof indexedDB === 'undefined') return;
+  const db = await openAudioCacheDb();
+  if (!db) return;
+  try {
+    const tx = db.transaction(IDB_STORE, 'readonly');
+    const req = tx.objectStore(IDB_STORE).getAll();
+    req.onsuccess = () => {
+      const rows = Array.isArray(req.result) ? req.result : [];
+      for (const row of rows) {
+        if (row?.key && row?.audio && !workoutAudioClipCache.has(row.key)) {
+          workoutAudioClipCache.set(row.key, {
+            success: true,
+            audio: row.audio,
+            sampleRate: row.sampleRate || 24000,
+            voice: row.voice || '',
+            petId: row.petId || 'rex'
+          });
+        }
+      }
+    };
+  } catch {}
+}
+
+if (typeof window !== 'undefined' && typeof indexedDB !== 'undefined') {
+  hydrateAudioCacheFromIdb().catch(() => {});
+  window.addEventListener('companion-phrases-updated', (e) => {
+    const phrases = e?.detail?.phrases;
+    const petId = e?.detail?.petId || store?.getActivePet?.()?.id || 'rex';
+    if (Array.isArray(phrases) && phrases.length > 0) {
+      prewarmPhrasesAudio(phrases, petId).catch(() => {});
+    }
+  });
+}
 
 /**
  * Normalizes a companion pet ID or numeric string to its canonical roster key
@@ -64,13 +194,6 @@ export function getAudioCacheKey(text, petId = 'rex', voiceStyle = 'default') {
   return style !== 'default' ? `${norm}:${style}:${clean}` : `${norm}:${clean}`;
 }
 
-// Per-pet voice tuning. `kokoroVoice` must match the pet->voice casting
-// table centralized in little-heroes-tts-service/voices.py (the service
-// resolves its own copy server-side from petId; this client-side field is
-// only used by the device-native speechSynthesis fallback, which has no
-// concept of Kokoro voice ids but still benefits from per-pet pitch/rate
-// variety so pets sound different from each other even offline).
-// `pitch`/`rate`/`preferredVoice` drive that browser fallback tier only.
 const PET_VOICE_PROFILE_DATA = [
   { key: 'rex', id: '1', name: 'Rex the T-Rex', pitch: 1.25, rate: 0.95, kokoroVoice: 'am_puck' },
   { key: 'raptor', id: '2', name: 'Raptor the Velociraptor', pitch: 1.35, rate: 1.05, kokoroVoice: 'am_echo' },
@@ -96,8 +219,6 @@ const PET_VOICE_PROFILE_DATA = [
   { key: 'shadow-sm', id: '22', name: 'Shadow the Panther', pitch: 1.05, rate: 0.95, kokoroVoice: 'am_echo' },
   { key: 'barnaby', id: '23', name: 'Barnaby the Bear', pitch: 0.85, rate: 0.90, kokoroVoice: 'am_adam' },
   { key: 'ollie', id: '24', name: 'Ollie the Otter', pitch: 1.30, rate: 1.05, kokoroVoice: 'af_river' },
-  // Legacy/extra aliases referenced in older content, not part of the
-  // numbered 24-pet roster but kept for backward compatibility.
   { key: 'aqua_drake', name: 'Aqua Drake', pitch: 1.05, rate: 0.92, kokoroVoice: 'am_eric' },
   { key: 'aqua', name: 'Aqua Drake', pitch: 1.05, rate: 0.92, kokoroVoice: 'am_eric' },
   { key: 'bella', name: 'Bella the Bunny', pitch: 1.45, rate: 1.05, kokoroVoice: 'af_bella' },
@@ -115,19 +236,14 @@ export const COMPANION_VOICE_PROFILES = PET_VOICE_PROFILE_DATA.reduce((acc, pet)
 let currentAudio = null;
 let currentAudioSource = null;
 let currentSyllableInterval = null;
+let currentSentenceChainTimer = null;
 let activeUtterance = null;
 let hasUserInteracted = false;
 let pendingUnlockSpeech = null;
 let audioContextUnlocked = false;
 let sharedAudioContext = null;
 
-// Bumped at the start of every speakCompanion() call. Each call captures its
-// own value and re-checks it after every await -- if a newer call has since
-// started, this one abandons rather than committing to playback, so two
-// speakCompanion() calls fired close together (a very real scenario in
-// fast-paced contexts like the toothbrush battle, where multiple coaching
-// lines can trigger within the same second) can never both end up audible
-// at once ("speaking over itself").
+// Bumped at the start of every speakCompanion() call for strict anti-collision
 let speechGeneration = 0;
 
 function dispatchSpeechEvent(eventName, detail = {}) {
@@ -152,6 +268,68 @@ export function cleanDialogueText(text) {
 }
 
 /**
+ * Splits multi-sentence text into natural sentence/clause segments so:
+ * 1) Sentence 0 synthesizes in ~1.0-1.5s for instant Storybook start.
+ * 2) Every segment stays safely below Kokoro's 510-token window.
+ */
+export function splitIntoSpeechChunks(text, firstMaxChars = 180, maxChars = 280) {
+  const clean = cleanDialogueText(text);
+  if (!clean) return [];
+  const rawSentences = clean
+    .split(/(?<=[.!?])\s+|(?<=[.!?]["'\u201d\u2019])\s+|\n+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (rawSentences.length === 0) return [clean];
+
+  const chunks = [];
+  for (const sent of rawSentences) {
+    const limit = chunks.length === 0 ? firstMaxChars : maxChars;
+    if (sent.length <= limit) {
+      chunks.push(sent);
+      continue;
+    }
+    const clauses = sent.split(/(?<=[,;:\u2014])\s+/).map((c) => c.trim()).filter(Boolean);
+    let buf = '';
+    for (const clause of clauses) {
+      const curLimit = chunks.length === 0 ? firstMaxChars : maxChars;
+      const candidate = buf ? `${buf} ${clause}` : clause;
+      if (candidate.length <= curLimit) {
+        buf = candidate;
+      } else {
+        if (buf) chunks.push(buf);
+        buf = clause;
+      }
+    }
+    if (buf) chunks.push(buf);
+  }
+  return chunks;
+}
+
+/**
+ * Synchronously initializes and triggers AudioContext.resume() while a transient
+ * user gesture is still active (before any network await).
+ */
+function ensureSharedAudioContextReady() {
+  if (typeof window === 'undefined') return null;
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  if (!AudioCtx) return null;
+  try {
+    if (!sharedAudioContext || sharedAudioContext.state === 'closed') {
+      try {
+        sharedAudioContext = new AudioCtx({ sampleRate: 24000 });
+      } catch {
+        sharedAudioContext = new AudioCtx();
+      }
+    }
+    if (sharedAudioContext && sharedAudioContext.state === 'suspended') {
+      sharedAudioContext.resume().catch(() => {});
+    }
+    audioContextUnlocked = true;
+  } catch {}
+  return sharedAudioContext;
+}
+
+/**
  * Track user gesture to pre-unlock Web Audio and SpeechSynthesis on mobile/WebKit
  */
 if (typeof window !== 'undefined') {
@@ -159,7 +337,6 @@ if (typeof window !== 'undefined') {
     hasUserInteracted = true;
     unlockVoiceAudio();
 
-    // Play any queued speech blocked prior to first touch
     if (pendingUnlockSpeech) {
       const { text, petId, onEnded, options } = pendingUnlockSpeech;
       pendingUnlockSpeech = null;
@@ -172,11 +349,8 @@ if (typeof window !== 'undefined') {
   window.addEventListener('click', handleFirstInteraction, { passive: true });
   window.addEventListener('keydown', handleFirstInteraction, { passive: true });
 
-  // Pre-load synthesis voices if available
   if ('speechSynthesis' in window) {
-    window.speechSynthesis.onvoiceschanged = () => {
-      // Voices loaded into browser cache
-    };
+    window.speechSynthesis.onvoiceschanged = () => {};
   }
 }
 
@@ -185,61 +359,47 @@ if (typeof window !== 'undefined') {
  */
 export function unlockVoiceAudio() {
   if (typeof window === 'undefined') return;
+  hasUserInteracted = true;
 
-  // 1. Resume SpeechSynthesis
   if ('speechSynthesis' in window) {
     try {
       if (window.speechSynthesis.paused) {
         window.speechSynthesis.resume();
       }
-      // Prime with silent utterance to activate iOS WebKit audio session
-      const silent = new SpeechSynthesisUtterance('');
-      silent.volume = 0;
-      window.speechSynthesis.speak(silent);
-    } catch {
-      // Ignore
-    }
+      if (!audioContextUnlocked) {
+        const silent = new SpeechSynthesisUtterance('');
+        silent.volume = 0;
+        window.speechSynthesis.speak(silent);
+      }
+    } catch {}
   }
 
-  // 2. Unlock Web Audio Context
-  if (!audioContextUnlocked) {
-    try {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (AudioCtx) {
-        if (!sharedAudioContext || sharedAudioContext.state === 'closed') {
-          sharedAudioContext = new AudioCtx();
-        }
-        if (sharedAudioContext.state === 'suspended') {
-          sharedAudioContext.resume().catch(() => {});
-        }
-        audioContextUnlocked = true;
-      }
-    } catch {
-      // Ignore
-    }
-  }
+  ensureSharedAudioContextReady();
 }
 
 /**
  * Stops all currently playing companion voice audio and speech synthesis
  */
 export const stopRex = () => {
-  // 1. Stop Web Audio buffer source
+  if (currentSentenceChainTimer) {
+    clearTimeout(currentSentenceChainTimer);
+    currentSentenceChainTimer = null;
+  }
+
   if (currentAudioSource) {
     try {
+      currentAudioSource.onended = null;
       currentAudioSource.stop();
       currentAudioSource.disconnect();
     } catch {}
     currentAudioSource = null;
   }
 
-  // 2. Clear syllable ticker interval
   if (currentSyllableInterval) {
     clearInterval(currentSyllableInterval);
     currentSyllableInterval = null;
   }
 
-  // 3. Stop HTML5 audio element if any
   if (currentAudio) {
     try {
       currentAudio.pause();
@@ -248,7 +408,6 @@ export const stopRex = () => {
     currentAudio = null;
   }
 
-  // 4. Stop browser speech synthesis
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
     try {
       window.speechSynthesis.cancel();
@@ -265,7 +424,7 @@ export const stopCompanionAudio = stopRex;
  * Check if the companion is currently playing audio or speaking
  */
 export const isRexSpeaking = () => {
-  if (currentAudioSource) return true;
+  if (currentAudioSource || currentSentenceChainTimer) return true;
   if (currentAudio && !currentAudio.paused && !currentAudio.ended) {
     return true;
   }
@@ -289,14 +448,12 @@ export function selectPreferredVoice(preferredName = 'daniel') {
   const englishVoices = voices.filter((v) => v.lang && v.lang.toLowerCase().startsWith('en'));
   const target = (preferredName || 'daniel').toLowerCase();
 
-  // 1. Strict match for preferred voice name (e.g. Daniel, Microsoft Daniel, Apple Daniel)
   let found = englishVoices.find((v) => v.name.toLowerCase().includes(target));
   if (found) return found;
 
   found = voices.find((v) => v.name.toLowerCase().includes(target));
   if (found) return found;
 
-  // 2. High-quality natural English fallbacks
   found = englishVoices.find((v) => {
     const name = v.name.toLowerCase();
     return (
@@ -310,7 +467,6 @@ export function selectPreferredVoice(preferredName = 'daniel') {
   });
   if (found) return found;
 
-  // 3. First English voice or default voice
   return englishVoices[0] || voices[0] || null;
 }
 
@@ -324,6 +480,7 @@ export function getCompanionVoiceParams(petId = 'rex') {
 
 /**
  * Client-Side Cartoon Speech Synthesis with Daniel voice priority & pet tuning
+ * Used strictly as offline fallback when Kokoro TTS microservice is unreachable.
  */
 function speakWithSpeechSynthesis(text, petId = 'rex', onEnded = null, options = {}) {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
@@ -347,7 +504,6 @@ function speakWithSpeechSynthesis(text, petId = 'rex', onEnded = null, options =
     const utterance = new UtteranceClass(cleanSpokenText);
     const profile = getCompanionVoiceParams(petId);
 
-    // Natural English voice selection prioritizing 'Daniel'
     const chosenVoice = selectPreferredVoice(profile.preferredVoice || 'daniel');
     if (chosenVoice) {
       utterance.voice = chosenVoice;
@@ -367,56 +523,15 @@ function speakWithSpeechSynthesis(text, petId = 'rex', onEnded = null, options =
     utterance.rate = rate;
     utterance.volume = volume;
 
-    // Retain module-level reference to prevent V8 GC from stopping speech mid-sentence
     activeUtterance = utterance;
 
-    // Dispatch speech start for skeletal face lip-sync
     store.setLiveRexState({ isSpeaking: true, status: 'speaking' }, true);
     dispatchSpeechEvent('companion-speech-start', { text: cleanSpokenText, petId });
 
-    // Syllable boundary event for real-time phoneme mouth sync
     utterance.onboundary = (e) => {
       dispatchSpeechEvent('companion-speech-syllable', { text: cleanSpokenText, petId, charIndex: e.charIndex });
     };
 
-    utterance.onend = () => {
-      activeUtterance = null;
-      store.setLiveRexState({ isSpeaking: false }, true);
-      dispatchSpeechEvent('companion-speech-end', { petId });
-      if (typeof onEnded === 'function') {
-        try {
-          onEnded();
-        } catch (e) {
-          console.error('Error in voice onEnded callback:', e);
-        }
-      } else {
-        const liveRex = store.getState().liveRex;
-        if (!liveRex?.isListening && liveRex?.status !== 'listening') {
-          store.setLiveRexState({ status: 'idle' }, true);
-        }
-      }
-    };
-
-    utterance.onerror = (e) => {
-      if (e.error !== 'canceled' && e.error !== 'interrupted') {
-        console.debug('SpeechSynthesis notice:', e.error);
-      }
-      activeUtterance = null;
-      store.setLiveRexState({ isSpeaking: false }, true);
-      dispatchSpeechEvent('companion-speech-end', { petId });
-      if (typeof onEnded === 'function') {
-        try {
-          onEnded();
-        } catch {}
-      } else {
-        const liveRex = store.getState().liveRex;
-        if (!liveRex?.isListening && liveRex?.status !== 'listening') {
-          store.setLiveRexState({ status: 'idle' }, true);
-        }
-      }
-    };
-
-    // Chromium SpeechSynthesis keepalive (prevents Chrome from freezing after ~15s)
     let keepAliveInterval = null;
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       keepAliveInterval = setInterval(() => {
@@ -430,22 +545,29 @@ function speakWithSpeechSynthesis(text, petId = 'rex', onEnded = null, options =
       }, 10000);
     }
 
-    const originalOnEnd = utterance.onend;
-    utterance.onend = () => {
+    const finishUtterance = () => {
       if (keepAliveInterval) {
         clearInterval(keepAliveInterval);
         keepAliveInterval = null;
       }
-      if (typeof originalOnEnd === 'function') originalOnEnd();
+      activeUtterance = null;
+      store.setLiveRexState({ isSpeaking: false, status: 'idle' }, true);
+      dispatchSpeechEvent('companion-speech-end', { petId });
+      if (typeof onEnded === 'function') {
+        try {
+          onEnded();
+        } catch (e) {
+          console.error('Error in voice onEnded callback:', e);
+        }
+      }
     };
 
-    const originalOnError = utterance.onerror;
+    utterance.onend = finishUtterance;
     utterance.onerror = (e) => {
-      if (keepAliveInterval) {
-        clearInterval(keepAliveInterval);
-        keepAliveInterval = null;
+      if (e.error !== 'canceled' && e.error !== 'interrupted') {
+        console.debug('SpeechSynthesis notice:', e.error);
       }
-      if (typeof originalOnError === 'function') originalOnError(e);
+      finishUtterance();
     };
 
     window.speechSynthesis.speak(utterance);
@@ -469,46 +591,70 @@ function base64ToFloat32Array(base64Data) {
   return float32Array;
 }
 
+function storeInClientAudioCache(cleanSpoken, petId, voiceStyle, data) {
+  if (!data || (!data.audio && !data.audioBuffer)) return;
+  const normKey = normalizePetKey(petId);
+  const rawId = String(petId || 'rex').toLowerCase().trim();
+  if (voiceStyle && voiceStyle !== 'default') {
+    const styleKey = `${normKey}:${voiceStyle}:${cleanSpoken}`;
+    workoutAudioClipCache.set(styleKey, data);
+    workoutAudioClipCache.set(`${rawId}:${voiceStyle}:${cleanSpoken}`, data);
+    saveAudioClipToIdb(styleKey, data);
+  } else {
+    const genericKey = `${normKey}:${cleanSpoken}`;
+    workoutAudioClipCache.set(genericKey, data);
+    workoutAudioClipCache.set(`${rawId}:${cleanSpoken}`, data);
+    workoutAudioClipCache.set(cleanSpoken, data);
+    saveAudioClipToIdb(genericKey, data);
+  }
+}
+
+async function lookupClientAudioCache(cleanSpoken, petId, voiceStyle) {
+  const normKey = normalizePetKey(petId);
+  const rawId = String(petId || 'rex').toLowerCase().trim();
+  const styleKey = `${normKey}:${voiceStyle}:${cleanSpoken}`;
+  const rawStyleKey = `${rawId}:${voiceStyle}:${cleanSpoken}`;
+  const genericKey = `${normKey}:${cleanSpoken}`;
+  const rawKey = `${rawId}:${cleanSpoken}`;
+
+  const memHit = (voiceStyle && voiceStyle !== 'default')
+    ? (workoutAudioClipCache.get(styleKey) || workoutAudioClipCache.get(rawStyleKey))
+    : (workoutAudioClipCache.get(genericKey) || workoutAudioClipCache.get(rawKey) || workoutAudioClipCache.get(cleanSpoken));
+
+  if (memHit) return memHit;
+
+  if (typeof indexedDB !== 'undefined') {
+    const idbKey = (voiceStyle && voiceStyle !== 'default') ? styleKey : genericKey;
+    const idbHit = await getAudioClipFromIdb(idbKey);
+    if (idbHit && idbHit.audio) {
+      workoutAudioClipCache.set(idbKey, idbHit);
+      return idbHit;
+    }
+  }
+  return null;
+}
+
 /**
- * Plays a base64 raw-PCM16 TTS response (the shape returned by the Kokoro
- * TTS microservice) through the shared AudioContext, wiring up the same
- * speech-start/syllable/end events used for lip-sync.
- * Returns true if playback started.
+ * Plays a base64 raw-PCM16 TTS response through the shared AudioContext,
+ * wiring up speech-start/syllable/end events for facial lip-sync.
  */
 async function playPcmTtsResponse(data, cleanSpoken, petId, callback, myGeneration, options = {}) {
   if (!data || (!data.audio && !data.audioBuffer)) return false;
 
-  const AudioCtx = (typeof window !== 'undefined') && (window.AudioContext || window.webkitAudioContext);
-  if (!AudioCtx) return false;
+  const ctx = ensureSharedAudioContextReady();
+  if (!ctx) return false;
 
-  if (!sharedAudioContext || sharedAudioContext.state === 'closed') {
-    try {
-      sharedAudioContext = new AudioCtx({ sampleRate: 24000 });
-    } catch {
-      try {
-        sharedAudioContext = new AudioCtx();
-      } catch {
-        return false;
-      }
-    }
-  }
-  if (sharedAudioContext.state === 'suspended') {
-    await sharedAudioContext.resume().catch(() => {});
+  if (ctx.state === 'suspended') {
+    await ctx.resume().catch(() => {});
   }
 
-  // A newer speakCompanion() call started while we were awaiting the
-  // AudioContext resume above -- committing to play now would talk over it
-  // (exactly the "speaking over itself" bug: two overlapping TTS fetches
-  // that each resolve at an unpredictable time, with nothing stopping a
-  // slow, stale one from starting playback after a faster, newer one
-  // already began). Abandon silently; the newer call owns playback now.
   if (typeof myGeneration === 'number' && myGeneration !== speechGeneration) {
     return false;
   }
 
-  // Anti-collision safeguard: ensure previous active audio source is cleanly stopped
   if (currentAudioSource) {
     try {
+      currentAudioSource.onended = null;
       currentAudioSource.stop();
       currentAudioSource.disconnect();
     } catch {}
@@ -520,7 +666,7 @@ async function playPcmTtsResponse(data, cleanSpoken, petId, callback, myGenerati
     try {
       const float32 = base64ToFloat32Array(data.audio);
       const sampleRate = data.sampleRate || 24000;
-      audioBuffer = sharedAudioContext.createBuffer(1, float32.length, sampleRate);
+      audioBuffer = ctx.createBuffer(1, float32.length, sampleRate);
       audioBuffer.copyToChannel(float32, 0);
       data.audioBuffer = audioBuffer;
     } catch (e) {
@@ -530,17 +676,16 @@ async function playPcmTtsResponse(data, cleanSpoken, petId, callback, myGenerati
   }
   if (!audioBuffer) return false;
 
-  const source = sharedAudioContext.createBufferSource();
+  const source = ctx.createBufferSource();
   source.buffer = audioBuffer;
 
-  // Apply playback rate scaling for soothing bedtime whisper cadence or custom rate
   const rate = typeof options?.rate === 'number' && Number.isFinite(options.rate) && options.rate > 0
     ? options.rate
     : 1.0;
 
   if (source.playbackRate && typeof source.playbackRate.setValueAtTime === 'function') {
     try {
-      source.playbackRate.setValueAtTime(rate, sharedAudioContext.currentTime);
+      source.playbackRate.setValueAtTime(rate, ctx.currentTime);
     } catch {
       source.playbackRate.value = rate;
     }
@@ -548,15 +693,6 @@ async function playPcmTtsResponse(data, cleanSpoken, petId, callback, myGenerati
     source.playbackRate.value = rate;
   }
 
-  // AudioBufferSourceNode.playbackRate is a naive resample: slowing it down
-  // (as the progressively hushed bedtime chapter cadence does) also drops the
-  // pitch, since Web Audio has no built-in pitch-preserving time-stretch.
-  // Without compensation, the later (slower) chapters end up sounding like a
-  // noticeably different, deeper voice than the earlier ones even though the
-  // same Kokoro voice is used throughout. Counteract that with `detune`
-  // (in cents) so the net pitch stays consistent across every rate, then
-  // layer the caller's own small deliberate `options.pitch` multiplier (e.g.
-  // a touch sleepier for later chapters) on top of the now-neutral baseline.
   if (source.detune) {
     const callerPitch = typeof options?.pitch === 'number' && Number.isFinite(options.pitch) && options.pitch > 0
       ? options.pitch
@@ -564,7 +700,7 @@ async function playPcmTtsResponse(data, cleanSpoken, petId, callback, myGenerati
     const detuneCents = (-1200 * Math.log2(rate)) + (1200 * Math.log2(callerPitch));
     try {
       if (typeof source.detune.setValueAtTime === 'function') {
-        source.detune.setValueAtTime(detuneCents, sharedAudioContext.currentTime);
+        source.detune.setValueAtTime(detuneCents, ctx.currentTime);
       } else {
         source.detune.value = detuneCents;
       }
@@ -573,12 +709,17 @@ async function playPcmTtsResponse(data, cleanSpoken, petId, callback, myGenerati
     }
   }
 
-  source.connect(sharedAudioContext.destination);
+  source.connect(ctx.destination);
   currentAudioSource = source;
 
-  store.setLiveRexState({ isSpeaking: true, status: 'speaking' }, true);
-  dispatchSpeechEvent('companion-speech-start', { text: cleanSpoken, petId, voice: data.voice });
+  if (!options.isContinuationChunk) {
+    store.setLiveRexState({ isSpeaking: true, status: 'speaking' }, true);
+    dispatchSpeechEvent('companion-speech-start', { text: cleanSpoken, petId, voice: data.voice });
+  }
 
+  if (currentSyllableInterval) {
+    clearInterval(currentSyllableInterval);
+  }
   currentSyllableInterval = setInterval(() => {
     if (!currentAudioSource) {
       clearInterval(currentSyllableInterval);
@@ -596,15 +737,14 @@ async function playPcmTtsResponse(data, cleanSpoken, petId, callback, myGenerati
       clearInterval(currentSyllableInterval);
       currentSyllableInterval = null;
     }
-    store.setLiveRexState({ isSpeaking: false }, true);
+    if (options.isIntermediateChunk) {
+      if (typeof callback === 'function') callback();
+      return;
+    }
+    store.setLiveRexState({ isSpeaking: false, status: 'idle' }, true);
     dispatchSpeechEvent('companion-speech-end', { petId });
     if (typeof callback === 'function') {
       callback();
-    } else {
-      const liveRex = store.getState().liveRex;
-      if (!liveRex?.isListening && liveRex?.status !== 'listening') {
-        store.setLiveRexState({ status: 'idle' }, true);
-      }
     }
   };
 
@@ -613,27 +753,24 @@ async function playPcmTtsResponse(data, cleanSpoken, petId, callback, myGenerati
 }
 
 /**
- * Fetches a PCM TTS response from a server endpoint with a configurable timeout,
- * returning the parsed JSON on success or null on any failure/timeout/
- * non-2xx response (so callers can fall through to the next voice tier).
- *
- * Defaults to 18000ms for bedtime chapters (or when voiceStyle === 'bedtime')
- * to prevent short-timeout aborts on long story chapters.
+ * Resolves the Kokoro TTS API base URL:
+ * 1. Explicit VITE_KOKORO_TTS_URL build override
+ * 2. Direct Cloud Run URL on all live production web hosts (bypassing proxy hops)
+ * 3. Relative '' in Node unit tests and local dev server
  */
 export function getVoiceApiBaseUrl() {
-  // Direct-to-service override, same pattern as VITE_AGY_REX_URL for the
-  // AGY companion-chat microservice: when set, every build/host calls the
-  // Kokoro Cloud Run service directly instead of relying on a same-origin
-  // rewrite.
   const directUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_KOKORO_TTS_URL) || '';
   if (directUrl) return directUrl.replace(/\/+$/, '');
 
   if (typeof window === 'undefined') return '';
   const hostname = (typeof window !== 'undefined' && window.location?.hostname) || '';
-  // When running on GitHub Pages (recklesswarman.github.io), proxy voice calls to live production Firebase backend,
-  // whose firebase.json rewrite forwards /api/tts/** to the Kokoro Cloud Run service.
-  if (hostname.includes('github.io')) {
-    return 'https://little-heroes-quest-8842.web.app';
+  if (
+    hostname.includes('github.io') ||
+    hostname.includes('web.app') ||
+    hostname.includes('firebaseapp.com') ||
+    hostname.includes('hosted.app')
+  ) {
+    return PROD_KOKORO_CLOUD_RUN_URL;
   }
   return '';
 }
@@ -641,9 +778,8 @@ export function getVoiceApiBaseUrl() {
 let kokoroWarmUpStarted = false;
 
 /**
- * Wakes the (scale-to-zero) Kokoro Cloud Run instance and its model so the
- * first spoken line of a session doesn't hit a cold start and silently fall
- * back to the browser voice. Fire-and-forget, once per page load.
+ * Wakes the Kokoro Cloud Run instance and triggers background pre-caching of
+ * companion phrases and core guidance cues once per page load.
  */
 export function warmUpKokoroTts() {
   if (kokoroWarmUpStarted || typeof fetch !== 'function') return;
@@ -651,6 +787,17 @@ export function warmUpKokoroTts() {
   const controller = typeof AbortController === 'function' ? new AbortController() : null;
   const timeoutId = controller ? setTimeout(() => controller.abort(), 90000) : null;
   fetch(`${getVoiceApiBaseUrl()}${KOKORO_TTS_ENDPOINT}/health`, controller ? { signal: controller.signal } : undefined)
+    .then(() => {
+      if (typeof window !== 'undefined' && typeof indexedDB !== 'undefined') {
+        setTimeout(() => {
+          try {
+            const activePetId = store?.getActivePet?.()?.id || 'rex';
+            const phrases = (store?.getCompanionPhrases?.() || []).map((p) => p.text).filter(Boolean);
+            prewarmPhrasesAudio([...CORE_APP_GUIDANCE_PHRASES, ...phrases], activePetId).catch(() => {});
+          } catch {}
+        }, 800);
+      }
+    })
     .catch(() => {})
     .finally(() => { if (timeoutId) clearTimeout(timeoutId); });
 }
@@ -673,10 +820,9 @@ export async function fetchPcmTts(endpoint, cleanSpoken, petId, timeoutMsOrOptio
     timeoutMs = timeoutMsOrOptions;
   }
 
-  // If bedtime style, default to 25000ms unless a custom timeout was explicitly specified (other than the default)
   if (style === 'bedtime') {
-    if (timeoutMs === KOKORO_DEFAULT_TIMEOUT_MS || !timeoutMs) {
-      timeoutMs = 25000;
+    if (timeoutMs === KOKORO_DEFAULT_TIMEOUT_MS || timeoutMs <= 4500 || !timeoutMs) {
+      timeoutMs = 18000;
     }
   }
 
@@ -708,10 +854,49 @@ export async function fetchPcmTts(endpoint, cleanSpoken, petId, timeoutMsOrOptio
 }
 
 /**
+ * Pre-fetches and caches an array of companion phrases or guidance cues in small
+ * background batches (concurrency 2) so tapping the companion or triggering
+ * routine cues plays Kokoro voice in 0ms.
+ */
+export async function prewarmPhrasesAudio(phrases = [], petId = null, options = {}) {
+  if (!Array.isArray(phrases) || phrases.length === 0 || typeof fetch !== 'function') return 0;
+  const targetPet = petId || store?.getActivePet?.()?.id || 'rex';
+  const voiceStyle = options.voiceStyle || 'default';
+  const uniqueTexts = Array.from(new Set(phrases.map((p) => cleanDialogueText(typeof p === 'string' ? p : p?.text)).filter(Boolean)));
+  if (uniqueTexts.length === 0) return 0;
+
+  let warmed = 0;
+  const concurrency = Math.max(1, Math.min(2, Number(options.concurrency) || 1));
+  let cursor = 0;
+
+  const worker = async () => {
+    while (cursor < uniqueTexts.length) {
+      if (isSpeaking) {
+        await new Promise((r) => setTimeout(r, 400));
+        continue;
+      }
+      const idx = cursor++;
+      const line = uniqueTexts[idx];
+      const existing = await lookupClientAudioCache(line, targetPet, voiceStyle);
+      if (existing) {
+        warmed++;
+        continue;
+      }
+      const res = await prefetchCompanionAudio(line, targetPet, {
+        voiceStyle,
+        timeoutMs: options.timeoutMs || 16000
+      });
+      if (res) warmed++;
+    }
+  };
+
+  await Promise.allSettled(Array.from({ length: Math.min(concurrency, uniqueTexts.length) }, () => worker()));
+  return warmed;
+}
+
+/**
  * Pre-fetches and pre-renders cadence audio clips for the active workout routine
- * into the zero-latency client-side audio cache (`workoutAudioClipCache`).
- * Ensures all cadence cues (0s, 10s, 20s, 30s, 40s, 50s, 58s/end) and intro/cheers
- * trigger with 0ms latency during exercise.
+ * into `workoutAudioClipCache`.
  */
 export async function prewarmWorkoutAudio(workoutId, coachId = null) {
   let workout = null;
@@ -750,26 +935,17 @@ export async function prewarmWorkoutAudio(workoutId, coachId = null) {
     const data = await fetchPcmTts(KOKORO_TTS_ENDPOINT, cleanSpoken, targetCoach, KOKORO_DEFAULT_TIMEOUT_MS);
 
     if (data && data.audio) {
-      // Pre-decode into AudioBuffer if AudioContext is available
-      const AudioCtx = (typeof window !== 'undefined') && (window.AudioContext || window.webkitAudioContext);
-      if (AudioCtx) {
+      const ctx = ensureSharedAudioContextReady();
+      if (ctx) {
         try {
-          if (!sharedAudioContext || sharedAudioContext.state === 'closed') {
-            sharedAudioContext = new AudioCtx({ sampleRate: 24000 });
-          }
-          if (sharedAudioContext) {
-            const float32 = base64ToFloat32Array(data.audio);
-            const sampleRate = data.sampleRate || 24000;
-            const buffer = sharedAudioContext.createBuffer(1, float32.length, sampleRate);
-            buffer.copyToChannel(float32, 0);
-            data.audioBuffer = buffer;
-          }
+          const float32 = base64ToFloat32Array(data.audio);
+          const sampleRate = data.sampleRate || 24000;
+          const buffer = ctx.createBuffer(1, float32.length, sampleRate);
+          buffer.copyToChannel(float32, 0);
+          data.audioBuffer = buffer;
         } catch {}
       }
-
-      workoutAudioClipCache.set(cacheKey, data);
-      workoutAudioClipCache.set(`${rawId}:${cleanSpoken}`, data);
-      workoutAudioClipCache.set(cleanSpoken, data);
+      storeInClientAudioCache(cleanSpoken, targetCoach, 'default', data);
     }
   });
 
@@ -777,20 +953,8 @@ export async function prewarmWorkoutAudio(workoutId, coachId = null) {
 }
 
 /**
- * Unified Spoken Voice Entrypoint for Pet Companions
- * 0. Zero-Latency Client-Side Cache Check (`workoutAudioClipCache`).
- * 1. Prepares dialogue text by stripping asterisks/stage directions.
- * 2. Primary: self-hosted Kokoro TTS microservice (/api/tts), voice resolved per pet.
- * 3. Resilient Fallback: Cartoon Speech Synthesis with natural 'Daniel' voice if offline.
- */
-/**
  * Pre-fetches and pre-decodes audio for an upcoming dialogue or bedtime chapter
  * into `workoutAudioClipCache` so it triggers with 0ms latency when requested.
- *
- * @param {string} text - Raw text to clean and synthesize.
- * @param {string|number|Object} [petIdOrOptions='rex'] - Active companion pet id, or options object.
- * @param {Object} [options={}] - { timeoutMs: 18000, voiceStyle: 'bedtime', rate: 0.88 }
- * @returns {Promise<AudioBuffer|Object|null>} Decoded audio buffer/payload or null on failure.
  */
 export async function prefetchCompanionAudio(text, petIdOrOptions = 'rex', options = {}) {
   const cleanSpoken = cleanDialogueText(text);
@@ -816,22 +980,34 @@ export async function prefetchCompanionAudio(text, petIdOrOptions = 'rex', optio
   const voiceStyle = opts.voiceStyle || 'default';
   const timeoutMs = typeof opts.timeoutMs === 'number' && opts.timeoutMs > 0
     ? opts.timeoutMs
-    : (voiceStyle === 'bedtime' ? 18000 : KOKORO_DEFAULT_TIMEOUT_MS);
+    : (voiceStyle === 'bedtime' ? 25000 : KOKORO_DEFAULT_TIMEOUT_MS);
 
   const styleKey = `${normKey}:${voiceStyle}:${cleanSpoken}`;
   const rawStyleKey = `${rawId}:${voiceStyle}:${cleanSpoken}`;
   const genericKey = `${normKey}:${cleanSpoken}`;
   const rawKey = `${rawId}:${cleanSpoken}`;
 
-  // 1. Check if already cached
+  // 1. Check in-memory or IndexedDB cache
   const existing =
     (voiceStyle && voiceStyle !== 'default' ? workoutAudioClipCache.get(styleKey) : null) ||
     (voiceStyle && voiceStyle !== 'default' ? workoutAudioClipCache.get(rawStyleKey) : null) ||
     workoutAudioClipCache.get(genericKey) ||
     workoutAudioClipCache.get(rawKey) ||
-    workoutAudioClipCache.get(cleanSpoken);
+    workoutAudioClipCache.get(cleanSpoken) ||
+    await lookupClientAudioCache(cleanSpoken, petId, voiceStyle);
 
   if (existing) {
+    if (!existing.audioBuffer && existing.audio) {
+      const ctx = ensureSharedAudioContextReady();
+      if (ctx) {
+        try {
+          const float32 = base64ToFloat32Array(existing.audio);
+          const buffer = ctx.createBuffer(1, float32.length, existing.sampleRate || 24000);
+          buffer.copyToChannel(float32, 0);
+          existing.audioBuffer = buffer;
+        } catch {}
+      }
+    }
     const res = existing.audioBuffer || existing;
     if (res && existing.audioBuffer) {
       res.audio = existing.audio;
@@ -841,42 +1017,54 @@ export async function prefetchCompanionAudio(text, petIdOrOptions = 'rex', optio
     return res;
   }
 
-  // 2. Background fetch via the Kokoro TTS microservice
-  const data = await fetchPcmTts(KOKORO_TTS_ENDPOINT, cleanSpoken, petId, timeoutMs, voiceStyle);
+  // 2. If prefetching a multi-sentence bedtime chapter, pre-fetch sentences individually too
+  // so pipelined sentence playback starts in 0ms when the chapter opens!
+  if (opts.pipelined && voiceStyle === 'bedtime') {
+    const chunks = splitIntoSpeechChunks(cleanSpoken);
+    if (chunks.length > 1) {
+      let firstRes = null;
+      for (let i = 0; i < chunks.length; i++) {
+        const cRes = await prefetchCompanionAudio(chunks[i], petId, {
+          ...opts,
+          pipelined: false,
+          timeoutMs: 20000
+        });
+        if (i === 0) firstRes = cRes;
+      }
+      return firstRes;
+    }
+  }
 
+  // 3. Background fetch via the Kokoro TTS microservice
+  const data = await fetchPcmTts(KOKORO_TTS_ENDPOINT, cleanSpoken, petId, timeoutMs, voiceStyle);
   if (!data || !data.audio) return null;
 
-  // 3. Pre-decode into Web Audio AudioBuffer if AudioContext is accessible
-  const AudioCtx = (typeof window !== 'undefined') && (window.AudioContext || window.webkitAudioContext);
-  if (AudioCtx) {
+  // 4. Pre-decode into Web Audio AudioBuffer if AudioContext is accessible
+  const ctx = ensureSharedAudioContextReady();
+  if (ctx) {
     try {
-      if (!sharedAudioContext || sharedAudioContext.state === 'closed') {
-        try {
-          sharedAudioContext = new AudioCtx({ sampleRate: 24000 });
-        } catch {
-          sharedAudioContext = new AudioCtx();
-        }
-      }
-      if (sharedAudioContext) {
-        const float32 = base64ToFloat32Array(data.audio);
-        const sampleRate = data.sampleRate || 24000;
-        const buffer = sharedAudioContext.createBuffer(1, float32.length, sampleRate);
-        buffer.copyToChannel(float32, 0);
-        data.audioBuffer = buffer;
-      }
+      const float32 = base64ToFloat32Array(data.audio);
+      const sampleRate = data.sampleRate || 24000;
+      const buffer = ctx.createBuffer(1, float32.length, sampleRate);
+      buffer.copyToChannel(float32, 0);
+      data.audioBuffer = buffer;
     } catch (e) {
       console.warn('Audio prefetch decode notice:', e);
     }
   }
 
-  // 4. Save into client cache
+  // 5. Save into client cache + IndexedDB
   if (voiceStyle && voiceStyle !== 'default') {
     workoutAudioClipCache.set(styleKey, data);
     workoutAudioClipCache.set(rawStyleKey, data);
+    saveAudioClipToIdb(styleKey, data);
   }
   workoutAudioClipCache.set(genericKey, data);
   workoutAudioClipCache.set(rawKey, data);
   workoutAudioClipCache.set(cleanSpoken, data);
+  if (!voiceStyle || voiceStyle === 'default') {
+    saveAudioClipToIdb(genericKey, data);
+  }
 
   const result = data.audioBuffer || data;
   if (result && data.audioBuffer) {
@@ -888,14 +1076,115 @@ export async function prefetchCompanionAudio(text, petIdOrOptions = 'rex', optio
 }
 
 /**
+ * Pipelined sentence-by-sentence playback for multi-sentence passages & AI Storybook.
+ * Synthesizes Sentence 0 immediately (~1.1-1.6s) and starts playback while concurrently
+ * pre-fetching Sentences 1..N into Web Audio buffers for seamless gapless reading.
+ */
+async function speakPipelinedChunks(chunks, cleanSpoken, petId, callback, myGeneration, opts) {
+  const voiceStyle = opts.voiceStyle || 'default';
+  const perChunkTimeoutMs = Math.min(25000, Math.max(12000, opts.timeoutMs || 18000));
+
+  // Fetch chunk 0 with top priority so Kokoro starts speaking immediately
+  let chunk0Data = await lookupClientAudioCache(chunks[0], petId, voiceStyle);
+  if (!chunk0Data) {
+    chunk0Data = await fetchPcmTts(KOKORO_TTS_ENDPOINT, chunks[0], petId, perChunkTimeoutMs, voiceStyle);
+    if (chunk0Data) {
+      storeInClientAudioCache(chunks[0], petId, voiceStyle, chunk0Data);
+    }
+  }
+  if (myGeneration !== speechGeneration) return true;
+
+  // If Kokoro is completely unreachable offline, fall back once cleanly for the full passage
+  if (!chunk0Data) {
+    speakWithSpeechSynthesis(cleanSpoken, petId, callback, opts);
+    return true;
+  }
+
+  // Pre-fetch remaining chunks in background (sequentially so chunk i+1 is always ready first)
+  const chunkPromises = new Array(chunks.length);
+  chunkPromises[0] = Promise.resolve(chunk0Data);
+
+  (async () => {
+    for (let i = 1; i < chunks.length; i++) {
+      if (myGeneration !== speechGeneration) break;
+      const p = (async () => {
+        const cached = await lookupClientAudioCache(chunks[i], petId, voiceStyle);
+        if (cached) return cached;
+        const fetched = await fetchPcmTts(KOKORO_TTS_ENDPOINT, chunks[i], petId, perChunkTimeoutMs, voiceStyle);
+        if (fetched) {
+          const ctx = ensureSharedAudioContextReady();
+          if (ctx && !fetched.audioBuffer) {
+            try {
+              const f32 = base64ToFloat32Array(fetched.audio);
+              const buf = ctx.createBuffer(1, f32.length, fetched.sampleRate || 24000);
+              buf.copyToChannel(f32, 0);
+              fetched.audioBuffer = buf;
+            } catch {}
+          }
+          storeInClientAudioCache(chunks[i], petId, voiceStyle, fetched);
+        }
+        return fetched;
+      })();
+      chunkPromises[i] = p;
+      await p;
+    }
+  })().catch(() => {});
+
+  const playChunkIndex = async (idx) => {
+    if (myGeneration !== speechGeneration) return false;
+    let cData = chunkPromises[idx] ? await chunkPromises[idx] : null;
+    if (!cData && myGeneration === speechGeneration) {
+      cData = await lookupClientAudioCache(chunks[idx], petId, voiceStyle) ||
+        await fetchPcmTts(KOKORO_TTS_ENDPOINT, chunks[idx], petId, perChunkTimeoutMs, voiceStyle);
+      if (cData) storeInClientAudioCache(chunks[idx], petId, voiceStyle, cData);
+    }
+    if (myGeneration !== speechGeneration) return false;
+
+    const isLast = idx >= chunks.length - 1;
+    if (!cData) {
+      const remainingText = chunks.slice(idx).join(' ');
+      speakWithSpeechSynthesis(remainingText, petId, callback, opts);
+      return true;
+    }
+
+    const onChunkEnd = isLast
+      ? callback
+      : () => {
+          if (myGeneration !== speechGeneration) return;
+          currentSentenceChainTimer = setTimeout(() => {
+            currentSentenceChainTimer = null;
+            playChunkIndex(idx + 1).catch(() => {});
+          }, 160);
+        };
+
+    const started = await playPcmTtsResponse(cData, chunks[idx], petId, onChunkEnd, myGeneration, {
+      ...opts,
+      isContinuationChunk: idx > 0,
+      isIntermediateChunk: !isLast
+    });
+
+    if (!started && myGeneration === speechGeneration) {
+      const remainingText = chunks.slice(idx).join(' ');
+      speakWithSpeechSynthesis(remainingText, petId, callback, opts);
+    }
+    return started;
+  };
+
+  return playChunkIndex(0);
+}
+
+/**
  * Unified Spoken Voice Entrypoint for Pet Companions
- * 0. Zero-Latency Client-Side Cache Check (`workoutAudioClipCache`).
- * 1. Prepares dialogue text by stripping asterisks/stage directions.
+ * 0. Synchronous AudioContext gesture unlock + Zero-Latency Cache (`workoutAudioClipCache` + IndexedDB).
+ * 1. Pipelined sentence streaming for multi-sentence bedtime chapters & long guidance.
  * 2. Primary: self-hosted Kokoro TTS microservice (/api/tts), voice resolved per pet.
- * 3. Resilient Fallback: Cartoon Speech Synthesis with natural 'Daniel' voice if offline.
+ * 3. Resilient Fallback: Cartoon Speech Synthesis with natural 'Daniel' voice ONLY when offline.
  */
 export const speakCompanion = async (text, petIdOrOptions = 'rex', onEndedOrOptions = null, options = {}) => {
   if (!text || typeof text !== 'string' || !text.trim()) return;
+
+  // Unlock & resume AudioContext synchronously while user tap gesture is still active
+  ensureSharedAudioContextReady();
 
   let petId = 'rex';
   let callback = null;
@@ -904,60 +1193,38 @@ export const speakCompanion = async (text, petIdOrOptions = 'rex', onEndedOrOpti
     rate: 1.0,
     pitch: 1.0,
     voiceStyle: 'default',
-    instant: false
+    instant: false,
+    pipelined: undefined
   };
 
-  // Case 1: 2nd argument is an options object
   if (petIdOrOptions && typeof petIdOrOptions === 'object') {
     opts = { ...opts, ...petIdOrOptions };
-    if (petIdOrOptions.petId) {
-      petId = petIdOrOptions.petId;
-    }
-    if (typeof petIdOrOptions.onEnded === 'function') {
-      callback = petIdOrOptions.onEnded;
-    }
-  }
-  // Case 2: 2nd argument is a callback function
-  else if (typeof petIdOrOptions === 'function') {
+    if (petIdOrOptions.petId) petId = petIdOrOptions.petId;
+    if (typeof petIdOrOptions.onEnded === 'function') callback = petIdOrOptions.onEnded;
+  } else if (typeof petIdOrOptions === 'function') {
     callback = petIdOrOptions;
-  }
-  // Case 3: 2nd argument is a petId string/number
-  else if (petIdOrOptions !== undefined && petIdOrOptions !== null) {
+  } else if (petIdOrOptions !== undefined && petIdOrOptions !== null) {
     petId = String(petIdOrOptions);
   }
 
-  // Case 4: 3rd argument is a callback function
   if (typeof onEndedOrOptions === 'function') {
     callback = onEndedOrOptions;
-  }
-  // Case 5: 3rd argument is an options object
-  else if (onEndedOrOptions && typeof onEndedOrOptions === 'object') {
+  } else if (onEndedOrOptions && typeof onEndedOrOptions === 'object') {
     opts = { ...opts, ...onEndedOrOptions };
-    if (typeof onEndedOrOptions.onEnded === 'function') {
-      callback = onEndedOrOptions.onEnded;
-    }
-    if (onEndedOrOptions.petId && (!petId || petId === 'rex')) {
-      petId = onEndedOrOptions.petId;
-    }
+    if (typeof onEndedOrOptions.onEnded === 'function') callback = onEndedOrOptions.onEnded;
+    if (onEndedOrOptions.petId && (!petId || petId === 'rex')) petId = onEndedOrOptions.petId;
   }
 
-  // Case 6: 4th argument trailing options
   if (options && typeof options === 'object') {
     opts = { ...opts, ...options };
-    if (typeof options.onEnded === 'function' && !callback) {
-      callback = options.onEnded;
-    }
-    if (options.petId && (!petId || petId === 'rex')) {
-      petId = options.petId;
-    }
+    if (typeof options.onEnded === 'function' && !callback) callback = options.onEnded;
+    if (options.petId && (!petId || petId === 'rex')) petId = options.petId;
   }
 
-  // If voiceStyle is 'bedtime' and timeoutMs wasn't explicitly changed from the default, default to 18000ms
   if (opts.voiceStyle === 'bedtime' && (!opts.timeoutMs || opts.timeoutMs === KOKORO_DEFAULT_TIMEOUT_MS)) {
-    opts.timeoutMs = 18000;
+    opts.timeoutMs = 35000;
   }
 
-  // If no explicit petId given or default rex, check active pet in store
   if (!petId || petId === 'rex') {
     try {
       const active = store?.getActivePet?.();
@@ -971,30 +1238,18 @@ export const speakCompanion = async (text, petIdOrOptions = 'rex', onEndedOrOpti
     return;
   }
 
-  // Claim this as the newest call -- any earlier in-flight call (still
-  // awaiting a fetch or an AudioContext resume) checks this after every
-  // await and abandons rather than starting audio once it's no longer current.
   const myGeneration = ++speechGeneration;
-
-  // Immediately stop any prior speech output (anti-collision & non-overlapping)
   stopRex();
 
-  // If user has not interacted yet, queue speech so it fires on their first tap
-  if (!hasUserInteracted) {
+  if (!hasUserInteracted && typeof window !== 'undefined' && typeof indexedDB !== 'undefined') {
     pendingUnlockSpeech = { text: cleanSpoken, petId, onEnded: callback, options: opts };
   }
 
-  // --- Tier 0: Zero-Latency Client-Side Audio Cache ---
-  const normKey = normalizePetKey(petId);
-  const rawId = String(petId).toLowerCase().trim();
   const voiceStyle = opts.voiceStyle || 'default';
 
-  const cachedData =
-    (voiceStyle && voiceStyle !== 'default' ? workoutAudioClipCache.get(`${normKey}:${voiceStyle}:${cleanSpoken}`) : null) ||
-    (voiceStyle && voiceStyle !== 'default' ? workoutAudioClipCache.get(`${rawId}:${voiceStyle}:${cleanSpoken}`) : null) ||
-    workoutAudioClipCache.get(`${normKey}:${cleanSpoken}`) ||
-    workoutAudioClipCache.get(`${rawId}:${cleanSpoken}`) ||
-    workoutAudioClipCache.get(cleanSpoken);
+  // --- Tier 0: Zero-Latency Client-Side & IndexedDB Audio Cache ---
+  const cachedData = await lookupClientAudioCache(cleanSpoken, petId, voiceStyle);
+  if (myGeneration !== speechGeneration) return;
 
   if (cachedData) {
     const played = await playPcmTtsResponse(cachedData, cleanSpoken, petId, callback, myGeneration, opts);
@@ -1004,17 +1259,23 @@ export const speakCompanion = async (text, petIdOrOptions = 'rex', onEndedOrOpti
     return;
   }
 
+  // --- Tier 1: Pipelined Sentence Streaming for AI Storybook & Long Multi-Sentence Passages ---
+  const chunks = splitIntoSpeechChunks(cleanSpoken);
+  const shouldPipeline = opts.pipelined === true ||
+    (opts.pipelined !== false && chunks.length > 1 && (voiceStyle === 'bedtime' || cleanSpoken.length > 130));
+
+  if (shouldPipeline && chunks.length > 1) {
+    await speakPipelinedChunks(chunks, cleanSpoken, petId, callback, myGeneration, opts);
+    return;
+  }
+
+  // --- Tier 2: Fast Single-Line Kokoro TTS Synthesis ---
   if (opts.instant) {
-    const INSTANT_KOKORO_TIMEOUT_MS = 1800;
+    const INSTANT_KOKORO_TIMEOUT_MS = 14000;
     const fastData = await fetchPcmTts(KOKORO_TTS_ENDPOINT, cleanSpoken, petId, INSTANT_KOKORO_TIMEOUT_MS, voiceStyle);
     if (myGeneration !== speechGeneration) return;
     if (fastData) {
-      if (voiceStyle && voiceStyle !== 'default') {
-        workoutAudioClipCache.set(`${normKey}:${voiceStyle}:${cleanSpoken}`, fastData);
-        workoutAudioClipCache.set(`${rawId}:${voiceStyle}:${cleanSpoken}`, fastData);
-      }
-      workoutAudioClipCache.set(`${normKey}:${cleanSpoken}`, fastData);
-      workoutAudioClipCache.set(cleanSpoken, fastData);
+      storeInClientAudioCache(cleanSpoken, petId, voiceStyle, fastData);
       const played = await playPcmTtsResponse(fastData, cleanSpoken, petId, callback, myGeneration, opts);
       if (played) return;
       if (myGeneration !== speechGeneration) return;
@@ -1024,22 +1285,15 @@ export const speakCompanion = async (text, petIdOrOptions = 'rex', onEndedOrOpti
   }
 
   let ttsSucceeded = false;
-  const timeoutMs = opts.timeoutMs || (voiceStyle === 'bedtime' ? 45000 : 4500);
+  const timeoutMs = opts.timeoutMs || (voiceStyle === 'bedtime' ? 35000 : KOKORO_DEFAULT_TIMEOUT_MS);
 
-  // 1. Primary: self-hosted Kokoro TTS microservice.
   const kokoroData = await fetchPcmTts(KOKORO_TTS_ENDPOINT, cleanSpoken, petId, timeoutMs, voiceStyle);
   if (myGeneration !== speechGeneration) return;
   if (kokoroData) {
-    if (voiceStyle && voiceStyle !== 'default') {
-      workoutAudioClipCache.set(`${normKey}:${voiceStyle}:${cleanSpoken}`, kokoroData);
-      workoutAudioClipCache.set(`${rawId}:${voiceStyle}:${cleanSpoken}`, kokoroData);
-    }
-    workoutAudioClipCache.set(`${normKey}:${cleanSpoken}`, kokoroData);
-    workoutAudioClipCache.set(cleanSpoken, kokoroData);
+    storeInClientAudioCache(cleanSpoken, petId, voiceStyle, kokoroData);
     ttsSucceeded = await playPcmTtsResponse(kokoroData, cleanSpoken, petId, callback, myGeneration, opts);
   }
 
-  // 2. Resilient Client-Side Speech Synthesis Fallback (Daniel Voice)
   if (!ttsSucceeded) {
     if (myGeneration !== speechGeneration) return;
     speakWithSpeechSynthesis(cleanSpoken, petId, callback, opts);

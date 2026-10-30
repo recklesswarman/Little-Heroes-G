@@ -38,6 +38,8 @@ jobs:
         run: npm run build
         env:
           VITE_BASE_PATH: '/Little-Heroes-G/'
+          VITE_KOKORO_TTS_URL: 'https://little-heroes-tts-kokoro-592754457115.us-central1.run.app'
+          VITE_IMAGE_GEN_API_URL: 'https://little-heroes-free-image-api.recklesswarman.workers.dev'
       - name: Setup Pages
         uses: actions/configure-pages@v4
       - name: Upload artifact

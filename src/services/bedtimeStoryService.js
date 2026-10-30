@@ -349,6 +349,11 @@ class BedtimeStoryService {
     if (!this.activeSession) return act1;
     this.activeSession.acts.push(act1);
 
+    // Auto-save active story to history/bookshelf immediately so no story is ever lost
+    try {
+      store.saveBedtimeStory(this.activeSession, this.activeSession.heroId);
+    } catch {}
+
     // Narrate Chapter 1
     this.narrateAct(act1.text, this.activeSession.petId, 1);
 
@@ -389,6 +394,11 @@ class BedtimeStoryService {
       const nextAct = await this.generateAct(nextActNumber, childInput);
       if (!this.activeSession) return nextAct;
       this.activeSession.acts.push(nextAct);
+
+      // Auto-save updated chapter progress to bookshelf
+      try {
+        store.saveBedtimeStory(this.activeSession, this.activeSession.heroId);
+      } catch {}
 
       if (nextActNumber === 4 || nextAct.isSleepingEnd) {
         this.activeSession.completed = true;
@@ -494,6 +504,7 @@ class BedtimeStoryService {
         rate,
         pitch: chapterNumber >= 3 ? 0.95 : 1.05,
         voiceStyle: 'bedtime',
+        pipelined: true,
         timeoutMs: 45000,
         ...options
       });
@@ -767,6 +778,11 @@ Return ONLY raw JSON with these exact keys (no markdown code blocks, just raw JS
       }).then((illB) => {
         if (illB && illB.imageUrl) {
           generatedAct.imageUrlB = illB.imageUrl;
+          if (session && Array.isArray(session.acts) && session.acts.length > 0) {
+            try {
+              store.saveBedtimeStory(session, session.heroId);
+            } catch {}
+          }
           if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('bedtime-story-scene-b-loaded', {
               detail: { actNumber, imageUrlB: illB.imageUrl }

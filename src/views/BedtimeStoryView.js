@@ -10,10 +10,10 @@
 import { store, KID_AVATARS } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
-import { BEDTIME_REALMS, BEDTIME_MORALS, CONSTELLATION_STICKERS } from '../data/bedtimeStoryData.js';
+import { BEDTIME_REALMS, BEDTIME_MORALS, CONSTELLATION_STICKERS, getBedtimeRealm } from '../data/bedtimeStoryData.js';
 import { bedtimeStoryService, resolveBedtimeNarratorPetId } from '../services/bedtimeStoryService.js';
-import { speakCompanion, stopCompanionAudio, prefetchCompanionAudio } from '../services/voiceService.js';
-import { BedtimeStoryStage3D } from '../components/BedtimeStoryStage3D.js';
+import { bedtimeIllustrationService } from '../services/bedtimeIllustrationService.js';
+import { speakCompanion, stopCompanionAudio, prefetchCompanionAudio, unlockVoiceAudio } from '../services/voiceService.js';
 
 let activeViewMode = 'sanctuary'; // 'sanctuary' | 'story' | 'bookshelf'
 let isMicListening = false;
@@ -24,8 +24,6 @@ let autoAdvanceSeconds = 3;
 let autoAdvanceActive = false;
 let selectedRealmId = 'space';
 let activeBookshelfFilter = 'all'; // 'all' | 'favorites'
-let activeStage3D = null;
-let displayStageMode = 'auto'; // 'auto' | '3d' | 'illustration'
 
 /**
  * Helper to render Kid Hero Avatar with active Pet Companion badge overlay
@@ -474,11 +472,10 @@ function renderStoryStage(session, pet, hero) {
         </div>
       ` : ''}
 
-      <!-- INTERACTIVE ILLUSTRATION STAGE (3D Stage with 2D SVG Fallback) -->
+      <!-- INTERACTIVE AI ILLUSTRATION STAGE -->
       <div id="interactive-illustration-container" class="relative bg-surface-container-lowest rounded-3xl sm:rounded-4xl border-3 sm:border-4 border-surface-container-highest shadow-[0_12px_0_0_#030910] min-h-[220px] sm:min-h-[340px] md:min-h-[400px] max-h-[48vh] overflow-hidden flex items-center justify-center transition-all cursor-pointer" title="Tap stars or scenery for gentle lullaby chimes!">
         
-        <!-- 3D WebGL / Fallback Mount -->
-        ${(displayStageMode !== '3d' && (currentAct.imageUrl || currentAct.imageUrlB)) ? `
+        ${(currentAct.imageUrl || currentAct.imageUrlB) ? `
           <!-- 3D Pixar / Claymation AI Illustration with Ken Burns Subtle Motion -->
           <div class="relative w-full h-full min-h-[220px] sm:min-h-[340px] md:min-h-[400px] flex items-center justify-center overflow-hidden rounded-3xl group bg-[#050f18] select-none">
             <img 
@@ -494,14 +491,13 @@ function renderStoryStage(session, pet, hero) {
             </div>
           </div>
         ` : `
-          <!-- 3D WebGL / Fallback Mount -->
-          <div id="bedtime-3d-stage-mount" class="w-full h-full flex items-center justify-center select-none pointer-events-auto">
+          <div class="w-full h-full flex items-center justify-center select-none pointer-events-auto">
             ${currentAct.svgArt || '<div class="text-slate-500">Starlight scene loading...</div>'}
           </div>
         `}
 
         <!-- Dual Scene Toggle: Scene 1 (Journey) vs Scene 2 (Climax) -->
-        ${((currentAct.imageUrl || currentAct.imageUrlB) && displayStageMode !== '3d') ? `
+        ${(currentAct.imageUrl || currentAct.imageUrlB) ? `
           <div id="dual-scene-toggle-pill" class="absolute bottom-2.5 sm:bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-[#09141e]/90 backdrop-blur-xs px-1.5 py-1 rounded-2xl border border-surface-container-highest shadow-lg z-10">
             <button id="toggle-scene-a-btn" data-scene="scene_a" class="px-2.5 py-0.5 sm:py-1 rounded-xl text-[10px] sm:text-xs font-black transition-all flex items-center gap-1 cursor-pointer ${
               (currentAct.activeScene !== 'scene_b')
@@ -521,13 +517,6 @@ function renderStoryStage(session, pet, hero) {
               ${!currentAct.imageUrlB ? '<span class="text-[9px] opacity-70 animate-pulse">(...)</span>' : ''}
             </button>
           </div>
-        ` : ''}
-
-        ${(currentAct.imageUrl || currentAct.imageUrlB) ? `
-          <button id="toggle-stage-view-btn" class="absolute bottom-2.5 right-2.5 sm:bottom-3 sm:right-3 bg-[#09141e]/90 hover:bg-[#0f2334] text-[10px] sm:text-xs font-bold text-white px-2.5 py-1 rounded-xl border border-surface-container-highest shadow-md flex items-center gap-1 z-10 active:scale-95 transition-all cursor-pointer" title="Toggle between 3D Stage and AI Art">
-            <span class="material-symbols-outlined text-xs sm:text-sm">${displayStageMode === '3d' ? 'image' : 'view_in_ar'}</span>
-            <span>${displayStageMode === '3d' ? 'Show AI Art' : 'Show 3D Stage'}</span>
-          </button>
         ` : ''}
 
         <!-- Tap-To-Chime Hint Overlay -->
@@ -874,14 +863,6 @@ export function setupBedtimeStoryListeners() {
     document.getElementById('storybook-customizer-anchor')?.scrollIntoView({ behavior: 'smooth' });
   });
 
-  // Stage View Mode Toggle (3D Stage vs AI Art)
-  document.getElementById('toggle-stage-view-btn')?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    Sound.tap();
-    displayStageMode = displayStageMode === '3d' ? 'illustration' : '3d';
-    store.notify();
-  });
-
   // Dual-Scene Toggle Buttons (Scene 1: Journey vs Scene 2: Climax)
   const updateScenePillStyles = (activeScene) => {
     const btnA = document.getElementById('toggle-scene-a-btn');
@@ -1028,6 +1009,7 @@ export function setupBedtimeStoryListeners() {
 
   // Launch Custom Bedtime Story Button
   document.getElementById('start-custom-story-btn')?.addEventListener('click', async () => {
+    unlockVoiceAudio();
     Sound.fanfare();
     const sanctuary = store.getBedtimeSanctuaryState();
     const wish = (document.getElementById('custom-bedtime-wish-input')?.value || sanctuary.customBedtimeWish || '').trim();
@@ -1056,6 +1038,7 @@ export function setupBedtimeStoryListeners() {
 
   // Manual Turn Page Button
   document.getElementById('story-manual-turn-page-btn')?.addEventListener('click', async () => {
+    unlockVoiceAudio();
     Sound.whoosh();
     bedtimeStoryService.cancelAutoAdvance();
     isGeneratingScene = true;
@@ -1068,13 +1051,27 @@ export function setupBedtimeStoryListeners() {
 
   // Replay Voice Button
   document.getElementById('story-replay-voice-btn')?.addEventListener('click', () => {
+    unlockVoiceAudio();
     Sound.bloop();
     bedtimeStoryService.cancelAutoAdvance();
     const session = bedtimeStoryService.getActiveSession();
     if (session && session.acts) {
-      const currentAct = session.acts[session.actNumber - 1];
-      if (currentAct) {
-        speakCompanion(currentAct.text, resolveBedtimeNarratorPetId(session.petId), null, { voiceStyle: 'bedtime', timeoutMs: 45000 });
+      const chapterNumber = session.actNumber || 1;
+      const currentAct = session.acts[chapterNumber - 1] || session.acts[0];
+      const textToRead = currentAct?.text || currentAct?.chapterText || '';
+      if (textToRead) {
+        const rates = [0.94, 0.88, 0.82, 0.76];
+        const rate = rates[Math.min(chapterNumber - 1, rates.length - 1)];
+        Sound.duckLullaby(true);
+        speakCompanion(textToRead, resolveBedtimeNarratorPetId(session.petId), () => {
+          Sound.duckLullaby(false);
+        }, {
+          rate,
+          pitch: chapterNumber >= 3 ? 0.95 : 1.05,
+          voiceStyle: 'bedtime',
+          pipelined: true,
+          timeoutMs: 45000
+        });
       }
     }
   });
@@ -1105,10 +1102,6 @@ export function setupBedtimeStoryListeners() {
     stopCompanionAudio();
     bedtimeStoryService.cancelAutoAdvance();
     completeBedtimeStoryRoutine();
-    if (activeStage3D) {
-      activeStage3D.destroy();
-      activeStage3D = null;
-    }
     activeViewMode = 'sanctuary';
     store.notify();
   });
@@ -1117,10 +1110,6 @@ export function setupBedtimeStoryListeners() {
     Sound.fanfare();
     bedtimeStoryService.cancelAutoAdvance();
     completeBedtimeStoryRoutine();
-    if (activeStage3D) {
-      activeStage3D.destroy();
-      activeStage3D = null;
-    }
     activeViewMode = 'bookshelf';
     store.notify();
   });
@@ -1188,12 +1177,25 @@ export function setupBedtimeStoryListeners() {
   });
 
   document.getElementById('saved-act-read-aloud-btn')?.addEventListener('click', () => {
+    unlockVoiceAudio();
     if (readingSavedStory) {
       const chapters = readingSavedStory.acts || readingSavedStory.chapters || [];
       const act = chapters[currentSavedActIndex];
-      if (act) {
+      const textToRead = act?.text || act?.chapterText || '';
+      if (textToRead) {
         Sound.bloop();
-        speakCompanion(act.text, resolveBedtimeNarratorPetId(readingSavedStory.petId || '1'), null, { voiceStyle: 'bedtime', timeoutMs: 45000 });
+        const rates = [0.94, 0.88, 0.82, 0.76];
+        const rate = rates[Math.min(currentSavedActIndex, rates.length - 1)];
+        Sound.duckLullaby(true);
+        speakCompanion(textToRead, resolveBedtimeNarratorPetId(readingSavedStory.petId || '1'), () => {
+          Sound.duckLullaby(false);
+        }, {
+          rate,
+          pitch: currentSavedActIndex >= 2 ? 0.95 : 1.05,
+          voiceStyle: 'bedtime',
+          pipelined: true,
+          timeoutMs: 45000
+        });
       }
     }
   });
@@ -1214,61 +1216,20 @@ export function setupBedtimeStoryListeners() {
       }
     });
   }
-  // 3D Storybook Stage Mounting & Audio Pre-Fetching
-  const mountOrUpdate3DStage = () => {
-    if (activeViewMode !== 'story') {
-      if (activeStage3D) {
-        activeStage3D.destroy();
-        activeStage3D = null;
-      }
-      return;
-    }
 
+  // Audio Pre-Fetching: Pre-fetch next chapter sentences while reading current
+  if (activeViewMode === 'story') {
     const session = bedtimeStoryService.getActiveSession();
-    if (!session) return;
-    const currentActNumber = session.actNumber;
-    const currentAct = (session.acts && session.acts[currentActNumber - 1]) || (session.acts && session.acts[0]) || {};
-    const hero = store.getState().selectedHero;
-    const petId = String(hero?.activePetId || '1');
-    const pet = (store.getState().pets || []).find(p => String(p.id) === petId) || { name: 'Rex the Dino', key: 'rex' };
-
-    const mount = document.getElementById('bedtime-3d-stage-mount');
-    if (mount) {
-      if (!activeStage3D || activeStage3D.container !== mount || activeStage3D.isDestroyed) {
-        if (activeStage3D) activeStage3D.destroy();
-        activeStage3D = new BedtimeStoryStage3D(mount, {
-          sceneDescriptor: currentAct.sceneDescriptor,
-          chapterIndex: currentActNumber - 1,
-          heroProfile: hero,
-          activePet: pet,
-          magicItem: session.magicItem || 'Starlight Lantern',
-          gentleObstacle: session.gentleObstacle || 'Sleepy Troll',
-          onConstellationTapped: (starId) => {
-            // Constellation tapped
-          }
-        });
-      } else {
-        activeStage3D.setSceneDescriptor(currentAct.sceneDescriptor, currentActNumber - 1);
-      }
-    } else {
-      if (activeStage3D) {
-        activeStage3D.destroy();
-        activeStage3D = null;
-      }
-    }
-
-    // Audio Pre-Fetching: Pre-fetch next chapter while reading current
-    if (session.acts && session.acts[currentActNumber]) {
-      const nextAct = session.acts[currentActNumber];
+    if (session && session.acts && session.acts[session.actNumber]) {
+      const nextAct = session.acts[session.actNumber];
       const nextText = nextAct.chapterText || nextAct.text;
       if (nextText) {
-        prefetchCompanionAudio(nextText, resolveBedtimeNarratorPetId(session.petId || pet?.id || 'rex'), {
+        prefetchCompanionAudio(nextText, resolveBedtimeNarratorPetId(session.petId || 'rex'), {
           voiceStyle: 'bedtime',
-          rate: [0.94, 0.88, 0.82, 0.76][Math.min(currentActNumber, 3)]
+          pipelined: true,
+          rate: [0.94, 0.88, 0.82, 0.76][Math.min(session.actNumber, 3)]
         }).catch(() => {});
       }
     }
-  };
-
-  mountOrUpdate3DStage();
+  }
 }

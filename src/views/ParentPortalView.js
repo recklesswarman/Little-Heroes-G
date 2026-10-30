@@ -20,8 +20,10 @@ import {
   SEASONS_DATA
 } from '../data/worldMapData.js';
 import { PETS_DATABASE } from '../data/petsData.js';
+import { speakCompanion } from '../services/voiceService.js';
 
 let activeAdminTab = 'approvals'; // approvals, screentime, reports, kids, tasks, rewards, pricing, studio, analytics, settings
+let editingCompanionPhraseId = null;
 export function setActiveAdminTab(tab) {
   activeAdminTab = tab;
 }
@@ -3246,6 +3248,133 @@ export function renderParentPortalView() {
             </div>
           </div>
 
+          <!-- Companion Phrases Manager (Zero-Lag Tap-to-Speak Rotation) -->
+          ${(() => {
+            const companionPhrases = store.getCompanionPhrases ? store.getCompanionPhrases() : [];
+            return `
+              <div id="parent-companion-phrases-section" class="bg-surface-container rounded-3xl p-6 border-2 border-[#00d2d3]/40 card-shadow flex flex-col gap-5">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-2xl bg-[#00d2d3]/15 text-[#00d2d3] border border-[#00d2d3]/40 flex items-center justify-center text-2xl shadow-xs">
+                      💬
+                    </div>
+                    <div>
+                      <h3 class="font-headline text-base sm:text-lg font-black text-inverse-surface">Companion Phrases</h3>
+                      <p class="text-xs text-on-surface-variant font-bold">Edit or add preset phrases spoken instantly when your child taps their floating companion widget. Use <code class="text-[#00d2d3]">{name}</code> to insert your child's name.</p>
+                    </div>
+                  </div>
+
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="px-3 py-1 rounded-full text-[11px] font-headline font-black bg-[#10b981]/15 text-[#10b981] border border-[#10b981]/30">
+                      ${companionPhrases.length} Active Phrases
+                    </span>
+                    <button id="parent-precache-phrases-btn" type="button" class="px-3 py-1.5 rounded-xl text-[11px] font-headline font-black bg-[#0f2334] hover:bg-[#16324a] text-[#00d2d3] border border-[#00d2d3]/40 flex items-center gap-1 active:scale-95 transition-all cursor-pointer">
+                      <span class="material-symbols-outlined text-sm">bolt</span>
+                      <span>Pre-Cache Voices</span>
+                    </button>
+                    <button id="parent-reset-phrases-btn" type="button" class="px-3 py-1.5 rounded-xl text-[11px] font-headline font-black bg-surface-container-high hover:bg-surface-bright text-on-surface-variant border border-surface-container-highest flex items-center gap-1 active:scale-95 transition-all cursor-pointer">
+                      <span class="material-symbols-outlined text-sm">restart_alt</span>
+                      <span>Reset Defaults</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Add New Phrase Form -->
+                <div class="bg-surface-container-high rounded-2xl p-3.5 border border-surface-container-highest flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                  <select id="parent-new-phrase-category" aria-label="Phrase Category" class="bg-surface-container-lowest text-inverse-surface text-xs font-bold rounded-xl px-3 py-2.5 border border-surface-container-highest focus:outline-none focus:border-[#00d2d3]">
+                    <option value="encouragement">Encouragement</option>
+                    <option value="playful">Playful</option>
+                    <option value="hygiene">Hygiene</option>
+                    <option value="habits">Habits</option>
+                    <option value="kindness">Kindness</option>
+                    <option value="calm">Calm</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                  <input
+                    id="parent-new-phrase-input"
+                    type="text"
+                    maxlength="220"
+                    placeholder="Type a new companion phrase (e.g. Awesome job today, {name}!)..."
+                    class="flex-1 bg-surface-container-lowest text-inverse-surface text-xs sm:text-sm font-semibold rounded-xl px-3.5 py-2.5 border border-surface-container-highest focus:outline-none focus:border-[#00d2d3]"
+                  />
+                  <button
+                    id="parent-add-phrase-btn"
+                    type="button"
+                    class="px-4 py-2.5 rounded-xl bg-primary text-on-primary font-headline text-xs font-black border border-primary-container shadow-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+                  >
+                    <span class="material-symbols-outlined text-sm">add_circle</span>
+                    <span>Add Phrase</span>
+                  </button>
+                </div>
+
+                <!-- Scrollable Phrase List -->
+                <div id="parent-phrases-list" class="max-h-80 overflow-y-auto pr-1 flex flex-col gap-2">
+                  ${companionPhrases.map((phrase) => {
+                    const isEditing = editingCompanionPhraseId === phrase.id;
+                    return `
+                      <div data-phrase-row="${escapeHtml(phrase.id)}" class="bg-surface-container-high rounded-2xl px-3.5 py-2.5 border border-surface-container-highest flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                        ${isEditing ? `
+                          <div class="flex-1 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                            <input
+                              id="parent-edit-phrase-input"
+                              type="text"
+                              maxlength="220"
+                              value="${escapeHtml(phrase.text)}"
+                              class="flex-1 bg-surface-container-lowest text-inverse-surface text-xs sm:text-sm font-semibold rounded-xl px-3 py-2 border border-[#00d2d3] focus:outline-none"
+                            />
+                            <div class="flex items-center gap-1.5">
+                              <button id="parent-save-edit-phrase-btn" data-phrase-id="${escapeHtml(phrase.id)}" type="button" class="px-3 py-1.5 rounded-xl bg-[#10b981] text-slate-950 font-headline text-xs font-black active:scale-95 cursor-pointer">
+                                Save
+                              </button>
+                              <button id="parent-cancel-edit-phrase-btn" type="button" class="px-3 py-1.5 rounded-xl bg-surface-container-lowest text-on-surface-variant font-headline text-xs font-bold border border-surface-container-highest active:scale-95 cursor-pointer">
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ` : `
+                          <div class="flex items-start sm:items-center gap-2.5 min-w-0 flex-1">
+                            <span class="px-2 py-0.5 rounded-lg text-[10px] font-black uppercase bg-[#09141e] text-[#ffb961] border border-[#ffb961]/30 shrink-0">
+                              ${escapeHtml(phrase.category || 'phrase')}
+                            </span>
+                            <span class="text-xs sm:text-sm font-semibold text-inverse-surface break-words">
+                              ${escapeHtml(phrase.text)}
+                            </span>
+                          </div>
+                          <div class="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                            <button
+                              type="button"
+                              data-phrase-text="${escapeHtml(phrase.text)}"
+                              class="parent-preview-phrase-btn w-8 h-8 rounded-xl bg-[#09141e] hover:bg-[#0f2334] text-[#00d2d3] border border-[#00d2d3]/30 flex items-center justify-center active:scale-95 transition-all cursor-pointer"
+                              title="Preview Kokoro Voice"
+                            >
+                              <span class="material-symbols-outlined text-sm">volume_up</span>
+                            </button>
+                            <button
+                              type="button"
+                              data-phrase-id="${escapeHtml(phrase.id)}"
+                              class="parent-edit-phrase-btn w-8 h-8 rounded-xl bg-surface-container-lowest hover:bg-surface-bright text-inverse-surface border border-surface-container-highest flex items-center justify-center active:scale-95 transition-all cursor-pointer"
+                              title="Edit Phrase"
+                            >
+                              <span class="material-symbols-outlined text-sm">edit</span>
+                            </button>
+                            <button
+                              type="button"
+                              data-phrase-id="${escapeHtml(phrase.id)}"
+                              class="parent-delete-phrase-btn w-8 h-8 rounded-xl bg-surface-container-lowest hover:bg-red-500/20 text-amber-400 hover:text-red-400 border border-surface-container-highest flex items-center justify-center active:scale-95 transition-all cursor-pointer"
+                              title="Delete Phrase"
+                            >
+                              <span class="material-symbols-outlined text-sm">delete</span>
+                            </button>
+                          </div>
+                        `}
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+            `;
+          })()}
+
           <!-- Bedtime AI Storybook Narrator Voice -->
           <div class="bg-surface-container rounded-3xl p-6 border-2 border-primary/30 card-shadow flex flex-col gap-5">
             <div class="flex items-center gap-3">
@@ -4150,6 +4279,111 @@ export function attachParentPortalListeners() {
       const petId = btn.getAttribute('data-bedtime-voice-pet-id') || '';
       Sound.click();
       store.updateBedtimeSanctuaryState({ bedtimeVoicePetId: petId || null });
+      store.notify();
+    });
+  });
+
+  // Companion Phrases Manager Listeners
+  const addPhraseBtn = document.getElementById('parent-add-phrase-btn');
+  const newPhraseInput = document.getElementById('parent-new-phrase-input');
+  const newPhraseCat = document.getElementById('parent-new-phrase-category');
+  const submitNewPhrase = () => {
+    const val = (newPhraseInput?.value || '').trim();
+    if (!val) return;
+    Sound.coin?.();
+    store.addCompanionPhrase(val, newPhraseCat?.value || 'custom');
+    if (newPhraseInput) newPhraseInput.value = '';
+    store.notify();
+  };
+  addPhraseBtn?.addEventListener('click', submitNewPhrase);
+  newPhraseInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      submitNewPhrase();
+    }
+  });
+
+  document.getElementById('parent-precache-phrases-btn')?.addEventListener('click', (e) => {
+    Sound.chirp?.();
+    const btn = e.currentTarget;
+    const phrases = (store.getCompanionPhrases?.() || []).map((p) => p.text).filter(Boolean);
+    if (btn) {
+      btn.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin">sync</span><span>Caching...</span>';
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('companion-phrases-updated', {
+        detail: { phrases, petId: store.getActivePet?.()?.id || 'rex' }
+      }));
+    }
+    setTimeout(() => {
+      if (btn && btn.isConnected) {
+        btn.innerHTML = '<span class="material-symbols-outlined text-sm">check_circle</span><span>Voices Cached!</span>';
+      }
+    }, 1200);
+  });
+
+  document.getElementById('parent-reset-phrases-btn')?.addEventListener('click', () => {
+    Sound.click();
+    editingCompanionPhraseId = null;
+    store.resetCompanionPhrasesToDefault();
+    store.notify();
+  });
+
+  document.querySelectorAll('.parent-preview-phrase-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const rawText = btn.getAttribute('data-phrase-text') || '';
+      if (!rawText) return;
+      Sound.pop?.();
+      const kidName = store.getSelectedHero?.()?.name || 'Little Hero';
+      const activePetId = store.getActivePet?.()?.id || 'rex';
+      speakCompanion(rawText.replace(/\{name\}/gi, kidName), activePetId);
+    });
+  });
+
+  document.querySelectorAll('.parent-edit-phrase-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      Sound.click();
+      editingCompanionPhraseId = btn.getAttribute('data-phrase-id') || null;
+      store.notify();
+    });
+  });
+
+  document.getElementById('parent-cancel-edit-phrase-btn')?.addEventListener('click', () => {
+    Sound.click();
+    editingCompanionPhraseId = null;
+    store.notify();
+  });
+
+  const saveEditPhraseBtn = document.getElementById('parent-save-edit-phrase-btn');
+  const editPhraseInput = document.getElementById('parent-edit-phrase-input');
+  const commitPhraseEdit = () => {
+    const id = saveEditPhraseBtn?.getAttribute('data-phrase-id') || editingCompanionPhraseId;
+    const nextVal = (editPhraseInput?.value || '').trim();
+    if (id && nextVal) {
+      Sound.coin?.();
+      store.updateCompanionPhrase(id, nextVal);
+    }
+    editingCompanionPhraseId = null;
+    store.notify();
+  };
+  saveEditPhraseBtn?.addEventListener('click', commitPhraseEdit);
+  editPhraseInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commitPhraseEdit();
+    } else if (e.key === 'Escape') {
+      editingCompanionPhraseId = null;
+      store.notify();
+    }
+  });
+
+  document.querySelectorAll('.parent-delete-phrase-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-phrase-id');
+      if (!id) return;
+      Sound.click();
+      if (editingCompanionPhraseId === id) editingCompanionPhraseId = null;
+      store.deleteCompanionPhrase(id);
       store.notify();
     });
   });

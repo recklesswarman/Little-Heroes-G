@@ -1,10 +1,11 @@
-// Scratch verification test for Rex Voice Input & Strict Hold-to-Talk Pipeline
+// Scratch verification test for Rex Audio Recorder & Zero-Lag Preset Phrase Companion Widget
+import './setup_mock_env.js';
 import assert from 'node:assert';
 import { audioRecorder } from '../src/services/audioRecorderService.js';
-import { getKidProfileName, playEmotionSFX, renderLiveRexWidget } from '../src/components/LiveRexWidget.js';
+import { getKidProfileName, playEmotionSFX, renderLiveRexWidget, renderRexAvatarSvg } from '../src/components/LiveRexWidget.js';
 import { store } from '../src/state/store.js';
 
-console.log('--- Testing Rex Voice Input & Hold-to-Talk ---');
+console.log('--- Testing Rex Audio Utilities & Zero-Lag Preset Phrase Widget ---');
 
 // 1. AudioRecorderService unit tests
 console.log('1. Testing AudioRecorderService API...');
@@ -53,15 +54,18 @@ assert.doesNotThrow(() => {
 }, 'Emotion SFX dispatches cleanly without errors');
 console.log('✓ Emotion-synchronized Dino SFX verified');
 
-// 4. Widget Template Markup
-console.log('4. Testing Widget Template Markup...');
-store.setLiveRexState({ isOpen: true });
+// 4. Zero-Lag Floating Companion Widget Markup (Live Chat Modal Removed)
+console.log('4. Testing Zero-Lag Floating Companion Widget Markup...');
+store.state.isAuthenticated = true;
 const html = renderLiveRexWidget();
-assert(html.includes('id="modal-rex-avatar-btn"'), 'Avatar button rendered');
-assert(html.includes('id="live-rex-toggle-btn"'), 'Bottom toggle button rendered');
-assert(html.includes('id="rex-waveform-bars"'), 'Soundwave visualizer bars rendered');
-assert(html.includes('Hold to Talk'), 'Hold to Talk guidance rendered in button');
-assert(html.includes('rex-toddler-action-btn'), 'Toddler quick action cards rendered');
-console.log('✓ Hold-to-Talk UI template rendered properly');
+assert(html.includes('id="live-rex-container"'), 'Floating container rendered');
+assert(html.includes('id="live-rex-floating-btn"'), 'Floating companion button rendered');
+assert(html.includes('id="floating-mascot-skeletal-canvas"'), 'Animated skeletal face viewer rendered');
+assert(html.includes('id="live-rex-speaking-rings"'), 'Aura ripple ring indicator rendered');
+assert(!html.includes('id="live-rex-modal-card"'), 'Live chat modal card completely removed');
+assert(!html.includes('id="rex-waveform-bars"'), 'Live chat mic bars completely removed');
+assert(!/pink|purple|magenta|violet|#f472b6|#ec4899|#a855f7/i.test(html + renderRexAvatarSvg()), 'Strict Explorer Palette enforced');
+console.log('✓ Zero-lag preset phrase companion widget rendered properly');
 
-console.log('\n--- ALL REX VOICE INPUT TESTS PASSED 100% ---');
+console.log('\n--- ALL REX COMPANION WIDGET & AUDIO TESTS PASSED 100% ---');
+process.exit(0);
