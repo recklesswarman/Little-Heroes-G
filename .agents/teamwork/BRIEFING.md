@@ -1,7 +1,7 @@
-# BRIEFING — 2026-10-25T02:18:00Z
+# BRIEFING — 2026-10-27T03:31:00Z
 
 ## Mission
-Comprehensive overhaul of the Bedtime AI Storybook in Little Hero Adventures to deliver unique per-chapter 3D Pixar illustrations via Cloudflare Workers AI with full chapter text context and dynamic seed entropy, longer narrative chapters (~180–220 words per chapter, ~7–8 minutes total) with strict anti-repetition filtering, removal of mid-story toddler choice/question interruptions for continuous hands-free slumber reading, and unified ElevenLabs voice narration across all kids and pets.
+Comprehensive fix and optimization of Little Hero Adventures Voice Guidance, Kokoro TTS pipeline, and Bedtime AI Storybook: full ~180–220 word chapter text Kokoro synthesis without truncation, zero-cold-start warm Cloud Run deployment (min-instances 1), and dynamic dual-scene illustration generator with front-loaded lower-chapter focal extraction.
 
 ## 🔒 My Identity
 - Archetype: sentinel
@@ -13,7 +13,11 @@ Comprehensive overhaul of the Bedtime AI Storybook in Little Hero Adventures to 
 - Current Orchestrator: 8a158406-90f8-4d02-ac6b-a478d04421e7
 - Current Victory Auditor: 7c1fcd24-cb0a-440a-b201-b8900429843b
 - Active Orchestrator 5: b9493cb1-e4ed-444a-a0d3-d8aedbf36adc
-- Active Victory Auditor 6: [TBD]
+- Active Victory Auditor 6: 08659191-4275-4ad8-8332-bc6e4c39fc65 (VICTORY REJECTED)
+- Active Victory Auditor 7: 3832ed18-8484-4d72-b076-181418e9c14c
+- Active Orchestrator 6: f49987c3-1f6b-4dc9-991d-d2cb290c5641
+- Active Cron 1 (Progress): 12a9cd31-3214-4a52-a1e1-0aea173ea48f/task-32
+- Active Cron 2 (Liveness): 12a9cd31-3214-4a52-a1e1-0aea173ea48f/task-34
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
@@ -27,18 +31,21 @@ Comprehensive overhaul of the Bedtime AI Storybook in Little Hero Adventures to 
 - Unique cache keys: session.id + chapterIndex + md5(fullChapterText)
 - Extended narrative chapters ~180-220 words with anti-repetition registry
 - Continuous hands-free slumber reading (no mid-story toddler choice chips or question prompts) with 3s auto-advance
+- Full-chapter Kokoro synthesis without truncation (sentence-boundary segmentation, concatenated PCM16 with 250ms silence pause)
+- Zero-cold-start warm Cloud Run deployment (little-heroes-tts-kokoro with min-instances 1, 4 vCPU, 4GiB memory, cpu-boost)
+- Dynamic dual-scene illustration generator with front-loaded lower-chapter focal extraction in first 50 tokens
 
 ## User Context
-- **Last user request**: Comprehensive overhaul of Bedtime AI Storybook in Little Hero Adventures (unique 3D Pixar illustrations via Cloudflare Workers AI with full text and randomized seed entropy, extended narrative ~180-220 words/chapter with anti-repetition filtering, removal of mid-story toddler choice/question interruptions for hands-free auto-advance, and unified ElevenLabs voice narration).
+- **Last user request**: Full-chapter Kokoro synthesis without truncation (~180-220 words), zero-cold-start warm Cloud Run deployment (min-instances 1), and dynamic dual-scene illustration generator (CLIP 77-token window front-loading).
 - **Pending clarifications**: none
-- **Delivered results**: [TBD]
+- **Delivered results**: Initialized orchestrator_6, scheduled monitoring crons.
 
 ## Project Status
 - **Phase**: in progress
 
 ## Routing Decision
 - **Chosen path**: General (`teamwork_preview_orchestrator`)
-- **Rationale**: Multi-system feature overhaul touching AI image generation, story generation engine, UI flow, and TTS voice pipeline.
+- **Rationale**: Multi-system optimization across Python Kokoro TTS service, Cloud Run deployment configuration, BedtimeStoryView audio playback timing, and Cloudflare SDXL illustration prompt/dual-scene generator.
 
 ## Victory Audit Status
 - **Triggered**: no
@@ -48,4 +55,4 @@ Comprehensive overhaul of the Bedtime AI Storybook in Little Hero Adventures to 
 ## Artifact Index
 - .agents/teamwork/ORIGINAL_REQUEST.md — Authoritative user requirements
 - .agents/teamwork/BRIEFING.md — Sentinel persistent memory
-- .agents/teamwork/orchestrator_5/ — Orchestrator 5 working directory
+- .agents/teamwork/orchestrator_6/context.md — Orchestrator 6 execution context

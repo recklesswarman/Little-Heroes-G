@@ -61,21 +61,23 @@ Comprehensive overhaul of the Bedtime AI Storybook in Little Hero Adventures to 
 | worker_m1 | teamwork_preview_worker | Milestone 1: 4-Chapter Narrative & Anti-Repetition Engine | completed | b19bd9b1-ad13-48d0-84d5-ac1f7a75cb0d |
 | worker_m2 | teamwork_preview_worker | Milestone 2: Unique AI Illustrations & Cache Integrity | completed | 73fbaf62-8edc-4e3b-bfcf-803807c30b39 |
 | worker_m3 | teamwork_preview_worker | Milestone 3: Slumber Pacing, Turn Page & Unified Voice | completed | c781a035-332b-4f41-b8ab-077a4c26afa3 |
-| reviewer_1 | teamwork_preview_reviewer | Gate Verification: Code Quality & Completeness | in-progress | 5d476698-bd2d-45a3-a801-e75e69ad46d4 |
-| reviewer_2 | teamwork_preview_reviewer | Gate Verification: Robustness & Interface Contracts | in-progress | 5295b9fb-f77d-456c-b3ec-2207bdf64db5 |
-| challenger_1 | teamwork_preview_challenger | Gate Verification: Stress & Cache Collision Oracles | in-progress | 6cf70509-7307-40ba-97d9-e8afdf9d7140 |
-| challenger_2 | teamwork_preview_challenger | Gate Verification: Audio Ducking & Concurrency Stress | in-progress | 326de9dd-9942-42f6-8466-541c86b5a28e |
-| auditor_1 | teamwork_preview_auditor | Gate Verification: Forensic Integrity Audit | in-progress | f24565e1-92d3-41e1-a84d-a9d0f29caae9 |
+| reviewer_1 | teamwork_preview_reviewer | Gate Verification: Code Quality & Completeness | completed | 5d476698-bd2d-45a3-a801-e75e69ad46d4 |
+| reviewer_2 | teamwork_preview_reviewer | Gate Verification: Robustness & Interface Contracts | completed | 5295b9fb-f77d-456c-b3ec-2207bdf64db5 |
+| challenger_1 | teamwork_preview_challenger | Gate Verification: Stress & Cache Collision Oracles | completed | 6cf70509-7307-40ba-97d9-e8afdf9d7140 |
+| challenger_2 | teamwork_preview_challenger | Gate Verification: Audio Ducking & Concurrency Stress | completed | 326de9dd-9942-42f6-8466-541c86b5a28e |
+| auditor_1 | teamwork_preview_auditor | Gate Verification: Forensic Integrity Audit | completed | f24565e1-92d3-41e1-a84d-a9d0f29caae9 |
+| worker_remediation | teamwork_preview_worker | Remediation: Companion Pet Naming & Sanctuary Test Parity | completed | 9ef87191-ed50-4636-919a-faa9ab15e747 |
+| auditor_remediation | teamwork_preview_auditor | Remediation: Forensic Re-Audit & Test Execution | in-progress | e225a2c0-bdac-4bd7-83a6-00ef36ca616b |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 12 / 16
-- Pending subagents: reviewer_1, reviewer_2, challenger_1, challenger_2, auditor_1
+- Spawn count: 14 / 16
+- Pending subagents: auditor_remediation
 - Predecessor: none
 - Successor: not yet spawned
 
 ## Active Timers
-- Heartbeat cron: b9493cb1-e4ed-444a-a0d3-d8aedbf36adc/task-10
+- Heartbeat cron: b9493cb1-e4ed-444a-a0d3-d8aedbf36adc/task-221
 - Safety timer: none
 
 ## Artifact Index

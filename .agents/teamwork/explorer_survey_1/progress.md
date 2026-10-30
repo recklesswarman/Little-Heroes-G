@@ -1,18 +1,13 @@
-# Progress Report — Explorer 1 (Cloudflare Workers AI & Image Generation / Caching Integrity)
+# Progress — explorer_survey_1
 
-Last visited: 2026-10-25T02:27:30Z
-
-## Status
-Survey of R1: Cloudflare Workers AI Image Generation & Cache Integrity completed. Handoff report written to `handoff.md`.
-
-## Steps
-- [x] Initialized DISPATCH.md and updated BRIEFING.md
-- [x] Explored `src/services/bedtimeIllustrationService.js`, `src/services/bedtimeStoryService.js`, `src/components/BedtimeStoryStage3D.js`, `src/views/BedtimeStoryView.js`, `server/imageGenService.js`, `server.js`, `vite.config.js`, `cloudflare-worker/worker.js`, `functions/src/voiceApi.ts`
-- [x] Traced image generation prompt structure and chapter text incorporation (identified truncation and omission)
-- [x] Traced caching logic, cache key format, and collision mechanisms (identified collision on same realm across stories)
-- [x] Checked randomized seed/entropy parameter handling (identified missing seed parameter across client, server, and worker)
-- [x] Checked Explorer Palette adherence in prompts and SVG fallbacks (verified clean SVGs, identified missing negative_prompt parameter)
-- [x] Verified full test suite (`node scratch/run_all_tests.js` -> 100% pass, 0 failures)
-- [x] Verified production build (`npm run build` -> exit code 0)
-- [x] Synthesized findings and proposed implementation plan in `handoff.md`
-- [x] Notified caller agent via `send_message`
+- **Last visited**: 2026-10-27T03:42:00Z
+- **Current Task**: Completed codebase investigation and empirical testing of Kokoro TTS pipeline and client audio playback; drafting handoff.md.
+- **Status**: Investigation Complete, Drafting Handoff Report
+- **Completed Steps**:
+  1. Inspected `little-heroes-tts-service/main.py`, `voices.py`, `requirements.txt`, and `Dockerfile`.
+  2. Identified primary root cause of truncation in `main.py`: `clean_dialogue_text` strips all newlines, while `pipeline(..., split_pattern=r"\n+")` attempts to process 180-220 word chapters as a single chunk, hitting Kokoro's 510-phoneme transformer sequence limit (~50-70 words, 1-2 sentences).
+  3. Empirically tested Python regex sentence splitting (`r"(?<=[.!?])\s+|(?<=[.!?][\"'])\s+|\n+"`) and confirmed compatibility with Python `re` fixed-width lookbehind requirements.
+  4. Formulated exact 250ms silence pause insertion and multi-chunk PCM16 concatenation logic for `synthesize()`.
+  5. Inspected `src/services/voiceService.js`, `src/services/bedtimeStoryService.js`, and `src/views/BedtimeStoryView.js`.
+  6. Analyzed client-side completion detection (`source.onended`), Web Audio decoding, auto-advance countdown triggers, and potential premature timeout pitfalls (`18000ms` fetch timeout, `dynamicWatchdogMs`).
+  7. Inspected test suites in `scratch/` (`test_voice_service_prefetch.mjs`, `verify_kokoro_warmup.mjs`, `test_bedtime_overhaul_e2e.mjs`, `run_all_tests.js`).

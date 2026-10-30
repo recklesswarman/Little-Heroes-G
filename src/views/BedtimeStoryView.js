@@ -478,11 +478,12 @@ function renderStoryStage(session, pet, hero) {
       <div id="interactive-illustration-container" class="relative bg-surface-container-lowest rounded-3xl sm:rounded-4xl border-3 sm:border-4 border-surface-container-highest shadow-[0_12px_0_0_#030910] min-h-[220px] sm:min-h-[340px] md:min-h-[400px] max-h-[48vh] overflow-hidden flex items-center justify-center transition-all cursor-pointer" title="Tap stars or scenery for gentle lullaby chimes!">
         
         <!-- 3D WebGL / Fallback Mount -->
-        ${(displayStageMode !== '3d' && currentAct.imageUrl) ? `
+        ${(displayStageMode !== '3d' && (currentAct.imageUrl || currentAct.imageUrlB)) ? `
           <!-- 3D Pixar / Claymation AI Illustration with Ken Burns Subtle Motion -->
           <div class="relative w-full h-full min-h-[220px] sm:min-h-[340px] md:min-h-[400px] flex items-center justify-center overflow-hidden rounded-3xl group bg-[#050f18] select-none">
             <img 
-              src="${currentAct.imageUrl}" 
+              id="active-chapter-illustration-img"
+              src="${(currentAct.activeScene === 'scene_b' && currentAct.imageUrlB) ? currentAct.imageUrlB : (currentAct.imageUrl || currentAct.imageUrlB)}" 
               alt="${escapeHtml(currentAct.title || 'Bedtime Illustration')}" 
               class="w-full h-full object-cover transition-transform duration-1000 ease-out group-hover:scale-105 pointer-events-none" 
             />
@@ -499,7 +500,30 @@ function renderStoryStage(session, pet, hero) {
           </div>
         `}
 
-        ${currentAct.imageUrl ? `
+        <!-- Dual Scene Toggle: Scene 1 (Journey) vs Scene 2 (Climax) -->
+        ${((currentAct.imageUrl || currentAct.imageUrlB) && displayStageMode !== '3d') ? `
+          <div id="dual-scene-toggle-pill" class="absolute bottom-2.5 sm:bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-[#09141e]/90 backdrop-blur-xs px-1.5 py-1 rounded-2xl border border-surface-container-highest shadow-lg z-10">
+            <button id="toggle-scene-a-btn" data-scene="scene_a" class="px-2.5 py-0.5 sm:py-1 rounded-xl text-[10px] sm:text-xs font-black transition-all flex items-center gap-1 cursor-pointer ${
+              (currentAct.activeScene !== 'scene_b')
+                ? 'bg-[#00d2d3] text-black shadow-sm'
+                : 'text-slate-400 hover:text-white'
+            }">
+              <span>🌄</span>
+              <span>Scene 1: Journey</span>
+            </button>
+            <button id="toggle-scene-b-btn" data-scene="scene_b" class="px-2.5 py-0.5 sm:py-1 rounded-xl text-[10px] sm:text-xs font-black transition-all flex items-center gap-1 cursor-pointer ${
+              (currentAct.activeScene === 'scene_b')
+                ? 'bg-[#ffb961] text-black shadow-sm'
+                : 'text-slate-400 hover:text-white'
+            }">
+              <span>✨</span>
+              <span>Scene 2: Climax</span>
+              ${!currentAct.imageUrlB ? '<span class="text-[9px] opacity-70 animate-pulse">(...)</span>' : ''}
+            </button>
+          </div>
+        ` : ''}
+
+        ${(currentAct.imageUrl || currentAct.imageUrlB) ? `
           <button id="toggle-stage-view-btn" class="absolute bottom-2.5 right-2.5 sm:bottom-3 sm:right-3 bg-[#09141e]/90 hover:bg-[#0f2334] text-[10px] sm:text-xs font-bold text-white px-2.5 py-1 rounded-xl border border-surface-container-highest shadow-md flex items-center gap-1 z-10 active:scale-95 transition-all cursor-pointer" title="Toggle between 3D Stage and AI Art">
             <span class="material-symbols-outlined text-xs sm:text-sm">${displayStageMode === '3d' ? 'image' : 'view_in_ar'}</span>
             <span>${displayStageMode === '3d' ? 'Show AI Art' : 'Show 3D Stage'}</span>
@@ -858,6 +882,112 @@ export function setupBedtimeStoryListeners() {
     store.notify();
   });
 
+  // Dual-Scene Toggle Buttons (Scene 1: Journey vs Scene 2: Climax)
+  const updateScenePillStyles = (activeScene) => {
+    const btnA = document.getElementById('toggle-scene-a-btn');
+    const btnB = document.getElementById('toggle-scene-b-btn');
+    if (activeScene === 'scene_b') {
+      btnA?.classList.remove('bg-[#00d2d3]', 'text-black', 'shadow-sm');
+      btnA?.classList.add('text-slate-400');
+      btnB?.classList.remove('text-slate-400');
+      btnB?.classList.add('bg-[#ffb961]', 'text-black', 'shadow-sm');
+    } else {
+      btnB?.classList.remove('bg-[#ffb961]', 'text-black', 'shadow-sm');
+      btnB?.classList.add('text-slate-400');
+      btnA?.classList.remove('text-slate-400');
+      btnA?.classList.add('bg-[#00d2d3]', 'text-black', 'shadow-sm');
+    }
+  };
+
+  document.getElementById('toggle-scene-a-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    Sound.tap();
+    const session = bedtimeStoryService.getActiveSession();
+    if (session && session.acts) {
+      const currentAct = session.acts[session.actNumber - 1];
+      if (currentAct) {
+        currentAct.activeScene = 'scene_a';
+        const img = document.getElementById('active-chapter-illustration-img');
+        if (img && currentAct.imageUrl) {
+          img.src = currentAct.imageUrl;
+        }
+        updateScenePillStyles('scene_a');
+      }
+    }
+  });
+
+  document.getElementById('toggle-scene-b-btn')?.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    Sound.tap();
+    const session = bedtimeStoryService.getActiveSession();
+    if (session && session.acts) {
+      const currentAct = session.acts[session.actNumber - 1];
+      if (currentAct) {
+        currentAct.activeScene = 'scene_b';
+        const img = document.getElementById('active-chapter-illustration-img');
+        if (currentAct.imageUrlB) {
+          if (img) img.src = currentAct.imageUrlB;
+          updateScenePillStyles('scene_b');
+        } else {
+          const btnB = document.getElementById('toggle-scene-b-btn');
+          if (btnB) btnB.classList.add('animate-pulse');
+          try {
+            const res = await bedtimeIllustrationService.generateChapterIllustration({
+              sessionId: session.id,
+              chapterIndex: session.actNumber - 1,
+              chapterNumber: session.actNumber,
+              chapterTitle: currentAct.title,
+              chapterText: currentAct.chapterText || currentAct.text,
+              realmId: session.realmId,
+              realmName: getBedtimeRealm(session.realmId)?.name || 'Starlight Woods',
+              heroName: session.heroName,
+              petName: session.petName,
+              petArchetype: session?.childContext?.activePet?.archetype || 'dino',
+              magicItem: session?.childContext?.gearAndChoices?.magicItem || 'Starlight Lantern',
+              sceneType: 'scene_b'
+            });
+            if (res && res.imageUrl) {
+              currentAct.imageUrlB = res.imageUrl;
+              if (img && currentAct.activeScene === 'scene_b') {
+                img.src = res.imageUrl;
+              }
+            }
+          } catch (err) {
+            console.warn('Scene B on-demand fetch note:', err);
+          } finally {
+            if (btnB) {
+              btnB.classList.remove('animate-pulse');
+              btnB.innerHTML = '<span>✨</span><span>Scene 2: Climax</span>';
+            }
+            updateScenePillStyles(currentAct.activeScene || 'scene_b');
+          }
+        }
+      }
+    }
+  });
+
+  if (typeof window !== 'undefined' && !window._bedtimeStorySceneBListenerAttached) {
+    window._bedtimeStorySceneBListenerAttached = true;
+    window.addEventListener('bedtime-story-scene-b-loaded', (e) => {
+      const session = bedtimeStoryService.getActiveSession();
+      if (session && session.acts) {
+        const currentAct = session.acts[session.actNumber - 1];
+        if (currentAct && currentAct.chapterNumber === e.detail?.actNumber) {
+          const btnB = document.getElementById('toggle-scene-b-btn');
+          if (btnB) {
+            btnB.innerHTML = '<span>✨</span><span>Scene 2: Climax</span>';
+          }
+          if (currentAct.activeScene === 'scene_b') {
+            const img = document.getElementById('active-chapter-illustration-img');
+            if (img && e.detail?.imageUrlB) {
+              img.src = e.detail.imageUrlB;
+            }
+          }
+        }
+      }
+    });
+  }
+
   // Narration Mode Toggle (Rex vs Parent)
   document.getElementById('toggle-narration-rex')?.addEventListener('click', () => {
     Sound.tap();
@@ -944,7 +1074,7 @@ export function setupBedtimeStoryListeners() {
     if (session && session.acts) {
       const currentAct = session.acts[session.actNumber - 1];
       if (currentAct) {
-        speakCompanion(currentAct.text, resolveBedtimeNarratorPetId(session.petId), null, { voiceStyle: 'bedtime', timeoutMs: 25000 });
+        speakCompanion(currentAct.text, resolveBedtimeNarratorPetId(session.petId), null, { voiceStyle: 'bedtime', timeoutMs: 45000 });
       }
     }
   });
@@ -1063,7 +1193,7 @@ export function setupBedtimeStoryListeners() {
       const act = chapters[currentSavedActIndex];
       if (act) {
         Sound.bloop();
-        speakCompanion(act.text, resolveBedtimeNarratorPetId(readingSavedStory.petId || '1'), null, { voiceStyle: 'bedtime', timeoutMs: 25000 });
+        speakCompanion(act.text, resolveBedtimeNarratorPetId(readingSavedStory.petId || '1'), null, { voiceStyle: 'bedtime', timeoutMs: 45000 });
       }
     }
   });

@@ -494,7 +494,7 @@ class BedtimeStoryService {
         rate,
         pitch: chapterNumber >= 3 ? 0.95 : 1.05,
         voiceStyle: 'bedtime',
-        timeoutMs: 25000,
+        timeoutMs: 45000,
         ...options
       });
     } catch (e) {
@@ -723,7 +723,7 @@ Return ONLY raw JSON with these exact keys (no markdown code blocks, just raw JS
       generatedAct = this.createOfflineAct(actNumber, realm, moral, heroName, petName, customWish, previousChoice, session.childContext?.antiRepetition || {});
     }
 
-    // Attach 3D Pixar / Claymation illustration from Cloudflare Workers AI
+    // Attach 3D Pixar / Claymation illustration from Cloudflare Workers AI (Dual-Scene: Scene A Journey + Scene B Climax)
     if (generatedAct) {
       try {
         const illResult = await bedtimeIllustrationService.generateChapterIllustration({
@@ -738,16 +738,44 @@ Return ONLY raw JSON with these exact keys (no markdown code blocks, just raw JS
           heroName,
           petName,
           petArchetype: session?.childContext?.activePet?.archetype || 'dino',
-          magicItem: session?.childContext?.gearAndChoices?.magicItem || 'Starlight Lantern'
+          magicItem: session?.childContext?.gearAndChoices?.magicItem || 'Starlight Lantern',
+          sceneType: 'scene_a'
         });
         if (illResult && illResult.imageUrl) {
           generatedAct.imageUrl = illResult.imageUrl;
+          generatedAct.activeScene = 'scene_a';
         }
       } catch (illErr) {
         console.warn('Illustration attachment notice:', illErr.message);
       }
 
-      // Pre-fetch next chapter illustration in background for instant transition
+      // Concurrently fetch Scene B (Climax/Wonder) from lower portion of chapter
+      bedtimeIllustrationService.generateChapterIllustration({
+        sessionId: session?.id,
+        chapterIndex: actNumber - 1,
+        chapterNumber: actNumber,
+        chapterTitle: generatedAct.title,
+        chapterText: generatedAct.chapterText || generatedAct.text,
+        seed: Math.floor(Math.random() * 2147483647),
+        realmId: realm.id,
+        realmName: realm.name,
+        heroName,
+        petName,
+        petArchetype: session?.childContext?.activePet?.archetype || 'dino',
+        magicItem: session?.childContext?.gearAndChoices?.magicItem || 'Starlight Lantern',
+        sceneType: 'scene_b'
+      }).then((illB) => {
+        if (illB && illB.imageUrl) {
+          generatedAct.imageUrlB = illB.imageUrl;
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('bedtime-story-scene-b-loaded', {
+              detail: { actNumber, imageUrlB: illB.imageUrl }
+            }));
+          }
+        }
+      }).catch(() => {});
+
+      // Pre-fetch next chapter illustrations (both scene_a and scene_b) in background
       if (actNumber < 4) {
         bedtimeIllustrationService.prefetchNextChapterIllustration({
           sessionId: session?.id,

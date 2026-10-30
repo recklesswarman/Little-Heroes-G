@@ -1,4 +1,4 @@
-const CACHE_NAME = 'little-heroes-v3.7.4-kokoro-longer-timeout-20261027';
+const CACHE_NAME = 'little-heroes-v3.7.4-kokoro-fullchapter-dualscene-20261029';
 const STATIC_ASSETS = [
   './',
   './index.html',

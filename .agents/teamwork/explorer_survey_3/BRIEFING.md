@@ -1,55 +1,46 @@
-# BRIEFING — 2026-10-25T02:19:30Z
+# BRIEFING — 2026-10-27T03:38:30Z
 
 ## Mission
-Investigate R3 (Seamless Slumber Pacing & Interruption Removal) and R4 (Unified ElevenLabs Bedtime Voice & Lullaby Audio Pipeline) across UI, audio engines, server routes, and data models to produce a comprehensive Phase 0 survey and actionable implementation blueprint.
+Investigate and design Dynamic Dual-Scene Illustration Generator with CLIP 77-Token Optimization for Bedtime Storybook.
 
 ## 🔒 My Identity
 - Archetype: explorer
-- Roles: investigation, synthesis
+- Roles: explorer_survey_3
 - Working directory: c:\APP\stitch_little_hero_adventures\.agents\teamwork\explorer_survey_3
-- Original parent: b9493cb1-e4ed-444a-a0d3-d8aedbf36adc
-- Milestone: Phase 0 - Survey & Architecture Discovery (R3 & R4)
+- Original parent: f49987c3-1f6b-4dc9-991d-d2cb290c5641
+- Milestone: Requirement 3: Dynamic Dual-Scene Illustration Generator (CLIP 77-Token Optimization)
 
 ## 🔒 Key Constraints
 - Read-only investigation — do NOT implement
-- Analyze story UI pacing, questions, choices, auto-advance, and audio narration
-- Map interactive decision chips, prompt questions ("What should we do next?"), and microphone interruptions
-- Analyze Hands-Free Auto-Advance (3s lullaby pause) vs manual Turn Page button
-- Map ElevenLabs voice routing: canonical voice ID `e9sQs6aLWU82SSolkPYZ`, stability 0.65, similarity 0.80, speed 0.85
-- Map background lullaby synthesizer ducking (15%) and swelling
-- Check API key delivery and fallback handling
-- Produce 5-component handoff report in `handoff.md`
-- Communicate back via `send_message`
+- Strict Explorer Palette compliance (#09141e, #2ecc71, #00d2d3, #f39c12, #ffb961 - zero pink or purple)
+- Do not modify source code directly; write findings and design specs to handoff.md
 
 ## Current Parent
-- Conversation ID: b9493cb1-e4ed-444a-a0d3-d8aedbf36adc
-- Updated: not yet
+- Conversation ID: f49987c3-1f6b-4dc9-991d-d2cb290c5641
+- Updated: 2026-10-27T03:33:00Z
 
 ## Investigation State
 - **Explored paths**:
-  - `src/views/BedtimeStoryView.js`: Located question prompts, mic listening button, quick suggestion chips, auto-advance timers, and voice replay buttons.
-  - `src/services/bedtimeStoryService.js`: Analyzed SpeechRecognition integration, startListening/stopListening, auto-advance countdown (currently 15s instead of 3s), narrateAct audio ducking, and generative act synthesis.
-  - `src/data/bedtimeStoryData.js`: Identified `act1Prompts`, `act2Prompts`, `act3Prompts`, `act1DefaultChips`, `act2DefaultChips`, `act3DefaultChips`, hardcoded question text inside Chapter 1 narrative, and choice chip payloads.
-  - `src/audio/sfx.js`: Examined `duckLullaby()`, note generation, peak gain values (0.07 vs 0.24 = 29.17% instead of 15%), and discrete boolean state without smooth swelling.
-  - `src/services/voiceService.js`: Traced ElevenLabs routing, `fetchPcmTts` timeout (`18000ms`), Web Audio playback rate scaling, pre-fetching, and SpeechSynthesis fallback.
-  - `server/elevenLabsService.js`, `server.js`, `functions/src/voiceApi.ts`: Checked canonical voice ID `e9sQs6aLWU82SSolkPYZ`, speed `0.85`, stability `0.65`, similarity `0.80`, and missing bedtime voice forcing for non-Rex pets.
-  - `src/components/BedtimeStoryStage3D.js`: Confirmed 3D diorama does not render question/choice UI (purely visual stage).
+  - `ORIGINAL_REQUEST.md` (section ## 2026-10-27T03:28:44Z, R3)
+  - `src/services/bedtimeIllustrationService.js` (prompt builder, caching, client-direct Cloudflare API, fallbacks)
+  - `src/services/bedtimeStoryService.js` (act generation, illustration attachment, pre-fetching)
+  - `src/views/BedtimeStoryView.js` (story stage, 3D vs AI art, auto-advance, bookshelf library)
+  - `src/data/bedtimeStoryData.js` (procedural story structure, scene descriptors, 4 canonical realms, morals)
+  - `server/imageGenService.js` (server route, prompt builder)
+  - `scratch/test_bedtime_overhaul_e2e.mjs`, `scratch/verify_image_gen_and_storybook.mjs`, `scratch/run_all_tests.js`
 - **Key findings**:
-  1. Mid-story choices/questions and microphone listening are present in `BedtimeStoryView.js` (lines 550-579, 951-1001), `bedtimeStoryService.js` (lines 145-231, 484-504), `bedtimeStoryData.js` (realms & line 877), and server routes.
-  2. Auto-advance timer currently defaults to 15 seconds instead of the mandated 3-second gentle lullaby pause.
-  3. Lullaby synthesizer in `sfx.js` ducks to ~29% (0.07/0.24) rather than 15%, and lacks a master gain node with smooth swelling ramp.
-  4. Replay voice button in `BedtimeStoryView.js` lines 1023 & 1142 omits `{ voiceStyle: 'bedtime' }`, causing replay to use default settings instead of bedtime ElevenLabs voice.
-- **Unexplored areas**: None for R3/R4 scope.
+  - **CLIP 77-Token Root Cause**: Stable Diffusion XL CLIP text encoder hard-truncates at 77 tokens (75 payload tokens). The existing `buildPrompt()` placed a ~55-65 token preamble first, pushing `chapterText` to character 250+ (token 60+), truncating 95% of the 200-word chapter and cutting off all unique landmarks, creatures, and climax resolutions.
+  - **Front-Loaded Redesign**: Redesigned prompt extracts narrative action and climax landmark from lower chapter text into first 25-35 tokens. Style & Explorer Palette anchors follow in next 25-30 tokens. Total prompt is ~55-65 tokens, 100% fitting within the CLIP window.
+  - **Dual-Scene Architecture**: Each chapter generates Scene A (establishing setting) and Scene B (climax action / resolution) with deterministic cache keys (`${sessionId}_ch${chIdx}_scene${A|B}_${textHash}${seedPart}`) and deterministic seed derivation.
+  - **UI Integration**: `BedtimeStoryView.js` gets interactive Scene A/B toggle buttons on the illustration card, instant re-renders, and background pre-fetching for Chapter N+1 dual scenes.
+  - **Explorer Palette**: Zero pink/purple strictly verified in prompts, SVGs, and CSS (#09141e, #2ecc71, #00d2d3, #f39c12, #ffb961).
+- **Unexplored areas**: None for survey scope.
 
 ## Key Decisions Made
-- Recommend removing `story-mic-btn`, `data-select-chip`, `❓ promptQuestion`, and SpeechRecognition from bedtime story flow.
-- Recommend setting auto-advance pause to 3 seconds with active gentle lullaby playback.
-- Recommend implementing a `lullabyMasterGain` node in `sfx.js` with exponential/linear ramp to 0.15 during narration and 1.2s swell back to 1.0.
-- Standardize canonical ElevenLabs voice `e9sQs6aLWU82SSolkPYZ` across all bedtime story requests.
+- Established 5-component handoff report structure for complete handoff to implementer.
 
 ## Artifact Index
-- `DISPATCH.md` — Task dispatch instructions
-- `BRIEFING.md` — Situational awareness and working memory
-- `progress.md` — Liveness heartbeat and milestone tracking
-- `handoff.md` — Final 5-component handoff report
-
+- DISPATCH.md — Initial dispatch instructions
+- BRIEFING.md — Persistent context & state
+- progress.md — Heartbeat and status
+- handoff.md — Comprehensive investigation report

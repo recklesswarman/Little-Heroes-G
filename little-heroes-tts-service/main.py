@@ -227,6 +227,11 @@ def resolve_speed(voice_style: str, requested_speed: Optional[float]) -> float:
 
 # ── Synthesis ────────────────────────────────────────────────────────────────
 
+SENTENCE_SPLIT_PATTERN = r"(?<=[.!?])\s+|(?<=[.!?][\"'])\s+|\n+"
+PAUSE_SAMPLES = int(SAMPLE_RATE * 0.25)
+PAUSE_CHUNK = np.zeros(PAUSE_SAMPLES, dtype=np.float32)
+
+
 def synthesize(text: str, voice: str, speed: float) -> bytes:
     """Runs Kokoro, concatenates all chunks, and returns base64-encoded PCM16
     mono audio at SAMPLE_RATE, matching the wire format the client's
@@ -234,15 +239,26 @@ def synthesize(text: str, voice: str, speed: float) -> bytes:
     pipeline = get_pipeline()
     chunks: list[np.ndarray] = []
     with _synth_lock:
-        for _, _, audio in pipeline(text, voice=voice, speed=speed, split_pattern=r"\n+"):
+        for _, _, audio in pipeline(text, voice=voice, speed=speed, split_pattern=SENTENCE_SPLIT_PATTERN):
             if hasattr(audio, "detach"):
                 audio = audio.detach().cpu().numpy()
-            chunks.append(np.asarray(audio, dtype=np.float32))
+            arr = np.asarray(audio, dtype=np.float32)
+            if arr.size > 0:
+                chunks.append(arr)
 
     if not chunks:
         raise RuntimeError("Kokoro produced no audio for this text.")
 
-    full_audio = np.concatenate(chunks) if len(chunks) > 1 else chunks[0]
+    if len(chunks) > 1:
+        interleaved: list[np.ndarray] = []
+        for i, c in enumerate(chunks):
+            interleaved.append(c)
+            if i < len(chunks) - 1:
+                interleaved.append(PAUSE_CHUNK)
+        full_audio = np.concatenate(interleaved)
+    else:
+        full_audio = chunks[0]
+
     clamped = np.clip(full_audio, -1.0, 1.0)
     pcm16 = (clamped * 32767.0).astype(np.int16)
     return base64.b64encode(pcm16.tobytes()).decode("ascii")

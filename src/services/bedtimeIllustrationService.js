@@ -24,9 +24,45 @@ export class BedtimeIllustrationService {
       sessionId = '',
       chapterIndex,
       chapterNumber = 1,
-      chapterText = ''
+      chapterText = '',
+      sceneType = 'scene_a'
     } = params;
-    return `${sessionId || 'story'}_ch${chapterIndex ?? (chapterNumber - 1)}_${computeMd5(chapterText || '')}`;
+    return `${sessionId || 'story'}_ch${chapterIndex ?? (chapterNumber - 1)}_${sceneType}_${computeMd5(chapterText || '')}`;
+  }
+
+  /**
+   * Extracts a concise, high-impact focal sentence from the chapter text.
+   * For scene_a (Journey): selects from early-to-mid chapter (0% - 50%).
+   * For scene_b (Climax): selects from the lower portion of chapter (55% - 100%).
+   */
+  extractSceneFocalNarrative(chapterText = '', sceneType = 'scene_a') {
+    if (!chapterText || typeof chapterText !== 'string') return '';
+
+    const rawSentences = chapterText
+      .split(/(?<=[.!?])\s+|\n+/)
+      .map(s => s.trim().replace(/^["'“‘]+|["'”’]+$/g, ''))
+      .filter(s => s.length > 12 && !/^(once upon a time|goodnight|chapter \d+)/i.test(s));
+
+    if (rawSentences.length === 0) return '';
+
+    let chosenSentence = '';
+    if (sceneType === 'scene_b') {
+      const lowerHalfIndex = Math.max(0, Math.floor(rawSentences.length * 0.55));
+      const lowerSentences = rawSentences.slice(lowerHalfIndex);
+      chosenSentence = lowerSentences[lowerSentences.length - 1] || lowerSentences[0] || rawSentences[rawSentences.length - 1];
+    } else {
+      const midPoint = Math.max(1, Math.ceil(rawSentences.length * 0.5));
+      const earlySentences = rawSentences.slice(0, midPoint);
+      chosenSentence = earlySentences[0] || rawSentences[0];
+    }
+
+    if (!chosenSentence) return '';
+
+    const words = chosenSentence.split(/\s+/);
+    if (words.length > 26) {
+      return words.slice(0, 26).join(' ') + '...';
+    }
+    return chosenSentence;
   }
 
   generateFallbackIllustration(params = {}) {
@@ -81,6 +117,7 @@ export class BedtimeIllustrationService {
       petName = 'Rex',
       petArchetype = 'dino',
       magicItem = 'Starlight Lantern',
+      sceneType = 'scene_a',
       prompt: customPrompt,
       seed: paramSeed
     } = params;
@@ -119,6 +156,7 @@ export class BedtimeIllustrationService {
           petName,
           petArchetype,
           magicItem,
+          sceneType,
           prompt: customPrompt,
           seed,
           negative_prompt,
@@ -138,7 +176,8 @@ export class BedtimeIllustrationService {
               realmName,
               chapterNumber,
               chapterText,
-              magicItem
+              magicItem,
+              sceneType
             });
 
             const directRes = await fetch(cleanUrl, {
@@ -214,14 +253,14 @@ export class BedtimeIllustrationService {
             preloadImg.src = imageUrl;
           }
 
-          return { imageUrl, success: true, cacheKey, seed };
+          return { imageUrl, success: true, cacheKey, seed, sceneType };
         }
 
-        return { imageUrl: null, success: false, cacheKey };
+        return { imageUrl: null, success: false, cacheKey, sceneType };
 
       } catch (err) {
         console.warn('Illustration generation error:', err.message);
-        return { imageUrl: null, success: false, error: err.message, cacheKey };
+        return { imageUrl: null, success: false, error: err.message, cacheKey, sceneType };
       } finally {
         inFlightRequests.delete(cacheKey);
       }
@@ -232,7 +271,7 @@ export class BedtimeIllustrationService {
   }
 
   /**
-   * Pre-fetches Chapter N+1 illustration in the background for zero-lag transitions
+   * Pre-fetches Chapter N+1 illustrations (both Scene A & Scene B) in the background for zero-lag transitions
    */
   prefetchNextChapterIllustration(params = {}) {
     const nextChapterNumber = (params.chapterNumber || 1) + 1;
@@ -245,12 +284,20 @@ export class BedtimeIllustrationService {
     this.generateChapterIllustration({
       ...params,
       chapterNumber: nextChapterNumber,
-      chapterIndex: nextChapterIndex
+      chapterIndex: nextChapterIndex,
+      sceneType: 'scene_a'
+    }).catch(() => {});
+
+    this.generateChapterIllustration({
+      ...params,
+      chapterNumber: nextChapterNumber,
+      chapterIndex: nextChapterIndex,
+      sceneType: 'scene_b'
     }).catch(() => {});
   }
 
   /**
-   * Builds prompt for 3D Pixar / Claymation style with unabridged narrative
+   * Builds prompt for 3D Pixar / Claymation style with narrative front-loaded into first 45 tokens (SDXL 77-token CLIP compliant)
    */
   buildPrompt(params = {}) {
     const {
@@ -260,20 +307,28 @@ export class BedtimeIllustrationService {
       realmName = 'Starlight Woods',
       chapterNumber = 1,
       magicItem = 'Starlight Lantern',
-      chapterText = ''
+      chapterText = '',
+      sceneType = 'scene_a'
     } = params;
 
-    const action = chapterNumber === 1
-      ? `${heroName} and ${petName} starting their journey with a glowing ${magicItem}`
-      : chapterNumber === 2
-      ? `${heroName} and ${petName} discovering a sleepy magical friend`
-      : chapterNumber === 3
-      ? `${heroName} and ${petName} helping a friend with kindness and teamwork`
-      : `${heroName} and ${petName} snuggled up asleep under gentle twinkling stars`;
+    const focalNarrative = this.extractSceneFocalNarrative(chapterText, sceneType);
 
-    const narrative = chapterText ? ` Story Narrative: "${chapterText.trim()}".` : '';
+    let focalAction = focalNarrative;
+    if (!focalAction) {
+      if (sceneType === 'scene_b') {
+        focalAction = `${heroName} and ${petName} sharing a quiet magical moment with glowing ${magicItem}`;
+      } else {
+        focalAction = chapterNumber === 1
+          ? `${heroName} and ${petName} embarking on cozy journey holding ${magicItem}`
+          : chapterNumber === 2
+          ? `${heroName} and ${petName} gently exploring magical hidden path`
+          : chapterNumber === 3
+          ? `${heroName} and ${petName} working together under starlight canopy`
+          : `${heroName} and ${petName} snuggled up asleep under twinkling constellation`;
+      }
+    }
 
-    return `${action}, cute toddler hero and baby ${petArchetype} companion, 3D Pixar animation style, claymation textures, soft nighttime lighting in ${realmName}, cozy storybook illustration, palette of starlight cyan, warm amber, midnight slate and emerald (no pink, no purple).${narrative} Masterpiece.`;
+    return `${focalAction}. Cute 3D toddler ${heroName} and baby ${petArchetype} ${petName}, Pixar claymation style, cozy nighttime in ${realmName}, soft amber and starlight cyan glow, midnight slate shadows, storybook masterpiece.`;
   }
 }
 

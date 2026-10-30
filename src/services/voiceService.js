@@ -1024,7 +1024,7 @@ export const speakCompanion = async (text, petIdOrOptions = 'rex', onEndedOrOpti
   }
 
   let ttsSucceeded = false;
-  const timeoutMs = opts.timeoutMs || (voiceStyle === 'bedtime' ? 18000 : KOKORO_DEFAULT_TIMEOUT_MS);
+  const timeoutMs = opts.timeoutMs || (voiceStyle === 'bedtime' ? 45000 : 4500);
 
   // 1. Primary: self-hosted Kokoro TTS microservice.
   const kokoroData = await fetchPcmTts(KOKORO_TTS_ENDPOINT, cleanSpoken, petId, timeoutMs, voiceStyle);

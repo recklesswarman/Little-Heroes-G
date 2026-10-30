@@ -1,18 +1,13 @@
 # Progress — explorer_survey_3
 
-Last visited: 2026-10-25T02:28:00Z
-Status: Completed
-Phase: Phase 0 Survey (R3 & R4)
+Last visited: 2026-10-27T03:39:30Z
+Status: Complete
 
-## Milestones
-- [x] Initialized DISPATCH.md and BRIEFING.md
-- [x] Investigate UI Pacing, Questions, Choices, Chips, Mic Listeners in BedtimeStoryView.js & BedtimeStoryStage3D.js
-- [x] Investigate Audio Narration, Voice Routing, Canonical Voice ID in voiceService.js, bedtimeStoryService.js, server/elevenLabsService.js, server.js, functions/src/voiceApi.ts
-- [x] Investigate Lullaby Synthesizer Ducking (15%) and Swelling in sfx.js
-- [x] Investigate Auto-Advance (3s pause after narration) and manual Turn Page accessibility
-- [x] Investigate API Key Delivery & Resilient Fallback Handling
-- [x] Review run_all_tests.js baseline execution (All 73 suites PASSED 100%)
-- [x] Draft comprehensive 5-component handoff.md
-- [x] Send completion message to parent
-
-
+## Tasks
+- [x] Record DISPATCH.md and initialize BRIEFING.md
+- [x] Inspect ORIGINAL_REQUEST.md (under ## 2026-10-27T03:28:44Z)
+- [x] Inspect `src/services/bedtimeIllustrationService.js` (prompt building, CLIP token window analysis, palette adherence, fallback SVGs)
+- [x] Inspect `src/views/BedtimeStoryView.js` (rendering, prefetching, dual-scene UI toggle / side-by-side)
+- [x] Inspect test scripts (`scratch/verify_bedtime_storybook.mjs`, `scratch/test_bedtime_overhaul_e2e.mjs`, `scratch/verify_image_gen_and_storybook.mjs`)
+- [x] Synthesize redesign for 50-token climax/setting frontloading, Scene A / Scene B architecture, caching, Explorer Palette compliance
+- [x] Produce `handoff.md` and report to orchestrator

@@ -1,222 +1,341 @@
-# Survey Report: Cloudflare Workers AI Image Generation & Cache Integrity (R1)
+# Handoff Report: Full-Chapter Kokoro Synthesis Without Truncation (Requirement 1)
 
-**Working Directory**: `c:\APP\stitch_little_hero_adventures\.agents\teamwork\explorer_survey_1`  
-**Target Milestone**: Phase 0 Survey / R1  
-**Investigator Archetype**: Teamwork Explorer (Read-Only Investigation)  
-**Parent Task ID**: `b9493cb1-e4ed-444a-a0d3-d8aedbf36adc`  
+**Investigator**: `explorer_survey_1`  
+**Date**: 2026-10-27T03:43:00Z  
+**Target Requirement**: Requirement 1 — Full-Chapter Kokoro Synthesis Without Truncation  
+**Project Root**: `c:\APP\stitch_little_hero_adventures`
 
 ---
 
 ## 1. Observation
 
-### 1.1 Architecture & Files Involved
-The story illustration pipeline spans 10 key files across client, server, and cloud worker tiers:
+### Obs 1.1: TTS Service Synthesis & Chunk Iteration in `little-heroes-tts-service/main.py`
+In `little-heroes-tts-service/main.py` (lines 208–213 and lines 230–249):
+```python
+208: def clean_dialogue_text(text: str) -> str:
+209:     cleaned = re.sub(r"\*.*?\*", " ", text or "")
+210:     cleaned = re.sub(r"\[.*?\]", " ", cleaned)
+211:     cleaned = re.sub(r"\s+", " ", cleaned).strip()
+212:     return cleaned
+...
+230: def synthesize(text: str, voice: str, speed: float) -> bytes:
+231:     """Runs Kokoro, concatenates all chunks, and returns base64-encoded PCM16
+232:     mono audio at SAMPLE_RATE, matching the wire format the client's
+233:     playPcmTtsResponse() already decodes."""
+234:     pipeline = get_pipeline()
+235:     chunks: list[np.ndarray] = []
+236:     with _synth_lock:
+237:         for _, _, audio in pipeline(text, voice=voice, speed=speed, split_pattern=r"\n+"):
+238:             if hasattr(audio, "detach"):
+239:                 audio = audio.detach().cpu().numpy()
+240:             chunks.append(np.asarray(audio, dtype=np.float32))
+241: 
+242:     if not chunks:
+243:         raise RuntimeError("Kokoro produced no audio for this text.")
+244: 
+245:     full_audio = np.concatenate(chunks) if len(chunks) > 1 else chunks[0]
+246:     clamped = np.clip(full_audio, -1.0, 1.0)
+247:     pcm16 = (clamped * 32767.0).astype(np.int16)
+248:     return base64.b64encode(pcm16.tobytes()).decode("ascii")
+```
+- `clean_dialogue_text()` runs `re.sub(r"\s+", " ", cleaned).strip()`, converting all newlines and multiple spaces into a single space `' '`. The string passed to `synthesize()` contains zero newlines.
+- `synthesize()` invokes `pipeline(text, voice=voice, speed=speed, split_pattern=r"\n+")`. Because the text contains no newlines, `pipeline` treats the entire ~180–220 word chapter as a single chunk.
+- Kokoro's neural architecture (derived from StyleTTS2) enforces a maximum sequence length of 512 tokens (~510 phonemes). Text exceeding ~510 phonemes (~50–70 words, or 1–2 sentences) is silently truncated at the phonemizer / duration predictor layer.
+- `chunks` only receives the audio for the first 1–2 sentences (~10–14 seconds). The remaining ~120–150 words of the chapter are omitted.
+- Furthermore, `np.concatenate(chunks)` places no silence padding between chunks when multiple chunks are present.
 
-1. **Client-side Illustration Service**: `src/services/bedtimeIllustrationService.js` (lines 1–233)
-   - Instantiates module-level in-memory cache: `const clientIllustrationCache = new Map();` (line 9).
-   - In-flight request de-duplication: `const inFlightRequests = new Map();` (line 10).
-   - Configures default endpoint: `this.apiUrl = 'https://little-heroes-free-image-api.recklesswarman.workers.dev'` (line 15).
-   - Defines `getCacheKey(params)` (lines 21–24), but it is **bypassed/unused** in `generateChapterIllustration()`.
-   - `generateFallbackIllustration(params)` (lines 26–60): generates inline SVG with Explorer Palette.
-   - `generateChapterIllustration(params)` (lines 65–191): hardcodes cache key computation at line 79.
-   - `prefetchNextChapterIllustration(params)` (lines 196–204): increments `chapterNumber` and invokes `generateChapterIllustration`.
-   - `buildPrompt(params)` (lines 209–229): accepts `chapterText` at line 217, but completely omits it from the returned prompt string.
-2. **Story Orchestrator**: `src/services/bedtimeStoryService.js` (lines 1–785)
-   - Assigns session ID: `this.activeSession = { id: 'story_' + Date.now(), ... }` (lines 290–314).
-   - Coordinates chapter generation and calls `bedtimeIllustrationService.generateChapterIllustration` (lines 648–665) and `prefetchNextChapterIllustration` (lines 668–678).
-   - **Omits** `sessionId: session.id` and `seed` from the illustration parameter payload (lines 649–659).
-3. **Storybook Stage & View Mount**: `src/views/BedtimeStoryView.js` (lines 1–1221)
-   - Line 28: `let displayStageMode = 'auto'; // 'auto' | '3d' | 'illustration'`
-   - Lines 481–494: when `displayStageMode !== '3d'` and `currentAct.imageUrl` is present, renders `<img src="${currentAct.imageUrl}" ...>` with Ken Burns hover effect and "3D Pixar AI Art" badge.
-   - Lines 502–507 & 877–882: `#toggle-stage-view-btn` toggles between `'3d'` and `'illustration'`.
-   - Lines 938–944: `#interactive-illustration-container` click listener triggers lullaby chime SFX.
-4. **3D Storybook Stage**: `src/components/BedtimeStoryStage3D.js` (lines 1–1730)
-   - Lines 59–68: defines `BEDTIME_EXPLORER_PALETTE` (#09141e, #040a10, #0e2634, #2ecc71, #00d2d3, #f39c12, #ffb961, #ffffff).
-   - Renders 3D diorama inside `#bedtime-3d-stage-mount` when `displayStageMode === '3d'` or when `currentAct.imageUrl` is null.
-5. **Backend Proxy Route**: `server.js` (lines 1–84)
-   - Lines 8, 33–34: mounts `handleStoryIllustrationRequest` on `POST /api/story/illustration` and `POST /api/ai/image`.
-6. **Vite Dev Server Middleware**: `vite.config.js` (lines 1–202)
-   - Lines 27, 144–167: dynamically imports `server/imageGenService.js` and handles `POST /api/story/illustration` and `POST /api/ai/image`.
-7. **Server-side Image Generation Service**: `server/imageGenService.js` (lines 1–260)
-   - Lines 7–8: `const imageCache = new Map(); const MAX_CACHE_SIZE = 50;`
-   - Lines 14–58: `buildBedtimeIllustrationPrompt(params)`: truncates narrative to 150 characters on line 28: `const cleanText = (chapterText || '').replace(/[^\w\s,.]/g, '').slice(0, 150);`.
-   - Lines 63–187: `handleStoryIllustrationRequest(req, res)`: computes cache key on line 92: `const cacheKey = `${realmId}_ch${chapterNumber}_${prompt.slice(0, 60)}`;`. Calls Cloudflare Workers AI API with `prompt`, `model`, and `format: 'base64'`.
-   - Lines 192–259: `generateStorybookSvgDataUri(...)`: generates procedural SVG fallback in Explorer Palette.
-8. **Cloudflare Worker Runtime**: `cloudflare-worker/worker.js` (lines 1–132)
-   - Lines 54–78: extracts `prompt`, `model`, `format`. Invokes `env.AI.run(model, { prompt })`.
-   - **Completely ignores** `seed` and `negative_prompt`.
-9. **Cloudflare Worker Config**: `cloudflare-worker/wrangler.toml` (lines 1–16)
-   - Configures `[ai] binding = "AI"` and `API_KEY = "little-heroes-secret-key"`.
-10. **Cloud Functions**: `functions/src/voiceApi.ts` (lines 1–653)
-    - Exposes `/api/gemini/bedtime-story`, `/api/rex/bedtime-story`, and `/api/elevenlabs/tts`. Currently lacks `/api/story/illustration` proxy.
+### Obs 1.2: Bedtime Chapter Lengths Produced by the Application
+Empirical measurement of chapters generated by `src/data/bedtimeStoryData.js` (`generateProceduralBedtimeStory`):
+- Chapter 1: 198 words, 7 sentences
+- Chapter 2: 179 words, 8 sentences
+- Chapter 3: 208 words, 10 sentences
+- Chapter 4: 193 words, 10 sentences
+Total narrative text per chapter spans 7 to 10 full sentences (~180–210 words).
 
----
+### Obs 1.3: Python Regex Lookbehind Constraint
+Tested in Python 3.14 via `.agents/teamwork/explorer_survey_1/test_split.py`:
+- `re.split(r"(?<=[.!?][\"']?)\s+", s)` failed with:
+  `re.PatternError: look-behind requires fixed-width pattern`
+- Standard Python `re` requires fixed-width lookbehinds.
+- Alternation pattern where each branch has a fixed width:
+  `SENTENCE_SPLIT_PATTERN = r"(?<=[.!?])\s+|(?<=[.!?][\"'])\s+|\n+"`
+  successfully compiles and splits standard sentences (`.`, `!`, `?`), dialogue with quotes (`."`, `!"`, `?"`), and paragraph newlines without error.
 
-### 1.2 Verbatim Findings by Requirement
-
-#### Finding A: Image Generation Prompt Structure & Chapter Text Truncation
-- In `src/services/bedtimeIllustrationService.js` (lines 209–229):
+### Obs 1.4: Client-Side Audio Playback in `src/services/voiceService.js`
+In `src/services/voiceService.js`:
+- Decoding and playback (lines 514–608):
+  - Converts base64 PCM16 to `Float32Array` via `base64ToFloat32Array(data.audio)`.
+  - Creates Web Audio buffer: `sharedAudioContext.createBuffer(1, float32.length, sampleRate)`.
+  - Attaches to `source = sharedAudioContext.createBufferSource(); source.buffer = audioBuffer;`.
+  - Configures playback rate and detune pitch compensation.
+  - Registers `source.onended`:
+    ```javascript
+    source.onended = () => {
+      ...
+      store.setLiveRexState({ isSpeaking: false }, true);
+      dispatchSpeechEvent('companion-speech-end', { petId });
+      if (typeof callback === 'function') {
+        callback();
+      }
+    };
+    ```
+- Premature cutoff factor — Timeouts in `voiceService.js` (lines 951–954 & 1023–1026):
   ```javascript
-  buildPrompt(params = {}) {
-    const {
-      heroName = 'Little Hero',
-      petName = 'Rex',
-      petArchetype = 'dino',
-      realmName = 'Starlight Woods',
-      chapterNumber = 1,
-      magicItem = 'Starlight Lantern',
-      chapterText = '' // <--- Parameter accepted here
-    } = params;
-
-    const action = chapterNumber === 1
-      ? `${heroName} and ${petName} starting their journey with a glowing ${magicItem}`
-      : chapterNumber === 2
-      ? `${heroName} and ${petName} discovering a sleepy magical friend`
-      : chapterNumber === 3
-      ? `${heroName} and ${petName} helping a friend with kindness and teamwork`
-      : `${heroName} and ${petName} snuggled up asleep under gentle twinkling stars`;
-
-    // chapterText is COMPLETELY EXCLUDED from the return value:
-    return `${action}, cute toddler hero and baby ${petArchetype} companion, 3D Pixar animation style, claymation textures, soft nighttime lighting in ${realmName}, cozy storybook illustration, palette of starlight cyan, warm amber, midnight slate and emerald, masterpiece.`;
-  }
+  951: // If voiceStyle is 'bedtime' and timeoutMs wasn't explicitly changed from 4500, default to 18000ms
+  952: if (opts.voiceStyle === 'bedtime' && (!opts.timeoutMs || opts.timeoutMs === 4500)) {
+  953:   opts.timeoutMs = 18000;
+  954: }
+  ...
+  1023: const timeoutMs = opts.timeoutMs || (voiceStyle === 'bedtime' ? 18000 : 4500);
+  1024: 
+  1025: // 1. Primary: self-hosted Kokoro TTS microservice.
+  1026: const kokoroData = await fetchPcmTts(KOKORO_TTS_ENDPOINT, cleanSpoken, petId, timeoutMs, voiceStyle);
   ```
-- In `server/imageGenService.js` (lines 14–29, 57):
-  ```javascript
-  export function buildBedtimeIllustrationPrompt(params = {}) {
-    ...
-    // Truncates text to at most 150 characters:
-    const cleanText = (chapterText || '').replace(/[^\w\s,.]/g, '').slice(0, 150);
-    ...
-    return `${chapterAction}, ${heroDescription}, ${petDescription}. Setting: ${realmAtmosphere}. Context: ${cleanText}. Style: ${stylePrompt}.`;
-  }
-  ```
-  A bedtime chapter of ~180–220 words contains ~950–1200 characters. Slicing to 150 characters drops >85% of the narrative, discarding characters, specific obstacles, and plot context.
+  18000ms (18 seconds) is dangerously close to or shorter than the synthesis duration for 7–10 sentences (~200 words) on a CPU-bound container. When the 18s timeout fires, `fetchPcmTts` aborts, returns `null`, and triggers fallback to browser `speechSynthesis`, which cuts off after 15 seconds on Chromium.
 
-#### Finding B: Caching Logic and Cross-Story / Cross-Chapter Collision Vulnerability
-- In `src/services/bedtimeIllustrationService.js` (line 79):
-  ```javascript
-  const cacheKey = `${realmId}_ch${chapterNumber}_${(chapterTitle || '').slice(0, 30)}`;
-  ```
-  - `session.id` is not present in the key.
-  - `chapterIndex` is not present in the key.
-  - Full chapter text hash (`md5(fullChapterText)`) is not present in the key.
-  - Consequence: Generating any new bedtime story in the same realm (e.g. `space`) with chapter 1 titles like `"Chapter 1: Starlit Voyage"` will hit the in-memory cache and return the illustration from the previous story!
-- In `server/imageGenService.js` (lines 92–93):
-  ```javascript
-  const cacheKey = `${realmId}_ch${chapterNumber}_${prompt.slice(0, 60)}`;
-  ```
-  - The first 60 characters of `prompt` is only the boilerplate action prefix (e.g., `"Little Hero and Rex embarking on their evening bedtime journey "`):
-  - Because `Context: ${cleanText}` is placed near character position 350+ of the prompt, `prompt.slice(0, 60)` is 100% identical for every story generated by that child in that realm.
-  - Consequence: All bedtime stories generated for a hero in a realm collide on the backend and return identical images.
-- In `src/services/bedtimeStoryService.js` (lines 649–659):
-  - `session.id` is never passed to `bedtimeIllustrationService.generateChapterIllustration`.
-
-#### Finding C: Missing Random Seed / Entropy Parameter
-- In `src/services/bedtimeStoryService.js` (lines 649–659):
-  - No seed parameter is generated or passed (`params.seed` is undefined).
-- In `src/services/bedtimeIllustrationService.js` (lines 94–106, 150–155):
-  - `payload` does not contain `seed`.
-  - Direct Cloudflare Worker fetch sends: `{ prompt: cfPrompt, model: '...', format: 'base64' }` without `seed`.
-- In `server/imageGenService.js` (lines 65–77, 119–123):
-  - `handleStoryIllustrationRequest` does not read `seed` from `req.body`.
-  - Fetch to Cloudflare Workers AI omits `seed`.
-- In `cloudflare-worker/worker.js` (lines 54–78):
-  - `body.seed` is never extracted.
-  - `env.AI.run(model, { prompt })` does not pass `seed`.
-  - Without `seed`, the latent diffusion model uses default internal seed 0, resulting in repetitive images whenever prompts share phrasing.
-
-#### Finding D: Explorer Palette Adherence
-- **Prompts**:
-  - `server/imageGenService.js` (line 53) specifies: `"Explorer Palette: deep midnight slate, luminous starlight cyan, solar orange warmth, and emerald green accents (no pink, no purple, cozy bedtime atmosphere)"`.
-  - `src/services/bedtimeIllustrationService.js` (line 228) specifies: `"palette of starlight cyan, warm amber, midnight slate and emerald, masterpiece."`, but lacks an explicit negative prompt instruction.
-  - Neither client nor server passes `negative_prompt` to Cloudflare Workers AI.
-- **SVG Fallbacks**:
-  - `src/services/bedtimeIllustrationService.js` lines 35–60: `#050f18`, `#0a2236`, `#ffb961`, `#00d2d3`, `#09141e`, `#ffffff`.
-  - `server/imageGenService.js` lines 193–255: `#07131d`, `#00253d`, `#00d2d3`, `#09141e`, `#0b2b1a`, `#2ecc71`, `#1c2838`, `#ffb961`, `#23180c`, `#f39c12`, `#ffffff`, `#050c13`, `#0f2334`.
-  - `src/data/bedtimeStoryData.js` lines 1072–1449: `#050f18`, `#091b29`, `#0f2b3e`, `#00d2d3`, `#ffffff`, `#ffb961`, `#122736`, `#091520`, `#e0f2fe`, `#f39c12`, `#2ecc71`.
-  - All SVG fallbacks strictly adhere to Explorer Palette with zero pink and zero purple.
+### Obs 1.5: Chapter Narration & Auto-Advance in `src/services/bedtimeStoryService.js`
+In `src/services/bedtimeStoryService.js` (lines 461–510):
+```javascript
+461: let hasEnded = false;
+462: const handleSpeechEnded = () => {
+463:   if (hasEnded) return;
+464:   hasEnded = true;
+465:   if (this.speechWatchdogTimer) {
+466:     clearTimeout(this.speechWatchdogTimer);
+467:     this.speechWatchdogTimer = null;
+468:   }
+469:   Sound.duckLullaby(false);
+470:   if (typeof window !== 'undefined') {
+471:     window.dispatchEvent(new CustomEvent('bedtime-story-speech-finished'));
+472:   }
+473:   if (currentGeneration !== this.narrationGeneration) return;
+474:   if (!this.activeSession || this.activeSession.completed || this.activeSession.actNumber !== chapterNumber) return;
+475:   this.startAutoAdvance(() => this.advanceStory());
+476: };
+...
+485: const wordCount = (text || '').trim().split(/\s+/).length;
+486: const dynamicWatchdogMs = Math.max(90000, Math.ceil((wordCount * 750) / rate));
+487: this.speechWatchdogTimer = setTimeout(() => {
+488:   console.warn(`Story speech watchdog (${Math.round(dynamicWatchdogMs / 1000)}s) triggered, advancing auto-advance countdown`);
+489:   handleSpeechEnded();
+490: }, dynamicWatchdogMs);
+```
+- `handleSpeechEnded` is passed to `speakCompanion` as the completion callback.
+- Because Kokoro only returned audio for the first 1–2 sentences (~12s), `source.onended` fired after 12s, which invoked `handleSpeechEnded()`.
+- `handleSpeechEnded()` immediately fired `startAutoAdvance(() => this.advanceStory())`, showing the 3-second countdown pill in `BedtimeStoryView.js` and flipping to the next chapter.
+- In `BedtimeStoryView.js` line 1135:
+  `prefetchCompanionAudio` is called without an explicit `timeoutMs`, inheriting the default 18000ms timeout.
 
 ---
 
 ## 2. Logic Chain
 
-1. **Premise**: R1 requires that the Cloudflare Workers AI image generator receives the full, unabridged text of each chapter directly embedded in the prompt so that illustrations visually mirror the specific story narrative.
-   - **Observation Reference**: Section 1.2, Finding A.
-   - **Deduction**: Currently, `bedtimeIllustrationService.buildPrompt()` completely discards `chapterText`, while `imageGenService.buildBedtimeIllustrationPrompt()` slices it to 150 characters. To satisfy R1, both prompt builders must embed the entire unabridged chapter text without truncation.
-
-2. **Premise**: R1 requires that cache keys are uniquely bound to `session.id + chapterIndex + md5(fullChapterText)` to eliminate cross-story and cross-chapter collisions.
-   - **Observation Reference**: Section 1.2, Finding B.
-   - **Deduction**: Currently, client cache keys use `${realmId}_ch${chapterNumber}_${chapterTitle.slice(0, 30)}` and server cache keys use `${realmId}_ch${chapterNumber}_${prompt.slice(0, 60)}`. Because titles and the first 60 characters of prompts are shared across stories, collisions are guaranteed between consecutive stories in the same realm. Binding the cache key to `session.id`, `chapterIndex`, and an MD5 hash of `fullChapterText` will mathematically guarantee collision freedom.
-
-3. **Premise**: R1 requires passing a randomized seed / entropy parameter (`Math.floor(Math.random() * 2147483647)`) with every generation request so every chapter and every book produces completely unique 3D Pixar / Claymation artwork.
-   - **Observation Reference**: Section 1.2, Finding C.
-   - **Deduction**: Currently, no seed is generated or passed in `bedtimeStoryService.js`, `bedtimeIllustrationService.js`, `server/imageGenService.js`, or `cloudflare-worker/worker.js`. To ensure entropy, `seed` must be generated at request time and propagated through the payload to `env.AI.run(model, { prompt, seed, ... })`.
-
-4. **Premise**: R1 requires strict adherence to the Explorer Palette (zero pink or purple) across prompts and SVG fallbacks.
-   - **Observation Reference**: Section 1.2, Finding D.
-   - **Deduction**: While SVG fallbacks strictly use Explorer Palette hex values, the AI image generator prompt needs an explicit `negative_prompt: "pink, purple, magenta, violet, neon pink, scary, dark, deformed, blurry"` passed to Cloudflare Workers AI to prevent diffusion models from injecting default fantasy purple/pink hues.
+1. **Premise 1**: Story chapters contain ~180–220 words divided across 7–10 sentences (Obs 1.2).
+2. **Premise 2**: In `little-heroes-tts-service/main.py`, `clean_dialogue_text` strips all newlines, and `pipeline(...)` is called with `split_pattern=r"\n+"` (Obs 1.1).
+3. **Inference 1**: Because the input text contains zero newlines, Kokoro does not segment the text into sentences; it receives the entire 180–220 words as one single string.
+4. **Premise 3**: Kokoro's transformer text encoder has a fixed maximum sequence length of 512 tokens (~510 phonemes, or ~50–70 words).
+5. **Inference 2**: Kokoro truncates the phoneme array to 510 tokens, discarding tokens 511 through ~1400. This produces an audio buffer of only the first 1–2 sentences (~10–14s).
+6. **Premise 4**: In `voiceService.js`, the Web Audio `AudioBufferSourceNode` plays the decoded audio buffer to completion and invokes `source.onended` when the buffer finishes (Obs 1.4).
+7. **Inference 3**: Because the buffer only contains 12 seconds of audio, `source.onended` fires after 12 seconds, invoking `handleSpeechEnded()` in `bedtimeStoryService.js` (Obs 1.5).
+8. **Inference 4**: `handleSpeechEnded()` initiates `startAutoAdvance()`, which counts down 3 seconds and advances to the next chapter. The user observes the chapter cutting off after 1–2 sentences.
+9. **Inference 5**: If `pipeline(...)` in `main.py` is configured with sentence boundary splitting (`r"(?<=[.!?])\s+|(?<=[.!?][\"'])\s+|\n+"`), Kokoro yields one distinct chunk for each sentence (7–10 chunks). Each chunk is 10–25 words (~60–160 phonemes), well within Kokoro's 510-token window.
+10. **Inference 6**: Concatenating all sentence chunks with a 250ms silence array (`np.zeros(int(24000 * 0.25), dtype=np.float32)`) yields a complete 65–85 second audio stream.
+11. **Inference 7**: To support synthesizing 7–10 sentences on CPU without network aborts, client timeouts in `voiceService.js`, `bedtimeStoryService.js`, and `BedtimeStoryView.js` must be expanded to 35000ms, and the speech watchdog budget must allow for synthesis + playback duration.
 
 ---
 
 ## 3. Caveats
 
-- **No Caveats**: All 10 files involved in story illustration generation and caching were inspected directly via `view_file`.
-- Baseline automated test suite (`scratch/run_all_tests.js`) and production build (`npm run build`) were executed synchronously and verified at 100% pass (0 failures).
+1. **CPU Synthesis Latency on Cloud Run**: Synthesizing 7–10 sentence chunks sequentially on a 2-vCPU / 4-vCPU container will take approximately 10–18 seconds of compute time. The client timeout MUST be >= 30000ms (we recommend 35000ms).
+2. **Background Pre-Fetching (`prefetchCompanionAudio`)**: Chapter N+1 pre-fetching runs in the background while Chapter N is playing (which takes ~70 seconds). This completely hides the 15-second synthesis latency for subsequent chapters.
+3. **Punctuation Sensitivity**: Sentences must have ending punctuation (`.`, `!`, `?`) to split properly. The regex pattern `r"(?<=[.!?])\s+|(?<=[.!?][\"'])\s+|\n+"` also includes `\n+` as a fallback boundary for non-punctuated headings or lines.
+4. **No other caveats**: The root causes and client/server mechanisms are fully verified.
 
 ---
 
-## 4. Conclusion & Proposed Implementation Plan
+## 4. Conclusion & Concrete Implementation Recommendations
 
-The codebase has the core Cloudflare Workers AI integration and SVG fallbacks in place, but has 4 critical architectural gaps relative to R1:
-1. **Truncated / Omitted Narrative Context**: Prompts truncate chapter text to 150 chars (server) or drop it entirely (client).
-2. **Defective Cache Key Structure**: Cache keys do not bind to `session.id`, `chapterIndex`, or `md5(chapterText)`, causing cross-story collisions in the same realm.
-3. **Missing Seed Entropy**: Random seed (`Math.floor(Math.random() * 2147483647)`) is neither generated nor passed anywhere in the call chain.
-4. **Missing Negative Prompt Enforcement**: Cloudflare Worker and prompt generators lack explicit `negative_prompt` parameters to strictly exclude pink/purple.
+### Component A: `little-heroes-tts-service/main.py`
 
-### Proposed Implementation Plan (Targeting Implementation Agent)
+#### Changes:
+1. Define constants at top of `main.py`:
+```python
+SENTENCE_SPLIT_PATTERN = r"(?<=[.!?])\s+|(?<=[.!?][\"'])\s+|\n+"
+SILENCE_DURATION_SEC = 0.250  # 250ms gentle pause between sentences
+```
 
-1. **Lightweight Pure JS MD5 Helper (`src/utils/md5.js`)**:
-   - Provide a zero-dependency, pure JS `computeMd5(str)` function producing a 32-character hexadecimal string, compatible with both browser and Node/Cloudflare environments.
-2. **Update `src/services/bedtimeIllustrationService.js`**:
-   - Update `getCacheKey({ sessionId, chapterIndex, chapterNumber, chapterText, ... })` to return:
-     `${sessionId || 'story'}_ch${chapterIndex ?? (chapterNumber - 1)}_${computeMd5(chapterText || '')}`
-   - Update `generateChapterIllustration(params)` to use `this.getCacheKey(params)`.
-   - Update `buildPrompt(params)`: Include the full unabridged `chapterText` into the prompt context:
-     `"Full Chapter Narrative: \"${chapterText.trim()}\". Visual Illustration Instruction: In 3D Pixar animation style with claymation textures, illustrate this exact scene depicting ${heroName} and baby ${petArchetype} companion in ${realmName}..."`
-   - Generate `seed = params.seed ?? Math.floor(Math.random() * 2147483647)` and include in request payload to both proxy and direct worker endpoints.
-   - Pass `negative_prompt: "pink, purple, magenta, violet, neon pink, dark, scary, deformed, blurry"`.
-3. **Update `server/imageGenService.js`**:
-   - Import or implement `computeMd5`.
-   - Extract `sessionId`, `chapterIndex`, `seed`, `chapterText` from `req.body`.
-   - Remove `.slice(0, 150)` from `buildBedtimeIllustrationPrompt`; incorporate the entire unabridged chapter text.
-   - Update `cacheKey` to:
-     `${sessionId || 'story'}_ch${chapterIndex ?? (chapterNumber - 1)}_${computeMd5(chapterText || prompt)}`
-   - Pass `seed` and `negative_prompt` in fetch call to Cloudflare Workers AI.
-4. **Update `cloudflare-worker/worker.js`**:
-   - Extract `const seed = body.seed !== undefined ? Number(body.seed) : Math.floor(Math.random() * 2147483647);`
-   - Extract `const negative_prompt = body.negative_prompt || "pink, purple, magenta, violet, neon pink, scary, dark, deformed, blurry";`
-   - Pass `{ prompt, seed, negative_prompt }` to `env.AI.run(model, ...)`.
-5. **Update `src/services/bedtimeStoryService.js`**:
-   - In `generateAct` (lines 648–665):
-     Pass `sessionId: session.id`, `chapterIndex: actNumber - 1`, and `seed: Math.floor(Math.random() * 2147483647)` to `generateChapterIllustration`.
+2. Update `clean_dialogue_text(text: str) -> str`:
+Preserve line breaks while collapsing internal horizontal spaces:
+```python
+def clean_dialogue_text(text: str) -> str:
+    cleaned = re.sub(r"\*.*?\*", " ", text or "")
+    cleaned = re.sub(r"\[.*?\]", " ", cleaned)
+    # Collapse horizontal whitespace, normalize line breaks
+    cleaned = re.sub(r"[^\S\r\n]+", " ", cleaned)
+    cleaned = re.sub(r"\s*\n\s*", "\n", cleaned)
+    cleaned = re.sub(r"\n{2,}", "\n", cleaned)
+    return cleaned.strip()
+```
+
+3. Update `synthesize(text: str, voice: str, speed: float) -> bytes`:
+```python
+def synthesize(text: str, voice: str, speed: float) -> bytes:
+    """Runs Kokoro, iterating through sentence-segmented chunks up to 250 words,
+    concatenates all chunks with a gentle 250ms silence pause between sentences,
+    and returns base64-encoded PCM16 mono audio at SAMPLE_RATE."""
+    pipeline = get_pipeline()
+    chunks: list[np.ndarray] = []
+    with _synth_lock:
+        for _, _, audio in pipeline(text, voice=voice, speed=speed, split_pattern=SENTENCE_SPLIT_PATTERN):
+            if audio is None:
+                continue
+            if hasattr(audio, "detach"):
+                audio = audio.detach().cpu().numpy()
+            audio_arr = np.asarray(audio, dtype=np.float32)
+            if audio_arr.size > 0:
+                chunks.append(audio_arr)
+
+    if not chunks:
+        raise RuntimeError("Kokoro produced no audio for this text.")
+
+    if len(chunks) == 1:
+        full_audio = chunks[0]
+    else:
+        # Gentle 250ms silence pause between sentences (6000 samples @ 24kHz)
+        silence_samples = int(SAMPLE_RATE * SILENCE_DURATION_SEC)
+        silence = np.zeros(silence_samples, dtype=np.float32)
+        interleaved: list[np.ndarray] = []
+        for i, chunk in enumerate(chunks):
+            if i > 0:
+                interleaved.append(silence)
+            interleaved.append(chunk)
+        full_audio = np.concatenate(interleaved)
+
+    clamped = np.clip(full_audio, -1.0, 1.0)
+    pcm16 = (clamped * 32767.0).astype(np.int16)
+    return base64.b64encode(pcm16.tobytes()).decode("ascii")
+```
+
+---
+
+### Component B: `src/services/voiceService.js`
+
+#### Changes:
+1. In `fetchPcmTts` (lines 672–677):
+```javascript
+  // If bedtime style, default to 35000ms to allow multi-sentence chapter synthesis
+  if (style === 'bedtime') {
+    if (timeoutMs === 4500 || !timeoutMs || timeoutMs < 30000) {
+      timeoutMs = 35000;
+    }
+  }
+```
+
+2. In `prefetchCompanionAudio` (line 815):
+```javascript
+  const timeoutMs = typeof options === 'number'
+    ? options
+    : (options?.timeoutMs || (voiceStyle === 'bedtime' ? 35000 : 4500));
+```
+
+3. In `speakCompanion` (lines 951–954 and 1023):
+```javascript
+  // If voiceStyle is 'bedtime' and timeoutMs wasn't explicitly changed from 4500, default to 35000ms
+  if (opts.voiceStyle === 'bedtime' && (!opts.timeoutMs || opts.timeoutMs === 4500)) {
+    opts.timeoutMs = 35000;
+  }
+  ...
+  const timeoutMs = opts.timeoutMs || (voiceStyle === 'bedtime' ? 35000 : 4500);
+```
+
+---
+
+### Component C: `src/services/bedtimeStoryService.js`
+
+#### Changes:
+1. In `narrateAct` (lines 485–499):
+Expand `dynamicWatchdogMs` budget and default `timeoutMs` to 35000:
+```javascript
+    const wordCount = (text || '').trim().split(/\s+/).length;
+    // Provide generous safety margin: 35s fetch allowance + ~900ms per word playback allowance
+    const dynamicWatchdogMs = Math.max(120000, 35000 + Math.ceil((wordCount * 900) / rate));
+    this.speechWatchdogTimer = setTimeout(() => {
+      console.warn(`Story speech watchdog (${Math.round(dynamicWatchdogMs / 1000)}s) triggered, advancing auto-advance countdown`);
+      handleSpeechEnded();
+    }, dynamicWatchdogMs);
+
+    try {
+      speakCompanion(text, narratorPetId, handleSpeechEnded, {
+        rate,
+        pitch: chapterNumber >= 3 ? 0.95 : 1.05,
+        voiceStyle: 'bedtime',
+        timeoutMs: 35000,
+        ...options
+      });
+```
+
+---
+
+### Component D: `src/views/BedtimeStoryView.js`
+
+#### Changes:
+1. In `story-replay-voice-btn` click handler (line 947):
+Update `timeoutMs: 35000`.
+2. In `saved-act-read-aloud-btn` click handler (line 1066):
+Update `timeoutMs: 35000`.
+3. In `mountOrUpdate3DStage` audio pre-fetching (line 1135):
+Pass `timeoutMs: 35000` to `prefetchCompanionAudio`:
+```javascript
+prefetchCompanionAudio(nextText, resolveBedtimeNarratorPetId(session.petId || pet?.id || 'rex'), {
+  voiceStyle: 'bedtime',
+  rate: [0.94, 0.88, 0.82, 0.76][Math.min(currentActNumber, 3)],
+  timeoutMs: 35000
+}).catch(() => {});
+```
 
 ---
 
 ## 5. Verification Method
 
-To verify R1 implementation independently:
+### 5.1 Unit & Integration Verification Commands
+1. **Voice Service & Pre-Fetch Tests**:
+   ```powershell
+   node scratch/test_voice_service_prefetch.mjs
+   ```
+   *Expected*: Passes 5/5 tests (cache keys, extended timeouts, pre-decoding, playbackRate, SpeechSynthesis fallback).
 
-1. **Cache Collision Verification**:
-   - Generate two distinct stories in the same realm (`space`) with different chapter narratives.
-   - Assert `bedtimeIllustrationService.getCacheKey()` generates distinct keys for Chapter 1 of Story 1 vs Chapter 1 of Story 2.
-   - Assert neither key collides with previous cached entries.
-2. **Full Text in Prompt Verification**:
-   - Inspect the prompt string received by `buildBedtimeIllustrationPrompt` and direct Cloudflare call with a 200-word chapter text.
-   - Assert the generated prompt contains the complete chapter narrative (>800 characters) without truncation (`slice(0, 150)`).
-3. **Random Seed Verification**:
-   - Verify that requests to `/api/story/illustration` and Cloudflare Worker contain a numeric `seed` between `0` and `2147483647`.
-4. **Explorer Palette Verification**:
-   - Assert all fallback SVGs and prompt instructions exclude `#ec4899`, `#a855f7`, `pink`, `purple`, `magenta`.
-5. **Automated Test Suite & Build Verification**:
-   - Run `node scratch/run_all_tests.js` -> must exit with code 0 (0 failures).
-   - Run `npm run build` -> must compile cleanly with exit code 0.
+2. **Kokoro Warm-Up Verification**:
+   ```powershell
+   node scratch/verify_kokoro_warmup.mjs
+   ```
+   *Expected*: Passes 2/2 tests.
+
+3. **Bedtime Storybook Overhaul E2E**:
+   ```powershell
+   node scratch/test_bedtime_overhaul_e2e.mjs
+   ```
+   *Expected*: All feature tiers pass 100%, specifically F8 (Hands-Free Auto-Advance), F9 (Centralized Kokoro Voice Casting), and F10 (Dynamic Lullaby Ducking).
+
+4. **Python Sentence Splitting & Audio Concatenation Verification**:
+   A dedicated verification script in `scratch/verify_kokoro_full_chapter_synthesis.py` (or pytest) running:
+   - 180–220 word chapter text through `clean_dialogue_text()` and regex splitting.
+   - Assert all sentences are captured and length > 6.
+   - Assert silence insertion produces `(N - 1) * 6000` samples of silence.
+
+5. **Full Repository Regression Suite**:
+   ```powershell
+   node scratch/run_all_tests.js
+   ```
+   *Expected*: All 74 suites pass 100% with exit code 0.
+
+6. **Production Build Validation**:
+   ```powershell
+   npm run build
+   ```
+   *Expected*: Vite builds cleanly with exit code 0.
+
+---
+
+### Invalidation Conditions
+- If Kokoro service returns an empty chunk or crashes on dialogue quotes, the regex alternation pattern must be checked.
+- If audio playback cuts off after exactly 18 seconds, check whether any call site passed `timeoutMs: 18000` or defaulted to 18000.
