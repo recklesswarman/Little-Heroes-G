@@ -493,11 +493,30 @@ class BedtimeStoryService {
     // safety margin for chapters 3 and 4, where the audio is deliberately
     // slowed down the most.
     const wordCount = (text || '').trim().split(/\s+/).length;
+
     const dynamicWatchdogMs = Math.max(90000, Math.ceil((wordCount * 750) / rate));
     this.speechWatchdogTimer = setTimeout(() => {
       console.warn(`Story speech watchdog (${Math.round(dynamicWatchdogMs / 1000)}s) triggered, advancing auto-advance countdown`);
       handleSpeechEnded();
     }, dynamicWatchdogMs);
+
+    // Swap to the chapter's second illustration about halfway through the narration.
+    // The audio is one clip with no progress events, so the midpoint is estimated from
+    // word count and pace (~0.42s/word on the narrator) plus a little start-up latency.
+    if (this.sceneSwitchTimer) clearTimeout(this.sceneSwitchTimer);
+    const halfwayMs = Math.round((wordCount * 420) / rate / 2) + 2500;
+    this.sceneSwitchTimer = setTimeout(() => {
+      this.sceneSwitchTimer = null;
+      if (currentGeneration !== this.narrationGeneration) return;
+      const act = this.activeSession?.acts?.[chapterNumber - 1];
+      if (!act || this.activeSession.actNumber !== chapterNumber) return;
+      act.activeScene = 'scene_b';
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('bedtime-story-scene-switch', {
+          detail: { actNumber: chapterNumber, scene: 'scene_b' }
+        }));
+      }
+    }, halfwayMs);
 
     try {
       speakCompanion(text, narratorPetId, handleSpeechEnded, {
@@ -790,22 +809,6 @@ Return ONLY raw JSON with these exact keys (no markdown code blocks, just raw JS
           }
         }
       }).catch(() => {});
-
-      // Pre-fetch next chapter illustrations (both scene_a and scene_b) in background
-      if (actNumber < 4) {
-        bedtimeIllustrationService.prefetchNextChapterIllustration({
-          sessionId: session?.id,
-          chapterIndex: actNumber,
-          chapterNumber: actNumber + 1,
-          seed: Math.floor(Math.random() * 2147483647),
-          realmId: realm.id,
-          realmName: realm.name,
-          heroName,
-          petName,
-          petArchetype: session?.childContext?.activePet?.archetype || 'dino',
-          magicItem: session?.childContext?.gearAndChoices?.magicItem || 'Starlight Lantern'
-        });
-      }
     }
 
     return generatedAct;

@@ -47,6 +47,7 @@ const testFiles = [
   'scratch/verify_bedtime_moral_expansion.mjs',
   'scratch/verify_bedtime_voice_picker.mjs',
   'scratch/verify_kokoro_warmup.mjs',
+  'scratch/verify_bedtime_scene_prompts.mjs',
   'scratch/verify_pet_sanctuary_treats_and_decay.mjs',
   'scratch/verify_shop_catalog_expansion.mjs',
   'scratch/verify_badge_ladders_world_map_and_learning.mjs',
