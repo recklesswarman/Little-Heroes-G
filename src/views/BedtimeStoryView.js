@@ -379,7 +379,7 @@ function renderSanctuaryHub(library, sanctuary, hero, pet, availableMorals) {
               type="text" 
               maxlength="90"
               placeholder="e.g. Liam was brave at swimming today, or lost his cozy blue socks..." 
-              value="${sanctuary.customBedtimeWish || ''}" 
+              value="${escapeHtml(sanctuary.customBedtimeWish || '')}"
               class="w-full px-4 py-3 min-h-[48px] rounded-2xl bg-surface-container-lowest border-2 border-surface-container-highest text-sm text-white placeholder-slate-500 focus:outline-hidden focus:border-[#00d2d3] transition-all"
             />
             <span class="absolute right-3.5 top-3.5 text-xs text-slate-500">✨</span>
@@ -419,10 +419,10 @@ function renderStoryStage(session, pet, hero) {
           <span class="text-xl shrink-0">${session.realmEmoji || '📖'}</span>
           <div class="min-w-0">
             <h3 class="font-headline font-black text-xs text-white truncate">
-              ${session.realmName} • Chapter ${currentActNumber} of ${totalActs}
+              ${escapeHtml(session.realmName || '')} • Chapter ${currentActNumber} of ${totalActs}
             </h3>
             <p class="text-[10px] text-slate-400 font-bold truncate">
-              Moral: ${session.moralName || 'Bravery & Sleep'}
+              Moral: ${escapeHtml(session.moralName || 'Bravery & Sleep')}
             </p>
           </div>
         </div>
@@ -556,7 +556,7 @@ function renderStoryStage(session, pet, hero) {
           </div>
           
           <p class="font-body text-sm sm:text-base md:text-lg text-slate-100 leading-relaxed font-semibold">
-            ${currentAct.text || ''}
+            ${escapeHtml(currentAct.text || '')}
           </p>
         </div>
 
@@ -739,7 +739,7 @@ function renderBookshelfLibrary(library) {
                   <div class="flex items-center justify-between text-xs text-slate-400 font-bold mb-2">
                     <span class="flex items-center gap-1">
                       <span>${story.realmEmoji || '📖'}</span>
-                      <span>${story.realmName || 'Adventure'}</span>
+                      <span>${escapeHtml(story.realmName || 'Adventure')}</span>
                     </span>
                     <button data-toggle-fav="${story.id}" class="text-base ${story.isFavorite ? 'text-[#ffb961]' : 'text-slate-600 hover:text-slate-400'}">
                       ${story.isFavorite ? '★' : '☆'}

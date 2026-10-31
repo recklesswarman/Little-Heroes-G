@@ -23,6 +23,7 @@ import {
 import { PETS_DATABASE } from '../data/petsData.js';
 import { generateBedtimeChapterAGY } from './heroAgentService.js';
 import { bedtimeIllustrationService } from './bedtimeIllustrationService.js';
+import { sanitizeWish } from '../../shared/storyEngine/safety.js';
 
 /**
  * Resolves which pet's voice should narrate bedtime stories: a parent-chosen
@@ -303,7 +304,9 @@ class BedtimeStoryService {
     const heroId = options.heroId || hero?.id || 'hero_1';
 
     // Build comprehensive child context with anti-repetition memory & daytime accomplishments
-    const context = store.buildChildStoryContext(heroId, { realmId, moralId, customWish, ...options });
+    // The service builder (not store.buildChildStoryContext) carries the anti-repetition memory.
+    customWish = sanitizeWish(customWish);
+    const context = buildChildStoryContext(heroId, { realmId, moralId, customWish, ...options });
 
     const realm = getBedtimeRealm(realmId);
     const morals = store.getAvailableBedtimeMorals(heroId);
@@ -643,7 +646,7 @@ class BedtimeStoryService {
 
         if (agyChapter && agyChapter.text) {
           const fallbackSvg = generateFallbackSvg(realm.id, actNumber, previousChoice || (agyChapter.suggestion_chips && agyChapter.suggestion_chips[0]) || '');
-          const proceduralForDescriptor = generateProceduralBedtimeStory(realm.id, moral.id, heroName, petName, customWish, actNumber - 1, session.userChoices || [], session.childContext?.antiRepetition || {});
+          const proceduralForDescriptor = generateProceduralBedtimeStory(realm.id, moral.id, heroName, petName, customWish, actNumber - 1, session.userChoices || [], session.childContext?.antiRepetition?.deterministicSeed ?? null);
           generatedAct = {
             actNumber,
             chapterNumber: actNumber,
@@ -718,7 +721,7 @@ Return ONLY raw JSON with these exact keys (no markdown code blocks, just raw JS
         const parsed = JSON.parse(rawText);
 
         const fallbackSvg = generateFallbackSvg(realm.id, actNumber, previousChoice || (parsed.suggestionChips && parsed.suggestionChips[0]) || '');
-        const proceduralForDescriptor = generateProceduralBedtimeStory(realm.id, moral.id, heroName, petName, customWish, actNumber - 1, session.userChoices || [], session.childContext?.antiRepetition || {});
+        const proceduralForDescriptor = generateProceduralBedtimeStory(realm.id, moral.id, heroName, petName, customWish, actNumber - 1, session.userChoices || [], session.childContext?.antiRepetition?.deterministicSeed ?? null);
 
         generatedAct = {
           actNumber,
@@ -823,7 +826,7 @@ Return ONLY raw JSON with these exact keys (no markdown code blocks, just raw JS
       customWish,
       actNumber - 1,
       this.activeSession?.userChoices || [],
-      antiRepetition
+      typeof antiRepetition === 'number' ? antiRepetition : (antiRepetition?.deterministicSeed ?? null)
     );
 
     const fallbackSvg = generateFallbackSvg(realm.id, actNumber, previousChoice || '');
@@ -857,7 +860,8 @@ Return ONLY raw JSON with these exact keys (no markdown code blocks, just raw JS
   async generateBedtimeStory(options = {}) {
     const hero = store.getState().selectedHero;
     const heroId = options.heroId || hero?.id || 'hero_1';
-    const context = store.buildChildStoryContext(heroId, options);
+    options = { ...options, customWish: sanitizeWish(options.customWish) };
+    const context = buildChildStoryContext(heroId, options);
     const realm = getBedtimeRealm(options.realmId || 'space');
     const moral = BEDTIME_MORALS.find(m => m.id === options.moralId) || BEDTIME_MORALS[0];
 
@@ -898,7 +902,7 @@ Return ONLY raw JSON with these exact keys (no markdown code blocks, just raw JS
       context.activePet.name,
       options.customWish || '',
       options.userChoices || [],
-      context.antiRepetition || {}
+      context.antiRepetition?.deterministicSeed ?? null
     );
   }
 

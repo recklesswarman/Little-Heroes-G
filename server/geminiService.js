@@ -4,6 +4,7 @@ import {
   generateFullBedtimeStory,
   generateProceduralBedtimeStory
 } from '../src/data/bedtimeStoryData.js';
+import { sanitizeWish } from '../shared/storyEngine/safety.js';
 
 let WebSocketServer = null;
 let GoogleGenAI = null;
@@ -529,7 +530,7 @@ export async function handleBedtimeStoryRequest(req, res) {
       moralId = 'brave_dark',
       magicItem = '',
       gentleObstacle = '',
-      customWish = '',
+      customWish: rawCustomWish = '',
       chapterIndex,
       actNumber,
       userChoices = [],
@@ -537,6 +538,7 @@ export async function handleBedtimeStoryRequest(req, res) {
       recentArchetypes = [],
       recentOpenings = []
     } = req.body || {};
+    const customWish = sanitizeWish(rawCustomWish);
 
     const realm = getBedtimeRealm(realmId);
     const moral = BEDTIME_MORALS.find(m => m.id === moralId) || BEDTIME_MORALS[0];

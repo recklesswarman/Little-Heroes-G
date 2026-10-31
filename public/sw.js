@@ -1,4 +1,4 @@
-const CACHE_NAME = 'little-heroes-v3.7.6-bedtime-scene-summaries-20261031';
+const CACHE_NAME = 'little-heroes-v3.7.7-story-engine-safety-20261031';
 const STATIC_ASSETS = [
   './',
   './index.html',
