@@ -121,17 +121,17 @@ export async function handleStoryIllustrationRequest(req, res) {
                       process.env.CLOUDFLARE_WORKER_URL ||
                       process.env.FREE_IMAGE_API_URL || 'https://little-heroes-free-image-api.recklesswarman.workers.dev';
 
-    const apiKey = process.env.CLOUDFLARE_IMAGE_API_KEY ||
-                   process.env.FREE_IMAGE_API_KEY || 'little-heroes-secret-key';
+    // The Worker has no shared key; it only accepts requests from allow-listed origins.
+    const workerOrigin = process.env.CLOUDFLARE_IMAGE_ORIGIN || 'https://little-heroes-quest-8842.web.app';
 
-    if (workerUrl && apiKey) {
+    if (workerUrl) {
       try {
         const cleanWorkerUrl = workerUrl.endsWith('/') ? workerUrl : `${workerUrl}/`;
         const cfRes = await fetch(cleanWorkerUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
+            'Origin': workerOrigin
           },
           body: JSON.stringify({
             prompt,

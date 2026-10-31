@@ -15,6 +15,8 @@ module.exports = {
   },
   ignorePatterns: [
     "/lib/**/*",
+    // Generated copy of shared/storyEngine (scripts/sync-story-engine.mjs); edit the source there.
+    "/src/storyEngine/**/*",
     ".eslintrc.js",
   ],
   plugins: [

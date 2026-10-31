@@ -88,8 +88,7 @@ export class BedtimeIllustrationService {
   constructor() {
     this.apiUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_IMAGE_GEN_API_URL) ||
                   'https://little-heroes-free-image-api.recklesswarman.workers.dev';
-    this.apiKey = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_IMAGE_GEN_API_KEY) ||
-                  'little-heroes-secret-key';
+    // No API key: anything shipped to the browser is public. The Worker authorizes by Origin + rate limit.
     this.illustrationCache = clientIllustrationCache;
   }
 
@@ -264,8 +263,7 @@ export class BedtimeIllustrationService {
             const directRes = await fetch(cleanUrl, {
               method: 'POST',
               headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${this.apiKey}`
+                'Content-Type': 'application/json'
               },
               body: JSON.stringify({
                 prompt: cfPrompt,

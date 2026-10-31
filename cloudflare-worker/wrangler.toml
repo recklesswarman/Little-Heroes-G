@@ -8,12 +8,17 @@ account_id = "938feaeb0d1bd6758765519c032e9bb3"
 [ai]
 binding = "AI"
 
-[vars]
-# IMPORTANT: this value is a placeholder only. Set the real API_KEY as a
-# Cloudflare Worker secret instead (wrangler secret put API_KEY), never commit
-# it here. Any previously committed key value must be treated as leaked and
-# rotated in the Cloudflare dashboard.
-API_KEY = "CHANGE_ME_SET_VIA_WRANGLER_SECRET"
+# No shared API key: a key used from a browser is public. Access is controlled by an
+# Origin allow-list (see worker.js DEFAULT_ALLOWED_ORIGINS) plus the per-IP rate limit below.
+# To override the allowed origins, set a comma-separated ALLOWED_ORIGINS var, e.g.:
+# [vars]
+# ALLOWED_ORIGINS = "https://example.web.app,https://example.github.io"
+
+# Per-IP rate limit: 30 image requests per 60 seconds.
+[[ratelimits]]
+name = "RATE_LIMITER"
+namespace_id = "1001"
+simple = { limit = 30, period = 60 }
 
 [observability]
 enabled = true

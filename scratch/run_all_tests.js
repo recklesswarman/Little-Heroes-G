@@ -74,7 +74,9 @@ const testFiles = [
   'scratch/verify_firestore_rules_and_sync.mjs',
   // Story Engine Suite:
   'scratch/verify_story_engine_safety.mjs',
-  'scratch/verify_story_engine_sync.mjs'
+  'scratch/verify_story_engine_sync.mjs',
+  // Cloudflare image Worker access control (origin allow-list, no shared key):
+  'scratch/verify_cloudflare_worker_origin.mjs'
 ];
 
 let allPassed = true;
