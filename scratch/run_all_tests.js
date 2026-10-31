@@ -71,7 +71,10 @@ const testFiles = [
   // Milestone Bedtime AI Storybook Overhaul E2E Suite:
   'scratch/test_bedtime_overhaul_e2e.mjs',
   // Milestone Cloud Firestore Multi-Database & Security Rules E2E Suite:
-  'scratch/verify_firestore_rules_and_sync.mjs'
+  'scratch/verify_firestore_rules_and_sync.mjs',
+  // Story Engine Suite:
+  'scratch/verify_story_engine_safety.mjs',
+  'scratch/verify_story_engine_sync.mjs'
 ];
 
 let allPassed = true;

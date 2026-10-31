@@ -20,6 +20,7 @@
 
 import { onRequest } from "firebase-functions/v2/https";
 import express, { Request, Response } from "express";
+import { sanitizeWish } from "./storyEngine/safety";
 
 const app = express();
 app.use((req: Request, res: Response, next) => {
@@ -81,7 +82,7 @@ app.post(["/api/rex/bedtime-story", "/api/gemini/bedtime-story"], async (req: Re
       moralId = "brave_dark",
       magicItem = "",
       gentleObstacle = "",
-      customWish = "",
+      customWish: rawCustomWish = "",
       chapterIndex,
       actNumber,
       userChoices = [],
@@ -89,6 +90,7 @@ app.post(["/api/rex/bedtime-story", "/api/gemini/bedtime-story"], async (req: Re
       recentArchetypes = [],
       recentOpenings = []
     } = (req.body || {}) as any;
+    const customWish: string = sanitizeWish(rawCustomWish);
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (apiKey) {
