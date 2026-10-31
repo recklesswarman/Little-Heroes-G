@@ -32,6 +32,11 @@ check('flags blocked terms, avoid-topics and questions in chapters', () => {
   assert.ok(!checkChapterSafety('Where did the star go?').ok);
   assert.ok(checkChapterSafety('Mia hugged the sleepy star.').ok);
 });
+check('questions are fine inside character dialogue, not in the narration', () => {
+  assert.ok(checkChapterSafety('Pip tilted his head. "What is that sound?" he whispered. Mia smiled.').ok);
+  assert.ok(checkChapterSafety('\u201cIs it a lullaby?\u201d asked Pip softly.').ok);
+  assert.ok(!checkChapterSafety('Mia walked on. Where could the song be coming from?').ok);
+});
 check('hero name is required in every chapter', () => {
   assert.ok(chapterMentionsHero('Mia hugged the star.', 'Mia'));
   assert.ok(!chapterMentionsHero('The fox hugged the star.', 'Mia'));

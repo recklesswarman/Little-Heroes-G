@@ -81,7 +81,9 @@ export function checkChapterSafety(text, { avoidTopics = [], allowQuestions = fa
   const hit = body.match(BLOCKED_RE);
   if (hit) issues.push(`blocked-term:${hit[1].toLowerCase()}`);
   if (matchesAvoidTopic(body, avoidTopics)) issues.push('avoid-topic');
-  if (!allowQuestions && /\?/.test(body)) issues.push('question-mark');
+  // A character may ask something inside quotes; the narration must not ask the child anything.
+  const narration = body.replace(/["\u201c][^"\u201d]*["\u201d]/g, ' ');
+  if (!allowQuestions && /\?/.test(narration)) issues.push('question-mark');
   return { ok: issues.length === 0, issues };
 }
 

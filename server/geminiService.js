@@ -538,7 +538,7 @@ export async function handleBedtimeStoryRequest(req, res) {
     const moral = BEDTIME_MORALS.find(m => m.id === moralId) || BEDTIME_MORALS[0];
     const request = buildRequest(body, { realm, moral });
     const petName = cleanName(body.petName, 'Rex');
-    const generate = makeGeminiGenerate(getGeminiClient(body.apiKey));
+    const generate = makeGeminiGenerate(getGeminiClient(body.apiKey), { model: process.env.GEMINI_STORY_MODEL || undefined });
 
     const proceduralChapter = (idx) => generateProceduralBedtimeStory(
       realm.id, moral.id, request.heroName, petName, request.customWish, idx, userChoices
@@ -580,7 +580,8 @@ export async function handleBedtimeStoryRequest(req, res) {
         ...envelope,
         ...out.chapter,
         storyBible: out.bible,
-        generationSource: out.source
+        generationSource: out.source,
+        generationIssues: out.issues
       });
     }
 
