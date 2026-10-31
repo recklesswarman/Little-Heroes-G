@@ -3,7 +3,7 @@
 
 import { parseJsonLoose, countWords } from './json.js';
 import { cleanField, validateChapter } from './safety.js';
-import { toneGuide, beatStage, heroPronounRule } from './bible.js';
+import { toneGuide, beatStage, heroPronounRule, petRule } from './bible.js';
 
 const PALETTE_RE = /\b(pink|purple|magenta|violet|lavender)\b/i;
 const MIN_WORDS = 70;
@@ -30,7 +30,7 @@ export function buildChapterPrompt({ request, bible, chapterIndex, previous = []
   return `You are a gentle children's bedtime author writing chapter ${chapterIndex + 1} of 4 for a child aged ${request.ageBand}.
 
 STORY: "${bible.title}". Tone: ${toneGuide(bible.tone)}.
-THE HERO IS "${request.heroName}". Name ${request.heroName} in this chapter, spelled exactly like that. ${heroPronounRule(request)}${request.petName && request.petSpecies ? ` ${request.petName} is a ${request.petSpecies}; never describe ${request.petName} as another kind of animal.` : ''}
+THE HERO IS "${request.heroName}". Name ${request.heroName} in this chapter, spelled exactly like that. ${heroPronounRule(request)}${request.petName && request.petSpecies ? ` ${request.petName} is a ${request.petSpecies}; never describe ${request.petName} as another kind of animal.` : ''}${petRule(request) ? ` ${petRule(request)}` : ''}
 
 CAST (keep names, looks and motivations exactly consistent; do not invent new named characters):
 ${cast}

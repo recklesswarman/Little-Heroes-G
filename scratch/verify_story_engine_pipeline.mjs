@@ -1,6 +1,6 @@
 import assert from 'node:assert';
 import { buildRequest, generateBedtimeChapter, generateBedtimeStory, petSpeciesFromName } from '../shared/storyEngine/engine.js';
-import { normalizeBible, fallbackBible, buildBiblePrompt } from '../shared/storyEngine/bible.js';
+import { normalizeBible, fallbackBible, buildBiblePrompt, petRule } from '../shared/storyEngine/bible.js';
 import { buildChapterPrompt } from '../shared/storyEngine/writer.js';
 import { chapterMentionsHero } from '../shared/storyEngine/safety.js';
 import { makeGeminiGenerate, DEFAULT_STORY_MODEL } from '../shared/storyEngine/gemini.js';
@@ -295,6 +295,45 @@ await check('pet species reaches the bible and chapter prompts and the fallback 
   // no species -> no species sentence
   const noSpecies = buildRequest({ heroName: HERO, petName: 'Rex' }, { realm, moral });
   assert.ok(!buildChapterPrompt({ request: noSpecies, bible: fallbackBible(noSpecies), chapterIndex: 0 }).includes('never describe Rex as another kind'));
+});
+
+await check('pet is a real living companion and gets neutral pronouns, in both prompts', async () => {
+  const request = buildRequest({ heroName: HERO, petName: 'Rex', petSpecies: 'T-Rex' }, { realm, moral });
+  const rule = petRule(request);
+  assert.ok(rule.includes('Rex is a real, living T-Rex'));
+  assert.ok(rule.includes('never a toy, plush, puppet, figurine or miniature'));
+  assert.ok(rule.includes('never he/she/his/her'));
+  assert.ok(buildBiblePrompt(request).includes('If Rex appears: Rex is a real, living T-Rex'));
+  assert.ok(buildChapterPrompt({ request, bible: fallbackBible(request), chapterIndex: 0 }).includes('never a toy, plush, puppet, figurine or miniature'));
+  // without a species the rule still forbids toys
+  const noSpecies = buildRequest({ heroName: HERO, petName: 'Rex' }, { realm, moral });
+  assert.ok(petRule(noSpecies).includes('real, living creature'));
+  // no pet -> no pet rule anywhere
+  const noPet = buildRequest({ heroName: HERO }, { realm, moral });
+  assert.strictEqual(petRule(noPet), '');
+  assert.ok(!buildBiblePrompt(noPet).includes('real, living'));
+  assert.ok(!buildChapterPrompt({ request: noPet, bible: fallbackBible(noPet), chapterIndex: 0 }).includes('real, living'));
+});
+
+await check('a bible cannot give the pet a gender; other invented characters keep theirs', async () => {
+  const request = buildRequest({ heroName: HERO, petName: 'Rex', petSpecies: 'T-Rex' }, { realm, moral });
+  const bible = normalizeBible({ characters: [
+    { name: HERO, role: 'hero' },
+    { name: 'Rex', role: 'friend', pronouns: 'he' },
+    { name: 'Pip', role: 'friend', pronouns: 'she' }
+  ] }, request);
+  const rex = bible.characters.find(c => c.name === 'Rex');
+  assert.strictEqual(rex.pronouns, 'they');
+  assert.strictEqual(rex.role, 'companion');
+  assert.strictEqual(bible.characters.find(c => c.name === 'Pip').pronouns, 'she');
+  // matching is case-insensitive
+  const lower = normalizeBible({ characters: [{ name: HERO }, { name: 'REX', pronouns: 'she' }] }, request);
+  assert.strictEqual(lower.characters.find(c => c.name === 'REX').pronouns, 'they');
+  // the cast line the writer sees shows the neutral pronoun
+  const prompt = buildChapterPrompt({ request, bible, chapterIndex: 1 });
+  assert.ok(prompt.includes('- Rex (companion, they)'));
+  // fallback bible's pet is neutral too
+  assert.strictEqual(fallbackBible(request).characters[1].pronouns, 'they');
 });
 
 if (failed) { console.error(`${failed} check(s) failed`); process.exit(1); }
