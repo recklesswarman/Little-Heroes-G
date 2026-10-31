@@ -1,23 +1,59 @@
 /**
  * Cloudflare Workers AI - Free Image Generation API
  * Based on saurav-z/free-image-generation-api with production CORS & multi-model support
- * 
+ *
  * Generates 3D Pixar / Claymation storybook illustrations using Cloudflare's free Workers AI
  * (Up to 100,000 requests/day).
+ *
+ * Access control: there is NO shared secret. A key sent from a browser is public, so instead
+ * POST requests must come from an allowed Origin (ALLOWED_ORIGINS, comma-separated, exact match)
+ * and are rate limited per IP (RATE_LIMITER binding, see wrangler.toml). An Origin header can be
+ * forged by non-browser clients, so this limits casual abuse; the free-tier quota is the ceiling.
  */
+
+const DEFAULT_ALLOWED_ORIGINS = [
+  "https://recklesswarman.github.io",
+  "https://little-heroes-quest-8842.web.app",
+  "https://little-heroes-quest-8842.firebaseapp.com",
+  "https://littleheroes-g1--little-heroes-quest-8842.us-east4.hosted.app",
+  "http://localhost:3000"
+];
+
+const ALLOWED_MODELS = [
+  "@cf/bytedance/stable-diffusion-xl-lightning",
+  "@cf/blackforestlabs/flux-1-schnell",
+  "@cf/stabilityai/stable-diffusion-xl-base-1.0",
+  "@cf/lykon/dreamshaper-8-lcm"
+];
+
+const MAX_PROMPT_CHARS = 4000;
+
+function getAllowedOrigins(env) {
+  const configured = typeof env.ALLOWED_ORIGINS === "string"
+    ? env.ALLOWED_ORIGINS.split(",").map(o => o.trim()).filter(Boolean)
+    : [];
+  return configured.length > 0 ? configured : DEFAULT_ALLOWED_ORIGINS;
+}
 
 export default {
   async fetch(request, env) {
+    const origin = request.headers.get("Origin");
+    const originAllowed = !!origin && getAllowedOrigins(env).includes(origin);
+
+    // CORS headers are only ever granted to an allowed origin (never "*").
     const corsHeaders = {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Requested-With",
-      "Access-Control-Max-Age": "86400"
+      "Vary": "Origin",
+      ...(originAllowed ? {
+        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, X-Requested-With",
+        "Access-Control-Max-Age": "86400"
+      } : {})
     };
 
     // Handle CORS preflight
     if (request.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers: corsHeaders });
+      return new Response(null, { status: originAllowed ? 204 : 403, headers: corsHeaders });
     }
 
     const url = new URL(request.url);
@@ -27,12 +63,7 @@ export default {
       return json({
         status: "ok",
         service: "little-heroes-free-image-api",
-        models: [
-          "@cf/bytedance/stable-diffusion-xl-lightning",
-          "@cf/blackforestlabs/flux-1-schnell",
-          "@cf/stabilityai/stable-diffusion-xl-base-1.0",
-          "@cf/lykon/dreamshaper-8-lcm"
-        ]
+        models: ALLOWED_MODELS
       }, 200, corsHeaders);
     }
 
@@ -41,19 +72,27 @@ export default {
       return json({ error: "Method not allowed. Use POST / or POST /generate" }, 405, corsHeaders);
     }
 
-    // Optional API Key check if configured in Cloudflare environment variables
-    const API_KEY = env.API_KEY;
-    if (API_KEY) {
-      const auth = request.headers.get("Authorization");
-      if (auth !== `Bearer ${API_KEY}`) {
-        return json({ error: "Unauthorized. Valid Bearer API_KEY required." }, 401, corsHeaders);
+    // Origin allow-list (replaces the old shared API key)
+    if (!originAllowed) {
+      return json({ error: "Forbidden. Origin not allowed." }, 403, corsHeaders);
+    }
+
+    // Per-IP rate limit (skipped if the binding is not configured)
+    if (env.RATE_LIMITER && typeof env.RATE_LIMITER.limit === "function") {
+      const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+      const { success } = await env.RATE_LIMITER.limit({ key: ip });
+      if (!success) {
+        return json({ error: "Too many requests. Please slow down." }, 429, {
+          ...corsHeaders,
+          "Retry-After": "60"
+        });
       }
     }
 
     try {
       const body = await request.json().catch(() => ({}));
       const prompt = body.prompt;
-      const model = body.model || "@cf/bytedance/stable-diffusion-xl-lightning";
+      const model = body.model || ALLOWED_MODELS[0];
       const format = body.format || "image"; // "image" | "base64" | "json"
       const seed = body.seed !== undefined && body.seed !== null
         ? Number(body.seed)
@@ -62,6 +101,14 @@ export default {
 
       if (!prompt || typeof prompt !== "string") {
         return json({ error: "Prompt is required and must be a string" }, 400, corsHeaders);
+      }
+
+      if (prompt.length > MAX_PROMPT_CHARS) {
+        return json({ error: `Prompt is too long (max ${MAX_PROMPT_CHARS} characters)` }, 400, corsHeaders);
+      }
+
+      if (typeof model !== "string" || !ALLOWED_MODELS.includes(model)) {
+        return json({ error: "Unsupported model", allowed: ALLOWED_MODELS }, 400, corsHeaders);
       }
 
       if (!env.AI) {
