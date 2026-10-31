@@ -42,6 +42,30 @@ export function sanitizeWish(raw, { avoidTopics = [] } = {}) {
   return text;
 }
 
+/**
+ * Clean a person/pet name. Unlike cleanField this never applies the story blocklist: the hero's
+ * name must always survive. It only strips characters that could break prompts or markup.
+ */
+export function cleanName(raw, fallback = 'Little Hero', max = 30) {
+  if (typeof raw !== 'string') return fallback;
+  const name = raw.replace(/[^\p{L}\p{N} '’.\-]/gu, '').replace(/\s+/g, ' ').trim().slice(0, max).trim();
+  return name || fallback;
+}
+
+/**
+ * Clean one short free-text field (a bible/character/beat string that came from an LLM or a client).
+ * Returns '' when unusable; callers substitute a safe default.
+ */
+export function cleanField(raw, max = 120, { avoidTopics = [] } = {}) {
+  if (typeof raw !== 'string') return '';
+  const text = raw.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max).trim();
+  if (!text) return '';
+  if (INJECTION_PATTERNS.some(re => re.test(text))) return '';
+  if (BLOCKED_RE.test(text)) return '';
+  if (matchesAvoidTopic(text, avoidTopics)) return '';
+  return text;
+}
+
 export function matchesAvoidTopic(text, avoidTopics = []) {
   const haystack = String(text || '').toLowerCase();
   return avoidTopics.some(topic => {

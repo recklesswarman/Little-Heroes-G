@@ -1,4 +1,4 @@
-const CACHE_NAME = 'little-heroes-v3.7.8-image-worker-no-key-20261031';
+const CACHE_NAME = 'little-heroes-v3.7.9-story-bible-engine-20261031';
 const STATIC_ASSETS = [
   './',
   './index.html',

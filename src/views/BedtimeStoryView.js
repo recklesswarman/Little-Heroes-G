@@ -10,10 +10,34 @@
 import { store, KID_AVATARS } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
+
 import { BEDTIME_REALMS, BEDTIME_MORALS, CONSTELLATION_STICKERS, getBedtimeRealm } from '../data/bedtimeStoryData.js';
 import { bedtimeStoryService, resolveBedtimeNarratorPetId } from '../services/bedtimeStoryService.js';
 import { bedtimeIllustrationService } from '../services/bedtimeIllustrationService.js';
 import { speakCompanion, stopCompanionAudio, prefetchCompanionAudio, unlockVoiceAudio } from '../services/voiceService.js';
+
+const STORY_BLOCK_TYPES = ['paragraph', 'dialogue', 'whisper', 'breathCue'];
+
+/**
+ * Renders the engine's structured chapter blocks (paragraphs, dialogue, whisper, breathing cue).
+ * Every string is escaped. Older saved stories have no blocks, so they fall back to plain text.
+ */
+function renderStoryBlocks(act) {
+  const blocks = Array.isArray(act?.blocks)
+    ? act.blocks.filter(b => b && typeof b.text === 'string' && STORY_BLOCK_TYPES.includes(b.type))
+    : [];
+  const bodyClass = 'font-body text-sm sm:text-base md:text-lg text-slate-100 leading-relaxed font-semibold';
+  if (blocks.length === 0) {
+    return `<p class="${bodyClass}">${escapeHtml(act?.text || '')}</p>`;
+  }
+  return blocks.map(b => {
+    const text = escapeHtml(b.text);
+    if (b.type === 'dialogue') return `<p class="${bodyClass} mt-3 pl-3 border-l-2 border-[#00d2d3]/50">${text}</p>`;
+    if (b.type === 'whisper') return `<p class="text-sm text-[#ffb961] italic mt-4 text-center">${text}</p>`;
+    if (b.type === 'breathCue') return `<p class="text-xs font-bold text-[#00d2d3] mt-4 text-center uppercase tracking-wider">${text}</p>`;
+    return `<p class="${bodyClass} mt-3 first:mt-0">${text}</p>`;
+  }).join('');
+}
 
 let activeViewMode = 'sanctuary'; // 'sanctuary' | 'story' | 'bookshelf'
 let isMicListening = false;
@@ -547,7 +571,7 @@ function renderStoryStage(session, pet, hero) {
         <div>
           <div class="flex items-center justify-between mb-1.5">
             <span class="text-xs font-black uppercase text-[#00d2d3] tracking-wider">
-              ${currentAct.title || `Chapter ${currentActNumber}`}
+              ${escapeHtml(currentAct.title || `Chapter ${currentActNumber}`)}
             </span>
             <button id="story-replay-voice-btn" class="text-xs text-slate-400 hover:text-white flex items-center gap-1 min-h-[36px] px-2 py-1 rounded-lg hover:bg-[#0f2334] transition-all cursor-pointer" title="Read Aloud Again">
               <span class="material-symbols-outlined text-sm">volume_up</span>
@@ -555,9 +579,7 @@ function renderStoryStage(session, pet, hero) {
             </button>
           </div>
           
-          <p class="font-body text-sm sm:text-base md:text-lg text-slate-100 leading-relaxed font-semibold">
-            ${escapeHtml(currentAct.text || '')}
-          </p>
+          ${renderStoryBlocks(currentAct)}
         </div>
 
         <!-- SLUMBER CONTROLS & MANUAL TURN PAGE -->
