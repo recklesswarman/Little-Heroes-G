@@ -10,6 +10,13 @@ import { parseJsonLoose } from './json.js';
 import { TONES, buildBiblePrompt, fallbackBible, normalizeBible } from './bible.js';
 import { writeChapter } from './writer.js';
 import { formatChapter } from './formatter.js';
+import {
+  REPEAT_THRESHOLD, buildAvoidList, cleanLedgerDigest, cleanRecurring,
+  closestMatch, findNearDuplicate, fingerprintFromBible
+} from './ledger.js';
+
+const MAX_PLAN_ATTEMPTS = 3;
+const round2 = (n) => Math.round(n * 100) / 100;
 
 const AGE_BANDS = ['3-4', '5-6', '7-8'];
 const PRONOUNS = ['they', 'she', 'he'];
@@ -43,7 +50,10 @@ export function buildRequest(body = {}, { realm, moral } = {}) {
     ageBand: AGE_BANDS.includes(body.ageBand) ? body.ageBand : '5-6',
     avoidTopics,
     userChoices: (Array.isArray(body.userChoices) ? body.userChoices : [])
-      .map(c => cleanField(typeof c === 'string' ? c : '', 60)).slice(0, 4)
+      .map(c => cleanField(typeof c === 'string' ? c : '', 60)).slice(0, 4),
+    // Plot fingerprints of this child's earlier stories, and friends they have met (untrusted input).
+    ledgerDigest: cleanLedgerDigest(body.ledgerDigest),
+    recurringCharacters: cleanRecurring(body.recurringCharacters)
   };
 }
 
@@ -53,21 +63,63 @@ function cleanSummaries(list) {
     .filter(Boolean).slice(0, 3);
 }
 
+function checkAgainstLedger(bible, ledger) {
+  const best = closestMatch(fingerprintFromBible(bible), ledger);
+  return { closestScore: round2(best.score), repeated: best.score >= REPEAT_THRESHOLD };
+}
+
+/**
+ * Plan the story. If the plot is too close to one the child already had, plan again with the
+ * colliding ideas on an avoid list (up to MAX_PLAN_ATTEMPTS). If every attempt collides, keep the
+ * least similar one: a slightly familiar story beats failing or falling back to offline text.
+ * `ledgerCheck` is numbers and flags only, safe to return to the client.
+ */
 export async function planBible({ generate, request, recentTitles = [], recentArchetypes = [], research = [] }) {
-  if (!generate) return { bible: fallbackBible(request), planned: false };
-  try {
-    const text = await generate(
-      buildBiblePrompt(request, { recentTitles, recentArchetypes, research }),
-      { json: true, temperature: 0.9, maxOutputTokens: 3000 }
-    );
-    const raw = parseJsonLoose(text);
-    if (raw && Array.isArray(raw.characters) && raw.plotDNA) {
-      return { bible: normalizeBible(raw, request), planned: true };
-    }
-  } catch (err) {
-    console.warn('Story bible planning failed, using deterministic bible:', err?.message || err);
+  const ledger = request.ledgerDigest || [];
+  if (!generate) {
+    const bible = fallbackBible(request);
+    return { bible, planned: false, ledgerCheck: { attempts: 0, ...checkAgainstLedger(bible, ledger) } };
   }
-  return { bible: fallbackBible(request), planned: false };
+
+  let avoid = buildAvoidList(ledger);
+  let best = null;
+  let attempts = 0;
+  while (attempts < MAX_PLAN_ATTEMPTS) {
+    attempts++;
+    let bible = null;
+    try {
+      const text = await generate(
+        buildBiblePrompt(request, { recentTitles, recentArchetypes, research, avoid }),
+        { json: true, temperature: 0.9, maxOutputTokens: 3000 }
+      );
+      const raw = parseJsonLoose(text);
+      if (raw && Array.isArray(raw.characters) && raw.plotDNA) bible = normalizeBible(raw, request);
+    } catch (err) {
+      console.warn('Story bible planning failed:', err?.message || err);
+      break;
+    }
+    if (!bible) break;
+
+    const entry = fingerprintFromBible(bible);
+    const match = findNearDuplicate(entry, ledger);
+    const score = match ? match.score : closestMatch(entry, ledger).score;
+    if (!best || score < best.score) best = { bible, score };
+    if (!match) {
+      return { bible, planned: true, ledgerCheck: { attempts, closestScore: round2(score), repeated: false } };
+    }
+    avoid = [...avoid, [entry.fp.conflict, entry.fp.twist, entry.fp.centralObject].filter(Boolean).join(' / ')];
+  }
+
+  if (best) {
+    return {
+      bible: best.bible,
+      planned: true,
+      ledgerCheck: { attempts, closestScore: round2(best.score), repeated: best.score >= REPEAT_THRESHOLD }
+    };
+  }
+  console.warn('Story bible planning produced no usable plan, using deterministic bible');
+  const bible = fallbackBible(request);
+  return { bible, planned: false, ledgerCheck: { attempts, ...checkAgainstLedger(bible, ledger) } };
 }
 
 /**
@@ -87,8 +139,9 @@ export async function generateBedtimeChapter({
 }) {
   const idx = Math.max(0, Math.min(3, Number(chapterIndex) || 0));
   let bible = suppliedBible ? normalizeBible(suppliedBible, request) : null;
+  let ledgerCheck;
   if (!bible) {
-    ({ bible } = await planBible({ generate, request, recentTitles, recentArchetypes, research }));
+    ({ bible, ledgerCheck } = await planBible({ generate, request, recentTitles, recentArchetypes, research }));
   }
   const previous = cleanSummaries(previousSummaries);
 
@@ -97,6 +150,7 @@ export async function generateBedtimeChapter({
     if (result.ok) {
       return {
         bible,
+        ledgerCheck,
         source: 'llm',
         attempts: result.attempts,
         issues: [],
@@ -107,6 +161,7 @@ export async function generateBedtimeChapter({
     const fallback = proceduralChapter ? proceduralChapter(idx) : { chapterText: '' };
     return {
       bible,
+      ledgerCheck,
       source: 'procedural',
       attempts: result.attempts,
       issues: failure,
@@ -117,6 +172,7 @@ export async function generateBedtimeChapter({
   const offline = proceduralChapter ? proceduralChapter(idx) : { chapterText: '' };
   return {
     bible,
+    ledgerCheck,
     source: 'procedural',
     attempts: 0,
     issues: [],
@@ -130,12 +186,14 @@ export async function generateBedtimeStory(args) {
   const chapters = [];
   let bible = args.bible || null;
   const sources = [];
+  let ledgerCheck;
   for (let i = 0; i < 4; i++) {
     const out = await generateBedtimeChapter({ ...args, bible, chapterIndex: i, previousSummaries: summaries });
     bible = out.bible;
+    if (out.ledgerCheck) ledgerCheck = out.ledgerCheck;
     chapters.push(out.chapter);
     summaries.push(out.chapter.summary);
     sources.push(out.source);
   }
-  return { bible, chapters, sources };
+  return { bible, chapters, sources, ledgerCheck };
 }

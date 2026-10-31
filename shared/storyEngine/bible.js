@@ -5,6 +5,7 @@
 
 import { cleanField } from './safety.js';
 import { slug } from './json.js';
+import { pickUnusedCombo } from './ledger.js';
 
 export const TONES = ['calm', 'cozy', 'silly', 'adventurous'];
 
@@ -134,10 +135,19 @@ export function normalizeBible(raw, request) {
   };
 }
 
-/** Deterministic bible used when the planner LLM is unavailable or produces junk. */
-export function fallbackBible(request) {
+function titleCase(text) {
+  return String(text || '').replace(/\b([a-z])/g, (m) => m.toUpperCase());
+}
+
+/**
+ * Deterministic bible used when the planner LLM is unavailable or produces junk. The plot is the
+ * combination from the offline banks that is least like the child's recent stories (request.ledgerDigest).
+ */
+export function fallbackBible(request, { seed = Math.floor(Math.random() * 1e9) } = {}) {
+  const combo = pickUnusedCombo(request.ledgerDigest || [], seed, request.realm?.name);
+  const object = combo.centralObject.replace(/^(a|an|the)\s+/i, '');
   const raw = {
-    title: `${request.heroName} and the ${request.realm?.name || 'Moonlit'} Lullaby`,
+    title: `${request.heroName} and the ${titleCase(object)}`,
     tone: request.tone,
     characters: request.petName ? [{
       name: request.petName,
@@ -148,20 +158,25 @@ export function fallbackBible(request) {
       visualSheet: request.petSpecies ? `a friendly ${request.petSpecies}` : ''
     }] : [],
     plotDNA: {
-      setting: request.realm?.name,
-      conflict: request.moral?.name ? `a small puzzle that needs ${request.moral.name}` : undefined
+      ...combo,
+      setting: request.realm?.name || combo.setting,
+      resolution: request.moral?.name ? `${request.moral.name} and teamwork` : combo.resolution
     }
   };
   return normalizeBible(raw, request);
 }
 
-export function buildBiblePrompt(request, { recentTitles = [], recentArchetypes = [], research = [] } = {}) {
+export function buildBiblePrompt(request, { recentTitles = [], recentArchetypes = [], research = [], avoid = [] } = {}) {
   const suggestions = [];
   if (request.petName) suggestions.push(`Companion pet: ${request.petName}${request.petSpecies ? `, a ${request.petSpecies}. Always describe ${request.petName} as a ${request.petSpecies}, never as a different kind of animal` : ''}`);
   if (request.realm) suggestions.push(`Setting idea: ${request.realm.name} (${request.realm.subtitle || ''})`);
   if (request.moral) suggestions.push(`Gentle lesson idea: ${request.moral.name} - ${request.moral.moralGuidance || ''}`);
   if (request.customWish) suggestions.push(`Parent's wish: ${request.customWish}`);
   if (request.magicItem) suggestions.push(`Special item: ${request.magicItem}`);
+  if (request.recurringCharacters?.length) {
+    const friends = request.recurringCharacters.map(c => `${c.name}${c.role ? ` (${c.role})` : ''}`).join(', ');
+    suggestions.push(`Returning friends the child already knows: ${friends}. You may bring one back or invent new friends`);
+  }
   for (const r of research.slice(0, 3)) suggestions.push(`Fresh idea: ${r}`);
 
   return `You are planning a calming 4-chapter bedtime story for a child aged ${request.ageBand}. Plan only; do not write the story.
@@ -173,7 +188,9 @@ ${suggestions.map(s => `- ${s}`).join('\n') || '- (none)'}${petRule(request) ? `
 
 TONE: ${toneGuide(request.tone)}.
 
-FRESHNESS: Invent an original plot. Do not reuse any of these recent titles: ${JSON.stringify(recentTitles.slice(0, 15))}. Do not reuse these plot types: ${JSON.stringify(recentArchetypes.slice(0, 10))}.
+FRESHNESS: Invent an original plot. Do not reuse any of these recent titles: ${JSON.stringify(recentTitles.slice(0, 15))}. Do not reuse these plot types: ${JSON.stringify(recentArchetypes.slice(0, 10))}.${avoid.length ? `
+ALREADY USED FOR THIS CHILD. Do not reuse any of these problems, twists or objects; invent something clearly different:
+${avoid.map(a => `- ${a}`).join('\n')}` : ''}
 
 RULES: Always kid-appropriate and gentle: no danger, no scary beings, no violence. Never use pink or purple. Give every recurring character a fixed name, a clear kind motivation, and a short fixed visual description.
 
