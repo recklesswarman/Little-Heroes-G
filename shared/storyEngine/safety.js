@@ -58,9 +58,12 @@ export function cleanName(raw, fallback = 'Little Hero', max = 30) {
  */
 export function cleanField(raw, max = 120, { avoidTopics = [] } = {}) {
   if (typeof raw !== 'string') return '';
-  const text = raw.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max).trim();
+  const full = raw.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
+  // Injection phrases are checked on the whole input: cutting it to `max` first could leave a
+  // harmless-looking fragment ("Ignore previous instruct") that no longer matches the pattern.
+  if (INJECTION_PATTERNS.some(re => re.test(full))) return '';
+  const text = full.slice(0, max).trim();
   if (!text) return '';
-  if (INJECTION_PATTERNS.some(re => re.test(text))) return '';
   if (BLOCKED_RE.test(text)) return '';
   if (matchesAvoidTopic(text, avoidTopics)) return '';
   return text;

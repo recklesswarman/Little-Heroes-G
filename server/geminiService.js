@@ -538,7 +538,12 @@ export async function handleBedtimeStoryRequest(req, res) {
     const moral = BEDTIME_MORALS.find(m => m.id === moralId) || BEDTIME_MORALS[0];
     const request = buildRequest(body, { realm, moral });
     const petName = cleanName(body.petName, 'Rex');
-    const generate = makeGeminiGenerate(getGeminiClient(body.apiKey), { model: process.env.GEMINI_STORY_MODEL || undefined });
+    // getGeminiClient() returns a client even with no API key; without a key there is no model, so skip
+    // straight to the offline weaver instead of making calls that can only fail.
+    const aiClient = getGeminiClient(body.apiKey);
+    const generate = aiClient && aiClient._apiKey
+      ? makeGeminiGenerate(aiClient, { model: process.env.GEMINI_STORY_MODEL || undefined })
+      : null;
 
     const proceduralChapter = (idx) => generateProceduralBedtimeStory(
       realm.id, moral.id, request.heroName, petName, request.customWish, idx, userChoices
@@ -581,7 +586,8 @@ export async function handleBedtimeStoryRequest(req, res) {
         ...out.chapter,
         storyBible: out.bible,
         generationSource: out.source,
-        generationIssues: out.issues
+        generationIssues: out.issues,
+        ledgerCheck: out.ledgerCheck
       });
     }
 
@@ -592,6 +598,7 @@ export async function handleBedtimeStoryRequest(req, res) {
       archetypeId: story.bible.archetypeId,
       storyBible: story.bible,
       generationSources: story.sources,
+      ledgerCheck: story.ledgerCheck,
       chapters: story.chapters
     });
   } catch (error) {

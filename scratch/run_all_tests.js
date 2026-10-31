@@ -75,6 +75,7 @@ const testFiles = [
   // Story Engine Suite:
   'scratch/verify_story_engine_safety.mjs',
   'scratch/verify_story_engine_pipeline.mjs',
+  'scratch/verify_story_engine_ledger.mjs',
   'scratch/verify_story_engine_handler.mjs',
   'scratch/verify_story_engine_sync.mjs',
   // Cloudflare image Worker access control (origin allow-list, no shared key):
