@@ -12,6 +12,13 @@ import { writeChapter } from './writer.js';
 import { formatChapter } from './formatter.js';
 
 const AGE_BANDS = ['3-4', '5-6', '7-8'];
+const PRONOUNS = ['they', 'she', 'he'];
+
+/** "Rex the T-Rex" -> "T-Rex". The pet catalog stores the species inside the pet's full name. */
+export function petSpeciesFromName(fullName) {
+  const m = String(fullName || '').match(/\bthe\s+(.+)$/i);
+  return m ? m[1].trim() : '';
+}
 
 /**
  * Build the normalized request. Only the hero name is required; everything else is a suggestion
@@ -24,6 +31,10 @@ export function buildRequest(body = {}, { realm, moral } = {}) {
   return {
     heroName: cleanName(body.heroName, 'Little Hero'),
     petName: body.petName ? cleanName(body.petName, '', 30) : '',
+    // Species of the companion (e.g. "T-Rex", "Dragon"): lets the story describe the pet correctly.
+    petSpecies: body.petSpecies ? cleanName(body.petSpecies, '', 30) : '',
+    // Never guessed from the child's name. Neutral unless a parent chose otherwise.
+    pronouns: PRONOUNS.includes(body.pronouns) ? body.pronouns : 'they',
     realm: realm || null,
     moral: moral || null,
     customWish: sanitizeWish(body.customWish, { avoidTopics }),

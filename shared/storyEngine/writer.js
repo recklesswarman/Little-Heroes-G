@@ -3,7 +3,7 @@
 
 import { parseJsonLoose, countWords } from './json.js';
 import { cleanField, validateChapter } from './safety.js';
-import { toneGuide, beatStage } from './bible.js';
+import { toneGuide, beatStage, heroPronounRule } from './bible.js';
 
 const PALETTE_RE = /\b(pink|purple|magenta|violet|lavender)\b/i;
 const MIN_WORDS = 70;
@@ -22,7 +22,7 @@ const BANNED_PHRASES = [
 export function buildChapterPrompt({ request, bible, chapterIndex, previous = [], issues = [] }) {
   const beat = bible.beats[chapterIndex];
   const cast = bible.characters.map(c =>
-    `- ${c.name} (${c.role}): wants ${c.motivation}${c.traits.length ? `; traits: ${c.traits.join(', ')}` : ''}`
+    `- ${c.name} (${c.role}${c.pronouns ? `, ${c.pronouns}` : ''}): wants ${c.motivation}${c.traits.length ? `; traits: ${c.traits.join(', ')}` : ''}${c.visualSheet ? `; looks: ${c.visualSheet}` : ''}`
   ).join('\n');
   const biome = request.realm?.subBiomes?.[chapterIndex % (request.realm.subBiomes.length || 1)] || '';
   const lastChoice = request.userChoices?.[chapterIndex - 1];
@@ -30,7 +30,7 @@ export function buildChapterPrompt({ request, bible, chapterIndex, previous = []
   return `You are a gentle children's bedtime author writing chapter ${chapterIndex + 1} of 4 for a child aged ${request.ageBand}.
 
 STORY: "${bible.title}". Tone: ${toneGuide(bible.tone)}.
-THE HERO IS "${request.heroName}". Name ${request.heroName} in this chapter, spelled exactly like that.
+THE HERO IS "${request.heroName}". Name ${request.heroName} in this chapter, spelled exactly like that. ${heroPronounRule(request)}${request.petName && request.petSpecies ? ` ${request.petName} is a ${request.petSpecies}; never describe ${request.petName} as another kind of animal.` : ''}
 
 CAST (keep names, looks and motivations exactly consistent; do not invent new named characters):
 ${cast}
