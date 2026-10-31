@@ -585,12 +585,19 @@ class BedtimeStoryService {
             previousChoice: previousChoice || '',
             userChoices: session.userChoices || [],
             recentTitles: pastTitles,
-            recentArchetypes
+            recentArchetypes,
+            // Continuity: the server is stateless, so the cast/plot bible and a recap of the
+            // earlier chapters travel with every request after the first.
+            storyBible: session.storyBible || null,
+            previousChapters: (session.chapterSummaries || []).slice(0, actNumber - 1)
           })
         });
 
         if (res.ok) {
           const apiData = await res.json();
+          if (apiData && apiData.storyBible && typeof apiData.storyBible === 'object') {
+            session.storyBible = apiData.storyBible;
+          }
           const chData = (Array.isArray(apiData.chapters) && apiData.chapters[actNumber - 1]) || apiData;
           if (chData && (chData.text || chData.chapterText)) {
             const fallbackSvg = generateFallbackSvg(realm.id, actNumber, previousChoice || (chData.choices && chData.choices[0]) || '');
@@ -617,7 +624,9 @@ class BedtimeStoryService {
               sceneMood: chData.sceneMood || 'tranquil',
               sceneDescriptor: chData.sceneDescriptor,
               isSleepingEnd: actNumber === 4 || chData.isSleepingEnd,
-              archetypeId: chData.archetypeId
+              archetypeId: chData.archetypeId,
+              summary: chData.summary || '',
+              blocks: Array.isArray(chData.blocks) ? chData.blocks : undefined
             };
           }
         }
@@ -754,6 +763,13 @@ Return ONLY raw JSON with these exact keys (no markdown code blocks, just raw JS
     // 4. Resilient offline Combinatorial Dynamic Story Weaver
     if (!generatedAct) {
       generatedAct = this.createOfflineAct(actNumber, realm, moral, heroName, petName, customWish, previousChoice, session.childContext?.antiRepetition || {});
+    }
+
+    // Keep a one-sentence recap per chapter so later chapters (any tier) can continue the story.
+    if (generatedAct) {
+      if (!Array.isArray(session.chapterSummaries)) session.chapterSummaries = [];
+      const recapSource = generatedAct.chapterText || generatedAct.text || '';
+      session.chapterSummaries[actNumber - 1] = generatedAct.summary || (recapSource.split(/(?<=[.!])\s+/)[0] || '').slice(0, 220);
     }
 
     // Attach 3D Pixar / Claymation illustration from Cloudflare Workers AI (Dual-Scene: Scene A Journey + Scene B Climax)
