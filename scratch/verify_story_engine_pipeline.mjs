@@ -2,7 +2,7 @@ import assert from 'node:assert';
 import { buildRequest, generateBedtimeChapter, generateBedtimeStory } from '../shared/storyEngine/engine.js';
 import { normalizeBible, fallbackBible } from '../shared/storyEngine/bible.js';
 import { chapterMentionsHero } from '../shared/storyEngine/safety.js';
-import { makeGeminiGenerate } from '../shared/storyEngine/gemini.js';
+import { makeGeminiGenerate, DEFAULT_STORY_MODEL } from '../shared/storyEngine/gemini.js';
 import { getBedtimeRealm, BEDTIME_MORALS, generateProceduralBedtimeStory } from '../src/data/bedtimeStoryData.js';
 
 let failed = 0;
@@ -189,6 +189,63 @@ await check('gemini adapter retries once with plain options if an optional setti
   assert.ok(!configs[1].thinkingConfig && !configs[1].responseMimeType);
   assert.ok(configs[1].safetySettings.length === 4);
   assert.strictEqual(makeGeminiGenerate(null), null);
+});
+
+await check('a chapter that only misses a planned character is accepted on the final attempt, not replaced by offline text', async () => {
+  const request = buildRequest({ heroName: HERO }, { realm, moral });
+  const noPip = chapterJson(chapterText(`${HERO} wandered the meadow alone.`));
+  const generate = scripted([bibleJson, noPip, noPip, noPip]);
+  const out = await generateBedtimeChapter({ generate, request, chapterIndex: 1, proceduralChapter: proc(request) });
+  assert.strictEqual(out.source, 'llm');
+  assert.strictEqual(out.attempts, 3);
+  assert.deepStrictEqual(out.issues, []);
+});
+
+await check('model errors are logged with their message, not swallowed', async () => {
+  const request = buildRequest({ heroName: HERO }, { realm, moral });
+  const warnings = [];
+  const realWarn = console.warn;
+  console.warn = (...args) => warnings.push(args.join(' '));
+  try {
+    const generate = scripted([new Error('models/gemini-2.5-flash is not found')]);
+    const out = await generateBedtimeChapter({ generate, request, chapterIndex: 0, proceduralChapter: proc(request) });
+    assert.strictEqual(out.source, 'procedural');
+    assert.deepStrictEqual(out.issues, ['generation-error']);
+  } finally {
+    console.warn = realWarn;
+  }
+  assert.ok(warnings.some(w => w.includes('is not found')), `no warning carried the error: ${warnings.join(' | ')}`);
+});
+
+await check('story model defaults to the current general model and honors an override', async () => {
+  assert.strictEqual(DEFAULT_STORY_MODEL, 'gemini-3.7-flash');
+  const models = [];
+  const ai = { models: { generateContent: async ({ model }) => { models.push(model); return { text: 'x' }; } } };
+  await makeGeminiGenerate(ai)('p');
+  await makeGeminiGenerate(ai, { model: 'custom-model' })('p');
+  await makeGeminiGenerate(ai, { model: undefined })('p');
+  assert.deepStrictEqual(models, ['gemini-3.7-flash', 'custom-model', 'gemini-3.7-flash']);
+});
+
+await check('offline weaver no longer repeats one fixed wise line every story', async () => {
+  const seen = new Set();
+  for (let n = 0; n < 40; n++) {
+    const t = generateProceduralBedtimeStory(realm.id, moral.id, HERO, 'Rex', '', 0, [], n * 7919).chapterText;
+    assert.ok(!t.includes('${') && !t.includes('pickWeaverLine'), 'template text leaked');
+    const m = t.match(/murmur: "([^"]+)"/);
+    if (m) seen.add(m[1]);
+  }
+  assert.ok(seen.size >= 4, `only ${seen.size} distinct lines in 40 stories`);
+});
+
+await check('prompt asks for shorter chapters than before', async () => {
+  const prompts = [];
+  const request = buildRequest({ heroName: HERO }, { realm, moral });
+  const generate = scripted([bibleJson, chapterJson(chapterText(`${HERO} walked.`))], prompts);
+  await generateBedtimeChapter({ generate, request, chapterIndex: 0, proceduralChapter: proc(request) });
+  const chapterPrompt = prompts[1];
+  assert.ok(chapterPrompt.includes('120-170 words'));
+  assert.ok(!chapterPrompt.includes('170-230'));
 });
 
 if (failed) { console.error(`${failed} check(s) failed`); process.exit(1); }

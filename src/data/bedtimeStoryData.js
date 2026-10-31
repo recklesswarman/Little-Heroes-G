@@ -961,6 +961,35 @@ export const BEDTIME_WHISPER_BANKS = [
  * Combinatorial Dynamic Story Weaver with 12+ distinct archetypes per realm.
  * Output rich structured sceneDescriptor payloads and strictly zero pink/purple palette.
  */
+// Short "wise companion" lines for the offline weaver. Each chapter picks one by seed so
+// offline stories no longer repeat the same sentence every night.
+const WEAVER_COMFORT_LINES = [
+  'Every brave explorer knows that true comfort begins with a calm mind, tidy preparations, and a peaceful heart.',
+  'The best adventures start when we pack a little kindness and leave all our worries at the door.',
+  'A steady breath and a gentle heart are the only gear a night traveler really needs.',
+  'When the day grows quiet, even the smallest steps feel like the start of something wonderful.',
+  'Slow footsteps and soft thoughts make the friendliest path through the evening.',
+  'Tonight there is nothing to hurry for, only wonders to notice along the way.'
+];
+const WEAVER_SAFE_LINES = [
+  'You are completely safe here, because true friends always watch over each other in the quiet dark.',
+  'No one walks alone tonight, because good friends keep each other company until morning.',
+  'There is room beside us for everyone, and the night is kinder when it is shared.',
+  'Take your time, little one, because friends are patient and the stars are in no rush.',
+  'You are in good company now, and good company makes even the dark feel like a blanket.',
+  'Everything is calm here, and calm feels even bigger when friends are near.'
+];
+const WEAVER_PRAISE_LINES = [
+  'You were magnificent today, brave hero; you helped others, showed courage, and brought warmth wherever you walked.',
+  'What a day you had, kind hero; every helping hand and gentle word made the world a little brighter.',
+  'You carried kindness all day long, and tonight it can rest with you.',
+  'Well done, brave heart; you tried your best, and your best was full of care.',
+  'You made good choices today, and the whole night is proud of you.',
+  'Thank you for being gentle and brave, because that is the kind of hero everyone sleeps better beside.'
+];
+const pickWeaverLine = (bank, seed, offset) => bank[Math.abs((seed | 0) + offset * 7) % bank.length];
+
+
 export function generateProceduralBedtimeStory(
   realmId = 'space',
   moralId = 'brave_dark',
@@ -1018,7 +1047,7 @@ export function generateProceduralBedtimeStory(
       ? `Tonight was extra comforting because ${hName}'s family had shared a tender bedtime wish: "${customWish}". `
       : `${hName} paused to reflect on today's heroic moments, from brushing teeth thoroughly to speaking kindly to family and friends. `;
 
-    const text = `${openingSentence} Their calming bedtime journey was just unfolding, guided by the soft, rhythmic hum of evening crickets and gentle night breezes. Together, they made sure their bedtime satchel was packed with care, placing ${choiceProp} securely alongside warm woolly socks and their favorite explorer journal. A faithful companion adjusted their soft explorer collar with quiet satisfaction, giving a cheerful tail swish to signal that everything was in its proper place, nudging the satchel closed with a reassuring murmur: "Every brave explorer knows that true comfort begins with a calm mind, tidy preparations, and a peaceful heart." ${wishSentence}The cool evening air brushed gently against their cheeks, carrying away the busy energy of the afternoon. Each slow, relaxed step along the emerald-bordered trail felt lighter than the last, as the world prepared for peaceful slumber. With their shoulders loosening and minds settling into quiet comfort, they walked forward into the embrace of the tranquil twilight.`;
+    const text = `${openingSentence} Their calming bedtime journey was just unfolding, guided by the soft, rhythmic hum of evening crickets and gentle night breezes. Together, they made sure their bedtime satchel was packed with care, placing ${choiceProp} securely alongside warm woolly socks and their favorite explorer journal. A faithful companion adjusted their soft explorer collar with quiet satisfaction, giving a cheerful tail swish to signal that everything was in its proper place, nudging the satchel closed with a reassuring murmur: "${pickWeaverLine(WEAVER_COMFORT_LINES, combinedSeed, 0)}" ${wishSentence}The cool evening air brushed gently against their cheeks, carrying away the busy energy of the afternoon. Each slow, relaxed step along the emerald-bordered trail felt lighter than the last, as the world prepared for peaceful slumber. With their shoulders loosening and minds settling into quiet comfort, they walked forward into the embrace of the tranquil twilight.`;
 
     const sceneDescriptor = {
       environmentBiome: subBiome,
@@ -1055,7 +1084,7 @@ export function generateProceduralBedtimeStory(
 
   if (chIdx === 1) {
     // Chapter 2: Whimsical Encounter & Gentle Mystery (~180-220 words)
-    const text = `${openingSentence} The soothing atmosphere surrounded the glade with a blanket of quiet, as dew drops sparkled peacefully along the sleepy fern leaves. Soft rustling guided the way forward toward a sheltered alcove. There, resting quietly under a canopy of velvety night leaves, was ${archetype.act2Discovery}. The little friend blinked drowsy eyes, shivering just a tiny bit in the stillness of the unfamiliar evening. ${hName} stepped forward with slow, gentle care, holding up ${choiceProp} to cast a warm, comforting amber glow across the moss. Offering gentle, warm reassurance that washed away every trace of nervousness, a quiet voice whispered: "You are completely safe here, because true friends always watch over each other in the quiet dark." The sweet creature snuggled closer against the moss, feeling the reassuring presence of kindness and warmth. A profound sense of peaceful friendship filled the glade as they prepared to solve the evening's gentle puzzle together.`;
+    const text = `${openingSentence} The soothing atmosphere surrounded the glade with a blanket of quiet, as dew drops sparkled peacefully along the sleepy fern leaves. Soft rustling guided the way forward toward a sheltered alcove. There, resting quietly under a canopy of velvety night leaves, was ${archetype.act2Discovery}. The little friend blinked drowsy eyes, shivering just a tiny bit in the stillness of the unfamiliar evening. ${hName} stepped forward with slow, gentle care, holding up ${choiceProp} to cast a warm, comforting amber glow across the moss. Offering gentle, warm reassurance that washed away every trace of nervousness, a quiet voice whispered: "${pickWeaverLine(WEAVER_SAFE_LINES, combinedSeed, 1)}" The sweet creature snuggled closer against the moss, feeling the reassuring presence of kindness and warmth. A profound sense of peaceful friendship filled the glade as they prepared to solve the evening's gentle puzzle together.`;
 
     const sceneDescriptor = {
       environmentBiome: subBiome,
@@ -1128,7 +1157,7 @@ export function generateProceduralBedtimeStory(
   }
 
   // Chapter 4: Curling Up in Cozy Starlight Nest, Drifting off to Sleep (~180-220 words)
-  const text = `${openingSentence} The little forest creature was already nestled in its hammock, breathing peacefully with soft, rhythmic murmurs of deep content. ${hName} climbed into the cozy bed, feeling a wonderful, heavy warmth spreading from their toes all the way up to their eyelids. A faithful companion curled into a soft, fluffy circle at ${hName}'s side, resting a sleepy chin on paws and letting out an enormous, cozy yawn. That gentle yawn was so wonderfully contagious that ${hName} let out a slow, cozy yawn too, sinking deeper into the soft pillows. A warm whisper echoed into the calm twilight: "You were magnificent today, brave hero; you helped others, showed courage, and brought warmth wherever you walked." Now breathe in the cool stillness for four slow, peaceful counts... hold the quiet comfort... and breathe out softly for four relaxing counts. The sky dimmed to midnight slate as glowing aurora ribbons faded into a gentle, sleepy lullaby. Close your eyes, brave champion, and drift into sweet dreams where starlight watches over you until the sun returns.`;
+  const text = `${openingSentence} The little forest creature was already nestled in its hammock, breathing peacefully with soft, rhythmic murmurs of deep content. ${hName} climbed into the cozy bed, feeling a wonderful, heavy warmth spreading from their toes all the way up to their eyelids. A faithful companion curled into a soft, fluffy circle at ${hName}'s side, resting a sleepy chin on paws and letting out an enormous, cozy yawn. That gentle yawn was so wonderfully contagious that ${hName} let out a slow, cozy yawn too, sinking deeper into the soft pillows. A warm whisper echoed into the calm twilight: "${pickWeaverLine(WEAVER_PRAISE_LINES, combinedSeed, 2)}" Now breathe in the cool stillness for four slow, peaceful counts... hold the quiet comfort... and breathe out softly for four relaxing counts. The sky dimmed to midnight slate as glowing aurora ribbons faded into a gentle, sleepy lullaby. Close your eyes, brave champion, and drift into sweet dreams where starlight watches over you until the sun returns.`;
 
   const sceneDescriptor = {
     environmentBiome: subBiome,

@@ -6,8 +6,12 @@ import { cleanField, validateChapter } from './safety.js';
 import { toneGuide, beatStage } from './bible.js';
 
 const PALETTE_RE = /\b(pink|purple|magenta|violet|lavender)\b/i;
-const MIN_WORDS = 90;
-const MAX_WORDS = 330;
+const MIN_WORDS = 70;
+const MAX_WORDS = 260;
+
+// Problems that make a chapter unusable. Anything else ("soft") is accepted on the last attempt
+// rather than discarding a good chapter for the repetitive offline text.
+const isSoftIssue = (issue) => issue === 'too-long' || issue.startsWith('missing-character:');
 
 const BANNED_PHRASES = [
   'smiled happily beside', 'looked up at the starry sky', 'gazed with wonder',
@@ -42,7 +46,7 @@ Characters present: ${beat.characters.join(', ')}.${lastChoice ? `\nThe child ch
 ${chapterIndex === 3 ? 'End with 4-second inhale / 4-second exhale breathing, sleepy yawns and a whispered goodnight to ' + request.heroName + '.' : 'Continue smoothly from the story so far.'}
 
 RULES:
-- About 170-230 words of calm, vivid, fresh prose. Read-aloud rhythm.
+- About 120-170 words of calm, vivid, fresh prose (short enough for a sleepy child). Read-aloud rhythm.
 - Always kid-appropriate and gentle. Nothing scary, dangerous or violent.
 - Do NOT ask any questions. Tell the story as continuous narration.
 - Never use pink or purple. Never use these stock phrases: ${BANNED_PHRASES.join('; ')}.
@@ -96,10 +100,11 @@ export async function writeChapter({ generate, request, bible, chapterIndex, pre
     try {
       const text = await generate(
         buildChapterPrompt({ request, bible, chapterIndex, previous, issues }),
-        { json: true, temperature: 0.8, maxOutputTokens: 1400 }
+        { json: true, temperature: 0.8, maxOutputTokens: 2500 }
       );
       parsed = parseJsonLoose(text);
     } catch (err) {
+      console.warn(`Chapter ${chapterIndex + 1} generation error (attempt ${attempts}):`, err?.message || err);
       issues = ['generation-error'];
       continue;
     }
@@ -111,7 +116,9 @@ export async function writeChapter({ generate, request, bible, chapterIndex, pre
       continue;
     }
     issues = validateWritten(chapterText, { request, bible, chapterIndex });
-    if (issues.length) continue;
+    const onlySoft = issues.length > 0 && issues.every(isSoftIssue);
+    if (issues.length && !(onlySoft && attempts >= maxAttempts)) continue;
+    issues = [];
 
     const noQ = (v, max, fallback) => (cleanField(v, max, { avoidTopics: request.avoidTopics }) || fallback).replace(/\?/g, '.');
     const props = (Array.isArray(parsed.keyProps) ? parsed.keyProps : [])

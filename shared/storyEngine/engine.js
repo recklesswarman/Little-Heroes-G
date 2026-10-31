@@ -47,14 +47,14 @@ export async function planBible({ generate, request, recentTitles = [], recentAr
   try {
     const text = await generate(
       buildBiblePrompt(request, { recentTitles, recentArchetypes, research }),
-      { json: true, temperature: 0.9, maxOutputTokens: 1800 }
+      { json: true, temperature: 0.9, maxOutputTokens: 3000 }
     );
     const raw = parseJsonLoose(text);
     if (raw && Array.isArray(raw.characters) && raw.plotDNA) {
       return { bible: normalizeBible(raw, request), planned: true };
     }
   } catch (err) {
-    // fall through to the deterministic bible
+    console.warn('Story bible planning failed, using deterministic bible:', err?.message || err);
   }
   return { bible: fallbackBible(request), planned: false };
 }

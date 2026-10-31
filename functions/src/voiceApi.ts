@@ -200,7 +200,7 @@ app.post(["/api/rex/bedtime-story", "/api/gemini/bedtime-story"], async (req: Re
     let generate: any = null;
     if (apiKey) {
       const { GoogleGenAI } = await import("@google/genai");
-      generate = makeGeminiGenerate(new GoogleGenAI({ apiKey }));
+      generate = makeGeminiGenerate(new GoogleGenAI({ apiKey }), { model: process.env.GEMINI_STORY_MODEL || undefined });
     }
 
     const fallbackChapters = buildFallbackChapters(request.heroName, petName, realm.name, request.customWish);
@@ -238,7 +238,7 @@ app.post(["/api/rex/bedtime-story", "/api/gemini/bedtime-story"], async (req: Re
       if (generate && out.source === "procedural") {
         console.warn("Bedtime chapter used offline fallback:", out.issues);
       }
-      res.json({ ...envelope, ...out.chapter, storyBible: out.bible, generationSource: out.source });
+      res.json({ ...envelope, ...out.chapter, storyBible: out.bible, generationSource: out.source, generationIssues: out.issues });
       return;
     }
 

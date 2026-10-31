@@ -8,7 +8,11 @@ const SAFETY_SETTINGS = [
   'HARM_CATEGORY_DANGEROUS_CONTENT'
 ].map(category => ({ category, threshold: 'BLOCK_LOW_AND_ABOVE' }));
 
-export function makeGeminiGenerate(ai, { model = 'gemini-2.5-flash' } = {}) {
+// Same general-purpose model the chat route uses (see server/geminiService.js). Override per
+// deployment with GEMINI_STORY_MODEL (set by the callers) when a model is retired or renamed.
+export const DEFAULT_STORY_MODEL = 'gemini-3.7-flash';
+
+export function makeGeminiGenerate(ai, { model = DEFAULT_STORY_MODEL } = {}) {
   if (!ai) return null;
   return async function generate(prompt, { json = false, temperature = 0.8, maxOutputTokens = 1400 } = {}) {
     const base = { temperature, maxOutputTokens, safetySettings: SAFETY_SETTINGS };
@@ -29,7 +33,13 @@ export function makeGeminiGenerate(ai, { model = 'gemini-2.5-flash' } = {}) {
       });
     } catch (err) {
       // If the API rejected an optional setting, retry once with plain options (safety settings stay).
-      return call(base);
+      console.warn(`Story model call failed (${model}); retrying with plain options:`, err?.message || err);
+      try {
+        return await call(base);
+      } catch (err2) {
+        console.warn(`Story model call failed again (${model}):`, err2?.message || err2);
+        throw err2;
+      }
     }
   };
 }
