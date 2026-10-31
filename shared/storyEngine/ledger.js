@@ -27,6 +27,24 @@ const WEIGHTS = {
 
 /** At or above this similarity a plot counts as a repeat. See verify_story_engine_ledger.mjs. */
 export const REPEAT_THRESHOLD = 0.42;
+/**
+ * Controlled vocabulary: the planner labels each story's central problem and twist with one value
+ * from these lists. Word overlap cannot see that "a porch lamp stuck on" and "a comet nursery that
+ * is too bright" are the same story; two matching labels can.
+ */
+export const PROBLEM_TYPES = [
+  'too-bright-or-loud', 'lost-thing', 'shy-or-lonely-friend', 'cannot-sleep-creature',
+  'broken-or-stuck-thing', 'weather-or-sky-puzzle', 'journey-or-way-home', 'missing-sound-or-song',
+  'garden-or-growing-thing', 'big-feeling-to-share', 'tidy-up-or-prepare', 'wonder-question'
+];
+export const TWIST_TYPES = [
+  'fear-was-friend', 'solves-itself-by-resting', 'small-kindness-grows', 'shy-one-becomes-hero',
+  'hidden-in-plain-sight', 'sharing-fixes-it', 'slowing-down-reveals', 'swap-roles',
+  'pattern-repeats', 'helper-was-the-solution'
+];
+export const cleanProblemType = (v) => (PROBLEM_TYPES.includes(v) ? v : '');
+export const cleanTwistType = (v) => (TWIST_TYPES.includes(v) ? v : '');
+
 /** Word overlap of the central problem at which two plots count as the same story. */
 export const CONFLICT_REPEAT = 0.6;
 
@@ -75,6 +93,10 @@ export function plotSimilarity(a, b) {
   if (jaccard(tokenize(a.fp?.conflict), tokenize(b.fp?.conflict)) >= CONFLICT_REPEAT) {
     score = Math.max(score, REPEAT_THRESHOLD);
   }
+  // Same kind of problem solved by the same kind of twist is the same story, whatever the nouns.
+  if (a.pt && a.pt === b.pt && a.tt && a.tt === b.tt) {
+    score = Math.max(score, REPEAT_THRESHOLD);
+  }
   return score;
 }
 
@@ -109,6 +131,8 @@ export function fingerprintFromBible(bible, meta = {}) {
     t: Number(meta.t) || 0,
     title,
     archetypeId: trim(bible?.archetypeId, 60),
+    pt: cleanProblemType(bible?.plotDNA?.problemType),
+    tt: cleanTwistType(bible?.plotDNA?.twistType),
     moralId: trim(meta.moralId, 40),
     realmId: trim(meta.realmId, 40),
     fp,
@@ -137,6 +161,8 @@ export function cleanLedgerDigest(untrusted) {
       t: Number(raw.t) || 0,
       title,
       archetypeId,
+      pt: cleanProblemType(raw.pt),
+      tt: cleanTwistType(raw.tt),
       moralId: cleanField(raw.moralId, 40),
       realmId: cleanField(raw.realmId, 40),
       fp,
@@ -176,31 +202,38 @@ export function buildAvoidList(ledger = [], limit = 8) {
   return lines;
 }
 
-// Small kid-safe banks for the offline planner. 8 x 8 x 8 x 8 distinct plots.
+/** Newest-first distinct problem/twist labels the child has recently had. */
+export function buildRecentTypes(ledger = [], limit = 6) {
+  const newestFirst = [...ledger].sort((a, b) => (b.t || 0) - (a.t || 0));
+  const uniq = (key) => [...new Set(newestFirst.map(e => e[key]).filter(Boolean))].slice(0, limit);
+  return { problemTypes: uniq('pt'), twistTypes: uniq('tt') };
+}
+
+// Small kid-safe banks for the offline planner. 8 x 8 x 8 x 8 distinct plots, with theme labels.
 const BANKS = {
   conflict: [
-    'a sleepy star that cannot find its glow',
-    'a lost lullaby that drifted away',
-    'a bridge that is too shy to appear',
-    'a tiny cloud that wants to learn to float',
-    'a garden of flowers that will not close for the night',
-    'a music box that forgot its last note',
-    'a friendly echo that keeps getting lost',
-    'a moonbeam stuck behind a pile of cushions'
+    ['a sleepy star that cannot find its glow', 'lost-thing'],
+    ['a lost lullaby that drifted away', 'missing-sound-or-song'],
+    ['a bridge that is too shy to appear', 'shy-or-lonely-friend'],
+    ['a tiny cloud that wants to learn to float', 'weather-or-sky-puzzle'],
+    ['a garden of flowers that will not close for the night', 'garden-or-growing-thing'],
+    ['a music box that forgot its last note', 'broken-or-stuck-thing'],
+    ['a friendly echo that keeps getting lost', 'journey-or-way-home'],
+    ['a moonbeam stuck behind a pile of cushions', 'tidy-up-or-prepare']
   ],
   helper: [
     'a patient old tortoise', 'a chatty firefly', 'a gentle breeze', 'a drowsy owl',
     'a snow hare', 'a humming moth', 'a tidy beetle', 'a wise little comet'
   ],
   twist: [
-    'the problem solves itself when everyone yawns',
-    'the lost thing was hiding in plain sight',
-    'sharing a song fixes everything',
-    'the shy helper becomes the hero',
-    'a small kindness grows big',
-    'slowing down reveals the answer',
-    'the noise was a lullaby all along',
-    'a nap is the missing piece'
+    ['the problem solves itself when everyone yawns', 'solves-itself-by-resting'],
+    ['the lost thing was hiding in plain sight', 'hidden-in-plain-sight'],
+    ['sharing a song fixes everything', 'sharing-fixes-it'],
+    ['the shy helper becomes the hero', 'shy-one-becomes-hero'],
+    ['a small kindness grows big', 'small-kindness-grows'],
+    ['slowing down reveals the answer', 'slowing-down-reveals'],
+    ['the noise was a lullaby all along', 'fear-was-friend'],
+    ['a nap is the missing piece', 'helper-was-the-solution']
   ],
   centralObject: [
     'a silver thimble lantern', 'a patchwork blanket', 'a glass music box', 'a feather pillow',
@@ -211,6 +244,7 @@ const BANKS = {
 /**
  * Offline plot: from the banks, the combination least like anything in `ledger`.
  * `seed` makes the choice deterministic for tests; `setting` is the realm name.
+ * Returns the plotDNA fields plus problemType/twistType labels.
  */
 export function pickUnusedCombo(ledger = [], seed = 0, setting = 'a moonlit place') {
   let best = null;
@@ -218,19 +252,23 @@ export function pickUnusedCombo(ledger = [], seed = 0, setting = 'a moonlit plac
   const tries = 24;
   for (let i = 0; i < tries; i++) {
     const k = Math.abs((Number(seed) || 0) + i * 7) % (n * n * n * n);
-    const pick = (bankName, shift) => BANKS[bankName][Math.floor(k / shift) % n];
-    const fp = {
+    const at = (bankName, shift) => BANKS[bankName][Math.floor(k / shift) % n];
+    const [conflict, problemType] = at('conflict', 1);
+    const [twist, twistType] = at('twist', n * n);
+    const combo = {
       setting: trim(setting),
-      conflict: pick('conflict', 1),
-      helper: pick('helper', n),
-      twist: pick('twist', n * n),
+      conflict,
+      helper: at('helper', n),
+      twist,
       resolution: 'teamwork and patience',
-      centralObject: pick('centralObject', n * n * n),
-      arc: 'from worry to sleep'
+      centralObject: at('centralObject', n * n * n),
+      arc: 'from worry to sleep',
+      problemType,
+      twistType
     };
-    const score = closestMatch({ fp }, ledger).score;
-    if (!best || score < best.score) best = { fp, score };
+    const score = closestMatch({ fp: combo, pt: problemType, tt: twistType }, ledger).score;
+    if (!best || score < best.score) best = { combo, score };
     if (score === 0) break;
   }
-  return best.fp;
+  return best.combo;
 }

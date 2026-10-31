@@ -5,7 +5,7 @@
 
 import { cleanField } from './safety.js';
 import { slug } from './json.js';
-import { pickUnusedCombo } from './ledger.js';
+import { pickUnusedCombo, PROBLEM_TYPES, TWIST_TYPES, cleanProblemType, cleanTwistType } from './ledger.js';
 
 export const TONES = ['calm', 'cozy', 'silly', 'adventurous'];
 
@@ -110,7 +110,10 @@ export function normalizeBible(raw, request) {
     twist: field(dna.twist, 80, 'a surprising kindness'),
     resolution: field(dna.resolution, 80, 'teamwork and patience'),
     centralObject: field(dna.centralObject, 60, 'a glowing lantern'),
-    arc: field(dna.arc, 80, 'from curiosity to cozy sleep')
+    arc: field(dna.arc, 80, 'from curiosity to cozy sleep'),
+    // Labels from fixed lists only; anything else (including hostile text) becomes empty.
+    problemType: cleanProblemType(dna.problemType),
+    twistType: cleanTwistType(dna.twistType)
   };
 
   const srcBeats = Array.isArray(src.beats) ? src.beats : [];
@@ -166,7 +169,7 @@ export function fallbackBible(request, { seed = Math.floor(Math.random() * 1e9) 
   return normalizeBible(raw, request);
 }
 
-export function buildBiblePrompt(request, { recentTitles = [], recentArchetypes = [], research = [], avoid = [] } = {}) {
+export function buildBiblePrompt(request, { recentTitles = [], recentArchetypes = [], research = [], avoid = [], recentTypes = {} } = {}) {
   const suggestions = [];
   if (request.petName) suggestions.push(`Companion pet: ${request.petName}${request.petSpecies ? `, a ${request.petSpecies}. Always describe ${request.petName} as a ${request.petSpecies}, never as a different kind of animal` : ''}`);
   if (request.realm) suggestions.push(`Setting idea: ${request.realm.name} (${request.realm.subtitle || ''})`);
@@ -190,7 +193,9 @@ TONE: ${toneGuide(request.tone)}.
 
 FRESHNESS: Invent an original plot. Do not reuse any of these recent titles: ${JSON.stringify(recentTitles.slice(0, 15))}. Do not reuse these plot types: ${JSON.stringify(recentArchetypes.slice(0, 10))}.${avoid.length ? `
 ALREADY USED FOR THIS CHILD. Do not reuse any of these problems, twists or objects; invent something clearly different:
-${avoid.map(a => `- ${a}`).join('\n')}` : ''}
+${avoid.map(a => `- ${a}`).join('\n')}` : ''}${recentTypes.problemTypes?.length || recentTypes.twistTypes?.length ? `
+RECENT THEMES FOR THIS CHILD (choose a different problemType and a different twistType): problem types ${JSON.stringify(recentTypes.problemTypes || [])}; twist types ${JSON.stringify(recentTypes.twistTypes || [])}.` : ''}
+THEME LABELS: label the story with exactly one problemType from ${JSON.stringify(PROBLEM_TYPES)} and exactly one twistType from ${JSON.stringify(TWIST_TYPES)}. Use the values exactly as written.
 
 RULES: Always kid-appropriate and gentle: no danger, no scary beings, no violence. Never use pink or purple. Give every recurring character a fixed name, a clear kind motivation, and a short fixed visual description.
 
@@ -202,7 +207,7 @@ Return ONLY raw JSON (no markdown):
     { "name": "${request.heroName}", "role": "hero", "pronouns": "${request.pronouns}", "motivation": "...", "traits": ["..."], "visualSheet": "fixed look in one sentence" },
     { "name": "friend name", "role": "friend|companion|helper", "pronouns": "they|she|he|it", "motivation": "...", "traits": ["..."], "visualSheet": "..." }
   ],
-  "plotDNA": { "setting": "...", "conflict": "...", "helper": "...", "twist": "...", "resolution": "...", "centralObject": "...", "arc": "..." },
+  "plotDNA": { "setting": "...", "conflict": "...", "helper": "...", "twist": "...", "resolution": "...", "centralObject": "...", "arc": "...", "problemType": "one value from the list", "twistType": "one value from the list" },
   "beats": [
     { "summary": "chapter 1 beat", "characters": ["names present"] },
     { "summary": "chapter 2 beat", "characters": ["..."] },
