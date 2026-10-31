@@ -24,6 +24,7 @@ import { PETS_DATABASE } from '../data/petsData.js';
 import { generateBedtimeChapterAGY } from './heroAgentService.js';
 import { bedtimeIllustrationService } from './bedtimeIllustrationService.js';
 import { sanitizeWish } from '../../shared/storyEngine/safety.js';
+import { petSpeciesFromName } from '../../shared/storyEngine/engine.js';
 
 /**
  * Resolves which pet's voice should narrate bedtime stories: a parent-chosen
@@ -577,7 +578,9 @@ class BedtimeStoryService {
             heroName,
             heroId: session.heroId,
             petId,
-            petName,
+            // Short name ("Rex") reads naturally in prose; the species ("T-Rex") keeps the pet accurate.
+            petName: session.childContext?.activePet?.shortName || petName,
+            petSpecies: petSpeciesFromName(session.childContext?.activePet?.name || petName),
             realmId: realm.id,
             moralId: moral.id,
             customWish,

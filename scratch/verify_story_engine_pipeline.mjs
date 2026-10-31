@@ -1,6 +1,7 @@
 import assert from 'node:assert';
-import { buildRequest, generateBedtimeChapter, generateBedtimeStory } from '../shared/storyEngine/engine.js';
-import { normalizeBible, fallbackBible } from '../shared/storyEngine/bible.js';
+import { buildRequest, generateBedtimeChapter, generateBedtimeStory, petSpeciesFromName } from '../shared/storyEngine/engine.js';
+import { normalizeBible, fallbackBible, buildBiblePrompt } from '../shared/storyEngine/bible.js';
+import { buildChapterPrompt } from '../shared/storyEngine/writer.js';
 import { chapterMentionsHero } from '../shared/storyEngine/safety.js';
 import { makeGeminiGenerate, DEFAULT_STORY_MODEL } from '../shared/storyEngine/gemini.js';
 import { getBedtimeRealm, BEDTIME_MORALS, generateProceduralBedtimeStory } from '../src/data/bedtimeStoryData.js';
@@ -246,6 +247,54 @@ await check('prompt asks for shorter chapters than before', async () => {
   const chapterPrompt = prompts[1];
   assert.ok(chapterPrompt.includes('120-170 words'));
   assert.ok(!chapterPrompt.includes('170-230'));
+});
+
+await check('pronouns: neutral by default, never guessed from the name, parent choice honored, hostile value ignored', async () => {
+  assert.strictEqual(buildRequest({ heroName: 'Zephyrina' }).pronouns, 'they');
+  assert.strictEqual(buildRequest({ heroName: 'Alex', pronouns: 'she' }).pronouns, 'she');
+  assert.strictEqual(buildRequest({ heroName: 'Alex', pronouns: 'he' }).pronouns, 'he');
+  assert.strictEqual(buildRequest({ heroName: 'Alex', pronouns: '<script>' }).pronouns, 'they');
+
+  const neutral = buildRequest({ heroName: HERO }, { realm, moral });
+  const bible = fallbackBible(neutral);
+  assert.strictEqual(bible.characters[0].pronouns, 'they');
+  const biblePrompt = buildBiblePrompt(neutral);
+  const chapterPrompt = buildChapterPrompt({ request: neutral, bible, chapterIndex: 0 });
+  for (const prompt of [biblePrompt, chapterPrompt]) {
+    assert.ok(prompt.includes("Do not guess Zephyrina's gender"), 'missing neutral rule');
+    assert.ok(prompt.includes('Never use he/she/his/her for Zephyrina'));
+  }
+
+  const she = buildRequest({ heroName: 'Alex', pronouns: 'she' }, { realm, moral });
+  assert.ok(buildChapterPrompt({ request: she, bible: fallbackBible(she), chapterIndex: 0 }).includes('Refer to Alex with she/her.'));
+});
+
+await check('a client-supplied bible cannot change the hero pronouns', async () => {
+  const request = buildRequest({ heroName: HERO }, { realm, moral });
+  const bible = normalizeBible({ characters: [{ name: HERO, role: 'hero', pronouns: 'he' }, { name: 'Pip', pronouns: 'she' }, { name: 'Odd', pronouns: 'xyz' }] }, request);
+  assert.strictEqual(bible.characters[0].pronouns, 'they');
+  assert.strictEqual(bible.characters.find(c => c.name === 'Pip').pronouns, 'she');
+  assert.strictEqual(bible.characters.find(c => c.name === 'Odd').pronouns, 'they');
+});
+
+await check('pet species reaches the bible and chapter prompts and the fallback cast', async () => {
+  assert.strictEqual(petSpeciesFromName('Rex the T-Rex'), 'T-Rex');
+  assert.strictEqual(petSpeciesFromName('Pterry the Pterodactyl'), 'Pterodactyl');
+  assert.strictEqual(petSpeciesFromName('Sparky the Dragon'), 'Dragon');
+  assert.strictEqual(petSpeciesFromName('Rex'), '');
+  assert.strictEqual(petSpeciesFromName(undefined), '');
+
+  const request = buildRequest({ heroName: HERO, petName: 'Rex', petSpecies: 'T-Rex' }, { realm, moral });
+  assert.strictEqual(request.petSpecies, 'T-Rex');
+  assert.ok(buildBiblePrompt(request).includes('Always describe Rex as a T-Rex'));
+  const bible = fallbackBible(request);
+  assert.strictEqual(bible.characters[1].visualSheet, 'a friendly T-Rex');
+  assert.ok(buildChapterPrompt({ request, bible, chapterIndex: 1 }).includes('Rex is a T-Rex; never describe Rex as another kind of animal.'));
+  // hostile species is stripped of markup characters
+  assert.ok(!buildRequest({ heroName: HERO, petName: 'Rex', petSpecies: '<img onerror=x>' }).petSpecies.match(/[<>]/));
+  // no species -> no species sentence
+  const noSpecies = buildRequest({ heroName: HERO, petName: 'Rex' }, { realm, moral });
+  assert.ok(!buildChapterPrompt({ request: noSpecies, bible: fallbackBible(noSpecies), chapterIndex: 0 }).includes('never describe Rex as another kind'));
 });
 
 if (failed) { console.error(`${failed} check(s) failed`); process.exit(1); }

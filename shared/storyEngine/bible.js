@@ -19,6 +19,16 @@ export function toneGuide(tone) {
   return TONE_GUIDE[tone] || TONE_GUIDE.calm;
 }
 
+const CHARACTER_PRONOUNS = ['they', 'she', 'he', 'it'];
+
+/** How the story must refer to the hero. Never inferred from the name. */
+export function heroPronounRule(request) {
+  const name = request.heroName;
+  if (request.pronouns === 'she') return `Refer to ${name} with she/her.`;
+  if (request.pronouns === 'he') return `Refer to ${name} with he/him.`;
+  return `Do not guess ${name}'s gender from the name. Refer to ${name} by name, with they/them, or as "the little hero". Never use he/she/his/her for ${name}.`;
+}
+
 const BEAT_STAGES = [
   'Gentle departure and curiosity: the hero sets out and something intriguing appears.',
   'A whimsical encounter: the hero meets a friend or a gentle puzzle.',
@@ -55,6 +65,7 @@ export function normalizeBible(raw, request) {
     id: 'hero',
     name: heroName,
     role: 'hero',
+    pronouns: request.pronouns || 'they',
     motivation: field(heroSrc.motivation, 100, `${heroName} wants to help a new friend and then settle down for a peaceful sleep.`),
     traits: cleanTraits(heroSrc.traits),
     visualSheet: field(heroSrc.visualSheet, 160)
@@ -71,6 +82,7 @@ export function normalizeBible(raw, request) {
       id: slug(name) || `char-${characters.length}`,
       name,
       role: field(c.role, 30, 'friend'),
+      pronouns: CHARACTER_PRONOUNS.includes(c.pronouns) ? c.pronouns : 'they',
       motivation: field(c.motivation, 100, `${name} wants everyone to feel safe and sleepy.`),
       traits: cleanTraits(c.traits),
       visualSheet: field(c.visualSheet, 160)
@@ -119,7 +131,8 @@ export function fallbackBible(request) {
       name: request.petName,
       role: 'companion',
       motivation: `${request.petName} wants to keep ${request.heroName} company all the way to sleep.`,
-      traits: ['loyal', 'gentle']
+      traits: ['loyal', 'gentle'],
+      visualSheet: request.petSpecies ? `a friendly ${request.petSpecies}` : ''
     }] : [],
     plotDNA: {
       setting: request.realm?.name,
@@ -131,7 +144,7 @@ export function fallbackBible(request) {
 
 export function buildBiblePrompt(request, { recentTitles = [], recentArchetypes = [], research = [] } = {}) {
   const suggestions = [];
-  if (request.petName) suggestions.push(`Companion pet: ${request.petName}`);
+  if (request.petName) suggestions.push(`Companion pet: ${request.petName}${request.petSpecies ? `, a ${request.petSpecies}. Always describe ${request.petName} as a ${request.petSpecies}, never as a different kind of animal` : ''}`);
   if (request.realm) suggestions.push(`Setting idea: ${request.realm.name} (${request.realm.subtitle || ''})`);
   if (request.moral) suggestions.push(`Gentle lesson idea: ${request.moral.name} - ${request.moral.moralGuidance || ''}`);
   if (request.customWish) suggestions.push(`Parent's wish: ${request.customWish}`);
@@ -140,7 +153,7 @@ export function buildBiblePrompt(request, { recentTitles = [], recentArchetypes 
 
   return `You are planning a calming 4-chapter bedtime story for a child aged ${request.ageBand}. Plan only; do not write the story.
 
-REQUIRED: The child's name is "${request.heroName}". ${request.heroName} is the main character of the story. Spell the name exactly like that.
+REQUIRED: The child's name is "${request.heroName}". ${request.heroName} is the main character of the story. Spell the name exactly like that. ${heroPronounRule(request)}
 
 SUGGESTIONS (optional context). Weave in whichever fit the plot naturally; adapt or skip any that do not fit:
 ${suggestions.map(s => `- ${s}`).join('\n') || '- (none)'}
@@ -156,8 +169,8 @@ Return ONLY raw JSON (no markdown):
   "title": "max 5 words",
   "tone": "calm|cozy|silly|adventurous",
   "characters": [
-    { "name": "${request.heroName}", "role": "hero", "motivation": "...", "traits": ["..."], "visualSheet": "fixed look in one sentence" },
-    { "name": "friend name", "role": "friend|companion|helper", "motivation": "...", "traits": ["..."], "visualSheet": "..." }
+    { "name": "${request.heroName}", "role": "hero", "pronouns": "${request.pronouns}", "motivation": "...", "traits": ["..."], "visualSheet": "fixed look in one sentence" },
+    { "name": "friend name", "role": "friend|companion|helper", "pronouns": "they|she|he|it", "motivation": "...", "traits": ["..."], "visualSheet": "..." }
   ],
   "plotDNA": { "setting": "...", "conflict": "...", "helper": "...", "twist": "...", "resolution": "...", "centralObject": "...", "arc": "..." },
   "beats": [
