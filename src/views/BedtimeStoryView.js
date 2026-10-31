@@ -967,6 +967,23 @@ export function setupBedtimeStoryListeners() {
         }
       }
     });
+
+    // Narration reached the middle of the chapter: fade to the second illustration.
+    window.addEventListener('bedtime-story-scene-switch', (e) => {
+      const session = bedtimeStoryService.getActiveSession();
+      const currentAct = session?.acts?.[session.actNumber - 1];
+      if (!currentAct || currentAct.chapterNumber !== e.detail?.actNumber || !currentAct.imageUrlB) return;
+      const img = document.getElementById('active-chapter-illustration-img');
+      if (img) {
+        img.style.transition = 'opacity 500ms ease';
+        img.style.opacity = '0';
+        setTimeout(() => {
+          img.src = currentAct.imageUrlB;
+          img.style.opacity = '1';
+        }, 450);
+      }
+      updateScenePillStyles('scene_b');
+    });
   }
 
   // Narration Mode Toggle (Rex vs Parent)

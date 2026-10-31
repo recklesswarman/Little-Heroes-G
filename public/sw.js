@@ -1,4 +1,4 @@
-const CACHE_NAME = 'little-heroes-v3.7.5-instant-kokoro-phrase-manager-20261030';
+const CACHE_NAME = 'little-heroes-v3.7.6-bedtime-scene-summaries-20261031';
 const STATIC_ASSETS = [
   './',
   './index.html',
