@@ -21,6 +21,16 @@ export function toneGuide(tone) {
 
 const CHARACTER_PRONOUNS = ['they', 'she', 'he', 'it'];
 
+/**
+ * The companion pet is a real, living creature (never a toy), and, like the hero, is not given
+ * a gender from its name. Returns '' when the story has no pet.
+ */
+export function petRule(request) {
+  if (!request.petName) return '';
+  const kind = request.petSpecies ? ` ${request.petSpecies}` : ' creature';
+  return `${request.petName} is a real, living${kind} who walks and talks beside the child, never a toy, plush, puppet, figurine or miniature. Refer to ${request.petName} by name, "they" or "it"; never he/she/his/her.`;
+}
+
 /** How the story must refer to the hero. Never inferred from the name. */
 export function heroPronounRule(request) {
   const name = request.heroName;
@@ -78,11 +88,13 @@ export function normalizeBible(raw, request) {
     const name = field(c.name, 30);
     if (!name || seen.has(name.toLowerCase())) continue;
     seen.add(name.toLowerCase());
+    const isPet = !!request.petName && name.toLowerCase() === request.petName.toLowerCase();
     characters.push({
       id: slug(name) || `char-${characters.length}`,
       name,
-      role: field(c.role, 30, 'friend'),
-      pronouns: CHARACTER_PRONOUNS.includes(c.pronouns) ? c.pronouns : 'they',
+      role: isPet ? 'companion' : field(c.role, 30, 'friend'),
+      // The pet's gender is never guessed from its name; other invented characters keep their own.
+      pronouns: isPet ? 'they' : (CHARACTER_PRONOUNS.includes(c.pronouns) ? c.pronouns : 'they'),
       motivation: field(c.motivation, 100, `${name} wants everyone to feel safe and sleepy.`),
       traits: cleanTraits(c.traits),
       visualSheet: field(c.visualSheet, 160)
@@ -130,6 +142,7 @@ export function fallbackBible(request) {
     characters: request.petName ? [{
       name: request.petName,
       role: 'companion',
+      pronouns: 'they',
       motivation: `${request.petName} wants to keep ${request.heroName} company all the way to sleep.`,
       traits: ['loyal', 'gentle'],
       visualSheet: request.petSpecies ? `a friendly ${request.petSpecies}` : ''
@@ -156,7 +169,7 @@ export function buildBiblePrompt(request, { recentTitles = [], recentArchetypes 
 REQUIRED: The child's name is "${request.heroName}". ${request.heroName} is the main character of the story. Spell the name exactly like that. ${heroPronounRule(request)}
 
 SUGGESTIONS (optional context). Weave in whichever fit the plot naturally; adapt or skip any that do not fit:
-${suggestions.map(s => `- ${s}`).join('\n') || '- (none)'}
+${suggestions.map(s => `- ${s}`).join('\n') || '- (none)'}${petRule(request) ? `\n\nIf ${request.petName} appears: ${petRule(request)}` : ''}
 
 TONE: ${toneGuide(request.tone)}.
 
