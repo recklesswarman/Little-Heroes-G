@@ -29,10 +29,16 @@ const CHARACTER_PRONOUNS = ['they', 'she', 'he', 'it'];
 export function petRule(request) {
   if (!request.petName) return '';
   const kind = request.petSpecies ? ` ${request.petSpecies}` : ' creature';
-  return `${request.petName} is a real, living${kind} who walks and talks beside the child, never a toy, plush, puppet, figurine or miniature. Refer to ${request.petName} by name, "they" or "it"; never he/she/his/her.`;
+  const living = `${request.petName} is a real, living${kind} who walks and talks beside the child, never a toy, plush, puppet, figurine or miniature.`;
+  if (request.petPronouns === 'she') return `${living} Refer to ${request.petName} by name or with she/her.`;
+  if (request.petPronouns === 'he') return `${living} Refer to ${request.petName} by name or with he/him.`;
+  return `${living} Refer to ${request.petName} by name, "they" or "it"; never he/she/his/her.`;
 }
-
-/** How the story must refer to the hero. Never inferred from the name. */
+/** Parent's topics to avoid, stated to the model (they are also enforced after writing). */
+export function avoidRule(request) {
+  const topics = Array.isArray(request.avoidTopics) ? request.avoidTopics.filter(Boolean).slice(0, 20) : [];
+  return topics.length ? `The parent asked that these never appear in the story, not even in passing: ${topics.join(', ')}.` : '';
+}
 export function heroPronounRule(request) {
   const name = request.heroName;
   if (request.pronouns === 'she') return `Refer to ${name} with she/her.`;
@@ -95,7 +101,7 @@ export function normalizeBible(raw, request) {
       name,
       role: isPet ? 'companion' : field(c.role, 30, 'friend'),
       // The pet's gender is never guessed from its name; other invented characters keep their own.
-      pronouns: isPet ? 'they' : (CHARACTER_PRONOUNS.includes(c.pronouns) ? c.pronouns : 'they'),
+      pronouns: isPet ? (CHARACTER_PRONOUNS.includes(request.petPronouns) ? request.petPronouns : 'they') : (CHARACTER_PRONOUNS.includes(c.pronouns) ? c.pronouns : 'they'),
       motivation: field(c.motivation, 100, `${name} wants everyone to feel safe and sleepy.`),
       traits: cleanTraits(c.traits),
       visualSheet: field(c.visualSheet, 160)
@@ -155,7 +161,7 @@ export function fallbackBible(request, { seed = Math.floor(Math.random() * 1e9) 
     characters: request.petName ? [{
       name: request.petName,
       role: 'companion',
-      pronouns: 'they',
+      pronouns: request.petPronouns || 'they',
       motivation: `${request.petName} wants to keep ${request.heroName} company all the way to sleep.`,
       traits: ['loyal', 'gentle'],
       visualSheet: request.petSpecies ? `a friendly ${request.petSpecies}` : ''
@@ -197,7 +203,7 @@ ${avoid.map(a => `- ${a}`).join('\n')}` : ''}${recentTypes.problemTypes?.length 
 RECENT THEMES FOR THIS CHILD (choose a different problemType and a different twistType): problem types ${JSON.stringify(recentTypes.problemTypes || [])}; twist types ${JSON.stringify(recentTypes.twistTypes || [])}.` : ''}
 THEME LABELS: label the story with exactly one problemType from ${JSON.stringify(PROBLEM_TYPES)} and exactly one twistType from ${JSON.stringify(TWIST_TYPES)}. Use the values exactly as written.
 
-RULES: Always kid-appropriate and gentle: no danger, no scary beings, no violence. Never use pink or purple. Give every recurring character a fixed name, a clear kind motivation, and a short fixed visual description.
+RULES: Always kid-appropriate and gentle: no danger, no scary beings, no violence. Never use pink or purple.${avoidRule(request) ? ` ${avoidRule(request)}` : ''} Give every recurring character a fixed name, a clear kind motivation, and a short fixed visual description.
 
 Return ONLY raw JSON (no markdown):
 {

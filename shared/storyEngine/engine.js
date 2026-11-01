@@ -14,8 +14,9 @@ import {
   REPEAT_THRESHOLD, buildAvoidList, cleanLedgerDigest, cleanRecurring,
   buildRecentTypes, closestMatch, findNearDuplicate, fingerprintFromBible
 } from './ledger.js';
-import { CLEAN_SEED_POOL, pickSeeds } from './seeds.js';
+import { CLEAN_SEED_POOL, pickSeeds, hashString, SEEDS_PER_STORY } from './seeds.js';
 import { compressLook } from './scenes.js';
+import { PET_PRONOUN_CHOICES, normalizeStoryControls, cleanReason } from './controls.js';
 
 const MAX_PLAN_ATTEMPTS = 3;
 const round2 = (n) => Math.round(n * 100) / 100;
@@ -37,6 +38,7 @@ export function buildRequest(body = {}, { realm, moral } = {}) {
   const avoidTopics = Array.isArray(body.avoidTopics)
     ? body.avoidTopics.map(t => cleanName(String(t), '', 30).toLowerCase()).filter(t => t.length > 1).slice(0, 20)
     : [];
+  const customWish = sanitizeWish(body.customWish, { avoidTopics });
   return {
     heroName: cleanName(body.heroName, 'Little Hero'),
     petName: body.petName ? cleanName(body.petName, '', 30) : '',
@@ -47,9 +49,16 @@ export function buildRequest(body = {}, { realm, moral } = {}) {
     heroLook: compressLook(body.heroLook),
     // Never guessed from the child's name. Neutral unless a parent chose otherwise.
     pronouns: PRONOUNS.includes(body.pronouns) ? body.pronouns : 'they',
+    // The pet is a living companion; neutral unless a parent chose otherwise.
+    petPronouns: PET_PRONOUN_CHOICES.includes(body.petPronouns) ? body.petPronouns : 'they',
+    // Parent switches: web-derived story sparks on/off, and the parent's own checked story ideas.
+    researchEnabled: body.researchEnabled !== false,
+    parentIdeas: normalizeStoryControls({ parentIdeas: body.parentIdeas }).parentIdeas,
     realm: realm || null,
     moral: moral || null,
-    customWish: sanitizeWish(body.customWish, { avoidTopics }),
+    customWish,
+    // True when a wish was given but could not be used (filtered or against an avoid-topic): for the safety log.
+    wishDropped: typeof body.customWish === 'string' && body.customWish.trim().length > 0 && !customWish,
     magicItem: cleanField(body.magicItem, 40) || '',
     tone: TONES.includes(body.tone) ? body.tone : 'calm',
     ageBand: AGE_BANDS.includes(body.ageBand) ? body.ageBand : '5-6',
@@ -85,13 +94,20 @@ const typedOf = (bible) => !!(bible?.plotDNA?.problemType && bible?.plotDNA?.twi
  */
 export async function planBible({ generate, request, recentTitles = [], recentArchetypes = [], research = [], seedPool = CLEAN_SEED_POOL, now = new Date() }) {
   const ledger = request.ledgerDigest || [];
-  // Fresh story sparks: caller-supplied ideas win; otherwise draw from the reviewed seed pool,
-  // skipping anything that resembles a plot this child already had. They are only suggestions.
-  const seeds = research.length
-    ? []
-    : pickSeeds(seedPool, { ledger, date: now, key: `${request.heroName}|${ledger.length}|${request.realm?.id || ''}` });
-  if (seeds.length) research = seeds.map(s => s.text);
-  const researchUsed = seeds.map(s => s.id);
+  // Fresh story sparks: caller-supplied ideas win. Otherwise the parent's own ideas come first (up to 2),
+  // then reviewed seeds fill the rest unless the parent turned research off. Only suggestions.
+  const key = `${request.heroName}|${ledger.length}|${request.realm?.id || ''}`;
+  let ideas = [];
+  let seeds = [];
+  if (!research.length) {
+    ideas = (request.parentIdeas || [])
+      .map(text => ({ text, order: hashString(`${key}|${text}`) }))
+      .sort((a, b) => a.order - b.order).slice(0, 2).map(x => x.text);
+    const want = SEEDS_PER_STORY - ideas.length;
+    if (request.researchEnabled !== false && want > 0) seeds = pickSeeds(seedPool, { ledger, date: now, key, n: want });
+    research = [...ideas, ...seeds.map(s => s.text)];
+  }
+  const researchUsed = [...ideas.map(() => 'parent'), ...seeds.map(s => s.id)];
   if (!generate) {
     const bible = fallbackBible(request);
     return { bible, planned: false, researchUsed: [], ledgerCheck: { attempts: 0, planned: false, typed: typedOf(bible), ...checkAgainstLedger(bible, ledger) } };
@@ -163,18 +179,23 @@ export async function generateBedtimeChapter({
   let bible = suppliedBible ? normalizeBible(suppliedBible, request) : null;
   let ledgerCheck;
   let researchUsed = [];
+  const safetyEvents = [];
   if (!bible) {
+    if (request.wishDropped) safetyEvents.push({ kind: 'wish-blocked', reason: 'wish-filtered' });
     ({ bible, ledgerCheck, researchUsed } = await planBible({ generate, request, recentTitles, recentArchetypes, research }));
   }
   const previous = cleanSummaries(previousSummaries);
 
   if (generate) {
+    // The model's plan was unusable and the offline plan was used (only known when this call planned).
+    if (ledgerCheck && ledgerCheck.planned === false) safetyEvents.push({ kind: 'plan-fallback', reason: 'plan-unusable' });
     const result = await writeChapter({ generate, request, bible, chapterIndex: idx, previous });
     if (result.ok) {
       return {
         bible,
         ledgerCheck,
         researchUsed,
+        safetyEvents,
         source: 'llm',
         attempts: result.attempts,
         issues: [],
@@ -182,11 +203,14 @@ export async function generateBedtimeChapter({
       };
     }
     const failure = result.issues;
+    // Reason codes only (never the rejected text): what kind of check the chapter failed.
+    safetyEvents.push({ kind: 'chapter-fallback', reason: cleanReason(Array.isArray(failure) ? failure[0] : failure) });
     const fallback = proceduralChapter ? proceduralChapter(idx) : { chapterText: '' };
     return {
       bible,
       ledgerCheck,
       researchUsed,
+      safetyEvents,
       source: 'procedural',
       attempts: result.attempts,
       issues: failure,
@@ -199,6 +223,7 @@ export async function generateBedtimeChapter({
     bible,
     ledgerCheck,
     researchUsed,
+    safetyEvents,
     source: 'procedural',
     attempts: 0,
     issues: [],
@@ -214,14 +239,16 @@ export async function generateBedtimeStory(args) {
   const sources = [];
   let ledgerCheck;
   let researchUsed = [];
+  const safetyEvents = [];
   for (let i = 0; i < 4; i++) {
     const out = await generateBedtimeChapter({ ...args, bible, chapterIndex: i, previousSummaries: summaries });
     bible = out.bible;
     if (out.ledgerCheck) ledgerCheck = out.ledgerCheck;
     if (out.researchUsed?.length) researchUsed = out.researchUsed;
+    for (const e of out.safetyEvents || []) safetyEvents.push(e);
     chapters.push(out.chapter);
     summaries.push(out.chapter.summary);
     sources.push(out.source);
   }
-  return { bible, chapters, sources, ledgerCheck, researchUsed };
+  return { bible, chapters, sources, ledgerCheck, researchUsed, safetyEvents };
 }
