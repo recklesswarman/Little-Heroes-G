@@ -251,28 +251,36 @@ const BANKS = {
  * Returns the plotDNA fields plus problemType/twistType labels.
  */
 export function pickUnusedCombo(ledger = [], seed = 0, setting = 'a moonlit place') {
-  let best = null;
   const n = BANKS.conflict.length;
-  const tries = 24;
-  for (let i = 0; i < tries; i++) {
-    const k = Math.abs((Number(seed) || 0) + i * 7) % (n * n * n * n);
-    const at = (bankName, shift) => BANKS[bankName][Math.floor(k / shift) % n];
-    const [conflict, problemType] = at('conflict', 1);
-    const [twist, twistType] = at('twist', n * n);
-    const combo = {
-      setting: trim(setting),
-      conflict,
-      helper: at('helper', n),
-      twist,
-      resolution: 'teamwork and patience',
-      centralObject: at('centralObject', n * n * n),
-      arc: 'from worry to sleep',
-      problemType,
-      twistType
-    };
-    const score = closestMatch({ fp: combo, pt: problemType, tt: twistType }, ledger).score;
-    if (!best || score < best.score) best = { combo, score };
-    if (score === 0) break;
+  const base = Math.abs(Number(seed) || 0);
+  // The seed picks where the scan starts (its first candidate is the same one a given seed always chose).
+  const c0 = base % n;
+  const h0 = Math.floor(base / n) % n;
+  const t0 = Math.floor(base / (n * n)) % n;
+  const o0 = Math.floor(base / (n * n * n)) % n;
+  let best = null;
+  // Look at every conflict x twist pair (64), not a handful of probes: a few random probes can all land on
+  // plots already told, even when an unused one exists. The scan is exhaustive, so while any plot is
+  // unused the least similar one is found; it stops early on a perfect (zero) match.
+  for (let c = 0; c < n; c++) {
+    for (let w = 0; w < n; w++) {
+      const [conflict, problemType] = BANKS.conflict[(c0 + c) % n];
+      const [twist, twistType] = BANKS.twist[(t0 + w) % n];
+      const combo = {
+        setting: trim(setting),
+        conflict,
+        helper: BANKS.helper[(h0 + c + w) % n],
+        twist,
+        resolution: 'teamwork and patience',
+        centralObject: BANKS.centralObject[(o0 + c + 2 * w) % n],
+        arc: 'from worry to sleep',
+        problemType,
+        twistType
+      };
+      const score = closestMatch({ fp: combo, pt: problemType, tt: twistType }, ledger).score;
+      if (!best || score < best.score) best = { combo, score };
+      if (score === 0) return best.combo;
+    }
   }
   return best.combo;
 }

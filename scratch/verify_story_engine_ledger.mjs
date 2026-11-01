@@ -204,6 +204,17 @@ await check('offline: eight stories in a row, each fed back into the ledger, nev
   }
   assert.strictEqual(conflicts.size, 8);
 });
+await check('offline plots: for 300 different seeds, eight stories in a row never repeat (the picker scans every pair, no luck involved)', () => {
+  for (let seed = 0; seed < 300; seed++) {
+    let ledger = [];
+    for (let i = 0; i < 8; i++) {
+      const combo = pickUnusedCombo(ledger, seed * 7919 + i, 'the moon');
+      const score = closestMatch({ fp: combo, pt: combo.problemType, tt: combo.twistType }, ledger).score;
+      assert.ok(score < REPEAT_THRESHOLD, `seed ${seed}: story ${i} scored ${score}`);
+      ledger = [{ id: `o${i}`, t: i + 1, pt: combo.problemType, tt: combo.twistType, fp: combo }, ...ledger];
+    }
+  }
+});
 await check('pickUnusedCombo is deterministic per seed and prefers combos not in the ledger', () => {
   assert.deepStrictEqual(pickUnusedCombo([], 5), pickUnusedCombo([], 5));
   const first = pickUnusedCombo([], 3);
