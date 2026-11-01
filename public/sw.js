@@ -1,4 +1,4 @@
-const CACHE_NAME = 'little-heroes-v3.9.0-story-scenes-20261101';
+const CACHE_NAME = 'little-heroes-v3.9.1-scene-prompts-20261101';
 const STATIC_ASSETS = [
   './',
   './index.html',

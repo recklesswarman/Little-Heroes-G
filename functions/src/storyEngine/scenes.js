@@ -12,8 +12,9 @@ import { DEFAULT_HERO_LOOK } from './avatarLook.js';
 
 export const MAX_PROMPT_TOKENS = 70;
 export const MAX_FOCAL_WORDS = 22;
-export const NEGATIVE_PROMPT = 'pink, purple, magenta, violet, neon pink, scary, dark, deformed, blurry, text, letters';
-export const STYLE_SUFFIX = '3D claymation storybook, soft amber and cyan glow';
+export const NEGATIVE_PROMPT = 'pink, purple, magenta, violet, neon pink, scary, dark, deformed, blurry, text, letters, words, watermark, logo';
+export const STYLE_SUFFIX = 'soft 3D clay claymation storybook render, amber and cyan glow';
+const MAX_SCENE_WORDS = 14;
 const LOOK_WORDS = 9;
 
 const CLOSING_LINE_PATTERN = /(close your eyes|your eyes|sweet dreams|sleep tight|good\s?night|drift(?:ing)? (?:off )?(?:in)?to (?:sleep|dreams)|^once upon a time|^chapter \d+)/i;
@@ -98,7 +99,7 @@ export function extractSceneFocalNarrative(chapterText = '', sceneType = 'scene_
 
 /** Remove palette-breaking colour words. */
 export function scrubColors(text) {
-  return String(text || '').replace(/\b(neon\s+)?(pink|purple|magenta|violet|lavender|lilac|fuchsia|mauve)(ish)?\b/gi, '').replace(/\s{2,}/g, ' ').replace(/\s+([,.;])/g, '$1').trim();
+  return String(text || '').replace(/\b(neon\s+)?(pink|purple|magenta|violet|lavender|lilac|fuchsia|mauve|indigo|plum|amethyst)(ish)?\b/gi, '').replace(/\s{2,}/g, ' ').replace(/\s+([,.;])/g, '$1').trim();
 }
 
 /** A fixed look shortened to a handful of words (model- or client-supplied text is untrusted). */
@@ -113,13 +114,16 @@ export function compressLook(raw, maxWords = LOOK_WORDS) {
 
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-/** Swap character names for plain nouns so the picture model does not try to paint the names. */
+/**
+ * Swap character names for plain nouns so the picture model does not try to paint the names.
+ * Whole names only: "Rex" inside "T-Rex" is left alone, and a possessive stays one ("Rex's tail").
+ */
 export function genericizeNames(text, { heroName = '', petName = '', petNoun = 'pet', friendNames = [] } = {}) {
   let out = String(text || '');
   const swap = (name, noun) => {
     const n = String(name || '').trim();
     if (n.length < 2) return;
-    out = out.replace(new RegExp(`\\b${escapeRe(n)}(?:'s)?\\b`, 'gi'), noun);
+    out = out.replace(new RegExp(`(?<![\\w-])${escapeRe(n)}(?![\\w-])(['’]s)?`, 'gi'), (_m, poss) => (poss ? `${noun}'s` : noun));
   };
   swap(heroName, 'the toddler');
   swap(petName, `the ${petNoun}`);
@@ -128,15 +132,16 @@ export function genericizeNames(text, { heroName = '', petName = '', petNoun = '
 }
 
 function composePrompt(focus, descriptors, setting) {
-  const build = (f, ds, s) => [f, ...ds, s, STYLE_SUFFIX].filter(Boolean).join(', ');
-  let words = focus.split(/\s+/).filter(Boolean);
-  let parts = [...descriptors];
+  // Characters lead (the model weighs the start of the prompt most), then what is happening.
+  const build = (f, ds, s) => [ds.join(' and '), f, s, STYLE_SUFFIX].filter(Boolean).join(', ');
+  const words = focus.split(/\s+/).filter(Boolean).slice(0, MAX_SCENE_WORDS);
+  const parts = [...descriptors];
   let place = setting;
   const text = () => build(words.join(' ').replace(/[\s,;:.!?-]+$/, ''), parts, place);
   // Trim in order of importance: setting first, then extra characters, then the scene sentence.
   if (estimatePromptTokens(text()) > MAX_PROMPT_TOKENS) place = '';
   while (estimatePromptTokens(text()) > MAX_PROMPT_TOKENS && parts.length > 2) parts.pop();
-  while (estimatePromptTokens(text()) > MAX_PROMPT_TOKENS && words.length > 8) words.pop();
+  while (estimatePromptTokens(text()) > MAX_PROMPT_TOKENS && words.length > 6) words.pop();
   return text();
 }
 
