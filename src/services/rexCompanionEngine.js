@@ -12,6 +12,7 @@ import { geminiLiveService } from "./geminiLiveService.js";
 import { speakCompanion, unlockVoiceAudio, isRexSpeaking } from "./voiceService.js";
 import { triggerInteractiveCelebration } from "../components/InteractiveCelebrationOverlay.js";
 import { talkToRexAGY } from "./heroAgentService.js";
+import { guardReplyText, householdAvoidTopics, logServerSafetyEvents } from "./companionSafety.js";
 
 let functions = existingFunctions;
 if (!functions) {
@@ -475,6 +476,7 @@ class RexVoiceEngine {
     const activePetId = activePet?.id || "rex";
     const activeHero = store.getState().selectedHero;
     const heroName = activeHero?.name || "Little Hero";
+    const activePetName = store.getActivePet?.()?.shortName || store.getActivePet?.()?.name || "Rex";
 
     store.setLiveRexState({
       lastUserTranscript: message,
@@ -514,10 +516,15 @@ class RexVoiceEngine {
             message,
             petId: activePetId,
             speedMode: 'smart',
-            childName: heroName
+            childName: heroName,
+            avoidTopics: householdAvoidTopics()
           });
-          const fnData = fnRes?.data;
+          const fnData = fnRes?.data ? { ...fnRes.data } : fnRes?.data;
           if (fnData?.reply) {
+            logServerSafetyEvents(fnData.safetyEvents, activeHero?.id);
+            const safeFn = guardReplyText(fnData.reply, { petName: activePetName, childName: heroName, heroId: activeHero?.id });
+            if (safeFn.blocked) delete fnData.awardedHabit;
+            fnData.reply = safeFn.text;
             store.setLiveRexState({ lastRexTranscript: fnData.reply }, true);
             if (fnData.awardedHabit) {
               const res = store.claimCompanionHabit(fnData.awardedHabit);

@@ -4,6 +4,9 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { GoogleGenAI } from "@google/genai";
 import { getApps, initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore, Timestamp } from "firebase-admin/firestore";
+import {
+  CHAT_SAFETY_SETTINGS, cleanTopics, companionSafetyRule, guardChildMessage, guardCompanionReply, safeCompanionLine,
+} from "./storyEngine/companionGuard";
 
 if (!getApps().length) {
   initializeApp();
@@ -19,6 +22,8 @@ export interface ChatWithPetData {
   ageTier?: string;
   clientHour?: number;
   timezoneOffsetMinutes?: number;
+  // The household's topics to avoid (from Story Controls). They can only add to the server's own list.
+  avoidTopics?: string[];
 }
 
 export const chatWithPet = onCall(
@@ -38,6 +43,7 @@ export const chatWithPet = onCall(
       ageTier = "toddler",
       clientHour,
       timezoneOffsetMinutes,
+      avoidTopics: clientAvoidTopics,
     } = (request.data || {}) as ChatWithPetData;
     if (!message || !message.trim()) {
       throw new HttpsError("invalid-argument", "Missing message.");
@@ -138,14 +144,15 @@ export const chatWithPet = onCall(
       return { reply: `*Yawn...* ${pet.name} is fast asleep in the ${pet.restingPlace} for the night! See you in the morning, ${childName}!` };
     }
 
-    // GUARDRAIL C: Restricted Topics / Topic Moderation Check
-    const lowerMessage = (message || "").toLowerCase();
-    const hitRestricted = (parentRules.restrictedTopics || []).find((topic) =>
-      topic && topic.trim() && lowerMessage.includes(topic.trim().toLowerCase())
-    );
-    if (hitRestricted) {
+    // GUARDRAIL C: Restricted topics (the server's own list plus the household's list from the app)
+    // and instruction-looking text. A blocked message is redirected kindly and never sent to the model.
+    const avoidTopics = cleanTopics(parentRules.restrictedTopics, clientAvoidTopics);
+    const messageCheck = guardChildMessage(message || "", { avoidTopics });
+    if (!messageCheck.ok) {
       return {
-        reply: `*Wiggle ears!* ${pet.name} wants to focus on super fun hero habits! Tell me how you're helping out today, ${childName}!`
+        reply: `*Wiggle ears!* ${pet.name} wants to focus on super fun hero habits! Tell me how you're helping out today, ${childName}!`,
+        petName: pet.name,
+        safetyEvents: [{ kind: "chat-message-blocked", reason: messageCheck.reason }],
       };
     }
 
@@ -190,7 +197,8 @@ You are ${pet.name}, a ${pet.personality} talking to ${childName} (ages 5–8).
 - Core Mission: Help ${childName} build positive daily habits, maintain their streak, and earn Gold Points ⭐. Keep sentences under 25 words.
 `;
 
-    let injectedSystemInstruction = isToddler ? REX_TODDLER_PROMPT : REX_KID_PROMPT;
+    let injectedSystemInstruction = (isToddler ? REX_TODDLER_PROMPT : REX_KID_PROMPT) +
+      `\n${companionSafetyRule({ avoidTopics })}`;
     if (parentRules.focusAreas && parentRules.focusAreas.length > 0) {
       injectedSystemInstruction += `\nPRIORITY FOCUS HABITS: ${parentRules.focusAreas.join(", ")}.`;
     }
@@ -232,10 +240,23 @@ You are ${pet.name}, a ${pet.personality} talking to ${childName} (ages 5–8).
         systemInstruction: injectedSystemInstruction,
         temperature: 0.7,
         maxOutputTokens: isToddler ? 60 : 100,
+        // Strictest filter level on all four categories.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        safetySettings: CHAT_SAFETY_SETTINGS as any,
       },
     });
 
-    const replyText = response.text || `*Happy cheer!* Great job, ${childName}! Let's play!`;
+    // Check the reply before a child sees or hears it. A failed reply is replaced by a kind fixed line and
+    // reported (reason code only) so the app can show it in the parent's safety log.
+    const safetyEvents: Array<{ kind: string; reason: string }> = [];
+    const checked = guardCompanionReply(response.text, { avoidTopics });
+    let replyText: string;
+    if (checked.ok) {
+      replyText = checked.text;
+    } else {
+      replyText = safeCompanionLine({ petName: pet.name, childName, seed: Date.now() });
+      safetyEvents.push({ kind: "chat-reply-blocked", reason: checked.reason });
+    }
 
     // 6. Save conversation turn to Firestore asynchronously
     try {
@@ -258,7 +279,7 @@ You are ${pet.name}, a ${pet.personality} talking to ${childName} (ages 5–8).
       console.warn("Could not save chat history to Firestore:", saveErr);
     }
 
-    return { reply: replyText, petName: pet.name };
+    return { reply: replyText, petName: pet.name, safetyEvents };
   }
 );
 

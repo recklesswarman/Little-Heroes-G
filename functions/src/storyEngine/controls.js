@@ -15,7 +15,7 @@ export const PET_PRONOUN_CHOICES = ['they', 'it', 'she', 'he'];
 export const AVOID_MAX = 20;
 export const IDEAS_MAX = 10;
 export const SAFETY_LOG_MAX = 30;
-export const SAFETY_KINDS = ['wish-blocked', 'chapter-fallback', 'plan-fallback'];
+export const SAFETY_KINDS = ['wish-blocked', 'chapter-fallback', 'plan-fallback', 'chat-reply-blocked', 'chat-message-blocked'];
 
 const pick = (value, list, fallback) => (list.includes(value) ? value : fallback);
 const squash = (v, max) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, max).trim();

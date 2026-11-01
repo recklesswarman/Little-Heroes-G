@@ -18,7 +18,9 @@ const PRONOUN_LABELS = { they: 'they/them (no guessing)', she: 'she/her', he: 'h
 const KIND_LABELS = {
   'wish-blocked': 'A bedtime wish was not used',
   'chapter-fallback': 'A chapter used the offline backup text',
-  'plan-fallback': 'The story plan used the offline backup'
+  'plan-fallback': 'The story plan used the offline backup',
+  'chat-reply-blocked': 'A pet chat reply was replaced with a safe line',
+  'chat-message-blocked': 'A chat message about a blocked topic was redirected'
 };
 
 const select = (heroId, field, value, options, labels) => `
