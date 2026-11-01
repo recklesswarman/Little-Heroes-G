@@ -309,7 +309,12 @@ class BedtimeStoryService {
 
     // Build comprehensive child context with anti-repetition memory & daytime accomplishments
     // The service builder (not store.buildChildStoryContext) carries the anti-repetition memory.
-    customWish = sanitizeWish(customWish);
+    const typedWish = typeof customWish === 'string' ? customWish.trim() : '';
+    customWish = sanitizeWish(customWish, { avoidTopics: store.getStoryControls().avoidTopics });
+    if (typedWish && !customWish) {
+      // The wish was filtered (or is against a topic the parent asked to avoid): tell the parent, never keep the text.
+      try { store.logStorySafetyEvent({ kind: 'wish-blocked', reason: 'wish-filtered', heroId }); } catch { /* best effort */ }
+    }
     const context = buildChildStoryContext(heroId, { realmId, moralId, customWish, ...options });
 
     const realm = getBedtimeRealm(realmId);
@@ -586,6 +591,8 @@ class BedtimeStoryService {
             petSpecies: petSpeciesFromName(session.childContext?.activePet?.name || petName),
             // How the child's chosen avatar looks (a fixed phrase for built-in avatars, '' for custom ones).
             heroLook: this.getHeroLook(session),
+            // Parent controls: reading level, tone, pronouns, topics to avoid, research on/off, own ideas.
+            ...store.getStoryRequestFields(session.heroId),
             realmId: realm.id,
             moralId: moral.id,
             customWish,
@@ -608,6 +615,9 @@ class BedtimeStoryService {
           const apiData = await res.json();
           if (apiData && apiData.storyBible && typeof apiData.storyBible === 'object') {
             session.storyBible = apiData.storyBible;
+          }
+          for (const event of Array.isArray(apiData?.safetyEvents) ? apiData.safetyEvents : []) {
+            try { store.logStorySafetyEvent({ ...event, heroId: session.heroId }); } catch { /* the log is best effort */ }
           }
           const chData = (Array.isArray(apiData.chapters) && apiData.chapters[actNumber - 1]) || apiData;
           if (chData && (chData.text || chData.chapterText)) {

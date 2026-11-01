@@ -238,7 +238,7 @@ app.post(["/api/rex/bedtime-story", "/api/gemini/bedtime-story"], async (req: Re
       if (generate && out.source === "procedural") {
         console.warn("Bedtime chapter used offline fallback:", out.issues);
       }
-      res.json({ ...envelope, ...out.chapter, storyBible: out.bible, generationSource: out.source, generationIssues: out.issues, ledgerCheck: out.ledgerCheck, researchUsed: out.researchUsed });
+      res.json({ ...envelope, ...out.chapter, storyBible: out.bible, generationSource: out.source, generationIssues: out.issues, ledgerCheck: out.ledgerCheck, researchUsed: out.researchUsed, safetyEvents: out.safetyEvents });
       return;
     }
 
@@ -251,6 +251,7 @@ app.post(["/api/rex/bedtime-story", "/api/gemini/bedtime-story"], async (req: Re
       generationSources: story.sources,
       ledgerCheck: story.ledgerCheck,
       researchUsed: story.researchUsed,
+      safetyEvents: story.safetyEvents,
       chapters: story.chapters
     });
   } catch (err) {

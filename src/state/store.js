@@ -37,6 +37,9 @@ import { DIGITAL_REWARDS_CATALOG } from '../data/digitalRewardsCatalog.js';
 import { THREE_D_ASSETS } from '../data/threeDAssetCatalog.js';
 import { DEFAULT_COMPANION_PHRASES } from '../data/companionPhrasesData.js';
 import { normalizeStoryMemory, mergeStoryMemory, commitStory } from '../../shared/storyEngine/memory.js';
+import {
+  normalizeStoryProfile, normalizeStoryControls, normalizeSafetyLog, appendSafetyEvent, mergeSafetyLogs, requestFromControls
+} from '../../shared/storyEngine/controls.js';
 
 export const KID_AVATARS = [
   { id: 'avatar_dragon', label: 'Dragon Explorer', url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZfP7_Cwlp4sz41asI8ymuapAKvjmqHtvI4zcMAF_XwUmibj8IheGrS5cA5QD5gmXgVxEkZM9FlWJPRZnct3x6-9SQB7zJKqkEDjJ3m95tAy3zRqS-PbmcQ4kv_9pmIfm2Py4mh3Fw083hkDookz1w4_r50SBA1jc9igDaAPFLYBFgSP2aQBz7Q4jVE-DwhMOyUEHlxDkQk6Gwc2EAFCSKs1c0QuhUOi3tkrk5MXRARKqZcYVzyJe6gA' },
@@ -436,6 +439,10 @@ const defaultState = {
     autoApproveHabits: false,
     dailyScreenTimeLimitMins: 45,
     biometricCredentialId: null,
+    // Story controls (household): topics to avoid, research on/off, the parent's own story ideas.
+    storyControls: { avoidTopics: [], researchEnabled: true, parentIdeas: [] },
+    // What the story filters did (reason codes only, newest first, capped).
+    storySafetyLog: [],
     companionPhrases: DEFAULT_COMPANION_PHRASES.map(p => ({ ...p }))
   },
 
@@ -711,6 +718,8 @@ class Store {
             if (!h.screenTimeLockMessage) h.screenTimeLockMessage = 'Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙';
             // Per-child story memory (plot ledger + friends met). Always reconciled, never behind a one-time flag.
             h.storyMemory = normalizeStoryMemory(h.storyMemory);
+            // Per-child story profile (reading level, tone, pronouns). Always reconciled.
+            h.storyProfile = normalizeStoryProfile(h.storyProfile);
           });
         }
 
@@ -740,6 +749,7 @@ class Store {
           if (parsed.selectedHero.isScreenTimePaused === undefined) parsed.selectedHero.isScreenTimePaused = false;
           if (!parsed.selectedHero.screenTimeLockMessage) parsed.selectedHero.screenTimeLockMessage = 'Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙';
           parsed.selectedHero.storyMemory = normalizeStoryMemory(parsed.selectedHero.storyMemory);
+          parsed.selectedHero.storyProfile = normalizeStoryProfile(parsed.selectedHero.storyProfile);
         }
 
         // Never restore to parent_portal while locked on reload
@@ -1066,6 +1076,8 @@ class Store {
             : DEFAULT_COMPANION_PHRASES.map(p => ({ ...p }));
         }
         delete parsed.companionPhrases;
+        parsed.parentSettings.storyControls = normalizeStoryControls(parsed.parentSettings.storyControls);
+        parsed.parentSettings.storySafetyLog = normalizeSafetyLog(parsed.parentSettings.storySafetyLog);
 
         const loaded = { ...defaultState, ...parsed };
         this.state = loaded;
@@ -1139,6 +1151,7 @@ class Store {
       petSparkMap: sHero.petSparkMap ? { ...sHero.petSparkMap } : (idx !== -1 ? this.state.heroes[idx].petSparkMap : undefined),
       // Story memory is per child: flush this child's copy into their own record (union, never overwrite).
       storyMemory: mergeStoryMemory(idx !== -1 ? this.state.heroes[idx].storyMemory : undefined, sHero.storyMemory),
+      storyProfile: normalizeStoryProfile(sHero.storyProfile ?? (idx !== -1 ? this.state.heroes[idx].storyProfile : undefined)),
       lastUpdated: Date.now()
     };
 
@@ -6135,6 +6148,7 @@ class Store {
       this.state.selectedHero.petStatsMap = hero.petStatsMap ? { ...hero.petStatsMap } : undefined;
       this.state.selectedHero.petSanctuary = hero.petSanctuary ? { ...hero.petSanctuary } : undefined;
       this.state.selectedHero.storyMemory = normalizeStoryMemory(hero.storyMemory);
+      this.state.selectedHero.storyProfile = normalizeStoryProfile(hero.storyProfile);
 
       this.state.selectedHero.inventory = Array.isArray(hero.inventory) ? [...hero.inventory] : [];
       this.state.selectedHero.consumables = Array.isArray(hero.consumables) ? [...hero.consumables] : { ...(hero.consumables || {}) };
@@ -7175,6 +7189,8 @@ class Store {
           evolutionSparks: resolve('evolutionSparks', num(cloudH.evolutionSparks), preferLocalRewards ? (localH.evolutionSparks ?? localH.sparks ?? 0) : (cloudH.evolutionSparks !== undefined ? Number(cloudH.evolutionSparks) : (localH?.evolutionSparks ?? 0))),
           petSparkMap: { ...(localH?.petSparkMap || {}), ...(cloudH.petSparkMap || {}) },
           storyMemory: mergeStoryMemory(localH?.storyMemory, cloudH.storyMemory),
+          // Settings, not history: the cloud copy wins when it has one, otherwise keep this device's.
+          storyProfile: normalizeStoryProfile(cloudH.storyProfile ?? localH?.storyProfile),
           unlockedPetIds,
           habitatSlots: Math.max(cloudH.habitatSlots || 1, localH?.habitatSlots || 1, unlockedPetIds.length || 1),
           hasChosenStarterPet: cloudH.hasChosenStarterPet ?? (unlockedPetIds.length > 0),
@@ -7512,7 +7528,11 @@ class Store {
       };
     }
     if (cloudData.parentSettings) {
+      const localLog = this.state.parentSettings?.storySafetyLog;
       this.state.parentSettings = { ...this.state.parentSettings, ...cloudData.parentSettings };
+      this.state.parentSettings.storyControls = normalizeStoryControls(this.state.parentSettings.storyControls);
+      // The safety log is history: two devices' events are unioned, never overwritten.
+      this.state.parentSettings.storySafetyLog = mergeSafetyLogs(localLog, cloudData.parentSettings.storySafetyLog);
     }
     if (cloudData.profileThemes && Array.isArray(cloudData.profileThemes)) {
       this.state.profileThemes = cloudData.profileThemes;
@@ -9627,6 +9647,59 @@ class Store {
 
     this.saveState(true);
     return newStory;
+  }
+
+  /** This child's story profile (reading level, tone, pronouns), always valid. */
+  getStoryProfile(heroId = null) {
+    const id = heroId || this.state.selectedHero?.id;
+    const sel = this.state.selectedHero;
+    const hero = sel && sel.id === id ? sel : (this.state.heroes || []).find((h) => h.id === id);
+    return normalizeStoryProfile(hero?.storyProfile);
+  }
+
+  /** Change one child's story profile. Written to the selected child and their heroes[] record. */
+  setStoryProfile(heroId, patch = {}) {
+    const sel = this.state.selectedHero;
+    const inArray = (this.state.heroes || []).find((h) => h.id === heroId);
+    const target = sel && sel.id === heroId ? sel : inArray;
+    if (!target) return null;
+    const next = normalizeStoryProfile({ ...normalizeStoryProfile(target.storyProfile), ...(patch && typeof patch === 'object' ? patch : {}) });
+    target.storyProfile = next;
+    if (inArray && inArray !== target) inArray.storyProfile = { ...next };
+    if (inArray && inArray === target && sel && sel.id === heroId) sel.storyProfile = { ...next };
+    this.saveState(true);
+    return next;
+  }
+
+  getStoryControls() {
+    return normalizeStoryControls(this.state.parentSettings?.storyControls);
+  }
+
+  updateStoryControls(patch = {}) {
+    const next = normalizeStoryControls({ ...this.getStoryControls(), ...(patch && typeof patch === 'object' ? patch : {}) });
+    this.updateParentSettings({ storyControls: next });
+    return next;
+  }
+
+  getStorySafetyLog() {
+    return normalizeSafetyLog(this.state.parentSettings?.storySafetyLog);
+  }
+
+  /** Record what a story filter did (reason codes only). Quietly ignores unknown event kinds. */
+  logStorySafetyEvent(event) {
+    const log = appendSafetyEvent(this.state.parentSettings?.storySafetyLog, event);
+    this.state.parentSettings = { ...this.state.parentSettings, storySafetyLog: log };
+    this.saveState(true);
+    return log;
+  }
+
+  clearStorySafetyLog() {
+    this.updateParentSettings({ storySafetyLog: [] });
+  }
+
+  /** The parent-controlled fields a child's story request carries. */
+  getStoryRequestFields(heroId = null) {
+    return requestFromControls(this.getStoryProfile(heroId), this.getStoryControls());
   }
 
   /** This child's story memory (plot ledger + friends met), always a valid bounded object. */

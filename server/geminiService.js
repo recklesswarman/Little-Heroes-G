@@ -588,7 +588,8 @@ export async function handleBedtimeStoryRequest(req, res) {
         generationSource: out.source,
         generationIssues: out.issues,
         ledgerCheck: out.ledgerCheck,
-        researchUsed: out.researchUsed
+        researchUsed: out.researchUsed,
+        safetyEvents: out.safetyEvents
       });
     }
 
@@ -601,6 +602,7 @@ export async function handleBedtimeStoryRequest(req, res) {
       generationSources: story.sources,
       ledgerCheck: story.ledgerCheck,
       researchUsed: story.researchUsed,
+      safetyEvents: story.safetyEvents,
       chapters: story.chapters
     });
   } catch (error) {

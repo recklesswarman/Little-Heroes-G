@@ -20,6 +20,7 @@ import {
   SEASONS_DATA
 } from '../data/worldMapData.js';
 import { PETS_DATABASE } from '../data/petsData.js';
+import { renderStoryControlsTab, bindStoryControlsTab } from './StoryControlsPanel.js';
 import { speakCompanion } from '../services/voiceService.js';
 
 let activeAdminTab = 'approvals'; // approvals, screentime, reports, kids, tasks, rewards, pricing, studio, analytics, settings
@@ -143,6 +144,7 @@ export function renderParentPortalView() {
     { id: 'pricing', label: 'Pricing Editor', icon: 'payments', count: 0 },
     { id: 'studio', label: '3D Studio & AI Crafting', icon: 'auto_awesome', count: 0 },
     { id: 'analytics', label: 'Analytics & Ledger', icon: 'monitoring', count: 0 },
+    { id: 'story', label: 'Story Controls', icon: 'auto_stories', count: 0 },
     { id: 'settings', label: 'Safety & Sliders', icon: 'tune', count: 0 }
   ];
 
@@ -3066,6 +3068,9 @@ export function renderParentPortalView() {
           : ''
       }
 
+      <!-- TAB: Story Controls (reading level, tone, pronouns, avoid-topics, research, own ideas, safety log) -->
+      ${activeAdminTab === 'story' ? renderStoryControlsTab() : ''}
+
       <!-- TAB 7: Sliders & Settings -->
       ${
         activeAdminTab === 'settings'
@@ -4415,6 +4420,8 @@ export function attachParentPortalListeners() {
   });
 
   preserveScrollBarPosition('admin-tab-bar');
+
+  if (activeAdminTab === 'story') bindStoryControlsTab();
 
   // APPROVALS TAB
   const clearAllPendingBtn = document.getElementById('admin-clear-all-pending-btn');
