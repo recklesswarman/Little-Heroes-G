@@ -5,7 +5,7 @@ import { GoogleGenAI } from "@google/genai";
 import { getApps, initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore, Timestamp } from "firebase-admin/firestore";
 import {
-  CHAT_SAFETY_SETTINGS, cleanTopics, companionSafetyRule, guardChildMessage, guardCompanionReply, safeCompanionLine,
+  CHAT_SAFETY_SETTINGS, TECHNICAL_REASONS, cleanTopics, companionSafetyRule, guardChildMessage, guardCompanionReply, safeCompanionLine,
 } from "./storyEngine/companionGuard";
 
 if (!getApps().length) {
@@ -233,18 +233,29 @@ You are ${pet.name}, a ${pet.personality} talking to ${childName} (ages 5–8).
     contents.push({ role: "user", parts: [{ text: promptContext }] });
 
     // 5. Query Gemini with configured persona & token limit
-    const response = await ai.models.generateContent({
+    // The model's thinking tokens count against maxOutputTokens: with a budget of 60-100 tokens the reply used
+    // to come back empty or cut off mid-sentence. Thinking is switched off (plain retry if the model rejects
+    // that) and the limit leaves room for the 1-2 sentences the persona asks for.
+    const callModel = (withoutThinking: boolean) => ai.models.generateContent({
       model: "gemini-3.8-flash",
       contents,
       config: {
         systemInstruction: injectedSystemInstruction,
         temperature: 0.7,
-        maxOutputTokens: isToddler ? 60 : 100,
+        maxOutputTokens: isToddler ? 150 : 250,
+        ...(withoutThinking ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
         // Strictest filter level on all four categories.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         safetySettings: CHAT_SAFETY_SETTINGS as any,
       },
     });
+    let response;
+    try {
+      response = await callModel(true);
+    } catch (thinkingErr) {
+      console.warn("Chat model rejected the no-thinking setting; retrying with plain options:", thinkingErr);
+      response = await callModel(false);
+    }
 
     // Check the reply before a child sees or hears it. A failed reply is replaced by a kind fixed line and
     // reported (reason code only) so the app can show it in the parent's safety log.
@@ -255,7 +266,10 @@ You are ${pet.name}, a ${pet.personality} talking to ${childName} (ages 5–8).
       replyText = checked.text;
     } else {
       replyText = safeCompanionLine({ petName: pet.name, childName, seed: Date.now() });
-      safetyEvents.push({ kind: "chat-reply-blocked", reason: checked.reason });
+      // An empty or cut-off reply is a technical failure, not a safety finding: no entry in the parent's log.
+      if (!TECHNICAL_REASONS.includes(checked.reason)) {
+        safetyEvents.push({ kind: "chat-reply-blocked", reason: checked.reason });
+      }
     }
 
     // 6. Save conversation turn to Firestore asynchronously

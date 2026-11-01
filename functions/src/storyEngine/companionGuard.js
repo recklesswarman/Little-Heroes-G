@@ -9,6 +9,13 @@ import { cleanTopic, cleanReason } from './controls.js';
 
 export const CHAT_REPLY_MAX = 600;
 export const CHAT_TOPICS_MAX = 20;
+export const CHAT_MIN_WORDS = 3;
+
+// Technical failures (an empty or cut-off model reply), not safety findings: the child still gets the
+// kind fixed line, but these are not reported to the parent's safety log.
+export const TECHNICAL_REASONS = ['empty', 'too-short'];
+// A finished reply ends a sentence (optionally followed by quotes, asterisks, brackets or an emoji).
+const SENTENCE_END_RE = /([.!?\u2026][\s"'\u201d\u2019)*\]\uFE0F\p{Extended_Pictographic}]*|\p{Extended_Pictographic}\uFE0F?)$/u;
 
 // Strictest filter level on all four categories (the Gemini API setting for chat).
 export const CHAT_SAFETY_SETTINGS = [
@@ -65,6 +72,8 @@ export function guardCompanionReply(text, { avoidTopics = [] } = {}) {
   if (!safety.ok) return { ok: false, reason: cleanReason(safety.issues[0]), text: '' };
   if (LINK_RE.test(body)) return { ok: false, reason: 'link', text: '' };
   if (INSTRUCTION_RE.test(body)) return { ok: false, reason: 'instruction-text', text: '' };
+  // Last, so a real safety finding is always reported as such. A cut-off reply (too few words, or no sentence ending) would reach a child as a fragment.
+  if (body.split(' ').length < CHAT_MIN_WORDS || !SENTENCE_END_RE.test(body)) return { ok: false, reason: 'too-short', text: '' };
   if (body.length > CHAT_REPLY_MAX) {
     const cut = body.slice(0, CHAT_REPLY_MAX);
     const end = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '));

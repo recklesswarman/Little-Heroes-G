@@ -1,4 +1,4 @@
-const CACHE_NAME = 'little-heroes-v3.12.0-companion-safety-20261101';
+const CACHE_NAME = 'little-heroes-v3.12.1-chat-replies-20261101';
 const STATIC_ASSETS = [
   './',
   './index.html',

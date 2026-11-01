@@ -2,7 +2,7 @@ import './setup_mock_env.js';
 import assert from 'node:assert';
 import { readFileSync } from 'node:fs';
 import {
-  guardChildMessage, guardCompanionReply, safeCompanionLine, companionSafetyRule, cleanTopics, CHAT_SAFETY_SETTINGS, CHAT_REPLY_MAX
+  guardChildMessage, guardCompanionReply, safeCompanionLine, companionSafetyRule, cleanTopics, CHAT_SAFETY_SETTINGS, CHAT_REPLY_MAX, TECHNICAL_REASONS
 } from '../shared/storyEngine/companionGuard.js';
 import { SAFETY_KINDS } from '../shared/storyEngine/controls.js';
 
@@ -28,13 +28,17 @@ await check('replies: good ones pass tidied; blocked words, avoid-topics, links,
   const cases = [
     ['The big monster was scary', 'blocked-term'], ['Spiders are fun!', 'avoid-topic'], ['Go to www.example.com now', 'link'],
     ['Email me at kid@example.com', 'link'], ['Call 555-123-4567', 'link'], ['As an AI language model I cannot', 'instruction-text'],
-    ['', 'empty'], ['   ', 'empty'], [undefined, 'empty'], [42, 'empty']
+    ['', 'empty'], ['   ', 'empty'], [undefined, 'empty'], [42, 'empty'],
+    ['*Happy', 'too-short'], ['*).', 'too-short'], [': Zoe (', 'too-short'], ['Dino Giggle!', 'too-short'], ['Rex loves to play with', 'too-short']
   ];
   for (const [text, reason] of cases) {
     const r = guardCompanionReply(text, { avoidTopics: ['spiders'] });
     assert.deepStrictEqual([r.ok, r.reason, r.text], [false, reason, ''], String(text));
   }
-  assert.ok(!JSON.stringify(guardCompanionReply('A zombie!')).includes('zombie'), 'the blocked word is never echoed');
+  assert.ok(!JSON.stringify(guardCompanionReply('A zombie came by.')).includes('zombie'), 'the blocked word is never echoed');
+  assert.strictEqual(guardCompanionReply('Rawr! Good job Zoe 🦖').ok, true, 'an emoji can end a reply');
+  assert.strictEqual(guardCompanionReply('A zombie!').reason, 'blocked-term', 'a safety finding is reported as one even when the reply is short');
+  assert.ok(TECHNICAL_REASONS.includes('empty') && TECHNICAL_REASONS.includes('too-short') && !TECHNICAL_REASONS.includes('blocked-term'));
 });
 await check('a very long reply is cut at a sentence, not blocked', () => {
   const long = `${'Rex loves brushing teeth every single day. '.repeat(40)}`;
@@ -79,6 +83,16 @@ let fetchCalls;
 const json = (body) => ({ ok: true, status: 200, headers: { get: () => 'application/json' }, json: async () => body });
 function mockAgy(body) { fetchCalls = []; globalThis.fetch = async (url) => { fetchCalls.push(String(url)); return json(body); }; }
 
+await check('a cut-off or empty reply gets the fixed line but is not reported to the parent as a safety event', () => {
+  store.state.parentSettings = { ...store.state.parentSettings, storySafetyLog: [] };
+  for (const cut of ['*Happy', '', 'sound effects like']) {
+    const r = safety.guardReplyText(cut, ctx);
+    assert.ok(r.blocked && /Zoe/.test(r.text));
+  }
+  assert.strictEqual(store.getStorySafetyLog().length, 0);
+  assert.strictEqual(safety.guardReplyText('The monster bites you.', ctx).blocked, true);
+  assert.strictEqual(store.getStorySafetyLog().length, 1);
+});
 await check('Rex chat: a message on a blocked topic never leaves the app; replies are checked on the way back', async () => {
   store.updateStoryControls({ avoidTopics: ['spiders'] });
   mockAgy({ reply: 'unused' });
@@ -100,7 +114,7 @@ await check('battle coach and quest guide text is checked too', async () => {
 });
 await check('the pet chat Cloud Function: strictest filters, a message check, a reply check, only the safe reply is saved, events returned', () => {
   const src = readFileSync(new URL('../functions/src/petCompanion.ts', import.meta.url), 'utf8');
-  for (const needle of ['CHAT_SAFETY_SETTINGS as any', 'guardChildMessage(message', 'guardCompanionReply(response.text', 'companionSafetyRule({ avoidTopics })',
+  for (const needle of ['thinkingConfig: { thinkingBudget: 0 }', 'maxOutputTokens: isToddler ? 150 : 250', '!TECHNICAL_REASONS.includes(checked.reason)', 'CHAT_SAFETY_SETTINGS as any', 'guardChildMessage(message', 'guardCompanionReply(response.text', 'companionSafetyRule({ avoidTopics })',
     'cleanTopics(parentRules.restrictedTopics, clientAvoidTopics)', 'text: replyText', 'return { reply: replyText, petName: pet.name, safetyEvents }', 'chat-reply-blocked', 'chat-message-blocked']) {
     assert.ok(src.includes(needle), `missing: ${needle}`);
   }
