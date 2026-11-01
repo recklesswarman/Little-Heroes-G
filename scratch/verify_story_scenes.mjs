@@ -60,9 +60,15 @@ await check('looks are short, article-free and on-palette; hostile or blocked te
 await check('names become plain nouns, including possessives', () => {
   assert.strictEqual(
     genericizeNames("Zephyrina and Rex met Pip. Pip's map showed Rex the way.", { heroName: 'Zephyrina', petName: 'Rex', petNoun: 't-rex', friendNames: ['Pip'] }),
-    'the toddler and the t-rex met a friend. a friend map showed the t-rex the way.'
+    "the toddler and the t-rex met a friend. a friend's map showed the t-rex the way."
   );
   assert.strictEqual(genericizeNames('Nobody here', { heroName: 'X' }), 'Nobody here');
+  // "Rex" inside "T-Rex" is not the pet's name, and a possessive stays a possessive
+  assert.strictEqual(
+    genericizeNames("The moss-green T-Rex stood. Rex's tail swished and Rex smiled.", { heroName: 'Zephyrina', petName: 'Rex', petNoun: 't-rex' }),
+    "The moss-green T-Rex stood. the t-rex's tail swished and the t-rex smiled."
+  );
+  assert.ok(!/purple|indigo|plum/i.test(scrubColors('rich indigo shadows and a plum cape')));
 });
 await check('two prompts per chapter: bounded, no names, hero look from the avatar, pet and friend looks, one seed per story', () => {
   const r = req({ heroLook: AVATAR_LOOKS.avatar_dragon });
@@ -76,6 +82,8 @@ await check('two prompts per chapter: bounded, no names, hero look from the avat
     assert.ok(!/pink|purple/i.test(s.prompt));
   }
   assert.notStrictEqual(plan.scenes[0].prompt, plan.scenes[1].prompt);
+  for (const s of plan.scenes) assert.ok(s.prompt.startsWith('a cheerful toddler in a green dragon-hood'), 'characters lead the prompt');
+  assert.ok(/watermark/.test(plan.negativePrompt) && /text/.test(plan.negativePrompt));
   assert.ok(/t-rex/i.test(plan.scenes[0].prompt));
   assert.ok(/owl/i.test(plan.scenes[1].prompt), 'the friend who is in scene 2 is described');
   assert.ok(Number.isInteger(plan.seed) && plan.seed >= 0 && plan.seed < 2147483647);

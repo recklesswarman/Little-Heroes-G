@@ -22,7 +22,8 @@ jobs:
     timeout-minutes: 15
     env:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      SEED_REPORT_FILE: ${{ runner.temp }}/seed-report.md
+      # Fixed path: the `runner` context is not available in job-level env (that made GitHub reject this file).
+      SEED_REPORT_FILE: /tmp/seed-report.md
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
