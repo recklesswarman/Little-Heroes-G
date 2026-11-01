@@ -12,7 +12,7 @@ import { writeChapter } from './writer.js';
 import { formatChapter } from './formatter.js';
 import {
   REPEAT_THRESHOLD, buildAvoidList, cleanLedgerDigest, cleanRecurring,
-  closestMatch, findNearDuplicate, fingerprintFromBible
+  buildRecentTypes, closestMatch, findNearDuplicate, fingerprintFromBible
 } from './ledger.js';
 
 const MAX_PLAN_ATTEMPTS = 3;
@@ -68,6 +68,10 @@ function checkAgainstLedger(bible, ledger) {
   return { closestScore: round2(best.score), repeated: best.score >= REPEAT_THRESHOLD };
 }
 
+// `planned`: the model's plan was used (false = the offline plan was). `typed`: it carried valid
+// theme labels, which the ledger needs to see repeated themes.
+const typedOf = (bible) => !!(bible?.plotDNA?.problemType && bible?.plotDNA?.twistType);
+
 /**
  * Plan the story. If the plot is too close to one the child already had, plan again with the
  * colliding ideas on an avoid list (up to MAX_PLAN_ATTEMPTS). If every attempt collides, keep the
@@ -78,10 +82,11 @@ export async function planBible({ generate, request, recentTitles = [], recentAr
   const ledger = request.ledgerDigest || [];
   if (!generate) {
     const bible = fallbackBible(request);
-    return { bible, planned: false, ledgerCheck: { attempts: 0, ...checkAgainstLedger(bible, ledger) } };
+    return { bible, planned: false, ledgerCheck: { attempts: 0, planned: false, typed: typedOf(bible), ...checkAgainstLedger(bible, ledger) } };
   }
 
   let avoid = buildAvoidList(ledger);
+  let recentTypes = buildRecentTypes(ledger);
   let best = null;
   let attempts = 0;
   while (attempts < MAX_PLAN_ATTEMPTS) {
@@ -89,7 +94,7 @@ export async function planBible({ generate, request, recentTitles = [], recentAr
     let bible = null;
     try {
       const text = await generate(
-        buildBiblePrompt(request, { recentTitles, recentArchetypes, research, avoid }),
+        buildBiblePrompt(request, { recentTitles, recentArchetypes, research, avoid, recentTypes }),
         { json: true, temperature: 0.9, maxOutputTokens: 3000 }
       );
       const raw = parseJsonLoose(text);
@@ -105,21 +110,25 @@ export async function planBible({ generate, request, recentTitles = [], recentAr
     const score = match ? match.score : closestMatch(entry, ledger).score;
     if (!best || score < best.score) best = { bible, score };
     if (!match) {
-      return { bible, planned: true, ledgerCheck: { attempts, closestScore: round2(score), repeated: false } };
+      return { bible, planned: true, ledgerCheck: { attempts, planned: true, typed: typedOf(bible), closestScore: round2(score), repeated: false } };
     }
     avoid = [...avoid, [entry.fp.conflict, entry.fp.twist, entry.fp.centralObject].filter(Boolean).join(' / ')];
+    recentTypes = {
+      problemTypes: [...new Set([entry.pt, ...recentTypes.problemTypes].filter(Boolean))],
+      twistTypes: [...new Set([entry.tt, ...recentTypes.twistTypes].filter(Boolean))]
+    };
   }
 
   if (best) {
     return {
       bible: best.bible,
       planned: true,
-      ledgerCheck: { attempts, closestScore: round2(best.score), repeated: best.score >= REPEAT_THRESHOLD }
+      ledgerCheck: { attempts, planned: true, typed: typedOf(best.bible), closestScore: round2(best.score), repeated: best.score >= REPEAT_THRESHOLD }
     };
   }
   console.warn('Story bible planning produced no usable plan, using deterministic bible');
   const bible = fallbackBible(request);
-  return { bible, planned: false, ledgerCheck: { attempts, ...checkAgainstLedger(bible, ledger) } };
+  return { bible, planned: false, ledgerCheck: { attempts, planned: false, typed: typedOf(bible), ...checkAgainstLedger(bible, ledger) } };
 }
 
 /**
