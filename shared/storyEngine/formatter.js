@@ -2,6 +2,8 @@
 // (chapterText/text/whisperLine/... plus sceneDescriptor) and adds `blocks` for rich rendering.
 // Blocks carry plain text only -- the view must still escape them when rendering.
 
+import { buildScenePlan } from './scenes.js';
+
 const MOODS = ['tranquil', 'mystical', 'gentle', 'deep_slumber'];
 const TIME_OF_NIGHT = ['twilight_arrival', 'starlit_journey', 'starlit_journey', 'deep_slumber_sanctuary'];
 const CAMERA = ['orbit_pan', 'follow_walk', 'follow_walk', 'crane_descend_nest'];
@@ -94,6 +96,8 @@ export function formatChapter({ chapter, bible, request, chapterIndex, source })
     sceneMood: MOODS.includes(chapter.sceneMood) ? chapter.sceneMood : (chapter.sceneMood || MOODS[idx]),
     sceneDescriptor: chapter.sceneDescriptor || buildSceneDescriptor(idx, request, chapter),
     blocks: splitIntoBlocks(text, { sleepyCue, whisperLine, isLast }),
+    // Two ready-to-use picture prompts (first and second half of the chapter) with one seed per story.
+    scenePlan: buildScenePlan({ chapterText: text, bible, request, chapterIndex: idx }),
     prompt: closing,
     promptQuestion: closing,
     defaultChips: [],

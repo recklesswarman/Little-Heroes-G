@@ -15,6 +15,7 @@ import {
   buildRecentTypes, closestMatch, findNearDuplicate, fingerprintFromBible
 } from './ledger.js';
 import { CLEAN_SEED_POOL, pickSeeds } from './seeds.js';
+import { compressLook } from './scenes.js';
 
 const MAX_PLAN_ATTEMPTS = 3;
 const round2 = (n) => Math.round(n * 100) / 100;
@@ -41,6 +42,9 @@ export function buildRequest(body = {}, { realm, moral } = {}) {
     petName: body.petName ? cleanName(body.petName, '', 30) : '',
     // Species of the companion (e.g. "T-Rex", "Dragon"): lets the story describe the pet correctly.
     petSpecies: body.petSpecies ? cleanName(body.petSpecies, '', 30) : '',
+    // How the child's chosen avatar looks, in a few words (from a fixed table in the app). Used only
+    // for the pictures; never a photo and never the child's name.
+    heroLook: compressLook(body.heroLook),
     // Never guessed from the child's name. Neutral unless a parent chose otherwise.
     pronouns: PRONOUNS.includes(body.pronouns) ? body.pronouns : 'they',
     realm: realm || null,

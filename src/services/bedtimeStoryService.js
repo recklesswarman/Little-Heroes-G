@@ -7,7 +7,7 @@
  * parent prompt customizer, anti-repetition guarantee, and non-blocking bedtime rewards.
  */
 
-import { store } from '../state/store.js';
+import { store, KID_AVATARS } from '../state/store.js';
 import { firebaseAI } from './firebaseAILogicService.js';
 import { speakCompanion, stopCompanionAudio } from './voiceService.js';
 import { Sound } from '../audio/sfx.js';
@@ -26,6 +26,8 @@ import { bedtimeIllustrationService } from './bedtimeIllustrationService.js';
 import { sanitizeWish } from '../../shared/storyEngine/safety.js';
 import { petSpeciesFromName } from '../../shared/storyEngine/engine.js';
 import { memoryForRequest } from '../../shared/storyEngine/memory.js';
+import { lookForAvatarId } from '../../shared/storyEngine/avatarLook.js';
+import { scenePromptFromPlan } from '../../shared/storyEngine/scenes.js';
 
 /**
  * Resolves which pet's voice should narrate bedtime stories: a parent-chosen
@@ -582,6 +584,8 @@ class BedtimeStoryService {
             // Short name ("Rex") reads naturally in prose; the species ("T-Rex") keeps the pet accurate.
             petName: session.childContext?.activePet?.shortName || petName,
             petSpecies: petSpeciesFromName(session.childContext?.activePet?.name || petName),
+            // How the child's chosen avatar looks (a fixed phrase for built-in avatars, '' for custom ones).
+            heroLook: this.getHeroLook(session),
             realmId: realm.id,
             moralId: moral.id,
             customWish,
@@ -633,7 +637,8 @@ class BedtimeStoryService {
               isSleepingEnd: actNumber === 4 || chData.isSleepingEnd,
               archetypeId: chData.archetypeId,
               summary: chData.summary || '',
-              blocks: Array.isArray(chData.blocks) ? chData.blocks : undefined
+              blocks: Array.isArray(chData.blocks) ? chData.blocks : undefined,
+              scenePlan: chData.scenePlan && typeof chData.scenePlan === 'object' ? chData.scenePlan : undefined
             };
           }
         }
@@ -781,31 +786,7 @@ Return ONLY raw JSON with these exact keys (no markdown code blocks, just raw JS
 
     // Attach 3D Pixar / Claymation illustration from Cloudflare Workers AI (Dual-Scene: Scene A Journey + Scene B Climax)
     if (generatedAct) {
-      try {
-        const illResult = await bedtimeIllustrationService.generateChapterIllustration({
-          sessionId: session?.id,
-          chapterIndex: actNumber - 1,
-          chapterNumber: actNumber,
-          chapterTitle: generatedAct.title,
-          chapterText: generatedAct.chapterText || generatedAct.text,
-          seed: Math.floor(Math.random() * 2147483647),
-          realmId: realm.id,
-          realmName: realm.name,
-          heroName,
-          petName,
-          petArchetype: session?.childContext?.activePet?.archetype || 'dino',
-          magicItem: session?.childContext?.gearAndChoices?.magicItem || 'Starlight Lantern',
-          sceneType: 'scene_a'
-        });
-        if (illResult && illResult.imageUrl) {
-          generatedAct.imageUrl = illResult.imageUrl;
-          generatedAct.activeScene = 'scene_a';
-        }
-      } catch (illErr) {
-        console.warn('Illustration attachment notice:', illErr.message);
-      }
-
-      // Concurrently fetch Scene B (Climax/Wonder) from lower portion of chapter
+      // Both pictures of the chapter start as soon as its text exists (scene B does not wait for scene A).
       bedtimeIllustrationService.generateChapterIllustration({
         sessionId: session?.id,
         chapterIndex: actNumber - 1,
@@ -819,7 +800,8 @@ Return ONLY raw JSON with these exact keys (no markdown code blocks, just raw JS
         petName,
         petArchetype: session?.childContext?.activePet?.archetype || 'dino',
         magicItem: session?.childContext?.gearAndChoices?.magicItem || 'Starlight Lantern',
-        sceneType: 'scene_b'
+        sceneType: 'scene_b',
+        ...this.scenePlanArgs(generatedAct, 'scene_b')
       }).then((illB) => {
         if (illB && illB.imageUrl) {
           generatedAct.imageUrlB = illB.imageUrl;
@@ -835,9 +817,51 @@ Return ONLY raw JSON with these exact keys (no markdown code blocks, just raw JS
           }
         }
       }).catch(() => {});
+
+      try {
+        const illResult = await bedtimeIllustrationService.generateChapterIllustration({
+          sessionId: session?.id,
+          chapterIndex: actNumber - 1,
+          chapterNumber: actNumber,
+          chapterTitle: generatedAct.title,
+          chapterText: generatedAct.chapterText || generatedAct.text,
+          seed: Math.floor(Math.random() * 2147483647),
+          realmId: realm.id,
+          realmName: realm.name,
+          heroName,
+          petName,
+          petArchetype: session?.childContext?.activePet?.archetype || 'dino',
+          magicItem: session?.childContext?.gearAndChoices?.magicItem || 'Starlight Lantern',
+          sceneType: 'scene_a',
+          ...this.scenePlanArgs(generatedAct, 'scene_a')
+        });
+        if (illResult && illResult.imageUrl) {
+          generatedAct.imageUrl = illResult.imageUrl;
+          generatedAct.activeScene = 'scene_a';
+        }
+      } catch (illErr) {
+        console.warn('Illustration attachment notice:', illErr.message);
+      }
     }
 
     return generatedAct;
+  }
+
+  /** Look phrase for the child's chosen built-in avatar ('' for a custom avatar or none). */
+  getHeroLook(session) {
+    try {
+      const hero = (store.state.heroes || []).find(h => h.id === session?.heroId) || store.state.selectedHero || {};
+      const avatar = KID_AVATARS.find(a => a.url === hero.avatar);
+      return avatar ? lookForAvatarId(avatar.id) : '';
+    } catch {
+      return '';
+    }
+  }
+
+  /** {prompt, seed} for one scene when the server planned the pictures; {} to use the built-in prompt. */
+  scenePlanArgs(act, sceneType) {
+    const planned = scenePromptFromPlan(act?.scenePlan, sceneType);
+    return planned ? { prompt: planned.prompt, ...(planned.seed !== undefined ? { seed: planned.seed } : {}) } : {};
   }
 
   createOfflineAct(actNumber, realm, moral, heroName, petName, customWish, previousChoice, antiRepetition = {}) {

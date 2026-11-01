@@ -947,7 +947,8 @@ export function setupBedtimeStoryListeners() {
               petName: session.petName,
               petArchetype: session?.childContext?.activePet?.archetype || 'dino',
               magicItem: session?.childContext?.gearAndChoices?.magicItem || 'Starlight Lantern',
-              sceneType: 'scene_b'
+              sceneType: 'scene_b',
+              ...bedtimeStoryService.scenePlanArgs(currentAct, 'scene_b')
             });
             if (res && res.imageUrl) {
               currentAct.imageUrlB = res.imageUrl;
