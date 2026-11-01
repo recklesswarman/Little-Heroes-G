@@ -1,0 +1,8 @@
+# Story seeds you write yourself, one per line, as:  kind|season|one plain sentence
+#   kind:   nature | folk | seasonal | shape
+#   season: winter | spring | summer | autumn | any
+# Example (remove the # to use it):
+# shape|any|A small helper keeps a big promise one tiny step at a time.
+# Rules: one sentence, at most 120 characters, no names, brands, quotes, numbers or web addresses,
+# and only the first word capitalized. Lines that break a rule are dropped. The weekly job adds them
+# to a pull request, so you can review them before they go live.
