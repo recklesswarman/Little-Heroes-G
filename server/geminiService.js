@@ -517,6 +517,40 @@ Guidelines:
  * Handle HTTP POST /api/rex/bedtime-story and /api/gemini/bedtime-story
  * Generates structured 3-chapter bedtime story with plot-coherent sceneDescriptor.
  */
+/**
+ * What to send when the story route itself failed: an offline chapter for the child who asked (their
+ * name, realm, moral and parent controls), never a canned story for someone else. Last resort is the
+ * full offline story with the child's cleaned name.
+ */
+export async function offlineBedtimeResponse(rawBody) {
+  const body = rawBody && typeof rawBody === 'object' ? rawBody : {};
+  const heroName = cleanName(body.heroName, 'Little Hero');
+  const petName = cleanName(body.petName, 'Rex');
+  const realm = getBedtimeRealm(body.realmId || 'space');
+  const moral = BEDTIME_MORALS.find(m => m.id === body.moralId) || BEDTIME_MORALS[0];
+  try {
+    const request = buildRequest(body, { realm, moral });
+    const asked = body.actNumber !== undefined ? Number(body.actNumber) - 1 : Number(body.chapterIndex);
+    const idx = Number.isInteger(asked) && asked >= 0 && asked <= 3 ? asked : 0;
+    const out = await generateBedtimeChapter({
+      generate: null,
+      request,
+      chapterIndex: idx,
+      bible: body.storyBible || null,
+      previousSummaries: body.previousChapters,
+      proceduralChapter: (i) => generateProceduralBedtimeStory(realm.id, moral.id, request.heroName, petName, request.customWish, i, request.userChoices)
+    });
+    return {
+      success: true, storyId: `story_${Date.now()}`, theme: moral.id, realm: realm.id, realmId: realm.id, realmName: realm.name,
+      moralId: moral.id, heroName: request.heroName, petName, seed: Date.now(),
+      ...out.chapter, storyBible: out.bible, generationSource: 'procedural', generationIssues: out.issues,
+      ledgerCheck: out.ledgerCheck, researchUsed: out.researchUsed, safetyEvents: out.safetyEvents
+    };
+  } catch {
+    return generateFullBedtimeStory(realm.id, moral.id, heroName, petName);
+  }
+}
+
 export async function handleBedtimeStoryRequest(req, res) {
   try {
     if (isRateLimited(`bedtime:${getRequestIp(req)}`, 20, 60_000)) {
@@ -607,7 +641,6 @@ export async function handleBedtimeStoryRequest(req, res) {
     });
   } catch (error) {
     console.error('Server Bedtime Story error:', error);
-    const fallback = generateFullBedtimeStory('space', 'brave_dark', 'Little Hero', 'Rex');
-    return res.json(fallback);
+    return res.json(await offlineBedtimeResponse(req.body));
   }
 }

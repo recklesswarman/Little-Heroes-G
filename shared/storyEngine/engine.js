@@ -5,7 +5,7 @@
 //   generate(prompt, { json, temperature, maxOutputTokens }) -> Promise<string>
 //   proceduralChapter(chapterIndex)                          -> chapter-shaped object (offline weaver)
 
-import { cleanName, cleanField, sanitizeWish } from './safety.js';
+import { cleanName, cleanField, sanitizeWish, matchesAvoidTopic } from './safety.js';
 import { parseJsonLoose } from './json.js';
 import { TONES, buildBiblePrompt, fallbackBible, normalizeBible } from './bible.js';
 import { writeChapter } from './writer.js';
@@ -69,6 +69,23 @@ export function buildRequest(body = {}, { realm, moral } = {}) {
     ledgerDigest: cleanLedgerDigest(body.ledgerDigest),
     recurringCharacters: cleanRecurring(body.recurringCharacters)
   };
+}
+
+/**
+ * An offline (weaver) chapter that respects the parent's topics to avoid: try other variants a few
+ * times; if one still mentions a topic, drop the sentences that do. The hero's name always stays in.
+ */
+export function offlineChapter(proceduralChapter, idx, request) {
+  const make = () => (proceduralChapter ? proceduralChapter(idx) : { chapterText: '' });
+  const topics = request.avoidTopics || [];
+  let chapter = make();
+  if (!topics.length) return chapter;
+  const textOf = (c) => String(c?.chapterText || c?.text || '');
+  for (let i = 0; i < 5 && matchesAvoidTopic(textOf(chapter), topics); i++) chapter = make();
+  if (!matchesAvoidTopic(textOf(chapter), topics)) return chapter;
+  let kept = textOf(chapter).split(/(?<=[.!?])\s+/).filter(s => !matchesAvoidTopic(s, topics)).join(' ').trim();
+  if (!kept.includes(request.heroName)) kept = `${request.heroName} rested quietly under the soft stars. ${kept}`.trim();
+  return { ...chapter, chapterText: kept, text: kept };
 }
 
 function cleanSummaries(list) {
@@ -205,7 +222,7 @@ export async function generateBedtimeChapter({
     const failure = result.issues;
     // Reason codes only (never the rejected text): what kind of check the chapter failed.
     safetyEvents.push({ kind: 'chapter-fallback', reason: cleanReason(Array.isArray(failure) ? failure[0] : failure) });
-    const fallback = proceduralChapter ? proceduralChapter(idx) : { chapterText: '' };
+    const fallback = offlineChapter(proceduralChapter, idx, request);
     return {
       bible,
       ledgerCheck,
@@ -218,7 +235,7 @@ export async function generateBedtimeChapter({
     };
   }
 
-  const offline = proceduralChapter ? proceduralChapter(idx) : { chapterText: '' };
+  const offline = offlineChapter(proceduralChapter, idx, request);
   return {
     bible,
     ledgerCheck,
