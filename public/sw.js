@@ -1,4 +1,4 @@
-const CACHE_NAME = 'little-heroes-v3.7.14-ledger-theme-labels-20261031';
+const CACHE_NAME = 'little-heroes-v3.8.0-story-memory-20261101';
 const STATIC_ASSETS = [
   './',
   './index.html',

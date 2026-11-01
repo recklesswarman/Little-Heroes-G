@@ -8,8 +8,12 @@
 import { cleanField } from './safety.js';
 import { slug } from './json.js';
 
-/** Max fingerprints a child keeps (client store) and max the server accepts per request. */
-export const LEDGER_MAX = 50;
+/**
+ * Max fingerprints a child keeps (client store) and max the server accepts per request. 30 is all a
+ * request ever carries; more would only cost space in the single 1 MiB Firestore household document
+ * (each child is stored about 5 times in it).
+ */
+export const LEDGER_MAX = 30;
 export const DIGEST_MAX = 40;
 export const FIELD_MAX = 40;
 

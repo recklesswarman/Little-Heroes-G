@@ -25,6 +25,7 @@ import { generateBedtimeChapterAGY } from './heroAgentService.js';
 import { bedtimeIllustrationService } from './bedtimeIllustrationService.js';
 import { sanitizeWish } from '../../shared/storyEngine/safety.js';
 import { petSpeciesFromName } from '../../shared/storyEngine/engine.js';
+import { memoryForRequest } from '../../shared/storyEngine/memory.js';
 
 /**
  * Resolves which pet's voice should narrate bedtime stories: a parent-chosen
@@ -592,7 +593,10 @@ class BedtimeStoryService {
             // Continuity: the server is stateless, so the cast/plot bible and a recap of the
             // earlier chapters travel with every request after the first.
             storyBible: session.storyBible || null,
-            previousChapters: (session.chapterSummaries || []).slice(0, actNumber - 1)
+            previousChapters: (session.chapterSummaries || []).slice(0, actNumber - 1),
+            // Only needed when the story is being planned (no plan yet): the plots this child has had
+            // (so a new one is different) and friends they have met (optional to bring back).
+            ...(session.storyBible ? {} : memoryForRequest(store.getStoryMemory(session.heroId)))
           })
         });
 

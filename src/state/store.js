@@ -36,6 +36,7 @@ import { BEDTIME_MORALS, CONSTELLATION_STICKERS } from '../data/bedtimeStoryData
 import { DIGITAL_REWARDS_CATALOG } from '../data/digitalRewardsCatalog.js';
 import { THREE_D_ASSETS } from '../data/threeDAssetCatalog.js';
 import { DEFAULT_COMPANION_PHRASES } from '../data/companionPhrasesData.js';
+import { normalizeStoryMemory, mergeStoryMemory, commitStory } from '../../shared/storyEngine/memory.js';
 
 export const KID_AVATARS = [
   { id: 'avatar_dragon', label: 'Dragon Explorer', url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZfP7_Cwlp4sz41asI8ymuapAKvjmqHtvI4zcMAF_XwUmibj8IheGrS5cA5QD5gmXgVxEkZM9FlWJPRZnct3x6-9SQB7zJKqkEDjJ3m95tAy3zRqS-PbmcQ4kv_9pmIfm2Py4mh3Fw083hkDookz1w4_r50SBA1jc9igDaAPFLYBFgSP2aQBz7Q4jVE-DwhMOyUEHlxDkQk6Gwc2EAFCSKs1c0QuhUOi3tkrk5MXRARKqZcYVzyJe6gA' },
@@ -708,6 +709,8 @@ class Store {
             if (h.screenTimeRate === undefined) h.screenTimeRate = 2;
             if (h.isScreenTimePaused === undefined) h.isScreenTimePaused = false;
             if (!h.screenTimeLockMessage) h.screenTimeLockMessage = 'Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙';
+            // Per-child story memory (plot ledger + friends met). Always reconciled, never behind a one-time flag.
+            h.storyMemory = normalizeStoryMemory(h.storyMemory);
           });
         }
 
@@ -736,6 +739,7 @@ class Store {
           if (parsed.selectedHero.screenTimeRate === undefined) parsed.selectedHero.screenTimeRate = 2;
           if (parsed.selectedHero.isScreenTimePaused === undefined) parsed.selectedHero.isScreenTimePaused = false;
           if (!parsed.selectedHero.screenTimeLockMessage) parsed.selectedHero.screenTimeLockMessage = 'Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙';
+          parsed.selectedHero.storyMemory = normalizeStoryMemory(parsed.selectedHero.storyMemory);
         }
 
         // Never restore to parent_portal while locked on reload
@@ -1133,6 +1137,8 @@ class Store {
       sparks: Math.max(0, Number(sHero.sparks) || 0),
       evolutionSparks: Math.max(0, Number(sHero.evolutionSparks ?? sHero.sparks) || 0),
       petSparkMap: sHero.petSparkMap ? { ...sHero.petSparkMap } : (idx !== -1 ? this.state.heroes[idx].petSparkMap : undefined),
+      // Story memory is per child: flush this child's copy into their own record (union, never overwrite).
+      storyMemory: mergeStoryMemory(idx !== -1 ? this.state.heroes[idx].storyMemory : undefined, sHero.storyMemory),
       lastUpdated: Date.now()
     };
 
@@ -6128,6 +6134,7 @@ class Store {
       this.state.selectedHero.petXpMap = hero.petXpMap ? { ...hero.petXpMap } : undefined;
       this.state.selectedHero.petStatsMap = hero.petStatsMap ? { ...hero.petStatsMap } : undefined;
       this.state.selectedHero.petSanctuary = hero.petSanctuary ? { ...hero.petSanctuary } : undefined;
+      this.state.selectedHero.storyMemory = normalizeStoryMemory(hero.storyMemory);
 
       this.state.selectedHero.inventory = Array.isArray(hero.inventory) ? [...hero.inventory] : [];
       this.state.selectedHero.consumables = Array.isArray(hero.consumables) ? [...hero.consumables] : { ...(hero.consumables || {}) };
@@ -7167,6 +7174,7 @@ class Store {
           sparks: resolve('sparks', num(cloudH.sparks), preferLocalRewards ? (localH.sparks ?? 0) : (cloudH.sparks !== undefined ? Number(cloudH.sparks) : (localH?.sparks ?? 0))),
           evolutionSparks: resolve('evolutionSparks', num(cloudH.evolutionSparks), preferLocalRewards ? (localH.evolutionSparks ?? localH.sparks ?? 0) : (cloudH.evolutionSparks !== undefined ? Number(cloudH.evolutionSparks) : (localH?.evolutionSparks ?? 0))),
           petSparkMap: { ...(localH?.petSparkMap || {}), ...(cloudH.petSparkMap || {}) },
+          storyMemory: mergeStoryMemory(localH?.storyMemory, cloudH.storyMemory),
           unlockedPetIds,
           habitatSlots: Math.max(cloudH.habitatSlots || 1, localH?.habitatSlots || 1, unlockedPetIds.length || 1),
           hasChosenStarterPet: cloudH.hasChosenStarterPet ?? (unlockedPetIds.length > 0),
@@ -9621,12 +9629,41 @@ class Store {
     return newStory;
   }
 
+  /** This child's story memory (plot ledger + friends met), always a valid bounded object. */
+  getStoryMemory(heroId = null) {
+    const id = heroId || this.state.selectedHero?.id;
+    const sel = this.state.selectedHero;
+    const hero = sel && sel.id === id ? sel : (this.state.heroes || []).find((h) => h.id === id);
+    return normalizeStoryMemory(hero?.storyMemory);
+  }
+
+  /**
+   * Record a finished story in this child's memory. Idempotent by story id (the app completes a
+   * story from two places), and written to the selected child and their heroes[] record so a
+   * sibling switch or a cloud merge cannot lose it. Does not save; callers save right after.
+   */
+  commitStoryMemory(heroId, storyData) {
+    if (!storyData) return null;
+    const sel = this.state.selectedHero;
+    const inArray = (this.state.heroes || []).find((h) => h.id === heroId);
+    const target = sel && sel.id === heroId ? sel : inArray;
+    if (!target) return null;
+    const next = commitStory(normalizeStoryMemory(target.storyMemory), storyData);
+    target.storyMemory = next;
+    if (inArray && inArray !== target) {
+      inArray.storyMemory = mergeStoryMemory(inArray.storyMemory, next);
+    }
+    return next;
+  }
+
   completeBedtimeStory(storyData) {
     const hero = this.state.selectedHero || (this.state.heroes && this.state.heroes[0]);
     const heroId = hero?.id || 'hero_1';
 
     // Always save/update the story in the bookshelf first so no story is ever lost,
     // even if today's sleep_on_time reward is already pending parent approval.
+    // Remember the plot first: memory must not depend on whether today's reward is pending approval.
+    this.commitStoryMemory(heroId, storyData);
     const savedStory = this.saveBedtimeStory(storyData, heroId);
 
     // Enforce the one completion payout at a time invariant:
