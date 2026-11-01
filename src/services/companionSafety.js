@@ -4,7 +4,7 @@
 // A blocked reply becomes a kind fixed line and a reason-code-only entry in the parent safety log.
 
 import { store } from '../state/store.js';
-import { guardChildMessage, guardCompanionReply, safeCompanionLine, cleanTopics } from '../../shared/storyEngine/companionGuard.js';
+import { guardChildMessage, guardCompanionReply, safeCompanionLine, cleanTopics, TECHNICAL_REASONS } from '../../shared/storyEngine/companionGuard.js';
 
 /** The household's topics to avoid (Story Controls). Never throws. */
 export function householdAvoidTopics() {
@@ -32,7 +32,7 @@ export function guardOutgoingMessage(message, { petName, childName, heroId } = {
 export function guardReplyText(text, { petName, childName, heroId } = {}) {
   const check = guardCompanionReply(text, { avoidTopics: householdAvoidTopics() });
   if (check.ok) return { text: check.text, blocked: false };
-  logEvent('chat-reply-blocked', check.reason, heroId);
+  if (!TECHNICAL_REASONS.includes(check.reason)) logEvent('chat-reply-blocked', check.reason, heroId);
   return { text: safeCompanionLine({ petName, childName, seed: Date.now() }), blocked: true };
 }
 
