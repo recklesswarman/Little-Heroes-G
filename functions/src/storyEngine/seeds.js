@@ -8,6 +8,7 @@
 import { cleanField } from './safety.js';
 import { tokenize } from './ledger.js';
 import { SEED_POOL } from './seedPool.js';
+import { REVIEWED_SEEDS } from './seedPoolReviewed.js';
 
 export const SEED_KINDS = ['nature', 'folk', 'seasonal', 'shape'];
 export const SEASONS = ['winter', 'spring', 'summer', 'autumn', 'any'];
@@ -57,7 +58,7 @@ export function cleanPool(pool) {
   return out;
 }
 
-export const CLEAN_SEED_POOL = cleanPool(SEED_POOL);
+export const CLEAN_SEED_POOL = cleanPool([...SEED_POOL, ...REVIEWED_SEEDS]);
 
 export function seasonOf(date = new Date()) {
   const m = (date instanceof Date ? date : new Date(date)).getUTCMonth();

@@ -14,8 +14,10 @@ export const DEFAULT_STORY_MODEL = 'gemini-3.7-flash';
 
 export function makeGeminiGenerate(ai, { model = DEFAULT_STORY_MODEL } = {}) {
   if (!ai) return null;
-  return async function generate(prompt, { json = false, temperature = 0.8, maxOutputTokens = 1400 } = {}) {
+  return async function generate(prompt, { json = false, temperature = 0.8, maxOutputTokens = 1400, grounded = false } = {}) {
     const base = { temperature, maxOutputTokens, safetySettings: SAFETY_SETTINGS };
+    // Google Search grounding (used only by the offline seed-refresh job, never while a child waits).
+    // The API does not allow JSON mode together with tools, so grounded replies are parsed from text.
     const call = async (config) => {
       const response = await ai.models.generateContent({
         model,
@@ -24,6 +26,7 @@ export function makeGeminiGenerate(ai, { model = DEFAULT_STORY_MODEL } = {}) {
       });
       return response.text || '';
     };
+    if (grounded) return call({ ...base, tools: [{ googleSearch: {} }] });
     try {
       return await call({
         ...base,

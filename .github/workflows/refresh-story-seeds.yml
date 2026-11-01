@@ -1,0 +1,63 @@
+name: Refresh story seeds
+
+# Weekly: gather a few new abstract story sparks and open a pull request for a person to review.
+# Never pushes to main. Needs the repository secret GEMINI_API_KEY and, under
+# Settings > Actions > General, "Allow GitHub Actions to create and approve pull requests".
+on:
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: refresh-story-seeds
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      SEED_REPORT_FILE: ${{ runner.temp }}/seed-report.md
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+      - run: npm ci
+      - name: Gather seeds
+        run: node scripts/refresh-story-seeds.mjs
+      - name: Check for changes
+        id: diff
+        run: |
+          if git diff --quiet; then echo "changed=false" >> "$GITHUB_OUTPUT"; else echo "changed=true" >> "$GITHUB_OUTPUT"; fi
+      # Pull requests opened with GITHUB_TOKEN do not start the CI workflow, so run the same checks here first.
+      - name: Test and build before opening the PR
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          npm test
+          npm run build
+          cd functions && npm ci && npm run lint && npm run build
+      - name: Open pull request
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          branch="seeds/refresh-$(date -u +%Y%m%d)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add shared/storyEngine functions/src/storyEngine
+          git commit -m "Add reviewed story seeds ($(date -u +%Y-%m-%d))"
+          git push origin "$branch"
+          {
+            cat "$SEED_REPORT_FILE"
+            echo
+            echo "Review every line above. Delete any seed you do not want from \`shared/storyEngine/seedPoolReviewed.js\` before merging. Tests and build already passed in the workflow."
+          } > "$RUNNER_TEMP/pr-body.md"
+          gh pr create --base main --head "$branch" --title "Story seeds: weekly refresh" --body-file "$RUNNER_TEMP/pr-body.md"
