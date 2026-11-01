@@ -4,6 +4,7 @@ import { auth, functions as existingFunctions } from "../config/firebase.js";
 import { signInAnonymously } from "firebase/auth";
 import { speakCompanion } from "./voiceService.js";
 import { store } from "../state/store.js";
+import { guardOutgoingMessage, guardRexData, guardReplyText, guardTextField, householdAvoidTopics, logServerSafetyEvents } from './companionSafety.js';
 
 // Initialize functions using centralized configuration with explicit us-central1 region
 let functions = existingFunctions;
@@ -108,6 +109,11 @@ export async function talkToRexAGY(message, heroId = null, petId = null) {
   const householdId = state.household?.id || null;
   const appState = buildAppState(effectiveHeroId);
   const heroName = appState.hero.name || "Little Hero";
+  const safetyCtx = { petName: activePet?.shortName || activePet?.name || 'Rex', childName: heroName, heroId: effectiveHeroId };
+
+  // A message about a topic the parent asked to avoid never leaves the app: Rex redirects kindly.
+  const outgoing = guardOutgoingMessage(message, safetyCtx);
+  if (!outgoing.ok) return { reply: outgoing.reply, emotion: 'calm', voiceTone: 'gentle' };
 
   // ── 1. AGY Rex microservice (primary) ──────────────────────────────────────
   const agyEndpoint = AGY_REX_URL
@@ -146,7 +152,7 @@ export async function talkToRexAGY(message, heroId = null, petId = null) {
             store.dispatchCustomEvent?.('rex-navigate', { view: target });
           }
         }
-        return data; // Full structured response
+        return guardRexData(data, safetyCtx); // Full structured response, checked before a child sees it
       }
     }
   } catch (err) {
@@ -170,8 +176,11 @@ export async function talkToRexAGY(message, heroId = null, petId = null) {
       ageTier: isToddler ? "toddler" : "kid",
       clientHour: now.getHours(),
       timezoneOffsetMinutes: now.getTimezoneOffset(),
+      avoidTopics: householdAvoidTopics(),
     });
-    return { reply: result.data.reply, emotion: 'excited', voiceTone: 'energetic' };
+    logServerSafetyEvents(result.data.safetyEvents, effectiveHeroId);
+    const safe = guardReplyText(result.data.reply, safetyCtx);
+    return { reply: safe.text, emotion: safe.blocked ? 'calm' : 'excited', voiceTone: safe.blocked ? 'gentle' : 'energetic' };
   } catch {
     return {
       reply: `*Happy cheer!* Rawr! Great job, ${heroName}! Let's explore and have fun together! 🦖✨`,
@@ -194,6 +203,7 @@ export async function sendRexAudioAGY(audioBlob, heroId = null, petId = null) {
   const householdId = state.household?.id || null;
   const appState = buildAppState(effectiveHeroId);
   const heroName = appState.hero.name || "Little Hero";
+  const safetyCtx = { petName: activePet?.shortName || activePet?.name || 'Rex', childName: heroName, heroId: effectiveHeroId };
 
   const agyAudioEndpoint = AGY_REX_URL
     ? `${AGY_REX_URL}/api/rex/audio`
@@ -228,7 +238,7 @@ export async function sendRexAudioAGY(audioBlob, heroId = null, petId = null) {
             store.dispatchCustomEvent?.('rex-navigate', { view: target });
           }
         }
-        return data;
+        return guardRexData(data, safetyCtx);
       }
     }
   } catch (err) {
@@ -285,7 +295,7 @@ export async function getBattleCoachAdvice(bossId, bossHpPercent, currentQuadran
       signal: AbortSignal.timeout(6000)
     });
     if (res.ok) {
-      return await res.json();
+      return guardTextField(await res.json(), 'coach_text', { petName: 'Rex', childName: effectiveHeroName, heroId: currentHero.id });
     }
   } catch (err) {
     console.warn("[heroAgentService] Battle coach unavailable:", err?.message || err);
@@ -320,7 +330,7 @@ export async function getQuestGuideDirections(heroName = null, level = 1, comple
       signal: AbortSignal.timeout(6000)
     });
     if (res.ok) {
-      return await res.json();
+      return guardTextField(await res.json(), 'guidance_text', { petName: 'Rex', childName: effectiveHeroName, heroId: currentHero.id });
     }
   } catch (err) {
     console.warn("[heroAgentService] Quest guide unavailable:", err?.message || err);

@@ -1,4 +1,5 @@
 import { httpsCallable } from "firebase/functions";
+import { guardReplyText, householdAvoidTopics, logServerSafetyEvents } from './companionSafety.js';
 import { functions } from "../config/firebase.js";
 
 /**
@@ -30,8 +31,10 @@ class CloudFunctionsService {
 
     try {
       const callable = httpsCallable(this.functionsInstance, "chatWithPet");
-      const result = await callable({ petId, petName, message, petStats, childAge });
-      return result.data;
+      const result = await callable({ petId, petName, message, petStats, childAge, avoidTopics: householdAvoidTopics() });
+      logServerSafetyEvents(result.data?.safetyEvents);
+      // Checked again here so a reply from any version of the function is safe to show and speak.
+      return { ...result.data, reply: guardReplyText(result.data?.reply, { petName }).text };
     } catch (err) {
       console.warn("Cloud function chatWithPet error, falling back:", err);
       return {
