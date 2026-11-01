@@ -1,0 +1,97 @@
+// Baseline pool of story seeds: one abstract sentence each, no names, brands, quotes or links.
+// A seed is a spark the planner may use or skip, never a plot to copy. The refresh job (later) adds
+// reviewed seeds here; every entry is re-checked by cleanSeed() at load time, so a bad one is dropped.
+//   kind:   nature | folk | seasonal | shape
+//   season: winter | spring | summer | autumn | any   (northern hemisphere)
+
+const s = (id, kind, season, text) => ({ id, kind, season, text, source: 'baseline' });
+
+export const SEED_POOL = [
+  // nature and science wonders
+  s('n01', 'nature', 'any', 'Fireflies glow in a rhythm, and a sleepy one has forgotten its own blinking pattern.'),
+  s('n02', 'nature', 'any', 'The moon changes shape each night, and one evening it seems to be shy about showing its full face.'),
+  s('n03', 'nature', 'any', 'A tiny seed travels far on the wind to find the one patch of soil that is just right.'),
+  s('n04', 'nature', 'any', 'Tide pools hold a whole sleepy world that appears only when the sea steps back.'),
+  s('n05', 'nature', 'any', 'A caterpillar wraps up in a snug chrysalis and trusts that morning will bring wings.'),
+  s('n06', 'nature', 'any', 'Starlight takes so long to arrive that some of it left home before anyone was born.'),
+  s('n07', 'nature', 'any', 'Bees dance a tiny map in the air to tell friends where the sweetest flowers grow.'),
+  s('n08', 'nature', 'any', 'Roots share messages under the forest floor, passing news from tree to tree.'),
+  s('n09', 'nature', 'any', 'Owls see well in the dark, and one is teaching a friend to look with patient eyes.'),
+  s('n10', 'nature', 'any', 'A river carries a little leaf boat all the way to the sea, one gentle bend at a time.'),
+  s('n11', 'nature', 'any', 'Sleepy bats hang upside down and see the whole world turned around.'),
+  s('n12', 'nature', 'any', 'A cloud forgets how to rain and learns that floating is a fine job too.'),
+  s('n13', 'nature', 'any', 'Glowing creatures deep in the sea make their own lanterns for the long dark water.'),
+  s('n14', 'nature', 'any', 'Echoes in a canyon answer back, and one echo wants to say something new.'),
+  s('n15', 'nature', 'any', 'A small planet spins slowly so that every part of it gets a turn at the sunshine.'),
+  s('n16', 'nature', 'any', 'Dew appears on the grass overnight like tiny jewels left by the quiet sky.'),
+  s('n17', 'nature', 'any', 'Whales sing songs that travel across the ocean to friends who are far away.'),
+  s('n18', 'nature', 'any', 'A comet visits only once in a long while, and the sky gets ready to welcome it.'),
+  s('n19', 'nature', 'any', 'Snails carry their home with them, so every place they rest becomes cozy.'),
+  s('n20', 'nature', 'any', 'Rainbows need both sun and rain, and one day a rainbow is missing a color.'),
+
+  // folk-tale shapes (old patterns, reshaped into originals)
+  s('f01', 'folk', 'any', 'A small trade goes round and round, and everyone ends up with just what they needed.'),
+  s('f02', 'folk', 'any', 'Three tries to cross a river: the first two fail, and the third works by being kind.'),
+  s('f03', 'folk', 'any', 'A stone soup where each visitor adds one humble thing and the pot becomes a feast.'),
+  s('f04', 'folk', 'any', 'A traveler asks three doors for a bed, and only the one with a candle in the window opens.'),
+  s('f05', 'folk', 'any', 'The smallest helper turns out to be the only one who fits through the secret gap.'),
+  s('f06', 'folk', 'any', 'A path with a riddle at each bend, and each answer is simply being gentle.'),
+  s('f07', 'folk', 'any', 'A wish granted with a twist: it asks the wisher to share first.'),
+  s('f08', 'folk', 'any', 'A long walk to find a treasure that was the friends made along the way.'),
+  s('f09', 'folk', 'any', 'Someone borrows a bit of everyone\'s talent to make one perfect lullaby.'),
+  s('f10', 'folk', 'any', 'A mirror that shows only the kind things you did today.'),
+  s('f11', 'folk', 'any', 'A giant who is shy and just wants someone to hum along.'),
+  s('f12', 'folk', 'any', 'A bridge that appears only when two sides both say a friendly word.'),
+  s('f13', 'folk', 'any', 'A patchwork blanket where every square tells a tale of one quiet evening.'),
+  s('f14', 'folk', 'any', 'The wind makes a promise to carry a message and keeps it by taking the long, scenic way.'),
+  s('f15', 'folk', 'any', 'A lantern keeper who learns that the lantern burns brightest when shared.'),
+  s('f16', 'folk', 'any', 'A clever helper solves a problem by waiting and listening instead of rushing.'),
+  s('f17', 'folk', 'any', 'A magic bell rings only for those who are being truthful and brave.'),
+  s('f18', 'folk', 'any', 'A long-lost song is rebuilt one verse at a time by creatures from different places.'),
+  s('f19', 'folk', 'any', 'A fox and a hen swap places for a day and learn what each one does well.'),
+  s('f20', 'folk', 'any', 'A baker whose bread rises only when the whole village hums together.'),
+
+  // seasonal moments
+  s('w01', 'seasonal', 'winter', 'The first snow falls, and everything outside is hushed and white.'),
+  s('w02', 'seasonal', 'winter', 'A cold night when a family gathers by a warm lamp and shares stories.'),
+  s('w03', 'seasonal', 'winter', 'Frost paints fern patterns on the window, and no two are ever the same.'),
+  s('w04', 'seasonal', 'winter', 'Animals curl up for a long winter nap and leave a note for spring.'),
+  s('w05', 'seasonal', 'winter', 'The longest night of the year is also the one with the most stars.'),
+  s('p01', 'seasonal', 'spring', 'The first green shoots push through the soil to see if spring has really come.'),
+  s('p02', 'seasonal', 'spring', 'Baby birds practice flapping on a branch while their parents hum encouragement.'),
+  s('p03', 'seasonal', 'spring', 'A gentle rain wakes the garden, and every puddle holds a small piece of sky.'),
+  s('p04', 'seasonal', 'spring', 'Flower buds open one by one, each at its own pace.'),
+  s('p05', 'seasonal', 'spring', 'Migrating birds return to the same tree, and the tree has saved their spot.'),
+  s('u01', 'seasonal', 'summer', 'A warm evening with fireflies, long shadows and the last light slowly fading.'),
+  s('u02', 'seasonal', 'summer', 'A stargazing night when the whole sky seems close enough to touch.'),
+  s('u03', 'seasonal', 'summer', 'The tide rolls in at sunset, and sand castles quietly become part of the sea.'),
+  s('u04', 'seasonal', 'summer', 'A picnic that lasts until the first star and the last crumb.'),
+  s('u05', 'seasonal', 'summer', 'Crickets begin their evening concert, each tuning to a different note.'),
+  s('a01', 'seasonal', 'autumn', 'Leaves turn gold and drift down like slow, sleepy messages.'),
+  s('a02', 'seasonal', 'autumn', 'A harvest moon rises round and orange over a field of sleepy pumpkins.'),
+  s('a03', 'seasonal', 'autumn', 'Squirrels tuck acorns away and sometimes forget where, so new trees grow.'),
+  s('a04', 'seasonal', 'autumn', 'The first cool evening when a cozy sweater feels like a hug.'),
+  s('a05', 'seasonal', 'autumn', 'Geese fly south in a long line, and the one at the front takes turns with a friend.'),
+
+  // story shapes from classic kids stories (abstract patterns only)
+  s('s01', 'shape', 'any', 'A small creature must carry a precious thing home before the stars come out.'),
+  s('s02', 'shape', 'any', 'A friend is sad, and the hero finds out why just by sitting quietly nearby.'),
+  s('s03', 'shape', 'any', 'A repeated phrase that grows with each new helper who joins the journey.'),
+  s('s04', 'shape', 'any', 'Someone is afraid of the dark until they discover what it keeps safe.'),
+  s('s05', 'shape', 'any', 'A grand plan fails, and the happy accident turns out to be better.'),
+  s('s06', 'shape', 'any', 'Two very different friends each wish to be like the other, then learn to be themselves.'),
+  s('s07', 'shape', 'any', 'A sleepy hunt for the thing that was in the pocket all along.'),
+  s('s08', 'shape', 'any', 'A tiny helper keeps a big promise, one small step at a time.'),
+  s('s09', 'shape', 'any', 'A town that has lost its music until a newcomer hums the first note.'),
+  s('s10', 'shape', 'any', 'A map drawn by the hero that leads exactly where the hero needs to rest.'),
+  s('s11', 'shape', 'any', 'Everyone tidies up for a special visitor who turns out to be the night itself.'),
+  s('s12', 'shape', 'any', 'A race where the winner is the one who stops to help someone else.'),
+  s('s13', 'shape', 'any', 'A big feeling is shared with a friend and becomes light enough to carry.'),
+  s('s14', 'shape', 'any', 'A garden of lullabies where each plant hums a different bedtime tune.'),
+  s('s15', 'shape', 'any', 'A friend moves away, and the hero finds a way to stay close through a small daily ritual.'),
+  s('s16', 'shape', 'any', 'A silly mix-up of words that leads to a new game everyone loves.'),
+  s('s17', 'shape', 'any', 'A shy creature practices saying hello all day, and the evening answers back.'),
+  s('s18', 'shape', 'any', 'A long countdown to bedtime where each number brings a friendly goodnight.'),
+  s('s19', 'shape', 'any', 'An invention built from spare parts that only works when it is used to help.'),
+  s('s20', 'shape', 'any', 'A day that seems too short, until the hero finds a pocket of extra quiet time.')
+];

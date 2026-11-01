@@ -80,6 +80,7 @@ const testFiles = [
   'scratch/verify_story_engine_sync.mjs',
   'scratch/verify_story_memory.mjs',
   'scratch/verify_story_memory_store.mjs',
+  'scratch/verify_story_seeds.mjs',
   // Cloudflare image Worker access control (origin allow-list, no shared key):
   'scratch/verify_cloudflare_worker_origin.mjs'
 ];

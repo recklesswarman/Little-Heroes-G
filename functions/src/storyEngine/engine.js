@@ -14,6 +14,7 @@ import {
   REPEAT_THRESHOLD, buildAvoidList, cleanLedgerDigest, cleanRecurring,
   buildRecentTypes, closestMatch, findNearDuplicate, fingerprintFromBible
 } from './ledger.js';
+import { CLEAN_SEED_POOL, pickSeeds } from './seeds.js';
 
 const MAX_PLAN_ATTEMPTS = 3;
 const round2 = (n) => Math.round(n * 100) / 100;
@@ -78,11 +79,18 @@ const typedOf = (bible) => !!(bible?.plotDNA?.problemType && bible?.plotDNA?.twi
  * least similar one: a slightly familiar story beats failing or falling back to offline text.
  * `ledgerCheck` is numbers and flags only, safe to return to the client.
  */
-export async function planBible({ generate, request, recentTitles = [], recentArchetypes = [], research = [] }) {
+export async function planBible({ generate, request, recentTitles = [], recentArchetypes = [], research = [], seedPool = CLEAN_SEED_POOL, now = new Date() }) {
   const ledger = request.ledgerDigest || [];
+  // Fresh story sparks: caller-supplied ideas win; otherwise draw from the reviewed seed pool,
+  // skipping anything that resembles a plot this child already had. They are only suggestions.
+  const seeds = research.length
+    ? []
+    : pickSeeds(seedPool, { ledger, date: now, key: `${request.heroName}|${ledger.length}|${request.realm?.id || ''}` });
+  if (seeds.length) research = seeds.map(s => s.text);
+  const researchUsed = seeds.map(s => s.id);
   if (!generate) {
     const bible = fallbackBible(request);
-    return { bible, planned: false, ledgerCheck: { attempts: 0, planned: false, typed: typedOf(bible), ...checkAgainstLedger(bible, ledger) } };
+    return { bible, planned: false, researchUsed: [], ledgerCheck: { attempts: 0, planned: false, typed: typedOf(bible), ...checkAgainstLedger(bible, ledger) } };
   }
 
   let avoid = buildAvoidList(ledger);
@@ -110,7 +118,7 @@ export async function planBible({ generate, request, recentTitles = [], recentAr
     const score = match ? match.score : closestMatch(entry, ledger).score;
     if (!best || score < best.score) best = { bible, score };
     if (!match) {
-      return { bible, planned: true, ledgerCheck: { attempts, planned: true, typed: typedOf(bible), closestScore: round2(score), repeated: false } };
+      return { bible, planned: true, researchUsed, ledgerCheck: { attempts, planned: true, typed: typedOf(bible), closestScore: round2(score), repeated: false } };
     }
     avoid = [...avoid, [entry.fp.conflict, entry.fp.twist, entry.fp.centralObject].filter(Boolean).join(' / ')];
     recentTypes = {
@@ -123,12 +131,13 @@ export async function planBible({ generate, request, recentTitles = [], recentAr
     return {
       bible: best.bible,
       planned: true,
+      researchUsed,
       ledgerCheck: { attempts, planned: true, typed: typedOf(best.bible), closestScore: round2(best.score), repeated: best.score >= REPEAT_THRESHOLD }
     };
   }
   console.warn('Story bible planning produced no usable plan, using deterministic bible');
   const bible = fallbackBible(request);
-  return { bible, planned: false, ledgerCheck: { attempts, planned: false, typed: typedOf(bible), ...checkAgainstLedger(bible, ledger) } };
+  return { bible, planned: false, researchUsed: [], ledgerCheck: { attempts, planned: false, typed: typedOf(bible), ...checkAgainstLedger(bible, ledger) } };
 }
 
 /**
@@ -149,8 +158,9 @@ export async function generateBedtimeChapter({
   const idx = Math.max(0, Math.min(3, Number(chapterIndex) || 0));
   let bible = suppliedBible ? normalizeBible(suppliedBible, request) : null;
   let ledgerCheck;
+  let researchUsed = [];
   if (!bible) {
-    ({ bible, ledgerCheck } = await planBible({ generate, request, recentTitles, recentArchetypes, research }));
+    ({ bible, ledgerCheck, researchUsed } = await planBible({ generate, request, recentTitles, recentArchetypes, research }));
   }
   const previous = cleanSummaries(previousSummaries);
 
@@ -160,6 +170,7 @@ export async function generateBedtimeChapter({
       return {
         bible,
         ledgerCheck,
+        researchUsed,
         source: 'llm',
         attempts: result.attempts,
         issues: [],
@@ -171,6 +182,7 @@ export async function generateBedtimeChapter({
     return {
       bible,
       ledgerCheck,
+      researchUsed,
       source: 'procedural',
       attempts: result.attempts,
       issues: failure,
@@ -182,6 +194,7 @@ export async function generateBedtimeChapter({
   return {
     bible,
     ledgerCheck,
+    researchUsed,
     source: 'procedural',
     attempts: 0,
     issues: [],
@@ -196,13 +209,15 @@ export async function generateBedtimeStory(args) {
   let bible = args.bible || null;
   const sources = [];
   let ledgerCheck;
+  let researchUsed = [];
   for (let i = 0; i < 4; i++) {
     const out = await generateBedtimeChapter({ ...args, bible, chapterIndex: i, previousSummaries: summaries });
     bible = out.bible;
     if (out.ledgerCheck) ledgerCheck = out.ledgerCheck;
+    if (out.researchUsed?.length) researchUsed = out.researchUsed;
     chapters.push(out.chapter);
     summaries.push(out.chapter.summary);
     sources.push(out.source);
   }
-  return { bible, chapters, sources, ledgerCheck };
+  return { bible, chapters, sources, ledgerCheck, researchUsed };
 }
