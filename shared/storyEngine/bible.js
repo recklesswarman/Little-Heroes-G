@@ -180,7 +180,7 @@ export function buildBiblePrompt(request, { recentTitles = [], recentArchetypes 
     const friends = request.recurringCharacters.map(c => `${c.name}${c.role ? ` (${c.role})` : ''}`).join(', ');
     suggestions.push(`Returning friends the child already knows: ${friends}. You may bring one back or invent new friends`);
   }
-  for (const r of research.slice(0, 3)) suggestions.push(`Fresh idea: ${r}`);
+  for (const r of research.slice(0, 3)) suggestions.push(`Fresh spark (an abstract idea to adapt in your own way, not a plot to copy): ${r}`);
 
   return `You are planning a calming 4-chapter bedtime story for a child aged ${request.ageBand}. Plan only; do not write the story.
 

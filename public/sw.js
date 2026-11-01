@@ -1,4 +1,4 @@
-const CACHE_NAME = 'little-heroes-v3.8.0-story-memory-20261101';
+const CACHE_NAME = 'little-heroes-v3.8.1-story-seeds-20261101';
 const STATIC_ASSETS = [
   './',
   './index.html',
