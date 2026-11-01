@@ -204,8 +204,8 @@ Return ONLY raw JSON (no markdown):
   "title": "max 5 words",
   "tone": "calm|cozy|silly|adventurous",
   "characters": [
-    { "name": "${request.heroName}", "role": "hero", "pronouns": "${request.pronouns}", "motivation": "...", "traits": ["..."], "visualSheet": "fixed look in one sentence" },
-    { "name": "friend name", "role": "friend|companion|helper", "pronouns": "they|she|he|it", "motivation": "...", "traits": ["..."], "visualSheet": "..." }
+    { "name": "${request.heroName}", "role": "hero", "pronouns": "${request.pronouns}", "motivation": "...", "traits": ["..."], "visualSheet": "fixed look in 6-10 words: colors, clothes, shape (no pink or purple)" },
+    { "name": "friend name", "role": "friend|companion|helper", "pronouns": "they|she|he|it", "motivation": "...", "traits": ["..."], "visualSheet": "6-10 words: colors and shape (no pink or purple)" }
   ],
   "plotDNA": { "setting": "...", "conflict": "...", "helper": "...", "twist": "...", "resolution": "...", "centralObject": "...", "arc": "...", "problemType": "one value from the list", "twistType": "one value from the list" },
   "beats": [
