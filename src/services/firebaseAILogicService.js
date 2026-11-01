@@ -19,6 +19,7 @@ class FirebaseAILogicService {
     try {
       const { getAI, getGenerativeModel, GoogleAIBackend } = await import('firebase/ai');
       this.ai = getAI(app, { backend: new GoogleAIBackend() });
+      this._getGenerativeModel = getGenerativeModel;
       this.model = getGenerativeModel(this.ai, {
         model: "gemini-2.5-flash-lite",
         generationConfig: {
@@ -31,6 +32,31 @@ class FirebaseAILogicService {
     } catch (e) {
       console.warn("Firebase AI Logic fallback to client generator:", e.message);
     }
+  }
+
+  /**
+   * A model for bedtime stories (the shared story engine runs in the browser through it when the
+   * server route is unreachable). Same model family as the server engine; override per build with
+   * VITE_FIREBASE_STORY_MODEL. Safety filters are set to the strictest level. null when AI is not ready.
+   */
+  getStoryModel() {
+    if (!this.isAiReady || !this.ai || typeof this._getGenerativeModel !== 'function') return null;
+    if (!this._storyModel) {
+      try {
+        const name = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_STORY_MODEL) || 'gemini-3.7-flash';
+        this._storyModel = this._getGenerativeModel(this.ai, {
+          model: name,
+          generationConfig: { temperature: 0.8 },
+          safetySettings: [
+            'HARM_CATEGORY_HARASSMENT', 'HARM_CATEGORY_HATE_SPEECH', 'HARM_CATEGORY_SEXUALLY_EXPLICIT', 'HARM_CATEGORY_DANGEROUS_CONTENT'
+          ].map(category => ({ category, threshold: 'BLOCK_LOW_AND_ABOVE' }))
+        });
+      } catch (e) {
+        console.warn('Story model unavailable in the browser:', e?.message || e);
+        return null;
+      }
+    }
+    return this._storyModel;
   }
 
   async generateRewardItem(promptText, typeCategory = 'gear', defaultPrice = 150) {

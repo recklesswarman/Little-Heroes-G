@@ -115,8 +115,12 @@ assert(battleViewContent.includes('getBattleCoachAdvice'), 'BattleView.js must w
 console.log('  ✅ PASS: BattleView.js integrates AGY Battle Coach tactical advice');
 
 const bedtimeServiceContent = fs.readFileSync('src/services/bedtimeStoryService.js', 'utf8');
-assert(bedtimeServiceContent.includes('generateBedtimeChapterAGY'), 'bedtimeStoryService.js must wire generateBedtimeChapterAGY');
-console.log('  ✅ PASS: bedtimeStoryService.js integrates AGY Bedtime Story Narrator');
+// Phase 7: bedtime stories no longer go through the AGY narrator. Every host runs the shared story engine
+// (server route, or the same engine in the browser), so parent controls, memory, the plot ledger and the
+// safety rules apply everywhere. The AGY service keeps Rex chat, quest guide, battle coach and reports.
+assert(!bedtimeServiceContent.includes('generateBedtimeChapterAGY'), 'bedtimeStoryService.js must not call the AGY bedtime narrator any more');
+assert(bedtimeServiceContent.includes('runEngineInBrowser') && bedtimeServiceContent.includes('generateBedtimeChapter'), 'bedtimeStoryService.js must run the shared story engine when the server route is unavailable');
+console.log('  ✅ PASS: bedtimeStoryService.js runs the shared story engine on every host (AGY narrator retired for stories)');
 
 const devReportContent = fs.readFileSync('src/services/aiDevelopmentalReportService.js', 'utf8');
 assert(devReportContent.includes('/api/rex/parent-report'), 'aiDevelopmentalReportService.js must wire AGY parent-report endpoint');

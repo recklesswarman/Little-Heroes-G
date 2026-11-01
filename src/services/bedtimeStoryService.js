@@ -21,10 +21,10 @@ import {
   generateFullBedtimeStory
 } from '../data/bedtimeStoryData.js';
 import { PETS_DATABASE } from '../data/petsData.js';
-import { generateBedtimeChapterAGY } from './heroAgentService.js';
 import { bedtimeIllustrationService } from './bedtimeIllustrationService.js';
 import { sanitizeWish } from '../../shared/storyEngine/safety.js';
-import { petSpeciesFromName } from '../../shared/storyEngine/engine.js';
+import { petSpeciesFromName, buildRequest, generateBedtimeChapter } from '../../shared/storyEngine/engine.js';
+import { makeFirebaseGenerate } from './firebaseEngineAdapter.js';
 import { memoryForRequest } from '../../shared/storyEngine/memory.js';
 import { lookForAvatarId } from '../../shared/storyEngine/avatarLook.js';
 import { scenePromptFromPlan } from '../../shared/storyEngine/scenes.js';
@@ -553,7 +553,7 @@ class BedtimeStoryService {
   }
 
   /**
-   * Generate an Act using Server Route -> AGY -> Firebase AI Logic -> Combinatorial Story Weaver
+   * Generate an Act: server route -> the same story engine in the browser (Firebase AI Logic, or its offline weaver) -> offline act
    */
   async generateAct(actNumber, previousChoice) {
     const session = this.activeSession;
@@ -582,207 +582,36 @@ class BedtimeStoryService {
         const res = await fetch(`${baseUrl}/api/gemini/bedtime-story`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            heroName,
-            heroId: session.heroId,
-            petId,
-            // Short name ("Rex") reads naturally in prose; the species ("T-Rex") keeps the pet accurate.
-            petName: session.childContext?.activePet?.shortName || petName,
-            petSpecies: petSpeciesFromName(session.childContext?.activePet?.name || petName),
-            // How the child's chosen avatar looks (a fixed phrase for built-in avatars, '' for custom ones).
-            heroLook: this.getHeroLook(session),
-            // Parent controls: reading level, tone, pronouns, topics to avoid, research on/off, own ideas.
-            ...store.getStoryRequestFields(session.heroId),
-            realmId: realm.id,
-            moralId: moral.id,
-            customWish,
-            actNumber,
-            previousChoice: previousChoice || '',
-            userChoices: session.userChoices || [],
-            recentTitles: pastTitles,
-            recentArchetypes,
-            // Continuity: the server is stateless, so the cast/plot bible and a recap of the
-            // earlier chapters travel with every request after the first.
-            storyBible: session.storyBible || null,
-            previousChapters: (session.chapterSummaries || []).slice(0, actNumber - 1),
-            // Only needed when the story is being planned (no plan yet): the plots this child has had
-            // (so a new one is different) and friends they have met (optional to bring back).
-            ...(session.storyBible ? {} : memoryForRequest(store.getStoryMemory(session.heroId)))
-          })
+          body: JSON.stringify(this.buildStoryRequestBody(session, actNumber, previousChoice, { realm, moral, pastTitles, recentArchetypes }))
         });
 
-        if (res.ok) {
-          const apiData = await res.json();
-          if (apiData && apiData.storyBible && typeof apiData.storyBible === 'object') {
-            session.storyBible = apiData.storyBible;
-          }
-          for (const event of Array.isArray(apiData?.safetyEvents) ? apiData.safetyEvents : []) {
-            try { store.logStorySafetyEvent({ ...event, heroId: session.heroId }); } catch { /* the log is best effort */ }
-          }
-          const chData = (Array.isArray(apiData.chapters) && apiData.chapters[actNumber - 1]) || apiData;
-          if (chData && (chData.text || chData.chapterText)) {
-            const fallbackSvg = generateFallbackSvg(realm.id, actNumber, previousChoice || (chData.choices && chData.choices[0]) || '');
-            generatedAct = {
-              actNumber,
-              chapterNumber: actNumber,
-              chapterIndex: actNumber - 1,
-              title: chData.title || `Chapter ${actNumber}: ${realm.name}`,
-              text: chData.chapterText || chData.text,
-              chapterText: chData.chapterText || chData.text,
-              promptQuestion: chData.choices?.[0] ? '' : (actNumber < 4 ? '' : 'Sleep tight, little hero.'),
-              prompt: chData.choices?.[0] ? '' : (actNumber < 4 ? '' : 'Sleep tight, little hero.'),
-              suggestionChips: Array.isArray(chData.choices) && chData.choices.length > 0
-                ? chData.choices.map(c => typeof c === 'string' ? { text: c, icon: 'stars' } : c)
-                : (actNumber === 1 ? realm.act1DefaultChips : actNumber === 2 ? realm.act2DefaultChips : realm.act3DefaultChips),
-              defaultChips: Array.isArray(chData.choices) && chData.choices.length > 0
-                ? chData.choices.map(c => typeof c === 'string' ? { text: c, icon: 'stars' } : c)
-                : (actNumber === 1 ? realm.act1DefaultChips : actNumber === 2 ? realm.act2DefaultChips : realm.act3DefaultChips),
-              svgArt: fallbackSvg,
-              whisperLine: chData.whisperLine || '',
-              sleepyCue: chData.sleepyCue || '',
-              moralReflection: chData.moralReflection || '',
-              choices: Array.isArray(chData.choices) ? chData.choices : [],
-              sceneMood: chData.sceneMood || 'tranquil',
-              sceneDescriptor: chData.sceneDescriptor,
-              isSleepingEnd: actNumber === 4 || chData.isSleepingEnd,
-              archetypeId: chData.archetypeId,
-              summary: chData.summary || '',
-              blocks: Array.isArray(chData.blocks) ? chData.blocks : undefined,
-              scenePlan: chData.scenePlan && typeof chData.scenePlan === 'object' ? chData.scenePlan : undefined
-            };
-          }
+        // Hosts without the route answer with an HTML page or an error: only a JSON reply is a story.
+        const contentType = res.headers?.get?.('content-type');
+        if (res.ok && (!contentType || contentType.includes('json'))) {
+          generatedAct = this.actFromEngineResponse(await res.json(), session, actNumber, realm, previousChoice);
         }
       }
     } catch (routeErr) {
-      // In offline / test environment, proceed smoothly to AGY / Firebase / procedural fallback
+      // No server route on this host (or offline): the in-browser engine below takes over.
     } finally {
       this.isGenerating = false;
     }
 
-    // 2. Try Google Antigravity (AGY) Bedtime Story Narrator Agent
+    // 2. Run the shared story engine in the browser (hosts without the server route). Same plan, ledger,
+    //    parent controls, pronoun and safety rules as the server; offline weaver when no AI is available.
     if (!generatedAct) {
       try {
         this.isGenerating = true;
-        const agyChapter = await generateBedtimeChapterAGY({
-          heroName,
-          petName,
-          realmName: realm.name,
-          moralName: moral.name,
-          moralGuidance: moral.moralGuidance || moral.tagline,
-          actNumber,
-          previousChoice: previousChoice || '',
-          customWish: customWish || '',
-          pastTitles
-        });
-
-        if (agyChapter && agyChapter.text) {
-          const fallbackSvg = generateFallbackSvg(realm.id, actNumber, previousChoice || (agyChapter.suggestion_chips && agyChapter.suggestion_chips[0]) || '');
-          const proceduralForDescriptor = generateProceduralBedtimeStory(realm.id, moral.id, heroName, petName, customWish, actNumber - 1, session.userChoices || [], session.childContext?.antiRepetition?.deterministicSeed ?? null);
-          generatedAct = {
-            actNumber,
-            chapterNumber: actNumber,
-            chapterIndex: actNumber - 1,
-            title: agyChapter.title || `Chapter ${actNumber}: ${realm.name}`,
-            text: agyChapter.text,
-            chapterText: agyChapter.text,
-            promptQuestion: agyChapter.prompt_question || (actNumber < 4 ? '' : 'Sleep tight, little hero.'),
-            prompt: agyChapter.prompt_question || (actNumber < 4 ? '' : 'Sleep tight, little hero.'),
-            suggestionChips: Array.isArray(agyChapter.suggestion_chips) && agyChapter.suggestion_chips.length > 0
-              ? agyChapter.suggestion_chips.map(c => typeof c === 'string' ? { text: c, icon: 'stars' } : c)
-              : (actNumber === 1 ? realm.act1DefaultChips : actNumber === 2 ? realm.act2DefaultChips : realm.act3DefaultChips),
-            defaultChips: Array.isArray(agyChapter.suggestion_chips) && agyChapter.suggestion_chips.length > 0
-              ? agyChapter.suggestion_chips.map(c => typeof c === 'string' ? { text: c, icon: 'stars' } : c)
-              : (actNumber === 1 ? realm.act1DefaultChips : actNumber === 2 ? realm.act2DefaultChips : realm.act3DefaultChips),
-            svgArt: fallbackSvg,
-            whisperLine: proceduralForDescriptor.whisperLine,
-            sleepyCue: proceduralForDescriptor.sleepyCue,
-            moralReflection: proceduralForDescriptor.moralReflection,
-            choices: proceduralForDescriptor.choices,
-            sceneMood: proceduralForDescriptor.sceneMood,
-            sceneDescriptor: proceduralForDescriptor.sceneDescriptor,
-            isSleepingEnd: actNumber === 4,
-            archetypeId: proceduralForDescriptor.archetypeId
-          };
-        }
-      } catch (agyErr) {
-        // Fall back to Firebase AI
+        const engineData = await this.runEngineInBrowser(session, actNumber, realm, moral, previousChoice, { pastTitles, recentArchetypes });
+        generatedAct = this.actFromEngineResponse(engineData, session, actNumber, realm, previousChoice);
+      } catch (engineErr) {
+        console.warn('In-browser story engine unavailable, using the offline weaver:', engineErr?.message || engineErr);
       } finally {
         this.isGenerating = false;
       }
     }
 
-    // 3. Fall back to Firebase AI Logic (Gemini API)
-    if (!generatedAct && firebaseAI.isAiReady && firebaseAI.model) {
-      try {
-        this.isGenerating = true;
-        const prompt = `You are a sweet, gentle cartoon companion narrating a children's (ages 3-7) bedtime story.
-The setting is "${realm.name}".
-The child hero is "${heroName}".
-Today's bedtime moral theme: "${moral.name}" (${moral.tagline}).
-${customWish ? `Parent/Child Special Bedtime Wish: "${customWish}". Weave this gently into the story!` : ''}
-Current chapter: Chapter ${actNumber} of 4.
-${previousChoice ? `The child chose: "${previousChoice}".` : ''}
-
-COMPANION NAMING RULE:
-Never use the companion pet's actual name. Refer to it only as "the Faithful Companion" the first time it appears in this chapter, then with pronouns ("it"/"its") afterward. If this chapter doesn't need the companion to act, it's fine to leave it out entirely rather than naming it in every chapter.
-
-ANTI-REPETITION MANDATE:
-Do NOT repeat or copy any of these past story titles or plots: ${pastTitles.join(', ') || 'None yet'}. Do NOT reuse these plot archetypes: ${recentArchetypes.join(', ') || 'None yet'}. Make this story unique and refreshing, varying your phrasing even when the realm and moral repeat from an earlier story.
-
-CHAPTER GUIDELINES:
-- Chapter 1: The Evening Departure. Introduce twilight, packing bedtime hero gear or pajamas, and the soothing calm of dusk. (Target: ~110-130 words).
-- Chapter 2: The Curious Discovery. The Faithful Companion uses its gentle senses to discover a sleepy creature or gentle bedtime mystery. (Target: ~120-140 words).
-- Chapter 3: Overcoming the Challenge with the Daily Moral. The hurdle is resolved through ${moral.name} (${moral.moralGuidance}). The Faithful Companion helps by ${moral.petAction}. (Target: ~130-150 words).
-- Chapter 4: Peaceful Cozy Slumber. Tucking in, deep calming breaths, yawns, and soft goodnight whispers as ambient stars shine. (Target: ~110-130 words).
-
-STRICT PALETTE RULE: NEVER use pink or purple words or hex colors in SVG. Only slate (#09141e), emerald green (#2ecc71), starlight cyan (#00d2d3), solar orange (#f39c12), and warm amber (#ffb961).
-
-CONTINUOUS NARRATION RULE:
-- This is a continuous read-aloud story. Do NOT ask the child any questions, offer choices, or say things like "What should we do next?".
-- Never repeat a sentence or signature phrase within the story or across chapters. Every sentence must be fresh.
-
-Return ONLY raw JSON with these exact keys (no markdown code blocks, just raw JSON):
-{
-  "title": "Chapter ${actNumber}: Short Title (max 4 words)",
-  "text": "The rich soothing narrative text (target ~120-150 words), with no questions to the child"
-}`;
-
-        const result = await firebaseAI.model.generateContent(prompt);
-        const rawText = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
-        const parsed = JSON.parse(rawText);
-
-        const fallbackSvg = generateFallbackSvg(realm.id, actNumber, previousChoice || (parsed.suggestionChips && parsed.suggestionChips[0]) || '');
-        const proceduralForDescriptor = generateProceduralBedtimeStory(realm.id, moral.id, heroName, petName, customWish, actNumber - 1, session.userChoices || [], session.childContext?.antiRepetition?.deterministicSeed ?? null);
-
-        generatedAct = {
-          actNumber,
-          chapterNumber: actNumber,
-          chapterIndex: actNumber - 1,
-          title: parsed.title || `Chapter ${actNumber}: ${realm.name}`,
-          text: parsed.text || `${petName} smiled happily beside ${heroName} as they gazed at the quiet, starry night.`,
-          chapterText: parsed.text || `${petName} smiled happily beside ${heroName} as they gazed at the quiet, starry night.`,
-          promptQuestion: actNumber === 4 ? 'Sleep tight, little hero.' : '',
-          prompt: actNumber === 4 ? 'Sleep tight, little hero.' : '',
-          suggestionChips: [],
-          defaultChips: [],
-          svgArt: fallbackSvg,
-          whisperLine: proceduralForDescriptor.whisperLine,
-          sleepyCue: proceduralForDescriptor.sleepyCue,
-          moralReflection: proceduralForDescriptor.moralReflection,
-          choices: proceduralForDescriptor.choices,
-          sceneMood: proceduralForDescriptor.sceneMood,
-          sceneDescriptor: proceduralForDescriptor.sceneDescriptor,
-          isSleepingEnd: actNumber === 4,
-          archetypeId: proceduralForDescriptor.archetypeId
-        };
-      } catch (err) {
-        // Fall back to offline procedural generator
-      } finally {
-        this.isGenerating = false;
-      }
-    }
-
-    // 4. Resilient offline Combinatorial Dynamic Story Weaver
+    // 3. Last resort if even the engine failed: the offline weaver, with the child's name.
     if (!generatedAct) {
       generatedAct = this.createOfflineAct(actNumber, realm, moral, heroName, petName, customWish, previousChoice, session.childContext?.antiRepetition || {});
     }
@@ -855,6 +684,118 @@ Return ONLY raw JSON with these exact keys (no markdown code blocks, just raw JS
     }
 
     return generatedAct;
+  }
+
+  /**
+   * The request every route sends (the server route and the in-browser engine read the same fields), so
+   * all hosts honour the same hero, pet, parent controls, memory and wish rules.
+   */
+  buildStoryRequestBody(session, actNumber, previousChoice, { realm, moral, pastTitles = [], recentArchetypes = [] } = {}) {
+    const heroName = session.heroName;
+    const petName = session.petName;
+    const petId = session.petId || 'rex';
+    const customWish = session.customWish || '';
+    return {
+      heroName,
+      heroId: session.heroId,
+      petId,
+      // Short name ("Rex") reads naturally in prose; the species ("T-Rex") keeps the pet accurate.
+      petName: session.childContext?.activePet?.shortName || petName,
+      petSpecies: petSpeciesFromName(session.childContext?.activePet?.name || petName),
+      // How the child's chosen avatar looks (a fixed phrase for built-in avatars, '' for custom ones).
+      heroLook: this.getHeroLook(session),
+      // Parent controls: reading level, tone, pronouns, topics to avoid, research on/off, own ideas.
+      ...store.getStoryRequestFields(session.heroId),
+      realmId: realm.id,
+      moralId: moral.id,
+      customWish,
+      actNumber,
+      previousChoice: previousChoice || '',
+      userChoices: session.userChoices || [],
+      recentTitles: pastTitles,
+      recentArchetypes,
+      // Continuity: the server is stateless, so the cast/plot bible and a recap of the
+      // earlier chapters travel with every request after the first.
+      storyBible: session.storyBible || null,
+      previousChapters: (session.chapterSummaries || []).slice(0, actNumber - 1),
+      // Only needed when the story is being planned (no plan yet): the plots this child has had
+      // (so a new one is different) and friends they have met (optional to bring back).
+      ...(session.storyBible ? {} : memoryForRequest(store.getStoryMemory(session.heroId)))
+    };
+  }
+
+  /** Apply a story-engine chapter response (from the server or the in-browser engine) to the session; returns the act or null. */
+  actFromEngineResponse(apiData, session, actNumber, realm, previousChoice) {
+    if (!apiData || typeof apiData !== 'object') return null;
+    if (apiData.storyBible && typeof apiData.storyBible === 'object') {
+      session.storyBible = apiData.storyBible;
+    }
+    for (const event of Array.isArray(apiData.safetyEvents) ? apiData.safetyEvents : []) {
+      try { store.logStorySafetyEvent({ ...event, heroId: session.heroId }); } catch { /* the log is best effort */ }
+    }
+    const chData = (Array.isArray(apiData.chapters) && apiData.chapters[actNumber - 1]) || apiData;
+    if (!chData || !(chData.text || chData.chapterText)) return null;
+    const fallbackSvg = generateFallbackSvg(realm.id, actNumber, previousChoice || (chData.choices && chData.choices[0]) || '');
+    return {
+      actNumber,
+      chapterNumber: actNumber,
+      chapterIndex: actNumber - 1,
+      title: chData.title || `Chapter ${actNumber}: ${realm.name}`,
+      text: chData.chapterText || chData.text,
+      chapterText: chData.chapterText || chData.text,
+      promptQuestion: chData.choices?.[0] ? '' : (actNumber < 4 ? '' : 'Sleep tight, little hero.'),
+      prompt: chData.choices?.[0] ? '' : (actNumber < 4 ? '' : 'Sleep tight, little hero.'),
+      suggestionChips: Array.isArray(chData.choices) && chData.choices.length > 0
+        ? chData.choices.map(c => typeof c === 'string' ? { text: c, icon: 'stars' } : c)
+        : (actNumber === 1 ? realm.act1DefaultChips : actNumber === 2 ? realm.act2DefaultChips : realm.act3DefaultChips),
+      defaultChips: Array.isArray(chData.choices) && chData.choices.length > 0
+        ? chData.choices.map(c => typeof c === 'string' ? { text: c, icon: 'stars' } : c)
+        : (actNumber === 1 ? realm.act1DefaultChips : actNumber === 2 ? realm.act2DefaultChips : realm.act3DefaultChips),
+      svgArt: fallbackSvg,
+      whisperLine: chData.whisperLine || '',
+      sleepyCue: chData.sleepyCue || '',
+      moralReflection: chData.moralReflection || '',
+      choices: Array.isArray(chData.choices) ? chData.choices : [],
+      sceneMood: chData.sceneMood || 'tranquil',
+      sceneDescriptor: chData.sceneDescriptor,
+      isSleepingEnd: actNumber === 4 || chData.isSleepingEnd,
+      archetypeId: chData.archetypeId,
+      summary: chData.summary || '',
+      blocks: Array.isArray(chData.blocks) ? chData.blocks : undefined,
+      scenePlan: chData.scenePlan && typeof chData.scenePlan === 'object' ? chData.scenePlan : undefined
+    };
+  }
+
+  /**
+   * Run the shared story engine in the browser: the fallback for hosts with no backend route (GitHub
+   * Pages, classic Firebase Hosting). With Firebase AI ready the model writes the story; without it the
+   * engine still plans from the child's memory and controls and uses the offline weaver.
+   */
+  async runEngineInBrowser(session, actNumber, realm, moral, previousChoice, { pastTitles = [], recentArchetypes = [] } = {}) {
+    const body = this.buildStoryRequestBody(session, actNumber, previousChoice, { realm, moral, pastTitles, recentArchetypes });
+    const request = buildRequest(body, { realm, moral });
+    const model = firebaseAI.getStoryModel?.() || null;
+    const generate = makeFirebaseGenerate(model);
+    const seed = session.childContext?.antiRepetition?.deterministicSeed ?? null;
+    const out = await generateBedtimeChapter({
+      generate,
+      request,
+      chapterIndex: actNumber - 1,
+      bible: session.storyBible || null,
+      previousSummaries: (session.chapterSummaries || []).slice(0, actNumber - 1),
+      recentTitles: pastTitles,
+      recentArchetypes,
+      proceduralChapter: (idx) => generateProceduralBedtimeStory(realm.id, moral.id, request.heroName, session.petName, request.customWish, idx, session.userChoices || [], seed)
+    });
+    return {
+      ...out.chapter,
+      storyBible: out.bible,
+      generationSource: out.source,
+      generationIssues: out.issues,
+      ledgerCheck: out.ledgerCheck,
+      researchUsed: out.researchUsed,
+      safetyEvents: out.safetyEvents
+    };
   }
 
   /** Look phrase for the child's chosen built-in avatar ('' for a custom avatar or none). */

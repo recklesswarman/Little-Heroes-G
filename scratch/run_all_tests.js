@@ -84,6 +84,7 @@ const testFiles = [
   'scratch/verify_story_seed_refresh.mjs',
   'scratch/verify_story_scenes.mjs',
   'scratch/verify_story_controls.mjs',
+  'scratch/verify_story_hosts.mjs',
   // Cloudflare image Worker access control (origin allow-list, no shared key):
   'scratch/verify_cloudflare_worker_origin.mjs'
 ];
