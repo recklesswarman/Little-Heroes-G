@@ -1,0 +1,43 @@
+name: Sync story engine copies
+
+# On a seed-refresh pull request branch (seeds/...), a reviewer removes unwanted seeds by editing
+# shared/storyEngine/seedPoolReviewed.js only. This workflow then copies the shared engine into the
+# Functions copy (the same thing `node scripts/sync-story-engine.mjs` does) and commits it, so the two
+# copies never drift (a test fails on drift). Commits made with the built-in token do not start
+# workflows, so this cannot loop.
+on:
+  push:
+    branches: ['seeds/**']
+    paths: ['shared/storyEngine/**']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-seeds-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Copy the shared engine into the Functions copy
+        run: node scripts/sync-story-engine.mjs
+      - name: Commit if the copy changed
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if git diff --quiet; then
+            echo "Already in sync."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add functions/src/storyEngine
+          git commit -m "Sync the Functions copy of the story engine"
+          git push origin "HEAD:${REF_NAME}"
