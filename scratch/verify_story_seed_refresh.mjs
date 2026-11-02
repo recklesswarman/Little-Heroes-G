@@ -1,5 +1,5 @@
 import assert from 'node:assert';
-import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { writeFileSync, readFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -108,6 +108,25 @@ await check('the job does nothing and exits cleanly when no API key is set', () 
   const r = spawnSync('node', ['scripts/refresh-story-seeds.mjs'], { env, encoding: 'utf8', timeout: 60000 });
   assert.strictEqual(r.status, 0, r.stderr);
   assert.ok(/GEMINI_API_KEY is not set/.test(r.stdout));
+});
+
+await check('the refresh workflow gives the API key to the "Gather seeds" step only, and tells reviewers the one-file way to remove a seed', () => {
+  const src = readFileSync(new URL('../.github/workflows/refresh-story-seeds.yml', import.meta.url), 'utf8');
+  assert.strictEqual((src.match(/secrets\.GEMINI_API_KEY/g) || []).length, 1, 'the secret is referenced exactly once');
+  const gather = src.slice(src.indexOf('- name: Gather seeds'), src.indexOf('- name: Check for changes'));
+  assert.ok(/env:\s*\n\s*GEMINI_API_KEY: \$\{\{ secrets\.GEMINI_API_KEY \}\}/.test(gather), 'the key is set on the Gather step');
+  const jobEnv = src.slice(src.indexOf('    env:'), src.indexOf('    steps:'));
+  assert.ok(!/secrets\./.test(jobEnv) && !/GEMINI_API_KEY/.test(jobEnv.replace(/#.*$/gm, '')), 'no secret at job level');
+  assert.ok(src.includes('seedPoolReviewed.js') && src.includes('Sync story engine copies') && !/Delete any seed you do not want from/.test(src));
+});
+await check('the branch sync workflow keeps the Functions copy in step on seeds/** branches without looping', () => {
+  const src = readFileSync(new URL('../.github/workflows/sync-seeds-branch.yml', import.meta.url), 'utf8');
+  assert.ok(/branches:\s*\['seeds\/\*\*'\]/.test(src) && /paths:\s*\['shared\/storyEngine\/\*\*'\]/.test(src), 'only seed branches, only engine changes');
+  assert.ok(/contents: write/.test(src) && !/pull-requests/.test(src), 'least privilege');
+  assert.ok(src.includes('node scripts/sync-story-engine.mjs') && src.includes('git add functions/src/storyEngine'), 'runs the same sync and commits only the copy');
+  assert.ok(src.includes('HEAD:${REF_NAME}') && src.includes('REF_NAME: ${{ github.ref_name }}'), 'the branch name goes through an env var, not the shell script text');
+  assert.ok(!/secrets\./.test(src) && !/^\s*token:/m.test(src), 'no custom token: the built-in one never retriggers workflows');
+  assert.ok(!/pull_request|workflow_run/.test(src.replace(/#.*$/gm, '')), 'not triggered by pull requests');
 });
 
 if (failed) { console.error(`${failed} check(s) failed`); process.exit(1); }
