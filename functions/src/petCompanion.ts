@@ -5,7 +5,7 @@ import { GoogleGenAI } from "@google/genai";
 import { getApps, initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore, Timestamp } from "firebase-admin/firestore";
 import {
-  CHAT_SAFETY_SETTINGS, TECHNICAL_REASONS, cleanTopics, companionSafetyRule, guardChildMessage, guardCompanionReply, safeCompanionLine,
+  CHAT_SAFETY_SETTINGS, TECHNICAL_REASONS, cleanTopics, describeReplyShape, companionSafetyRule, guardChildMessage, guardCompanionReply, safeCompanionLine,
 } from "./storyEngine/companionGuard";
 
 if (!getApps().length) {
@@ -236,31 +236,67 @@ You are ${pet.name}, a ${pet.personality} talking to ${childName} (ages 5–8).
     // The model's thinking tokens count against maxOutputTokens: with a budget of 60-100 tokens the reply used
     // to come back empty or cut off mid-sentence. Thinking is switched off (plain retry if the model rejects
     // that) and the limit leaves room for the 1-2 sentences the persona asks for.
-    const callModel = (withoutThinking: boolean) => ai.models.generateContent({
+    const baseTokens = isToddler ? 150 : 250;
+    const callModel = (withoutThinking: boolean, maxOutputTokens: number) => ai.models.generateContent({
       model: "gemini-3.8-flash",
       contents,
       config: {
         systemInstruction: injectedSystemInstruction,
         temperature: 0.7,
-        maxOutputTokens: isToddler ? 150 : 250,
+        maxOutputTokens,
         ...(withoutThinking ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
         // Strictest filter level on all four categories.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         safetySettings: CHAT_SAFETY_SETTINGS as any,
       },
     });
-    let response;
-    try {
-      response = await callModel(true);
-    } catch (thinkingErr) {
-      console.warn("Chat model rejected the no-thinking setting; retrying with plain options:", thinkingErr);
-      response = await callModel(false);
-    }
+    const generateReply = async (maxOutputTokens: number) => {
+      try {
+        return await callModel(true, maxOutputTokens);
+      } catch (thinkingErr) {
+        console.warn("Chat model rejected the no-thinking setting; retrying with plain options:", thinkingErr);
+        return callModel(false, maxOutputTokens);
+      }
+    };
+    type ModelReply = Awaited<ReturnType<typeof generateReply>>;
+    // One diagnostic line per attempt: how the reply looked (never its text) and why the model stopped.
+    const logReply = (attempt: string, reply: ModelReply, check: { ok: boolean; reason: string }) => {
+      console.log(JSON.stringify({
+        chatReply: {
+          attempt,
+          ok: check.ok,
+          reason: check.reason,
+          ...describeReplyShape(reply.text),
+          finishReason: reply.candidates?.[0]?.finishReason ?? null,
+          blockReason: reply.promptFeedback?.blockReason ?? null,
+          promptTokens: reply.usageMetadata?.promptTokenCount ?? null,
+          replyTokens: reply.usageMetadata?.candidatesTokenCount ?? null,
+          thoughtTokens: reply.usageMetadata?.thoughtsTokenCount ?? null,
+          ageTier: isToddler ? "toddler" : "kid",
+        },
+      }));
+    };
 
     // Check the reply before a child sees or hears it. A failed reply is replaced by a kind fixed line and
     // reported (reason code only) so the app can show it in the parent's safety log.
     const safetyEvents: Array<{ kind: string; reason: string }> = [];
-    const checked = guardCompanionReply(response.text, { avoidTopics });
+    let response = await generateReply(baseTokens);
+    let checked = guardCompanionReply(response.text, { avoidTopics });
+    logReply("first", response, checked);
+    // An empty or cut-off reply is a technical failure: ask the model once more (with more room if it ran out
+    // of tokens) before settling for the fixed line.
+    if (!checked.ok && TECHNICAL_REASONS.includes(checked.reason)) {
+      try {
+        const ranOut = response.candidates?.[0]?.finishReason === "MAX_TOKENS";
+        const again = await generateReply(ranOut ? baseTokens * 2 : baseTokens);
+        const recheck = guardCompanionReply(again.text, { avoidTopics });
+        logReply("retry", again, recheck);
+        response = again;
+        checked = recheck;
+      } catch (retryErr) {
+        console.warn("Chat retry failed; using the fixed line:", retryErr);
+      }
+    }
     let replyText: string;
     if (checked.ok) {
       replyText = checked.text;

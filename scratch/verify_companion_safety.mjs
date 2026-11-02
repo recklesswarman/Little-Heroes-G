@@ -2,7 +2,7 @@ import './setup_mock_env.js';
 import assert from 'node:assert';
 import { readFileSync } from 'node:fs';
 import {
-  guardChildMessage, guardCompanionReply, safeCompanionLine, companionSafetyRule, cleanTopics, CHAT_SAFETY_SETTINGS, CHAT_REPLY_MAX, TECHNICAL_REASONS
+  guardChildMessage, guardCompanionReply, safeCompanionLine, companionSafetyRule, cleanTopics, CHAT_SAFETY_SETTINGS, CHAT_REPLY_MAX, TECHNICAL_REASONS, describeReplyShape
 } from '../shared/storyEngine/companionGuard.js';
 import { SAFETY_KINDS } from '../shared/storyEngine/controls.js';
 
@@ -39,6 +39,24 @@ await check('replies: good ones pass tidied; blocked words, avoid-topics, links,
   assert.strictEqual(guardCompanionReply('Rawr! Good job Zoe 🦖').ok, true, 'an emoji can end a reply');
   assert.strictEqual(guardCompanionReply('A zombie!').reason, 'blocked-term', 'a safety finding is reported as one even when the reply is short');
   assert.ok(TECHNICAL_REASONS.includes('empty') && TECHNICAL_REASONS.includes('too-short') && !TECHNICAL_REASONS.includes('blocked-term'));
+});
+await check('a reply that ends on a closing sound effect is whole; real fragments still are not', () => {
+  for (const whole of ['*ROAR!* Hi Zoe! *Happy dino giggle and gentle stomp*', 'Hi Zoe, I am so happy to see you *Gently stomps*', '*Bounces happily!* Yay Zoe! *Wiggles tail*']) {
+    assert.strictEqual(guardCompanionReply(whole).ok, true, whole);
+  }
+  for (const cut of ['*Happy', 'Hi Zoe, I am so happy to see', '*Happy Dino', 'sound effects like']) {
+    assert.deepStrictEqual([guardCompanionReply(cut).ok, guardCompanionReply(cut).reason], [false, 'too-short'], cut);
+  }
+});
+await check('the diagnostic shape describes a reply without containing any of its text', () => {
+  assert.deepStrictEqual(describeReplyShape(''), { chars: 0, words: 0, end: 'none' });
+  assert.deepStrictEqual(describeReplyShape(undefined), { chars: 0, words: 0, end: 'none' });
+  assert.deepStrictEqual(describeReplyShape('Hi Zoe! Want to play?'), { chars: 21, words: 5, end: 'sentence' });
+  assert.strictEqual(describeReplyShape('Hi *Gently stomps*').end, 'asterisk');
+  assert.strictEqual(describeReplyShape('Good job Zoe 🦖').end, 'emoji');
+  assert.strictEqual(describeReplyShape('Hi Zoe I am so happy to see').end, 'other');
+  const secret = 'Zoe lives at 12 Oak Street and likes spiders';
+  assert.ok(!JSON.stringify(describeReplyShape(secret)).includes('Oak') && !JSON.stringify(describeReplyShape(secret)).includes('Zoe'));
 });
 await check('a very long reply is cut at a sentence, not blocked', () => {
   const long = `${'Rex loves brushing teeth every single day. '.repeat(40)}`;
@@ -114,7 +132,7 @@ await check('battle coach and quest guide text is checked too', async () => {
 });
 await check('the pet chat Cloud Function: strictest filters, a message check, a reply check, only the safe reply is saved, events returned', () => {
   const src = readFileSync(new URL('../functions/src/petCompanion.ts', import.meta.url), 'utf8');
-  for (const needle of ['thinkingConfig: { thinkingBudget: 0 }', 'maxOutputTokens: isToddler ? 150 : 250', '!TECHNICAL_REASONS.includes(checked.reason)', 'CHAT_SAFETY_SETTINGS as any', 'guardChildMessage(message', 'guardCompanionReply(response.text', 'companionSafetyRule({ avoidTopics })',
+  for (const needle of ['thinkingConfig: { thinkingBudget: 0 }', 'const baseTokens = isToddler ? 150 : 250', 'logReply("first"', 'logReply("retry"', 'chatReply: {', 'describeReplyShape(reply.text)', 'finishReason: reply.candidates', 'generateReply(ranOut ? baseTokens * 2 : baseTokens)', '!TECHNICAL_REASONS.includes(checked.reason)', 'CHAT_SAFETY_SETTINGS as any', 'guardChildMessage(message', 'guardCompanionReply(response.text', 'companionSafetyRule({ avoidTopics })',
     'cleanTopics(parentRules.restrictedTopics, clientAvoidTopics)', 'text: replyText', 'return { reply: replyText, petName: pet.name, safetyEvents }', 'chat-reply-blocked', 'chat-message-blocked']) {
     assert.ok(src.includes(needle), `missing: ${needle}`);
   }
