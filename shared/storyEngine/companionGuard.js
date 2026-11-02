@@ -14,8 +14,9 @@ export const CHAT_MIN_WORDS = 3;
 // Technical failures (an empty or cut-off model reply), not safety findings: the child still gets the
 // kind fixed line, but these are not reported to the parent's safety log.
 export const TECHNICAL_REASONS = ['empty', 'too-short'];
-// A finished reply ends a sentence (optionally followed by quotes, asterisks, brackets or an emoji).
-const SENTENCE_END_RE = /([.!?\u2026][\s"'\u201d\u2019)*\]\uFE0F\p{Extended_Pictographic}]*|\p{Extended_Pictographic}\uFE0F?)$/u;
+// A finished reply ends a sentence (optionally followed by quotes, asterisks, brackets or an emoji), or ends
+// on a closing sound effect such as *Gently stomps*.
+const SENTENCE_END_RE = /([.!?\u2026][\s"'\u201d\u2019)*\]\uFE0F\p{Extended_Pictographic}]*|\p{Extended_Pictographic}\uFE0F?|\*)$/u;
 
 // Strictest filter level on all four categories (the Gemini API setting for chat).
 export const CHAT_SAFETY_SETTINGS = [
@@ -112,4 +113,19 @@ export function companionSafetyRule({ avoidTopics = [] } = {}) {
     'If the child seems upset or says something worrying, gently suggest talking to a grown-up they trust.',
     topics.length ? `The parent asked that you never talk about: ${topics.join(', ')}. If the child brings one up, kindly change the subject.` : ''
   ].filter(Boolean).join(' ');
+}
+
+/**
+ * Facts about a reply's shape, for diagnostic logs. Never contains the reply text.
+ * @param {unknown} text
+ * @returns {{ chars: number, words: number, end: 'none' | 'sentence' | 'asterisk' | 'emoji' | 'other' }}
+ */
+export function describeReplyShape(text) {
+  const body = typeof text === 'string' ? text.replace(/\s+/g, ' ').trim() : '';
+  if (!body) return { chars: 0, words: 0, end: 'none' };
+  let end = 'other';
+  if (/[.!?\u2026][\s"'\u201d\u2019)\]]*$/u.test(body)) end = 'sentence';
+  else if (/\*$/.test(body)) end = 'asterisk';
+  else if (/\p{Extended_Pictographic}\uFE0F?$/u.test(body)) end = 'emoji';
+  return { chars: body.length, words: body.split(' ').length, end };
 }
