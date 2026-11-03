@@ -1,4 +1,4 @@
-const CACHE_NAME = 'little-heroes-v3.12.2-chat-diagnostics-20261102';
+const CACHE_NAME = 'little-heroes-v3.13.0-starlight-arcade-expansion-20261103';
 const STATIC_ASSETS = [
   './',
   './index.html',

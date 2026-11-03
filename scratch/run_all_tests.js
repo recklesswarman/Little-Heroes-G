@@ -87,7 +87,9 @@ const testFiles = [
   'scratch/verify_story_hosts.mjs',
   'scratch/verify_companion_safety.mjs',
   // Cloudflare image Worker access control (origin allow-list, no shared key):
-  'scratch/verify_cloudflare_worker_origin.mjs'
+  'scratch/verify_cloudflare_worker_origin.mjs',
+  // Starlight Arcade Classic Mini-Game Expansion Suite:
+  'scratch/verify_arcade_classic_games_expansion.mjs'
 ];
 
 let allPassed = true;
