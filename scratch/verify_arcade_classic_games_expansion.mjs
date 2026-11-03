@@ -170,7 +170,9 @@ store.state.selectedHero.arcadeCoinsLastDate = new Date().toISOString().slice(0,
 store.state.selectedHero.coins = 100;
 store.state.selectedHero.screenTimeMinutes = 45;
 store.state.selectedHero.isScreenTimePaused = false;
-store.state.selectedHero.bedtimeCurfew = '23:59'; // Not curfew right now
+// No curfew at all: isScreenTimeLocked() treats everything between midnight and 6 AM as curfew whatever time is set,
+// so a fixed '23:59' made this test fail whenever it ran in that window (CI runs on UTC). Empty = no curfew, any hour.
+store.state.selectedHero.bedtimeCurfew = '';
 
 // Test 2.1: First score recorded
 const res1 = store.recordArcadeResult('starlight_runner', 120, { coinsWon: 12, sparksWon: 8 });
