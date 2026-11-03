@@ -129,5 +129,20 @@ await check('the branch sync workflow keeps the Functions copy in step on seeds/
   assert.ok(!/pull_request|workflow_run/.test(src.replace(/#.*$/gm, '')), 'not triggered by pull requests');
 });
 
+await check('the refresh script rejects a malformed key and fails when every model call fails (no silent success)', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const run = (key) => spawnSync('node', ['scripts/refresh-story-seeds.mjs'], { env: { ...process.env, GEMINI_API_KEY: key }, encoding: 'utf8', timeout: 20000 });
+  for (const bad of ['abc def', 'AIzaSyAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\nsecondline', 'x'.repeat(10)]) {
+    const r = run(bad);
+    assert.strictEqual(r.status, 1, `exit code for ${JSON.stringify(bad.slice(0, 12))}`);
+    assert.ok(/not a plain API key/.test(r.stderr), 'clear message');
+    assert.ok(!r.stderr.includes(bad) && !r.stdout.includes(bad), 'the key value is never printed');
+  }
+  const unset = spawnSync('node', ['scripts/refresh-story-seeds.mjs'], { env: { ...process.env, GEMINI_API_KEY: '' }, encoding: 'utf8', timeout: 20000 });
+  assert.strictEqual(unset.status, 0, 'a missing key is still a quiet skip');
+  const src = readFileSync('scripts/refresh-story-seeds.mjs', 'utf8');
+  assert.ok(src.includes('modelFailures === modelCalls') && /process\.exit\(1\)/.test(src), 'all-calls-failed exits non-zero');
+});
+
 if (failed) { console.error(`${failed} check(s) failed`); process.exit(1); }
 console.log('all passed');
