@@ -536,6 +536,9 @@ class FirestoreSyncService {
             screenTimeRate: h.screenTimeRate !== undefined ? Number(h.screenTimeRate) : 2,
             isScreenTimePaused: h.isScreenTimePaused !== undefined ? Boolean(h.isScreenTimePaused) : false,
             screenTimeLockMessage: h.screenTimeLockMessage || 'Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙',
+            arcadeHighScores: h.arcadeHighScores || {},
+            arcadeCoinsEarnedToday: h.arcadeCoinsEarnedToday !== undefined ? Number(h.arcadeCoinsEarnedToday) : 0,
+            arcadeCoinsLastDate: h.arcadeCoinsLastDate || '',
             inventory: h.inventory || [],
             // Every stamped field is always written (0 = never stamped): the
             // doc is written with {merge:true}, which deep-merges nested maps,

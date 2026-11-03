@@ -22,6 +22,7 @@ import { movementSynth } from '../audio/movementAudioSynthesizer.js';
 import { Sound } from '../audio/sfx.js';
 import confetti from 'canvas-confetti';
 import { voicePrompts } from '../utils/voicePrompts.js';
+import { launchArcadeGame, closeActiveArcadeGame } from '../arcade/arcadeManager.js';
 
 // -------------------------------------------------------------
 // Difficulty tiers: reuses each kid's existing gameDifficulty
@@ -72,9 +73,9 @@ const COLOR_SWATCHES = [
   { name: 'Blue', hex: '#3498db' },
   { name: 'Yellow', hex: '#f1c40f' },
   { name: 'Green', hex: '#2ecc71' },
-  { name: 'Purple', hex: '#9b59b6' },
+  { name: 'Cyan', hex: '#00d2d3' },
   { name: 'Orange', hex: '#f97316' },
-  { name: 'Pink', hex: '#ec4899' }
+  { name: 'Amber', hex: '#ffb961' }
 ];
 const ECHO_PADS = [
   { key: 'red', label: 'Red', hex: '#ef4444', tone: 'chirp' },
@@ -334,72 +335,169 @@ export function renderDancePartyView() {
         </div>
       </section>
 
-      <!-- CLASSIC PET ARCADE CABINETS ACCORDION -->
-      <section class="flex flex-col gap-3.5 pt-2">
+      <!-- 1. NEW STARLIGHT ARCADE CAROUSEL -->
+      <section class="flex flex-col gap-3 pt-2">
+        <div class="flex justify-between items-center px-1">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-secondary text-2xl" style="font-variation-settings: 'FILL' 1;">stars</span>
+            <h2 class="font-headline text-lg font-black text-inverse-surface">New Starlight Arcade</h2>
+          </div>
+          <span class="text-xs font-bold text-amber-400">Playground Inspired • 60 FPS</span>
+        </div>
+
+        <div class="flex gap-3.5 overflow-x-auto pb-3 pt-1 px-1 scrollbar-none snap-x snap-mandatory">
+          ${[
+            {
+              id: 'starlight_runner',
+              title: 'Starlight Dino Runner',
+              badge: 'Parallax Runner',
+              desc: 'Double-jump over logs & crystals, collect starlight fruit!',
+              emoji: '🦖',
+              iconBg: 'bg-emerald-500/20 border-emerald-500/50',
+              border: 'border-emerald-500/40',
+              accent: 'text-emerald-400'
+            },
+            {
+              id: 'germ_busters',
+              title: 'Germ Busters',
+              badge: 'Reflex Bop',
+              desc: 'Whack cavity critters & sugar bugs with sudsy bubbles!',
+              emoji: '🪥',
+              iconBg: 'bg-cyan-500/20 border-cyan-500/50',
+              border: 'border-cyan-500/40',
+              accent: 'text-cyan-400'
+            },
+            {
+              id: 'bubble_cannon',
+              title: 'Celestial Bubble Cannon',
+              badge: 'Match-3 Shooter',
+              desc: 'Aim & launch treat orbs to clear constellation clusters!',
+              emoji: '🫧',
+              iconBg: 'bg-amber-500/20 border-amber-500/50',
+              border: 'border-amber-500/40',
+              accent: 'text-amber-400'
+            },
+            {
+              id: 'maze_explorer',
+              title: 'Toddler Maze Explorer',
+              badge: 'Path Labyrinth',
+              desc: 'Trace starlight corridors to discover the golden treasure!',
+              emoji: '🗺️',
+              iconBg: 'bg-amber-400/20 border-amber-400/50',
+              border: 'border-amber-400/40',
+              accent: 'text-amber-300'
+            }
+          ].map(game => {
+            const highScores = store.getArcadeHighScores ? store.getArcadeHighScores(game.id, hero) : [];
+            const topScore = highScores.length > 0 ? highScores[0] : 0;
+            return `
+              <div class="shrink-0 w-64 sm:w-72 snap-start bg-surface-container rounded-3xl p-4 border-2 ${game.border} flex flex-col justify-between gap-3 shadow-md hover:border-secondary transition-all">
+                <div class="flex items-start justify-between">
+                  <div class="w-12 h-12 rounded-2xl ${game.iconBg} border flex items-center justify-center text-2xl shrink-0">
+                    ${game.emoji}
+                  </div>
+                  <div class="flex flex-col items-end">
+                    <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-surface-container-high ${game.accent} font-headline border border-surface-container-highest">${game.badge}</span>
+                    <span class="text-[11px] font-bold text-amber-400 mt-1">🏆 Best: ${topScore}</span>
+                  </div>
+                </div>
+                <div>
+                  <h3 class="font-headline text-base font-black text-inverse-surface leading-tight">${game.title}</h3>
+                  <p class="text-xs text-on-surface-variant mt-1 line-clamp-2 leading-relaxed">${game.desc}</p>
+                </div>
+                <div class="flex items-center justify-between pt-2 border-t border-surface-container-highest">
+                  <span class="text-[11px] font-black text-secondary">+5–15 🪙 • +5–10 ⚡</span>
+                  <button data-arcade-game="${game.id}" class="launch-starlight-arcade-btn bg-primary text-on-primary font-headline text-xs font-black px-4 py-2 min-h-[40px] rounded-xl chunky-btn-sm active:scale-95 shadow-sm">
+                    PLAY 🚀
+                  </button>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </section>
+
+      <!-- 2. ORIGINAL CLASSICS CAROUSEL -->
+      <section class="flex flex-col gap-3 pt-2">
         <div class="flex justify-between items-center px-1">
           <div class="flex items-center gap-2">
             <span class="material-symbols-outlined text-primary text-2xl" style="font-variation-settings: 'FILL' 1;">sports_esports</span>
-            <h2 class="font-headline text-lg font-black text-inverse-surface">Classic Mini-Game Cabinets</h2>
+            <h2 class="font-headline text-lg font-black text-inverse-surface">Original Classics</h2>
           </div>
-          <span class="text-xs font-bold text-on-surface-variant">Quick Fun & High Scores</span>
+          <span class="text-xs font-bold text-on-surface-variant">Quick Fun & Training XP</span>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div class="flex gap-3.5 overflow-x-auto pb-3 pt-1 px-1 scrollbar-none snap-x snap-mandatory">
           
           <!-- Berry Popper -->
-          <button id="launch-treat-catch-btn" class="bg-surface-container hover:bg-surface-bright rounded-2xl p-4 border-2 border-secondary/40 flex items-center gap-3 text-left chunky-btn-sm active:scale-95">
-            <div class="w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-2xl shrink-0">
-              🎯
+          <div class="shrink-0 w-60 sm:w-64 snap-start bg-surface-container rounded-3xl p-4 border-2 border-secondary/40 flex flex-col justify-between gap-3 shadow-md">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-2xl shrink-0">🎯</div>
+              <div class="flex flex-col">
+                <span class="font-headline text-sm font-black text-inverse-surface">Berry Popper</span>
+                <span class="text-[11px] text-on-surface-variant">Pop fruit bubbles & feed pet</span>
+              </div>
             </div>
-            <div class="flex flex-col">
-              <span class="font-headline text-xs font-black text-inverse-surface">Berry Popper</span>
-              <span class="text-[11px] text-on-surface-variant">Pop fruit bubbles & feed pet</span>
-            </div>
-          </button>
+            <button id="launch-treat-catch-btn" class="w-full bg-surface-container-high hover:bg-surface-bright text-secondary font-headline text-xs font-black py-2.5 rounded-xl border border-secondary/40 chunky-btn-sm active:scale-95">
+              PLAY POPPER 🎯
+            </button>
+          </div>
 
           <!-- Memory Match -->
-          <button id="launch-memory-match-btn" class="bg-surface-container hover:bg-surface-bright rounded-2xl p-4 border-2 border-primary/40 flex items-center gap-3 text-left chunky-btn-sm active:scale-95">
-            <div class="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center text-2xl shrink-0">
-              🃏
+          <div class="shrink-0 w-60 sm:w-64 snap-start bg-surface-container rounded-3xl p-4 border-2 border-primary/40 flex flex-col justify-between gap-3 shadow-md">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center text-2xl shrink-0">🃏</div>
+              <div class="flex flex-col">
+                <span class="font-headline text-sm font-black text-inverse-surface">Memory Match</span>
+                <span class="text-[11px] text-on-surface-variant">Pair companion cards</span>
+              </div>
             </div>
-            <div class="flex flex-col">
-              <span class="font-headline text-xs font-black text-inverse-surface">Memory Match</span>
-              <span class="text-[11px] text-on-surface-variant">Pair companion cards</span>
-            </div>
-          </button>
+            <button id="launch-memory-match-btn" class="w-full bg-surface-container-high hover:bg-surface-bright text-primary font-headline text-xs font-black py-2.5 rounded-xl border border-primary/40 chunky-btn-sm active:scale-95">
+              PLAY MEMORY 🃏
+            </button>
+          </div>
 
-          <!-- Freestyle Disco Dance Floor -->
-          <button id="launch-disco-party-btn" class="bg-surface-container hover:bg-surface-bright rounded-2xl p-4 border-2 border-cyan-500/40 flex items-center gap-3 text-left chunky-btn-sm active:scale-95">
-            <div class="w-12 h-12 rounded-xl bg-cyan-500/20 border border-cyan-500/50 flex items-center justify-center text-2xl shrink-0">
-              🪩
+          <!-- Disco Floor -->
+          <div class="shrink-0 w-60 sm:w-64 snap-start bg-surface-container rounded-3xl p-4 border-2 border-cyan-500/40 flex flex-col justify-between gap-3 shadow-md">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-2xl bg-cyan-500/20 border border-cyan-500/50 flex items-center justify-center text-2xl shrink-0">🪩</div>
+              <div class="flex flex-col">
+                <span class="font-headline text-sm font-black text-inverse-surface">Disco Floor</span>
+                <span class="text-[11px] text-on-surface-variant">Rhythm pads & confetti DJ</span>
+              </div>
             </div>
-            <div class="flex flex-col">
-              <span class="font-headline text-xs font-black text-inverse-surface">Disco Floor</span>
-              <span class="text-[11px] text-on-surface-variant">Rhythm pads & confetti DJ</span>
-            </div>
-          </button>
+            <button id="launch-disco-party-btn" class="w-full bg-surface-container-high hover:bg-surface-bright text-cyan-300 font-headline text-xs font-black py-2.5 rounded-xl border border-cyan-500/40 chunky-btn-sm active:scale-95">
+              DANCE NOW 🪩
+            </button>
+          </div>
 
           <!-- Color Dash -->
-          <button id="launch-color-dash-btn" class="bg-surface-container hover:bg-surface-bright rounded-2xl p-4 border-2 border-rose-500/40 flex items-center gap-3 text-left chunky-btn-sm active:scale-95">
-            <div class="w-12 h-12 rounded-xl bg-rose-500/20 border border-rose-500/50 flex items-center justify-center text-2xl shrink-0">
-              🎨
+          <div class="shrink-0 w-60 sm:w-64 snap-start bg-surface-container rounded-3xl p-4 border-2 border-emerald-500/40 flex flex-col justify-between gap-3 shadow-md">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center text-2xl shrink-0">🎨</div>
+              <div class="flex flex-col">
+                <span class="font-headline text-sm font-black text-inverse-surface">Color Dash</span>
+                <span class="text-[11px] text-on-surface-variant">Tap the color Rex calls out!</span>
+              </div>
             </div>
-            <div class="flex flex-col">
-              <span class="font-headline text-xs font-black text-inverse-surface">Color Dash</span>
-              <span class="text-[11px] text-on-surface-variant">Tap the color Rex calls out!</span>
-            </div>
-          </button>
+            <button id="launch-color-dash-btn" class="w-full bg-surface-container-high hover:bg-surface-bright text-emerald-300 font-headline text-xs font-black py-2.5 rounded-xl border border-emerald-500/40 chunky-btn-sm active:scale-95">
+              PLAY COLOR DASH 🎨
+            </button>
+          </div>
 
           <!-- Echo Match -->
-          <button id="launch-echo-match-btn" class="bg-surface-container hover:bg-surface-bright rounded-2xl p-4 border-2 border-violet-500/40 flex items-center gap-3 text-left chunky-btn-sm active:scale-95">
-            <div class="w-12 h-12 rounded-xl bg-violet-500/20 border border-violet-500/50 flex items-center justify-center text-2xl shrink-0">
-              🎵
+          <div class="shrink-0 w-60 sm:w-64 snap-start bg-surface-container rounded-3xl p-4 border-2 border-secondary/40 flex flex-col justify-between gap-3 shadow-md">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-2xl shrink-0">🎵</div>
+              <div class="flex flex-col">
+                <span class="font-headline text-sm font-black text-inverse-surface">Echo Match</span>
+                <span class="text-[11px] text-on-surface-variant">Watch, listen, repeat pattern</span>
+              </div>
             </div>
-            <div class="flex flex-col">
-              <span class="font-headline text-xs font-black text-inverse-surface">Echo Match</span>
-              <span class="text-[11px] text-on-surface-variant">Watch, listen, repeat the pattern</span>
-            </div>
-          </button>
+            <button id="launch-echo-match-btn" class="w-full bg-surface-container-high hover:bg-surface-bright text-secondary font-headline text-xs font-black py-2.5 rounded-xl border border-secondary/40 chunky-btn-sm active:scale-95">
+              PLAY ECHO 🎵
+            </button>
+          </div>
 
         </div>
       </section>
@@ -612,7 +710,7 @@ function renderMovementSession(hero, activePet, petAvatarUrl, petName) {
             <span>POSE</span>
           </button>
 
-          <button data-rhythm-pad="fever" class="rhythm-pad-btn h-14 rounded-2xl bg-linear-to-b from-purple-500 to-purple-700 border-b-4 border-purple-900 text-white font-headline text-xs font-black shadow-md active:translate-y-1 active:border-b-0 flex flex-col items-center justify-center">
+          <button data-rhythm-pad="fever" class="rhythm-pad-btn h-14 rounded-2xl bg-linear-to-b from-amber-500 to-amber-700 border-b-4 border-amber-900 text-white font-headline text-xs font-black shadow-md active:translate-y-1 active:border-b-0 flex flex-col items-center justify-center">
             <span class="text-base animate-pulse">⚡</span>
             <span>FEVER!</span>
           </button>
@@ -817,12 +915,12 @@ function renderEchoMatchGame(hero, activePet, petAvatarUrl, petName) {
           <span class="material-symbols-outlined text-base">arrow_back</span> Movement Hub
         </button>
         <h1 class="font-headline text-lg font-black text-inverse-surface">Echo Match</h1>
-        <div class="bg-surface-container-high px-3 py-1.5 rounded-full border-2 border-violet-400 text-xs font-black text-violet-300 flex items-center gap-1">
+        <div class="bg-surface-container-high px-3 py-1.5 rounded-full border-2 border-amber-400 text-xs font-black text-amber-300 flex items-center gap-1">
           <span class="material-symbols-outlined text-sm">graphic_eq</span> ${echoSequence.length || 0}
         </div>
       </div>
 
-      <div class="relative bg-linear-to-b from-[#1a1530] via-[#120e24] to-[#080614] rounded-3xl p-6 border-4 border-violet-500/40 min-h-[380px] card-shadow flex flex-col items-center justify-center gap-5">
+      <div class="relative bg-linear-to-b from-[#132534] via-[#0d1e2b] to-[#07131c] rounded-3xl p-6 border-4 border-amber-500/40 min-h-[380px] card-shadow flex flex-col items-center justify-center gap-5">
         ${!echoActive && !echoWon && !echoLost ? `
           <span class="text-5xl">🎵</span>
           <h2 class="font-headline text-xl font-black text-inverse-surface text-center">Watch, Listen, Repeat!</h2>
@@ -839,7 +937,7 @@ function renderEchoMatchGame(hero, activePet, petAvatarUrl, petName) {
           <p class="text-sm text-on-surface-variant">You matched ${echoPlayerIdx} step${echoPlayerIdx === 1 ? '' : 's'}. Try again!</p>
           <button id="start-echo-match-btn" class="bg-primary text-on-primary font-headline text-sm font-black px-8 py-3 rounded-2xl chunky-btn shadow-chunky-sm active:scale-95">TRY AGAIN 🎵</button>
         ` : `
-          <span class="text-xs font-bold text-violet-300 uppercase tracking-wide">${echoIsPlaying ? 'Watch closely...' : 'Your turn!'}</span>
+          <span class="text-xs font-bold text-amber-300 uppercase tracking-wide">${echoIsPlaying ? 'Watch closely...' : 'Your turn!'}</span>
           <div class="grid grid-cols-2 gap-4 w-full max-w-xs">
             ${pads.map((p) => `
               <button data-echo-pad-key="${p.key}" class="echo-pad-btn h-24 rounded-2xl border-4 transition-all active:scale-90 ${echoActivePad === p.key ? 'scale-105 border-white shadow-[0_0_25px_rgba(255,255,255,0.6)]' : 'border-white/10'}" style="background-color: ${p.hex}${echoActivePad === p.key ? '' : 'cc'};"></button>
@@ -1098,6 +1196,16 @@ export function attachDancePartyEvents() {
     btn.addEventListener('click', () => {
       const padType = btn.getAttribute('data-rhythm-pad');
       handleRhythmPadPress(padType);
+    });
+  });
+
+  // --- LAUNCH NEW STARLIGHT ARCADE GAMES ---
+  document.querySelectorAll('.launch-starlight-arcade-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const gameId = btn.getAttribute('data-arcade-game');
+      cleanupMovementSession();
+      cleanupTimers();
+      launchArcadeGame(gameId);
     });
   });
 
@@ -1526,7 +1634,7 @@ function triggerFeverBurst() {
     particleCount: 150,
     spread: 120,
     origin: { y: 0.5 },
-    colors: ['#f39c12', '#e74c3c', '#9b59b6', '#2ecc71', '#00bcd4']
+    colors: ['#f39c12', '#e74c3c', '#ffb961', '#2ecc71', '#00bcd4']
   });
 
   setTimeout(() => {
@@ -1596,6 +1704,7 @@ function cleanupTimers() {
 export function abandonDancePartyIfRunning() {
   cleanupMovementSession();
   cleanupTimers();
+  closeActiveArcadeGame();
 }
 
 function generateTreatItems(bubbleCount = 5) {

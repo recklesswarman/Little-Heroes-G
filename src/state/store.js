@@ -215,7 +215,10 @@ const defaultState = {
     bedtimeCurfew: '20:00',
     screenTimeRate: 2, // 2 minutes per point
     isScreenTimePaused: false,
-    screenTimeLockMessage: 'Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙'
+    screenTimeLockMessage: 'Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙',
+    arcadeHighScores: {},
+    arcadeCoinsEarnedToday: 0,
+    arcadeCoinsLastDate: ''
   },
 
   heroes: [
@@ -257,7 +260,10 @@ const defaultState = {
       bedtimeCurfew: '20:00',
       screenTimeRate: 2,
       isScreenTimePaused: false,
-      screenTimeLockMessage: 'Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙'
+      screenTimeLockMessage: 'Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙',
+      arcadeHighScores: {},
+      arcadeCoinsEarnedToday: 0,
+      arcadeCoinsLastDate: ''
     }
   ],
 
@@ -720,6 +726,9 @@ class Store {
             h.storyMemory = normalizeStoryMemory(h.storyMemory);
             // Per-child story profile (reading level, tone, pronouns). Always reconciled.
             h.storyProfile = normalizeStoryProfile(h.storyProfile);
+            if (!h.arcadeHighScores || typeof h.arcadeHighScores !== 'object') h.arcadeHighScores = {};
+            if (h.arcadeCoinsEarnedToday === undefined) h.arcadeCoinsEarnedToday = 0;
+            if (!h.arcadeCoinsLastDate) h.arcadeCoinsLastDate = '';
           });
         }
 
@@ -750,6 +759,9 @@ class Store {
           if (!parsed.selectedHero.screenTimeLockMessage) parsed.selectedHero.screenTimeLockMessage = 'Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙';
           parsed.selectedHero.storyMemory = normalizeStoryMemory(parsed.selectedHero.storyMemory);
           parsed.selectedHero.storyProfile = normalizeStoryProfile(parsed.selectedHero.storyProfile);
+          if (!parsed.selectedHero.arcadeHighScores || typeof parsed.selectedHero.arcadeHighScores !== 'object') parsed.selectedHero.arcadeHighScores = {};
+          if (parsed.selectedHero.arcadeCoinsEarnedToday === undefined) parsed.selectedHero.arcadeCoinsEarnedToday = 0;
+          if (!parsed.selectedHero.arcadeCoinsLastDate) parsed.selectedHero.arcadeCoinsLastDate = '';
         }
 
         // Never restore to parent_portal while locked on reload
@@ -5765,6 +5777,118 @@ class Store {
     this.saveState(true);
   }
 
+  isScreenTimeLocked(hero = null) {
+    const h = hero || this.state.selectedHero;
+    if (!h) return false;
+    if (h.isScreenTimePaused) return true;
+    if (typeof h.screenTimeMinutes === 'number' && h.screenTimeMinutes <= 0) return true;
+    if (h.bedtimeCurfew) {
+      const parts = String(h.bedtimeCurfew).split(':').map(Number);
+      const curfewHour = !isNaN(parts[0]) ? parts[0] : 20;
+      const curfewMin = !isNaN(parts[1]) ? parts[1] : 0;
+      const now = new Date();
+      const curHour = now.getHours();
+      const curMin = now.getMinutes();
+      const curTotalMin = curHour * 60 + curMin;
+      const curfewTotalMin = curfewHour * 60 + curfewMin;
+      // Curfew is active from curfew time until 6:00 AM (360 min)
+      if (curTotalMin >= curfewTotalMin || curTotalMin < 360) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  getScreenTimeLockMessage(hero = null) {
+    const h = hero || this.state.selectedHero;
+    return h?.screenTimeLockMessage || 'Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙';
+  }
+
+  getArcadeHighScores(gameId, hero = null) {
+    const h = hero || this.state.selectedHero;
+    if (!h || !h.arcadeHighScores) return [];
+    const list = h.arcadeHighScores[gameId];
+    return Array.isArray(list) ? [...list] : [];
+  }
+
+  recordArcadeResult(gameId, score = 0, options = {}) {
+    const h = this.state.selectedHero;
+    if (!h) return { success: false, reason: 'no_hero' };
+
+    if (this.isScreenTimeLocked(h)) {
+      return { success: false, locked: true, lockMessage: this.getScreenTimeLockMessage(h) };
+    }
+
+    if (!h.arcadeHighScores || typeof h.arcadeHighScores !== 'object') {
+      h.arcadeHighScores = {};
+    }
+    const currentScores = Array.isArray(h.arcadeHighScores[gameId]) ? [...h.arcadeHighScores[gameId]] : [];
+    const prevBest = currentScores.length > 0 ? currentScores[0] : 0;
+    const isNewHighScore = score > 0 && score > prevBest;
+
+    if (score > 0) {
+      currentScores.push(score);
+      currentScores.sort((a, b) => b - a);
+      h.arcadeHighScores[gameId] = currentScores.slice(0, 3);
+      // Sync into this.state.heroes as well
+      const matchedHero = (this.state.heroes || []).find(hero => hero.id === h.id);
+      if (matchedHero) {
+        matchedHero.arcadeHighScores = { ...h.arcadeHighScores };
+      }
+    }
+
+    // Daily coin cap tracking: 50 coins/day max from arcade games
+    const todayStr = new Date().toISOString().slice(0, 10);
+    if (h.arcadeCoinsLastDate !== todayStr) {
+      h.arcadeCoinsEarnedToday = 0;
+      h.arcadeCoinsLastDate = todayStr;
+    }
+
+    // Base coins: 5–15 coins based on performance/options
+    const requestedCoins = Math.min(15, Math.max(5, options.coinsWon !== undefined ? options.coinsWon : (5 + Math.min(10, Math.floor(score / 50)))));
+    const remainingCap = Math.max(0, 50 - (h.arcadeCoinsEarnedToday || 0));
+    const actualCoins = Math.min(requestedCoins, remainingCap);
+    h.arcadeCoinsEarnedToday = (h.arcadeCoinsEarnedToday || 0) + actualCoins;
+    h.coins = (h.coins || 0) + actualCoins;
+
+    // Pet Sparks: 5–10 sparks per round
+    const sparksAwarded = Math.min(10, Math.max(5, options.sparksWon !== undefined ? options.sparksWon : (5 + Math.min(5, Math.floor(score / 100)))));
+    const activePet = this.getActivePet();
+    if (activePet) {
+      this.addPetTrainingXp(activePet.id, sparksAwarded);
+    }
+
+    // Match in this.state.heroes
+    const matchedHero = (this.state.heroes || []).find(hero => hero.id === h.id);
+    if (matchedHero) {
+      matchedHero.coins = h.coins;
+      matchedHero.arcadeCoinsEarnedToday = h.arcadeCoinsEarnedToday;
+      matchedHero.arcadeCoinsLastDate = h.arcadeCoinsLastDate;
+    }
+
+    this.saveState(true);
+    this.notify();
+
+    // Trigger dynamic Kokoro voice cheers
+    try {
+      const petId = activePet ? activePet.id : 'rex';
+      if (isNewHighScore) {
+        speakCompanion("New High Score! You're an arcade superstar!", petId).catch(() => {});
+      } else if (options.cleared || score > 0) {
+        speakCompanion("Awesome job, Little Hero! That was so much fun!", petId).catch(() => {});
+      }
+    } catch (e) {}
+
+    return {
+      success: true,
+      coinsWon: actualCoins,
+      coinsCapped: actualCoins < requestedCoins,
+      sparksWon: sparksAwarded,
+      isNewHighScore,
+      highScores: h.arcadeHighScores[gameId] || []
+    };
+  }
+
   getGameMastery(gameId) {
     if (!this.state.gameMasteryMap) {
       this.state.gameMasteryMap = {};
@@ -6701,7 +6825,10 @@ class Store {
       bedtimeCurfew: '20:00',
       screenTimeRate: 2,
       isScreenTimePaused: false,
-      screenTimeLockMessage: 'Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙'
+      screenTimeLockMessage: 'Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙',
+      arcadeHighScores: {},
+      arcadeCoinsEarnedToday: 0,
+      arcadeCoinsLastDate: ''
     };
 
     this.state.selectedHero = starterHero;
@@ -7215,6 +7342,9 @@ class Store {
           screenTimeRate: cloudH.screenTimeRate !== undefined ? Number(cloudH.screenTimeRate) : (localH?.screenTimeRate ?? 2),
           isScreenTimePaused: cloudH.isScreenTimePaused !== undefined ? Boolean(cloudH.isScreenTimePaused) : (localH?.isScreenTimePaused ?? false),
           screenTimeLockMessage: cloudH.screenTimeLockMessage || localH?.screenTimeLockMessage || 'Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙',
+          arcadeHighScores: cloudH.arcadeHighScores || localH?.arcadeHighScores || {},
+          arcadeCoinsEarnedToday: cloudH.arcadeCoinsEarnedToday !== undefined ? Number(cloudH.arcadeCoinsEarnedToday) : (localH?.arcadeCoinsEarnedToday ?? 0),
+          arcadeCoinsLastDate: cloudH.arcadeCoinsLastDate || localH?.arcadeCoinsLastDate || '',
           inventory: Array.from(new Set([...(localH?.inventory || []), ...(cloudH.inventory || [])])).filter(id => !deletedCustomItemIdsSet.has(id)),
           aiQuests: (localH?.aiQuests && localH.aiQuests.length > 0)
             ? localH.aiQuests

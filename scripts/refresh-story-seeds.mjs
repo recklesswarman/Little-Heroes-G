@@ -29,16 +29,29 @@ const log = (...a) => console.log('[seeds]', ...a);
 const summary = [];
 const note = (line) => { log(line); summary.push(line); };
 
-if (!process.env.GEMINI_API_KEY) {
+// A pasted secret often carries a trailing newline, spaces or quotes; those break the request headers
+// ("Headers.append" errors) and used to make the whole run look like a quiet success with nothing added.
+const API_KEY = String(process.env.GEMINI_API_KEY || '').trim().replace(/^["']|["']$/g, '').trim();
+if (!API_KEY) {
   log('GEMINI_API_KEY is not set: skipping the refresh. The shipped seed pool keeps working.');
   process.exit(0);
+}
+if (!/^[A-Za-z0-9_-]{20,}$/.test(API_KEY)) {
+  console.error('[seeds] GEMINI_API_KEY is set but is not a plain API key (it should be one line of letters, digits, "-" and "_" with no spaces, quotes or line breaks). Re-create the secret in Settings > Secrets > Actions and paste only the key.');
+  process.exit(1);
 }
 if (REVIEWED_SEEDS.length >= MAX_REVIEWED) {
   log(`Reviewed pool already has ${REVIEWED_SEEDS.length} seeds (limit ${MAX_REVIEWED}): nothing to do.`);
   process.exit(0);
 }
 
-const generate = makeGeminiGenerate(new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }), { model: process.env.GEMINI_STORY_MODEL || undefined });
+const rawGenerate = makeGeminiGenerate(new GoogleGenAI({ apiKey: API_KEY }), { model: process.env.GEMINI_STORY_MODEL || undefined });
+let modelCalls = 0;
+let modelFailures = 0;
+const generate = async (...args) => {
+  modelCalls++;
+  try { return await rawGenerate(...args); } catch (err) { modelFailures++; throw err; }
+};
 const week = Math.floor(Date.now() / 604_800_000);
 
 async function fetchLimited(url, accept) {
@@ -137,6 +150,12 @@ if (existsSync(MANUAL_FILE)) {
   }
 }
 
+// Every model call failing means the key, model name or network is broken, not that there was nothing new:
+// fail the run so it shows red instead of looking like a quiet week.
+if (modelCalls > 0 && modelFailures === modelCalls) {
+  console.error(`[seeds] All ${modelCalls} model calls failed (see the run notes above). Check the GEMINI_API_KEY secret and the model name.`);
+  process.exit(1);
+}
 if (!added.length) { log('No new seeds this week.'); process.exit(0); }
 
 writeFileSync(REVIEWED_FILE, serializeReviewed([...REVIEWED_SEEDS, ...added]));
