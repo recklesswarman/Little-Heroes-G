@@ -24,6 +24,20 @@ function testAssert(condition, message) {
   }
 }
 
+
+// Live hosts occasionally answer 502/503/504 for a second or two (CDN or rollout). The suite gates deploys,
+// so one blip must not block a good commit: retry server errors a few times, then let the assertions judge.
+async function fetchWithRetry(url, options = {}, attempts = 4) {
+  let res;
+  for (let i = 0; i < attempts; i++) {
+    res = await fetch(url, options);
+    if (res.status < 500) return res;
+    console.warn(`     (retry ${i + 1}/${attempts}) ${url} answered HTTP ${res.status}`);
+    await new Promise(r => setTimeout(r, 1500 * (i + 1)));
+  }
+  return res;
+}
+
 console.log('🚀 =============================================================');
 console.log('🚀 MULTI-HOST LIVE ENDPOINT HEALTH & PARITY VERIFICATION SUITE');
 console.log('🚀 =============================================================\n');
@@ -224,7 +238,7 @@ for (const ep of endpointsToProbe) {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30000);
-    const res = await fetch(ep.url, { signal: controller.signal });
+    const res = await fetchWithRetry(ep.url, { signal: controller.signal });
     clearTimeout(timeout);
 
     testAssert(res.status === 200, `${ep.name} returned HTTP 200 (received ${res.status})`);
@@ -256,7 +270,7 @@ for (const ep of endpointsToProbe) {
       // Fetch the bundle asset to verify HTTP 200, application/javascript, and non-empty compilation
       const bundleUrl = new URL(scriptPath, ep.url).href;
       console.log(`     Fetching asset bundle: ${bundleUrl}`);
-      const assetRes = await fetch(bundleUrl);
+      const assetRes = await fetchWithRetry(bundleUrl);
       testAssert(assetRes.status === 200, `${ep.name} bundle asset returned HTTP 200 (${assetRes.status})`);
       const assetType = assetRes.headers.get('content-type') || '';
 
