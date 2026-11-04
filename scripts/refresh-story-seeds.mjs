@@ -5,6 +5,7 @@
 //
 //   GEMINI_API_KEY=... node scripts/refresh-story-seeds.mjs
 // Without a key it prints a notice and exits 0 (the shipped pool keeps working).
+import { cleanApiKey, isPlainApiKey, describeApiKeyProblems } from './key-diagnostics.mjs';
 import { readFileSync, writeFileSync, existsSync, appendFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -31,13 +32,15 @@ const note = (line) => { log(line); summary.push(line); };
 
 // A pasted secret often carries a trailing newline, spaces or quotes; those break the request headers
 // ("Headers.append" errors) and used to make the whole run look like a quiet success with nothing added.
-const API_KEY = String(process.env.GEMINI_API_KEY || '').trim().replace(/^["']|["']$/g, '').trim();
+const API_KEY = cleanApiKey(process.env.GEMINI_API_KEY);
 if (!API_KEY) {
   log('GEMINI_API_KEY is not set: skipping the refresh. The shipped seed pool keeps working.');
   process.exit(0);
 }
-if (!/^[A-Za-z0-9_-]{20,}$/.test(API_KEY)) {
+if (!isPlainApiKey(API_KEY)) {
   console.error('[seeds] GEMINI_API_KEY is set but is not a plain API key (it should be one line of letters, digits, "-" and "_" with no spaces, quotes or line breaks). Re-create the secret in Settings > Secrets > Actions and paste only the key.');
+  // Counts and category names only: the value itself, and every character of it, stays out of the log.
+  for (const line of describeApiKeyProblems(process.env.GEMINI_API_KEY).lines) console.error(`[seeds]   ${line}`);
   process.exit(1);
 }
 if (REVIEWED_SEEDS.length >= MAX_REVIEWED) {

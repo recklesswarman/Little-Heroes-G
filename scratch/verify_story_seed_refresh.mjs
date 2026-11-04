@@ -144,5 +144,34 @@ await check('the refresh script rejects a malformed key and fails when every mod
   assert.ok(src.includes('modelFailures === modelCalls') && /process\.exit\(1\)/.test(src), 'all-calls-failed exits non-zero');
 });
 
+await check('key diagnostics describe the problem by count and category, and never echo any part of the key', async () => {
+  const { describeApiKeyProblems, cleanApiKey, isPlainApiKey } = await import('../scripts/key-diagnostics.mjs');
+  const secret = 'Zq9XkLm2PvT8wRn5HjC3bYd7';
+  const cases = [
+    [`GEMINI_API_KEY=${secret}`, /equals sign/, /variable name/],
+    [`${secret} extra`, /space or tab/, null],
+    [`${secret}\nsecond${secret}`, /line break/, null],
+    [`${secret}.${secret}.${secret}`, /dots/, /token/],
+    [`{"private_key":"${secret}"}`, /quote marks/, /JSON/],
+    [`${secret}\u200b${secret}`, /non-English or invisible/, null]
+  ];
+  for (const [raw, expectCount, expectHint] of cases) {
+    const text = describeApiKeyProblems(raw).lines.join('\n');
+    assert.ok(expectCount.test(text), `reports the category for ${JSON.stringify(raw.slice(0, 14))}: ${text}`);
+    if (expectHint) assert.ok(expectHint.test(text), `hint for ${JSON.stringify(raw.slice(0, 14))}`);
+    assert.ok(/length as stored: \d+ characters/.test(text), 'reports the length');
+    for (let i = 0; i + 5 <= secret.length; i++) assert.ok(!text.includes(secret.slice(i, i + 5)), 'no 5-character piece of the key appears in the report');
+  }
+  assert.strictEqual(cleanApiKey(`  "${secret}"\n`), secret, 'surrounding spaces, quotes and the final newline are removed');
+  assert.ok(isPlainApiKey(secret) && !isPlainApiKey(`${secret} x`) && !isPlainApiKey('short'));
+  assert.ok(describeApiKeyProblems(secret).ok);
+  // End to end: the script prints the report on stderr, exits 1, and still leaks nothing.
+  const { spawnSync } = await import('node:child_process');
+  const r = spawnSync('node', ['scripts/refresh-story-seeds.mjs'], { env: { ...process.env, GEMINI_API_KEY: `${secret} ${secret}` }, encoding: 'utf8', timeout: 20000 });
+  assert.strictEqual(r.status, 1);
+  assert.ok(/length as stored: 49 characters/.test(r.stderr) && /1 space or tab/.test(r.stderr), r.stderr);
+  for (let i = 0; i + 5 <= secret.length; i++) assert.ok(!(r.stdout + r.stderr).includes(secret.slice(i, i + 5)), 'script output never contains the key');
+});
+
 if (failed) { console.error(`${failed} check(s) failed`); process.exit(1); }
 console.log('all passed');
