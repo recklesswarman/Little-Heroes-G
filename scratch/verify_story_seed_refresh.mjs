@@ -165,6 +165,8 @@ await check('key diagnostics describe the problem by count and category, and nev
   assert.strictEqual(cleanApiKey(`  "${secret}"\n`), secret, 'surrounding spaces, quotes and the final newline are removed');
   assert.ok(isPlainApiKey(secret) && !isPlainApiKey(`${secret} x`) && !isPlainApiKey('short'));
   assert.ok(describeApiKeyProblems(secret).ok);
+  assert.ok(isPlainApiKey(`AQ.${secret}${secret}`), 'newer Google Cloud keys with one dot are accepted');
+  assert.ok(!isPlainApiKey(`AQ.${secret}.${secret}`), 'two dots look like a token, not a key');
   // End to end: the script prints the report on stderr, exits 1, and still leaks nothing.
   const { spawnSync } = await import('node:child_process');
   const r = spawnSync('node', ['scripts/refresh-story-seeds.mjs'], { env: { ...process.env, GEMINI_API_KEY: `${secret} ${secret}` }, encoding: 'utf8', timeout: 20000 });
