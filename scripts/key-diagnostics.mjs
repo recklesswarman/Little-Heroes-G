@@ -2,7 +2,9 @@
 // Only counts, lengths and category names come out. A pasted secret often has a stray line break, space,
 // quote, "NAME=" prefix or an invisible/smart character, and those are all visible as categories.
 
-const PLAIN_KEY = /^[A-Za-z0-9_-]{20,}$/;
+// Classic Gemini keys are letters, digits, '-' and '_' ("AIza..."). Newer Google Cloud API keys can contain one
+// dot ("AQ.xxxx"), so one dot is allowed; two or more dots look like a token (JWT), not an API key.
+const PLAIN_KEY = /^[A-Za-z0-9._-]{20,}$/;
 
 /** The key as the script uses it: surrounding whitespace and one pair of surrounding quotes removed. */
 export function cleanApiKey(raw) {
@@ -10,7 +12,8 @@ export function cleanApiKey(raw) {
 }
 
 export function isPlainApiKey(key) {
-  return PLAIN_KEY.test(String(key ?? ''));
+  const k = String(key ?? '');
+  return PLAIN_KEY.test(k) && (k.match(/\./g) || []).length <= 1;
 }
 
 // [singular, plural, pattern]
@@ -19,7 +22,6 @@ const CATEGORIES = [
   ['space or tab', 'spaces or tabs', /[ \t]/g],
   ['quote mark', 'quote marks', /["'`\u2018\u2019\u201c\u201d]/g],
   ['equals sign', 'equals signs', /=/g],
-  ['dot', 'dots', /\./g],
   ['slash or backslash', 'slashes or backslashes', /[\\/]/g],
   ['colon, comma or semicolon', 'colons, commas or semicolons', /[:,;]/g],
   ['bracket or brace', 'brackets or braces', /[()[\]{}<>]/g]
@@ -38,9 +40,11 @@ export function describeApiKeyProblems(raw) {
     const n = (cleaned.match(re) || []).length;
     if (n) { found.push(`${n} ${n > 1 ? many : one}`); accounted += n; }
   }
+  const dots = (cleaned.match(/\./g) || []).length;
+  if (dots > 1) { found.push(`${dots} dots (a key may have at most one)`); accounted += dots; }
   const nonAscii = (cleaned.match(/[^\x00-\x7f]/g) || []).length;
   if (nonAscii) { found.push(`${nonAscii} non-English or invisible character${nonAscii > 1 ? 's' : ''} (for example a smart quote or a zero-width space)`); accounted += nonAscii; }
-  const allBad = (cleaned.match(/[^A-Za-z0-9_-]/g) || []).length;
+  const allBad = (cleaned.match(/[^A-Za-z0-9_.-]/g) || []).length + dots;
   const other = allBad - accounted;
   if (other > 0) found.push(`${other} other symbol${other > 1 ? 's' : ''}`);
   if (found.length) lines.push(`inside the trimmed value: ${found.join(', ')}`);
@@ -51,8 +55,9 @@ export function describeApiKeyProblems(raw) {
   if (/^[A-Za-z_][A-Za-z0-9_]*\s*=/.test(cleaned) || /GEMINI_API_KEY/i.test(cleaned)) hints.push('the variable name looks pasted along with the key: paste only the key');
   if (/^bearer\s/i.test(cleaned)) hints.push('it starts with "Bearer": paste only the key');
   if (/^\s*[\[{]/.test(cleaned)) hints.push('it looks like JSON (a service-account file?): the API needs a plain API key from Google AI Studio');
-  if (/\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/.test(cleaned)) hints.push('it has the shape of a token with dots, not an API key');
+  if (dots > 1) hints.push('it has the shape of a token with several dots, not an API key');
   if (/^AIza/.test(cleaned)) hints.push('it starts with the usual "AIza" prefix');
+  else if (dots === 1 && cleaned.length) hints.push('it does not start with "AIza" but has one dot, like newer Google Cloud API keys; it is accepted');
   else if (cleaned.length) hints.push('it does not start with the usual "AIza" prefix');
   lines.push(...hints.map(h => `hint: ${h}`));
   return { ok: isPlainApiKey(cleaned), lines };

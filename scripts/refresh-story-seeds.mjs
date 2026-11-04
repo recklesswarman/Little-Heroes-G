@@ -38,7 +38,7 @@ if (!API_KEY) {
   process.exit(0);
 }
 if (!isPlainApiKey(API_KEY)) {
-  console.error('[seeds] GEMINI_API_KEY is set but is not a plain API key (it should be one line of letters, digits, "-" and "_" with no spaces, quotes or line breaks). Re-create the secret in Settings > Secrets > Actions and paste only the key.');
+  console.error('[seeds] GEMINI_API_KEY is set but is not a plain API key (it should be one line of letters, digits, "-", "_" and at most one "." with no spaces, quotes or line breaks). Re-create the secret in Settings > Secrets > Actions and paste only the key.');
   // Counts and category names only: the value itself, and every character of it, stays out of the log.
   for (const line of describeApiKeyProblems(process.env.GEMINI_API_KEY).lines) console.error(`[seeds]   ${line}`);
   process.exit(1);
