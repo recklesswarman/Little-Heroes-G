@@ -1,6 +1,7 @@
 import assert from 'node:assert';
 import { cleanSeed, cleanPool, pickSeeds, seasonOf, CLEAN_SEED_POOL, SEEDS_PER_STORY, SEED_KINDS } from '../shared/storyEngine/seeds.js';
 import { SEED_POOL } from '../shared/storyEngine/seedPool.js';
+import { REVIEWED_SEEDS } from '../shared/storyEngine/seedPoolReviewed.js';
 import { buildRequest, planBible } from '../shared/storyEngine/engine.js';
 import { buildBiblePrompt } from '../shared/storyEngine/bible.js';
 import { getBedtimeRealm, BEDTIME_MORALS } from '../src/data/bedtimeStoryData.js';
@@ -17,9 +18,17 @@ const moral = BEDTIME_MORALS[0];
 console.log('story seeds');
 
 await check('every seed in the shipped pool is valid (none silently dropped), with all kinds present', () => {
-  assert.strictEqual(CLEAN_SEED_POOL.length, SEED_POOL.length, 'a baseline seed failed cleanSeed');
+  // The shipped pool is the baseline plus whatever the weekly job has added (and a human approved). The check used to
+  // compare against the baseline alone, so the first successful refresh failed its own safety gate (100 !== 80).
+  assert.strictEqual(CLEAN_SEED_POOL.length, SEED_POOL.length + REVIEWED_SEEDS.length, 'a baseline or reviewed seed failed cleanSeed (or an id is duplicated)');
   for (const k of SEED_KINDS) assert.ok(CLEAN_SEED_POOL.filter(s => s.kind === k).length >= 15, `few ${k} seeds`);
   assert.strictEqual(new Set(CLEAN_SEED_POOL.map(s => s.id)).size, CLEAN_SEED_POOL.length);
+});
+await check('adding reviewed seeds grows the pool by exactly their number and keeps every id unique', () => {
+  const fresh = [1, 2, 3].map(i => ({ id: `r20260101n${i}`, kind: 'nature', season: 'any', text: `A gentle cloud number ${['one', 'two', 'three'][i - 1]} floats along the moonlit hill.`, source: 'wikipedia' }));
+  const grown = cleanPool([...SEED_POOL, ...REVIEWED_SEEDS, ...fresh]);
+  assert.strictEqual(grown.length, SEED_POOL.length + REVIEWED_SEEDS.length + fresh.length);
+  assert.strictEqual(new Set(grown.map(s => s.id)).size, grown.length);
 });
 await check('bad seeds are rejected: links, quotes, digits, names, long text, blocked words, injection, junk', () => {
   const bad = [
