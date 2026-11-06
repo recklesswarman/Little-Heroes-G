@@ -26,6 +26,7 @@ from persistence import (
     load_conversation_id,
     save_conversation_id,
     load_rex_memory,
+    validate_hero_id,
 )
 from .battle_coach import subagent_battle_coach
 from .quest_guide import subagent_quest_guide
@@ -81,6 +82,7 @@ def _make_rex_config(
     conversation_id: Optional[str],
 ) -> LocalAgentConfig:
     """Build the LocalAgentConfig for this child's Rex agent."""
+    hero_id = validate_hero_id(hero_id)
     save_dir = str(Path(AGY_SAVE_DIR_BASE) / hero_id / "sessions")
     app_data_dir = str(Path(AGY_SAVE_DIR_BASE) / hero_id / "artifacts")
     Path(save_dir).mkdir(parents=True, exist_ok=True)
@@ -192,6 +194,7 @@ async def chat_with_rex(
     Returns:
         RexAgentResponse with reply, emotion, voice_tone, and optional fields.
     """
+    hero_id = validate_hero_id(hero_id)
     # Load persisted conversation_id and long-term memory.
     try:
         conversation_id = load_conversation_id(hero_id, household_id, AGY_SAVE_DIR_BASE)
@@ -238,6 +241,7 @@ async def chat_with_rex_audio(
     app_state: dict[str, Any],
 ) -> RexAgentResponse:
     """Send child's spoken audio directly to Rex using Google Antigravity SDK multimodal audio."""
+    hero_id = validate_hero_id(hero_id)
     try:
         conversation_id = load_conversation_id(hero_id, household_id, AGY_SAVE_DIR_BASE)
     except Exception as exc:  # noqa: BLE001

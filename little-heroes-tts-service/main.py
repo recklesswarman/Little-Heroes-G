@@ -228,7 +228,11 @@ def get_request_ip(request: Request) -> str:
 
 def clean_dialogue_text(text: str) -> str:
     cleaned = re.sub(r"\*.*?\*", " ", text or "")
-    cleaned = re.sub(r"\[.*?\]", " ", cleaned)
+    cleaned = re.sub(
+        r"\[[^\]]*(?:\]|$)",
+        lambda match: " " if match.group().endswith("]") else match.group(),
+        cleaned,
+    )
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
     return cleaned
 

@@ -3,6 +3,8 @@ import { escapeHtml } from '../src/utils/escapeHtml.js';
 import { store } from '../src/state/store.js';
 import { renderDashboardView } from '../src/views/DashboardView.js';
 import { renderProfileView } from '../src/views/ProfileView.js';
+import { renderLandingAuthModal, attachLandingAuthModalListeners } from '../src/components/LandingAuthModal.js';
+import { firebaseAuth } from '../src/services/firebaseAuthService.js';
 
 let passed = 0, failed = 0;
 function assert(cond, msg) {
@@ -34,6 +36,24 @@ console.log('\n--- 3. ProfileView renders a malicious hero name as inert text, n
 const profileHtml = renderProfileView();
 assert(!profileHtml.includes('<img src=x onerror'), 'ProfileView does not emit the raw <img onerror tag');
 assert(profileHtml.includes('&lt;img'), 'ProfileView emits the escaped form of the hero name instead');
+
+console.log('\n--- 4. A sign-in exception is escaped before rendering in LandingAuthModal ---');
+store.state.isAuthenticated = false;
+store.state.isHouseholdConfigured = false;
+store.state.householdSetupStep = 'auth';
+const originalSignInWithGoogle = firebaseAuth.signInWithGoogle;
+firebaseAuth.signInWithGoogle = async () => { throw new Error(XSS_PAYLOAD); };
+document.body.innerHTML = renderLandingAuthModal();
+attachLandingAuthModalListeners();
+document.getElementById('auth-google-signin-btn').click();
+await new Promise(resolve => setTimeout(resolve, 0));
+store.state.isAuthenticated = false;
+store.state.isHouseholdConfigured = false;
+store.state.householdSetupStep = 'auth';
+const authHtml = renderLandingAuthModal();
+assert(!authHtml.includes('<img src=x onerror'), 'LandingAuthModal does not render an exception payload as a tag');
+assert(authHtml.includes('&lt;img'), 'LandingAuthModal renders the escaped exception text');
+firebaseAuth.signInWithGoogle = originalSignInWithGoogle;
 
 console.log('\n(ParentPortalView.js:3775 and ShopView.js:491 were fixed the same way -- verified by direct');
 console.log(' code inspection; not re-exercised here since both require simulating extra UI state/clicks.)');

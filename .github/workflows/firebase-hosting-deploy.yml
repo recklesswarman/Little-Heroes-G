@@ -11,6 +11,9 @@ concurrency:
 
 jobs:
   deploy:
+    permissions:
+      checks: write
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
