@@ -1,10 +1,10 @@
 import 'dotenv/config';
 import express from 'express';
-import { rateLimit } from 'express-rate-limit';
+import { ipKeyGenerator, rateLimit } from 'express-rate-limit';
 import http from 'http';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { handleChatRequest, handleBedtimeStoryRequest, attachGeminiLiveWebSocket } from './server/geminiService.js';
+import { handleChatRequest, handleBedtimeStoryRequest, attachGeminiLiveWebSocket, getRequestIp } from './server/geminiService.js';
 import { handleStoryIllustrationRequest } from './server/imageGenService.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -16,7 +16,9 @@ const staticRequestLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: 600,
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  keyGenerator: (req) => ipKeyGenerator(getRequestIp(req)),
+  validate: { xForwardedForHeader: false }
 });
 
 app.use(express.json({ limit: '2mb' }));

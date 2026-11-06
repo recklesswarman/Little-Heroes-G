@@ -6,7 +6,7 @@ import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import { speakCompanion, isRexSpeaking } from './voiceService.js';
 import { triggerInteractiveCelebration } from '../components/InteractiveCelebrationOverlay.js';
-import { isStaticHostingHostname } from '../utils/hostUtils.js';
+import { lacksLiveWebSocketBridge } from '../utils/hostUtils.js';
 
 class GeminiLiveService {
   constructor() {
@@ -220,7 +220,7 @@ class GeminiLiveService {
         }
 
         const isStaticHost = typeof window !== 'undefined' &&
-          isStaticHostingHostname(window.location.hostname);
+          lacksLiveWebSocketBridge(window.location.hostname);
         const customWsUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GEMINI_WS_URL) || 
           (typeof localStorage !== 'undefined' ? localStorage.getItem('gemini_ws_url') : '');
 

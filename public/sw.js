@@ -1,4 +1,4 @@
-const CACHE_NAME = 'little-heroes-v3.13.0-starlight-arcade-expansion-20261103';
+const CACHE_NAME = 'little-heroes-v3.13.1-code-scanning-hardening-20261106';
 const STATIC_ASSETS = [
   './',
   './index.html',
