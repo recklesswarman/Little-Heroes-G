@@ -10,6 +10,7 @@
 
 import { store } from '../state/store.js';
 import { DINO_WORKOUTS } from '../data/petsData.js';
+import { isStaticHostingHostname } from '../utils/hostUtils.js';
 
 const KOKORO_TTS_ENDPOINT = '/api/tts';
 const PROD_KOKORO_CLOUD_RUN_URL = 'https://little-heroes-tts-kokoro-592754457115.us-central1.run.app';
@@ -764,12 +765,7 @@ export function getVoiceApiBaseUrl() {
 
   if (typeof window === 'undefined') return '';
   const hostname = (typeof window !== 'undefined' && window.location?.hostname) || '';
-  if (
-    hostname.includes('github.io') ||
-    hostname.includes('web.app') ||
-    hostname.includes('firebaseapp.com') ||
-    hostname.includes('hosted.app')
-  ) {
+  if (isStaticHostingHostname(hostname)) {
     return PROD_KOKORO_CLOUD_RUN_URL;
   }
   return '';

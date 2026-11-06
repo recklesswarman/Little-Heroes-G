@@ -30,6 +30,7 @@ import { PET_GEAR_CATALOG, calculateActiveGearBuffs, formatStatBonusName, normal
 import { speakCompanion } from '../services/voiceService.js';
 import { isExistingActiveHousehold, generateHouseholdCodeSuffix } from '../utils/householdHeuristics.js';
 import { generateId } from '../utils/idGenerator.js';
+import { secureRandomInteger } from '../utils/secureRandom.js';
 import { firebaseAI } from '../services/firebaseAILogicService.js';
 import { WORLD_BIOMES, PATH_OF_VALOR_WAYPOINTS, SECRET_SHRINES, TOY_BOX_ENTITIES } from '../data/worldMapData.js';
 import { BEDTIME_MORALS, CONSTELLATION_STICKERS } from '../data/bedtimeStoryData.js';
@@ -6765,7 +6766,7 @@ class Store {
    * Generates a unique sync code (HERO-XXXX) and dentists/parents approved starter habits.
    */
   async initNewHousehold({ familyName, childName, avatar, parentUser }) {
-    const randomCode = 'HERO-' + Math.floor(1000 + Math.random() * 9000);
+    const randomCode = `HERO-${secureRandomInteger(1000, 9999)}`;
     const user = parentUser || this.state.household?.parentUser;
 
     const ownerRecord = user ? {

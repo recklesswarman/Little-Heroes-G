@@ -2,6 +2,7 @@ import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { db, isFirebaseAvailable, ensureAuthReady, auth } from "../config/firebase.js";
 import { store } from "../state/store.js";
 import { isQuotaExhaustedGlobal, markQuotaExhaustedGlobal, isQuotaError } from "./firestoreSyncService.js";
+import { secureRandomHex } from "../utils/secureRandom.js";
 
 const LINK_SESSION_STORAGE_KEY = 'stitch_persistent_link_session';
 // 30 days sliding window duration (in milliseconds)
@@ -101,7 +102,7 @@ class PersistentLinkService {
     // Use existing refreshToken if available to prevent rotation race conditions
     const stableToken = (existing && existing.userId === userId && existing.refreshToken) 
       ? existing.refreshToken 
-      : (token || `link_tok_${Math.random().toString(36).substring(2, 12)}_${now.toString(36)}`);
+      : (token || `link_tok_${secureRandomHex(16)}_${now.toString(36)}`);
 
     const newSession = {
       userId,

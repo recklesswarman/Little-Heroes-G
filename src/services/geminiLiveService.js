@@ -6,6 +6,7 @@ import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import { speakCompanion, isRexSpeaking } from './voiceService.js';
 import { triggerInteractiveCelebration } from '../components/InteractiveCelebrationOverlay.js';
+import { isStaticHostingHostname } from '../utils/hostUtils.js';
 
 class GeminiLiveService {
   constructor() {
@@ -218,10 +219,8 @@ class GeminiLiveService {
           return reject(new Error('WebSocket is not supported in this environment'));
         }
 
-        const isStaticHost = typeof window !== 'undefined' && 
-          (window.location.hostname.includes('web.app') || 
-           window.location.hostname.includes('firebaseapp.com') ||
-           window.location.hostname.includes('github.io'));
+        const isStaticHost = typeof window !== 'undefined' &&
+          isStaticHostingHostname(window.location.hostname);
         const customWsUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GEMINI_WS_URL) || 
           (typeof localStorage !== 'undefined' ? localStorage.getItem('gemini_ws_url') : '');
 
