@@ -4,6 +4,7 @@ from .firestore_store import (
     save_conversation_id,
     load_rex_memory,
     save_rex_fact,
+    validate_hero_id,
 )
 
 __all__ = [
@@ -11,4 +12,5 @@ __all__ = [
     "save_conversation_id",
     "load_rex_memory",
     "save_rex_fact",
+    "validate_hero_id",
 ]

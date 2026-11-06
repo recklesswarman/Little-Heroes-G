@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -28,6 +29,13 @@ from firebase_admin import credentials, firestore
 
 # ── Firebase Admin initialisation (idempotent) ─────────────────────────────
 _admin_initialised = False
+_HERO_ID_PATTERN = re.compile(r"[A-Za-z0-9_-]{1,128}")
+
+
+def validate_hero_id(hero_id: str) -> str:
+    if not isinstance(hero_id, str) or not _HERO_ID_PATTERN.fullmatch(hero_id):
+        raise ValueError("Invalid hero ID")
+    return hero_id
 
 
 def _ensure_firebase():
@@ -52,6 +60,7 @@ def load_conversation_id(
     save_dir_base: str,
 ) -> Optional[str]:
     """Return the persisted AGY conversation_id for this hero, or None."""
+    hero_id = validate_hero_id(hero_id)
     # 1. Try Firestore first
     try:
         _ensure_firebase()
@@ -96,6 +105,7 @@ def save_conversation_id(
     total_turns: int = 0,
 ) -> None:
     """Persist the AGY conversation_id for this hero."""
+    hero_id = validate_hero_id(hero_id)
     # 1. Firestore
     try:
         _ensure_firebase()
@@ -138,6 +148,7 @@ def load_rex_memory(
     household_id: Optional[str],
 ) -> dict:
     """Load all long-term Rex facts for this hero from Firestore."""
+    hero_id = validate_hero_id(hero_id)
     try:
         _ensure_firebase()
         db = firestore.client()
@@ -176,6 +187,7 @@ def save_rex_fact(
     value: str,
 ) -> None:
     """Store a single long-term Rex fact for this hero in Firestore."""
+    hero_id = validate_hero_id(hero_id)
     try:
         _ensure_firebase()
         db = firestore.client()

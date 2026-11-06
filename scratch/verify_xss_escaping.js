@@ -7,6 +7,8 @@ import { renderProfileView } from '../src/views/ProfileView.js';
 import { renderTopHeader } from '../src/components/TopHeader.js';
 import { renderPetGearStudioViewer } from '../src/components/PetGearStudioViewer.js';
 import { getAllGearForSocket } from '../src/data/petGearStudioData.js';
+import { renderLandingAuthModal, attachLandingAuthModalListeners } from '../src/components/LandingAuthModal.js';
+import { firebaseAuth } from '../src/services/firebaseAuthService.js';
 
 let passed = 0, failed = 0;
 function assert(cond, msg) {
@@ -29,6 +31,11 @@ assert(escapeHtml(null) === '' && escapeHtml(undefined) === '', 'null/undefined 
 assert(safeImageUrl('javascript:alert(1)', '/fallback.png') === '/fallback.png', 'Image URLs reject executable schemes');
 assert(safeImageUrl('https://images.example/photo.jpg" onerror="alert(1)', '/fallback.png') === '/fallback.png', 'Image URLs reject markup in their attribute value');
 assert(safeImageUrl('data:image/jpeg;base64,Zm9v') === 'data:image/jpeg;base64,Zm9v', 'Compressed profile photos remain valid image URLs');
+const generatedIcon = `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg"></svg>')}`;
+assert(safeImageUrl(generatedIcon) === generatedIcon, 'Generated reward and item icons (SVG data URLs) stay visible');
+assert(safeImageUrl('blob:https://little-heroes-quest-8842.web.app/0f1e') === 'blob:https://little-heroes-quest-8842.web.app/0f1e', 'Offline upload fallback blob URLs stay visible');
+assert(safeImageUrl('data:text/html;base64,Zm9v', '/fallback.png') === '/fallback.png', 'Non-image data URLs are rejected');
+assert(safeImageUrl('data:image/svg+xml;utf8,<svg onload="alert(1)">', '/fallback.png') === '/fallback.png', 'SVG data URLs containing raw markup are rejected');
 
 console.log('\n--- 2. DashboardView renders a malicious hero name as inert text, not a tag ---');
 store.state.heroes = [{ id: 'h1', name: XSS_PAYLOAD, title: XSS_PAYLOAD, level: 1, streak: 1, avatar: 'javascript:alert(1)', coins: 0, points: 0 }];
@@ -63,6 +70,26 @@ assert(!unsafeDyeHtml.includes('onerror="window.__xss_fired'), 'Cloud-synced dye
 assert(unsafeDyeHtml.includes('background-color: #475569;'), 'Invalid dye values fall back to a safe color');
 store.getCustomGearDyes = originalGetCustomGearDyes;
 store.getEquippedPetStudioGear = originalGetEquippedPetStudioGear;
+
+console.log('\n--- 5. A sign-in exception is escaped before rendering in LandingAuthModal ---');
+const originalSignInWithGoogle = firebaseAuth.signInWithGoogle;
+firebaseAuth.signInWithGoogle = async () => { throw new Error(XSS_PAYLOAD); };
+store.state.isAuthenticated = false;
+store.state.isHouseholdConfigured = false;
+store.state.householdSetupStep = 'auth';
+document.body.innerHTML = '<button id="auth-google-signin-btn"></button><span data-auth-error-message="true"></span>';
+attachLandingAuthModalListeners();
+document.getElementById('auth-google-signin-btn').click();
+await new Promise(resolve => setTimeout(resolve, 0));
+store.state.isAuthenticated = false;
+store.state.isHouseholdConfigured = false;
+store.state.householdSetupStep = 'auth';
+const landingAuthHtml = renderLandingAuthModal();
+assert(landingAuthHtml.includes('data-auth-error-message="true"'), 'LandingAuthModal renders a static error-message placeholder');
+attachLandingAuthModalListeners();
+const authErrorMessageElement = document.querySelector('[data-auth-error-message]');
+assert(authErrorMessageElement.textContent === XSS_PAYLOAD, 'LandingAuthModal displays exception text as inert text');
+firebaseAuth.signInWithGoogle = originalSignInWithGoogle;
 
 console.log('\n(ParentPortalView.js:3775 and ShopView.js:491 were fixed the same way -- verified by direct');
 console.log(' code inspection; not re-exercised here since both require simulating extra UI state/clicks.)');

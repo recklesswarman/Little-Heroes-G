@@ -3,6 +3,7 @@ import { Sound } from '../audio/sfx.js';
 import { isBiometricsAvailable, authenticateWithBiometrics } from '../utils/biometrics.js';
 import { speakRex } from '../services/voiceService.js';
 import { firebaseAuth } from '../services/firebaseAuthService.js';
+import { escapeHtml } from '../utils/escapeHtml.js';
 
 let isOpen = false;
 let activeAuthTab = 'biometric'; // 'biometric', 'pin', 'math'
@@ -128,7 +129,7 @@ export function renderParentLockModal() {
 
             ${
               biometricStatusMsg
-                ? `<p class="text-xs font-bold text-error bg-error/10 border border-error/30 rounded-xl py-2 px-3 w-full">${biometricStatusMsg}</p>`
+                ? `<p class="text-xs font-bold text-error bg-error/10 border border-error/30 rounded-xl py-2 px-3 w-full">${escapeHtml(biometricStatusMsg)}</p>`
                 : `<p class="text-[11px] text-on-surface-variant font-medium">Platform Authenticator (Windows Hello, Touch ID, Face ID)</p>`
             }
           </div>
@@ -434,4 +435,3 @@ export function attachParentLockListeners() {
     });
   }
 }
-
