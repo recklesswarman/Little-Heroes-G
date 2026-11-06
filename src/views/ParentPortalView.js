@@ -2,6 +2,7 @@ import { store, KID_AVATARS } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import { processProfilePhoto } from '../utils/photoUploader.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
+import { safeImageUrl } from '../utils/safeImageUrl.js';
 import { authenticateWithBiometrics } from '../utils/biometrics.js';
 import { getTaskVisualSvg } from '../utils/taskVisuals.js';
 import { firestoreSync, getDeviceFriendlyName, getDeviceIcon } from '../services/firestoreSyncService.js';
@@ -304,8 +305,8 @@ export function renderParentPortalView() {
                           req.photoUrl
                             ? `
                         <div class="mt-3 flex flex-col sm:flex-row items-start sm:items-center gap-3 bg-surface-container-high/60 p-3 rounded-2xl border border-secondary-container/30">
-                          <div class="relative w-24 h-18 sm:w-28 sm:h-20 rounded-xl overflow-hidden border-2 border-primary/50 cursor-pointer hover:scale-105 active:scale-95 transition-transform shrink-0 shadow-xs admin-proof-thumb" data-full-img="${req.photoUrl}" title="Click to view full photo proof">
-                            <img src="${req.photoUrl}" alt="Proof Thumbnail" class="w-full h-full object-cover" />
+                          <div class="relative w-24 h-18 sm:w-28 sm:h-20 rounded-xl overflow-hidden border-2 border-primary/50 cursor-pointer hover:scale-105 active:scale-95 transition-transform shrink-0 shadow-xs admin-proof-thumb" data-full-img="${escapeHtml(safeImageUrl(req.photoUrl))}" title="Click to view full photo proof">
+                            <img src="${escapeHtml(safeImageUrl(req.photoUrl))}" alt="Proof Thumbnail" class="w-full h-full object-cover" />
                             <div class="absolute inset-0 bg-black/25 hover:bg-transparent flex items-center justify-center transition-colors">
                               <span class="material-symbols-outlined text-white text-base drop-shadow-sm">zoom_in</span>
                             </div>
@@ -403,7 +404,7 @@ export function renderParentPortalView() {
                   ? 'bg-sky-500 text-white chunky-btn-sm shadow-xs'
                   : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border border-surface-container-highest'
               }">
-                <img src="${h.avatar}" class="w-5 h-5 rounded-full object-cover border border-white/40" />
+                <img src="${escapeHtml(safeImageUrl(h.avatar, KID_AVATARS[0].url))}" class="w-5 h-5 rounded-full object-cover border border-white/40" />
                 <span>${escapeHtml(h.name)}</span>
               </button>
             `
@@ -431,10 +432,10 @@ export function renderParentPortalView() {
                   <!-- Kid Top Row -->
                   <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
-                      <img src="${h.avatar}" class="w-12 h-12 rounded-2xl border-2 border-primary object-cover" />
+                      <img src="${escapeHtml(safeImageUrl(h.avatar, KID_AVATARS[0].url))}" class="w-12 h-12 rounded-2xl border-2 border-primary object-cover" />
                       <div>
                         <h3 class="font-headline text-base font-black text-inverse-surface">${escapeHtml(h.name)}</h3>
-                        <span class="text-[10px] font-black uppercase text-secondary">${h.role}</span>
+                        <span class="text-[10px] font-black uppercase text-secondary">${escapeHtml(h.role)}</span>
                       </div>
                     </div>
 
@@ -633,7 +634,7 @@ export function renderParentPortalView() {
                     ? 'bg-primary text-on-primary chunky-btn-sm shadow-xs'
                     : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border border-surface-container-highest'
                 }">
-                  <img src="${h.avatar}" class="w-5 h-5 rounded-full object-cover border border-white/40" />
+                  <img src="${escapeHtml(safeImageUrl(h.avatar, KID_AVATARS[0].url))}" class="w-5 h-5 rounded-full object-cover border border-white/40" />
                   <span>${escapeHtml(h.name)}</span>
                 </button>
               `
@@ -1012,7 +1013,7 @@ export function renderParentPortalView() {
                   <div class="flex items-start gap-3.5">
                     <div class="relative shrink-0">
                       <div class="w-14 h-14 rounded-full overflow-hidden border-3 border-primary bg-surface-variant flex items-center justify-center shadow-inner">
-                        <img class="w-full h-full object-cover" src="${h.avatar}" alt="${escapeHtml(h.name)}" />
+                        <img class="w-full h-full object-cover" src="${escapeHtml(safeImageUrl(h.avatar, KID_AVATARS[0].url))}" alt="${escapeHtml(h.name)}" />
                       </div>
                       ${isActiveHero ? `
                         <div class="absolute -bottom-1 -right-1 bg-primary text-on-primary text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full shadow-sm">
@@ -1032,7 +1033,7 @@ export function renderParentPortalView() {
                           ${kidDiff === 'easy' ? '🟢 Toddler' : kidDiff === 'hard' ? '🔵 Hard' : '🟡 Medium'}
                         </span>
                       </div>
-                      <span class="text-xs text-on-surface-variant font-bold truncate">${h.role}</span>
+                      <span class="text-xs text-on-surface-variant font-bold truncate">${escapeHtml(h.role)}</span>
                       <span class="text-[10px] text-primary font-black mt-0.5">Level ${h.level} • ${h.streak || 1} Day Streak</span>
                     </div>
                   </div>
@@ -1282,7 +1283,7 @@ export function renderParentPortalView() {
                   <div class="bg-surface-container rounded-2xl p-4 border border-surface-container-highest flex items-center justify-between card-shadow">
                     <div class="flex items-center gap-3.5">
                       <div class="w-12 h-12 rounded-xl bg-surface-container-high text-tertiary flex items-center justify-center text-2xl overflow-hidden p-1 border border-surface-container-highest">
-                        ${r.image ? `<img src="${r.image}" class="w-full h-full object-contain" />` : `<span class="material-symbols-outlined">${r.icon}</span>`}
+                        ${r.image ? `<img src="${escapeHtml(safeImageUrl(r.image))}" class="w-full h-full object-contain" />` : `<span class="material-symbols-outlined">${escapeHtml(r.icon)}</span>`}
                       </div>
                       <div class="flex flex-col">
                         <span class="text-xs font-black text-inverse-surface">${escapeHtml(r.title)}</span>
@@ -1704,7 +1705,7 @@ export function renderParentPortalView() {
 
                 ${studioUploadedImageBase64 ? `
                   <div class="flex items-center gap-1.5">
-                    <img src="${studioUploadedImageBase64}" class="w-8 h-8 rounded-xl object-cover border border-cyan-400 shadow-sm" alt="Drawing Preview" />
+                    <img src="${escapeHtml(safeImageUrl(studioUploadedImageBase64))}" class="w-8 h-8 rounded-xl object-cover border border-cyan-400 shadow-sm" alt="Drawing Preview" />
                     <button 
                       type="button"
                       id="studio-vision-generate-btn"
@@ -2554,7 +2555,7 @@ export function renderParentPortalView() {
                     <div class="p-3.5 rounded-2xl bg-surface-container-high border-2 border-cyan-400/40 shadow-md flex flex-col justify-between gap-2.5">
                       <div class="flex items-start gap-3">
                         <div class="w-10 h-10 rounded-xl bg-cyan-950/80 border border-cyan-400/40 flex items-center justify-center text-xl shadow-sm shrink-0">
-                          ${item.image ? `<img src="${item.image}" class="w-8 h-8 object-contain" />` : `<span class="material-symbols-outlined text-cyan-300">swords</span>`}
+                          ${item.image ? `<img src="${escapeHtml(safeImageUrl(item.image))}" class="w-8 h-8 object-contain" />` : `<span class="material-symbols-outlined text-cyan-300">swords</span>`}
                         </div>
                         <div class="min-w-0 flex-1">
                           <div class="flex items-center gap-1.5 flex-wrap">
@@ -2590,7 +2591,7 @@ export function renderParentPortalView() {
                     <div class="p-3.5 rounded-2xl bg-surface-container-high border-2 border-amber-400/30 shadow-md flex flex-col justify-between gap-2.5">
                       <div class="flex items-start gap-3">
                         <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-sm shrink-0" style="background-color: ${item.primaryColor || '#06b6d4'};">
-                          ${item.image ? `<img src="${item.image}" class="w-8 h-8 object-contain" />` : `<span class="material-symbols-outlined text-white">${item.icon || 'shield'}</span>`}
+                          ${item.image ? `<img src="${escapeHtml(safeImageUrl(item.image))}" class="w-8 h-8 object-contain" />` : `<span class="material-symbols-outlined text-white">${escapeHtml(item.icon || 'shield')}</span>`}
                         </div>
                         <div class="min-w-0 flex-1">
                           <div class="flex items-center gap-1.5">
@@ -2849,9 +2850,9 @@ export function renderParentPortalView() {
               .map((h) => {
                 return `
                 <div class="bg-surface-container rounded-3xl p-4 border-2 border-surface-container-highest card-shadow flex flex-col items-center text-center gap-2">
-                  <img class="w-14 h-14 rounded-full border-2 border-primary object-cover" src="${h.avatar}" alt="${escapeHtml(h.name)}" />
+                  <img class="w-14 h-14 rounded-full border-2 border-primary object-cover" src="${escapeHtml(safeImageUrl(h.avatar, KID_AVATARS[0].url))}" alt="${escapeHtml(h.name)}" />
                   <span class="font-headline text-base font-black text-inverse-surface">${escapeHtml(h.name)}</span>
-                  <span class="text-[10px] font-black text-secondary bg-surface-container-high px-2 py-0.5 rounded-full">${h.role}</span>
+                  <span class="text-[10px] font-black text-secondary bg-surface-container-high px-2 py-0.5 rounded-full">${escapeHtml(h.role)}</span>
                   
                   <div class="w-full grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-surface-container-highest text-xs font-black">
                     <div class="flex flex-col">
@@ -3096,10 +3097,10 @@ export function renderParentPortalView() {
                   <div class="bg-surface-container-high rounded-2xl p-4 border-2 border-surface-container-highest flex flex-col gap-3">
                     <div class="flex items-center justify-between">
                       <div class="flex items-center gap-2.5">
-                        <img src="${h.avatar}" class="w-10 h-10 rounded-full border-2 border-primary object-cover" />
+                        <img src="${escapeHtml(safeImageUrl(h.avatar, KID_AVATARS[0].url))}" class="w-10 h-10 rounded-full border-2 border-primary object-cover" />
                         <div class="flex flex-col">
                           <span class="font-headline text-sm font-black text-inverse-surface">${escapeHtml(h.name)}</span>
-                          <span class="text-[10px] text-on-surface-variant font-bold">${h.role}</span>
+                          <span class="text-[10px] text-on-surface-variant font-bold">${escapeHtml(h.role)}</span>
                         </div>
                       </div>
                       <span class="text-[10px] font-black uppercase px-2.5 py-1 rounded-full ${
@@ -3190,7 +3191,7 @@ export function renderParentPortalView() {
                 return `
                   <div class="bg-surface-container-high rounded-2xl p-4 border-2 border-surface-container-highest flex flex-col gap-3">
                     <div class="flex items-center gap-2.5">
-                      <img src="${h.avatar}" class="w-10 h-10 rounded-full border-2 border-primary object-cover" />
+                      <img src="${escapeHtml(safeImageUrl(h.avatar, KID_AVATARS[0].url))}" class="w-10 h-10 rounded-full border-2 border-primary object-cover" />
                       <div class="flex flex-col">
                         <span class="font-headline text-sm font-black text-inverse-surface">${escapeHtml(h.name)}</span>
                         <span class="text-[10px] text-on-surface-variant font-bold">Today's Reminders</span>
@@ -3824,7 +3825,7 @@ function renderPhotoProofZoomModal() {
         </div>
 
         <div class="p-4 bg-black flex items-center justify-center min-h-[300px]">
-          <img src="${zoomedProofPhotoUrl}" class="max-h-[60vh] max-w-full object-contain rounded-xl shadow-inner" alt="Full Chore Proof Photo" />
+          <img src="${escapeHtml(safeImageUrl(zoomedProofPhotoUrl))}" class="max-h-[60vh] max-w-full object-contain rounded-xl shadow-inner" alt="Full Chore Proof Photo" />
         </div>
 
         <div class="p-4 bg-surface-container flex items-center justify-between border-t border-surface-container-highest">
@@ -3919,7 +3920,7 @@ function renderAddKidModal() {
           <!-- Photo Upload Option -->
           <div class="flex items-center gap-3 p-3 bg-surface-container-high rounded-2xl border-2 border-surface-container-highest">
             <div class="w-14 h-14 rounded-full border-2 border-primary overflow-hidden shrink-0 bg-surface-variant relative shadow-inner">
-              <img id="new-kid-avatar-preview" src="${selectedAvatarUrl}" class="w-full h-full object-cover" />
+              <img id="new-kid-avatar-preview" src="${escapeHtml(safeImageUrl(selectedAvatarUrl, KID_AVATARS[0].url))}" class="w-full h-full object-cover" />
             </div>
             <div class="flex flex-col flex-1 min-w-0">
               <span class="text-xs font-headline font-black text-inverse-surface">Upload Child's Photo</span>
@@ -3936,13 +3937,13 @@ function renderAddKidModal() {
             <label class="block text-xs font-black text-on-surface-variant uppercase mb-1">Or Select 3D Preset Avatar</label>
             <div class="grid grid-cols-4 gap-2.5">
               ${KID_AVATARS.map((av) => `
-                <button type="button" data-avatar-url="${av.url}" class="new-kid-avatar-choice rounded-2xl p-1.5 border-3 transition-all flex flex-col items-center gap-1 ${selectedAvatarUrl === av.url ? 'border-primary bg-primary/20 scale-102 ring-2 ring-primary' : 'border-surface-container-highest bg-surface-container-high hover:border-primary/50'}">
-                  <img src="${av.url}" class="w-12 h-12 rounded-full object-cover" />
+                <button type="button" data-avatar-id="${escapeHtml(av.id)}" data-avatar-url="${escapeHtml(safeImageUrl(av.url))}" class="new-kid-avatar-choice rounded-2xl p-1.5 border-3 transition-all flex flex-col items-center gap-1 ${selectedAvatarUrl === av.url ? 'border-primary bg-primary/20 scale-102 ring-2 ring-primary' : 'border-surface-container-highest bg-surface-container-high hover:border-primary/50'}">
+                  <img src="${escapeHtml(safeImageUrl(av.url))}" class="w-12 h-12 rounded-full object-cover" />
                   <span class="text-[9px] font-bold text-white truncate w-full text-center">${av.label}</span>
                 </button>
               `).join('')}
             </div>
-            <input type="hidden" id="new-kid-avatar-val" value="${selectedAvatarUrl}" />
+            <input type="hidden" id="new-kid-avatar-val" value="${escapeHtml(safeImageUrl(selectedAvatarUrl, KID_AVATARS[0].url))}" />
           </div>
 
           <div>
@@ -4022,7 +4023,7 @@ function renderEditKidModal() {
           <!-- Photo Upload Option -->
           <div class="flex items-center gap-3 p-3 bg-surface-container-high rounded-2xl border-2 border-surface-container-highest">
             <div class="w-14 h-14 rounded-full border-2 border-secondary overflow-hidden shrink-0 bg-surface-variant relative shadow-inner">
-              <img id="edit-kid-avatar-preview" src="${editingKid.avatar}" class="w-full h-full object-cover" />
+              <img id="edit-kid-avatar-preview" src="${escapeHtml(safeImageUrl(editingKid.avatar, KID_AVATARS[0].url))}" class="w-full h-full object-cover" />
             </div>
             <div class="flex flex-col flex-1 min-w-0">
               <span class="text-xs font-headline font-black text-inverse-surface">Custom Profile Photo</span>
@@ -4039,13 +4040,13 @@ function renderEditKidModal() {
             <label class="block text-xs font-black text-on-surface-variant uppercase mb-1">Or Select 3D Preset Avatar</label>
             <div class="grid grid-cols-4 gap-2.5">
               ${KID_AVATARS.map((av) => `
-                <button type="button" data-avatar-url="${av.url}" class="edit-kid-avatar-choice rounded-2xl p-1.5 border-3 transition-all flex flex-col items-center gap-1 ${editingKid.avatar === av.url ? 'border-secondary bg-secondary/20 scale-102 ring-2 ring-secondary' : 'border-surface-container-highest bg-surface-container-high hover:border-secondary/50'}">
-                  <img src="${av.url}" class="w-12 h-12 rounded-full object-cover" />
+                <button type="button" data-avatar-id="${escapeHtml(av.id)}" data-avatar-url="${escapeHtml(safeImageUrl(av.url))}" class="edit-kid-avatar-choice rounded-2xl p-1.5 border-3 transition-all flex flex-col items-center gap-1 ${editingKid.avatar === av.url ? 'border-secondary bg-secondary/20 scale-102 ring-2 ring-secondary' : 'border-surface-container-highest bg-surface-container-high hover:border-secondary/50'}">
+                  <img src="${escapeHtml(safeImageUrl(av.url))}" class="w-12 h-12 rounded-full object-cover" />
                   <span class="text-[9px] font-bold text-white truncate w-full text-center">${av.label}</span>
                 </button>
               `).join('')}
             </div>
-            <input type="hidden" id="edit-kid-avatar-val" value="${editingKid.avatar}" />
+            <input type="hidden" id="edit-kid-avatar-val" value="${escapeHtml(safeImageUrl(editingKid.avatar, KID_AVATARS[0].url))}" />
           </div>
 
           <div>
@@ -4795,7 +4796,7 @@ export function attachParentPortalListeners() {
 
   document.querySelectorAll('.new-kid-avatar-choice').forEach((btn) => {
     btn.addEventListener('click', () => {
-      selectedAvatarUrl = btn.getAttribute('data-avatar-url');
+      selectedAvatarUrl = KID_AVATARS.find((avatar) => avatar.id === btn.getAttribute('data-avatar-id'))?.url || KID_AVATARS[0].url;
       const avatarInput = document.getElementById('new-kid-avatar-val');
       if (avatarInput) avatarInput.value = selectedAvatarUrl;
       const preview = document.getElementById('new-kid-avatar-preview');
@@ -4855,7 +4856,7 @@ export function attachParentPortalListeners() {
     submitAddKidBtn.addEventListener('click', () => {
       const name = document.getElementById('new-kid-name')?.value;
       const role = document.getElementById('new-kid-role')?.value;
-      const avatar = document.getElementById('new-kid-avatar-val')?.value || selectedAvatarUrl;
+      const avatar = safeImageUrl(document.getElementById('new-kid-avatar-val')?.value || selectedAvatarUrl, KID_AVATARS[0].url);
       const diffInput = document.querySelector('input[name="new-kid-diff"]:checked');
       const diff = diffInput ? diffInput.value : 'medium';
       const coins = parseInt(document.getElementById('new-kid-coins')?.value || '50', 10);
@@ -4928,7 +4929,7 @@ export function attachParentPortalListeners() {
 
   document.querySelectorAll('.edit-kid-avatar-choice').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const url = btn.getAttribute('data-avatar-url');
+      const url = KID_AVATARS.find((avatar) => avatar.id === btn.getAttribute('data-avatar-id'))?.url || KID_AVATARS[0].url;
       const avatarInput = document.getElementById('edit-kid-avatar-val');
       if (avatarInput) avatarInput.value = url;
       const preview = document.getElementById('edit-kid-avatar-preview');
@@ -4989,7 +4990,7 @@ export function attachParentPortalListeners() {
     submitEditKidBtn.addEventListener('click', () => {
       const name = document.getElementById('edit-kid-name')?.value;
       const role = document.getElementById('edit-kid-role')?.value;
-      const avatar = document.getElementById('edit-kid-avatar-val')?.value;
+      const avatar = safeImageUrl(document.getElementById('edit-kid-avatar-val')?.value || editingKid.avatar, KID_AVATARS[0].url);
       const diffInput = document.querySelector('input[name="edit-kid-diff"]:checked');
       const diff = diffInput ? diffInput.value : editingKid.gameDifficulty;
       const level = parseInt(document.getElementById('edit-kid-level')?.value || '1', 10);
@@ -4999,7 +5000,7 @@ export function attachParentPortalListeners() {
       store.editHero(editingKid.id, {
         name: name || editingKid.name,
         role: role || editingKid.role,
-        avatar: avatar || editingKid.avatar,
+        avatar,
         gameDifficulty: diff,
         level,
         coins,

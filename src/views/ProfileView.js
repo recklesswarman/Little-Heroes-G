@@ -3,6 +3,7 @@ import { PETS_DATABASE, getPetById } from '../data/petsData.js';
 import { Sound } from '../audio/sfx.js';
 import { processProfilePhoto } from '../utils/photoUploader.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
+import { safeImageUrl } from '../utils/safeImageUrl.js';
 
 export function renderProfileView() {
   const state = store.getState();
@@ -55,7 +56,7 @@ export function renderProfileView() {
         <div class="flex items-center gap-5 z-10">
           <div class="relative group shrink-0">
             <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-primary overflow-hidden shadow-2xl relative bg-surface-container-high">
-              <img id="profile-avatar-display" class="w-full h-full object-cover" src="${currentHero.avatar}" alt="${escapeHtml(currentHero.name)}" />
+              <img id="profile-avatar-display" class="w-full h-full object-cover" src="${escapeHtml(safeImageUrl(currentHero.avatar))}" alt="${escapeHtml(currentHero.name)}" />
               
               <!-- Hover/Tap Overlay -->
               <label for="profile-avatar-file-input" class="absolute inset-0 bg-black/60 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white cursor-pointer" title="Upload custom photo">
@@ -80,16 +81,16 @@ export function renderProfileView() {
                 ${activeTheme.name}
               </span>
             </div>
-            <p class="text-xs text-white/80 font-bold">${currentHero.title || 'Little Hero Adventurer'}</p>
+            <p class="text-xs text-white/80 font-bold">${escapeHtml(currentHero.title || 'Little Hero Adventurer')}</p>
 
             <div class="flex items-center gap-3 mt-2 text-xs font-black">
               <span class="text-secondary flex items-center gap-1">
                 <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">monetization_on</span>
-                ${currentHero.coins} Tokens
+                ${escapeHtml(currentHero.coins)} Tokens
               </span>
               <span class="text-tertiary flex items-center gap-1">
                 <span class="material-symbols-outlined text-sm">star</span>
-                ${currentHero.points || 0} Points
+                ${escapeHtml(currentHero.points || 0)} Points
               </span>
               <span class="text-white/70 flex items-center gap-1">
                 <span class="material-symbols-outlined text-sm">school</span>
@@ -187,12 +188,12 @@ export function renderProfileView() {
               } card-shadow flex flex-col items-center justify-center gap-2 transition-all active:scale-95 group text-center">
                 
                 <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center shadow-inner border-2 border-surface-container-highest overflow-hidden">
-                  <img class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" src="${h.avatar}" alt="${escapeHtml(h.name)}" />
+                  <img class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" src="${escapeHtml(safeImageUrl(h.avatar))}" alt="${escapeHtml(h.name)}" />
                 </div>
 
                 <div class="flex flex-col items-center">
                   <h3 class="font-headline text-base font-black text-on-surface leading-tight">${escapeHtml(h.name)}</h3>
-                  <span class="text-[10px] text-on-surface-variant font-bold">${h.role}</span>
+                  <span class="text-[10px] text-on-surface-variant font-bold">${escapeHtml(h.role)}</span>
                 </div>
 
                 <div class="bg-surface-container-highest px-2.5 py-0.5 rounded-full flex items-center gap-1 border border-surface-container-low text-[10px] font-black text-secondary">
