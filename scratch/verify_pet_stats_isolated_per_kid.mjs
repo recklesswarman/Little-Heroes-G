@@ -39,7 +39,7 @@ const ls = { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.
 const el = new Proxy(function () {}, { get: (t, p) => (p === Symbol.toPrimitive ? () => '' : el), apply: () => el, set: () => true });
 const ctx = { console, setTimeout, clearTimeout, setInterval: () => 0, clearInterval: noop, queueMicrotask, Promise, Date, Math, JSON, URL, localStorage: ls, sessionStorage: ls, navigator: { userAgent: 'node', onLine: true, vibrate: noop }, document: el, requestAnimationFrame: noop, cancelAnimationFrame: noop, addEventListener: noop, removeEventListener: noop, dispatchEvent: noop, location: { href: 'http://localhost/', hostname: 'localhost', pathname: '/', search: '', hash: '' }, matchMedia: () => ({ matches: false, addEventListener: noop, removeEventListener: noop }), CustomEvent: class { constructor(t, o) { this.type = t; this.detail = o?.detail; } }, fetch: async () => { throw new Error('offline'); } };
 ctx.window = ctx; ctx.globalThis = ctx; ctx.self = ctx;
-vm.createContext(ctx); vm.runInContext(bundle, ctx);
+ctx.crypto = globalThis.crypto; vm.createContext(ctx); vm.runInContext(bundle, ctx);
 const store = ctx.Device.store;
 
 store.setSyncService({ pushStateToCloud: () => {}, broadcastState: () => {} });

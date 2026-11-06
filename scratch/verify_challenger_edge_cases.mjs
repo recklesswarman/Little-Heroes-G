@@ -248,7 +248,7 @@ function makeDevice(FS, deviceName = 'Device') {
   ctx.globalThis = ctx;
   ctx.self = ctx;
 
-  vm.createContext(ctx);
+  ctx.crypto = globalThis.crypto; vm.createContext(ctx);
   vm.runInContext(bundle, ctx);
 
   const dev = {

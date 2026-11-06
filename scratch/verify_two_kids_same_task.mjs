@@ -71,7 +71,7 @@ function makeDevice(FS) {
   const el = new Proxy(function () {}, { get: (t, p) => (p === Symbol.toPrimitive ? () => '' : el), apply: () => el, set: () => true });
   const ctx = { console: { log: noop, info: noop, warn: noop, error: (...a) => console.error(...a) }, setTimeout, clearTimeout, setInterval: () => 0, clearInterval: noop, queueMicrotask, Promise, Date, Math, JSON, URL, localStorage: ls, sessionStorage: ls, __FS__: FS, navigator: { userAgent: 'node', onLine: true, vibrate: noop }, document: el, requestAnimationFrame: noop, cancelAnimationFrame: noop, addEventListener: noop, removeEventListener: noop, dispatchEvent: noop, location: { href: 'http://localhost/', hostname: 'localhost', pathname: '/', search: '', hash: '' }, matchMedia: () => ({ matches: false, addEventListener: noop, removeEventListener: noop }), CustomEvent: class { constructor(t, o) { this.type = t; this.detail = o?.detail; } }, fetch: async () => { throw new Error('offline'); } };
   ctx.window = ctx; ctx.globalThis = ctx; ctx.self = ctx;
-  vm.createContext(ctx); vm.runInContext(bundle, ctx);
+  ctx.crypto = globalThis.crypto; vm.createContext(ctx); vm.runInContext(bundle, ctx);
   const dev = { store: ctx.Device.store, sync: ctx.Device.firestoreSync };
   const s = dev.store.getState(); s.isAuthenticated = true; s.isHouseholdConfigured = true; s.householdSetupStep = 'ready'; s.household.syncCode = 'HERO-TEST';
   dev.sync.startSync('HERO-TEST');
