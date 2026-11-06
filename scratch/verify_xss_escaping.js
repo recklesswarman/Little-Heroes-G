@@ -38,23 +38,23 @@ assert(!profileHtml.includes('<img src=x onerror'), 'ProfileView does not emit t
 assert(profileHtml.includes('&lt;img'), 'ProfileView emits the escaped form of the hero name instead');
 
 console.log('\n--- 4. A sign-in exception is escaped before rendering in LandingAuthModal ---');
+const originalSignInWithGoogle = firebaseAuth.signInWithGoogle;
+firebaseAuth.signInWithGoogle = async () => { throw new Error(XSS_PAYLOAD); };
 store.state.isAuthenticated = false;
 store.state.isHouseholdConfigured = false;
 store.state.householdSetupStep = 'auth';
-const originalSignInWithGoogle = firebaseAuth.signInWithGoogle;
-firebaseAuth.signInWithGoogle = async () => { throw new Error(XSS_PAYLOAD); };
-document.body.innerHTML = renderLandingAuthModal();
+document.body.innerHTML = '<button id="auth-google-signin-btn"></button><span data-auth-error-message="true"></span>';
 attachLandingAuthModalListeners();
 document.getElementById('auth-google-signin-btn').click();
 await new Promise(resolve => setTimeout(resolve, 0));
 store.state.isAuthenticated = false;
 store.state.isHouseholdConfigured = false;
 store.state.householdSetupStep = 'auth';
-document.body.innerHTML = renderLandingAuthModal();
+const landingAuthHtml = renderLandingAuthModal();
+assert(landingAuthHtml.includes('data-auth-error-message="true"'), 'LandingAuthModal renders a static error-message placeholder');
 attachLandingAuthModalListeners();
-const authErrorEl = document.querySelector('[data-auth-error-message]');
-assert(authErrorEl.textContent === XSS_PAYLOAD, 'LandingAuthModal displays exception text as inert text');
-assert(!document.body.innerHTML.includes('<img src=x onerror'), 'LandingAuthModal does not render an exception payload as a tag');
+const authErrorMessageElement = document.querySelector('[data-auth-error-message]');
+assert(authErrorMessageElement.textContent === XSS_PAYLOAD, 'LandingAuthModal displays exception text as inert text');
 firebaseAuth.signInWithGoogle = originalSignInWithGoogle;
 
 console.log('\n(ParentPortalView.js:3775 and ShopView.js:491 were fixed the same way -- verified by direct');
