@@ -2,6 +2,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
+import { resolveDistFile } from './distPath.js';
 
 const PORT = 5188;
 const DIST_DIR = path.resolve('dist');
@@ -19,9 +20,12 @@ const MIME_TYPES = {
 };
 
 const server = http.createServer((req, res) => {
-  let reqPath = req.url.split('?')[0];
-  if (reqPath === '/') reqPath = '/index.html';
-  const filePath = path.join(DIST_DIR, reqPath);
+  const filePath = resolveDistFile(DIST_DIR, req.url);
+  if (!filePath) {
+    res.writeHead(404);
+    res.end('Not found');
+    return;
+  }
 
   fs.readFile(filePath, (err, data) => {
     if (err) {

@@ -60,7 +60,7 @@ export function renderPetGearStudioViewer({
   const currentGearList = getAllGearForSocket(activeSocket);
 
   return `
-  <div id="${containerId}" class="pet-gear-studio-wrapper relative bg-linear-to-b from-slate-900/95 via-indigo-950/90 to-slate-900/95 border-2 border-amber-400/40 rounded-3xl p-4 sm:p-6 shadow-2xl backdrop-blur-xl text-white select-none ${className}" data-pet-id="${petId}" data-active-socket="${activeSocket}">
+  <div id="${escapeHtml(containerId)}" class="pet-gear-studio-wrapper relative bg-linear-to-b from-slate-900/95 via-indigo-950/90 to-slate-900/95 border-2 border-amber-400/40 rounded-3xl p-4 sm:p-6 shadow-2xl backdrop-blur-xl text-white select-none ${escapeHtml(className)}" data-pet-id="${escapeHtml(petId)}" data-active-socket="${escapeHtml(activeSocket)}">
     
     <!-- Top Header Bar -->
     <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-amber-400/20">
@@ -70,7 +70,7 @@ export function renderPetGearStudioViewer({
         </div>
         <div>
           <div class="flex items-center gap-2">
-            <h2 class="text-xl sm:text-2xl font-black text-amber-300 tracking-wide font-display">${companion.name || 'Hero Companion'}</h2>
+            <h2 class="text-xl sm:text-2xl font-black text-amber-300 tracking-wide font-display">${escapeHtml(companion.name || 'Hero Companion')}</h2>
             <span class="px-2 py-0.5 text-xs font-bold bg-amber-400/20 text-amber-300 rounded-full border border-amber-400/30">Gear Studio</span>
           </div>
           <p class="text-xs text-slate-300">Equip heroic armor, customize superhero dyes & test catwalk poses!</p>
@@ -102,11 +102,11 @@ export function renderPetGearStudioViewer({
           <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(251,191,36,0.18)_0%,rgba(99,102,241,0.08)_50%,transparent_75%)] pointer-events-none"></div>
           
           <canvas 
-            id="${canvasId}" 
+            id="${escapeHtml(canvasId)}"
             width="340" 
             height="340" 
             class="relative z-10 w-full h-full object-contain cursor-grab active:cursor-grabbing touch-none"
-            aria-label="${companion.name} Full-Body Skeletal Companion"
+            aria-label="${escapeHtml(companion.name)} Full-Body Skeletal Companion"
           ></canvas>
 
           <!-- Stage Floor Reflection line -->
@@ -147,7 +147,7 @@ export function renderPetGearStudioViewer({
       <div class="lg:col-span-7 flex flex-col gap-4">
         
         <!-- Gear Socket Category Tabs -->
-        <div id="${containerId}-socket-tabs" class="flex items-center gap-2 p-1.5 bg-slate-800/80 rounded-2xl border border-slate-700/60 overflow-x-auto">
+        <div id="${escapeHtml(containerId)}-socket-tabs" class="flex items-center gap-2 p-1.5 bg-slate-800/80 rounded-2xl border border-slate-700/60 overflow-x-auto">
           ${socketTabs.map(tab => {
             const isTabActive = tab.key === activeSocket;
             const equippedId = equipped[tab.key];
@@ -157,9 +157,9 @@ export function renderPetGearStudioViewer({
               isTabActive 
                 ? 'bg-linear-to-r from-amber-500 to-orange-500 text-slate-900 shadow-md font-black scale-102' 
                 : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-            }" data-socket="${tab.key}">
+            }" data-socket="${escapeHtml(tab.key)}">
               <span>${tab.emoji}</span>
-              <span>${tab.label}</span>
+              <span>${escapeHtml(tab.label)}</span>
               ${hasEquipped ? `<span class="w-2 h-2 rounded-full ${isTabActive ? 'bg-slate-900' : 'bg-emerald-400'}"></span>` : ''}
             </button>
             `;
@@ -173,7 +173,7 @@ export function renderPetGearStudioViewer({
               <span class="material-symbols-outlined text-sm">colors</span>
               <span>Superhero Dye Palette</span>
             </span>
-            <span class="text-[11px] text-slate-400">Tint: <strong class="text-white capitalize">${activeSocket}</strong></span>
+            <span class="text-[11px] text-slate-400">Tint: <strong class="text-white capitalize">${escapeHtml(activeSocket)}</strong></span>
           </div>
           <div class="flex flex-wrap items-center gap-2">
             ${COLOR_DYES.map(dye => {
@@ -182,10 +182,10 @@ export function renderPetGearStudioViewer({
               return `
               <button 
                 class="gear-dye-btn w-8 h-8 rounded-full border-2 transition-transform hover:scale-115 active:scale-95 shadow-sm flex items-center justify-center ${isSelected ? 'border-white ring-2 ring-amber-400 scale-110' : 'border-white/30'}"
-                style="background-color: ${dye.hex};"
-                data-hex="${dye.hex}"
-                data-dye-id="${dye.id}"
-                title="${dye.name}"
+                style="background-color: ${escapeHtml(dye.hex)};"
+                data-hex="${escapeHtml(dye.hex)}"
+                data-dye-id="${escapeHtml(dye.id)}"
+                title="${escapeHtml(dye.name)}"
               >
                 ${isSelected ? '<span class="text-white text-xs font-black drop-shadow-sm">✓</span>' : ''}
               </button>
@@ -197,7 +197,7 @@ export function renderPetGearStudioViewer({
         <!-- Gear Items Grid for Selected Socket -->
         <div class="flex flex-col gap-2">
           <div class="flex items-center justify-between">
-            <span class="text-xs font-bold text-slate-300 uppercase tracking-wider">Available ${activeSocket} Items</span>
+            <span class="text-xs font-bold text-slate-300 uppercase tracking-wider">Available ${escapeHtml(activeSocket)} Items</span>
             <span class="text-xs text-slate-400">${currentGearList.length} items</span>
           </div>
 
@@ -205,7 +205,8 @@ export function renderPetGearStudioViewer({
             ${currentGearList.map(item => {
               const isEquipped = equipped[activeSocket] === item.id;
               const isUnlocked = item.unlocked !== false;
-              const itemColor = (isEquipped && dyes[activeSocket]) ? dyes[activeSocket] : item.defaultColor;
+              const colorCandidate = (isEquipped && dyes[activeSocket]) ? dyes[activeSocket] : item.defaultColor;
+              const itemColor = /^#[0-9a-f]{6}$/i.test(colorCandidate || '') ? colorCandidate : '#475569';
 
               return `
               <div class="gear-card-item relative p-3 rounded-2xl border-2 transition-all flex flex-col justify-between gap-2 ${
@@ -214,11 +215,11 @@ export function renderPetGearStudioViewer({
                   : isUnlocked 
                     ? 'bg-slate-800/70 border-slate-700/80 hover:border-slate-500' 
                     : 'bg-slate-900/60 border-slate-800/80 opacity-75'
-              }" data-gear-id="${item.id}" data-socket="${activeSocket}">
+              }" data-gear-id="${escapeHtml(item.id)}" data-socket="${escapeHtml(activeSocket)}">
                 
                 <div class="flex items-start gap-2.5">
-                  <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 shadow-sm border border-white/20" style="background-color: ${itemColor};">
-                    <span class="material-symbols-outlined text-white text-xl">${item.icon || 'shield'}</span>
+                  <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 shadow-sm border border-white/20" style="background-color: ${escapeHtml(itemColor)};">
+                    <span class="material-symbols-outlined text-white text-xl">${escapeHtml(item.icon || 'shield')}</span>
                   </div>
                   <div class="min-w-0 flex-1">
                     <div class="flex items-center justify-between gap-1">
@@ -240,13 +241,13 @@ export function renderPetGearStudioViewer({
                       isEquipped 
                         ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30' 
                         : 'bg-amber-500 text-slate-950 font-black hover:bg-amber-400 shadow-sm'
-                    }" data-gear-id="${item.id}" data-socket="${activeSocket}">
+                    }" data-gear-id="${escapeHtml(item.id)}" data-socket="${escapeHtml(activeSocket)}">
                       ${isEquipped ? 'Unequip' : 'Equip'}
                     </button>
                   ` : `
                     <span class="text-[10px] font-bold text-amber-400/90 flex items-center gap-1">
                       <span class="material-symbols-outlined text-xs">lock</span>
-                      <span>${item.unlockReq || 'Locked'}</span>
+                      <span>${escapeHtml(item.unlockReq || 'Locked')}</span>
                     </span>
                     <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-slate-400 border border-slate-700">Locked</span>
                   `}

@@ -41,6 +41,7 @@ await check('robots.txt: AI-bot blocks do not hide a wildcard group, our own age
 await check('page html becomes plain text; windows are bounded and deterministic', () => {
   const t = htmlToText('<head><title>x</title></head><script>evil()</script><p>Fireflies &amp; moons</p><style>a{}</style>');
   assert.strictEqual(t, 'Fireflies & moons');
+  assert.strictEqual(htmlToText('&amp;quot;'), '&quot;');
   const long = 'abcdefghij'.repeat(2000);
   assert.strictEqual(textWindow(long, 3).length, 6000);
   assert.strictEqual(textWindow(long, 3), textWindow(long, 3));

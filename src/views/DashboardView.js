@@ -1,5 +1,6 @@
 import { store } from '../state/store.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
+import { safeImageUrl } from '../utils/safeImageUrl.js';
 import { getTaskVisualSvg } from '../utils/taskVisuals.js';
 import { speakRex } from '../services/voiceService.js';
 import { Sound } from '../audio/sfx.js';
@@ -41,7 +42,7 @@ export function renderDashboardView() {
           <div class="absolute -top-3 -left-2 text-base animate-butterfly pointer-events-none select-none drop-shadow-sm z-20" title="Fluttering Butterfly">🦋</div>
 
           <div id="dash-hero-avatar-trigger" class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-surface-container-high border-4 border-primary overflow-hidden flex items-center justify-center shadow-inner shrink-0 relative cursor-pointer hover:scale-105 active:scale-95 transition-transform animate-idle-bob" title="Tap your hero to giggle or do a backflip!">
-            <img id="dash-hero-avatar-img" class="w-full h-full object-cover select-none" src="${hero.avatar}" alt="${escapeHtml(hero.name)}" />
+            <img id="dash-hero-avatar-img" class="w-full h-full object-cover select-none" src="${escapeHtml(safeImageUrl(hero.avatar))}" alt="${escapeHtml(hero.name)}" />
             <div class="absolute -bottom-1 -right-1 bg-secondary text-on-secondary font-headline text-[10px] font-black px-1.5 py-0.2 rounded-md shadow-sm">
               LV ${hero.level}
             </div>
@@ -55,7 +56,7 @@ export function renderDashboardView() {
                 ${store.getPetStreakShield().isActive ? '<span class="text-[9px] bg-primary/25 text-primary px-1.5 py-0.5 rounded-full border border-primary/40 font-black" title="Pet Streak Shield Active! Joyful companions protect your streak">🛡️ Shield</span>' : ''}
               </span>
             </div>
-            <span class="text-xs font-bold text-on-surface-variant truncate">${hero.title}</span>
+            <span class="text-xs font-bold text-on-surface-variant truncate">${escapeHtml(hero.title)}</span>
 
             <!-- Hero XP Progress Bar -->
             <div class="w-full max-w-[200px] sm:max-w-[224px] bg-surface-container-lowest h-3 rounded-full overflow-hidden border border-surface-container-highest mt-2 relative shadow-inner">
@@ -71,7 +72,7 @@ export function renderDashboardView() {
             ? `
         <div class="w-full md:w-auto bg-surface-container-high p-3 sm:p-3.5 rounded-2xl border-2 border-secondary-container/40 flex items-center justify-between md:justify-start gap-3 sm:gap-4 shrink-0">
           <div class="w-14 h-14 rounded-2xl bg-surface-container overflow-hidden border-2 border-secondary flex items-center justify-center shrink-0 relative cursor-pointer active:scale-95 transition-transform animate-idle-bob" id="dash-active-pet-trigger" title="Tap your pet to giggle or do a backflip!">
-            <img id="dash-active-pet-img" class="w-full h-full object-contain p-1 select-none" src="${activePet.avatar}" alt="${escapeHtml(activePet.name)}" />
+            <img id="dash-active-pet-img" class="w-full h-full object-contain p-1 select-none" src="${escapeHtml(activePet.avatar)}" alt="${escapeHtml(activePet.name)}" />
             <div class="absolute -top-1 -right-1 bg-primary text-on-primary text-[8px] font-black px-1 rounded">Lv${store.getPetLevel(activePet.id)}</div>
           </div>
 
@@ -236,7 +237,7 @@ export function renderDashboardView() {
           <div class="w-12 h-12 rounded-2xl bg-primary/15 text-primary border border-primary/40 flex items-center justify-center text-2xl flex-shrink-0 overflow-hidden shadow-inner p-1">
             ${
               activePet?.avatar
-                ? `<img src="${activePet.avatar}" alt="${escapeHtml(activePet.name || 'Pet')}" class="w-full h-full object-contain select-none" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='block';" /><span class="hidden text-2xl select-none">${escapeHtml(activePet?.emoji || '🦖')}</span>`
+                ? `<img src="${escapeHtml(activePet.avatar)}" alt="${escapeHtml(activePet.name || 'Pet')}" class="w-full h-full object-contain select-none" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='block';" /><span class="hidden text-2xl select-none">${escapeHtml(activePet?.emoji || '🦖')}</span>`
                 : `<span class="text-2xl select-none">${escapeHtml(activePet?.emoji || '🦖')}</span>`
             }
           </div>

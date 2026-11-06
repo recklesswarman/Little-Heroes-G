@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
+import { rateLimit } from 'express-rate-limit';
 import http from 'http';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -11,6 +12,12 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const staticRequestLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 600,
+  standardHeaders: true,
+  legacyHeaders: false
+});
 
 app.use(express.json({ limit: '2mb' }));
 
@@ -33,6 +40,8 @@ app.post('/api/story/illustration', handleStoryIllustrationRequest);
 app.post('/api/ai/image', handleStoryIllustrationRequest);
 
 const distPath = path.join(__dirname, 'dist');
+
+app.use(staticRequestLimiter);
 
 // Route any nested /assets requests to dist/assets (handles relative path requests from deep URLs)
 app.use((req, res, next) => {

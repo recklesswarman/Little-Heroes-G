@@ -16,6 +16,7 @@ import { renderDance3DViewer, initDance3DViewer, getActiveDance3DInstance } from
 import { registerActiveCanvas } from '../utils/activeViewCanvasRegistry.js';
 import { store } from '../state/store.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
+import { safeImageUrl } from '../utils/safeImageUrl.js';
 import { PETS_DATABASE } from '../data/petsData.js';
 import { MOVEMENT_ROUTINES, getMovementRoutine } from '../data/movementRoutinesData.js';
 import { movementSynth } from '../audio/movementAudioSynthesizer.js';
@@ -247,7 +248,7 @@ export function renderDancePartyView() {
           <!-- Pet Avatar Actor -->
           <div id="arcade-pet-actor" class="relative cursor-pointer group select-none">
             <div class="w-32 h-32 sm:w-36 sm:h-36 rounded-full bg-linear-to-b from-primary/20 to-surface-container-highest/80 border-4 border-primary p-2 flex items-center justify-center shadow-[0_0_30px_rgba(46,204,113,0.35)] transition-transform group-hover:scale-105 active:scale-95 ${petAnimation}">
-              <img src="${petAvatarUrl}" alt="${petName}" class="w-full h-full object-contain drop-shadow-xl" />
+              <img src="${escapeHtml(petAvatarUrl)}" alt="${petName}" class="w-full h-full object-contain drop-shadow-xl" />
             </div>
 
             ${
@@ -651,7 +652,7 @@ function renderMovementSession(hero, activePet, petAvatarUrl, petName) {
           <!-- Hero Dancing Actor -->
           <div class="flex flex-col items-center gap-2">
             <div id="movement-hero-actor" class="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-primary-container/30 border-4 border-primary overflow-hidden flex items-center justify-center shadow-xl transition-transform duration-200 ${isFreezeActive ? '' : 'animate-bounce'}">
-              <img src="${hero.avatar}" alt="${escapeHtml(hero.name)}" class="w-full h-full object-cover" />
+              <img src="${escapeHtml(safeImageUrl(hero.avatar))}" alt="${escapeHtml(hero.name)}" class="w-full h-full object-cover" />
             </div>
             <span class="text-xs font-black text-on-surface font-headline">${escapeHtml(hero.name)}</span>
           </div>
@@ -785,7 +786,7 @@ function renderTreatCatchGame(hero, activePet, petAvatarUrl, petName) {
         <!-- Pet at Bottom Waiting for Food -->
         <div class="z-10 flex flex-col items-center gap-2">
           <div id="treat-catcher-pet" class="w-24 h-24 rounded-full bg-surface-container-high border-3 border-primary p-2 flex items-center justify-center shadow-lg transition-transform ${petAnimation}">
-            <img src="${petAvatarUrl}" alt="${petName}" class="w-full h-full object-contain drop-shadow-sm" />
+            <img src="${escapeHtml(petAvatarUrl)}" alt="${petName}" class="w-full h-full object-contain drop-shadow-sm" />
           </div>
         </div>
 
@@ -986,13 +987,13 @@ function renderDiscoParty(hero, activePet, petAvatarUrl, petName, state) {
           <div id="disco-hero-actor" class="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-primary-container/30 border-4 border-primary overflow-hidden flex items-center justify-center shadow-xl ${
             isDancing ? 'animate-bounce' : 'animate-float'
           }">
-            <img src="${hero.avatar}" alt="${escapeHtml(hero.name)}" class="w-full h-full object-cover" />
+            <img src="${escapeHtml(safeImageUrl(hero.avatar))}" alt="${escapeHtml(hero.name)}" class="w-full h-full object-cover" />
           </div>
 
           <div id="disco-pet-actor" class="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-tertiary-container/30 border-4 border-tertiary p-2 flex items-center justify-center shadow-2xl ${
             isDancing ? 'animate-bounce' : 'animate-float'
           }">
-            <img src="${petAvatarUrl}" alt="${petName}" class="w-full h-full object-contain drop-shadow-sm" />
+            <img src="${escapeHtml(petAvatarUrl)}" alt="${petName}" class="w-full h-full object-contain drop-shadow-sm" />
           </div>
         </div>
 

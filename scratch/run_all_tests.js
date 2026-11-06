@@ -4,6 +4,7 @@ import path from 'path';
 console.log('🚀 Running Full Little Hero Adventures Test Suite...\n');
 
 const testFiles = [
+  'scratch/verify_static_path_containment.mjs',
   'scratch/verify_toothbrush_revamp.js',
   'scratch/verify_battle_duration_and_hygiene_reminders.js',
   'scratch/verify_xss_escaping.js',
