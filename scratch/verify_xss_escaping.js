@@ -50,9 +50,11 @@ await new Promise(resolve => setTimeout(resolve, 0));
 store.state.isAuthenticated = false;
 store.state.isHouseholdConfigured = false;
 store.state.householdSetupStep = 'auth';
-const authHtml = renderLandingAuthModal();
-assert(!authHtml.includes('<img src=x onerror'), 'LandingAuthModal does not render an exception payload as a tag');
-assert(authHtml.includes('&lt;img'), 'LandingAuthModal renders the escaped exception text');
+document.body.innerHTML = renderLandingAuthModal();
+attachLandingAuthModalListeners();
+const authErrorEl = document.querySelector('[data-auth-error-message]');
+assert(authErrorEl.textContent === XSS_PAYLOAD, 'LandingAuthModal displays exception text as inert text');
+assert(!document.body.innerHTML.includes('<img src=x onerror'), 'LandingAuthModal does not render an exception payload as a tag');
 firebaseAuth.signInWithGoogle = originalSignInWithGoogle;
 
 console.log('\n(ParentPortalView.js:3775 and ShopView.js:491 were fixed the same way -- verified by direct');

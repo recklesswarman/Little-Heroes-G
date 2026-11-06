@@ -2,7 +2,6 @@ import { store, KID_AVATARS } from '../state/store.js';
 import { firebaseAuth } from '../services/firebaseAuthService.js';
 import { Sound } from '../audio/sfx.js';
 import { speakRex } from '../services/voiceService.js';
-import { escapeHtml } from '../utils/escapeHtml.js';
 
 let selectedAvatar = KID_AVATARS[0].url;
 let authErrorMessage = '';
@@ -138,7 +137,7 @@ function renderWelcomeAuthScreen() {
     ${authErrorMessage ? `
       <div class="bg-rose-500/20 border-2 border-rose-500/50 rounded-2xl p-3 text-rose-300 text-xs font-bold flex items-center gap-2">
         <span class="material-symbols-outlined text-base">warning</span>
-        <span>${escapeHtml(authErrorMessage)}</span>
+        <span data-auth-error-message="true"></span>
       </div>
     ` : ''}
 
@@ -440,6 +439,9 @@ function renderJoinHouseholdScreen() {
  * Attach interactive event listeners for all screens
  */
 export function attachLandingAuthModalListeners() {
+  const authErrorMessageEl = document.querySelector('[data-auth-error-message]');
+  if (authErrorMessageEl) authErrorMessageEl.textContent = authErrorMessage;
+
   // 1. Resume Household Button (Instant 1-click restore)
   const resumeBtn = document.getElementById('auth-resume-household-btn');
   if (resumeBtn) {
