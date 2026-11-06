@@ -3937,7 +3937,7 @@ function renderAddKidModal() {
             <label class="block text-xs font-black text-on-surface-variant uppercase mb-1">Or Select 3D Preset Avatar</label>
             <div class="grid grid-cols-4 gap-2.5">
               ${KID_AVATARS.map((av) => `
-                <button type="button" data-avatar-url="${escapeHtml(safeImageUrl(av.url))}" class="new-kid-avatar-choice rounded-2xl p-1.5 border-3 transition-all flex flex-col items-center gap-1 ${selectedAvatarUrl === av.url ? 'border-primary bg-primary/20 scale-102 ring-2 ring-primary' : 'border-surface-container-highest bg-surface-container-high hover:border-primary/50'}">
+                <button type="button" data-avatar-id="${escapeHtml(av.id)}" data-avatar-url="${escapeHtml(safeImageUrl(av.url))}" class="new-kid-avatar-choice rounded-2xl p-1.5 border-3 transition-all flex flex-col items-center gap-1 ${selectedAvatarUrl === av.url ? 'border-primary bg-primary/20 scale-102 ring-2 ring-primary' : 'border-surface-container-highest bg-surface-container-high hover:border-primary/50'}">
                   <img src="${escapeHtml(safeImageUrl(av.url))}" class="w-12 h-12 rounded-full object-cover" />
                   <span class="text-[9px] font-bold text-white truncate w-full text-center">${av.label}</span>
                 </button>
@@ -4040,7 +4040,7 @@ function renderEditKidModal() {
             <label class="block text-xs font-black text-on-surface-variant uppercase mb-1">Or Select 3D Preset Avatar</label>
             <div class="grid grid-cols-4 gap-2.5">
               ${KID_AVATARS.map((av) => `
-                <button type="button" data-avatar-url="${escapeHtml(safeImageUrl(av.url))}" class="edit-kid-avatar-choice rounded-2xl p-1.5 border-3 transition-all flex flex-col items-center gap-1 ${editingKid.avatar === av.url ? 'border-secondary bg-secondary/20 scale-102 ring-2 ring-secondary' : 'border-surface-container-highest bg-surface-container-high hover:border-secondary/50'}">
+                <button type="button" data-avatar-id="${escapeHtml(av.id)}" data-avatar-url="${escapeHtml(safeImageUrl(av.url))}" class="edit-kid-avatar-choice rounded-2xl p-1.5 border-3 transition-all flex flex-col items-center gap-1 ${editingKid.avatar === av.url ? 'border-secondary bg-secondary/20 scale-102 ring-2 ring-secondary' : 'border-surface-container-highest bg-surface-container-high hover:border-secondary/50'}">
                   <img src="${escapeHtml(safeImageUrl(av.url))}" class="w-12 h-12 rounded-full object-cover" />
                   <span class="text-[9px] font-bold text-white truncate w-full text-center">${av.label}</span>
                 </button>
@@ -4796,7 +4796,7 @@ export function attachParentPortalListeners() {
 
   document.querySelectorAll('.new-kid-avatar-choice').forEach((btn) => {
     btn.addEventListener('click', () => {
-      selectedAvatarUrl = safeImageUrl(btn.getAttribute('data-avatar-url'), KID_AVATARS[0].url);
+      selectedAvatarUrl = KID_AVATARS.find((avatar) => avatar.id === btn.getAttribute('data-avatar-id'))?.url || KID_AVATARS[0].url;
       const avatarInput = document.getElementById('new-kid-avatar-val');
       if (avatarInput) avatarInput.value = selectedAvatarUrl;
       const preview = document.getElementById('new-kid-avatar-preview');
@@ -4929,7 +4929,7 @@ export function attachParentPortalListeners() {
 
   document.querySelectorAll('.edit-kid-avatar-choice').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const url = safeImageUrl(btn.getAttribute('data-avatar-url'), KID_AVATARS[0].url);
+      const url = KID_AVATARS.find((avatar) => avatar.id === btn.getAttribute('data-avatar-id'))?.url || KID_AVATARS[0].url;
       const avatarInput = document.getElementById('edit-kid-avatar-val');
       if (avatarInput) avatarInput.value = url;
       const preview = document.getElementById('edit-kid-avatar-preview');
