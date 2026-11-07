@@ -148,11 +148,24 @@ function titleCase(text) {
   return String(text || '').replace(/\b([a-z])/g, (m) => m.toUpperCase());
 }
 
+const RANDOM_SEED_RANGE = 1_000_000_000;
+const RANDOM_SEED_LIMIT = Math.floor(0x1_0000_0000 / RANDOM_SEED_RANGE) * RANDOM_SEED_RANGE;
+
+function randomSeed() {
+  const values = new Uint32Array(1);
+  let value;
+  do {
+    globalThis.crypto.getRandomValues(values);
+    value = values[0];
+  } while (value >= RANDOM_SEED_LIMIT);
+  return value % RANDOM_SEED_RANGE;
+}
+
 /**
  * Deterministic bible used when the planner LLM is unavailable or produces junk. The plot is the
  * combination from the offline banks that is least like the child's recent stories (request.ledgerDigest).
  */
-export function fallbackBible(request, { seed = globalThis.crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000_000 } = {}) {
+export function fallbackBible(request, { seed = randomSeed() } = {}) {
   const combo = pickUnusedCombo(request.ledgerDigest || [], seed, request.realm?.name);
   const object = combo.centralObject.replace(/^(a|an|the)\s+/i, '');
   const raw = {

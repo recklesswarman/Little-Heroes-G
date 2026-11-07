@@ -1,6 +1,7 @@
 import assert from 'node:assert';
 import { buildRequest, generateBedtimeChapter, generateBedtimeStory, petSpeciesFromName } from '../shared/storyEngine/engine.js';
 import { normalizeBible, fallbackBible, buildBiblePrompt, petRule } from '../shared/storyEngine/bible.js';
+import { fallbackBible as fallbackFunctionsBible } from '../functions/src/storyEngine/bible.js';
 import { buildChapterPrompt } from '../shared/storyEngine/writer.js';
 import { chapterMentionsHero } from '../shared/storyEngine/safety.js';
 import { makeGeminiGenerate, DEFAULT_STORY_MODEL } from '../shared/storyEngine/gemini.js';
@@ -15,6 +16,29 @@ async function check(desc, fn) {
 const realm = getBedtimeRealm('space');
 const moral = BEDTIME_MORALS[0];
 const HERO = 'Zephyrina';
+
+await check('fallback seed generation rejects values that would bias the range in both engine copies', () => {
+  const request = buildRequest({ heroName: HERO }, { realm, moral });
+  const cryptoDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'crypto');
+  for (const createBible of [fallbackBible, fallbackFunctionsBible]) {
+    const values = [4_000_000_000, 2_000_000_123];
+    Object.defineProperty(globalThis, 'crypto', {
+      configurable: true,
+      value: {
+        getRandomValues(array) {
+          array[0] = values.shift();
+          return array;
+        }
+      }
+    });
+    try {
+      assert.deepStrictEqual(createBible(request), createBible(request, { seed: 123 }));
+      assert.deepStrictEqual(values, []);
+    } finally {
+      Object.defineProperty(globalThis, 'crypto', cryptoDescriptor);
+    }
+  }
+});
 
 const words = (n, seed) => Array.from({ length: n }, (_, i) => `${seed}${i % 7}`).join(' ');
 const chapterText = (extra) => `${extra} ${words(150, 'soft')}.`;
