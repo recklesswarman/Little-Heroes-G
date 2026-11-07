@@ -152,7 +152,7 @@ function titleCase(text) {
  * Deterministic bible used when the planner LLM is unavailable or produces junk. The plot is the
  * combination from the offline banks that is least like the child's recent stories (request.ledgerDigest).
  */
-export function fallbackBible(request, { seed = Math.floor(Math.random() * 1e9) } = {}) {
+export function fallbackBible(request, { seed = globalThis.crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000_000 } = {}) {
   const combo = pickUnusedCombo(request.ledgerDigest || [], seed, request.realm?.name);
   const object = combo.centralObject.replace(/^(a|an|the)\s+/i, '');
   const raw = {

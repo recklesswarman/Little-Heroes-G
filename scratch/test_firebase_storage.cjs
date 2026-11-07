@@ -41,6 +41,10 @@ async function run() {
     'storageBucket must be configured'
   );
   assert('storage' in firebaseConfigModule, 'storage instance must be exported');
+  if (firebaseConfigModule.storage) {
+    firebaseConfigModule.storage.maxUploadRetryTime = 1000;
+    firebaseConfigModule.storage.maxOperationRetryTime = 1000;
+  }
   assert('isStorageAvailable' in firebaseConfigModule, 'isStorageAvailable flag must be exported');
   console.log('  ✅ PASS: Firebase config includes valid storageBucket and storage instance export');
 
@@ -106,6 +110,7 @@ async function run() {
   console.log('  ✅ PASS: storage.rules & firebase.json are properly configured and validated');
 
   console.log('\n🎉 ALL FIREBASE STORAGE TESTS PASSED SUCCESSFULLY!\n');
+  process.exit(0);
 }
 
 run().catch((err) => {

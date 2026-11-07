@@ -1,6 +1,7 @@
 import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
+import { safeImageUrl } from '../utils/safeImageUrl.js';
 import { firebaseAuth } from '../services/firebaseAuthService.js';
 import { firestoreSync, isQuotaExhaustedGlobal } from '../services/firestoreSyncService.js';
 import { persistentLink } from '../services/persistentLinkService.js';
@@ -56,13 +57,13 @@ export function renderHouseholdLinkModal() {
                   <div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary shadow-xs shrink-0">
                     ${
                       parentUser.photoURL
-                        ? `<img class="w-full h-full object-cover" src="${parentUser.photoURL}" alt="User Avatar" />`
-                        : `<div class="w-full h-full bg-primary text-on-primary flex items-center justify-center font-black">${(parentUser.displayName || 'P')[0]}</div>`
+                        ? `<img class="w-full h-full object-cover" src="${escapeHtml(safeImageUrl(parentUser.photoURL))}" alt="User Avatar" />`
+                        : `<div class="w-full h-full bg-primary text-on-primary flex items-center justify-center font-black">${escapeHtml((parentUser.displayName || 'P')[0])}</div>`
                     }
                   </div>
                   <div class="flex flex-col truncate">
-                    <span class="font-headline text-xs font-black text-inverse-surface truncate">${parentUser.displayName || 'Parent Admin'}</span>
-                    <span class="text-[10px] text-on-surface-variant font-bold truncate">${parentUser.email || 'Cloud Account Linked'}</span>
+                    <span class="font-headline text-xs font-black text-inverse-surface truncate">${escapeHtml(parentUser.displayName || 'Parent Admin')}</span>
+                    <span class="text-[10px] text-on-surface-variant font-bold truncate">${escapeHtml(parentUser.email || 'Cloud Account Linked')}</span>
                   </div>
                 </div>
 
@@ -118,7 +119,7 @@ export function renderHouseholdLinkModal() {
         <div class="flex flex-col items-center text-center gap-3 py-1">
           <div class="w-full bg-surface-container-lowest p-3.5 rounded-2xl border-2 border-primary/40 flex flex-col items-center gap-1 shadow-inner">
             <span class="text-[10px] font-black uppercase text-secondary tracking-widest">${escapeHtml(household.name)} Sync Code</span>
-            <span class="font-headline text-2xl font-black text-primary tracking-widest">${household.syncCode}</span>
+            <span class="font-headline text-2xl font-black text-primary tracking-widest">${escapeHtml(household.syncCode)}</span>
             <span class="text-[10px] text-on-surface-variant font-bold">Use on other family tablets or phones to sync this household</span>
           </div>
 
@@ -143,7 +144,7 @@ export function renderHouseholdLinkModal() {
               </button>
               <span class="${isQuotaExhaustedGlobal() ? 'text-amber-400' : 'text-primary'} flex items-center gap-1 text-[11px]">
                 <span class="w-2 h-2 rounded-full ${isQuotaExhaustedGlobal() ? 'bg-amber-400' : 'bg-primary animate-ping'}"></span>
-                ${isQuotaExhaustedGlobal() ? 'Local Mode (Quota Safe)' : (household.lastSync || 'Cloud Synced')}
+                ${isQuotaExhaustedGlobal() ? 'Local Mode (Quota Safe)' : escapeHtml(household.lastSync || 'Cloud Synced')}
               </span>
             </div>
           </div>

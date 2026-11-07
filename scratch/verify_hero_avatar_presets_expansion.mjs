@@ -35,7 +35,7 @@ console.log('\n--- 2. Real Landing Auth Modal onboarding render shows all preset
 store.state.isAuthenticated = false;
 store.state.isHouseholdConfigured = false;
 store.state.householdSetupStep = 'create';
-document.body.innerHTML = renderLandingAuthModal();
+document.body.setMockHtml(renderLandingAuthModal());
 attachLandingAuthModalListeners();
 const html = document.body.innerHTML;
 for (const avatar of KID_AVATARS) {
@@ -47,7 +47,7 @@ const ninjaBtn = document.querySelector(`[data-avatar-url="${KID_AVATARS.find(a 
 assert(Boolean(ninjaBtn), 'The new Shadow Ninja Scout avatar button exists in the rendered DOM');
 if (ninjaBtn) {
   ninjaBtn.click();
-  document.body.innerHTML = renderLandingAuthModal();
+  document.body.setMockHtml(renderLandingAuthModal());
   const ninjaUrl = KID_AVATARS.find(a => a.id === 'avatar_ninja').url;
   const reRenderedBtn = document.querySelector(`[data-avatar-url="${ninjaUrl}"]`);
   assert(Boolean(reRenderedBtn), 'Modal re-renders successfully after selecting a new preset');

@@ -44,7 +44,9 @@ const bundle = fs.readFileSync(path.join(TMP, 'device.js'), 'utf8');
 
 // ---- fake Firestore: deep-merges like {merge:true}, notifies every listener after a delay ----
 const clone = (v) => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)));
+const isUnsafeProp = (k) => k === '__proto__' || k === 'constructor' || k === 'prototype';
 function setVal(t, k, v, deep) {
+  if (isUnsafeProp(k)) return;
   if (v && v.__op === 'delete') { delete t[k]; return; }
   if (v && v.__op === 'arrayRemove') { t[k] = (t[k] || []).filter((x) => !v.vals.includes(x)); return; }
   if (v && v.__op === 'arrayUnion') { t[k] = Array.from(new Set([...(t[k] || []), ...v.vals])); return; }
@@ -60,7 +62,7 @@ function makeFS(latency) {
       await sleep(latency);
       if (!merge || !docs[p]) docs[p] = merge && docs[p] ? docs[p] : {};
       for (const [k, v] of Object.entries(clone(data))) {
-        if (dotted && k.includes('.')) { const parts = k.split('.'); let t = docs[p]; for (const x of parts.slice(0, -1)) { t[x] = t[x] && typeof t[x] === 'object' ? t[x] : {}; t = t[x]; } setVal(t, parts.at(-1), v, true); } else setVal(docs[p], k, v, true);
+        if (dotted && k.includes('.')) { const parts = k.split('.'); if (parts.some(isUnsafeProp)) continue; let t = docs[p]; for (const x of parts.slice(0, -1)) { t[x] = Object.prototype.hasOwnProperty.call(t, x) && t[x] && typeof t[x] === 'object' ? t[x] : {}; t = t[x]; } setVal(t, parts.at(-1), v, true); } else setVal(docs[p], k, v, true);
       }
       for (const l of listeners) if (l.p === p) setTimeout(() => l.cb(snap(p)), latency);
     },

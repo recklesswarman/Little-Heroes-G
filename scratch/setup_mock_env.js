@@ -71,6 +71,18 @@ if (typeof globalThis.window === 'undefined') {
 const elementsByIdMap = new Map();
 const allMockElements = [];
 
+function stripMockTags(html) {
+  let out = '';
+  let insideTag = false;
+  for (let i = 0; i < html.length; i++) {
+    const ch = html[i];
+    if (ch === '<') insideTag = true;
+    else if (ch === '>') insideTag = false;
+    else if (!insideTag) out += ch;
+  }
+  return out;
+}
+
 function matchMockSelector(el, sel) {
   if (!sel || !el) return false;
   sel = sel.trim();
@@ -143,7 +155,7 @@ function createMockElement(tag = 'div') {
       }
     },
     get textContent() {
-      return el._textContent !== undefined ? el._textContent : (_innerHtml ? _innerHtml.replace(/<[^>]*>/g, '') : '');
+      return el._textContent !== undefined ? el._textContent : (_innerHtml ? stripMockTags(_innerHtml) : '');
     },
     set textContent(val) {
       el._textContent = String(val);
@@ -173,6 +185,9 @@ function createMockElement(tag = 'div') {
       return _innerHtml;
     },
     set innerHTML(val) {
+      el.setMockHtml(val);
+    },
+    setMockHtml(val) {
       // Real innerHTML assignment replaces all of this element's previous
       // children -- without this, re-rendering the same container twice in
       // one test (render -> click -> re-render) leaves stale elements from

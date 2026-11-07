@@ -44,7 +44,7 @@ console.log('\n--- 2. Testing Morning Toothbrush AR Battle in Task Forest (Dashb
 
 store.state.activeView = 'dashboard';
 const dashHtml = renderDashboardView();
-document.body.innerHTML = dashHtml;
+document.body.setMockHtml(dashHtml);
 attachDashboardListeners();
 
 const taskArBtn = document.querySelector('.task-ar-launch-btn[data-task-ar-id="morning_brush"]');
@@ -73,7 +73,7 @@ abandonBattleIfRunning();
 
 console.log('\n--- 3. Testing Toothbrush Adventure Battle in Habit Islands (DashboardView) ---');
 
-document.body.innerHTML = renderDashboardView();
+document.body.setMockHtml(renderDashboardView());
 attachDashboardListeners();
 
 const habitArBtn = document.querySelector('.habit-ar-launch-btn[data-habit-ar-id="toothbrush_adventure_battle"]');
@@ -97,7 +97,7 @@ abandonBattleIfRunning();
 console.log('\n--- 4. Testing Sugar Fortress Boss Summit in QuestMapView ---');
 
 store.state.activeView = 'quest_map';
-document.body.innerHTML = renderQuestMapView();
+document.body.setMockHtml(renderQuestMapView());
 attachQuestMapListeners();
 
 const mapSugarBossBtn = document.getElementById('map-sugar-boss-btn');
@@ -119,7 +119,7 @@ store.getTaskCompletionsToday = (choreKey, heroId) => {
   return [];
 };
 
-document.body.innerHTML = renderWorldAdventureMapView();
+document.body.setMockHtml(renderWorldAdventureMapView());
 attachWorldAdventureMapListeners();
 
 const pathLaunchBossBtn = document.getElementById('path-launch-boss-btn');
@@ -133,7 +133,7 @@ store.getTaskCompletionsToday = origGetCompletions;
 
 console.log('\n--- 6. Testing BattleView Re-entrancy & In-Game Switcher ---');
 
-document.body.innerHTML = renderBattleView();
+document.body.setMockHtml(renderBattleView());
 attachBattleListeners();
 
 // Re-starting battle doesn't throw or duplicate intervals
@@ -174,7 +174,7 @@ hanaBattle3DService.destroy(); // stop the self-rescheduling loop this direct ca
 
 // Also confirm quitBattle() actually stops the render loop instead of leaving
 // it running behind the new defeat modal -- the root cause of the overlap.
-document.body.innerHTML = renderBattleView();
+document.body.setMockHtml(renderBattleView());
 attachBattleListeners();
 startBattle();
 quitBattle();

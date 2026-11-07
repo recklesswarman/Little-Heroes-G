@@ -57,14 +57,14 @@ store.state.selectedHero = store.state.heroes[0];
 store.state.activeView = 'shop';
 
 store.setIslandSeason('summer');
-document.body.innerHTML = renderShopView();
+document.body.setMockHtml(renderShopView());
 let html = document.body.innerHTML;
 assert(html.includes('Solstice Surf Hero'), 'Shop shows the in-season (summer) exclusive theme card');
 assert(!html.includes('Frostpeak Guardian'), 'Shop does NOT show the out-of-season (winter) exclusive theme card');
 assert(html.includes('Emerald Dragon Guardian'), 'Ordinary evergreen themes remain visible regardless of season');
 
 store.setIslandSeason('winter');
-document.body.innerHTML = renderShopView();
+document.body.setMockHtml(renderShopView());
 html = document.body.innerHTML;
 assert(html.includes('Frostpeak Guardian'), 'Shop shows the winter-exclusive theme once the season flips to winter');
 assert(!html.includes('Solstice Surf Hero'), 'Shop hides the summer-exclusive theme once the season flips to winter');
@@ -84,7 +84,7 @@ assert(
 );
 
 console.log('\n--- 5. Real Shop render shows the new digital reward items ---');
-document.body.innerHTML = renderShopView();
+document.body.setMockHtml(renderShopView());
 html = document.body.innerHTML;
 assert(html.includes('Comet Tail Whip'), 'Shop shows the new weapon item');
 assert(html.includes('Emerald Streak Medal'), 'Shop shows the new badge item');

@@ -73,7 +73,7 @@ assert(islandHtml.includes('world-adventure-canvas'), 'Island tab still renders 
 
 console.log('\n--- 7. Shrines list button shows only currently-visible shrines ---');
 store.setIslandSeason('autumn');
-document.body.innerHTML = renderWorldAdventureMapView();
+document.body.setMockHtml(renderWorldAdventureMapView());
 attachWorldAdventureMapListeners();
 const secretsBtn = document.getElementById('island-inspect-secrets-btn');
 let shownTitle = null;

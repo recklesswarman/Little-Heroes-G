@@ -96,7 +96,7 @@ export default {
       const format = body.format || "image"; // "image" | "base64" | "json"
       const seed = body.seed !== undefined && body.seed !== null
         ? Number(body.seed)
-        : Math.floor(Math.random() * 2147483647);
+        : ((globalThis.crypto.getRandomValues(new Uint32Array(1))[0] & 0x7fffffff) || 1);
       const negative_prompt = body.negative_prompt || "pink, purple, magenta, violet, neon pink, scary, dark, deformed, blurry";
 
       if (!prompt || typeof prompt !== "string") {

@@ -26,7 +26,7 @@ assert(store.state.activeWaypointChoreKey === 'brush_teeth_am', 'Breadcrumb surv
 assert(store.getBossColosseumState().isDefeatModalOpen === true, 'Defeat modal is actually open (sanity check on test setup)');
 
 console.log('\n--- 2. Tapping "Try Again" re-launches the battle with the breadcrumb intact ---');
-document.body.innerHTML = renderBattleView();
+document.body.setMockHtml(renderBattleView());
 attachBattleListeners();
 const retryBtn = document.getElementById('colosseum-defeat-retry-btn');
 assert(!!retryBtn, 'Defeat modal retry button is present in the rendered HTML');
@@ -35,7 +35,7 @@ assert(store.state.activeWaypointChoreKey === 'brush_teeth_am', 'Breadcrumb stil
 
 console.log('\n--- 3. Tapping "Give Up" instead DOES clear the breadcrumb ---');
 quitBattle(); // mid-battle again -> defeat modal again
-document.body.innerHTML = renderBattleView();
+document.body.setMockHtml(renderBattleView());
 attachBattleListeners();
 const giveUpBtn = document.getElementById('colosseum-defeat-return-btn');
 assert(!!giveUpBtn, 'Defeat modal "Give Up" button is present in the rendered HTML');

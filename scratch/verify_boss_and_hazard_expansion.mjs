@@ -68,7 +68,7 @@ console.log('\n--- 4. New bosses are selectable through the real in-battle villa
 store.state.selectedHero = store.state.heroes[0];
 store.state.selectedHero.gameDifficulty = 'medium';
 store.state.activeView = 'ar_battle';
-document.body.innerHTML = renderBattleView();
+document.body.setMockHtml(renderBattleView());
 attachBattleListeners();
 startBattle();
 

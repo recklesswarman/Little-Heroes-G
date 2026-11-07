@@ -37,7 +37,7 @@ store.state.selectedHero = store.state.heroes[0];
 store.state.pets = [{ id: '2', name: 'Rex', species: 'dino' }];
 
 console.log('\n--- 1. Dino Workout: starting a workout creates a running timerInterval ---');
-document.body.innerHTML = renderDinoWorkoutView();
+document.body.setMockHtml(renderDinoWorkoutView());
 attachDinoWorkoutListeners();
 activeIntervals.clear();
 const startWorkoutBtn = document.getElementById('btn-start-workout');
@@ -56,7 +56,7 @@ assert(!threwDino, 'abandonDinoWorkoutIfRunning() is idempotent when called agai
 console.log('\n--- 3. Pet Sanctuary: reopening the expedition drawer on an active expedition starts a countdown interval ---');
 store.startPetExpedition('2', 'fern_woods', 15);
 store.getPetSanctuaryState().activeDrawer = 'expedition';
-document.body.innerHTML = renderPetSanctuaryView();
+document.body.setMockHtml(renderPetSanctuaryView());
 activeIntervals.clear();
 attachPetSanctuaryListeners();
 assert(activeIntervals.size >= 1, `Attaching listeners with the expedition drawer open started a countdown interval - got ${activeIntervals.size}`);
@@ -70,7 +70,7 @@ try { abandonPetSanctuaryExpeditionIfRunning(); } catch (e) { threwSanctuary = t
 assert(!threwSanctuary, 'abandonPetSanctuaryExpeditionIfRunning() is idempotent when called again with no expedition drawer open');
 
 console.log('\n--- 5. Dance Party: launching a movement routine creates a running routineTimer ---');
-document.body.innerHTML = renderDancePartyView();
+document.body.setMockHtml(renderDancePartyView());
 activeIntervals.clear();
 attachDancePartyEvents();
 const launchRoutineBtn = document.querySelector('.launch-routine-btn');

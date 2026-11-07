@@ -10,6 +10,7 @@
 import { store, KID_AVATARS } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
+import { safeImageUrl } from '../utils/safeImageUrl.js';
 
 import { BEDTIME_REALMS, BEDTIME_MORALS, CONSTELLATION_STICKERS, getBedtimeRealm } from '../data/bedtimeStoryData.js';
 import { bedtimeStoryService, resolveBedtimeNarratorPetId } from '../services/bedtimeStoryService.js';
@@ -54,11 +55,11 @@ let activeBookshelfFilter = 'all'; // 'all' | 'favorites'
  * Safely guards against image URL vs emoji strings, preventing raw token spillage
  */
 function renderHeroWithPetBadge(hero, pet) {
-  const heroAvatar = hero?.avatar || KID_AVATARS[0].url;
-  const heroName = hero?.name || 'Hero';
+  const heroAvatar = escapeHtml(safeImageUrl(hero?.avatar, KID_AVATARS[0].url));
+  const heroName = escapeHtml(hero?.name || 'Hero');
   
   const petAvatar = pet?.avatar || pet?.image || `assets/pets/${pet?.key || 'rex'}.png`;
-  const petEmoji = pet?.emoji || '🦖';
+  const petEmoji = escapeHtml(pet?.emoji || '🦖');
   const isPetImg = typeof petAvatar === 'string' && (petAvatar.startsWith('http') || petAvatar.startsWith('data:') || petAvatar.startsWith('assets/') || petAvatar.includes('/'));
 
   return `
@@ -73,9 +74,9 @@ function renderHeroWithPetBadge(hero, pet) {
         />
       </div>
       <!-- Active Pet Companion Badge Overlay -->
-      <div class="absolute -bottom-1 -right-1 sm:bottom-0 sm:right-0 w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-[#09141e] border-2 border-[#ffb961] p-0.5 flex items-center justify-center shadow-lg overflow-hidden" title="${pet?.name || 'Companion'}">
+      <div class="absolute -bottom-1 -right-1 sm:bottom-0 sm:right-0 w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-[#09141e] border-2 border-[#ffb961] p-0.5 flex items-center justify-center shadow-lg overflow-hidden" title="${escapeHtml(pet?.name || 'Companion')}">
         ${isPetImg 
-          ? `<img src="${petAvatar}" alt="${pet?.name || 'Companion'}" class="w-full h-full object-contain select-none pointer-events-none" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\\'text-xs sm:text-sm select-none\\'>${petEmoji}</span>';" />`
+          ? `<img src="${escapeHtml(safeImageUrl(petAvatar))}" alt="${escapeHtml(pet?.name || 'Companion')}" class="w-full h-full object-contain select-none pointer-events-none" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\\'text-xs sm:text-sm select-none\\'>${petEmoji}</span>';" />`
           : `<span class="text-xs sm:text-sm select-none">${petEmoji}</span>`
         }
       </div>
@@ -912,7 +913,7 @@ export function setupBedtimeStoryListeners() {
         currentAct.activeScene = 'scene_a';
         const img = document.getElementById('active-chapter-illustration-img');
         if (img && currentAct.imageUrl) {
-          img.src = currentAct.imageUrl;
+          img.src = safeImageUrl(currentAct.imageUrl, '');
         }
         updateScenePillStyles('scene_a');
       }
@@ -929,7 +930,7 @@ export function setupBedtimeStoryListeners() {
         currentAct.activeScene = 'scene_b';
         const img = document.getElementById('active-chapter-illustration-img');
         if (currentAct.imageUrlB) {
-          if (img) img.src = currentAct.imageUrlB;
+          if (img) img.src = safeImageUrl(currentAct.imageUrlB, '');
           updateScenePillStyles('scene_b');
         } else {
           const btnB = document.getElementById('toggle-scene-b-btn');
@@ -953,7 +954,7 @@ export function setupBedtimeStoryListeners() {
             if (res && res.imageUrl) {
               currentAct.imageUrlB = res.imageUrl;
               if (img && currentAct.activeScene === 'scene_b') {
-                img.src = res.imageUrl;
+                img.src = safeImageUrl(res.imageUrl, '');
               }
             }
           } catch (err) {
@@ -984,7 +985,7 @@ export function setupBedtimeStoryListeners() {
           if (currentAct.activeScene === 'scene_b') {
             const img = document.getElementById('active-chapter-illustration-img');
             if (img && e.detail?.imageUrlB) {
-              img.src = e.detail.imageUrlB;
+              img.src = safeImageUrl(e.detail.imageUrlB, '');
             }
           }
         }
@@ -1001,7 +1002,7 @@ export function setupBedtimeStoryListeners() {
         img.style.transition = 'opacity 500ms ease';
         img.style.opacity = '0';
         setTimeout(() => {
-          img.src = currentAct.imageUrlB;
+          img.src = safeImageUrl(currentAct.imageUrlB, '');
           img.style.opacity = '1';
         }, 450);
       }

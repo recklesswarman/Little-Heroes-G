@@ -72,7 +72,7 @@ console.log('\n--- 5. Real Bedtime Sanctuary Hub render reflects season-filtered
 store.state.selectedHero.bedtimeHistory = [];
 store.state.activeView = 'bedtime_story';
 store.setIslandSeason('autumn');
-document.body.innerHTML = renderBedtimeStoryView();
+document.body.setMockHtml(renderBedtimeStoryView());
 setupBedtimeStoryListeners();
 const htmlHasAutumnMoral = document.body.innerHTML.includes('Autumn Gratitude Harvest');
 const htmlHasWinterMoral = document.body.innerHTML.includes('Winter Cozy Togetherness');

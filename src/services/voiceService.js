@@ -262,8 +262,8 @@ function dispatchSpeechEvent(eventName, detail = {}) {
 export function cleanDialogueText(text) {
   if (!text || typeof text !== 'string') return '';
   return text
-    .replace(/\*.*?\*/g, ' ')
-    .replace(/\[.*?\]/g, ' ')
+    .replace(/\*[^*\r\n]*(?:\*|$)/g, (m) => (m.endsWith('*') ? ' ' : m))
+    .replace(/\[[^\]]*(?:\]|$)/g, (m) => (m.endsWith(']') ? ' ' : m))
     .replace(/\s+/g, ' ')
     .trim();
 }

@@ -80,15 +80,53 @@ export function isPathAllowed(robots, path) {
   return best ? best.allow : true;
 }
 
+const SKIP_TAG_NAMES = new Set(['script', 'style', 'noscript', 'svg', 'head']);
+
+function stripHtmlMarkup(raw) {
+  let out = '';
+  let skipUntilTag = null;
+  let i = 0;
+  while (i < raw.length) {
+    const lt = raw.indexOf('<', i);
+    if (lt === -1) {
+      if (!skipUntilTag) out += raw.slice(i);
+      break;
+    }
+    if (!skipUntilTag && lt > i) {
+      out += raw.slice(i, lt);
+    }
+    const gt = raw.indexOf('>', lt + 1);
+    if (gt === -1) break;
+    const inner = raw.slice(lt + 1, gt).trim();
+    const isClosing = inner.startsWith('/');
+    const nameBody = (isClosing ? inner.slice(1) : inner).trimStart();
+    const nameMatch = /^[a-z0-9]+/i.exec(nameBody);
+    const tagName = nameMatch ? nameMatch[0].toLowerCase() : '';
+    if (skipUntilTag) {
+      if (isClosing && tagName === skipUntilTag) {
+        skipUntilTag = null;
+        out += ' ';
+      }
+    } else {
+      if (!isClosing && !inner.endsWith('/') && SKIP_TAG_NAMES.has(tagName)) {
+        skipUntilTag = tagName;
+      }
+      out += ' ';
+    }
+    i = gt + 1;
+  }
+  return out;
+}
+
 /** Strip a fetched page down to readable text. */
 export function htmlToText(input, max = PROMPT_TEXT_CHARS * 4) {
-  return String(input || '')
-    .replace(/<(script|style|noscript|svg|head)[\s\S]*?<\/\1>/gi, ' ')
-    .replace(/<[^>]+>/g, ' ')
+  return stripHtmlMarkup(String(input || ''))
+
+
     .replace(/&nbsp;|&#160;/g, ' ').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'")
     .replace(/&(?!(?:amp);)[a-z#0-9]+;/gi, ' ')
     .replace(/&amp;/g, '&')
-    .replace(/\[\s*\d*\s*\]/g, ' ')
+    .replace(/\[[ \t]{0,8}\d{0,6}[ \t]{0,8}\]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, max);

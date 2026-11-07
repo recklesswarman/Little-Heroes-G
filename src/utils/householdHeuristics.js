@@ -77,14 +77,11 @@ export function isExistingActiveHousehold(state) {
 // this only affects newly created ones going forward.
 const HOUSEHOLD_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I to avoid misreads
 export function generateHouseholdCodeSuffix(length = 8) {
-  const bytes = new Uint32Array(length);
-  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-    crypto.getRandomValues(bytes);
-  } else {
-    for (let i = 0; i < length; i++) bytes[i] = Math.floor(Math.random() * 0xffffffff);
-  }
+  const safeLength = Math.max(1, Math.min(32, Number(length) || 8));
+  const bytes = new Uint32Array(safeLength);
+  globalThis.crypto.getRandomValues(bytes);
   let code = '';
-  for (let i = 0; i < length; i++) {
+  for (let i = 0; i < safeLength; i++) {
     code += HOUSEHOLD_CODE_CHARS[bytes[i] % HOUSEHOLD_CODE_CHARS.length];
   }
   return code;

@@ -204,7 +204,7 @@ export function renderProfileView() {
                 <!-- Assigned Companion Pet -->
                 <div class="bg-surface-container-highest/80 px-2 py-0.5 rounded-full flex items-center gap-1 text-[9px] font-black text-primary border border-primary/20 max-w-full truncate">
                   <span>🐾</span>
-                  <span class="truncate">${hPet.name}</span>
+                  <span class="truncate">${escapeHtml(hPet.name)}</span>
                 </div>
 
                 ${
@@ -393,7 +393,7 @@ export function attachProfileListeners() {
       try {
         const compressedDataUrl = await processProfilePhoto(file);
         const hero = store.getState().selectedHero;
-        store.editHero(hero.id, { avatar: compressedDataUrl });
+        store.editHero(hero.id, { avatar: safeImageUrl(compressedDataUrl, KID_AVATARS[0].url) });
         Sound.fanfare();
         store.notify();
       } catch (err) {

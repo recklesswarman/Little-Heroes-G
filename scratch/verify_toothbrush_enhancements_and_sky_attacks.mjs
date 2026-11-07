@@ -100,7 +100,7 @@ assert(hanaBattle3DService.shockwaves.length > 0, 'Deflection triggered shockwav
 // 6. CANVAS POINTERDOWN INTEGRATION IN BATTLEVIEW
 // =========================================================================
 console.log('\n--- 6. Testing Canvas Pointerdown Integration in BattleView ---');
-document.body.innerHTML = battleHtml;
+document.body.setMockHtml(battleHtml);
 attachBattleListeners();
 
 const canvas = document.getElementById('battle-webgl-canvas');

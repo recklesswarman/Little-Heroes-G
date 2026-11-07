@@ -356,7 +356,7 @@ runTest('tier1', 'F2', 'T1_F2_5: Text-Bound Mutation Isolation: Changing one wor
 // FEATURE 3: Dynamic Seed Entropy & Palette Guard (M2, R1)
 // -----------------------------------------------------------------------------
 runTest('tier1', 'F3', 'T1_F3_1: Illustration seed is generated within 32-bit positive integer range [0, 2147483647]', () => {
-  const seed = Math.floor(Math.random() * 2147483647);
+  const seed = globalThis.crypto.getRandomValues(new Uint32Array(1))[0] & 0x7fffffff;
   assertTrue(Number.isInteger(seed), 'Seed must be an integer');
   assertTrue(seed >= 0 && seed <= 2147483647, `Seed must be within [0, 2147483647], got ${seed}`);
 });
@@ -364,7 +364,7 @@ runTest('tier1', 'F3', 'T1_F3_1: Illustration seed is generated within 32-bit po
 runTest('tier1', 'F3', 'T1_F3_2: Successive illustration requests produce distinct entropy seeds', () => {
   const seeds = new Set();
   for (let i = 0; i < 20; i++) {
-    seeds.add(Math.floor(Math.random() * 2147483647));
+    seeds.add(globalThis.crypto.getRandomValues(new Uint32Array(1))[0] & 0x7fffffff);
   }
   assertEqual(seeds.size, 20, '20 successive seed generations must produce 20 distinct seeds');
 });
@@ -983,14 +983,14 @@ runTest('tier2', 'F3', 'T2_F3_3: Deep regex scan confirms zero forbidden colors 
 
 runTest('tier2', 'F3', 'T2_F3_4: Missing seed in image generation request triggers dynamic seed fallback', () => {
   const payload = { chapterNumber: 1, chapterText: 'Quiet night' };
-  const effectiveSeed = payload.seed || Math.floor(Math.random() * 2147483647);
+  const effectiveSeed = payload.seed || ((globalThis.crypto.getRandomValues(new Uint32Array(1))[0] & 0x7fffffff) || 1);
   assertTrue(effectiveSeed >= 0 && effectiveSeed <= 2147483647, 'Effective seed assigned');
 });
 
 runTest('tier2', 'F3', 'T2_F3_5: High-concurrency generation of 100 seeds yields 100 unique values', () => {
   const set = new Set();
   for (let i = 0; i < 100; i++) {
-    set.add(Math.floor(Math.random() * 2147483647));
+    set.add(globalThis.crypto.getRandomValues(new Uint32Array(1))[0] & 0x7fffffff);
   }
   assertEqual(set.size, 100, 'All 100 seeds in burst must be distinct');
 });

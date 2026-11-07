@@ -3,6 +3,7 @@ import { Sound } from '../audio/sfx.js';
 import { aiVisionChoreService } from '../services/aiVisionChoreService.js';
 import confetti from 'canvas-confetti';
 import { escapeHtml } from '../utils/escapeHtml.js';
+import { safeImageUrl } from '../utils/safeImageUrl.js';
 import { processPhotoFitWithinBounds } from '../utils/photoUploader.js';
 
 /**
@@ -111,7 +112,7 @@ class ChorePhotoProofModal {
 
     if (streamContainer) streamContainer.classList.add('hidden');
     if (previewContainer) previewContainer.classList.remove('hidden');
-    if (previewImg) previewImg.src = this.photoDataUrl;
+    if (previewImg) previewImg.src = safeImageUrl(this.photoDataUrl, '');
     if (snapBtn) snapBtn.classList.add('hidden');
     if (retakeBtn) retakeBtn.classList.remove('hidden');
     if (submitBtn) {

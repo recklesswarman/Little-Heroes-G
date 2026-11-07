@@ -39,7 +39,7 @@ assert(sugarBoss?.meshType === 'sugar_bandit', 'meshType is sugar_bandit for 3D 
 console.log('\n--- 3. Testing Bedtime Sanctuary Hub Step 1 rendering ---');
 store.state.activeView = 'bedtime_story';
 const html = renderBedtimeStoryView();
-document.body.innerHTML = html;
+document.body.setMockHtml(html);
 setupBedtimeStoryListeners();
 
 const stepLaunchBtn = document.getElementById('step-launch-toothbrush-btn');
@@ -97,7 +97,7 @@ assert(updatedBedtimeHtml.includes('Brushed Clean'), 'Step 1 button shows Brushe
 console.log('\n--- 7. Testing Victory Modal Return Buttons ---');
 store.state.previousView = 'bedtime_story';
 const victoryHtml = renderBattleView();
-document.body.innerHTML = victoryHtml;
+document.body.setMockHtml(victoryHtml);
 attachBattleListeners();
 
 const returnBedtimeBtn = document.getElementById('colosseum-return-bedtime-btn');

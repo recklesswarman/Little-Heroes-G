@@ -1,4 +1,4 @@
-const RASTER_DATA_URL = /^data:image\/(?:jpeg|png|gif|webp|avif|bmp);base64,[a-z0-9+/]*={0,2}$/i;
+const RASTER_DATA_URL = /^data:image\/(?:jpeg|png|gif|webp|avif|bmp|svg\+xml);base64,[a-z0-9+/]*={0,2}$/i;
 // Generated icons are percent-encoded SVG. Scripts inside an SVG never run when
 // it is loaded through <img>, and raw markup characters are still refused.
 const ENCODED_SVG_DATA_URL = /^data:image\/svg\+xml(?:;charset=utf-8|;utf8)?,[^\s"<>\\]*$/i;

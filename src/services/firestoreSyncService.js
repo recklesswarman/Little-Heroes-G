@@ -159,6 +159,7 @@ class FirestoreSyncService {
       try {
         this.broadcastChannel = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
         this.broadcastChannel.onmessage = (event) => {
+          if (event?.origin && typeof window !== 'undefined' && window.location?.origin && event.origin !== window.location.origin) return;
           this.handleBroadcastMessage(event.data);
         };
       } catch (e) {

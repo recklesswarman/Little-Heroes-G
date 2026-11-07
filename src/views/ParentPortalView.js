@@ -4822,7 +4822,7 @@ export function attachParentPortalListeners() {
         const avatarInput = document.getElementById('new-kid-avatar-val');
         if (avatarInput) avatarInput.value = dataUrl;
         const preview = document.getElementById('new-kid-avatar-preview');
-        if (preview) preview.src = dataUrl;
+        if (preview) preview.src = safeImageUrl(dataUrl, KID_AVATARS[0].url);
         document.querySelectorAll('.new-kid-avatar-choice').forEach((b) => {
           b.classList.remove('border-primary', 'bg-primary/20', 'scale-102', 'ring-2', 'ring-primary');
           b.classList.add('border-surface-container-highest', 'bg-surface-container-high');
@@ -4955,7 +4955,7 @@ export function attachParentPortalListeners() {
         const avatarInput = document.getElementById('edit-kid-avatar-val');
         if (avatarInput) avatarInput.value = dataUrl;
         const preview = document.getElementById('edit-kid-avatar-preview');
-        if (preview) preview.src = dataUrl;
+        if (preview) preview.src = safeImageUrl(dataUrl, KID_AVATARS[0].url);
         document.querySelectorAll('.edit-kid-avatar-choice').forEach((b) => {
           b.classList.remove('border-secondary', 'bg-secondary/20', 'scale-102', 'ring-2', 'ring-secondary');
           b.classList.add('border-surface-container-highest', 'bg-surface-container-high');

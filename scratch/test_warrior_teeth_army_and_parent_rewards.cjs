@@ -146,7 +146,7 @@ async function runTests() {
 
   // Mock DOM click event on #colosseum-visit-hq-btn
   const domContainer = document.createElement('div');
-  domContainer.innerHTML = battleViewHtml;
+  domContainer.setMockHtml(battleViewHtml);
   document.body.appendChild(domContainer);
 
   attachBattleListeners();

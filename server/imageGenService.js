@@ -4,6 +4,7 @@
  * (saurav-z/free-image-generation-api) with in-memory caching and resilient fallbacks.
  */
 
+import crypto from 'node:crypto';
 import { computeMd5 } from '../src/utils/md5.js';
 
 const imageCache = new Map();
@@ -86,7 +87,9 @@ export async function handleStoryIllustrationRequest(req, res) {
     } = req.body || {};
 
     const chIdx = chapterIndex ?? (chapterNumber - 1);
-    const cacheKey = `${sessionId || 'story'}_ch${chIdx}_${computeMd5(chapterText || '')}`;
+    const safeSessionId = typeof sessionId === 'string' && sessionId ? sessionId.slice(0, 128) : 'story';
+    const safeChapterText = typeof chapterText === 'string' ? chapterText.slice(0, 20000) : '';
+    const cacheKey = `${safeSessionId}_ch${chIdx}_${computeMd5(safeChapterText)}`;
 
     const prompt = customPrompt || buildBedtimeIllustrationPrompt({
       chapterTitle,
@@ -102,7 +105,7 @@ export async function handleStoryIllustrationRequest(req, res) {
 
     const seed = reqSeed !== undefined && reqSeed !== null
       ? Number(reqSeed)
-      : Math.floor(Math.random() * 2147483647);
+      : crypto.randomInt(1, 2147483647);
     const negative_prompt = reqNegPrompt || "pink, purple, magenta, violet, neon pink, scary, dark, deformed, blurry";
 
     // Check in-memory cache

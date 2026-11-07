@@ -70,7 +70,7 @@ assert(rightAfterFeed.joy === sanct.petNeedsMap[petId].joy, 'Immediately after t
 console.log('\n--- 6. Real Dashboard render shows the gentle Sanctuary nudge when a need is low ---');
 sanct.petNeedsMap[petId] = { hunger: 50, hygiene: 95, joy: 95, energy: 95 };
 store.touchPetNeeds(sanct, petId);
-document.body.innerHTML = renderDashboardView();
+document.body.setMockHtml(renderDashboardView());
 attachDashboardListeners();
 assert(document.body.innerHTML.includes('Sanctuary Check-In'), 'Dashboard shows the gentle pet needs nudge banner when a need has decayed');
 assert(Boolean(document.getElementById('dash-pet-needs-nudge-btn')), 'Nudge banner renders a "Visit Sanctuary" button');
@@ -78,7 +78,7 @@ assert(Boolean(document.getElementById('dash-pet-needs-nudge-btn')), 'Nudge bann
 console.log('\n--- 7. Real Dashboard render hides the nudge once the pet is freshly tended ---');
 store.touchPetNeeds(sanct, petId);
 sanct.petNeedsMap[petId] = { hunger: 95, hygiene: 95, joy: 95, energy: 95 };
-document.body.innerHTML = renderDashboardView();
+document.body.setMockHtml(renderDashboardView());
 assert(!document.body.innerHTML.includes('Sanctuary Check-In'), 'Dashboard hides the nudge once all needs are freshly topped up');
 
 console.log('\n--- 8. Real Pet Sanctuary Hub render reflects the decayed needs bars ---');

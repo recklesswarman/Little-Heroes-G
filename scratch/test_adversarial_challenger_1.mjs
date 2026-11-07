@@ -333,7 +333,7 @@ test('S3_1: Illustration seed strictly conforms to 31-bit positive integer range
   const seeds = new Set();
 
   for (let i = 0; i < sampleCount; i++) {
-    const seed = Math.floor(Math.random() * 2147483647);
+    const seed = globalThis.crypto.getRandomValues(new Uint32Array(1))[0] & 0x7fffffff;
     assert(Number.isInteger(seed), `Seed ${seed} must be integer`);
     assert(seed >= 0, `Seed ${seed} must be non-negative`);
     assert(seed < 2147483647, `Seed ${seed} must be strictly less than 2^31 - 1`);

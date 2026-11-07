@@ -227,7 +227,7 @@ def get_request_ip(request: Request) -> str:
 # chunk well inside the safe budget and ensures fast first-chunk synthesis.
 
 def clean_dialogue_text(text: str) -> str:
-    cleaned = re.sub(r"\*.*?\*", " ", text or "")
+    cleaned = re.sub(r"\*[^*\r\n]*(?:\*|$)", lambda match: " " if match.group().endswith("*") else match.group(), text or "")
     cleaned = re.sub(
         r"\[[^\]]*(?:\]|$)",
         lambda match: " " if match.group().endswith("]") else match.group(),

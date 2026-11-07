@@ -30,7 +30,7 @@ import { PET_GEAR_CATALOG, calculateActiveGearBuffs, formatStatBonusName, normal
 import { speakCompanion } from '../services/voiceService.js';
 import { isExistingActiveHousehold, generateHouseholdCodeSuffix } from '../utils/householdHeuristics.js';
 import { generateId } from '../utils/idGenerator.js';
-import { secureRandomInteger } from '../utils/secureRandom.js';
+import { secureRandomHex, secureRandomInteger } from '../utils/secureRandom.js';
 import { firebaseAI } from '../services/firebaseAILogicService.js';
 import { WORLD_BIOMES, PATH_OF_VALOR_WAYPOINTS, SECRET_SHRINES, TOY_BOX_ENTITIES } from '../data/worldMapData.js';
 import { BEDTIME_MORALS, CONSTELLATION_STICKERS } from '../data/bedtimeStoryData.js';
@@ -2978,7 +2978,7 @@ class Store {
       }
 
       const expeditionRecord = {
-        id: 'exp_' + now + '_' + Math.random().toString(36).substring(2, 6),
+        id: 'exp_' + now + '_' + secureRandomHex(2),
         petId: pId,
         petName: pet.name,
         petAvatar: pet.avatar,
@@ -3774,7 +3774,7 @@ class Store {
         }
 
         const crate = {
-          id: `crate_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+          id: `crate_${Date.now()}_${secureRandomHex(2)}`,
           item: b.item,
           category: b.category,
           targetChildProfile: b.targetChildProfile,
@@ -3892,7 +3892,7 @@ class Store {
     // Handle delivery channels
     if (deliveryMethod === 'instant_gift') {
       const crate = {
-        id: `crate_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+        id: `crate_${Date.now()}_${secureRandomHex(2)}`,
         item: weapon,
         category: 'weapon',
         targetChildProfile,
@@ -3913,7 +3913,7 @@ class Store {
       }
     } else if (deliveryMethod === 'habit_bounty') {
       const bounty = {
-        id: `bounty_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+        id: `bounty_${Date.now()}_${secureRandomHex(2)}`,
         item: weapon,
         category: 'weapon',
         targetChildProfile,
@@ -4049,7 +4049,7 @@ class Store {
     // Handle delivery channels
     if (deliveryMethod === 'instant_gift') {
       const crate = {
-        id: `crate_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+        id: `crate_${Date.now()}_${secureRandomHex(2)}`,
         item: gear,
         category: 'gear',
         targetChildProfile,
@@ -4074,7 +4074,7 @@ class Store {
       }
     } else if (deliveryMethod === 'habit_bounty') {
       const bounty = {
-        id: `bounty_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+        id: `bounty_${Date.now()}_${secureRandomHex(2)}`,
         item: gear,
         category: 'gear',
         targetChildProfile,
@@ -4233,7 +4233,7 @@ class Store {
 
     if (deliveryMethod === 'instant_gift') {
       const crate = {
-        id: `crate_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+        id: `crate_${Date.now()}_${secureRandomHex(2)}`,
         item: furniture,
         category: 'furniture',
         targetChildProfile,
@@ -4246,7 +4246,7 @@ class Store {
       this.state.activeUnboxingCrateId = crate.id;
     } else if (deliveryMethod === 'habit_bounty') {
       const bounty = {
-        id: `bounty_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+        id: `bounty_${Date.now()}_${secureRandomHex(2)}`,
         item: furniture,
         category: 'furniture',
         targetChildProfile,

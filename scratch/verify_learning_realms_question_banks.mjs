@@ -66,7 +66,7 @@ console.log('\n--- 4. Live mini-game session uses a stable per-session shuffled 
 store.state.heroes = store.state.heroes || [{ id: 'hero_1', name: 'Test', activePetId: '1', coins: 0, xp: 0, gameDifficulty: 'medium' }];
 store.state.selectedHero = store.state.heroes[0];
 store.state.activeView = 'quest_map';
-document.body.innerHTML = renderWorldAdventureMapView();
+document.body.setMockHtml(renderWorldAdventureMapView());
 attachWorldAdventureMapListeners();
 
 const launchBtn = document.querySelector('[data-launch-game="number_galaxy"]');

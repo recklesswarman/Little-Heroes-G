@@ -125,7 +125,9 @@ const bundle = fs.readFileSync(path.join(TMP, 'device.js'), 'utf8');
 
 const clone = (v) => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)));
 
+const isUnsafeProp = (k) => k === '__proto__' || k === 'constructor' || k === 'prototype';
 function setVal(t, k, v, deep) {
+  if (isUnsafeProp(k)) return;
   if (v && v.__op === 'delete') {
     delete t[k];
     return;
@@ -169,9 +171,10 @@ function makeFS(latency = LAT) {
       for (const [k, v] of Object.entries(clone(data))) {
         if (dotted && k.includes('.')) {
           const parts = k.split('.');
+          if (parts.some(isUnsafeProp)) continue;
           let t = docs[p];
           for (const x of parts.slice(0, -1)) {
-            t[x] = t[x] && typeof t[x] === 'object' ? t[x] : {};
+            t[x] = Object.prototype.hasOwnProperty.call(t, x) && t[x] && typeof t[x] === 'object' ? t[x] : {};
             t = t[x];
           }
           setVal(t, parts.at(-1), v, true);

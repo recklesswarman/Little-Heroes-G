@@ -98,7 +98,12 @@ let allPassed = true;
 
 for (const file of testFiles) {
   console.log(`\n▶️  Executing: ${file}`);
-  const result = spawnSync('node', [file], { stdio: 'inherit' });
+  const result = spawnSync('node', [file], { stdio: 'inherit', timeout: 60000 });
+  if (result.error?.code === 'ETIMEDOUT') {
+    console.error(`❌ Test timed out after 60s: ${file}`);
+    allPassed = false;
+    break;
+  }
   if (result.status !== 0) {
     console.error(`❌ Test failed: ${file} (Exit code: ${result.status})`);
     allPassed = false;

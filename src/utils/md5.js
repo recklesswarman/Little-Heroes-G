@@ -31,38 +31,14 @@ const K = new Uint32Array([
   0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391
 ]);
 
+const utf8Encoder = new TextEncoder();
+
 function rotateLeft(x, n) {
   return (x << n) | (x >>> (32 - n));
 }
 
 function stringToUtf8Bytes(str) {
-  if (typeof TextEncoder !== 'undefined') {
-    return new TextEncoder().encode(str);
-  }
-  // Fallback for minimal runtimes without TextEncoder
-  const utf8 = [];
-  for (let i = 0; i < str.length; i++) {
-    let charcode = str.charCodeAt(i);
-    if (charcode < 0x80) {
-      utf8.push(charcode);
-    } else if (charcode < 0x800) {
-      utf8.push(0xc0 | (charcode >> 6),
-                0x80 | (charcode & 0x3f));
-    } else if (charcode < 0xd800 || charcode >= 0xe000) {
-      utf8.push(0xe0 | (charcode >> 12),
-                0x80 | ((charcode >> 6) & 0x3f),
-                0x80 | (charcode & 0x3f));
-    } else {
-      // Surrogate pair
-      i++;
-      charcode = 0x10000 + (((charcode & 0x3ff) << 10) | (str.charCodeAt(i) & 0x3ff));
-      utf8.push(0xf0 | (charcode >> 18),
-                0x80 | ((charcode >> 12) & 0x3f),
-                0x80 | ((charcode >> 6) & 0x3f),
-                0x80 | (charcode & 0x3f));
-    }
-  }
-  return new Uint8Array(utf8);
+  return utf8Encoder.encode(str);
 }
 
 /**
@@ -71,7 +47,7 @@ function stringToUtf8Bytes(str) {
  * @returns {string} 32-character lowercase hex MD5 string
  */
 export function computeMd5(input) {
-  const str = input == null ? '' : String(input);
+  const str = typeof input === 'string' ? input : (input == null ? '' : String(input));
   const bytes = stringToUtf8Bytes(str);
   const byteLength = bytes.length;
   const bitLength = byteLength * 8;

@@ -61,6 +61,21 @@ const { firestoreSync, markQuotaExhaustedGlobal, isQuotaExhaustedGlobal, getDevi
 const { firebaseAuth } = await import('../src/services/firebaseAuthService.js');
 const { renderLandingAuthModal } = await import('../src/components/LandingAuthModal.js');
 
+// Mock out remote network calls for headless unit testing
+firestoreSync.joinHousehold = async (code) => {
+  const cleanCode = (code || '').trim().toUpperCase();
+  const s = store.getState();
+  s.household.syncCode = cleanCode;
+  s.isDeviceRevoked = false;
+  if (s.devices && s.devices[firestoreSync.deviceId]) {
+    s.devices[firestoreSync.deviceId].revoked = false;
+  }
+  if (Array.isArray(s.revokedDeviceIds)) {
+    s.revokedDeviceIds = s.revokedDeviceIds.filter(id => id !== firestoreSync.deviceId);
+  }
+  return { success: true };
+};
+
 console.log("\n🧪 --- Running Real-Time Multi-Device Sync & Device Revocation Test Suite --- 🧪\n");
 
 let passedCount = 0;

@@ -2,6 +2,7 @@ import assert from 'node:assert';
 import { writeFileSync, readFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import {
   SOURCES, ALLOWED_HOSTS, USER_AGENT, MAX_NEW_SEEDS, isAllowedUrl, parseRobots, isPathAllowed, htmlToText,
@@ -89,7 +90,7 @@ await check('the reviewed-seeds file the job writes loads back identically and i
   try {
     const file = join(dir, 'reviewed.mjs');
     writeFileSync(file, serializeReviewed(seeds));
-    const mod = await import(file);
+    const mod = await import(pathToFileURL(file).href);
     assert.deepStrictEqual(mod.REVIEWED_SEEDS, seeds);
     assert.deepStrictEqual(cleanPool([...mod.REVIEWED_SEEDS, { id: 'bad', kind: 'nature', text: 'Visit http://x.y' }]), seeds);
   } finally { rmSync(dir, { recursive: true, force: true }); }
