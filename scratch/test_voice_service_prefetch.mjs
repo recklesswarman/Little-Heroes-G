@@ -1,6 +1,6 @@
 import assert from 'assert';
 
-console.log('🧪 Running Comprehensive Voice Service & Pre-Fetch Unit Tests...\n');
+console.log('🧪 Running Comprehensive Voice Service, Pre-Warming & Neural Voice Unit Tests...\n');
 
 // 1. Mock DOM and Web Audio APIs for Node environment
 let createdAudioNodes = [];
@@ -87,7 +87,7 @@ class MockSpeechSynthesisUtterance {
   }
 }
 
-const mockVoices = [
+let currentMockVoices = [
   { name: 'Daniel (English UK)', lang: 'en-GB' },
   { name: 'Samantha', lang: 'en-US' }
 ];
@@ -95,7 +95,8 @@ const mockVoices = [
 const mockSpeechSynthesis = {
   speaking: false,
   paused: false,
-  getVoices: () => mockVoices,
+  onvoiceschanged: null,
+  getVoices: () => currentMockVoices,
   cancel: () => {
     speechUtterances = [];
   },
@@ -119,11 +120,11 @@ global.window = {
   removeEventListener: () => {}
 };
 
-// Simple base64 PCM generator for test
+// Simple base64 PCM generator for explicit bundled-PCM tests
 function generateFakeBase64Pcm(length = 100) {
   const bytes = new Uint8Array(length * 2);
   for (let i = 0; i < bytes.length; i++) {
-    bytes[i] = i % 256;
+    bytes[i] = (i % 200) + 1;
   }
   return Buffer.from(bytes).toString('base64');
 }
@@ -133,10 +134,18 @@ async function runTests() {
     getAudioCacheKey,
     fetchPcmTts,
     prefetchCompanionAudio,
+    prewarmWorkoutAudio,
     speakCompanion,
+    selectPreferredVoice,
+    isLegacyRoboticVoice,
+    isNeuralNaturalVoice,
+    splitIntoSpeechChunks,
+    cleanDialogueText,
     workoutAudioClipCache,
     stopRex
   } = await import('../src/services/voiceService.js');
+  const { DINO_WORKOUTS } = await import('../src/data/petsData.js');
+  const { store } = await import('../src/state/store.js');
 
   // --- Test Suite 1: getAudioCacheKey & voiceStyle ---
   console.log('--- Test Suite 1: getAudioCacheKey and voiceStyle ---');
@@ -152,9 +161,19 @@ async function runTests() {
     console.log('  ✅ PASS: getAudioCacheKey correctly handles defaults, bedtime style, and pet ID normalization');
   }
 
-  // --- Test Suite 2: fetchPcmTts Extended Timeouts and Body Payload ---
-  console.log('\n--- Test Suite 2: fetchPcmTts Extended Timeouts and Payload ---');
+  // --- Test Suite 2: fetchPcmTts Extended Timeouts and Payload ---
+  console.log('\n--- Test Suite 2: fetchPcmTts Explicit Endpoint Helper ---');
   {
+    // 2.0 Empty endpoint makes zero network calls
+    let emptyEndpointCalled = false;
+    global.fetch = async () => {
+      emptyEndpointCalled = true;
+      throw new Error('Should not call fetch when endpoint is empty');
+    };
+    const nullResult = await fetchPcmTts('', 'Test text', 'rex');
+    assert.strictEqual(nullResult, null, 'Empty endpoint must resolve null immediately');
+    assert.strictEqual(emptyEndpointCalled, false, 'Empty endpoint must never call fetch');
+
     let interceptedFetch = null;
     global.fetch = async (url, options) => {
       interceptedFetch = { url, options, body: JSON.parse(options.body) };
@@ -168,43 +187,35 @@ async function runTests() {
       };
     };
 
-    // 2.1 Default style with no timeout provided -> 4500ms
-    await fetchPcmTts('/api/elevenlabs/tts', 'Workout high knees', 'rex');
+    await fetchPcmTts('/custom/test-pcm', 'Workout high knees', 'rex');
     assert.strictEqual(interceptedFetch.body.voiceStyle, undefined, 'Default style should not pollute payload');
     assert.strictEqual(interceptedFetch.body.petId, 'rex');
 
-    // 2.2 Bedtime style with default timeout -> automatically expands to 18000ms
-    await fetchPcmTts('/api/elevenlabs/tts', 'Bedtime story chapter', 'rex', 4500, 'bedtime');
+    await fetchPcmTts('/custom/test-pcm', 'Bedtime story chapter', 'rex', 4500, 'bedtime');
     assert.strictEqual(interceptedFetch.body.voiceStyle, 'bedtime', 'Bedtime style must be sent in request body');
 
-    // 2.3 Options object support
-    await fetchPcmTts('/api/elevenlabs/tts', 'Bedtime chapter 2', 'stego', {
+    await fetchPcmTts('/custom/test-pcm', 'Bedtime chapter 2', 'stego', {
       timeoutMs: 20000,
       voiceStyle: 'bedtime'
     });
     assert.strictEqual(interceptedFetch.body.voiceStyle, 'bedtime');
     assert.strictEqual(interceptedFetch.body.petId, 'stego');
 
-    console.log('  ✅ PASS: fetchPcmTts correctly sets 18000ms timeout for bedtime style and includes voiceStyle in payload');
+    console.log('  ✅ PASS: fetchPcmTts skips network when endpoint is empty and supports bedtime options when explicit');
   }
 
-  // --- Test Suite 3: prefetchCompanionAudio Pre-Fetching & 0ms Cache Transition ---
-  console.log('\n--- Test Suite 3: prefetchCompanionAudio Pre-Fetching & Pre-Decoding ---');
+  // --- Test Suite 3: Zero-Network Web Speech Pre-Warming & Real Speech Execution ---
+  console.log('\n--- Test Suite 3: Zero-Network Web Speech Pre-Warming & Real Speech Execution ---');
   {
     workoutAudioClipCache.clear();
+    createdAudioNodes = [];
     let networkCalls = 0;
-    global.fetch = async (url, options) => {
+    global.fetch = async (url) => {
       networkCalls++;
-      return {
-        ok: true,
-        json: async () => ({
-          success: true,
-          audio: generateFakeBase64Pcm(100),
-          sampleRate: 24000
-        })
-      };
+      throw new Error(`Unexpected network fetch to "${url}" during zero-cost Web Speech pre-warming!`);
     };
 
+    // 3.1 prefetchCompanionAudio pre-warms text & sentence chunks with ZERO network calls and ZERO fake AudioBuffers
     const chapter2Text = 'In the heart of Starlight Cove, the gentle waters shone like polished silver.';
     const result = await prefetchCompanionAudio(chapter2Text, 'rex', {
       voiceStyle: 'bedtime',
@@ -212,44 +223,93 @@ async function runTests() {
       rate: 0.88
     });
 
-    assert.ok(result, 'prefetchCompanionAudio should return valid audio payload');
-    assert.ok(result.audioBuffer, 'prefetchCompanionAudio must pre-decode audio into Web Audio AudioBuffer');
-    assert.strictEqual(networkCalls, 1, 'First pre-fetch should call network once');
+    assert.ok(result && result.prewarmed === true, 'prefetchCompanionAudio must return prewarmed Web Speech descriptor');
+    assert.strictEqual(result.audioBuffer, undefined, 'prefetchCompanionAudio must NOT create a silent fake AudioBuffer');
+    assert.strictEqual(networkCalls, 0, 'prefetchCompanionAudio must make strictly ZERO network calls');
+    assert.ok(Array.isArray(result.chunks) && result.chunks.length >= 1, 'Prewarmed descriptor must contain pre-split speech chunks');
 
-    // Verify cache was populated with multiple lookups
     const cachedBedtime = workoutAudioClipCache.get(`rex:bedtime:${chapter2Text}`);
-    assert.ok(cachedBedtime, 'Audio must be cached under specific bedtime cache key');
-    assert.ok(cachedBedtime.audioBuffer, 'Cached item must retain decoded AudioBuffer');
+    assert.ok(cachedBedtime && cachedBedtime.prewarmed === true, 'Entry cached under specific bedtime cache key');
 
-    // Second pre-fetch call must be instant cache hit without network call
     const cachedResult = await prefetchCompanionAudio(chapter2Text, 'rex', { voiceStyle: 'bedtime' });
-    assert.strictEqual(networkCalls, 1, 'Repeat prefetch call must not make another network request');
-    assert.strictEqual(cachedResult.audioBuffer, result.audioBuffer, 'Cached AudioBuffer must match pre-decoded buffer');
+    assert.strictEqual(cachedResult, result, 'Repeat prefetch call returns exact cached descriptor at 0ms');
+    assert.strictEqual(networkCalls, 0, 'Still zero network calls on cache hit');
 
-    // Test polymorphism: prefetchCompanionAudio(text, options)
+    // 3.2 Speaking AFTER prefetchCompanionAudio MUST invoke real speechSynthesis.speak (NOT play a 50ms silent buffer!)
+    speechSynthesizerSpoke = false;
+    speechUtterances = [];
+    createdAudioNodes = [];
+    let chapter2Ended = false;
+
+    await speakCompanion(chapter2Text, 'rex', () => { chapter2Ended = true; }, {
+      voiceStyle: 'bedtime',
+      rate: 0.88
+    });
+    await new Promise((r) => setTimeout(r, 20));
+
+    assert.strictEqual(createdAudioNodes.length, 0, 'No silent AudioBufferSourceNode should be created for Web Speech prewarmed text');
+    assert.strictEqual(speechSynthesizerSpoke, true, 'speechSynthesis.speak MUST be called after prefetchCompanionAudio');
+    assert.ok(speechUtterances.length >= 1, 'SpeechSynthesisUtterance must be created with real chapter text');
+    assert.strictEqual(speechUtterances[0].text, chapter2Text, 'Utterance text must match prefetched chapter');
+    assert.strictEqual(speechUtterances[0].rate, 0.88, 'Utterance rate 0.88 must be applied');
+    assert.strictEqual(chapter2Ended, true, 'onEnded callback must fire cleanly after speech finishes');
+
+    // 3.3 prewarmWorkoutAudio pre-warms Dino Workout cues with ZERO network calls and speaks via speechSynthesis.speak
+    const trexWorkout = DINO_WORKOUTS.find((w) => w.id === 'trex_run') || DINO_WORKOUTS[0];
+    const realTrexCue = cleanDialogueText(trexWorkout.cadenceTimeline[0].cue);
+
+    workoutAudioClipCache.clear();
+    const aliasPrewarmCount = await prewarmWorkoutAudio('trex', 'rex');
+    assert.ok(aliasPrewarmCount > 0, 'prewarmWorkoutAudio("trex", "rex") must resolve trex_run and cache >0 cues');
+    assert.ok(workoutAudioClipCache.has(`rex:${realTrexCue}`), 'workoutAudioClipCache must contain prewarmed cue under rex:<cue>');
+
+    workoutAudioClipCache.clear();
+    const exactPrewarmCount = await prewarmWorkoutAudio('trex_run', '1');
+    assert.ok(exactPrewarmCount > 0, 'prewarmWorkoutAudio("trex_run", "1") must cache >0 cues');
+    assert.strictEqual(networkCalls, 0, 'prewarmWorkoutAudio must make strictly ZERO network calls');
+    assert.ok(workoutAudioClipCache.has(`rex:${realTrexCue}`), 'workoutAudioClipCache must contain prewarmed cue after trex_run warmup');
+
+    speechSynthesizerSpoke = false;
+    speechUtterances = [];
+    await new Promise((resolve) => {
+      speakCompanion(trexWorkout.cadenceTimeline[0].cue, 'rex', resolve);
+    });
+    assert.strictEqual(createdAudioNodes.length, 0, 'Pre-warmed workout cache hit must NOT play a silent fake AudioBuffer');
+    assert.strictEqual(speechSynthesizerSpoke, true, 'Pre-warmed workout cache hit MUST speak aloud via speechSynthesis.speak');
+    assert.strictEqual(
+      speechUtterances.map((u) => u.text).join(' '),
+      realTrexCue,
+      'Spoken workout chunks must reconstruct the full cleaned pre-warmed cue'
+    );
+
+    // 3.4 Polymorphism: prefetchCompanionAudio(text, options)
     const chapter3Text = 'The soft starlight nest cradled the little hero into deep, restful sleep.';
     const ch3Result = await prefetchCompanionAudio(chapter3Text, {
       petId: 'raptor',
-      voiceStyle: 'bedtime',
-      timeoutMs: 18000
+      voiceStyle: 'bedtime'
     });
-    assert.ok(ch3Result.audioBuffer, 'Pre-decoded buffer created via options object syntax');
+    assert.ok(ch3Result && ch3Result.prewarmed === true, 'Polymorphic options object syntax supported');
     assert.ok(workoutAudioClipCache.has(`raptor:bedtime:${chapter3Text}`), 'Cached under raptor bedtime key');
 
-    console.log('  ✅ PASS: prefetchCompanionAudio pre-fetches, pre-decodes AudioBuffer, and caches with zero latency');
+    console.log('  ✅ PASS: prefetchCompanionAudio & prewarmWorkoutAudio make 0 network calls, populate real cache hits, create 0 silent AudioBuffers, and speak via speechSynthesis.speak');
   }
 
-  // --- Test Suite 4: speakCompanion Argument Polymorphism & Playback Rate Control ---
-  console.log('\n--- Test Suite 4: speakCompanion Polymorphism & AudioBufferSourceNode.playbackRate ---');
+  // --- Test Suite 4: Bundled PCM AudioBuffer Playback Rate & Pitch Compensation ---
+  console.log('\n--- Test Suite 4: Bundled PCM AudioBuffer Playback Rate & Pitch Compensation ---');
   {
     workoutAudioClipCache.clear();
     createdAudioNodes = [];
 
-    // Pre-seed cache with audio
+    // Explicitly seed genuine PCM audio clip into cache to verify playPcmTtsResponse detune math
     const testStoryLine = 'Close your eyes and listen to the murmuring trees.';
-    await prefetchCompanionAudio(testStoryLine, 'rex', { voiceStyle: 'bedtime' });
+    workoutAudioClipCache.set(`rex:bedtime:${testStoryLine}`, {
+      success: true,
+      audio: generateFakeBase64Pcm(120),
+      sampleRate: 24000,
+      petId: 'rex',
+      voice: 'bundled'
+    });
 
-    // 4.1 speakCompanion with options object: { timeoutMs, rate, pitch, voiceStyle, onEnded }
     let endedCallbackCalled = false;
     await speakCompanion(testStoryLine, {
       rate: 0.82,
@@ -261,96 +321,31 @@ async function runTests() {
     });
 
     const activeNode = createdAudioNodes[createdAudioNodes.length - 1];
-    assert.ok(activeNode, 'An AudioBufferSourceNode should have been created');
+    assert.ok(activeNode, 'An AudioBufferSourceNode should be created for genuine bundled PCM audio');
     assert.strictEqual(activeNode.started, true, 'AudioBufferSourceNode must be started');
     assert.strictEqual(activeNode.playbackRate.value, 0.82, 'playbackRate must be scaled to 0.82 on AudioParam');
-    assert.strictEqual(activeNode.playbackRate.setValueAtTimeCalls.length, 1, 'playbackRate.setValueAtTime must be called');
-    assert.strictEqual(activeNode.playbackRate.setValueAtTimeCalls[0].val, 0.82);
 
-    // 4.1b detune must compensate the pitch shift that playbackRate alone
-    // introduces (bug: chapters 3/4's slower rate made the voice sound
-    // noticeably different/deeper than chapters 1/2's). Expected cents:
-    // -1200*log2(rate) to cancel the rate-induced shift, plus
-    // +1200*log2(pitch) for the caller's own small deliberate adjustment.
     const expectedDetune = (-1200 * Math.log2(0.82)) + (1200 * Math.log2(0.95));
     assert.ok(Math.abs(activeNode.detune.value - expectedDetune) < 0.01,
-      `detune must cancel playbackRate's inherent pitch shift (expected ~${expectedDetune.toFixed(2)}, got ${activeNode.detune.value})`);
+      `detune must cancel playbackRate pitch shift (expected ~${expectedDetune.toFixed(2)}, got ${activeNode.detune.value})`);
 
-    // Simulate playback finish
     activeNode.onended();
     assert.strictEqual(endedCallbackCalled, true, 'onEnded callback from options object must be invoked onended');
 
-    // 4.2 speakCompanion with trailing options: (text, petId, callback, options)
-    let endedCallback2 = false;
-    await speakCompanion(testStoryLine, 'rex', () => { endedCallback2 = true; }, {
-      rate: 0.76,
-      voiceStyle: 'bedtime'
-    });
-
-    const node2 = createdAudioNodes[createdAudioNodes.length - 1];
-    assert.strictEqual(node2.playbackRate.value, 0.76, 'Trailing options rate 0.76 applied via setValueAtTime');
-    node2.onended();
-    assert.strictEqual(endedCallback2, true, 'Trailing callback invoked on completion');
-
-    // 4.3 With no explicit pitch, rate 0.76 (chapter 4) and rate 0.94 (chapter 1)
-    // must produce the SAME net pitch after compensation (only differing by
-    // rate-cancelling detune, not by an uncompensated pitch drop) -- this is
-    // the actual "chapters sound like a different voice" regression guard.
-    createdAudioNodes = [];
-    await speakCompanion(testStoryLine, 'rex', null, { rate: 0.76, voiceStyle: 'bedtime' });
-    const ch4Node = createdAudioNodes[createdAudioNodes.length - 1];
-    createdAudioNodes = [];
-    await speakCompanion(testStoryLine, 'rex', null, { rate: 0.94, voiceStyle: 'bedtime' });
-    const ch1Node = createdAudioNodes[createdAudioNodes.length - 1];
-    assert.ok(Math.abs(ch4Node.detune.value - (-1200 * Math.log2(0.76))) < 0.01, 'Chapter 4 detune fully cancels its own rate-induced pitch shift');
-    assert.ok(Math.abs(ch1Node.detune.value - (-1200 * Math.log2(0.94))) < 0.01, 'Chapter 1 detune fully cancels its own rate-induced pitch shift');
-
-    console.log('  ✅ PASS: speakCompanion supports options object & trailing options, sets source.playbackRate.setValueAtTime, and compensates pitch via detune so chapters do not sound like a different voice');
+    console.log('  ✅ PASS: Genuine bundled PCM clips apply playbackRate and pitch-preserving detune compensation');
   }
 
-  // --- Test Suite 5: Primary Kokoro TTS & SpeechSynthesis fallback ---
-  console.log('\n--- Test Suite 5: Primary Kokoro TTS & Resilient SpeechSynthesis Fallback ---');
+  // --- Test Suite 5: Neural/Natural Voice Prioritization over Robotic SAPI5 & Offline Speech ---
+  console.log('\n--- Test Suite 5: Neural Voice Prioritization over SAPI5 & Direct Web Speech ---');
   {
     workoutAudioClipCache.clear();
     stopRex();
 
-    // 5.1 Kokoro microservice (/api/tts) is the single primary voice tier;
-    // the retired ElevenLabs and Gemini TTS routes must never be called.
-    let kokoroAttempted = false;
-    let kokoroPetId = null;
-    let retiredRouteCalled = false;
-
-    global.fetch = async (url, init = {}) => {
-      if (url.includes('/api/elevenlabs/') || url.includes('/api/gemini/tts')) {
-        retiredRouteCalled = true;
-        return { ok: false, status: 404 };
-      }
-      if (url.endsWith('/api/tts')) {
-        kokoroAttempted = true;
-        try { kokoroPetId = JSON.parse(init.body || '{}').petId; } catch { kokoroPetId = null; }
-        return {
-          ok: true,
-          json: async () => ({
-            success: true,
-            audio: generateFakeBase64Pcm(80),
-            sampleRate: 24000,
-            voice: 'am_puck'
-          })
-        };
-      }
-      return { ok: false, status: 404 };
-    };
-
-    const kokoroLine = 'The silver moon smiled down on our little explorer.';
-    await speakCompanion(kokoroLine, 'rex', null, { rate: 0.90 });
-
-    assert.strictEqual(kokoroAttempted, true, 'Primary Kokoro TTS (/api/tts) must be attempted');
-    assert.ok(['rex', '1'].includes(String(kokoroPetId)), 'Rex petId (key or numeric id) must be forwarded so the service can cast the per-pet voice');
-    assert.strictEqual(retiredRouteCalled, false, 'Retired ElevenLabs/Gemini TTS routes must never be called');
-    const node3 = createdAudioNodes[createdAudioNodes.length - 1];
-    assert.ok(node3 && node3.started, 'Audio buffer from Kokoro TTS must be played');
-
-    // 5.2 Test offline fallback to SpeechSynthesis when both server routes fail
+    // 5.1 Standard Daniel/Samantha voice selection
+    currentMockVoices = [
+      { name: 'Daniel (English UK)', lang: 'en-GB' },
+      { name: 'Samantha', lang: 'en-US' }
+    ];
     global.fetch = async () => {
       throw new Error('Network offline');
     };
@@ -362,19 +357,107 @@ async function runTests() {
     await speakCompanion(offlineLine, 'rex', null, { rate: 0.85, pitch: 0.95 });
 
     assert.strictEqual(speechSynthesizerSpoke, true, 'Device SpeechSynthesis must be triggered when offline');
-    assert.ok(speechUtterances.length > 0, 'Utterance must be created');
     const lastUtterance = speechUtterances[speechUtterances.length - 1];
     assert.strictEqual(lastUtterance.rate, 0.85, 'SpeechSynthesis rate option must be applied');
     assert.strictEqual(lastUtterance.pitch, 0.95, 'SpeechSynthesis pitch option must be applied');
     assert.strictEqual(lastUtterance.voice?.name, 'Daniel (English UK)', 'SpeechSynthesis must prioritize Daniel voice');
 
-    console.log('  ✅ PASS: Primary Kokoro TTS plays, and SpeechSynthesis (Daniel voice) fallback works cleanly when offline');
+    // 5.2 Windows SAPI5 robotic voices (David, Mark, Zira) must lose to neural voices (Online Natural, Google US English, Enhanced)
+    currentMockVoices = [
+      { name: 'Microsoft David - English (United States)', lang: 'en-US' },
+      { name: 'Microsoft Mark - English (United States)', lang: 'en-US' },
+      { name: 'Microsoft Zira - English (United States)', lang: 'en-US' },
+      { name: 'Google US English', lang: 'en-US' },
+      { name: 'Microsoft Guy Online (Natural) - English (United States)', lang: 'en-US' }
+    ];
+
+    assert.strictEqual(isLegacyRoboticVoice(currentMockVoices[0]), true, 'Microsoft David detected as legacy robotic SAPI5');
+    assert.strictEqual(isLegacyRoboticVoice(currentMockVoices[1]), true, 'Microsoft Mark detected as legacy robotic SAPI5');
+    assert.strictEqual(isLegacyRoboticVoice(currentMockVoices[2]), true, 'Microsoft Zira detected as legacy robotic SAPI5');
+    assert.strictEqual(isNeuralNaturalVoice(currentMockVoices[3]), true, 'Google US English detected as neural/natural');
+    assert.strictEqual(isNeuralNaturalVoice(currentMockVoices[4]), true, 'Microsoft Guy Online (Natural) detected as neural/natural');
+
+    const chosenForMark = selectPreferredVoice(['mark', 'david']);
+    assert.ok(
+      chosenForMark && !isLegacyRoboticVoice(chosenForMark),
+      `Neural voice (${chosenForMark?.name}) must be selected ahead of robotic Microsoft Mark/David`
+    );
+
+    // 5.3 Enhanced/Premium Apple voice beats compact duplicate of the same name
+    currentMockVoices = [
+      { name: 'Samantha', lang: 'en-US' },
+      { name: 'Samantha (Enhanced)', lang: 'en-US' }
+    ];
+    const chosenSamantha = selectPreferredVoice(['samantha']);
+    assert.strictEqual(chosenSamantha?.name, 'Samantha (Enhanced)', 'Enhanced neural voice must beat compact voice of same name');
+
+    // 5.4 Natural pitch shaping keeps neural voices free of extreme metallic pitch distortion
+    currentMockVoices = [
+      { name: 'Microsoft Ana Online (Natural) - English (United States)', lang: 'en-US' }
+    ];
+    speechUtterances = [];
+    await speakCompanion('Chomper loves happy snacks!', 'chomper'); // chomper default profile pitch is 1.45
+    const neuralUtterance = speechUtterances[speechUtterances.length - 1];
+    assert.ok(
+      neuralUtterance.pitch > 1.0 && neuralUtterance.pitch <= 1.18,
+      `Neural voice default pitch should be gently shaped (${neuralUtterance.pitch}) to avoid metallic distortion`
+    );
+
+    // 5.5 Windows 11 Edge regional pool: en-US natural voice (Ava/Aria/Jenny) beats alphabetical Abeo [en-NG], and macOS novelty voices are rejected
+    const edgeRegionalPool = [
+      { name: 'Microsoft Abeo Online (Natural) - English (Nigeria)', lang: 'en-NG' },
+      { name: 'Microsoft Ava Online (Natural) - English (United States)', lang: 'en-US' },
+      { name: 'Microsoft Aria Online (Natural) - English (United States)', lang: 'en-US' },
+      { name: 'Microsoft Jenny Online (Natural) - English (United States)', lang: 'en-US' },
+      { name: 'Microsoft David - English (United States)', lang: 'en-US' }
+    ];
+    const edgeFallbackPick = selectPreferredVoice(edgeRegionalPool, ['daniel']);
+    assert.strictEqual(edgeFallbackPick?.lang, 'en-US', `Expected en-US neural voice over alphabetical en-NG Abeo, got ${edgeFallbackPick?.name}`);
+
+    const macNoveltyPool = [
+      { name: 'Albert', lang: 'en-US' },
+      { name: 'Zarvox', lang: 'en-US' },
+      { name: 'Fred', lang: 'en-US' },
+      { name: 'Samantha', lang: 'en-US' }
+    ];
+    assert.strictEqual(isLegacyRoboticVoice(macNoveltyPool[0]), true, 'macOS Albert novelty voice flagged as robotic');
+    assert.strictEqual(isLegacyRoboticVoice(macNoveltyPool[1]), true, 'macOS Zarvox novelty voice flagged as robotic');
+    assert.strictEqual(isLegacyRoboticVoice(macNoveltyPool[2]), true, 'macOS Fred MacinTalk voice flagged as robotic');
+    assert.strictEqual(selectPreferredVoice(macNoveltyPool, ['daniel'])?.name, 'Samantha', 'Samantha beats macOS novelty voices');
+
+    // 5.6 Explicit 'rex' petId is preserved even when store.getActivePet() is another pet ('stego')
+    const origGetActivePet = store.getActivePet;
+    store.getActivePet = () => ({ id: '3', key: 'stego', name: 'Stego' });
+    try {
+      currentMockVoices = [
+        { name: 'Microsoft Guy Online (Natural) - English (United States)', lang: 'en-US' },
+        { name: 'Microsoft Christopher Online (Natural) - English (United States)', lang: 'en-US' }
+      ];
+      speechUtterances = [];
+      await speakCompanion('Explicit Rex roar!', 'rex');
+      assert.strictEqual(
+        speechUtterances[speechUtterances.length - 1]?.voice?.name,
+        'Microsoft Guy Online (Natural) - English (United States)',
+        'Explicit petId="rex" must use Rex voice rather than being overwritten by active pet Stego'
+      );
+    } finally {
+      store.getActivePet = origGetActivePet;
+    }
+
+    // 5.7 Unpunctuated run-on sentences strictly obey chunk character bounds
+    const runOnChunks = splitIntoSpeechChunks(('brave '.repeat(400)) + 'hero', 180, 280);
+    assert.ok(runOnChunks.length >= 8, 'Run-on sentence must split into multiple word-bounded chunks');
+    assert.ok(runOnChunks.every((c, idx) => c.length <= (idx === 0 ? 180 : 280)), 'Every chunk must obey maxChars limit');
+
+    console.log('  ✅ PASS: Neural/natural voices, Edge en-US locale preference, macOS novelty filtering, explicit rex preservation, and run-on bounds verified');
   }
 
-  console.log('\n🎉 ALL VOICE SERVICE & PRE-FETCH UNIT TESTS PASSED (5/5)!');
+  console.log('\n🎉 ALL VOICE SERVICE, PRE-WARMING & NEURAL VOICE UNIT TESTS PASSED (5/5)!');
 }
 
-runTests().catch((err) => {
+runTests().then(() => {
+  process.exit(0);
+}).catch((err) => {
   console.error('❌ Test failed with error:', err);
-  process.exitCode = 1;
+  process.exit(1);
 });

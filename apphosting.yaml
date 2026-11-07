@@ -25,17 +25,6 @@ env:
     availability:
       - BUILD
       - RUNTIME
-  # Self-hosted Kokoro TTS microservice (little-heroes-tts-service), replacing
-  # the former ElevenLabs/Gemini TTS tiers. No API key needed -- Kokoro runs
-  # fully offline/locally. BUILD-scoped (and VITE_-prefixed) because this
-  # origin serves the client bundle directly rather than via the
-  # firebase.json `/api/tts` Hosting rewrite, so the client needs the real
-  # Cloud Run URL baked in at build time. Update this value once the service
-  # is deployed (see little-heroes-tts-service/README.md).
-  - variable: VITE_KOKORO_TTS_URL
-    value: https://little-heroes-tts-kokoro-592754457115.us-central1.run.app
-    availability:
-      - BUILD
   # Google Gemini API key for live voice companion and AI storybook.
   # Bound to a Secret Manager secret so it is never exposed in client URLs or bundles.
   # -- set once with: firebase apphosting:secrets:set GEMINI_API_KEY

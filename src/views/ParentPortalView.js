@@ -3351,7 +3351,7 @@ export function renderParentPortalView() {
                               type="button"
                               data-phrase-text="${escapeHtml(phrase.text)}"
                               class="parent-preview-phrase-btn w-8 h-8 rounded-xl bg-[#09141e] hover:bg-[#0f2334] text-[#00d2d3] border border-[#00d2d3]/30 flex items-center justify-center active:scale-95 transition-all cursor-pointer"
-                              title="Preview Kokoro Voice"
+                              title="Preview Voice"
                             >
                               <span class="material-symbols-outlined text-sm">volume_up</span>
                             </button>

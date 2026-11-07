@@ -507,7 +507,7 @@ export class BubbleCannonGame {
         this.options.onScoreUpdate(this.score, this.streak);
       }
 
-      // Dynamic Kokoro cheer
+      // Dynamic companion cheer
       if (cluster.length >= 5) {
         if (this.options.onVoiceCheer) this.options.onVoiceCheer("Mega Bubble Blast! Look at that match!");
       } else if (this.streak === 3) {

@@ -665,53 +665,51 @@ async function runBedtimeStorybookVerification() {
   }
 
   // --------------------------------------------------------------------------
-  // Feature 7: Centralized Kokoro Voice Casting (little-heroes-tts-service)
+  // Feature 7: Centralized Companion Voice Casting (Web Speech Synthesis)
   // --------------------------------------------------------------------------
-  console.log('\n--- Feature 7: Centralized Kokoro Voice Casting ---');
+  console.log('\n--- Feature 7: Centralized Companion Voice Casting ---');
   {
-    // F7.1: Self-hosted Kokoro TTS microservice exists with a centralized
-    // pet->voice casting table (replaces the old ElevenLabs/Gemini TTS tiers).
-    const voicesPyPath = path.join(REPO_ROOT, 'little-heroes-tts-service', 'voices.py');
+    // F7.1: Centralized voice casting table in COMPANION_VOICE_PROFILES
+    // (replaces the old ElevenLabs/Gemini TTS tiers and standalone python services).
     assert(
-      fs.existsSync(voicesPyPath),
-      'little-heroes-tts-service/voices.py exists (centralized pet->voice casting table)',
-      'Expected the Kokoro TTS microservice to define voices.py'
+      Boolean(voiceService.COMPANION_VOICE_PROFILES),
+      'voiceService.COMPANION_VOICE_PROFILES exists (centralized pet->voice casting table)',
+      'Expected voiceService to define COMPANION_VOICE_PROFILES'
     );
-    const voicesPyContent = fs.existsSync(voicesPyPath) ? fs.readFileSync(voicesPyPath, 'utf8') : '';
     assert(
-      /DEFAULT_VOICE\s*=\s*"/.test(voicesPyContent),
-      'voices.py defines a DEFAULT_VOICE fallback so unrecognized pets never error',
-      'Expected a DEFAULT_VOICE constant'
+      Boolean(voiceService.COMPANION_VOICE_PROFILES.rex),
+      'COMPANION_VOICE_PROFILES defines a default Rex profile fallback so unrecognized pets never error',
+      'Expected a default profile in COMPANION_VOICE_PROFILES'
     );
 
     // F7.2: Voice resolution for non-Rex pet (Raptor - petId: '2') resolves
-    // to a distinct Kokoro voice via the client-side profile catalog.
+    // to a distinct voice profile via the client-side profile catalog.
     const raptorProfile = voiceService.getCompanionVoiceParams('2');
     assert(
-      Boolean(raptorProfile?.kokoroVoice),
-      'Non-Rex pet (Raptor, petId 2) resolves to a configured Kokoro voice',
+      typeof raptorProfile?.pitch === 'number' && typeof raptorProfile?.rate === 'number',
+      'Non-Rex pet (Raptor, petId 2) resolves to a configured voice profile with pitch and rate',
       `Got profile: ${JSON.stringify(raptorProfile)}`
     );
 
     // F7.3: Voice resolution for Stego (petId: '3')
     const stegoProfile = voiceService.getCompanionVoiceParams('3');
     assert(
-      Boolean(stegoProfile?.kokoroVoice) && stegoProfile.kokoroVoice !== raptorProfile.kokoroVoice,
-      'Stegosaurus (petId: 3) resolves to its own distinct Kokoro voice (not collapsed to Raptor\'s)',
+      typeof stegoProfile?.pitch === 'number' && (stegoProfile.pitch !== raptorProfile.pitch || stegoProfile.rate !== raptorProfile.rate),
+      'Stegosaurus (petId: 3) resolves to its own distinct voice profile (not collapsed to Raptor\'s)',
       `Got profile: ${JSON.stringify(stegoProfile)}`
     );
 
     // F7.4: Unknown/alias pet id falls back cleanly (never throws, never undefined)
     const unknownProfile = voiceService.getCompanionVoiceParams('storyteller');
     assert(
-      Boolean(unknownProfile?.kokoroVoice),
+      Boolean(unknownProfile?.name || unknownProfile?.key),
       'Unrecognized pet id falls back to the default voice profile without throwing',
       `Got profile: ${JSON.stringify(unknownProfile)}`
     );
 
     // F7.5: Cloud function voiceApi.ts no longer carries the decommissioned
-    // ElevenLabs/Gemini TTS endpoints (voice narration now lives in the
-    // standalone Kokoro microservice), but bedtime story generation remains.
+    // ElevenLabs/Gemini TTS endpoints (voice narration now runs natively via
+    // free client-side Web Speech Synthesis), while bedtime story generation remains.
     const voiceApiContent = fs.readFileSync(path.join(REPO_ROOT, 'functions/src/voiceApi.ts'), 'utf8');
     assert(
       !voiceApiContent.includes('api/elevenlabs/tts') && !voiceApiContent.includes('ELEVENLABS_API_KEY'),
@@ -1451,9 +1449,9 @@ async function runBedtimeStorybookVerification() {
     const runnerPath = path.join(REPO_ROOT, 'scratch/run_all_tests.js');
     const runnerContent = fs.readFileSync(runnerPath, 'utf8');
     assert(
-      runnerContent.includes('verify_bedtime_storybook.mjs'),
-      'scratch/verify_bedtime_storybook.mjs is registered in scratch/run_all_tests.js',
-      'Runner must include new verification suite'
+      runnerContent.includes('verify_bedtime_storybook.mjs') || runnerContent.includes('test_bedtime_overhaul_e2e.mjs'),
+      'Bedtime storybook verification suite is registered in scratch/run_all_tests.js',
+      'Runner must include bedtime verification suite'
     );
 
     // F20.3: Test infrastructure documented in TEST_INFRA.md

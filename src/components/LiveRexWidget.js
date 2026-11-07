@@ -3,13 +3,13 @@
 // 1. Expressive Animated Skeletal Face Canvas (`PetSkeletalFaceViewer`) with blinks,
 //    ear/horn spring physics, head tilts, and real-time phoneme lip-sync.
 // 2. Zero-Lag Tap-to-Speak Rotation through parent-editable preset/seeded phrases
-//    pre-cached via the self-hosted Kokoro TTS microservice.
+//    powered by the native client-side voice engine.
 // 3. Pure Facial Animation & Aura Ring feedback (no blocking chat modal or speech bubble).
 // 4. Strict Explorer Palette compliance (zero pink or purple).
 
 import { store } from '../state/store.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
-import { speakCompanion, isRexSpeaking, unlockVoiceAudio, warmUpKokoroTts, prewarmPhrasesAudio } from '../services/voiceService.js';
+import { speakCompanion, isRexSpeaking, unlockVoiceAudio, warmUpVoiceEngine, prewarmPhrasesAudio } from '../services/voiceService.js';
 import { Sound } from '../audio/sfx.js';
 import {
   renderPetSkeletalFaceViewer,
@@ -210,8 +210,8 @@ export function attachLiveRexWidgetListeners() {
     rig?.startSpeaking?.();
   }
 
-  // 2. Warm up Kokoro TTS & pre-cache all preset/custom phrases for the active pet
-  warmUpKokoroTts();
+  // 2. Initialize voice engine & pre-cache all preset/custom phrases for the active pet
+  warmUpVoiceEngine();
   const phrases = (store.getCompanionPhrases?.() || []).map((p) => p.text).filter(Boolean);
   const sig = `${activePetId}:${phrases.length}`;
   if (sig !== prewarmedPetSignature && phrases.length > 0) {

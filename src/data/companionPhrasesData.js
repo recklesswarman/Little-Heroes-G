@@ -1,7 +1,7 @@
 /**
  * Default Seeded Companion Phrases (Zero-Lag Tap-to-Speak Rotation)
  * Stored in household state so parents can edit, remove, or add custom phrases
- * in the Parent Portal Settings tab, and pre-cached with Kokoro TTS for 0ms lag.
+ * in the Parent Portal Settings tab, powered by Web Speech API for 0ms lag.
  */
 
 export const DEFAULT_COMPANION_PHRASES = [

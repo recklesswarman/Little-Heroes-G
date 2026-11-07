@@ -19,7 +19,7 @@
  *   F6.  Seed Rotation & History Memory (M1, R2)
  *   F7.  Removal of Mid-Story Choices & Questions (M3, R3)
  *   F8.  Hands-Free Auto-Advance & Turn Page (M3, R3)
- *   F9.  Centralized Kokoro Voice Casting (M3, R4)
+ *   F9.  Centralized Companion Voice Persona Casting (M3, R4)
  *   F10. Dynamic Lullaby Synthesizer Ducking (M3, R4)
  *   F11. 3D Stage 4-Chapter Synchronization (M3, R2/R3)
  */
@@ -38,7 +38,7 @@ import { bedtimeStoryService } from '../src/services/bedtimeStoryService.js';
 const BedtimeStoryService = bedtimeStoryService.constructor;
 import { renderBedtimeStoryView } from '../src/views/BedtimeStoryView.js';
 import { Sound } from '../src/audio/sfx.js';
-import { getCompanionVoiceParams } from '../src/services/voiceService.js';
+import { getCompanionVoiceParams, COMPANION_VOICE_PROFILES, cleanDialogueText, speakCompanion } from '../src/services/voiceService.js';
 import { BedtimeStoryStage3D, BEDTIME_EXPLORER_PALETTE } from '../src/components/BedtimeStoryStage3D.js';
 import { store } from '../src/state/store.js';
 import { PETS_DATABASE, getPetById } from '../src/data/petsData.js';
@@ -741,37 +741,43 @@ runTest('tier1', 'F8', 'T1_F8_6: Speech watchdog budget scales with the chapter\
 });
 
 // -----------------------------------------------------------------------------
-// FEATURE 9: Centralized Kokoro Voice Casting (M3, R4)
+// FEATURE 9: Centralized Companion Voice Persona Casting (M3, R4)
 // -----------------------------------------------------------------------------
-runTest('tier1', 'F9', 'T1_F9_1: little-heroes-tts-service centralizes a distinct Kokoro voice per companion pet', () => {
-  const voicesPyPath = path.join(REPO_ROOT, 'little-heroes-tts-service', 'voices.py');
-  assertTrue(fs.existsSync(voicesPyPath), 'little-heroes-tts-service/voices.py must exist');
-  const code = fs.readFileSync(voicesPyPath, 'utf8');
-  assertTrue(/DEFAULT_VOICE\s*=\s*"/.test(code), 'voices.py must define a DEFAULT_VOICE fallback');
-  assertTrue(/PET_VOICE_MAP/.test(code), 'voices.py must define PET_VOICE_MAP');
+runTest('tier1', 'F9', 'T1_F9_1: voiceService centralizes distinct voice profiles per companion pet in COMPANION_VOICE_PROFILES', () => {
+  assertTrue(Boolean(COMPANION_VOICE_PROFILES), 'COMPANION_VOICE_PROFILES must be defined');
+  assertTrue(Boolean(COMPANION_VOICE_PROFILES.rex), 'COMPANION_VOICE_PROFILES must define rex profile');
+  assertTrue(Boolean(COMPANION_VOICE_PROFILES.bedtime_narrator), 'COMPANION_VOICE_PROFILES must define bedtime_narrator');
+  const defaultProfile = getCompanionVoiceParams();
+  assertTrue(Boolean(defaultProfile?.key || defaultProfile?.name), 'Default voice profile fallback must be returned');
 });
 
 runTest('tier1', 'F9', 'T1_F9_2: Old ElevenLabs bedtime voice tuning (server/elevenLabsService.js) has been decommissioned', () => {
   const elServicePath = path.join(REPO_ROOT, 'server', 'elevenLabsService.js');
-  assertTrue(!fs.existsSync(elServicePath), 'server/elevenLabsService.js must no longer exist (replaced by little-heroes-tts-service)');
+  assertTrue(!fs.existsSync(elServicePath), 'server/elevenLabsService.js must no longer exist (replaced by voiceService)');
 });
 
-runTest('tier1', 'F9', 'T1_F9_3: Non-Rex pets (e.g. Luna, Raptor, Sparky) resolve to a configured, distinct Kokoro voice', () => {
+runTest('tier1', 'F9', 'T1_F9_3: Non-Rex pets (e.g. Luna, Raptor, Sparky) resolve to distinct voice profiles (pitch, rate, preferred)', () => {
   const petsToTest = ['luna', 'raptor', 'sparky', 'rex'];
-  const resolvedVoices = new Set();
+  const resolvedPitches = new Set();
+  const resolvedRates = new Set();
   for (const petId of petsToTest) {
     const profile = getCompanionVoiceParams(petId);
-    assertTrue(Boolean(profile?.kokoroVoice), `Pet ${petId} must resolve to a configured Kokoro voice`);
-    resolvedVoices.add(profile.kokoroVoice);
+    assertTrue(typeof profile?.pitch === 'number', `Pet ${petId} must define numeric pitch`);
+    assertTrue(typeof profile?.rate === 'number', `Pet ${petId} must define numeric rate`);
+    assertTrue(Array.isArray(profile?.preferred) && profile.preferred.length > 0, `Pet ${petId} must define preferred voice cascade`);
+    resolvedPitches.add(profile.pitch);
+    resolvedRates.add(profile.rate);
   }
-  assertTrue(resolvedVoices.size > 1, 'Distinct pets must not all collapse onto a single universal voice');
+  assertTrue(resolvedPitches.size > 1, 'Distinct pets must not all share the exact same pitch');
+  assertTrue(resolvedRates.size > 1, 'Distinct pets must not all share the exact same rate');
 });
 
-runTest('tier1', 'F9', 'T1_F9_4: Kokoro service cache key (little-heroes-tts-service/main.py) differentiates voice and speed', () => {
-  const mainPyPath = path.join(REPO_ROOT, 'little-heroes-tts-service', 'main.py');
-  const code = fs.readFileSync(mainPyPath, 'utf8');
-  assertTrue(/_cache_key/.test(code), 'main.py must define a cache-key function');
-  assertTrue(/clean_text.*voice.*speed|voice.*speed/.test(code), 'Cache key must incorporate voice and speed, not just text');
+runTest('tier1', 'F9', 'T1_F9_4: Client dialogue sanitization (cleanDialogueText) strips cues and differentiates styles', () => {
+  const cleaned = cleanDialogueText('*ROAR!* [smiles] Hello *brave* hero! 🦖');
+  assertTrue(!cleaned.includes('ROAR'), 'Stage directions must be stripped');
+  assertTrue(!cleaned.includes('smiles'), 'Bracketed cues must be stripped');
+  assertTrue(!cleaned.includes('🦖'), 'Emojis must be stripped');
+  assertTrue(cleaned.includes('Hello brave hero!'), 'Spoken dialogue content must be preserved');
 });
 
 runTest('tier1', 'F9', 'T1_F9_5: Functions voiceApi.ts no longer carries the decommissioned ElevenLabs/Gemini TTS endpoints', () => {
@@ -1195,19 +1201,21 @@ runTest('tier2', 'F8', 'T2_F8_5: Replaying current chapter resets auto-advance c
   assertEqual(remaining, 3, 'Timer reset to 3s on chapter replay');
 });
 
-// Feature 9 Boundaries (Centralized Kokoro Voice Casting)
+// Feature 9 Boundaries (Centralized Companion Voice Persona Casting)
 runTest('tier2', 'F9', 'T2_F9_1: Calling getCompanionVoiceParams with null or undefined petId defaults to Rex\'s voice profile', () => {
   const profileNull = getCompanionVoiceParams(null);
   const profileUndefined = getCompanionVoiceParams(undefined);
-  assertTrue(Boolean(profileNull?.kokoroVoice), 'null petId must still resolve to a configured voice');
-  assertTrue(Boolean(profileUndefined?.kokoroVoice), 'undefined petId must still resolve to a configured voice');
+  assertTrue(Boolean(profileNull?.voicePersona), 'null petId must still resolve to a configured voice persona');
+  assertTrue(Boolean(profileUndefined?.voicePersona), 'undefined petId must still resolve to a configured voice persona');
 });
 
-runTest('tier2', 'F9', 'T2_F9_2: Kokoro service (main.py) returns 400 for whitespace-only text without crashing', () => {
-  const mainPyPath = path.join(REPO_ROOT, 'little-heroes-tts-service', 'main.py');
-  const code = fs.readFileSync(mainPyPath, 'utf8');
-  assertTrue(/status_code=400/.test(code), 'main.py must define a 400 Bad Request path for empty/unreadable text');
-  assertTrue(/No readable speech text found/.test(code), 'main.py must reject whitespace-only text after cleaning');
+runTest('tier2', 'F9', 'T2_F9_2: Client dialogue sanitization and speech service handles whitespace-only text safely', async () => {
+  const cleaned = cleanDialogueText('   \n\t   ');
+  assertEqual(cleaned, '', 'Whitespace-only text cleans to empty string');
+  let callbackCalled = false;
+  const result = await speakCompanion('   \n\t   ', 'rex', () => { callbackCalled = true; });
+  assertTrue(callbackCalled, 'Callback must be called safely on whitespace-only text without hanging');
+  assertTrue(result === true, 'speakCompanion returns true after invoking callback');
 });
 
 runTest('tier2', 'F9', 'T2_F9_3: Asterisk action tags (*whispers softly*) stripped from spoken text', async () => {
@@ -1320,9 +1328,9 @@ runTest('tier3', null, 'T3_C1: Long Narrative Chapter + Full Illustration Prompt
   assertTrue(cacheKey.includes(hash), 'Cache key derived from narrative hash');
 });
 
-runTest('tier3', null, 'T3_C2: Non-Rex Pet (Luna) + Centralized Kokoro Voice + Dynamic Seed + Fallback Palette Guard', () => {
+runTest('tier3', null, 'T3_C2: Non-Rex Pet (Luna) + Centralized Companion Voice Persona + Dynamic Seed + Fallback Palette Guard', () => {
   const lunaProfile = getCompanionVoiceParams('luna');
-  assertTrue(Boolean(lunaProfile?.kokoroVoice), 'Non-Rex pet (Luna) resolves to a configured Kokoro voice');
+  assertTrue(Boolean(lunaProfile?.voicePersona), 'Non-Rex pet (Luna) resolves to a configured voice persona');
 
   const svg = bedtimeIllustrationService.generateFallbackIllustration({ petName: 'Luna' });
   assertNotMatches(decodeURIComponent(svg), /magenta|purple|pink/i, 'Palette guard maintained');

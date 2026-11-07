@@ -1,4 +1,4 @@
-const CACHE_NAME = 'little-heroes-v3.13.2-security-quality-sweep-20261106';
+const CACHE_NAME = 'little-heroes-v3.14.1-free-natural-voice-20261107';
 const STATIC_ASSETS = [
   './',
   './index.html',

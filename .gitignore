@@ -14,3 +14,4 @@ __pycache__/
 *.pyc
 scratch/agy_tmp/
 functions/.env
+copilot-worktrees/

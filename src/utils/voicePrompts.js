@@ -1,5 +1,5 @@
 // Pet Companion & Rex the Dino Spoken Voice Guidance for Toddlers (Easy Mode Age 3-4) & App-wide Voice Output
-// Calls speakCompanion via Cloudflare Worker proxy, with device-native Daniel SpeechSynthesis fallback.
+// Uses zero-cost client-side Web Speech Synthesis via speakCompanion across all 24 companion personas.
 
 import { speakCompanion, stopRex } from '../services/voiceService.js';
 import { store } from '../state/store.js';

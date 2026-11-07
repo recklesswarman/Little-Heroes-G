@@ -33,9 +33,7 @@ app.post('/api/gemini/chat', handleChatRequest);
 app.post('/api/gemini/bedtime-story', handleBedtimeStoryRequest);
 app.post('/api/rex/bedtime-story', handleBedtimeStoryRequest);
 
-// Voice narration is served by the standalone little-heroes-tts-service
-// (Kokoro TTS), which the client calls directly -- see
-// src/services/voiceService.js's getVoiceApiBaseUrl()/VITE_KOKORO_TTS_URL.
+// Voice narration is handled on the client via the Web Speech API in src/services/voiceService.js.
 
 // Bedtime storybook illustration endpoint (Cloudflare Workers AI free image generator)
 app.post('/api/story/illustration', handleStoryIllustrationRequest);

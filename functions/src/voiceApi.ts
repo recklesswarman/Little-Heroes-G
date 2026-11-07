@@ -8,8 +8,7 @@
 // instead. Everything else -- /api/gemini/chat (already has its own
 // client-side fallback to the chatWithPet callable below), the
 // WebSocket-only /api/gemini/live Rex companion (can't be proxied through a
-// Hosting rewrite at all), and voice narration (now served by the
-// standalone little-heroes-tts-service, called directly by the client) --
+// Hosting rewrite at all), and voice narration (handled on client via Web Speech API) --
 // is intentionally left alone / out of scope for this file.
 //
 // This mirrors the bedtime-story half of server/geminiService.js as

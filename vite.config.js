@@ -34,9 +34,7 @@ async function setupGeminiMiddleware(server) {
 
   server.middlewares.use(async (req, res, next) => {
     const url = req.url ? req.url.split('?')[0] : '';
-    // Voice narration (/api/tts) is served by the standalone
-    // little-heroes-tts-service (Kokoro) -- the client calls it directly via
-    // VITE_KOKORO_TTS_URL, so no dev-server proxy middleware is needed here.
+    // Voice narration is handled on the client via the Web Speech API in src/services/voiceService.js.
 
     if (url === '/api/gemini/chat' && req.method === 'POST') {
       try {

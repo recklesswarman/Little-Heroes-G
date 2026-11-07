@@ -334,29 +334,27 @@ async function runTestSuite() {
     'COMPANION_VOICE_PROFILES includes dedicated voice profiles for all 8 dinosaur coaches'
   );
 
-  // Test 1.4.2: Kokoro voice mapping across personas (centralized voice
-  // casting for the self-hosted Kokoro TTS microservice, replacing the old
-  // Gemini Flash voice names)
-  const coachVoices = {
-    '1': 'am_puck',
-    '2': 'am_echo',
-    '3': 'af_nicole',
-    '4': 'af_sky',
-    '5': 'af_bella',
-    '6': 'am_fenrir',
-    '7': 'am_adam',
-    '8': 'am_onyx'
+  // Test 1.4.2: Centralized voice persona mapping across all 8 dinosaur coaches
+  const coachPersonas = {
+    '1': 'upbeat_hero',
+    '2': 'swift_sprinter',
+    '3': 'calm_guardian',
+    '4': 'soaring_scout',
+    '5': 'playful_pip',
+    '6': 'gentle_giant',
+    '7': 'steady_explorer',
+    '8': 'deep_titan'
   };
-  let voicesAccurate = true;
-  for (const [id, voice] of Object.entries(coachVoices)) {
-    if (COMPANION_VOICE_PROFILES[id]?.kokoroVoice !== voice) {
-      voicesAccurate = false;
+  let personasAccurate = true;
+  for (const [id, persona] of Object.entries(coachPersonas)) {
+    if (COMPANION_VOICE_PROFILES[id]?.voicePersona !== persona) {
+      personasAccurate = false;
       break;
     }
   }
   assert(
-    voicesAccurate,
-    'All 8 dinosaur coaches are mapped to distinct kid-friendly Kokoro voices'
+    personasAccurate,
+    'All 8 dinosaur coaches are mapped to distinct kid-friendly voice personas'
   );
 
   // Test 1.4.3: Custom pitch and rate tuning

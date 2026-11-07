@@ -176,7 +176,7 @@ export class GermBustersGame {
       this.options.onScoreUpdate(this.score, this.streak);
     }
 
-    // Dynamic Kokoro cheer on milestones
+    // Dynamic companion cheer on milestones
     if (this.streak === 5) {
       if (this.options.onVoiceCheer) this.options.onVoiceCheer("Sugar bugs banished! Clean smile power!");
     } else if (this.streak === 10) {

@@ -5870,7 +5870,7 @@ class Store {
     this.saveState(true);
     this.notify();
 
-    // Trigger dynamic Kokoro voice cheers
+    // Trigger dynamic companion voice cheers
     try {
       const petId = activePet ? activePet.id : 'rex';
       if (isNewHighScore) {

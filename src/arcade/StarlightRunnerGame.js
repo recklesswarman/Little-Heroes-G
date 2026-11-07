@@ -363,7 +363,7 @@ export class StarlightRunnerGame {
         Sound.coin();
         this.spawnDust(item.x, item.y, item.color || '#ffb961', 10);
 
-        // Kokoro voice cheers on streaks
+        // Companion voice cheers on streaks
         if (this.streak === 5) {
           if (this.options.onVoiceCheer) this.options.onVoiceCheer("Starlight Streak! Keep it up!");
         } else if (this.streak === 10) {
