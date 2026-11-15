@@ -6,6 +6,7 @@ import { speakRex } from '../services/voiceService.js';
 import { renderPetGearStudioViewer, initPetGearStudioViewer } from '../components/PetGearStudioViewer.js';
 import { preserveScrollPosition } from '../utils/scrollPreserve.js';
 import { registerActiveCanvas } from '../utils/activeViewCanvasRegistry.js';
+import { renderRewardImage } from '../utils/rewardGraphics.js';
 
 let activeCategoryFilter = 'all';
 
@@ -33,12 +34,14 @@ export function renderPetLockerView() {
 
   const shopDigitalItems = digitalGear.map(gear => ({
     id: gear.id,
-    title: gear.title,
+    name: gear.name || gear.title,
+    title: gear.title || gear.name,
     desc: gear.desc,
     category: gear.category,
     icon: gear.icon || 'star',
-    image: gear.image,
-    isUnlocked: inventoryList.includes(gear.title),
+    image: gear.assetUrl || gear.image,
+    assetUrl: gear.assetUrl || gear.image,
+    isUnlocked: inventoryList.includes(gear.id) || inventoryList.includes(gear.title) || inventoryList.includes(gear.name),
     statBonusPercent: gear.statBonusPercent || 15,
     statBonusType: gear.statBonusType || 'coin_boost'
   }));
@@ -228,11 +231,7 @@ export function renderPetLockerView() {
                 <div class="w-14 h-14 rounded-2xl bg-linear-to-b from-[#182838] to-[#0e1620] border-2 ${
                   isCurrentlyEquipped ? 'border-amber-500' : 'border-surface-container-high'
                 } flex items-center justify-center p-1.5 shrink-0 shadow-md">
-                  ${
-                    item.image
-                      ? `<img src="${item.image}" class="w-full h-full object-contain rounded-xl drop-shadow-sm" alt="${escapeHtml(item.title)}" />`
-                      : `<span class="material-symbols-outlined text-2xl text-amber-400">${item.icon || 'shield'}</span>`
-                  }
+                  ${renderRewardImage(item, 'w-full h-full object-contain rounded-xl drop-shadow-sm', item.title || item.name)}
                 </div>
 
                 <div class="flex flex-col flex-1 truncate">

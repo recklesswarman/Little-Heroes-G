@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+    <defs>
+      <radialGradient id="phb_bg" cx="35%" cy="30%" r="70%">
+        <stop offset="0%" stop-color="#1e3a8a"/>
+        <stop offset="60%" stop-color="#172554"/>
+        <stop offset="100%" stop-color="#0a0f29"/>
+      </radialGradient>
+      <linearGradient id="phb_blade" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#93c5fd"/>
+        <stop offset="40%" stop-color="#3b82f6"/>
+        <stop offset="100%" stop-color="#1d4ed8"/>
+      </linearGradient>
+    </defs>
+    <circle cx="60" cy="60" r="54" fill="url(#phb_bg)" stroke="#38b6ff" stroke-width="3.5"/>
+    <ellipse cx="50" cy="24" rx="28" ry="12" fill="#ffffff" opacity="0.12"/>
+    <!-- Triple Hydra Plasma Slices -->
+    <path d="M 38 88 Q 65 55 90 22 Q 80 48 52 82 Z" fill="url(#phb_blade)" stroke="#93c5fd" stroke-width="2"/>
+    <path d="M 44 86 Q 72 45 98 28 Q 84 55 58 84 Z" fill="#60a5fa" stroke="#ffffff" stroke-width="1.5" opacity="0.8"/>
+    <path d="M 32 82 Q 52 50 78 26 Q 66 52 42 78 Z" fill="#2563eb" stroke="#93c5fd" stroke-width="1.5" opacity="0.9"/>
+    <!-- Hydra Fang Crossguard -->
+    <path d="M 28 85 L 48 95 L 42 75 Z" fill="#f59e0b" stroke="#b45309" stroke-width="2"/>
+    <rect x="18" y="90" width="14" height="8" rx="3" transform="rotate(-40 25 94)" fill="#334155" stroke="#0f172a" stroke-width="1.5"/>
+    <circle cx="22" cy="100" r="4" fill="#38b6ff" stroke="#ffffff" stroke-width="1.5"/>
+    <!-- Energy Sparkles -->
+    <polygon points="90,16 92,21 97,22 92,23 90,28 88,23 83,22 88,21" fill="#38b6ff"/>
+  </svg>

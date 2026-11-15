@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+    <defs>
+      <radialGradient id="cr_bg" cx="35%" cy="30%" r="70%">
+        <stop offset="0%" stop-color="#075985"/>
+        <stop offset="60%" stop-color="#0c4a6e"/>
+        <stop offset="100%" stop-color="#041f30"/>
+      </radialGradient>
+    </defs>
+    <!-- White Die-Cut Sticker Outline -->
+    <circle cx="60" cy="60" r="54" fill="url(#cr_bg)" stroke="#ffffff" stroke-width="4.5"/>
+    <!-- Comet Hopper Rocket -->
+    <path d="M 68 28 C 80 40, 80 62, 76 72 L 48 58 C 50 48, 56 34, 68 28 Z" fill="#38b6ff" stroke="#0f172a" stroke-width="2"/>
+    <!-- Wings -->
+    <path d="M 48 58 L 34 66 L 48 72 Z" fill="#0284c7" stroke="#0f172a" stroke-width="1.5"/>
+    <path d="M 76 72 L 78 88 L 66 80 Z" fill="#0284c7" stroke="#0f172a" stroke-width="1.5"/>
+    <circle cx="66" cy="46" r="6" fill="#ffffff"/>
+    <circle cx="66" cy="46" r="3" fill="#0284c7"/>
+    <!-- Stars Around -->
+    <polygon points="90,30 92,34 96,35 92,36 90,40 88,36 84,35 88,34" fill="#fde047"/>
+    <polygon points="34,40 36,44 40,45 36,46 34,50 32,46 28,45 32,44" fill="#fde047"/>
+  </svg>

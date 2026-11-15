@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+    <defs>
+      <radialGradient id="shb_bg" cx="35%" cy="30%" r="70%">
+        <stop offset="0%" stop-color="#064e3b"/>
+        <stop offset="60%" stop-color="#022c22"/>
+        <stop offset="100%" stop-color="#01150f"/>
+      </radialGradient>
+    </defs>
+    <circle cx="60" cy="60" r="54" fill="url(#shb_bg)" stroke="#10b981" stroke-width="3.5"/>
+    <ellipse cx="50" cy="24" rx="28" ry="12" fill="#ffffff" opacity="0.12"/>
+    <!-- Band -->
+    <path d="M 24 58 Q 60 72 96 58 L 94 68 Q 60 82 26 68 Z" fill="#10b981" stroke="#0f172a" stroke-width="2.5"/>
+    <!-- Center Hero Scout Star -->
+    <circle cx="60" cy="65" r="12" fill="#f59e0b" stroke="#ffffff" stroke-width="2"/>
+    <polygon points="60,56 63,62 70,63 65,67 66,74 60,70 54,74 55,67 50,63 57,62" fill="#ffffff"/>
+  </svg>

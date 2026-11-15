@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+    <defs>
+      <radialGradient id="erh_bg" cx="35%" cy="30%" r="70%">
+        <stop offset="0%" stop-color="#7c2d12"/>
+        <stop offset="60%" stop-color="#431407"/>
+        <stop offset="100%" stop-color="#1a0601"/>
+      </radialGradient>
+      <linearGradient id="erh_iron" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#64748b"/>
+        <stop offset="60%" stop-color="#334155"/>
+        <stop offset="100%" stop-color="#1e293b"/>
+      </linearGradient>
+    </defs>
+    <circle cx="60" cy="60" r="54" fill="url(#erh_bg)" stroke="#ea580c" stroke-width="3.5"/>
+    <ellipse cx="50" cy="24" rx="28" ry="12" fill="#ffffff" opacity="0.12"/>
+    <!-- Helmet Dome -->
+    <path d="M 32 58 C 32 38, 44 28, 60 28 C 76 28, 88 38, 88 58 L 88 78 L 74 78 L 70 66 L 50 66 L 46 78 L 32 78 Z" fill="url(#erh_iron)" stroke="#0f172a" stroke-width="3"/>
+    <!-- Volcanic Ember Ridge Spikes -->
+    <polygon points="60,18 64,30 56,30" fill="#f97316" stroke="#ea580c" stroke-width="1.5"/>
+    <polygon points="50,22 54,32 46,32" fill="#f97316" stroke="#ea580c" stroke-width="1.5"/>
+    <polygon points="70,22 74,32 66,32" fill="#f97316" stroke="#ea580c" stroke-width="1.5"/>
+    <!-- Glowing Visor Slit -->
+    <rect x="42" y="52" width="36" height="8" rx="3" fill="#fde047" stroke="#ea580c" stroke-width="1.5"/>
+    <rect x="44" y="54" width="32" height="4" rx="1.5" fill="#ffffff"/>
+  </svg>

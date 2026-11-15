@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+    <defs>
+      <radialGradient id="mkb_bg" cx="35%" cy="30%" r="70%">
+        <stop offset="0%" stop-color="#064e3b"/>
+        <stop offset="60%" stop-color="#022c22"/>
+        <stop offset="100%" stop-color="#01150f"/>
+      </radialGradient>
+      <linearGradient id="mkb_crest" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#34d399"/>
+        <stop offset="50%" stop-color="#059669"/>
+        <stop offset="100%" stop-color="#047857"/>
+      </linearGradient>
+    </defs>
+    <circle cx="60" cy="60" r="54" fill="url(#mkb_bg)" stroke="#34d399" stroke-width="3.5"/>
+    <ellipse cx="50" cy="24" rx="28" ry="12" fill="#ffffff" opacity="0.12"/>
+    <!-- Shield Crest -->
+    <path d="M 36 34 L 84 34 C 84 62, 70 82, 60 92 C 50 82, 36 62, 36 34 Z" fill="url(#mkb_crest)" stroke="#ffffff" stroke-width="3"/>
+    <!-- Shiny Tooth Motif -->
+    <path d="M 50 48 C 50 42, 57 40, 60 44 C 63 40, 70 42, 70 48 C 70 56, 66 64, 63 70 C 61 74, 59 74, 57 70 C 54 64, 50 56, 50 48 Z" fill="#ffffff"/>
+    <polygon points="70,40 72,44 76,45 72,46 70,50 68,46 64,45 68,44" fill="#fde047"/>
+  </svg>

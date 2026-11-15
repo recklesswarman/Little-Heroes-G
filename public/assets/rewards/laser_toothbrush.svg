@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+    <defs>
+      <radialGradient id="ltb_bg" cx="35%" cy="30%" r="70%">
+        <stop offset="0%" stop-color="#164e63"/>
+        <stop offset="60%" stop-color="#083344"/>
+        <stop offset="100%" stop-color="#02151e"/>
+      </radialGradient>
+      <linearGradient id="ltb_beam" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#67e8f9"/>
+        <stop offset="50%" stop-color="#06b6d4"/>
+        <stop offset="100%" stop-color="#0284c7"/>
+      </linearGradient>
+      <linearGradient id="ltb_hilt" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#e2e8f0"/>
+        <stop offset="50%" stop-color="#94a3b8"/>
+        <stop offset="100%" stop-color="#475569"/>
+      </linearGradient>
+      <linearGradient id="ltb_mint" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#6ee7b7"/>
+        <stop offset="100%" stop-color="#10b981"/>
+      </linearGradient>
+      <filter id="ltb_glow" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="3" result="blur"/>
+        <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+      </filter>
+    </defs>
+    <!-- Background Orb -->
+    <circle cx="60" cy="60" r="54" fill="url(#ltb_bg)" stroke="#22d3ee" stroke-width="3.5"/>
+    <ellipse cx="50" cy="24" rx="28" ry="12" fill="#ffffff" opacity="0.12"/>
+    <!-- Outer Glow Aura -->
+    <path d="M 35 85 L 85 35" stroke="#22d3ee" stroke-width="18" stroke-linecap="round" opacity="0.4" filter="url(#ltb_glow)"/>
+    <!-- Laser Saber Blade -->
+    <path d="M 40 80 L 88 32" stroke="url(#ltb_beam)" stroke-width="12" stroke-linecap="round"/>
+    <path d="M 42 78 L 86 34" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round"/>
+    <!-- Mint Toothbrush Bristles on Saber -->
+    <path d="M 75 25 L 95 45" stroke="url(#ltb_mint)" stroke-width="7" stroke-linecap="round"/>
+    <circle cx="92" cy="28" r="4.5" fill="#34d399" filter="url(#ltb_glow)"/>
+    <circle cx="98" cy="38" r="3" fill="#67e8f9"/>
+    <!-- Hilt & Guard -->
+    <rect x="24" y="80" width="22" height="12" rx="4" transform="rotate(-45 35 86)" fill="url(#ltb_hilt)" stroke="#0f172a" stroke-width="2"/>
+    <circle cx="28" cy="92" r="5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.5"/>
+    <!-- Sparkles -->
+    <polygon points="60,20 63,27 70,29 63,31 60,38 57,31 50,29 57,27" fill="#fde047"/>
+    <polygon points="26,45 28,50 33,51 28,52 26,57 24,52 19,51 24,50" fill="#67e8f9"/>
+  </svg>

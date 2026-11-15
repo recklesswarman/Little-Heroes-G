@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+    <defs>
+      <radialGradient id="ctw_bg" cx="35%" cy="30%" r="70%">
+        <stop offset="0%" stop-color="#1e1b4b"/>
+        <stop offset="60%" stop-color="#0f172a"/>
+        <stop offset="100%" stop-color="#020617"/>
+      </radialGradient>
+      <linearGradient id="ctw_streak" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#fde047"/>
+        <stop offset="40%" stop-color="#f97316"/>
+        <stop offset="80%" stop-color="#0284c7"/>
+        <stop offset="100%" stop-color="#38b6ff"/>
+      </linearGradient>
+    </defs>
+    <circle cx="60" cy="60" r="54" fill="url(#ctw_bg)" stroke="#38b6ff" stroke-width="3.5"/>
+    <ellipse cx="50" cy="24" rx="28" ry="12" fill="#ffffff" opacity="0.12"/>
+    <!-- Glowing Whip Trail -->
+    <path d="M 30 85 C 45 70, 45 40, 70 35 C 85 30, 95 45, 90 60 C 85 75, 100 80, 105 72" fill="none" stroke="url(#ctw_streak)" stroke-width="7" stroke-linecap="round"/>
+    <path d="M 30 85 C 45 70, 45 40, 70 35 C 85 30, 95 45, 90 60 C 85 75, 100 80, 105 72" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- Handle -->
+    <rect x="20" y="80" width="18" height="10" rx="3" transform="rotate(-45 29 85)" fill="#334155" stroke="#f59e0b" stroke-width="2"/>
+    <!-- Comet Core Star at Tip -->
+    <polygon points="105,65 107,70 112,71 107,73 105,78 103,73 98,71 103,70" fill="#fef08a"/>
+    <circle cx="105" cy="71" r="3" fill="#ffffff"/>
+  </svg>

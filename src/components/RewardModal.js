@@ -12,11 +12,12 @@ function generateCelebrationIcon(reward) {
   }
 
   // 1. If an explicit image URL is provided (e.g. task image, reward image, pet avatar)
-  if (reward.image) {
+  const imageSrc = reward.assetUrl || reward.image;
+  if (imageSrc && imageSrc !== 'undefined' && imageSrc !== 'null') {
     return `
       <img
-        src="${reward.image}"
-        alt="${escapeHtml(reward.title) || 'Celebration'}"
+        src="${imageSrc}"
+        alt="${escapeHtml(reward.title || reward.name) || 'Celebration'}"
         class="w-28 h-28 sm:w-32 sm:h-32 object-contain filter drop-shadow-[0_8px_16px_rgba(0,0,0,0.6)] z-10 animate-pulse-subtle"
         onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';"
       />

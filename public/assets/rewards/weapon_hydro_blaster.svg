@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+    <defs>
+      <radialGradient id="whb_bg" cx="35%" cy="30%" r="70%">
+        <stop offset="0%" stop-color="#0369a1"/>
+        <stop offset="60%" stop-color="#075985"/>
+        <stop offset="100%" stop-color="#0c2a44"/>
+      </radialGradient>
+      <linearGradient id="whb_body" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#38b6ff"/>
+        <stop offset="50%" stop-color="#0284c7"/>
+        <stop offset="100%" stop-color="#0369a1"/>
+      </linearGradient>
+    </defs>
+    <circle cx="60" cy="60" r="54" fill="url(#whb_bg)" stroke="#38b6ff" stroke-width="3.5"/>
+    <ellipse cx="50" cy="24" rx="28" ry="12" fill="#ffffff" opacity="0.12"/>
+    <!-- Water Pressure Tank -->
+    <rect x="30" y="38" width="36" height="18" rx="9" transform="rotate(-20 48 47)" fill="#22d3ee" stroke="#ffffff" stroke-width="2"/>
+    <!-- Blaster Housing -->
+    <path d="M 32 68 L 72 52 L 76 64 L 46 76 L 36 86 Z" fill="url(#whb_body)" stroke="#0f172a" stroke-width="2.5"/>
+    <!-- Dual Nozzles -->
+    <rect x="72" y="48" width="14" height="6" rx="2" transform="rotate(-20 79 51)" fill="#f59e0b" stroke="#0f172a" stroke-width="1.5"/>
+    <rect x="74" y="58" width="14" height="6" rx="2" transform="rotate(-20 81 61)" fill="#f59e0b" stroke="#0f172a" stroke-width="1.5"/>
+    <!-- Hydro Water Blast Waves -->
+    <path d="M 88 44 Q 102 38 108 46 Q 96 52 88 48 Z" fill="#67e8f9" stroke="#ffffff" stroke-width="1.5"/>
+    <path d="M 90 56 Q 106 52 110 60 Q 98 64 90 58 Z" fill="#38b6ff" stroke="#ffffff" stroke-width="1.5"/>
+    <circle cx="106" cy="38" r="3.5" fill="#ffffff"/>
+    <circle cx="112" cy="52" r="2.5" fill="#67e8f9"/>
+  </svg>

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+    <defs>
+      <radialGradient id="tp_bg" cx="35%" cy="30%" r="70%">
+        <stop offset="0%" stop-color="#9a3412"/>
+        <stop offset="60%" stop-color="#431407"/>
+        <stop offset="100%" stop-color="#1f0701"/>
+      </radialGradient>
+      <linearGradient id="tp_flame" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#fef08a"/>
+        <stop offset="50%" stop-color="#f97316"/>
+        <stop offset="100%" stop-color="#dc2626"/>
+      </linearGradient>
+    </defs>
+    <circle cx="60" cy="60" r="54" fill="url(#tp_bg)" stroke="#f97316" stroke-width="3.5"/>
+    <ellipse cx="50" cy="24" rx="28" ry="12" fill="#ffffff" opacity="0.12"/>
+    <!-- Phoenix Feather Tiara -->
+    <path d="M 30 72 Q 60 78 90 72 L 86 64 Q 60 70 34 64 Z" fill="#fbbf24" stroke="#0f172a" stroke-width="2"/>
+    <!-- Rising Solar Feathers -->
+    <path d="M 60 28 C 65 42, 68 55, 60 68 C 52 55, 55 42, 60 28 Z" fill="url(#tp_flame)" stroke="#ea580c" stroke-width="1.5"/>
+    <path d="M 45 38 C 50 48, 52 58, 48 68 C 42 58, 40 48, 45 38 Z" fill="url(#tp_flame)" stroke="#ea580c" stroke-width="1.5"/>
+    <path d="M 75 38 C 80 48, 78 58, 72 68 C 70 58, 72 48, 75 38 Z" fill="url(#tp_flame)" stroke="#ea580c" stroke-width="1.5"/>
+    <!-- Center Fire Gem -->
+    <circle cx="60" cy="66" r="4.5" fill="#ffffff" stroke="#f59e0b" stroke-width="2"/>
+  </svg>

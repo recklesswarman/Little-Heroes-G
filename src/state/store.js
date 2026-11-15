@@ -295,26 +295,38 @@ const defaultState = {
     {
       id: 'rocket_badge',
       title: 'Hero Rocket Badge',
+      name: 'Hero Rocket Badge',
       type: 'Sticker',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAyH49NXeiOh-BmWLvQkk4zJRjAXmtQ7hPXJ7Dk0YZRO5CkUFz9wJZbjEKmlVlh8U79KHrKqiP4gS0bQgQ2X_vEpRpK_FsuS8WN4RWDw3xj4YlvTofyTWXlgV4nmek6g1R4NxZAaqkv8M1xvOiqIKYrKpTiEJRmk0ulv958iE5iE7ORnAiln2Uw3oaopAOg7Bs6MDXSVDpMo9YKipIHHykc6vVQgFwKQvDtNbqgY1h8N4_Ealg8wrybfA'
+      category: 'Stickers',
+      image: '/assets/rewards/rocket_badge.svg',
+      assetUrl: '/assets/rewards/rocket_badge.svg'
     },
     {
       id: 'wizard_hat',
       title: 'Enchanted Wizard Hat',
+      name: 'Enchanted Wizard Hat',
       type: 'Accessory',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA6ACznHbNqQYrmS2NNT3AogIWVwSpwMd_e-p5JOEqTsWkMcbR3XIie3llrmdu0UVjQ4an-bSZQypLr0rQgc-ZbZMijOEnJW2hkFFTW3YvxnvMF1p_R1DeRzyPAEVOVQn7dVbGBZjMJoNDEEPm43G_Dtol7_U9W9m9iLpImUl0NJfcdAqccaoVs6sGpX3KgGErOnZi9ufcz3KQ-E1PpdUM5P2DeTeu8ePw2Jfrbh1fbQ5aY24ZDCZ3hVw'
+      category: 'Accessories',
+      image: '/assets/rewards/wizard_hat.svg',
+      assetUrl: '/assets/rewards/wizard_hat.svg'
     },
     {
       id: 'gem_trove',
       title: 'Crystal Gem Trove',
+      name: 'Crystal Gem Trove',
       type: 'Loot',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDvEPK2k2p8UTY6a_a13uuU4xIdkdywFfYuD-6hXL6loqAk-urCnUbUGdFn-Y19eBDoygO061F0aNul90Ba2JUyfsA-w-3zw4_7pYzFDr1VberTqHQfuSPj2fUJPxNonUg9kWXhB0tivkcacloQX7aSYVFI0gMGh4LxUnHMNOb8AvPWMIBgSUdWC0sxJmD4dJJcdQnnenoMiOhVddEOJO-X7gqho3jVSHQX-aholmgf88Rvee7hDkrcng'
+      category: 'Loot',
+      image: '/assets/rewards/gem_trove.svg',
+      assetUrl: '/assets/rewards/gem_trove.svg'
     },
     {
       id: 'star_trophy',
       title: 'Awesome Job Star',
+      name: 'Awesome Job Star',
       type: 'Trophy',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCRc98XgkYDVOMyeI8_DdTn3brkamdypKZHAOHiWsvdNuYooda2iad8wDRiiTg9NR7rD8mcxuoBFBUSLVrLtnLcoaHCbw6GFUY2IfxfuNNEN9DPOp4_YImncAcHdrg87C8_VAKhcU1QWSn2sjlLyzlzjCEfIZxtp8wUJW0A31Lq1dR2UtL-5WrB4Kv37wm8UqStqA4r7vMt9-HC2m0J2DnH2ho2MRAB876n6T2djlx3G7-pBq9V44VbVg'
+      category: 'Trophies',
+      image: '/assets/rewards/star_trophy.svg',
+      assetUrl: '/assets/rewards/star_trophy.svg'
     }
   ],
 
@@ -325,7 +337,7 @@ const defaultState = {
       title: '30 Mins Screen Time',
       costPoints: 50,
       category: 'Experience',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDwiXWKTRUssFcvO0VMZY2in_ykLU01sI-ExsT7r1iZ5IYPdXgoGenpe_WcpSW7knWFGxwUuaGEP6QNYiVfkaxHhafEBCn2l4MbgvVGne9r6jXt72AXHiv7oLLDUs1yabcVjJxK2snZXlLwl8LlucgAhUnpE8UmVXc12s9i83BpaxYnZ7WPOy9ZbWOrR0xhzixCUzxXzcGa37zI_kzLf3vZXf4Nq7aQBpBN4IKSWKeI8idkBZb0sfccCA',
+      image: generate3DIcon('tv', 'blue', 'Screen Time'),
       desc: 'Trade points for 30 minutes of tablet or video game time.'
     },
     {
@@ -333,7 +345,7 @@ const defaultState = {
       title: 'Friday Movie Night Choice',
       costPoints: 100,
       category: 'Experience',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBUe50x9hrDqEWJxXpxkk28HCtzzxp6iu_ptP2y58CFG0TUggFK7d1Od69VrYxsjxKtR1o6lrgPgx15Okec05jU_vNxJ7s_ipwXZJM3ladFoPyuhGcPzItrUorX1NF1ilxi2r1K2g00ulLRfOqSTdr0ZuPk5gyY8B0mB2UBw0XjqX8qfM8-Z_Oa_VasXsvbo_FHt7MMlgZ_O9HNsr4L1wxT131GZyCKiOLQOBHTGSONdgB_qqkkRex0Kw',
+      image: generate3DIcon('movie', 'yellow', 'Movie Night'),
       desc: 'You get to pick the family movie and have popcorn this Friday!'
     },
     {
@@ -675,8 +687,22 @@ class Store {
         // are merged in upon initialization regardless of digitalRewardsOverhaulApplied flag
         if (Array.isArray(parsed.digitalGear)) {
           DIGITAL_REWARDS_CATALOG.forEach((catItem) => {
-            if (!parsed.digitalGear.some((d) => d.id === catItem.id)) {
+            const existingIdx = parsed.digitalGear.findIndex((d) => d.id === catItem.id);
+            if (existingIdx === -1) {
               parsed.digitalGear.push(catItem);
+            } else {
+              // Ensure assetUrl, image, and normalized schema are updated to local SVG assets
+              parsed.digitalGear[existingIdx] = {
+                ...catItem,
+                ...parsed.digitalGear[existingIdx],
+                assetUrl: catItem.assetUrl,
+                image: catItem.image,
+                name: catItem.name,
+                title: catItem.title,
+                category: catItem.category,
+                subCategory: catItem.subCategory,
+                rarity: catItem.rarity
+              };
             }
           });
         } else {

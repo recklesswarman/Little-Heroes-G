@@ -3,6 +3,7 @@ import { Sound } from '../audio/sfx.js';
 import { speakRex } from '../services/voiceService.js';
 import confetti from 'canvas-confetti';
 import { escapeHtml } from '../utils/escapeHtml.js';
+import { renderRewardImage } from '../utils/rewardGraphics.js';
 
 let currentTaps = 0;
 let isRevealed = false;
@@ -174,17 +175,7 @@ export function renderMysterySurpriseModal() {
               <!-- Sunburst Background -->
               <div class="absolute inset-0 bg-radial from-white/20 via-transparent to-transparent pointer-events-none animate-pulse"></div>
 
-              ${
-                surprise.image
-                  ? `
-                <img class="w-full h-full object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.6)] animate-bounce" src="${surprise.image}" alt="${escapeHtml(surprise.title)}" />
-              `
-                  : `
-                <span class="material-symbols-outlined text-7xl ${isEgg ? 'text-primary' : 'text-secondary'} animate-bounce" style="font-variation-settings: 'FILL' 1;">
-                  ${surprise.icon || 'military_tech'}
-                </span>
-              `
-              }
+              ${renderRewardImage(surprise, 'w-full h-full object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.6)] animate-bounce', surprise.title || surprise.name)}
             </div>
 
             <!-- Item Details -->

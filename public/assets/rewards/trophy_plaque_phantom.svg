@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+    <defs>
+      <radialGradient id="tpp_bg" cx="35%" cy="30%" r="70%">
+        <stop offset="0%" stop-color="#1e3a8a"/>
+        <stop offset="60%" stop-color="#0f172a"/>
+        <stop offset="100%" stop-color="#020617"/>
+      </radialGradient>
+    </defs>
+    <circle cx="60" cy="60" r="54" fill="url(#tpp_bg)" stroke="#38b6ff" stroke-width="3.5"/>
+    <ellipse cx="50" cy="24" rx="28" ry="12" fill="#ffffff" opacity="0.12"/>
+    <!-- Pedestal Base -->
+    <rect x="38" y="86" width="44" height="12" rx="3" fill="#334155" stroke="#38b6ff" stroke-width="2"/>
+    <!-- Purified Little Ghost Figurine (Friendly Hero Buddy) -->
+    <path d="M 42 46 C 42 32, 50 26, 60 26 C 70 26, 78 32, 78 46 L 78 74 C 74 70, 70 76, 66 72 C 62 76, 58 70, 54 74 C 50 70, 46 76, 42 72 Z" fill="#ffffff" stroke="#93c5fd" stroke-width="2.5"/>
+    <!-- Happy Eyes & Smile -->
+    <circle cx="52" cy="44" r="3.5" fill="#0284c7"/>
+    <circle cx="68" cy="44" r="3.5" fill="#0284c7"/>
+    <path d="M 54 52 Q 60 58 66 52" stroke="#0284c7" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <circle cx="60" cy="22" r="4" fill="#fbbf24"/>
+  </svg>

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+    <defs>
+      <radialGradient id="wps_bg" cx="35%" cy="30%" r="70%">
+        <stop offset="0%" stop-color="#083344"/>
+        <stop offset="60%" stop-color="#082f49"/>
+        <stop offset="100%" stop-color="#030712"/>
+      </radialGradient>
+      <linearGradient id="wps_beam" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#ffffff"/>
+        <stop offset="30%" stop-color="#38b6ff"/>
+        <stop offset="70%" stop-color="#0284c7"/>
+        <stop offset="100%" stop-color="#0369a1"/>
+      </linearGradient>
+    </defs>
+    <circle cx="60" cy="60" r="54" fill="url(#wps_bg)" stroke="#38b6ff" stroke-width="3.5"/>
+    <ellipse cx="50" cy="24" rx="28" ry="12" fill="#ffffff" opacity="0.12"/>
+    <!-- Beam Core -->
+    <path d="M 34 84 L 88 30" stroke="#38b6ff" stroke-width="16" stroke-linecap="round" opacity="0.35"/>
+    <path d="M 36 82 L 86 32" stroke="url(#wps_beam)" stroke-width="9" stroke-linecap="round"/>
+    <path d="M 38 80 L 84 34" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round"/>
+    <!-- Plasma Lightning Bolts -->
+    <path d="M 50 62 L 56 52 L 52 50 L 60 42" stroke="#fde047" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 64 48 L 70 38 L 66 36 L 74 28" stroke="#fde047" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Cybernetic Hilt -->
+    <rect x="22" y="80" width="22" height="12" rx="3" transform="rotate(-45 33 86)" fill="#475569" stroke="#0f172a" stroke-width="2"/>
+    <rect x="20" y="84" width="8" height="6" rx="2" transform="rotate(-45 24 87)" fill="#f59e0b"/>
+  </svg>

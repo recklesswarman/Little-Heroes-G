@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+    <defs>
+      <radialGradient id="jhc_bg" cx="35%" cy="30%" r="70%">
+        <stop offset="0%" stop-color="#78350f"/>
+        <stop offset="60%" stop-color="#451a03"/>
+        <stop offset="100%" stop-color="#1c0a00"/>
+      </radialGradient>
+      <radialGradient id="jhc_amber" cx="35%" cy="35%" r="65%">
+        <stop offset="0%" stop-color="#fef08a"/>
+        <stop offset="50%" stop-color="#f59e0b"/>
+        <stop offset="100%" stop-color="#b45309"/>
+      </radialGradient>
+    </defs>
+    <circle cx="60" cy="60" r="54" fill="url(#jhc_bg)" stroke="#fbbf24" stroke-width="3.5"/>
+    <ellipse cx="50" cy="24" rx="28" ry="12" fill="#ffffff" opacity="0.12"/>
+    <!-- Hexagonal Honeycomb Core -->
+    <polygon points="60,32 78,42 78,64 60,74 42,64 42,42" fill="url(#jhc_amber)" stroke="#0f172a" stroke-width="3"/>
+    <polygon points="78,42 96,52 96,74 78,84 60,74 60,52" fill="url(#jhc_amber)" stroke="#0f172a" stroke-width="3"/>
+    <polygon points="42,42 60,52 60,74 42,84 24,74 24,52" fill="url(#jhc_amber)" stroke="#0f172a" stroke-width="3"/>
+    <!-- Honey Drops Dripping -->
+    <path d="M 60 74 C 64 82, 66 88, 60 92 C 54 88, 56 82, 60 74 Z" fill="#fde047" stroke="#b45309" stroke-width="1.5"/>
+    <circle cx="60" cy="50" r="4" fill="#ffffff" opacity="0.7"/>
+  </svg>

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+    <defs>
+      <radialGradient id="sd_bg" cx="35%" cy="30%" r="70%">
+        <stop offset="0%" stop-color="#064e3b"/>
+        <stop offset="60%" stop-color="#022c22"/>
+        <stop offset="100%" stop-color="#01150f"/>
+      </radialGradient>
+    </defs>
+    <!-- White Die-Cut Sticker Border -->
+    <circle cx="60" cy="60" r="54" fill="url(#sd_bg)" stroke="#ffffff" stroke-width="4.5"/>
+    <!-- Rex Dino Silhouette & Glow -->
+    <path d="M 45 74 C 40 68, 42 50, 48 40 C 54 32, 70 28, 82 34 C 84 40, 78 44, 76 48 L 84 50 L 78 56 L 74 54 C 70 66, 68 74, 58 76 Z" fill="#10b981" stroke="#34d399" stroke-width="2.5"/>
+    <!-- Eye & Teeth -->
+    <circle cx="74" cy="38" r="3" fill="#ffffff"/>
+    <polygon points="78,50 82,50 80,53" fill="#ffffff"/>
+    <!-- Constellation Stars & Lines -->
+    <line x1="48" y1="40" x2="60" y2="32" stroke="#fde047" stroke-width="1.5" stroke-dasharray="2 2"/>
+    <line x1="60" y1="32" x2="74" y2="38" stroke="#fde047" stroke-width="1.5" stroke-dasharray="2 2"/>
+    <circle cx="48" cy="40" r="3.5" fill="#fde047"/>
+    <circle cx="60" cy="32" r="4" fill="#ffffff"/>
+    <circle cx="74" cy="38" r="4.5" fill="#fde047"/>
+    <circle cx="58" cy="76" r="3" fill="#fde047"/>
+  </svg>

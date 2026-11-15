@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+    <defs>
+      <radialGradient id="cc_bg" cx="35%" cy="30%" r="70%">
+        <stop offset="0%" stop-color="#78350f"/>
+        <stop offset="60%" stop-color="#451a03"/>
+        <stop offset="100%" stop-color="#1c0a00"/>
+      </radialGradient>
+      <radialGradient id="cc_dial" cx="35%" cy="35%" r="65%">
+        <stop offset="0%" stop-color="#ffffff"/>
+        <stop offset="50%" stop-color="#e2e8f0"/>
+        <stop offset="100%" stop-color="#94a3b8"/>
+      </radialGradient>
+    </defs>
+    <circle cx="60" cy="60" r="54" fill="url(#cc_bg)" stroke="#f59e0b" stroke-width="3.5"/>
+    <ellipse cx="50" cy="24" rx="28" ry="12" fill="#ffffff" opacity="0.12"/>
+    <!-- Compass Casing -->
+    <circle cx="60" cy="62" r="32" fill="#f59e0b" stroke="#78350f" stroke-width="3"/>
+    <circle cx="60" cy="62" r="25" fill="url(#cc_dial)" stroke="#0f172a" stroke-width="2"/>
+    <circle cx="60" cy="30" r="6" fill="none" stroke="#f59e0b" stroke-width="3"/>
+    <!-- Needle -->
+    <polygon points="60,44 65,62 60,60 55,62" fill="#ef4444"/>
+    <polygon points="60,80 65,62 60,64 55,62" fill="#3b82f6"/>
+    <circle cx="60" cy="62" r="3.5" fill="#f59e0b"/>
+  </svg>

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+    <defs>
+      <radialGradient id="gmm_bg" cx="35%" cy="30%" r="70%">
+        <stop offset="0%" stop-color="#064e3b"/>
+        <stop offset="60%" stop-color="#022c22"/>
+        <stop offset="100%" stop-color="#01150f"/>
+      </radialGradient>
+      <linearGradient id="gmm_rind" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#34d399"/>
+        <stop offset="100%" stop-color="#059669"/>
+      </linearGradient>
+    </defs>
+    <circle cx="60" cy="60" r="54" fill="url(#gmm_bg)" stroke="#34d399" stroke-width="3.5"/>
+    <ellipse cx="50" cy="24" rx="28" ry="12" fill="#ffffff" opacity="0.12"/>
+    <!-- Melon Slice (Crescent) -->
+    <path d="M 28 48 C 36 82, 84 82, 92 48 C 82 72, 38 72, 28 48 Z" fill="url(#gmm_rind)" stroke="#0f172a" stroke-width="2.5"/>
+    <!-- Glowing Meat -->
+    <path d="M 32 50 C 40 76, 80 76, 88 50 C 78 66, 42 66, 32 50 Z" fill="#22d3ee" stroke="#ffffff" stroke-width="1.5"/>
+    <!-- Seeds -->
+    <circle cx="46" cy="56" r="2" fill="#0f172a"/>
+    <circle cx="56" cy="60" r="2" fill="#0f172a"/>
+    <circle cx="66" cy="60" r="2" fill="#0f172a"/>
+    <circle cx="74" cy="56" r="2" fill="#0f172a"/>
+  </svg>

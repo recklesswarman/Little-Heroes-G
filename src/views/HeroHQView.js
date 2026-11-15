@@ -5,6 +5,7 @@ import { Sound } from '../audio/sfx.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
 import { speakRex } from '../services/voiceService.js';
 import confetti from 'canvas-confetti';
+import { renderRewardImage } from '../utils/rewardGraphics.js';
 import { DIGITAL_REWARDS_CATALOG } from '../data/digitalRewardsCatalog.js';
 import {
   ROOM_THEMES,
@@ -102,7 +103,7 @@ export function renderHeroHQView() {
     return tId ? trophies.find(t => t.id === tId) || null : null;
   });
 
-  const equippedWeapon = store.getEquippedHeroWeapon ? store.getEquippedHeroWeapon() : null;
+  const equippedWeapon = store.getEquippedHeroWeaponObject ? store.getEquippedHeroWeaponObject() : (store.getEquippedHeroWeapon ? store.getEquippedHeroWeapon(true) : null);
 
   // Calculate habit stats for the Hologram Globe
   const brushStreak = state.brushStreak || hero.streak || 1;
@@ -229,11 +230,7 @@ export function renderHeroHQView() {
             <div class="absolute -top-4 w-10 sm:w-12 h-16 bg-linear-to-b from-cyan-400/30 to-transparent blur-[2px] pointer-events-none rounded-full"></div>
             <!-- Weapon 3D Icon & Pedestal -->
             <div class="w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-linear-to-br from-cyan-900/90 to-blue-950/90 p-1 shadow-[0_0_15px_rgba(6,182,212,0.6)] border-2 border-cyan-400 flex items-center justify-center relative overflow-hidden group-hover:border-cyan-200">
-              ${equippedWeapon?.image ? `
-                <img src="${equippedWeapon.image}" alt="${escapeHtml(equippedWeapon.title)}" class="w-8 h-8 sm:w-10 sm:h-10 object-contain drop-shadow-sm" />
-              ` : `
-                <span class="text-xl sm:text-2xl">${equippedWeapon?.icon || '⚔️'}</span>
-              `}
+              ${renderRewardImage(equippedWeapon, 'w-8 h-8 sm:w-10 sm:h-10 object-contain drop-shadow-sm', equippedWeapon?.title || equippedWeapon?.name || 'Weapon')}
               <span class="absolute top-0.5 right-0.5 text-[7px] bg-cyan-400 text-slate-950 font-black px-1 rounded-xs shadow-sm">1/1</span>
             </div>
             <!-- Mini Plaque -->
@@ -668,12 +665,8 @@ function renderAllTrophiesShowcaseModal(state, equippedWeapon) {
       <!-- HIGHLIGHT SLOT: Dedicated Equipped Combat Weapon -->
       <div class="bg-linear-to-r from-cyan-950/90 via-slate-900 to-blue-950/90 rounded-2xl p-4 border-2 border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.3)] flex flex-col sm:flex-row items-center justify-between gap-3">
         <div class="flex items-center gap-3.5 w-full sm:w-auto">
-          <div class="relative w-16 h-16 sm:w-18 sm:h-18 rounded-2xl bg-linear-to-br from-cyan-900 to-blue-950 border-2 border-cyan-300 flex items-center justify-center shrink-0 shadow-md">
-            ${equippedWeapon?.image ? `
-              <img src="${equippedWeapon.image}" alt="${escapeHtml(equippedWeapon.title)}" class="w-12 h-12 object-contain drop-shadow-sm" />
-            ` : `
-              <span class="text-3xl">${equippedWeapon?.icon || '⚔️'}</span>
-            `}
+          <div class="relative w-16 h-16 sm:w-18 sm:h-18 rounded-2xl bg-linear-to-br from-cyan-900 to-blue-950 border-2 border-cyan-300 flex items-center justify-center shrink-0 shadow-md p-1.5">
+            ${renderRewardImage(equippedWeapon, 'w-12 h-12 object-contain drop-shadow-sm', equippedWeapon?.title || equippedWeapon?.name || 'Weapon')}
             <span class="absolute -top-1.5 -right-1.5 text-[8px] bg-cyan-400 text-slate-950 font-black px-1.5 py-0.5 rounded-md shadow-sm">
               1/1 EQUIPPED
             </span>
@@ -976,11 +969,7 @@ function renderWeaponModal(state, equippedWeapon) {
       <!-- Currently Equipped Weapon Feature Card -->
       <div class="bg-linear-to-r from-cyan-950/80 via-slate-900 to-blue-950/80 rounded-2xl p-4 border-2 border-cyan-400/60 shadow-lg flex items-center gap-3.5">
         <div class="w-16 h-16 rounded-2xl bg-cyan-900/60 border border-cyan-400 flex items-center justify-center shrink-0 p-1">
-          ${equippedWeapon?.image ? `
-            <img src="${equippedWeapon.image}" alt="${escapeHtml(equippedWeapon.title)}" class="w-full h-full object-contain drop-shadow-sm" />
-          ` : `
-            <span class="text-3xl">${equippedWeapon?.icon || '⚔️'}</span>
-          `}
+          ${renderRewardImage(equippedWeapon, 'w-full h-full object-contain drop-shadow-sm', equippedWeapon?.title || equippedWeapon?.name || 'Weapon')}
         </div>
         <div class="flex flex-col flex-1 min-w-0">
           <span class="text-[10px] font-black uppercase tracking-wider text-cyan-300 font-headline">Currently Equipped in Battle</span>
@@ -1009,11 +998,7 @@ function renderWeaponModal(state, equippedWeapon) {
               <div class="bg-surface-container rounded-2xl p-3.5 border-2 ${isEquipped ? 'border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)]' : isOwned ? 'border-surface-container-highest hover:border-cyan-500/50' : 'border-surface-container-highest/40 opacity-70'} flex flex-col justify-between gap-3">
                 <div class="flex items-start gap-3">
                   <div class="w-12 h-12 rounded-xl bg-surface-container-high border border-white/10 flex items-center justify-center p-1 shrink-0">
-                    ${weapon.image ? `
-                      <img src="${weapon.image}" alt="${escapeHtml(weapon.title)}" class="w-full h-full object-contain" />
-                    ` : `
-                      <span class="text-2xl">${weapon.icon || '⚔️'}</span>
-                    `}
+                    ${renderRewardImage(weapon, 'w-full h-full object-contain', weapon.title || weapon.name)}
                   </div>
                   <div class="flex flex-col flex-1 min-w-0">
                     <div class="flex items-center justify-between gap-1">

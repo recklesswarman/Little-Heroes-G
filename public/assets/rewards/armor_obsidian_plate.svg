@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+    <defs>
+      <radialGradient id="aop_bg" cx="35%" cy="30%" r="70%">
+        <stop offset="0%" stop-color="#1e293b"/>
+        <stop offset="60%" stop-color="#0f172a"/>
+        <stop offset="100%" stop-color="#020617"/>
+      </radialGradient>
+      <linearGradient id="aop_steel" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#475569"/>
+        <stop offset="50%" stop-color="#1e293b"/>
+        <stop offset="100%" stop-color="#0f172a"/>
+      </linearGradient>
+    </defs>
+    <circle cx="60" cy="60" r="54" fill="url(#aop_bg)" stroke="#38b6ff" stroke-width="3.5"/>
+    <ellipse cx="50" cy="24" rx="28" ry="12" fill="#ffffff" opacity="0.12"/>
+    <!-- Obsidian Armor Vest -->
+    <path d="M 38 34 L 82 34 L 88 56 L 60 94 L 32 56 Z" fill="url(#aop_steel)" stroke="#38b6ff" stroke-width="2.5"/>
+    <!-- Azure Power Lines -->
+    <line x1="60" y1="38" x2="60" y2="86" stroke="#38b6ff" stroke-width="3"/>
+    <line x1="44" y1="52" x2="76" y2="52" stroke="#38b6ff" stroke-width="2"/>
+    <circle cx="60" cy="52" r="5" fill="#ffffff" stroke="#0284c7" stroke-width="2"/>
+  </svg>

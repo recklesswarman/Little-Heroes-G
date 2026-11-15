@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+    <defs>
+      <radialGradient id="gda_bg" cx="35%" cy="30%" r="70%">
+        <stop offset="0%" stop-color="#78350f"/>
+        <stop offset="60%" stop-color="#451a03"/>
+        <stop offset="100%" stop-color="#1c0a00"/>
+      </radialGradient>
+      <linearGradient id="gda_gold" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#fef08a"/>
+        <stop offset="40%" stop-color="#f59e0b"/>
+        <stop offset="100%" stop-color="#b45309"/>
+      </linearGradient>
+    </defs>
+    <circle cx="60" cy="60" r="54" fill="url(#gda_bg)" stroke="#f59e0b" stroke-width="3.5"/>
+    <ellipse cx="50" cy="24" rx="28" ry="12" fill="#ffffff" opacity="0.12"/>
+    <!-- Dragon Chest Plate -->
+    <path d="M 40 32 L 80 32 L 90 55 L 60 96 L 30 55 Z" fill="url(#gda_gold)" stroke="#0f172a" stroke-width="3"/>
+    <!-- Overlapping Scales -->
+    <path d="M 44 45 Q 60 52 76 45" fill="none" stroke="#78350f" stroke-width="2.5"/>
+    <path d="M 48 58 Q 60 65 72 58" fill="none" stroke="#78350f" stroke-width="2.5"/>
+    <path d="M 52 70 Q 60 76 68 70" fill="none" stroke="#78350f" stroke-width="2.5"/>
+    <!-- Dragon Gem Inset -->
+    <polygon points="60,40 68,48 60,56 52,48" fill="#38b6ff" stroke="#ffffff" stroke-width="1.5"/>
+    <circle cx="60" cy="48" r="2.5" fill="#ffffff"/>
+  </svg>

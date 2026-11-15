@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+    <defs>
+      <radialGradient id="nsb_bg" cx="35%" cy="30%" r="70%">
+        <stop offset="0%" stop-color="#1e3a8a"/>
+        <stop offset="60%" stop-color="#172554"/>
+        <stop offset="100%" stop-color="#0b112c"/>
+      </radialGradient>
+      <linearGradient id="nsb_boot" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#38b6ff"/>
+        <stop offset="60%" stop-color="#2563eb"/>
+        <stop offset="100%" stop-color="#1d4ed8"/>
+      </linearGradient>
+    </defs>
+    <circle cx="60" cy="60" r="54" fill="url(#nsb_bg)" stroke="#38b6ff" stroke-width="3.5"/>
+    <ellipse cx="50" cy="24" rx="28" ry="12" fill="#ffffff" opacity="0.12"/>
+    <!-- Left Boot -->
+    <path d="M 36 40 L 52 40 L 50 62 L 64 68 C 66 74, 62 82, 54 82 L 32 82 C 28 82, 28 72, 34 68 Z" fill="url(#nsb_boot)" stroke="#0f172a" stroke-width="2.5"/>
+    <rect x="28" y="78" width="36" height="6" rx="3" fill="#22d3ee" stroke="#ffffff" stroke-width="1.5"/>
+    <!-- Right Boot -->
+    <path d="M 62 36 L 78 36 L 76 58 L 90 64 C 92 70, 88 78, 80 78 L 58 78 C 54 78, 54 68, 60 64 Z" fill="url(#nsb_boot)" stroke="#0f172a" stroke-width="2.5"/>
+    <rect x="54" y="74" width="36" height="6" rx="3" fill="#22d3ee" stroke="#ffffff" stroke-width="1.5"/>
+    <!-- Neon Soles Glowing -->
+    <path d="M 32 82 Q 46 86 60 82" stroke="#fde047" stroke-width="3" fill="none"/>
+    <path d="M 58 78 Q 72 82 86 78" stroke="#fde047" stroke-width="3" fill="none"/>
+  </svg>

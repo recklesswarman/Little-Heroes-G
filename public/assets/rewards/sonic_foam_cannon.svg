@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+    <defs>
+      <radialGradient id="sfc_bg" cx="35%" cy="30%" r="70%">
+        <stop offset="0%" stop-color="#064e3b"/>
+        <stop offset="60%" stop-color="#022c22"/>
+        <stop offset="100%" stop-color="#01150f"/>
+      </radialGradient>
+      <linearGradient id="sfc_barrel" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#34d399"/>
+        <stop offset="50%" stop-color="#059669"/>
+        <stop offset="100%" stop-color="#064e3b"/>
+      </linearGradient>
+      <radialGradient id="sfc_bubble" cx="35%" cy="30%" r="70%">
+        <stop offset="0%" stop-color="#ffffff"/>
+        <stop offset="60%" stop-color="#a7f3d0"/>
+        <stop offset="100%" stop-color="#34d399"/>
+      </radialGradient>
+    </defs>
+    <circle cx="60" cy="60" r="54" fill="url(#sfc_bg)" stroke="#34d399" stroke-width="3.5"/>
+    <ellipse cx="50" cy="24" rx="28" ry="12" fill="#ffffff" opacity="0.12"/>
+    <!-- Cannon Stock & Grip -->
+    <rect x="25" y="70" width="28" height="14" rx="4" transform="rotate(30 39 77)" fill="#1e293b" stroke="#0f172a" stroke-width="2"/>
+    <rect x="38" y="55" width="40" height="20" rx="6" transform="rotate(-25 58 65)" fill="url(#sfc_barrel)" stroke="#0f172a" stroke-width="2.5"/>
+    <!-- Cannon Nozzle -->
+    <ellipse cx="78" cy="46" rx="9" ry="16" transform="rotate(-25 78 46)" fill="#047857" stroke="#6ee7b7" stroke-width="3"/>
+    <!-- Foam Bubbles Expanding -->
+    <circle cx="86" cy="38" r="10" fill="url(#sfc_bubble)" stroke="#ffffff" stroke-width="2"/>
+    <circle cx="98" cy="30" r="14" fill="url(#sfc_bubble)" stroke="#ffffff" stroke-width="2"/>
+    <circle cx="102" cy="50" r="8" fill="url(#sfc_bubble)" stroke="#ffffff" stroke-width="1.5"/>
+    <circle cx="90" cy="58" r="6" fill="url(#sfc_bubble)" stroke="#ffffff" stroke-width="1.5"/>
+    <ellipse cx="94" cy="26" rx="4" ry="2" fill="#ffffff"/>
+    <ellipse cx="82" cy="35" rx="3" ry="1.5" fill="#ffffff"/>
+  </svg>

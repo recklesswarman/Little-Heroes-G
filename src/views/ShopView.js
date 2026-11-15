@@ -3,48 +3,111 @@ import { speakRex } from '../services/voiceService.js';
 import { Sound } from '../audio/sfx.js';
 import { preserveScrollPosition } from '../utils/scrollPreserve.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
+import {
+  renderRewardImage,
+  getRewardRarityBorderClass,
+  getRewardRarityBadge
+} from '../utils/rewardGraphics.js';
 
-let selectedCategory = 'all'; // 'all', 'weapons', 'gear', 'badges', 'snacks', 'themes', 'real_life'
+let selectedCategory = 'all'; 
+// Granular categories:
+// 'all', 'weapons', 'avatar_gear', 'pet_gear', 'accessories', 'badges', 'trophies', 'stickers', 'loot', 'snacks', 'themes', 'real_life'
 let selectedSort = 'cheapest'; // 'cheapest', 'expensive'
 let inspectingShopItem = null;
 
 export function renderShopView() {
   const state = store.getState();
-  const hero = state.selectedHero;
+  const hero = state.selectedHero || {};
   const recentlyUnlocked = state.recentlyUnlocked || [];
   const parentWeapons = store.getParentCustomWeapons ? store.getParentCustomWeapons() : [];
   const parentGear = store.getParentCustomGear ? store.getParentCustomGear() : [];
   const parentFood = store.getParentCustomFood ? store.getParentCustomFood() : [];
   const digitalGear = [...(state.digitalGear || [])];
-  [...parentWeapons, ...parentGear, ...parentFood].forEach(item => {
-    if (item && item.id && !digitalGear.some(d => d.id === item.id)) {
+
+  [...parentWeapons, ...parentGear, ...parentFood].forEach((item) => {
+    if (item && item.id && !digitalGear.some((d) => d.id === item.id)) {
       digitalGear.unshift(item);
     }
   });
+
   const currentShopSeason = store.getEffectiveSeason();
   const profileThemes = (state.profileThemes || []).filter((t) => !t.seasonId || t.seasonId === currentShopSeason);
   const realLifeRewards = state.realLifeRewards || [];
 
-  // Filter digital items
+  // Filter digital items strictly and accurately across granular tabs
   let filteredDigital = digitalGear.filter((item) => {
     if (selectedCategory === 'all') return true;
-    if (selectedCategory === 'weapons') return item.category === 'Weapons';
-    if (selectedCategory === 'gear') return item.category === 'Avatar Gear';
-    if (selectedCategory === 'badges') return item.category === 'Badges';
-    if (selectedCategory === 'snacks') return item.category === 'Snacks';
+    const cat = (item.category || '').toLowerCase();
+    const sub = (item.subCategory || item.subcategory || '').toLowerCase();
+
+    if (selectedCategory === 'weapons') {
+      return cat === 'weapons' || sub === 'weapon';
+    }
+    if (selectedCategory === 'avatar_gear') {
+      return cat === 'avatar gear' || cat === 'avatar_gear';
+    }
+    if (selectedCategory === 'pet_gear') {
+      return cat === 'pet gear' || cat === 'pet_gear';
+    }
+    if (selectedCategory === 'accessories') {
+      return cat === 'accessories' || cat === 'accessory' || sub === 'accessory';
+    }
+    if (selectedCategory === 'badges') {
+      return cat === 'badges' || cat === 'badge' || sub === 'badge';
+    }
+    if (selectedCategory === 'trophies') {
+      return cat === 'trophies' || cat === 'trophy' || sub === 'trophy';
+    }
+    if (selectedCategory === 'stickers') {
+      return cat === 'stickers' || cat === 'sticker' || sub === 'sticker';
+    }
+    if (selectedCategory === 'loot') {
+      return cat === 'loot' || sub === 'loot';
+    }
+    if (selectedCategory === 'snacks') {
+      return cat === 'snacks' || cat === 'food' || sub === 'food';
+    }
     return false;
   });
 
   // Sort digital items
   if (selectedSort === 'cheapest') {
-    filteredDigital.sort((a, b) => a.costCoins - b.costCoins);
+    filteredDigital.sort((a, b) => (a.costCoins || a.price || 0) - (b.costCoins || b.price || 0));
   } else if (selectedSort === 'expensive') {
-    filteredDigital.sort((a, b) => b.costCoins - a.costCoins);
+    filteredDigital.sort((a, b) => (b.costCoins || b.price || 0) - (a.costCoins || a.price || 0));
   }
 
-  const showDigital = selectedCategory === 'all' || ['weapons', 'gear', 'badges', 'snacks'].includes(selectedCategory);
+  const isDigitalCat = [
+    'weapons',
+    'avatar_gear',
+    'pet_gear',
+    'accessories',
+    'badges',
+    'trophies',
+    'stickers',
+    'loot',
+    'snacks'
+  ].includes(selectedCategory);
+
+  const showDigital = selectedCategory === 'all' || isDigitalCat;
   const showThemes = selectedCategory === 'all' || selectedCategory === 'themes';
   const showRealLife = selectedCategory === 'all' || selectedCategory === 'real_life';
+
+  // Category Tab Definitions
+  const CATEGORY_TABS = [
+    { id: 'all', label: 'All Items', icon: 'grid_view' },
+    { id: 'weapons', label: '⚔️ Weapons' },
+    { id: 'avatar_gear', label: '🛡️ Avatar Gear' },
+    { id: 'pet_gear', label: '🐾 Pet Gear' },
+    { id: 'accessories', label: '👓 Accessories' },
+    { id: 'badges', label: '🎖️ Badges' },
+    { id: 'trophies', label: '🏆 Trophies' },
+    { id: 'stickers', label: '⭐ Stickers' },
+    { id: 'loot', label: '💎 Loot' },
+    { id: 'snacks', label: '🫐 Snacks' },
+    { id: 'themes', label: '🎨 Themes' },
+    { id: 'real_life', label: '⭐ Real-Life' }
+  ];
 
   return `
     <div class="max-w-5xl mx-auto px-4 pt-4 pb-32 flex flex-col gap-6 animate-fade-in select-none">
@@ -53,7 +116,7 @@ export function renderShopView() {
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
           <h1 class="font-headline text-2xl sm:text-3xl font-black text-secondary text-shadow">The Hero Shop</h1>
-          <p class="text-xs sm:text-sm font-semibold text-on-surface-variant">Trade coins for digital gear & profile themes, or redeem real-world privileges!</p>
+          <p class="text-xs sm:text-sm font-semibold text-on-surface-variant">Trade tokens for awesome digital gear, collect trophies, or redeem real-world rewards!</p>
         </div>
 
         <!-- Currency Display -->
@@ -65,7 +128,7 @@ export function renderShopView() {
             </div>
             <div class="flex flex-col">
               <span class="text-[9px] text-on-surface-variant uppercase font-black tracking-wider">Habit Tokens</span>
-              <span class="font-headline text-sm font-black text-secondary leading-none">${hero.coins.toLocaleString()}</span>
+              <span class="font-headline text-sm font-black text-secondary leading-none">${(hero.coins || 0).toLocaleString()}</span>
             </div>
           </div>
 
@@ -83,6 +146,9 @@ export function renderShopView() {
       </div>
 
       <!-- Recently Unlocked Carousel -->
+      ${
+        recentlyUnlocked.length > 0
+          ? `
       <section class="flex flex-col gap-2">
         <h2 class="text-xs font-black uppercase tracking-wider text-secondary flex items-center gap-1.5">
           <span class="material-symbols-outlined text-base">workspace_premium</span>
@@ -95,80 +161,41 @@ export function renderShopView() {
               (item) => `
             <div class="shrink-0 w-32 h-36 bg-surface-container rounded-2xl p-3 flex flex-col items-center justify-between border-2 border-surface-container-highest card-shadow relative overflow-hidden group hover:border-secondary transition-all">
               <div class="absolute inset-0 bg-linear-to-br from-secondary/15 to-transparent pointer-events-none"></div>
-              <span class="text-[9px] font-black uppercase text-secondary bg-surface-container-high px-2 py-0.5 rounded-full z-10 self-start border border-secondary/20">${item.type}</span>
+              <span class="text-[9px] font-black uppercase text-secondary bg-surface-container-high px-2 py-0.5 rounded-full z-10 self-start border border-secondary/20">${escapeHtml(item.type || item.category || 'Reward')}</span>
               
               <div class="w-16 h-16 relative flex items-center justify-center z-10 my-auto">
-                <img class="w-full h-full object-contain drop-shadow-md group-hover:scale-110 transition-transform" src="${item.image}" alt="${item.title}" />
+                ${renderRewardImage(item, 'w-full h-full object-contain drop-shadow-md group-hover:scale-110 transition-transform', item.title || item.name)}
               </div>
 
-              <span class="text-[11px] font-black text-inverse-surface z-10 text-center leading-tight truncate w-full">${item.title}</span>
+              <span class="text-[11px] font-black text-inverse-surface z-10 text-center leading-tight truncate w-full">${escapeHtml(item.title || item.name || 'Reward')}</span>
             </div>
           `
             )
             .join('')}
         </div>
       </section>
+      `
+          : ''
+      }
 
-      <!-- Category Filter Pills & Sort Bar -->
+      <!-- Granular Category Filter Pills & Sort Bar -->
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-2">
         
-        <!-- Filter Pills -->
+        <!-- Filter Pills Bar -->
         <div id="shop-category-pill-bar" class="flex overflow-x-auto gap-2 pb-1 hide-scrollbar w-full sm:w-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-          <button data-cat="all" class="cat-pill-btn shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all min-h-[44px] inline-flex items-center justify-center ${
-            selectedCategory === 'all'
-              ? 'bg-primary text-on-primary border-primary-container shadow-md'
-              : 'bg-surface-container-low text-on-surface-variant border-surface-container hover:bg-surface-variant'
-          }">
-            All Items
-          </button>
-          
-          <button data-cat="weapons" class="cat-pill-btn shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all min-h-[44px] inline-flex items-center justify-center ${
-            selectedCategory === 'weapons'
-              ? 'bg-primary text-on-primary border-primary-container shadow-md'
-              : 'bg-surface-container-low text-on-surface-variant border-surface-container hover:bg-surface-variant'
-          }">
-            ⚔️ Weapons
-          </button>
-
-          <button data-cat="gear" class="cat-pill-btn shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all min-h-[44px] inline-flex items-center justify-center ${
-            selectedCategory === 'gear'
-              ? 'bg-primary text-on-primary border-primary-container shadow-md'
-              : 'bg-surface-container-low text-on-surface-variant border-surface-container hover:bg-surface-variant'
-          }">
-            🛡️ Avatar & Pet Gear
-          </button>
-
-          <button data-cat="badges" class="cat-pill-btn shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all min-h-[44px] inline-flex items-center justify-center ${
-            selectedCategory === 'badges'
-              ? 'bg-primary text-on-primary border-primary-container shadow-md'
-              : 'bg-surface-container-low text-on-surface-variant border-surface-container hover:bg-surface-variant'
-          }">
-            🏆 Badges & Loot
-          </button>
-
-          <button data-cat="snacks" class="cat-pill-btn shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all min-h-[44px] inline-flex items-center justify-center ${
-            selectedCategory === 'snacks'
-              ? 'bg-primary text-on-primary border-primary-container shadow-md'
-              : 'bg-surface-container-low text-on-surface-variant border-surface-container hover:bg-surface-variant'
-          }">
-            🫐 Snacks & Soaps
-          </button>
-
-          <button data-cat="themes" class="cat-pill-btn shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all min-h-[44px] inline-flex items-center justify-center ${
-            selectedCategory === 'themes'
-              ? 'bg-primary text-on-primary border-primary-container shadow-md'
-              : 'bg-surface-container-low text-on-surface-variant border-surface-container hover:bg-surface-variant'
-          }">
-            🎨 Profile Themes
-          </button>
-
-          <button data-cat="real_life" class="cat-pill-btn shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all min-h-[44px] inline-flex items-center justify-center ${
-            selectedCategory === 'real_life'
-              ? 'bg-tertiary text-on-tertiary border-tertiary-container shadow-md'
-              : 'bg-surface-container-low text-tertiary border-surface-container hover:bg-surface-variant'
-          }">
-            ⭐ Real-Life Privileges
-          </button>
+          ${CATEGORY_TABS.map(
+            (tab) => `
+            <button data-cat="${tab.id}" class="cat-pill-btn shrink-0 font-headline text-xs font-black px-4 py-2 rounded-full border transition-all min-h-[44px] inline-flex items-center justify-center ${
+              selectedCategory === tab.id
+                ? tab.id === 'real_life'
+                  ? 'bg-tertiary text-on-tertiary border-tertiary-container shadow-md'
+                  : 'bg-primary text-on-primary border-primary-container shadow-md'
+                : 'bg-surface-container-low text-on-surface-variant border-surface-container hover:bg-surface-variant'
+            }">
+              ${tab.label}
+            </button>
+          `
+          ).join('')}
         </div>
 
         <!-- Sort Control -->
@@ -182,7 +209,7 @@ export function renderShopView() {
 
       </div>
 
-      <!-- SECTION 1: Digital Goodies & Gear (Cost Tokens 🪙) -->
+      <!-- SECTION 1: Digital Goodies & Rewards (Tokens 🪙) -->
       ${
         showDigital
           ? `
@@ -190,189 +217,212 @@ export function renderShopView() {
           <div class="flex items-center justify-between">
             <h2 class="font-headline text-lg font-black text-inverse-surface flex items-center gap-2">
               <span class="material-symbols-outlined text-secondary">inventory_2</span>
-              Digital Goodies & Gear (Tokens 🪙)
+              Digital Rewards & Gear (${filteredDigital.length})
             </h2>
             <span class="text-xs font-bold text-on-surface-variant">Instant Auto-Unlock</span>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            ${filteredDigital
-              .map((item) => {
-                const heroInventory = Array.isArray(hero.inventory) ? hero.inventory : (state.inventory || []);
-                const isWeapon = item.category === 'Weapons';
-                const isFood = item.category === 'Snacks' || item.usageType === 'single_use' || item.usageType === 'multi_use';
-                
-                // Servings count for consumables
-                let servingsCount = 0;
-                if (hero.consumables && hero.consumables[item.id]) {
-                  const cons = hero.consumables[item.id];
-                  servingsCount = typeof cons === 'object' ? (cons.servingsRemaining || 0) : cons;
-                }
+          ${
+            filteredDigital.length === 0
+              ? `
+            <div class="bg-surface-container/60 rounded-3xl p-8 border border-surface-container-highest text-center flex flex-col items-center justify-center gap-2">
+              <span class="material-symbols-outlined text-4xl text-on-surface-variant">category</span>
+              <p class="font-headline font-black text-base text-inverse-surface">No items found in this category</p>
+              <p class="text-xs text-on-surface-variant">Switch tabs above to view other awesome hero rewards!</p>
+            </div>
+          `
+              : `
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              ${filteredDigital
+                .map((item) => {
+                  const heroInventory = Array.isArray(hero.inventory) ? hero.inventory : (state.inventory || []);
+                  const isWeapon = item.category === 'Weapons' || item.subCategory === 'weapon' || item.subcategory === 'weapon';
+                  const isFood = item.category === 'Snacks' || item.subCategory === 'food' || item.usageType === 'single_use' || item.usageType === 'multi_use';
+                  const isBadgeOrTrophy = item.category === 'Badges' || item.category === 'Trophies' || item.category === 'Stickers';
 
-                const isOwned = heroInventory.includes(item.id) || heroInventory.includes(item.title);
-                let isEquipped = false;
-                if (isWeapon) {
-                  isEquipped = (hero.equippedWeapon === item.id) || (hero.equippedWeapon === item.title);
-                } else if (item.targetPetSocket) {
-                  isEquipped = (hero.equippedPetGear && (hero.equippedPetGear[item.targetPetSocket] === item.id || hero.equippedPetGear[item.targetPetSocket] === item.title)) || (state.equippedPetGear === item.title);
-                } else {
-                  isEquipped = (state.equippedPetGear === item.title) || (Array.isArray(hero.equippedGear) && hero.equippedGear.includes(item.id));
-                }
+                  // Servings count for consumables
+                  let servingsCount = 0;
+                  if (hero.consumables && hero.consumables[item.id]) {
+                    const cons = hero.consumables[item.id];
+                    servingsCount = typeof cons === 'object' ? (cons.servingsRemaining || 0) : cons;
+                  }
 
-                const canAfford = (hero.coins || 0) >= item.costCoins;
-                const isParentCrafted = Boolean(item.isParentCrafted || item.isCustomAI);
-                const socketIconMap = { head: '👑 Head', back: '🚀 Back', chest: '🛡️ Chest', feet: '👟 Paws' };
-                const socketLabel = item.targetPetSocket ? socketIconMap[item.targetPetSocket] || item.targetPetSocket : null;
+                  const isOwned = heroInventory.includes(item.id) || heroInventory.includes(item.title) || heroInventory.includes(item.name);
+                  let isEquipped = false;
+                  if (isWeapon) {
+                    isEquipped = (hero.equippedWeapon === item.id) || (hero.equippedWeapon === item.title) || (hero.equippedWeapon === item.name);
+                  } else if (item.targetPetSocket || item.equipSlot) {
+                    const socket = item.targetPetSocket || item.equipSlot;
+                    isEquipped = Boolean(hero.equippedPetGear && (hero.equippedPetGear[socket] === item.id || hero.equippedPetGear[socket] === item.title || hero.equippedPetGear[socket] === item.name)) || (state.equippedPetGear === item.title);
+                  } else {
+                    isEquipped = (state.equippedPetGear === item.title) || (Array.isArray(hero.equippedGear) && hero.equippedGear.includes(item.id));
+                  }
 
-                return `
-                <div data-gear-card-id="${item.id}" class="gear-card-item bg-surface-container rounded-3xl p-5 border-2 ${
-                  isEquipped ? 'border-primary shadow-[0_0_15px_rgba(46,204,113,0.3)]' : isParentCrafted ? 'border-amber-400/60 shadow-[0_0_15px_rgba(245,158,11,0.2)]' : 'border-surface-container-highest'
-                } card-shadow flex flex-col justify-between gap-4 group hover:border-secondary transition-all cursor-pointer">
-                  
-                  <div class="flex items-start gap-3.5">
-                    <div class="w-16 h-16 rounded-2xl bg-surface-container-high flex items-center justify-center p-2 shrink-0 border border-surface-container-highest group-hover:scale-105 transition-transform relative overflow-hidden">
-                      <img class="w-full h-full object-contain drop-shadow-sm" src="${item.image}" alt="${escapeHtml(item.title)}" />
-                      ${isParentCrafted ? `<div class="absolute inset-0 bg-linear-to-tr from-amber-400/10 via-transparent to-yellow-300/20 pointer-events-none"></div>` : ''}
-                      <button class="shop-inspect-item-btn absolute bottom-0.5 right-0.5 w-6 h-6 rounded-lg bg-black/70 text-white/80 hover:text-white flex items-center justify-center text-xs" data-inspect-id="${item.id}" title="Inspect 3D">
-                        🔍
-                      </button>
-                    </div>
+                  const itemPrice = item.costCoins || item.price || 0;
+                  const canAfford = (hero.coins || 0) >= itemPrice;
+                  const isParentCrafted = Boolean(item.isParentCrafted || item.isCustomAI);
+                  const socketIconMap = { head: '👑 Head', back: '🚀 Back', chest: '🛡️ Chest', feet: '👟 Paws', weapon: '⚔️ Weapon' };
+                  const targetSocket = item.targetPetSocket || item.equipSlot;
+                  const socketLabel = targetSocket ? socketIconMap[targetSocket] || targetSocket : null;
+                  const rarityBorder = getRewardRarityBorderClass(item.rarity, isEquipped);
+                  const rarityBadge = getRewardRarityBadge(item.rarity);
 
-                    <div class="flex flex-col flex-1 min-w-0">
-                      <div class="flex items-center gap-1.5 flex-wrap">
-                        <span class="text-[10px] font-black uppercase text-secondary">${item.category}</span>
+                  return `
+                  <div data-gear-card-id="${item.id}" class="gear-card-item bg-surface-container rounded-3xl p-5 border-2 ${rarityBorder} card-shadow flex flex-col justify-between gap-4 group transition-all cursor-pointer relative overflow-hidden">
+                    
+                    <div class="flex items-start gap-3.5">
+                      <!-- High-contrast tactile 3D item asset -->
+                      <div class="w-16 h-16 rounded-2xl bg-surface-container-high flex items-center justify-center p-2 shrink-0 border border-surface-container-highest group-hover:scale-105 transition-transform relative overflow-hidden">
+                        ${renderRewardImage(item, 'w-full h-full object-contain drop-shadow-sm', item.title || item.name)}
+                        ${isParentCrafted ? `<div class="absolute inset-0 bg-linear-to-tr from-amber-400/10 via-transparent to-yellow-300/20 pointer-events-none"></div>` : ''}
+                        <button class="shop-inspect-item-btn absolute bottom-0.5 right-0.5 w-6 h-6 rounded-lg bg-black/70 text-white/80 hover:text-white flex items-center justify-center text-xs" data-inspect-id="${item.id}" title="Inspect 3D">
+                          🔍
+                        </button>
+                      </div>
+
+                      <div class="flex flex-col flex-1 min-w-0">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                          <span class="text-[10px] font-black uppercase text-secondary">${escapeHtml(item.category)}</span>
+                          ${rarityBadge}
+                          ${
+                            isParentCrafted
+                              ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-headline font-black bg-amber-400 text-slate-950 flex items-center gap-1 shadow-xs border border-amber-300">⭐ Crafted by ${escapeHtml(item.craftedBy || 'Mom & Dad')}</span>`
+                              : ''
+                          }
+                          ${
+                            isWeapon
+                              ? `<span class="text-[9px] font-black uppercase text-cyan-300 bg-cyan-950/60 px-1.5 py-0.5 rounded border border-cyan-700/60 flex items-center gap-0.5">⚔️ 1 Active / Battle</span>`
+                              : ''
+                          }
+                          ${
+                            isFood
+                              ? `<span class="text-[9px] font-bold text-amber-300 bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-600/50">${servingsCount > 0 ? `🫐 ${servingsCount} Serving${servingsCount > 1 ? 's' : ''}` : item.usageType === 'single_use' ? 'Single Use' : 'Snack Treat'}</span>`
+                              : ''
+                          }
+                          ${
+                            socketLabel
+                              ? `<span class="text-[9px] font-bold text-cyan-300 bg-cyan-950/40 px-1.5 py-0.5 rounded border border-cyan-700/50">${socketLabel}</span>`
+                              : ''
+                          }
+                          ${
+                            item.statBonusLabel
+                              ? `<span class="text-[9px] font-black uppercase text-emerald-400 bg-emerald-500/15 px-1.5 py-0.5 rounded border border-emerald-500/30 flex items-center gap-0.5">
+                                   <span class="material-symbols-outlined text-[10px]" style="font-variation-settings: 'FILL' 1;">bolt</span> ${item.statBonusLabel}
+                                 </span>`
+                              : item.statBonusPercent
+                              ? `<span class="text-[9px] font-black uppercase text-amber-400 bg-amber-500/15 px-1.5 py-0.5 rounded border border-amber-500/30 flex items-center gap-0.5">
+                                   <span class="material-symbols-outlined text-[10px]" style="font-variation-settings: 'FILL' 1;">bolt</span> +${item.statBonusPercent}% ${item.statBonusType ? item.statBonusType.replace('_', ' ') : 'Boost'}
+                                 </span>`
+                              : ''
+                          }
+                        </div>
+                        <h3 class="font-headline text-base font-black text-inverse-surface leading-tight truncate mt-1">${escapeHtml(item.title || item.name)}</h3>
+                        <p class="text-xs text-on-surface-variant mt-0.5 line-clamp-2">${escapeHtml(item.desc)}</p>
                         ${
-                          isParentCrafted
-                            ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-headline font-black bg-amber-400 text-slate-950 flex items-center gap-1 shadow-xs border border-amber-300">⭐ Crafted by ${escapeHtml(item.craftedBy || 'Mom & Dad')}</span>`
-                            : ''
-                        }
-                        ${
-                          isWeapon
-                            ? `<span class="text-[9px] font-black uppercase text-cyan-300 bg-cyan-950/60 px-1.5 py-0.5 rounded border border-cyan-700/60 flex items-center gap-0.5">⚔️ 1 Active / Battle</span>`
-                            : ''
-                        }
-                        ${
-                          isFood
-                            ? `<span class="text-[9px] font-bold text-amber-300 bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-600/50">${servingsCount > 0 ? `🫐 ${servingsCount} Serving${servingsCount > 1 ? 's' : ''}` : item.usageType === 'single_use' ? 'Single Use' : 'Snack Treat'}</span>`
-                            : ''
-                        }
-                        ${
-                          socketLabel
-                            ? `<span class="text-[9px] font-bold text-cyan-300 bg-cyan-950/40 px-1.5 py-0.5 rounded border border-cyan-700/50">${socketLabel}</span>`
-                            : ''
-                        }
-                        ${
-                          item.statBonusLabel
-                            ? `<span class="text-[9px] font-black uppercase text-emerald-400 bg-emerald-500/15 px-1.5 py-0.5 rounded border border-emerald-500/30 flex items-center gap-0.5">
-                                 <span class="material-symbols-outlined text-[10px]" style="font-variation-settings: 'FILL' 1;">bolt</span> ${item.statBonusLabel}
-                               </span>`
-                            : item.statBonusPercent
-                            ? `<span class="text-[9px] font-black uppercase text-amber-400 bg-amber-500/15 px-1.5 py-0.5 rounded border border-amber-500/30 flex items-center gap-0.5">
-                                 <span class="material-symbols-outlined text-[10px]" style="font-variation-settings: 'FILL' 1;">bolt</span> +${item.statBonusPercent}% ${item.statBonusType ? item.statBonusType.replace('_', ' ') : 'Boost'}
-                               </span>`
+                          item.voiceLine
+                            ? `<div class="text-[10px] text-cyan-300/90 italic mt-1 truncate">🦖 "${escapeHtml(item.voiceLine)}"</div>`
                             : ''
                         }
                       </div>
-                      <h3 class="font-headline text-base font-black text-inverse-surface leading-tight truncate mt-1">${escapeHtml(item.title)}</h3>
-                      <p class="text-xs text-on-surface-variant mt-0.5 line-clamp-2">${escapeHtml(item.desc)}</p>
-                      ${
-                        item.voiceLine
-                          ? `<div class="text-[10px] text-cyan-300/90 italic mt-1 truncate">🦖 "${escapeHtml(item.voiceLine)}"</div>`
-                          : ''
-                      }
-                    </div>
-                  </div>
-
-                  <div class="flex items-center justify-between pt-3 border-t border-surface-container-highest">
-                    <div class="flex items-center gap-1 font-headline text-sm font-black text-secondary">
-                      <span class="material-symbols-outlined text-base">monetization_on</span>
-                      <span>${item.costCoins} Tokens</span>
                     </div>
 
-                    <div>
-                      ${
-                        isWeapon
-                          ? isEquipped
+                    <div class="flex items-center justify-between pt-3 border-t border-surface-container-highest">
+                      <div class="flex items-center gap-1 font-headline text-sm font-black text-secondary">
+                        <span class="material-symbols-outlined text-base">monetization_on</span>
+                        <span>${itemPrice} Tokens</span>
+                      </div>
+
+                      <div>
+                        ${
+                          isWeapon
+                            ? isEquipped
+                              ? `
+                              <span class="bg-primary/20 text-primary font-headline text-xs font-black px-3.5 py-2 rounded-xl border border-primary/40 inline-flex items-center gap-1">
+                                <span>✅</span> Equipped (1/1)
+                              </span>
+                            `
+                              : isOwned
+                              ? `
+                              <button data-equip-weapon-id="${item.id}" class="shop-equip-weapon-btn min-h-[44px] bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-headline text-xs font-black px-4 py-2 rounded-xl border border-cyan-300 chunky-btn-sm active:scale-95 shadow-sm">
+                                Equip Weapon
+                              </button>
+                            `
+                              : canAfford
+                              ? `
+                              <button data-buy-gear-id="${item.id}" class="buy-gear-btn min-h-[44px] bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2 rounded-xl chunky-btn border-secondary-container shadow-chunky-sm hover:brightness-110 active:scale-95">
+                                Buy Weapon
+                              </button>
+                            `
+                              : `
+                              <button class="min-h-[44px] bg-surface-container-highest text-on-surface-variant font-headline text-xs font-black px-4 py-2 rounded-xl border border-surface-container-low opacity-60 cursor-not-allowed">
+                                Need ${itemPrice - (hero.coins || 0)} more
+                              </button>
+                            `
+                            : isFood
+                            ? servingsCount > 0
+                              ? `
+                              <div class="flex items-center gap-1.5">
+                                <button data-feed-snack-id="${item.id}" class="shop-feed-snack-btn min-h-[44px] bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-headline text-xs font-black px-3.5 py-2 rounded-xl border border-emerald-300 chunky-btn-sm active:scale-95 shadow-sm flex items-center gap-1">
+                                  <span>🍽️</span>
+                                  <span>Feed Rex (${servingsCount})</span>
+                                </button>
+                                ${canAfford ? `
+                                  <button data-buy-gear-id="${item.id}" class="buy-gear-btn min-h-[44px] bg-surface-container-high hover:bg-surface-bright text-secondary font-headline text-xs font-black px-2.5 py-2 rounded-xl border border-secondary/40" title="Buy More Servings">
+                                    +🪙
+                                  </button>
+                                ` : ''}
+                              </div>
+                            `
+                              : canAfford
+                              ? `
+                              <button data-buy-gear-id="${item.id}" class="buy-gear-btn min-h-[44px] bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2 rounded-xl chunky-btn border-secondary-container shadow-chunky-sm hover:brightness-110 active:scale-95">
+                                Buy Snack (${item.maxServings || item.servingsMax || 1}x)
+                              </button>
+                            `
+                              : `
+                              <button class="min-h-[44px] bg-surface-container-highest text-on-surface-variant font-headline text-xs font-black px-4 py-2 rounded-xl border border-surface-container-low opacity-60 cursor-not-allowed">
+                                Need ${itemPrice - (hero.coins || 0)} more
+                              </button>
+                            `
+                            : isBadgeOrTrophy && isOwned
                             ? `
-                            <span class="bg-primary/20 text-primary font-headline text-xs font-black px-3.5 py-2 rounded-xl border border-primary/40 inline-flex items-center gap-1">
-                              <span>✅</span> Equipped (1/1)
+                            <span class="bg-primary/20 text-primary font-headline text-xs font-black px-4 py-2 rounded-xl border border-primary/40 inline-flex items-center gap-1">
+                              <span>🏆</span> Unlocked
                             </span>
                           `
+                            : isEquipped
+                            ? `
+                          <span class="bg-primary/20 text-primary font-headline text-xs font-black px-4 py-2 rounded-xl border border-primary/40 inline-block">
+                            Equipped
+                          </span>
+                        `
                             : isOwned
                             ? `
-                            <button data-equip-weapon-id="${item.id}" class="shop-equip-weapon-btn min-h-[44px] bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-headline text-xs font-black px-4 py-2 rounded-xl border border-cyan-300 chunky-btn-sm active:scale-95 shadow-sm">
-                              Equip Weapon
-                            </button>
-                          `
+                          <button data-buy-gear-id="${item.id}" class="buy-gear-btn min-h-[44px] bg-surface-container-high hover:bg-surface-bright text-inverse-surface font-headline text-xs font-black px-4 py-2 rounded-xl border border-surface-container-highest chunky-btn-sm active:scale-95">
+                            Equip
+                          </button>
+                        `
                             : canAfford
                             ? `
-                            <button data-buy-gear-id="${item.id}" class="buy-gear-btn min-h-[44px] bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2 rounded-xl chunky-btn border-secondary-container shadow-chunky-sm hover:brightness-110 active:scale-95">
-                              Buy Weapon
-                            </button>
-                          `
+                          <button data-buy-gear-id="${item.id}" class="buy-gear-btn min-h-[44px] bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2 rounded-xl chunky-btn border-secondary-container shadow-chunky-sm hover:brightness-110 active:scale-95">
+                            Buy Now
+                          </button>
+                        `
                             : `
-                            <button class="min-h-[44px] bg-surface-container-highest text-on-surface-variant font-headline text-xs font-black px-4 py-2 rounded-xl border border-surface-container-low opacity-60 cursor-not-allowed">
-                              Need ${item.costCoins - (hero.coins || 0)} more
-                            </button>
-                          `
-                          : isFood
-                          ? servingsCount > 0
-                            ? `
-                            <div class="flex items-center gap-1.5">
-                              <button data-feed-snack-id="${item.id}" class="shop-feed-snack-btn min-h-[44px] bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-headline text-xs font-black px-3.5 py-2 rounded-xl border border-emerald-300 chunky-btn-sm active:scale-95 shadow-sm flex items-center gap-1">
-                                <span>🍽️</span>
-                                <span>Feed Rex (${servingsCount})</span>
-                              </button>
-                              ${canAfford ? `
-                                <button data-buy-gear-id="${item.id}" class="buy-gear-btn min-h-[44px] bg-surface-container-high hover:bg-surface-bright text-secondary font-headline text-xs font-black px-2.5 py-2 rounded-xl border border-secondary/40" title="Buy More Servings">
-                                  +🪙
-                                </button>
-                              ` : ''}
-                            </div>
-                          `
-                            : canAfford
-                            ? `
-                            <button data-buy-gear-id="${item.id}" class="buy-gear-btn min-h-[44px] bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2 rounded-xl chunky-btn border-secondary-container shadow-chunky-sm hover:brightness-110 active:scale-95">
-                              Buy Snack (${item.maxServings || 1}x)
-                            </button>
-                          `
-                            : `
-                            <button class="min-h-[44px] bg-surface-container-highest text-on-surface-variant font-headline text-xs font-black px-4 py-2 rounded-xl border border-surface-container-low opacity-60 cursor-not-allowed">
-                              Need ${item.costCoins - (hero.coins || 0)} more
-                            </button>
-                          `
-                          : isEquipped
-                          ? `
-                        <span class="bg-primary/20 text-primary font-headline text-xs font-black px-4 py-2 rounded-xl border border-primary/40 inline-block">
-                          Equipped
-                        </span>
-                      `
-                          : isOwned
-                          ? `
-                        <button data-buy-gear-id="${item.id}" class="buy-gear-btn min-h-[44px] bg-surface-container-high hover:bg-surface-bright text-inverse-surface font-headline text-xs font-black px-4 py-2 rounded-xl border border-surface-container-highest chunky-btn-sm active:scale-95">
-                          Equip
-                        </button>
-                      `
-                          : canAfford
-                          ? `
-                        <button data-buy-gear-id="${item.id}" class="buy-gear-btn min-h-[44px] bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2 rounded-xl chunky-btn border-secondary-container shadow-chunky-sm hover:brightness-110 active:scale-95">
-                          Buy Now
-                        </button>
-                      `
-                          : `
-                        <button class="min-h-[44px] bg-surface-container-highest text-on-surface-variant font-headline text-xs font-black px-4 py-2 rounded-xl border border-surface-container-low opacity-60 cursor-not-allowed">
-                          Need ${item.costCoins - (hero.coins || 0)} more
-                        </button>
-                      `
-                      }
+                          <button class="min-h-[44px] bg-surface-container-highest text-on-surface-variant font-headline text-xs font-black px-4 py-2 rounded-xl border border-surface-container-low opacity-60 cursor-not-allowed">
+                            Need ${itemPrice - (hero.coins || 0)} more
+                          </button>
+                        `
+                        }
+                      </div>
                     </div>
-                  </div>
 
-                </div>
-              `;
-              })
-              .join('')}
-          </div>
+                  </div>
+                `;
+                })
+                .join('')}
+            </div>
+          `}
         </section>
       `
           : ''
@@ -396,7 +446,7 @@ export function renderShopView() {
               .map((theme) => {
                 const isUnlocked = (hero.unlockedThemes || []).includes(theme.id);
                 const isEquipped = hero.equippedProfileTheme === theme.id;
-                const canAfford = hero.coins >= theme.costCoins;
+                const canAfford = (hero.coins || 0) >= theme.costCoins;
 
                 return `
                 <div class="bg-linear-to-br ${theme.bgGradient} rounded-3xl p-5 border-2 ${
@@ -428,8 +478,8 @@ export function renderShopView() {
                   </div>
 
                   <div>
-                    <h3 class="font-headline text-base font-black text-white">${theme.name}</h3>
-                    <p class="text-xs text-white/75 font-medium mt-1">${theme.desc}</p>
+                    <h3 class="font-headline text-base font-black text-white">${escapeHtml(theme.name)}</h3>
+                    <p class="text-xs text-white/75 font-medium mt-1">${escapeHtml(theme.desc)}</p>
                   </div>
 
                   <div class="pt-3 border-t border-white/15 flex items-center justify-between">
@@ -455,7 +505,7 @@ export function renderShopView() {
                     `
                         : `
                       <button class="min-h-[44px] bg-surface-container-highest text-white/40 text-xs font-black px-4 py-2 rounded-xl opacity-60 cursor-not-allowed">
-                        Need ${theme.costCoins - hero.coins} more
+                        Need ${theme.costCoins - (hero.coins || 0)} more
                       </button>
                     `
                     }
@@ -493,10 +543,10 @@ export function renderShopView() {
                 <div class="bg-surface-container rounded-3xl p-5 border-2 border-surface-container-highest card-shadow flex flex-col justify-between gap-4 group hover:border-tertiary/60 transition-all">
                   
                   <div class="flex items-start gap-3.5">
-                    <div class="w-16 h-16 rounded-2xl bg-tertiary/15 text-tertiary flex items-center justify-center text-3xl shadow-inner border border-tertiary/30 shrink-0">
+                    <div class="w-16 h-16 rounded-2xl bg-tertiary/15 text-tertiary flex items-center justify-center text-3xl shadow-inner border border-tertiary/30 shrink-0 p-1">
                       ${
-                        reward.image?.startsWith('data:image') || reward.image?.startsWith('http')
-                          ? `<img src="${reward.image}" class="w-12 h-12 object-contain" />`
+                        reward.image?.startsWith('data:image') || reward.image?.startsWith('http') || reward.image?.startsWith('/')
+                          ? `<img src="${reward.image}" class="w-12 h-12 object-contain" alt="${escapeHtml(reward.title)}" />`
                           : `<span class="material-symbols-outlined text-3xl">${reward.icon || 'card_giftcard'}</span>`
                       }
                     </div>
@@ -550,23 +600,25 @@ export function renderShopView() {
 
 function renderShopItemInspectModal(item, hero, state) {
   const heroInventory = Array.isArray(hero?.inventory) ? hero.inventory : (state.inventory || []);
-  const isWeapon = item.category === 'Weapons';
-  const isFood = item.category === 'Snacks' || item.usageType === 'single_use' || item.usageType === 'multi_use';
+  const isWeapon = item.category === 'Weapons' || item.subCategory === 'weapon' || item.subcategory === 'weapon';
+  const isFood = item.category === 'Snacks' || item.subCategory === 'food' || item.usageType === 'single_use' || item.usageType === 'multi_use';
   let servingsCount = 0;
   if (hero?.consumables && hero.consumables[item.id]) {
     const cons = hero.consumables[item.id];
     servingsCount = typeof cons === 'object' ? (cons.servingsRemaining || 0) : cons;
   }
-  const isOwned = heroInventory.includes(item.id) || heroInventory.includes(item.title);
+  const isOwned = heroInventory.includes(item.id) || heroInventory.includes(item.title) || heroInventory.includes(item.name);
   let isEquipped = false;
   if (isWeapon) {
-    isEquipped = (hero?.equippedWeapon === item.id) || (hero?.equippedWeapon === item.title);
-  } else if (item.targetPetSocket) {
-    isEquipped = (hero?.equippedPetGear && (hero.equippedPetGear[item.targetPetSocket] === item.id || hero.equippedPetGear[item.targetPetSocket] === item.title)) || (state.equippedPetGear === item.title);
+    isEquipped = (hero?.equippedWeapon === item.id) || (hero?.equippedWeapon === item.title) || (hero?.equippedWeapon === item.name);
+  } else if (item.targetPetSocket || item.equipSlot) {
+    const socket = item.targetPetSocket || item.equipSlot;
+    isEquipped = Boolean(hero?.equippedPetGear && (hero.equippedPetGear[socket] === item.id || hero.equippedPetGear[socket] === item.title || hero.equippedPetGear[socket] === item.name)) || (state.equippedPetGear === item.title);
   } else {
     isEquipped = (state.equippedPetGear === item.title) || (Array.isArray(hero?.equippedGear) && hero.equippedGear.includes(item.id));
   }
-  const canAfford = (hero?.coins || 0) >= item.costCoins;
+  const itemPrice = item.costCoins || item.price || 0;
+  const canAfford = (hero?.coins || 0) >= itemPrice;
 
   return `
   <div id="shop-inspect-modal-backdrop" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in font-body">
@@ -574,7 +626,7 @@ function renderShopItemInspectModal(item, hero, state) {
       
       <!-- Modal Header -->
       <div class="w-full flex items-center justify-between border-b border-white/10 pb-3">
-        <span class="text-xs font-black uppercase text-secondary font-headline tracking-wider">${item.category}</span>
+        <span class="text-xs font-black uppercase text-secondary font-headline tracking-wider">${escapeHtml(item.category)}</span>
         <button id="shop-close-inspect-btn" class="w-8 h-8 rounded-xl bg-surface-container hover:bg-surface-bright flex items-center justify-center text-white/70 hover:text-white border border-white/20">
           <span class="material-symbols-outlined text-base">close</span>
         </button>
@@ -586,13 +638,13 @@ function renderShopItemInspectModal(item, hero, state) {
         ${item.modelUrl ? `
           <model-viewer src="${item.modelUrl}" auto-rotate camera-controls shadow-intensity="1.2" ar style="width: 100%; height: 100%; background: transparent;"></model-viewer>
         ` : `
-          <img src="${item.image}" alt="${escapeHtml(item.title)}" class="w-28 h-28 object-contain drop-shadow-xl group-hover:scale-105 transition-transform" />
+          ${renderRewardImage(item, 'w-28 h-28 object-contain drop-shadow-xl group-hover:scale-105 transition-transform', item.title || item.name)}
         `}
       </div>
 
       <!-- Title & Stat Badge -->
       <div class="flex flex-col gap-1 items-center">
-        <h3 class="font-headline text-xl font-black text-inverse-surface">${escapeHtml(item.title)}</h3>
+        <h3 class="font-headline text-xl font-black text-inverse-surface">${escapeHtml(item.title || item.name)}</h3>
         <p class="text-xs text-on-surface-variant max-w-xs font-medium">${escapeHtml(item.desc) || ''}</p>
         
         <div class="flex flex-wrap items-center justify-center gap-2 mt-2">
@@ -631,7 +683,7 @@ function renderShopItemInspectModal(item, hero, state) {
           </button>
         </div>
         <p class="text-xs text-white/90 font-medium italic">
-          "${escapeHtml(item.voiceLine || item.companionReaction) || `This ${escapeHtml(item.title)} has great heroic energy!`}"
+          "${escapeHtml(item.voiceLine || item.companionReaction || `This ${item.title || item.name} has great heroic energy!`)}"
         </p>
       </div>
 
@@ -639,7 +691,7 @@ function renderShopItemInspectModal(item, hero, state) {
       <div class="w-full pt-2 border-t border-white/10 flex items-center justify-between gap-3">
         <div class="flex items-center gap-1 text-secondary font-headline text-sm font-black">
           <span class="material-symbols-outlined text-base">monetization_on</span>
-          <span>${item.costCoins} Tokens</span>
+          <span>${itemPrice} Tokens</span>
         </div>
 
         <div>
@@ -657,7 +709,7 @@ function renderShopItemInspectModal(item, hero, state) {
                 Buy Weapon
               </button>
             ` : `
-              <span class="text-xs text-on-surface-variant font-bold">Need ${item.costCoins - (hero?.coins || 0)} more</span>
+              <span class="text-xs text-on-surface-variant font-bold">Need ${itemPrice - (hero?.coins || 0)} more</span>
             `}
           ` : isFood ? `
             ${servingsCount > 0 ? `
@@ -666,10 +718,10 @@ function renderShopItemInspectModal(item, hero, state) {
               </button>
             ` : canAfford ? `
               <button data-buy-gear-id="${item.id}" class="buy-gear-btn bg-secondary text-on-secondary font-headline text-xs font-black px-5 py-2.5 rounded-xl chunky-btn border-secondary-container shadow-sm hover:brightness-110 active:scale-95">
-                Buy Snack (${item.maxServings || 1}x)
+                Buy Snack (${item.maxServings || item.servingsMax || 1}x)
               </button>
             ` : `
-              <span class="text-xs text-on-surface-variant font-bold">Need ${item.costCoins - (hero?.coins || 0)} more</span>
+              <span class="text-xs text-on-surface-variant font-bold">Need ${itemPrice - (hero?.coins || 0)} more</span>
             `}
           ` : `
             ${isEquipped ? `
@@ -685,7 +737,7 @@ function renderShopItemInspectModal(item, hero, state) {
                 Buy Now
               </button>
             ` : `
-              <span class="text-xs text-on-surface-variant font-bold">Need ${item.costCoins - (hero?.coins || 0)} more</span>
+              <span class="text-xs text-on-surface-variant font-bold">Need ${itemPrice - (hero?.coins || 0)} more</span>
             `}
           `}
         </div>
@@ -735,7 +787,7 @@ export function attachShopListeners() {
         } else if (item.companionReaction) {
           speakRex(item.companionReaction);
         } else {
-          speakRex(`Look at this ${item.title}! Super hero power!`);
+          speakRex(`Look at this ${item.title || item.name}! Super hero power!`);
         }
         store.notify();
       }
@@ -783,7 +835,7 @@ export function attachShopListeners() {
   const replayVoiceBtn = document.getElementById('shop-replay-voice-btn');
   if (replayVoiceBtn && inspectingShopItem) {
     replayVoiceBtn.addEventListener('click', () => {
-      const voiceText = inspectingShopItem.voiceLine || inspectingShopItem.companionReaction || `This ${inspectingShopItem.title} is awesome!`;
+      const voiceText = inspectingShopItem.voiceLine || inspectingShopItem.companionReaction || `This ${inspectingShopItem.title || inspectingShopItem.name} is awesome!`;
       speakRex(voiceText);
     });
   }
@@ -799,7 +851,7 @@ export function attachShopListeners() {
       if (item?.voiceLine) {
         speakRex(item.voiceLine);
       } else {
-        speakRex(`Equipped ${item?.title || 'weapon'} for battle!`);
+        speakRex(`Equipped ${item?.title || item?.name || 'weapon'} for battle!`);
       }
       inspectingShopItem = null;
       store.notify();
@@ -823,15 +875,15 @@ export function attachShopListeners() {
       const id = btn.getAttribute('data-buy-gear-id');
       const state = store.getState();
       const item = (state.digitalGear || []).find((g) => g.id === id);
-      const isOwned = (state.selectedHero?.inventory || []).includes(item?.title) || (state.selectedHero?.inventory || []).includes(item?.id);
+      const isOwned = (state.selectedHero?.inventory || []).includes(item?.title) || (state.selectedHero?.inventory || []).includes(item?.id) || (state.selectedHero?.inventory || []).includes(item?.name);
 
       if (item && isOwned && item.category !== 'Snacks') {
-        speakRex(`Awesome! You equipped the ${item.title}! Super hero power!`);
-      } else if (item && (state.selectedHero?.coins || 0) >= item.costCoins) {
+        speakRex(`Awesome! You equipped the ${item.title || item.name}! Super hero power!`);
+      } else if (item && (state.selectedHero?.coins || 0) >= (item.costCoins || item.price || 0)) {
         if (item.category === 'Snacks') {
           speakRex(item.voiceLine || "Delicious pet snacks have arrived! Feed them to Rex!");
         } else if (item.category === 'Weapons') {
-          speakRex(item.voiceLine || `Awesome! You got the ${item.title}! Ready for battle!`);
+          speakRex(item.voiceLine || `Awesome! You got the ${item.title || item.name}! Ready for battle!`);
         } else {
           speakRex(item.voiceLine || "A mystery treasure chest has arrived! Tap it fast to crack it open!");
         }
