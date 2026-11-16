@@ -94,7 +94,9 @@ const testFiles = [
   'scratch/verify_cloudflare_worker_origin.mjs',
   // Starlight Arcade Classic Mini-Game Expansion Suite:
   'scratch/verify_arcade_classic_games_expansion.mjs',
-  'scratch/verify_code_scanning_fixes.mjs'
+  'scratch/verify_code_scanning_fixes.mjs',
+  // Milestone Parent Analytics and ECharts Dashboard E2E Suite:
+  'scratch/verify_parent_analytics_e2e.mjs'
 ];
 
 let allPassed = true;

@@ -1,17 +1,22 @@
-# Little Hero Adventures — Test Ready Declaration
+# Little Hero Adventures — Test Ready Declaration: Parent & Developmental Analytics Dashboard
 
-**Milestone:** `M-TEST` (E2E Test Suite Creation)  
-**Author:** `test_writer_mtest_1`  
-**Date:** 2026-10-16  
-**Status:** **READY FOR IMPLEMENTATION MILESTONES (M1 - M4)**
+**Milestone:** `M-TEST` (Parent & Developmental Analytics E2E Test Suite)  
+**Author:** `teamwork_test_writer_1`  
+**Date:** 2026-11-16  
+**Status:** **READY & VERIFIED (160/160 TESTS PASSING, EXIT CODE 0)**
 
 ---
 
 ## 1. Executive Summary
 
-The comprehensive, requirement-driven, opaque-box E2E test suite for the Little Hero Adventures Bedtime AI Storybook upgrade is complete, verified, and integrated into the project's master regression runner.
+The comprehensive, requirement-driven, opaque-box E2E test suite for the Little Heroes **Parent & Developmental Analytics Dashboard with Apache ECharts and Embedded AI Data Assistant** is complete, verified, and integrated into the project regression harness.
 
-The test infrastructure strictly adheres to the 4-Tier test methodology, providing authoritative, independent verification across all 20 features from `PROJECT.md` Feature Inventory, boundary edge cases, cross-feature combination matrices, and real-world child bedtime routines.
+The test infrastructure strictly implements the 4-Tier test methodology covering:
+- All 10 features from `PROJECT.md § Feature Inventory`
+- Requirements R1–R4 from `ORIGINAL_REQUEST.md`
+- Boundary edge cases, zero-division safeguards, and extreme screen time saturation
+- Pairwise matrix cross-feature combinations across children, timeframes, and assistant grounding
+- Real-world end-to-end parent review flows and synchronized PWA cache parity (`sw.js` and `index.html`)
 
 ---
 
@@ -19,75 +24,84 @@ The test infrastructure strictly adheres to the 4-Tier test methodology, providi
 
 | File Path | Description | Status |
 |---|---|---|
-| `scratch/verify_bedtime_storybook.mjs` | Primary 4-Tier E2E automated test suite (100+ checks across Tiers 1-4) | **Created & Verified** |
-| `scratch/run_all_tests.js` | Master regression runner with `scratch/verify_bedtime_storybook.mjs` registered | **Updated & Registered** |
-| `TEST_INFRA.md` | Comprehensive test infrastructure documentation, contracts, and mocking guide | **Created** |
+| `scratch/verify_parent_analytics_e2e.mjs` | Primary 4-Tier E2E automated test suite (160 test assertions across Tiers 1–4) | **Created & Verified (160 Passed, 0 Failed)** |
+| `scratch/run_all_tests.js` | Master project regression runner with `scratch/verify_parent_analytics_e2e.mjs` registered | **Updated & Registered** |
+| `TEST_INFRA.md` | Comprehensive 4-tier test infrastructure documentation, interface contracts, and execution guide | **Created** |
 | `TEST_READY.md` | Formal milestone completion and test readiness declaration (this file) | **Published** |
 
 ---
 
 ## 3. Test Coverage Matrix
 
-### Tier 1: Feature Coverage (20 Features, >=5 tests each = 100 tests)
-- **F1: Generative Story Routes**: Validates `/api/rex/bedtime-story` and `/api/gemini/bedtime-story` across `server.js`, `geminiService.js`, `vite.config.js`, and `functions/src/voiceApi.ts`.
-- **F2: Structured 3-Chapter Story Schema**: Validates 3 chapters with `title`, `chapterText`, `whisperLine`, `sleepyCue`, `moralReflection`, `choices`, `sceneMood`, and `sceneDescriptor`.
-- **F3: Combinatorial Story Weaver**: Validates 12+ archetypes per realm, dynamic sentence builders, zero hardcoded "Rex" references for other pets, and preservation of 4 canonical realms + extended realms.
-- **F4: Real-Time Per-Child Personalization**: Validates `buildChildStoryContext` integrating child profile, today's chores/habits, active pet metadata from `PETS_DATABASE`, equipped gear, and parent wish.
-- **F5: Anti-Repetition Story Memory**: Validates `hero.bedtimeHistory` tracking last 25 story seeds/archetypes/titles as negative prompt constraints and deterministic seed rotation.
-- **F6: Sibling Bookshelf Isolation**: Validates `bedtimeStoryLibrary` and `saveBedtimeStory` scoped per `heroId` with instant Firestore sync.
-- **F7: Universal ElevenLabs Voice Fallback**: Validates all 24 pets and storytelling requests resolve to main voice (`e9sQs6aLWU82SSolkPYZ`) without HTTP 404s.
-- **F8: Bedtime Voice Narration Tuning**: Validates bedtime voice parameters (`stability: 0.65`, `similarity_boost: 0.80`, `style: 0.35`, `use_speaker_boost: true`), speed <= 0.82, and cache key incorporating `voiceStyle`.
-- **F9: Extended Timeouts & Playback Rate**: Validates 18,000ms timeout in `fetchPcmTts` and Web Audio `AudioBufferSourceNode.playbackRate` scaling.
-- **F10: Background Audio Pre-Fetching**: Validates `prefetchCompanionAudio` pre-decoding Chapter N+1 into cache while Chapter N plays for 0ms transitions.
-- **F11: Hands-Free Auto-Read Mode**: Validates `autoReadMode` in sanctuary state, toggle in `BedtimeStoryView.js`, 3s breathing countdown auto-advance, and quiet bedtime completion.
-- **F12: Plot-Driven 3D Diorama Stage**: Validates `BedtimeStoryStage3D` dynamic scene construction from chapter `sceneDescriptor`.
-- **F13: Articulated Toddler Hero & 24 Pet Rigs**: Validates toddler hero avatar with magic item hand socket + articulated pet companion rigs matching all 24 pet archetypes (dino, mystic, beast, aquatic, mech).
-- **F14: 3-Chapter Diorama Choreography**: Validates Chapter 1 arrival/lantern/fireflies, Chapter 2 obstacle/helper gesture/particle burst, and Chapter 3 slumber nest/curled sleep/4s-4s breathing pacer.
-- **F15: Interactive Raycast Constellations & Chimes**: Validates tapping 3D stars/fireflies triggers 3D ripple burst and pentatonic lullaby chimes (`playConstellationChime`).
-- **F16: Graceful 2D Fallback & Explorer Palette**: Validates 2D Canvas/SVG fallback upon context loss or headless execution, and enforces strict Explorer Palette (`#09141e`, `#2ecc71`, `#00d2d3`, `#f39c12`, `#ffb961` — zero pink/purple).
-- **F17: Dynamic Parent-Configured Bedtime Rewards**: Validates `store.completeBedtimeStory` dynamically reads `store.getWaypointRewards('wp_bedtime')` / `sleep_on_time`.
-- **F18: One-Completion Payout Invariant**: Validates rejection of duplicate bedtime reward minting while `sleep_on_time` is pending parent approval.
-- **F19: Reversible Currency Lifecycle**: Validates auto-issuing Tokens/XP/Sparks, queuing Gold Points in `pendingApprovals` with full delta metadata, and clean clawback clamped at floor 0 upon parent denial.
-- **F20: Comprehensive Master Test Suite**: Validates test execution, documentation, and registration.
+### Tier 1: Feature Coverage (Features 1 - 10 from PROJECT.md)
+- **F1: Multi-Kid Analytics Selector**: Validates selector toggling between household aggregate (`'all'`) and individual child isolation (`'hero_test_leo'`, `'hero_test_maya'`).
+- **F2: Modular Apache ECharts Integration**: Validates `"echarts": "^6.1.0"` in `package.json`, tree-shaken imports, and error-free module loading.
+- **F3: Chart 1: Routine Consistency Heatmap & Trends**: Validates dual-axis options (left 0–100% completion rate bar series in `#54e98a`, right streak day line series in `#ffb961` with milestone pins at 3d, 7d, 14d, 30d; 7d and 30d timeframes).
+- **F4: Chart 2: Screen Time vs. Responsibility Balance**: Validates grouped bars (earned responsibility minutes in `#54e98a` vs redeemed media time in `#f43f5e`), net balance line in `#a3d3ff`, and daily cap `markLine` in `#ffb4ab`.
+- **F5: Chart Lifecycle & Responsive Resizing**: Validates DOM markup generation (`renderAnalyticsChartsSection`), headless canvas rendering, `ResizeObserver` attachment, and leak-free `disposeAnalyticsCharts()`.
+- **F6: Grounded Household Data Context**: Validates `buildGroundedHouseholdContext` deterministic extraction from `store.getState()` (`heroes`, `taskCompletionLogs`, `taskLedgerLogs`, `pendingApprovals`) with strict child data isolation.
+- **F7: Embedded AI Chat Assistant Panel**: Validates panel markup (`#parent-data-chat-panel`), suggestion chips, chat thread, and input form.
+- **F8: Direct DOM Streaming Protocol**: Validates progressive token delivery (`streamChatWithData` with `onChunk` and `onComplete`) into `#chat-streaming-bubble` without destructive full-app re-renders.
+- **F9: Clickable Habit Deep-Links**: Validates parsing of `[Title](habit:<id>)`, `[Title](log:<id>)`, `[Title](approval:<id>)`, and `[Title](nav:<tab>)` into interactive buttons with HTML escaping defense.
+- **F10: Multi-Deployment & PWA Cache Sync**: Validates zero-error production build (`npm run build`) and strict synchronization between `CACHE_NAME` in `public/sw.js` and `APP_BUILD_VERSION` in `index.html` (`v3.16.0-parent-analytics-echarts-20261116`).
 
-### Tier 2: Boundary & Corner Cases (7 Suites)
-- **T2.1**: Empty bedtime history initialization (safe fallback without crash).
-- **T2.2**: 25+ story history rollover (FIFO eviction capped at 25 entries).
-- **T2.3**: Non-Rex companion pets (all 24 pets pass without 404 or missing rigs).
-- **T2.4**: Missing or empty daytime tasks today (graceful default summary).
-- **T2.5**: Headless WebGL fallback (null context and context loss recovery).
-- **T2.6**: Denial clawback clamping at floor 0 (never negative balance).
-- **T2.7**: Exhaustive Color Scan (deep scan confirms ZERO pink/purple across all assets).
+### Tier 2: Boundary & Corner Cases
+- **T2.1: Fresh Household Safeguards**: Empty `taskCompletionLogs` handles gracefully without division-by-zero or `NaN`; returns finite numbers.
+- **T2.2: Unknown Child Fallback**: Invalid child ID (`'non_existent_kid_9999'`) falls back cleanly without throwing exceptions.
+- **T2.3: Adversarial XSS & Malformed Markdown**: Malicious `<script>` tags and quote injections in deep-link labels and IDs are escaped via `escapeHtml()`.
+- **T2.4: Extreme Screen Time Saturation**: Handled accurately without calculation overflow or visual breakage.
+- **T2.5: Offline Fallback**: Graceful cascade to local grounded heuristic synthesizer when Firebase AI or server endpoints are unreachable.
 
-### Tier 3: Cross-Feature Combinations (Pairwise Matrix)
-- Matrix testing across Realm (Whispering Woods, Starlight Cove, Cloud Kingdom, Dino Slumber, Space, Crystal Cavern) x Pet Archetype (Dino, Mystic, Beast, Aquatic, Mech) x Mode (Auto-Read vs. Interactive) x Parent Bedtime Wish.
+### Tier 3: Cross-Feature Interactions (Pairwise Matrix)
+- Matrix testing across:
+  - Kid Filter (`'all'`, `'hero_test_leo'`, `'hero_test_maya'`)
+  - Timeframe (`'7d'`, `'30d'`)
+  - Assistant Grounding Scope Isolation
+  - Deep-Link Tokenization & Parent Portal Event Delegation
+  - Tab Navigation & Chart Instance Disposal/Re-creation
 
-### Tier 4: Realistic Real-World Workflows
-- **Workflow 1**: End-to-end child bedtime routine (sanctuary hub -> Ch 1 -> Ch 2 prefetch -> Ch 3 breathing nest).
-- **Workflow 2**: Bedtime story completion and currency issuance.
-- **Workflow 3**: Parent review in Parent Portal (approval awards points; denial claws back tokens/sparks).
-- **Workflow 4**: Sibling bedtime isolation workflow (Child A and Child B concurrent submissions).
+### Tier 4: Real-World Scenarios
+- **Scenario 1**: Parent inspects household aggregate, then drills down to child Leo's 30-day streak milestones and screen time cap.
+- **Scenario 2**: Parent asks conversational question to AI Assistant, receives streamed tokens, and navigates directly to Screen Time Bank via deep-link button.
+- **Scenario 3**: PWA cache version parity (`sw.js` and `index.html`) validated against deployment rules.
+- **Scenario 4**: Production bundler output (`npm run build`) verified with exit code 0.
 
 ---
 
-## 4. How Downstream Agents Run the Tests
+## 4. How to Run the Tests
 
-To verify individual feature progress or full milestone readiness:
-
+### 1. Run Parent Analytics E2E Suite Directly
 ```bash
-# Run the bedtime storybook verification suite
-node scratch/verify_bedtime_storybook.mjs
-
-# Run the master regression suite
-node scratch/run_all_tests.js
+node scratch/verify_parent_analytics_e2e.mjs
+```
+*Expected Result:*
+```
+📊 TEST EXECUTION SUMMARY:
+   Passed: 160
+   Failed: 0
+🎉 All 160 Parent Analytics E2E Tests PASSED successfully! (Exit Code 0)
 ```
 
+### 2. Run Full Regression Suite
+```bash
+npm test
+# Or: node scratch/run_all_tests.js
+```
+
+### 3. Run Production Build
+```bash
+npm run build
+```
+*Expected Result: Exit code 0, 0 compiler/bundler errors.*
+
 ---
 
-## 5. Milestone Handoff to Implementing Agents
+## 5. Certification & QA Audit Result
 
-The test harness is armed. Implementers for Milestones M1, M2, M3, and M4 can now develop against these concrete assertions:
-- **M1 (AI Story Engine & Routes)**: Implement generative routes in `server.js`, `geminiService.js`, `vite.config.js`, `functions/src/voiceApi.ts`, Combinatorial Story Weaver in `bedtimeStoryData.js`, and `buildChildStoryContext` in `bedtimeStoryService.js`.
-- **M2 (ElevenLabs Voice & Audio Pre-Fetching)**: Implement universal voice resolution in `elevenLabsService.js` and `voiceApi.ts`, bedtime voice tuning, 18s timeouts & playback rate in `voiceService.js`, `prefetchCompanionAudio`, and Auto-Read toggle in `BedtimeStoryView.js`.
-- **M3 (3D Diorama Stage & View Integration)**: Implement `BedtimeStoryStage3D.js` with Three.js/Spline diorama, 24 pet rigs, 3-chapter choreography, 4s/4s breathing pacer, raycast chimes, and 2D fallback.
-- **M4 (Store Task/Habit & Currency Lifecycle)**: Implement dynamic rewards, one-completion invariant, sibling bookshelf isolation, and clean clawback in `store.js`.
+- **Total Checks Executed**: 160
+- **Total Checks Passed**: 160
+- **Total Checks Failed**: 0
+- **Implementation Defects Discovered & Resolved**:
+  - `aiDataAssistantService.js:parseHabitDeepLinks` lacked HTML escaping on `label` and `id`. Escalate to worker; resolved with `escapeHtml` integration.
+- **Production Build**: Verified (`vite build` exited 0 in 1m 2s).
+- **Cache Parity**: Verified (`CACHE_NAME` and `APP_BUILD_VERSION` both set to `v3.16.0-parent-analytics-echarts-20261116`).

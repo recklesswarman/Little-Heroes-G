@@ -296,7 +296,7 @@ function createMockElement(tag = 'div') {
       el.appendChild(newChild);
       return newChild;
     },
-    getContext: () => ({
+    getContext: () => new Proxy({
       clearRect: () => {},
       fillRect: () => {},
       beginPath: () => {},
@@ -317,7 +317,13 @@ function createMockElement(tag = 'div') {
       strokeText: () => {},
       createLinearGradient: () => ({ addColorStop: () => {} }),
       createRadialGradient: () => ({ addColorStop: () => {} }),
-      getImageData: () => ({ data: new Uint8ClampedArray(64 * 48 * 4) })
+      getImageData: () => ({ data: new Uint8ClampedArray(64 * 48 * 4) }),
+      canvas: el
+    }, {
+      get(target, prop) {
+        if (prop in target) return target[prop];
+        return () => {};
+      }
     })
   };
 

@@ -23,6 +23,15 @@ import {
 import { PETS_DATABASE } from '../data/petsData.js';
 import { renderStoryControlsTab, bindStoryControlsTab } from './StoryControlsPanel.js';
 import { speakCompanion } from '../services/voiceService.js';
+import {
+  renderAnalyticsChartsSection,
+  initAnalyticsCharts,
+  disposeAnalyticsCharts
+} from '../components/ParentAnalyticsCharts.js';
+import {
+  streamChatWithData,
+  parseHabitDeepLinks
+} from '../services/aiDataAssistantService.js';
 
 let activeAdminTab = 'approvals'; // approvals, screentime, reports, kids, tasks, rewards, pricing, studio, analytics, settings
 let editingCompanionPhraseId = null;
@@ -122,6 +131,12 @@ let selectedReportWeekOffset = 0;
 let currentDevelopmentalReport = null;
 let isLoadingReport = false;
 let zoomedProofPhotoUrl = null;
+
+// Parent & Developmental Analytics State
+let selectedAnalyticsKidId = 'all';
+let selectedAnalyticsTimeframe = '7d';
+let analyticsChatMessages = [];
+let isAssistantStreaming = false;
 
 export function renderParentPortalView() {
   const state = store.getState();
@@ -2838,15 +2853,18 @@ export function renderParentPortalView() {
       ${
         activeAdminTab === 'analytics'
           ? `
-        <section class="flex flex-col gap-5 animate-fade-in">
-          <h2 class="font-headline text-lg font-black text-inverse-surface flex items-center gap-2">
-            <span class="material-symbols-outlined text-secondary">monitoring</span>
-            Sibling Consistency & Activity Ledger
-          </h2>
+        <section class="flex flex-col gap-6 animate-fade-in">
+          <div class="flex items-center justify-between">
+            <h2 class="font-headline text-lg font-black text-inverse-surface flex items-center gap-2">
+              <span class="material-symbols-outlined text-secondary">monitoring</span>
+              Parent & Developmental Analytics Dashboard
+            </h2>
+          </div>
 
-          <!-- Multi-Kid Performance Cards -->
+          <!-- Multi-Kid Performance Summary Cards -->
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             ${heroes
+              .filter((h) => selectedAnalyticsKidId === 'all' || h.id === selectedAnalyticsKidId)
               .map((h) => {
                 return `
                 <div class="bg-surface-container rounded-3xl p-4 border-2 border-surface-container-highest card-shadow flex flex-col items-center text-center gap-2">
@@ -2854,7 +2872,7 @@ export function renderParentPortalView() {
                   <span class="font-headline text-base font-black text-inverse-surface">${escapeHtml(h.name)}</span>
                   <span class="text-[10px] font-black text-secondary bg-surface-container-high px-2 py-0.5 rounded-full">${escapeHtml(h.role)}</span>
                   
-                  <div class="w-full grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-surface-container-highest text-xs font-black">
+                  <div class="w-full grid grid-cols-3 gap-1 mt-2 pt-2 border-t border-surface-container-highest text-xs font-black">
                     <div class="flex flex-col">
                       <span class="text-[9px] text-on-surface-variant uppercase">Points ⭐</span>
                       <span class="text-tertiary">${h.points}</span>
@@ -2863,11 +2881,108 @@ export function renderParentPortalView() {
                       <span class="text-[9px] text-on-surface-variant uppercase">Tokens 🪙</span>
                       <span class="text-secondary">${h.coins}</span>
                     </div>
+                    <div class="flex flex-col">
+                      <span class="text-[9px] text-on-surface-variant uppercase">Streak 🔥</span>
+                      <span class="text-amber-400">${h.streak || 1}d</span>
+                    </div>
                   </div>
                 </div>
               `;
               })
               .join('')}
+          </div>
+
+          <!-- Apache ECharts Data Visualizations -->
+          ${renderAnalyticsChartsSection(selectedAnalyticsKidId, selectedAnalyticsTimeframe)}
+
+          <!-- Embedded AI "Chat with Your Data" Assistant Panel -->
+          <div id="parent-data-chat-panel" class="bg-surface-container rounded-3xl p-5 sm:p-6 border-2 border-primary/40 card-shadow flex flex-col gap-4">
+            <div class="flex items-center justify-between border-b border-surface-container-highest pb-3">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-primary/20 text-primary flex items-center justify-center text-xl shadow-inner">
+                  <span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">psychology</span>
+                </div>
+                <div>
+                  <h3 class="font-headline text-base font-black text-inverse-surface flex items-center gap-2">
+                    <span>"Chat with Your Data" Assistant</span>
+                    <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30">Gemini Grounded</span>
+                  </h3>
+                  <p class="text-xs text-on-surface-variant font-bold">Ask questions grounded in verified routine logs, streaks, and screen time balance for ${
+                    selectedAnalyticsKidId === 'all' ? 'all children' : (heroes.find(h => h.id === selectedAnalyticsKidId)?.name || 'this child')
+                  }</p>
+                </div>
+              </div>
+              <span class="text-xs font-black text-on-surface-variant bg-surface-container-high px-3 py-1 rounded-xl hidden sm:inline-block">
+                ${selectedAnalyticsKidId === 'all' ? 'Scope: Household' : `Scope: ${heroes.find(h => h.id === selectedAnalyticsKidId)?.name || 'Kid'}`}
+              </span>
+            </div>
+
+            <!-- Quick Suggested Query Chips -->
+            <div class="flex items-center gap-2 overflow-x-auto pb-1 hide-scrollbar" id="analytics-chat-suggestions">
+              <button type="button" class="analytics-query-chip shrink-0 px-3 py-1.5 rounded-xl bg-surface-container-high hover:bg-surface-bright text-xs font-bold text-on-surface border border-surface-container-highest transition-all flex items-center gap-1.5 cursor-pointer">
+                <span>🔥 How are routine streaks going?</span>
+              </button>
+              <button type="button" class="analytics-query-chip shrink-0 px-3 py-1.5 rounded-xl bg-surface-container-high hover:bg-surface-bright text-xs font-bold text-on-surface border border-surface-container-highest transition-all flex items-center gap-1.5 cursor-pointer">
+                <span>⚖️ Analyze screen time balance vs habits</span>
+              </button>
+              <button type="button" class="analytics-query-chip shrink-0 px-3 py-1.5 rounded-xl bg-surface-container-high hover:bg-surface-bright text-xs font-bold text-on-surface border border-surface-container-highest transition-all flex items-center gap-1.5 cursor-pointer">
+                <span>⏳ Are there any pending approvals?</span>
+              </button>
+              <button type="button" class="analytics-query-chip shrink-0 px-3 py-1.5 rounded-xl bg-surface-container-high hover:bg-surface-bright text-xs font-bold text-on-surface border border-surface-container-highest transition-all flex items-center gap-1.5 cursor-pointer">
+                <span>👨‍👩‍👧‍👦 Sibling consistency summary</span>
+              </button>
+            </div>
+
+            <!-- Scrollable Chat Messages Container -->
+            <div id="analytics-chat-thread" class="min-h-48 max-h-80 overflow-y-auto p-4 rounded-2xl bg-surface-container-lowest/80 border border-surface-container-highest flex flex-col gap-3">
+              ${analyticsChatMessages.length === 0 ? `
+                <div class="text-center py-6 flex flex-col items-center gap-2 text-on-surface-variant text-xs">
+                  <span class="material-symbols-outlined text-3xl text-primary/60">forum</span>
+                  <p class="font-bold">Ask anything about daily habit logs, streak milestones, or media time balance.</p>
+                  <p class="text-[11px] opacity-80">Click any suggestion chip above or type your question below.</p>
+                </div>
+              ` : analyticsChatMessages.map(msg => `
+                <div class="flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}">
+                  <span class="text-[10px] font-black uppercase text-on-surface-variant mb-1 px-1">${msg.role === 'user' ? 'Parent' : 'AI Data Assistant'}</span>
+                  <div class="p-3.5 rounded-2xl max-w-xl text-xs sm:text-sm font-semibold leading-relaxed ${
+                    msg.role === 'user'
+                      ? 'bg-primary text-on-primary rounded-br-none shadow-xs'
+                      : 'bg-surface-container-high text-inverse-surface border border-surface-container-highest rounded-bl-none shadow-xs'
+                  }">
+                    ${parseHabitDeepLinks(msg.text)}
+                  </div>
+                </div>
+              `).join('')}
+
+              <!-- Active Streaming Container (Direct DOM target, non-destructive) -->
+              <div id="chat-streaming-bubble" class="flex flex-col items-start ${isAssistantStreaming ? '' : 'hidden'}">
+                <span class="text-[10px] font-black uppercase text-primary mb-1 px-1 flex items-center gap-1">
+                  <span class="w-2 h-2 rounded-full bg-primary animate-ping"></span>
+                  <span>AI Data Assistant (Streaming...)</span>
+                </span>
+                <div id="chat-streaming-content" class="p-3.5 rounded-2xl max-w-xl text-xs sm:text-sm font-semibold leading-relaxed bg-surface-container-high text-inverse-surface border border-primary/30 rounded-bl-none shadow-xs">
+                </div>
+              </div>
+            </div>
+
+            <!-- Input Bar -->
+            <form id="analytics-chat-form" class="flex items-center gap-2">
+              <input
+                id="analytics-chat-input"
+                type="text"
+                autocomplete="off"
+                placeholder="Ask about routines, screen balance, streaks, or pending chores..."
+                class="flex-1 bg-surface-container-high border border-surface-container-highest focus:border-primary focus:ring-1 focus:ring-primary rounded-2xl px-4 py-3 text-xs sm:text-sm text-on-surface placeholder:text-on-surface-variant/60 font-semibold transition-all outline-none"
+              />
+              <button
+                type="submit"
+                id="analytics-chat-send-btn"
+                class="bg-primary hover:brightness-110 text-on-primary font-headline text-xs font-black px-4 sm:px-5 py-3 rounded-2xl chunky-btn shadow-md active:scale-95 flex items-center gap-1.5 shrink-0 transition-all cursor-pointer"
+              >
+                <span class="material-symbols-outlined text-base">send</span>
+                <span class="hidden sm:inline">Ask AI</span>
+              </button>
+            </form>
           </div>
 
           <!-- AI Pediatric Habit Insights & Coaching Card (Powered by Gemini) -->
@@ -2973,6 +3088,11 @@ export function renderParentPortalView() {
                 </thead>
                 <tbody class="divide-y divide-surface-container-highest/40">
                   ${logs
+                    .filter((log) => {
+                      if (selectedAnalyticsKidId === 'all') return true;
+                      const targetHero = heroes.find((h) => h.id === selectedAnalyticsKidId);
+                      return targetHero && log.kid && log.kid.includes(targetHero.name);
+                    })
                     .map(
                       (log) => `
                     <tr class="hover:bg-surface-container-high/40 transition-colors">
@@ -2995,74 +3115,81 @@ export function renderParentPortalView() {
               <div>
                 <h3 class="font-headline text-sm font-black text-inverse-surface flex items-center gap-2">
                   <span class="material-symbols-outlined text-primary text-base">history</span>
-                  Routine & Task Completion Audit Log (${completionLogs.length})
+                  Routine & Task Completion Audit Log (${
+                    completionLogs.filter((l) => selectedAnalyticsKidId === 'all' || !l.heroId || l.heroId === selectedAnalyticsKidId).length
+                  })
                 </h3>
                 <p class="text-[11px] text-on-surface-variant font-bold">Every recurring cycle is recorded with an exact timestamp for parental review.</p>
               </div>
             </div>
 
-            ${
-              completionLogs.length === 0
-                ? `
-              <div class="p-6 text-center text-xs text-on-surface-variant">
-                No routine completions logged yet. When kids complete chores or habits, individual records with timestamps appear here.
-              </div>
-            `
-                : `
-              <div class="overflow-x-auto">
-                <table class="w-full text-left text-xs font-bold">
-                  <thead>
-                    <tr class="border-b border-surface-container-highest text-on-surface-variant text-[10px] uppercase">
-                      <th class="py-2">Date & Time</th>
-                      <th class="py-2">Hero</th>
-                      <th class="py-2">Routine / Chore</th>
-                      <th class="py-2">Zone</th>
-                      <th class="py-2">Tokens 🪙</th>
-                      <th class="py-2">Points ⭐ Status</th>
-                      <th class="py-2 text-right">Signed Off</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-surface-container-highest/40">
-                    ${completionLogs
-                      .map((log) => {
-                        const isApproved = log.status === 'approved';
-                        const isPending = log.status === 'pending';
-                        const statusPill = isApproved
-                          ? `<span class="px-2 py-0.5 rounded-md text-[10px] font-black bg-primary/20 text-primary border border-primary/30">✓ +${log.pointsAwarded} ⭐ Approved</span>`
-                          : isPending
-                          ? `<span class="px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-500/20 text-amber-400 border border-amber-500/30">⏳ +${log.pointsAwarded} ⭐ Pending</span>`
-                          : `<span class="px-2 py-0.5 rounded-md text-[10px] font-black bg-error/20 text-error border border-error/30">✕ Declined</span>`;
+            ${(() => {
+              const filteredList = completionLogs.filter(
+                (l) => selectedAnalyticsKidId === 'all' || !l.heroId || l.heroId === selectedAnalyticsKidId
+              );
+              if (filteredList.length === 0) {
+                return `
+                  <div class="p-6 text-center text-xs text-on-surface-variant">
+                    No routine completions logged yet for this selection. When kids complete chores or habits, individual records with timestamps appear here.
+                  </div>
+                `;
+              }
+              return `
+                <div class="overflow-x-auto">
+                  <table class="w-full text-left text-xs font-bold">
+                    <thead>
+                      <tr class="border-b border-surface-container-highest text-on-surface-variant text-[10px] uppercase">
+                        <th class="py-2">Date & Time</th>
+                        <th class="py-2">Hero</th>
+                        <th class="py-2">Routine / Chore</th>
+                        <th class="py-2">Zone</th>
+                        <th class="py-2">Tokens 🪙</th>
+                        <th class="py-2">Points ⭐ Status</th>
+                        <th class="py-2 text-right">Signed Off</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-surface-container-highest/40">
+                      ${filteredList
+                        .map((log) => {
+                          const isApproved = log.status === 'approved';
+                          const isPending = log.status === 'pending';
+                          const statusPill = isApproved
+                            ? `<span class="px-2 py-0.5 rounded-md text-[10px] font-black bg-primary/20 text-primary border border-primary/30">✓ +${log.pointsAwarded} ⭐ Approved</span>`
+                            : isPending
+                            ? `<span class="px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-500/20 text-amber-400 border border-amber-500/30">⏳ +${log.pointsAwarded} ⭐ Pending</span>`
+                            : `<span class="px-2 py-0.5 rounded-md text-[10px] font-black bg-error/20 text-error border border-error/30">✕ Declined</span>`;
 
-                        const timeDisplay = log.timeString && log.dateString
-                          ? `${log.dateString} ${log.timeString}`
-                          : log.completedAt
-                          ? new Date(log.completedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })
-                          : 'Just now';
+                          const timeDisplay = log.timeString && log.dateString
+                            ? `${log.dateString} ${log.timeString}`
+                            : log.completedAt
+                            ? new Date(log.completedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })
+                            : 'Just now';
 
-                        const approvedDisplay = log.approvedAt
-                          ? new Date(log.approvedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                          : isPending
-                          ? 'Awaiting Sign-off'
-                          : 'Declined';
+                          const approvedDisplay = log.approvedAt
+                            ? new Date(log.approvedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                            : isPending
+                            ? 'Awaiting Sign-off'
+                            : 'Declined';
 
-                        return `
-                        <tr class="hover:bg-surface-container-high/40 transition-colors">
-                          <td class="py-2 text-on-surface-variant font-medium text-[11px] whitespace-nowrap">${timeDisplay}</td>
-                          <td class="py-2 text-primary font-black whitespace-nowrap">${log.heroName || 'Hero'}</td>
-                          <td class="py-2 text-inverse-surface font-bold">${log.taskTitle}</td>
-                          <td class="py-2 text-on-surface-variant text-[11px]">${log.zone}</td>
-                          <td class="py-2 text-secondary font-black">+${log.coinsAwarded}</td>
-                          <td class="py-2">${statusPill}</td>
-                          <td class="py-2 text-right font-medium text-on-surface-variant text-[11px] whitespace-nowrap">${approvedDisplay}</td>
-                        </tr>
-                      `;
-                      })
-                      .join('')}
-                  </tbody>
-                </table>
-              </div>
-            `
-            }
+                          return `
+                          <tr id="log-row-${log.id}" data-log-id="${log.id}" data-log-task-id="${log.taskId}" class="hover:bg-surface-container-high/40 transition-colors">
+                            <td class="py-2 text-on-surface-variant font-medium text-[11px] whitespace-nowrap">${timeDisplay}</td>
+                            <td class="py-2 text-primary font-black whitespace-nowrap">${log.heroName || 'Hero'}</td>
+                            <td class="py-2 text-inverse-surface font-bold">${log.taskTitle}</td>
+                            <td class="py-2 text-on-surface-variant text-[11px]">${log.zone}</td>
+                            <td class="py-2 text-secondary font-black">+${log.coinsAwarded}</td>
+                            <td class="py-2">${statusPill}</td>
+                            <td class="py-2 text-right font-medium text-on-surface-variant text-[11px] whitespace-nowrap">${approvedDisplay}</td>
+                          </tr>
+                        `;
+                        })
+                        .join('')}
+                    </tbody>
+                  </table>
+                </div>
+              `;
+            })()}
+          </div>
           </div>
         </section>
       `
@@ -6584,6 +6711,187 @@ export function attachParentPortalListeners() {
   if (refreshInsightsBtn) {
     refreshInsightsBtn.addEventListener('click', generateInsightsHandler);
   }
+
+  // ANALYTICS & ECHARTS DASHBOARD LISTENERS
+  if (activeAdminTab === 'analytics') {
+    // Multi-Kid Pills
+    document.querySelectorAll('.analytics-kid-pill').forEach((pill) => {
+      pill.addEventListener('click', () => {
+        selectedAnalyticsKidId = pill.getAttribute('data-analytics-kid') || 'all';
+        Sound.click();
+        store.notify();
+      });
+    });
+    preserveScrollBarPosition('analytics-kid-pill-bar');
+
+    // Timeframe Switcher
+    document.querySelectorAll('.analytics-timeframe-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        selectedAnalyticsTimeframe = btn.getAttribute('data-analytics-timeframe') || '7d';
+        Sound.click();
+        store.notify();
+      });
+    });
+
+    // Initialize ECharts Visualizations
+    initAnalyticsCharts({
+      selectedKidId: selectedAnalyticsKidId,
+      timeframe: selectedAnalyticsTimeframe
+    });
+
+    // Chat Assistant Listeners
+    const chatForm = document.getElementById('analytics-chat-form');
+    const chatInput = document.getElementById('analytics-chat-input');
+    const chatSendBtn = document.getElementById('analytics-chat-send-btn');
+    const chatThread = document.getElementById('analytics-chat-thread');
+    const streamingBubble = document.getElementById('chat-streaming-bubble');
+    const streamingContent = document.getElementById('chat-streaming-content');
+
+    const handleChatSubmit = async (queryText) => {
+      const q = (queryText || chatInput?.value || '').trim();
+      if (!q || isAssistantStreaming) return;
+      if (chatInput) chatInput.value = '';
+      if (chatSendBtn) chatSendBtn.disabled = true;
+      Sound.click();
+
+      // Add user message to state
+      analyticsChatMessages.push({ role: 'user', text: q });
+
+      // Direct DOM update for user message to prevent full innerHTML replacement
+      if (chatThread && streamingBubble) {
+        const userDiv = document.createElement('div');
+        userDiv.className = 'flex flex-col items-end';
+        userDiv.innerHTML = `
+          <span class="text-[10px] font-black uppercase text-on-surface-variant mb-1 px-1">Parent</span>
+          <div class="p-3.5 rounded-2xl max-w-xl text-xs sm:text-sm font-semibold leading-relaxed bg-primary text-on-primary rounded-br-none shadow-xs">
+            ${escapeHtml(q)}
+          </div>
+        `;
+        chatThread.insertBefore(userDiv, streamingBubble);
+      }
+
+      // Show streaming bubble
+      isAssistantStreaming = true;
+      if (streamingBubble) streamingBubble.classList.remove('hidden');
+      if (streamingContent) streamingContent.innerHTML = '<span class="text-on-surface-variant animate-pulse">Analyzing records...</span>';
+      if (chatThread) chatThread.scrollTop = chatThread.scrollHeight;
+
+      try {
+        await streamChatWithData({
+          userQuery: q,
+          selectedKidId: selectedAnalyticsKidId,
+          onChunk: (accumulated, chunk) => {
+            if (streamingContent) {
+              streamingContent.innerHTML = parseHabitDeepLinks(accumulated);
+              if (chatThread) chatThread.scrollTop = chatThread.scrollHeight;
+            }
+          },
+          onComplete: (fullText) => {
+            analyticsChatMessages.push({ role: 'assistant', text: fullText });
+            isAssistantStreaming = false;
+            if (streamingBubble) streamingBubble.classList.add('hidden');
+            if (streamingContent) streamingContent.innerHTML = '';
+            if (chatSendBtn) chatSendBtn.disabled = false;
+            store.notify();
+          },
+          onError: (err) => {
+            console.warn('AI Assistant error:', err);
+            const errReply = 'I encountered a temporary issue reading the records. Please try again.';
+            analyticsChatMessages.push({ role: 'assistant', text: errReply });
+            isAssistantStreaming = false;
+            if (streamingBubble) streamingBubble.classList.add('hidden');
+            if (streamingContent) streamingContent.innerHTML = '';
+            if (chatSendBtn) chatSendBtn.disabled = false;
+            store.notify();
+          }
+        });
+      } catch (err) {
+        isAssistantStreaming = false;
+        if (streamingBubble) streamingBubble.classList.add('hidden');
+        if (chatSendBtn) chatSendBtn.disabled = false;
+        store.notify();
+      }
+    };
+
+    if (chatForm) {
+      chatForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        handleChatSubmit();
+      });
+    }
+
+    // Suggested Query Chips
+    document.querySelectorAll('.analytics-query-chip').forEach((chip) => {
+      chip.addEventListener('click', () => {
+        const text = chip.textContent.replace(/^[^\w\s]+/, '').trim();
+        handleChatSubmit(text);
+      });
+    });
+  } else {
+    // Clean up ECharts instances and observers when leaving analytics tab
+    disposeAnalyticsCharts();
+  }
+
+  // Clickable Habit Deep-Links Event Delegation
+  document.querySelectorAll('.habit-deep-link-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const type = btn.getAttribute('data-deep-link-type');
+      const id = btn.getAttribute('data-deep-link-id');
+      Sound.click();
+
+      if (type === 'nav') {
+        activeAdminTab = id;
+        store.notify();
+        return;
+      }
+
+      if (type === 'approval') {
+        activeAdminTab = 'approvals';
+        store.notify();
+        setTimeout(() => {
+          const target = document.querySelector(`[data-approve-id="${id}"]`)?.closest('.card-shadow') || document.querySelector(`[data-approve-id="${id}"]`);
+          if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            target.classList.add('ring-4', 'ring-primary', 'bg-primary/20', 'animate-pulse');
+            setTimeout(() => target.classList.remove('ring-4', 'ring-primary', 'bg-primary/20', 'animate-pulse'), 3000);
+          }
+        }, 150);
+        return;
+      }
+
+      if (type === 'habit' || type === 'task') {
+        const inTable = document.querySelector(`[data-log-task-id="${id}"]`) || document.querySelector(`[data-log-id="${id}"]`);
+        if (inTable) {
+          inTable.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          inTable.classList.add('ring-4', 'ring-primary', 'bg-primary/20', 'animate-pulse');
+          setTimeout(() => inTable.classList.remove('ring-4', 'ring-primary', 'bg-primary/20', 'animate-pulse'), 3000);
+          return;
+        }
+        activeAdminTab = 'tasks';
+        store.notify();
+        setTimeout(() => {
+          const target = document.querySelector(`[data-task-id="${id}"]`) || document.getElementById(`task-card-${id}`);
+          if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            target.classList.add('ring-4', 'ring-primary', 'bg-primary/20', 'animate-pulse');
+            setTimeout(() => target.classList.remove('ring-4', 'ring-primary', 'bg-primary/20', 'animate-pulse'), 3000);
+          }
+        }, 150);
+        return;
+      }
+
+      if (type === 'log') {
+        const inTable = document.getElementById(`log-row-${id}`) || document.querySelector(`[data-log-id="${id}"]`);
+        if (inTable) {
+          inTable.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          inTable.classList.add('ring-4', 'ring-primary', 'bg-primary/20', 'animate-pulse');
+          setTimeout(() => inTable.classList.remove('ring-4', 'ring-primary', 'bg-primary/20', 'animate-pulse'), 3000);
+        }
+      }
+    });
+  });
 
   // REX COMPANION PARENTAL CONTROLS LISTENERS (Settings Tab)
   document.querySelectorAll('.companion-bedtime-btn').forEach((btn) => {

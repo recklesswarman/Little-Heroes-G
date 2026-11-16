@@ -1,4 +1,4 @@
-const CACHE_NAME = 'little-heroes-v3.15.0-hero-shop-audit-20261114';
+const CACHE_NAME = 'little-heroes-v3.16.0-parent-analytics-echarts-20261116';
 const STATIC_ASSETS = [
   './',
   './index.html',
