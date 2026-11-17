@@ -1,4 +1,4 @@
-const CACHE_NAME = 'little-heroes-v3.16.0-parent-analytics-echarts-20261116';
+const CACHE_NAME = 'little-heroes-v3.17.3-toothbrush-modal-floss-sync-20261117';
 const STATIC_ASSETS = [
   './',
   './index.html',

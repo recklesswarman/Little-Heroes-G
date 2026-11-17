@@ -14,6 +14,7 @@
 
 import { store } from '../state/store.js';
 import { DINO_WORKOUTS } from '../data/petsData.js';
+import { Sound } from '../audio/sfx.js';
 
 // Default voice timeout contract
 export const VOICE_DEFAULT_TIMEOUT_MS = 14000;
@@ -417,7 +418,12 @@ function ensureSharedAudioContextReady() {
   const AudioCtx = win.AudioContext || win.webkitAudioContext;
   if (!AudioCtx) return null;
   try {
-    if (!sharedAudioContext || sharedAudioContext.state === 'closed') {
+    // Share Sound's primary AudioContext so Web Audio resamples 24kHz PCM buffers automatically
+    // without creating a second AudioContext that could desync speech ducking buses.
+    const sfxCtx = (typeof Sound?.getAudioContext === 'function') ? Sound.getAudioContext() : null;
+    if (sfxCtx && sfxCtx.state !== 'closed') {
+      sharedAudioContext = sfxCtx;
+    } else if (!sharedAudioContext || sharedAudioContext.state === 'closed') {
       try {
         sharedAudioContext = new AudioCtx({ sampleRate: 24000 });
       } catch {
@@ -1165,7 +1171,8 @@ async function playPcmTtsResponse(data, cleanSpoken, petId, callback, myGenerati
     }
   }
 
-  source.connect(ctx.destination);
+  const voiceBus = (typeof Sound?.getVoiceGainNode === 'function') ? Sound.getVoiceGainNode(ctx) : null;
+  source.connect(voiceBus || ctx.destination);
   currentAudioSource = source;
   pendingUnlockSpeech = null;
 

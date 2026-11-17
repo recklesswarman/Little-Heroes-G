@@ -16,7 +16,201 @@ let lullabyActive = false;
 let lullabyDucked = false;
 let lullabyMasterGain = null;
 let battleBpm = 118;
+let lastBattleRhythmOnBeat = null;
 let lastBloopTime = 0;
+let isSpeechDucked = false;
+
+// Audio Mix Constants (R3 Normalized Headroom & Voice Ducking)
+const MIX_DEFAULTS = {
+  buses: {
+    master: 0.85,
+    bgm: 0.35,
+    bgmDucked: 0.10,
+    battleSfx: 0.55,
+    battleSfxDucked: 0.25,
+    uiSfx: 0.75,
+    voice: 0.95
+  },
+  compressor: {
+    threshold: -12,
+    knee: 6,
+    ratio: 10,
+    attack: 0.003,
+    release: 0.15
+  },
+  battleSfxGains: {
+    laser: 0.08,
+    hit: 0.14,
+    foamHit: 0.12,
+    foamSploosh: 0.11,
+    shieldDeflect: 0.14,
+    shieldShatter: 0.07,
+    bossLunge: 0.12,
+    bossSplat: 0.14
+  },
+  rhythmGains: {
+    kick: 0.18,
+    snare: 0.10,
+    bass: 0.09,
+    lead: 0.05
+  },
+  debouncesMs: {
+    laser: 120,
+    hit: 100,
+    foamHit: 100,
+    foamSploosh: 100,
+    shieldShatter: 100,
+    shieldDeflect: 100,
+    bossLunge: 120,
+    bossSplat: 100
+  }
+};
+
+const sfxLastPlayedAt = {
+  laser: 0,
+  hit: 0,
+  foamHit: 0,
+  foamSploosh: 0,
+  shieldShatter: 0,
+  shieldDeflect: 0,
+  bossLunge: 0,
+  bossSplat: 0
+};
+
+const contextBusesMap = new WeakMap();
+
+function canDebounceSfx(key, cooldownMs) {
+  const nowMs = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+    ? performance.now()
+    : Date.now();
+  const prev = sfxLastPlayedAt[key] || 0;
+  if (prev > 0 && (nowMs - prev) < cooldownMs) {
+    return false;
+  }
+  sfxLastPlayedAt[key] = nowMs;
+  return true;
+}
+
+function getAudioBuses(context) {
+  if (!context) return null;
+  if (contextBusesMap.has(context)) {
+    return contextBusesMap.get(context);
+  }
+  if (typeof context.createGain !== 'function') {
+    return null;
+  }
+  try {
+    const now = context.currentTime || 0;
+    const masterGain = context.createGain();
+    masterGain.gain.setValueAtTime(isMuted ? 0 : MIX_DEFAULTS.buses.master, now);
+    masterGain.connect(context.destination);
+
+    let masterInput = masterGain;
+    let masterCompressor = null;
+    if (typeof context.createDynamicsCompressor === 'function') {
+      masterCompressor = context.createDynamicsCompressor();
+      if (masterCompressor.threshold?.setValueAtTime) {
+        masterCompressor.threshold.setValueAtTime(MIX_DEFAULTS.compressor.threshold, now);
+        masterCompressor.knee.setValueAtTime(MIX_DEFAULTS.compressor.knee, now);
+        masterCompressor.ratio.setValueAtTime(MIX_DEFAULTS.compressor.ratio, now);
+        masterCompressor.attack.setValueAtTime(MIX_DEFAULTS.compressor.attack, now);
+        masterCompressor.release.setValueAtTime(MIX_DEFAULTS.compressor.release, now);
+      }
+      masterCompressor.connect(masterGain);
+      masterInput = masterCompressor;
+    }
+
+    const bgmGain = context.createGain();
+    bgmGain.gain.setValueAtTime(
+      isSpeechDucked ? MIX_DEFAULTS.buses.bgmDucked : MIX_DEFAULTS.buses.bgm,
+      now
+    );
+    bgmGain.connect(masterInput);
+
+    const battleSfxGain = context.createGain();
+    battleSfxGain.gain.setValueAtTime(
+      isSpeechDucked ? MIX_DEFAULTS.buses.battleSfxDucked : MIX_DEFAULTS.buses.battleSfx,
+      now
+    );
+    battleSfxGain.connect(masterInput);
+
+    const uiSfxGain = context.createGain();
+    uiSfxGain.gain.setValueAtTime(MIX_DEFAULTS.buses.uiSfx, now);
+    uiSfxGain.connect(masterInput);
+
+    const voiceGain = context.createGain();
+    voiceGain.gain.setValueAtTime(MIX_DEFAULTS.buses.voice, now);
+    voiceGain.connect(masterInput);
+
+    const buses = {
+      context,
+      masterCompressor,
+      masterGain,
+      bgmGain,
+      battleSfxGain,
+      uiSfxGain,
+      voiceGain
+    };
+    contextBusesMap.set(context, buses);
+    return buses;
+  } catch {
+    return null;
+  }
+}
+
+function getBusDestination(context, busName = 'uiSfxGain') {
+  const buses = getAudioBuses(context);
+  if (buses && buses[busName]) return buses[busName];
+  return context?.destination || null;
+}
+
+function applyMasterMuteGain(muted) {
+  if (!audioCtx) return;
+  const buses = contextBusesMap.get(audioCtx) || getAudioBuses(audioCtx);
+  if (!buses?.masterGain?.gain) return;
+  try {
+    const now = audioCtx.currentTime || 0;
+    const target = muted ? 0 : MIX_DEFAULTS.buses.master;
+    buses.masterGain.gain.cancelScheduledValues?.(now);
+    buses.masterGain.gain.setValueAtTime(target, now);
+  } catch {}
+}
+
+function applySpeechDucking(ducked) {
+  isSpeechDucked = Boolean(ducked);
+  if (!audioCtx) return;
+  const buses = contextBusesMap.get(audioCtx) || getAudioBuses(audioCtx);
+  if (!buses) return;
+  try {
+    const now = audioCtx.currentTime || 0;
+    const bgmTarget = isSpeechDucked ? MIX_DEFAULTS.buses.bgmDucked : MIX_DEFAULTS.buses.bgm;
+    const sfxTarget = isSpeechDucked ? MIX_DEFAULTS.buses.battleSfxDucked : MIX_DEFAULTS.buses.battleSfx;
+
+    if (buses.bgmGain?.gain) {
+      buses.bgmGain.gain.cancelScheduledValues?.(now);
+      buses.bgmGain.gain.setValueAtTime(buses.bgmGain.gain.value ?? bgmTarget, now);
+      buses.bgmGain.gain.linearRampToValueAtTime(bgmTarget, now + (isSpeechDucked ? 0.12 : 0.4));
+    }
+    if (buses.battleSfxGain?.gain) {
+      buses.battleSfxGain.gain.cancelScheduledValues?.(now);
+      buses.battleSfxGain.gain.setValueAtTime(buses.battleSfxGain.gain.value ?? sfxTarget, now);
+      buses.battleSfxGain.gain.linearRampToValueAtTime(sfxTarget, now + (isSpeechDucked ? 0.12 : 0.4));
+    }
+  } catch {}
+}
+
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+  if (window._lhSoundSpeechStartHandler && typeof window.removeEventListener === 'function') {
+    window.removeEventListener('companion-speech-start', window._lhSoundSpeechStartHandler);
+  }
+  if (window._lhSoundSpeechEndHandler && typeof window.removeEventListener === 'function') {
+    window.removeEventListener('companion-speech-end', window._lhSoundSpeechEndHandler);
+  }
+  window._lhSoundSpeechStartHandler = () => applySpeechDucking(true);
+  window._lhSoundSpeechEndHandler = () => applySpeechDucking(false);
+  window.addEventListener('companion-speech-start', window._lhSoundSpeechStartHandler);
+  window.addEventListener('companion-speech-end', window._lhSoundSpeechEndHandler);
+}
 
 function getLullabyMasterGain(context) {
   if (!context) return null;
@@ -24,7 +218,7 @@ function getLullabyMasterGain(context) {
     try {
       lullabyMasterGain = context.createGain();
       lullabyMasterGain.gain.setValueAtTime(lullabyDucked ? 0.15 : 1.0, context.currentTime);
-      lullabyMasterGain.connect(context.destination);
+      lullabyMasterGain.connect(getBusDestination(context, 'masterGain'));
     } catch {
       return null;
     }
@@ -43,6 +237,9 @@ function getAudioContext() {
   if (audioCtx && audioCtx.state === 'suspended') {
     audioCtx.resume();
   }
+  if (audioCtx) {
+    getAudioBuses(audioCtx);
+  }
   return audioCtx;
 }
 
@@ -51,24 +248,63 @@ export const Sound = {
     return isMuted;
   },
 
+  getAudioContext() {
+    return getAudioContext();
+  },
+
+  setBattleSpeechDucking(ducked = true) {
+    applySpeechDucking(ducked);
+    return isSpeechDucked;
+  },
+
+  getVoiceGainNode(ctx = null) {
+    const targetCtx = ctx || getAudioContext();
+    const buses = getAudioBuses(targetCtx);
+    return buses?.voiceGain || null;
+  },
+
+  getAudioMixConfig() {
+    const activeBuses = audioCtx ? (contextBusesMap.get(audioCtx) || null) : null;
+    return {
+      buses: { ...MIX_DEFAULTS.buses },
+      compressor: { ...MIX_DEFAULTS.compressor },
+      battleSfxGains: { ...MIX_DEFAULTS.battleSfxGains },
+      rhythmGains: { ...MIX_DEFAULTS.rhythmGains },
+      debouncesMs: { ...MIX_DEFAULTS.debouncesMs },
+      isSpeechDucked,
+      liveBusValues: activeBuses ? {
+        master: activeBuses.masterGain?.gain?.value,
+        bgm: activeBuses.bgmGain?.gain?.value,
+        battleSfx: activeBuses.battleSfxGain?.gain?.value,
+        uiSfx: activeBuses.uiSfxGain?.gain?.value,
+        voice: activeBuses.voiceGain?.gain?.value,
+        hasCompressor: Boolean(activeBuses.masterCompressor)
+      } : null
+    };
+  },
+
   toggleMute() {
     isMuted = !isMuted;
+    applyMasterMuteGain(isMuted);
     if (isMuted) {
       this.stopDisco();
       this.stopBattleRhythm();
       this.stopWorkoutBeat();
       this.stopLullaby();
+      applySpeechDucking(false);
     }
     return isMuted;
   },
 
   setMute(mute) {
-    isMuted = mute;
+    isMuted = Boolean(mute);
+    applyMasterMuteGain(isMuted);
     if (isMuted) {
       this.stopDisco();
       this.stopBattleRhythm();
       this.stopWorkoutBeat();
       this.stopLullaby();
+      applySpeechDucking(false);
     }
   },
 
@@ -101,12 +337,12 @@ export const Sound = {
       filter.type = 'lowpass';
       filter.frequency.setValueAtTime(1600, now);
 
-      gain.gain.setValueAtTime(0.26, now);
+      gain.gain.setValueAtTime(0.22, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
 
       osc.connect(filter);
       filter.connect(gain);
-      gain.connect(ctx.destination);
+      gain.connect(getBusDestination(ctx, 'uiSfxGain'));
 
       osc.start(now);
       osc.stop(now + 0.09);
@@ -128,6 +364,7 @@ export const Sound = {
 
     try {
       const now = ctx.currentTime;
+      const dest = getBusDestination(ctx, 'uiSfxGain');
       // High bright sparkling chime notes
       const notes = [1318.51, 1661.22, 1975.53, 2637.02]; // E6, G#6, B6, E7
       notes.forEach((freq, i) => {
@@ -146,16 +383,16 @@ export const Sound = {
         overtone.type = 'sine';
         overtone.frequency.setValueAtTime(freq * 2.04, start);
 
-        gain.gain.setValueAtTime(0.24, start);
+        gain.gain.setValueAtTime(0.20, start);
         gain.gain.exponentialRampToValueAtTime(0.001, start + 0.32);
 
-        overtoneGain.gain.setValueAtTime(0.08, start);
+        overtoneGain.gain.setValueAtTime(0.07, start);
         overtoneGain.gain.exponentialRampToValueAtTime(0.001, start + 0.16);
 
         osc.connect(gain);
         overtone.connect(overtoneGain);
-        gain.connect(ctx.destination);
-        overtoneGain.connect(ctx.destination);
+        gain.connect(dest);
+        overtoneGain.connect(dest);
 
         osc.start(start);
         overtone.start(start);
@@ -179,6 +416,7 @@ export const Sound = {
 
     try {
       const now = ctx.currentTime;
+      const dest = getBusDestination(ctx, 'uiSfxGain');
       // 4-note ascending triumph fanfare followed by celebratory sustained chord
       const fanfareNotes = [
         { f: 523.25, time: 0, dur: 0.12 },    // C5
@@ -193,19 +431,19 @@ export const Sound = {
         const osc2 = ctx.createOscillator();
         const gain = ctx.createGain();
 
-        // Warm brass timbre: triangle + slight sawtooth warmth
+        // Warm brass timbre: triangle + slight sine warmth
         osc.type = 'triangle';
         osc.frequency.setValueAtTime(n.f, start);
 
         osc2.type = 'sine';
         osc2.frequency.setValueAtTime(n.f * 2, start);
 
-        gain.gain.setValueAtTime(0.28, start);
+        gain.gain.setValueAtTime(0.18, start);
         gain.gain.exponentialRampToValueAtTime(0.001, start + n.dur);
 
         osc.connect(gain);
         osc2.connect(gain);
-        gain.connect(ctx.destination);
+        gain.connect(dest);
 
         osc.start(start);
         osc2.start(start);
@@ -222,11 +460,11 @@ export const Sound = {
         sOsc.type = 'sine';
         sOsc.frequency.setValueAtTime(f, start);
 
-        sGain.gain.setValueAtTime(0.12, start);
+        sGain.gain.setValueAtTime(0.07, start);
         sGain.gain.exponentialRampToValueAtTime(0.001, start + 0.45);
 
         sOsc.connect(sGain);
-        sGain.connect(ctx.destination);
+        sGain.connect(dest);
         sOsc.start(start);
         sOsc.stop(start + 0.45);
       });
@@ -265,11 +503,11 @@ export const Sound = {
 
       lfo.connect(osc.frequency);
 
-      gain.gain.setValueAtTime(0.28, now);
+      gain.gain.setValueAtTime(0.22, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
 
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      gain.connect(getBusDestination(ctx, 'uiSfxGain'));
 
       lfo.start(now);
       osc.start(now);
@@ -308,12 +546,12 @@ export const Sound = {
       filter.Q.value = 1.9;
 
       const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.24, now);
+      gain.gain.setValueAtTime(0.18, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
 
       noise.connect(filter);
       filter.connect(gain);
-      gain.connect(ctx.destination);
+      gain.connect(getBusDestination(ctx, 'uiSfxGain'));
 
       noise.start(now);
     } catch (e) {
@@ -329,6 +567,7 @@ export const Sound = {
 
     try {
       const now = ctx.currentTime;
+      const dest = getBusDestination(ctx, 'uiSfxGain');
       const sparkleNotes = [1567.98, 1760, 2093, 2349.32, 2637.02, 3135.96]; // G6, A6, C7, D7, E7, G7
       sparkleNotes.forEach((freq, i) => {
         const start = now + i * 0.03;
@@ -338,11 +577,11 @@ export const Sound = {
         osc.type = 'sine';
         osc.frequency.setValueAtTime(freq, start);
 
-        gain.gain.setValueAtTime(0.18, start);
+        gain.gain.setValueAtTime(0.10, start);
         gain.gain.exponentialRampToValueAtTime(0.001, start + 0.28);
 
         osc.connect(gain);
-        gain.connect(ctx.destination);
+        gain.connect(dest);
 
         osc.start(start);
         osc.stop(start + 0.28);
@@ -360,16 +599,17 @@ export const Sound = {
 
     try {
       const now = ctx.currentTime;
+      const dest = getBusDestination(ctx, 'uiSfxGain');
       // Click 1 (shutter open)
       const osc1 = ctx.createOscillator();
       const gain1 = ctx.createGain();
       osc1.type = 'triangle';
       osc1.frequency.setValueAtTime(800, now);
       osc1.frequency.exponentialRampToValueAtTime(160, now + 0.04);
-      gain1.gain.setValueAtTime(0.3, now);
+      gain1.gain.setValueAtTime(0.24, now);
       gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
       osc1.connect(gain1);
-      gain1.connect(ctx.destination);
+      gain1.connect(dest);
       osc1.start(now);
       osc1.stop(now + 0.04);
 
@@ -379,10 +619,10 @@ export const Sound = {
       osc2.type = 'sine';
       osc2.frequency.setValueAtTime(1200, now + 0.07);
       osc2.frequency.exponentialRampToValueAtTime(220, now + 0.12);
-      gain2.gain.setValueAtTime(0.25, now + 0.07);
+      gain2.gain.setValueAtTime(0.20, now + 0.07);
       gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
       osc2.connect(gain2);
-      gain2.connect(ctx.destination);
+      gain2.connect(dest);
       osc2.start(now + 0.07);
       osc2.stop(now + 0.12);
     } catch (e) {
@@ -398,6 +638,7 @@ export const Sound = {
 
     try {
       const now = ctx.currentTime;
+      const dest = getBusDestination(ctx, 'uiSfxGain');
       const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
       notes.forEach((freq, idx) => {
         const start = now + idx * 0.06;
@@ -407,14 +648,42 @@ export const Sound = {
         osc.type = 'triangle';
         osc.frequency.setValueAtTime(freq, start);
 
-        gain.gain.setValueAtTime(0.22, start);
+        gain.gain.setValueAtTime(0.18, start);
         gain.gain.exponentialRampToValueAtTime(0.001, start + 0.25);
 
         osc.connect(gain);
-        gain.connect(ctx.destination);
+        gain.connect(dest);
 
         osc.start(start);
         osc.stop(start + 0.25);
+      });
+    } catch (e) {
+      console.debug('Audio error', e);
+    }
+  },
+
+  // 6c2. QUADPACER ZONE CHIME (Gentle distinct chime on 30-second toothbrush zone switches)
+  zoneChime() {
+    if (isMuted) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    try {
+      const now = ctx.currentTime;
+      const dest = getBusDestination(ctx, 'uiSfxGain');
+      const notes = [659.25, 987.77, 1318.51]; // E5 -> B5 -> E6
+      notes.forEach((freq, idx) => {
+        const start = now + idx * 0.055;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, start);
+        gain.gain.setValueAtTime(0.14, start);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.28);
+        osc.connect(gain);
+        gain.connect(dest);
+        osc.start(start);
+        osc.stop(start + 0.28);
       });
     } catch (e) {
       console.debug('Audio error', e);
@@ -618,7 +887,7 @@ export const Sound = {
       gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
 
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      gain.connect(getBusDestination(ctx, 'uiSfxGain'));
 
       osc.start(now);
       osc.stop(now + 0.08);
@@ -752,7 +1021,7 @@ export const Sound = {
         gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.35);
 
         osc.connect(gain);
-        gain.connect(ctx.destination);
+        gain.connect(getBusDestination(ctx, 'uiSfxGain'));
 
         osc.start(startTime);
         osc.stop(startTime + 0.35);
@@ -762,57 +1031,70 @@ export const Sound = {
     }
   },
 
-  // 15. AR BATTLE LASER ATTACK
+  // 15. AR BATTLE LASER ATTACK (Normalized gain, softened with lowpass filter, 120ms debounce)
   laser() {
     if (isMuted) return;
+    if (!canDebounceSfx('laser', MIX_DEFAULTS.debouncesMs.laser)) return;
     const ctx = getAudioContext();
     if (!ctx) return;
 
     try {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
       const now = ctx.currentTime;
 
       osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(1400, now);
-      osc.frequency.exponentialRampToValueAtTime(180, now + 0.22);
+      osc.frequency.setValueAtTime(1200, now);
+      osc.frequency.exponentialRampToValueAtTime(180, now + 0.18);
 
-      gain.gain.setValueAtTime(0.22, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(1800, now);
+      filter.frequency.exponentialRampToValueAtTime(500, now + 0.18);
 
-      osc.connect(gain);
-      gain.connect(ctx.destination);
+      gain.gain.setValueAtTime(MIX_DEFAULTS.battleSfxGains.laser, now);
+      gain.gain.exponentialRampToValueAtTime(0.005, now + 0.18);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(getBusDestination(ctx, 'battleSfxGain'));
 
       osc.start(now);
-      osc.stop(now + 0.22);
+      osc.stop(now + 0.19);
     } catch (e) {
       console.debug('Audio error', e);
     }
   },
 
-  // 16. BOSS HIT / IMPACT
+  // 16. BOSS HIT / IMPACT (Normalized gain, softened timbre, 100ms debounce)
   hit() {
     if (isMuted) return;
+    if (!canDebounceSfx('hit', MIX_DEFAULTS.debouncesMs.hit)) return;
     const ctx = getAudioContext();
     if (!ctx) return;
 
     try {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
       const now = ctx.currentTime;
 
-      osc.type = 'square';
+      osc.type = 'triangle';
       osc.frequency.setValueAtTime(150, now);
-      osc.frequency.exponentialRampToValueAtTime(40, now + 0.18);
+      osc.frequency.exponentialRampToValueAtTime(42, now + 0.16);
 
-      gain.gain.setValueAtTime(0.3, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(650, now);
 
-      osc.connect(gain);
-      gain.connect(ctx.destination);
+      gain.gain.setValueAtTime(MIX_DEFAULTS.battleSfxGains.hit, now);
+      gain.gain.exponentialRampToValueAtTime(0.005, now + 0.16);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(getBusDestination(ctx, 'battleSfxGain'));
 
       osc.start(now);
-      osc.stop(now + 0.18);
+      osc.stop(now + 0.17);
     } catch (e) {
       console.debug('Audio error', e);
     }
@@ -864,6 +1146,7 @@ export const Sound = {
         const now = ctx.currentTime;
 
         // Kick / Bass
+        const bgmDest = getBusDestination(ctx, 'bgmGain');
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = 'triangle';
@@ -872,7 +1155,7 @@ export const Sound = {
         gain.gain.setValueAtTime(0.28, now);
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
         osc.connect(gain);
-        gain.connect(ctx.destination);
+        gain.connect(bgmDest);
         osc.start(now);
         osc.stop(now + 0.15);
 
@@ -885,7 +1168,7 @@ export const Sound = {
           leadGain.gain.setValueAtTime(0.12, now);
           leadGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
           lead.connect(leadGain);
-          leadGain.connect(ctx.destination);
+          leadGain.connect(bgmDest);
           lead.start(now);
           lead.stop(now + 0.18);
         }
@@ -903,11 +1186,13 @@ export const Sound = {
     }
   },
 
-  // 17. HEROIC TOOTHBRUSH BATTLE RHYTHM (Procedural energetic chiptune drum & bass groove)
-  startBattleRhythm(onBeat) {
+  // 17. HEROIC TOOTHBRUSH BATTLE RHYTHM (Procedural energetic chiptune drum & bass groove, routed via bgmGain)
+  startBattleRhythm(onBeat = lastBattleRhythmOnBeat) {
+    lastBattleRhythmOnBeat = typeof onBeat === 'function' ? onBeat : null;
     if (isMuted) return;
     this.stopLullaby();
-    this.stopBattleRhythm();
+    // Preserve current battleBpm (e.g. 142 during Q5 finale) and active speech ducking across tempo restarts
+    this.stopBattleRhythm(false);
     const ctx = getAudioContext();
     if (!ctx) return;
 
@@ -921,17 +1206,18 @@ export const Sound = {
       if (isMuted) return;
       try {
         const now = ctx.currentTime;
-        
+        const bgmDest = getBusDestination(ctx, 'bgmGain');
+
         // Kick on beats 0, 4
         if (step % 4 === 0) {
           const kick = ctx.createOscillator();
           const kickGain = ctx.createGain();
           kick.frequency.setValueAtTime(140, now);
           kick.frequency.exponentialRampToValueAtTime(38, now + 0.08);
-          kickGain.gain.setValueAtTime(0.32, now);
+          kickGain.gain.setValueAtTime(MIX_DEFAULTS.rhythmGains.kick, now);
           kickGain.gain.exponentialRampToValueAtTime(0.01, now + 0.09);
           kick.connect(kickGain);
-          kickGain.connect(ctx.destination);
+          kickGain.connect(bgmDest);
           kick.start(now);
           kick.stop(now + 0.09);
         }
@@ -946,11 +1232,11 @@ export const Sound = {
           snare.type = 'triangle';
           snare.frequency.setValueAtTime(220, now);
           snare.frequency.exponentialRampToValueAtTime(60, now + 0.07);
-          snareGain.gain.setValueAtTime(0.18, now);
+          snareGain.gain.setValueAtTime(MIX_DEFAULTS.rhythmGains.snare, now);
           snareGain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
           snare.connect(snareFilter);
           snareFilter.connect(snareGain);
-          snareGain.connect(ctx.destination);
+          snareGain.connect(bgmDest);
           snare.start(now);
           snare.stop(now + 0.08);
         }
@@ -964,11 +1250,11 @@ export const Sound = {
         const bassFilter = ctx.createBiquadFilter();
         bassFilter.type = 'lowpass';
         bassFilter.frequency.setValueAtTime(420, now);
-        bassGain.gain.setValueAtTime(0.15, now);
+        bassGain.gain.setValueAtTime(MIX_DEFAULTS.rhythmGains.bass, now);
         bassGain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
         bass.connect(bassFilter);
         bassFilter.connect(bassGain);
-        bassGain.connect(ctx.destination);
+        bassGain.connect(bgmDest);
         bass.start(now);
         bass.stop(now + 0.12);
 
@@ -978,31 +1264,36 @@ export const Sound = {
           const leadGain = ctx.createGain();
           lead.type = 'sine';
           lead.frequency.setValueAtTime(leadNotes[step % leadNotes.length], now);
-          leadGain.gain.setValueAtTime(0.07, now);
+          leadGain.gain.setValueAtTime(MIX_DEFAULTS.rhythmGains.lead, now);
           leadGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
           lead.connect(leadGain);
-          leadGain.connect(ctx.destination);
+          leadGain.connect(bgmDest);
           lead.start(now);
           lead.stop(now + 0.1);
         }
 
-        if (onBeat) onBeat(step);
+        if (lastBattleRhythmOnBeat) lastBattleRhythmOnBeat(step);
         step++;
       } catch (e) {}
     }, intervalMs);
   },
 
-  stopBattleRhythm() {
+  stopBattleRhythm(resetTempoAndDucking = true) {
     if (battleRhythmInterval) {
       clearInterval(battleRhythmInterval);
       battleRhythmInterval = null;
+    }
+    if (resetTempoAndDucking) {
+      battleBpm = 118;
+      lastBattleRhythmOnBeat = null;
+      applySpeechDucking(false);
     }
   },
 
   speedUpBattleRhythm(isUrgent = true) {
     battleBpm = isUrgent ? 142 : 118;
     if (battleRhythmInterval) {
-      this.startBattleRhythm();
+      this.startBattleRhythm(lastBattleRhythmOnBeat);
     }
   },
 
@@ -1025,16 +1316,17 @@ export const Sound = {
       if (isMuted) return;
       try {
         const now = ctx.currentTime;
+        const bgmDest = getBusDestination(ctx, 'bgmGain');
         // Kick on downbeats (0, 4)
         if (step % 4 === 0) {
           const kick = ctx.createOscillator();
           const kickGain = ctx.createGain();
           kick.frequency.setValueAtTime(145, now);
           kick.frequency.exponentialRampToValueAtTime(36, now + 0.09);
-          kickGain.gain.setValueAtTime(0.30, now);
+          kickGain.gain.setValueAtTime(0.24, now);
           kickGain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
           kick.connect(kickGain);
-          kickGain.connect(ctx.destination);
+          kickGain.connect(bgmDest);
           kick.start(now);
           kick.stop(now + 0.1);
         }
@@ -1048,11 +1340,11 @@ export const Sound = {
           snare.type = 'triangle';
           snare.frequency.setValueAtTime(240, now);
           snare.frequency.exponentialRampToValueAtTime(55, now + 0.07);
-          snareGain.gain.setValueAtTime(0.18, now);
+          snareGain.gain.setValueAtTime(0.14, now);
           snareGain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
           snare.connect(snareFilter);
           snareFilter.connect(snareGain);
-          snareGain.connect(ctx.destination);
+          snareGain.connect(bgmDest);
           snare.start(now);
           snare.stop(now + 0.08);
         }
@@ -1064,11 +1356,11 @@ export const Sound = {
         const bassFilter = ctx.createBiquadFilter();
         bassFilter.type = 'lowpass';
         bassFilter.frequency.setValueAtTime(450, now);
-        bassGain.gain.setValueAtTime(0.14, now);
+        bassGain.gain.setValueAtTime(0.12, now);
         bassGain.gain.exponentialRampToValueAtTime(0.01, now + 0.11);
         bass.connect(bassFilter);
         bassFilter.connect(bassGain);
-        bassGain.connect(ctx.destination);
+        bassGain.connect(bgmDest);
         bass.start(now);
         bass.stop(now + 0.11);
 
@@ -1078,10 +1370,10 @@ export const Sound = {
           const leadGain = ctx.createGain();
           lead.type = 'sine';
           lead.frequency.setValueAtTime(synthNotes[step % synthNotes.length], now);
-          leadGain.gain.setValueAtTime(0.08, now);
+          leadGain.gain.setValueAtTime(0.07, now);
           leadGain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
           lead.connect(leadGain);
-          leadGain.connect(ctx.destination);
+          leadGain.connect(bgmDest);
           lead.start(now);
           lead.stop(now + 0.09);
         }
@@ -1103,9 +1395,10 @@ export const Sound = {
     return !!workoutBeatInterval;
   },
 
-  // 18. SHIELD DEFLECT (Metallic bubble bounce when Hero Shield blocks cavity slime)
+  // 18. SHIELD DEFLECT (Metallic bubble bounce when Hero Shield blocks cavity slime, 100ms debounce)
   shieldDeflect() {
     if (isMuted) return;
+    if (!canDebounceSfx('shieldDeflect', MIX_DEFAULTS.debouncesMs.shieldDeflect)) return;
     const ctx = getAudioContext();
     if (!ctx) return;
     try {
@@ -1116,41 +1409,19 @@ export const Sound = {
       osc.frequency.setValueAtTime(580, now);
       osc.frequency.exponentialRampToValueAtTime(1180, now + 0.06);
       osc.frequency.exponentialRampToValueAtTime(740, now + 0.15);
-      gain.gain.setValueAtTime(0.3, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.16);
+      gain.gain.setValueAtTime(MIX_DEFAULTS.battleSfxGains.shieldDeflect, now);
+      gain.gain.exponentialRampToValueAtTime(0.005, now + 0.16);
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      gain.connect(getBusDestination(ctx, 'battleSfxGain'));
       osc.start(now);
       osc.stop(now + 0.16);
     } catch (e) {}
   },
 
-  // 19. SHIELD SHATTER (Crunchy glass / hard candy explosion)
-  shieldShatter() {
-    if (isMuted) return;
-    const ctx = getAudioContext();
-    if (!ctx) return;
-    try {
-      const now = ctx.currentTime;
-      [880, 1100, 1400, 1760, 2200].forEach((freq, idx) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = idx % 2 === 0 ? 'triangle' : 'square';
-        osc.frequency.setValueAtTime(freq, now + idx * 0.02);
-        osc.frequency.exponentialRampToValueAtTime(200, now + idx * 0.02 + 0.12);
-        gain.gain.setValueAtTime(0.2, now + idx * 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.02 + 0.14);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(now + idx * 0.02);
-        osc.stop(now + idx * 0.02 + 0.14);
-      });
-    } catch (e) {}
-  },
-
-  // 20. FOAM SPLOOSH (Bubbly foamy splash for toothpaste cannons)
+  // 19. FOAM SPLOOSH (Bubbly foamy splash for toothpaste cannons)
   foamSploosh() {
     if (isMuted) return;
+    if (!canDebounceSfx('foamSploosh', MIX_DEFAULTS.debouncesMs.foamSploosh)) return;
     const ctx = getAudioContext();
     if (!ctx) return;
     try {
@@ -1161,10 +1432,10 @@ export const Sound = {
       osc.frequency.setValueAtTime(280, now);
       osc.frequency.exponentialRampToValueAtTime(640, now + 0.05);
       osc.frequency.exponentialRampToValueAtTime(320, now + 0.12);
-      gain.gain.setValueAtTime(0.25, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.14);
+      gain.gain.setValueAtTime(MIX_DEFAULTS.battleSfxGains.foamSploosh, now);
+      gain.gain.exponentialRampToValueAtTime(0.005, now + 0.14);
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      gain.connect(getBusDestination(ctx, 'battleSfxGain'));
       osc.start(now);
       osc.stop(now + 0.14);
     } catch (e) {}
@@ -1177,6 +1448,7 @@ export const Sound = {
     if (!ctx) return;
     try {
       const now = ctx.currentTime;
+      const dest = getBusDestination(ctx, 'uiSfxGain');
       const osc1 = ctx.createOscillator();
       const osc2 = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -1189,43 +1461,17 @@ export const Sound = {
       osc2.frequency.setValueAtTime(600, now + 0.02);
       osc2.frequency.exponentialRampToValueAtTime(300, now + 0.06);
 
-      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.setValueAtTime(0.24, now);
       gain.gain.exponentialRampToValueAtTime(0.01, now + 0.07);
 
       osc1.connect(gain);
       osc2.connect(gain);
-      gain.connect(ctx.destination);
+      gain.connect(dest);
 
       osc1.start(now);
       osc1.stop(now + 0.03);
       osc2.start(now + 0.02);
       osc2.stop(now + 0.07);
-    } catch (e) {}
-  },
-
-  // 22. BOING (Cartoon ascending trampoline spring bounce)
-  boing() {
-    if (isMuted) return;
-    const ctx = getAudioContext();
-    if (!ctx) return;
-    try {
-      const now = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(160, now);
-      osc.frequency.exponentialRampToValueAtTime(540, now + 0.18);
-      osc.frequency.exponentialRampToValueAtTime(420, now + 0.25);
-
-      gain.gain.setValueAtTime(0.32, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.start(now);
-      osc.stop(now + 0.26);
     } catch (e) {}
   },
 
@@ -1309,34 +1555,41 @@ export const Sound = {
     } catch (e) {}
   },
 
-  // 26. BOSS 3D LUNGE (Deep charging whoosh with monster surge)
+  // 26. BOSS 3D LUNGE (Deep charging whoosh with softened lowpass filter, 120ms debounce)
   bossLunge() {
     if (isMuted) return;
+    if (!canDebounceSfx('bossLunge', MIX_DEFAULTS.debouncesMs.bossLunge)) return;
     const ctx = getAudioContext();
     if (!ctx) return;
     try {
       const now = ctx.currentTime;
       const osc = ctx.createOscillator();
+      const filter = ctx.createBiquadFilter();
       const gain = ctx.createGain();
       osc.type = 'sawtooth';
       osc.frequency.setValueAtTime(120, now);
       osc.frequency.exponentialRampToValueAtTime(360, now + 0.22);
       osc.frequency.exponentialRampToValueAtTime(90, now + 0.38);
 
-      gain.gain.setValueAtTime(0.01, now);
-      gain.gain.linearRampToValueAtTime(0.25, now + 0.1);
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(900, now);
+
+      gain.gain.setValueAtTime(0.005, now);
+      gain.gain.linearRampToValueAtTime(MIX_DEFAULTS.battleSfxGains.bossLunge, now + 0.1);
       gain.gain.exponentialRampToValueAtTime(0.005, now + 0.39);
 
-      osc.connect(gain);
-      gain.connect(ctx.destination);
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(getBusDestination(ctx, 'battleSfxGain'));
       osc.start(now);
       osc.stop(now + 0.4);
     } catch (e) {}
   },
 
-  // 27. BOSS SLIME SPLAT (Squishy wet caramel/biofilm slap on mirror teeth)
+  // 27. BOSS SLIME SPLAT (Squishy wet caramel/biofilm slap on mirror teeth, 100ms debounce)
   bossSplat() {
     if (isMuted) return;
+    if (!canDebounceSfx('bossSplat', MIX_DEFAULTS.debouncesMs.bossSplat)) return;
     const ctx = getAudioContext();
     if (!ctx) return;
     try {
@@ -1347,19 +1600,20 @@ export const Sound = {
       osc.frequency.setValueAtTime(320, now);
       osc.frequency.exponentialRampToValueAtTime(80, now + 0.14);
 
-      gain.gain.setValueAtTime(0.35, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.16);
+      gain.gain.setValueAtTime(MIX_DEFAULTS.battleSfxGains.bossSplat, now);
+      gain.gain.exponentialRampToValueAtTime(0.005, now + 0.16);
 
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      gain.connect(getBusDestination(ctx, 'battleSfxGain'));
       osc.start(now);
       osc.stop(now + 0.17);
     } catch (e) {}
   },
 
-  // 28. FOAM HIT (Crisp fizzy toothpaste bubble blast against 3D boss)
+  // 28. FOAM HIT (Crisp fizzy toothpaste bubble blast against 3D boss, 100ms debounce)
   foamHit() {
     if (isMuted) return;
+    if (!canDebounceSfx('foamHit', MIX_DEFAULTS.debouncesMs.foamHit)) return;
     const ctx = getAudioContext();
     if (!ctx) return;
     try {
@@ -1367,14 +1621,14 @@ export const Sound = {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(1400, now);
+      osc.frequency.setValueAtTime(1200, now);
       osc.frequency.exponentialRampToValueAtTime(220, now + 0.09);
 
-      gain.gain.setValueAtTime(0.28, now);
+      gain.gain.setValueAtTime(MIX_DEFAULTS.battleSfxGains.foamHit, now);
       gain.gain.exponentialRampToValueAtTime(0.005, now + 0.1);
 
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      gain.connect(getBusDestination(ctx, 'battleSfxGain'));
       osc.start(now);
       osc.stop(now + 0.11);
     } catch (e) {}
@@ -1387,6 +1641,7 @@ export const Sound = {
     if (!ctx) return;
     try {
       const now = ctx.currentTime;
+      const dest = getBusDestination(ctx, 'uiSfxGain');
       const notes = [880, 1174, 1318, 1760];
       notes.forEach((freq, idx) => {
         const osc = ctx.createOscillator();
@@ -1394,24 +1649,31 @@ export const Sound = {
         osc.type = 'sine';
         osc.frequency.setValueAtTime(freq, now + idx * 0.06);
 
-        gain.gain.setValueAtTime(0.12, now + idx * 0.06);
+        gain.gain.setValueAtTime(0.10, now + idx * 0.06);
         gain.gain.exponentialRampToValueAtTime(0.005, now + idx * 0.06 + 0.18);
 
         osc.connect(gain);
-        gain.connect(ctx.destination);
+        gain.connect(dest);
         osc.start(now + idx * 0.06);
         osc.stop(now + idx * 0.06 + 0.19);
       });
     } catch (e) {}
   },
 
-  // 30. SHIELD SHATTER (Crisp crystalline glass shatter)
+  // 30. SHIELD SHATTER (Single deduplicated definition, softened via lowpass 2400 Hz, 100ms debounce)
   shieldShatter() {
     if (isMuted) return;
+    if (!canDebounceSfx('shieldShatter', MIX_DEFAULTS.debouncesMs.shieldShatter)) return;
     const ctx = getAudioContext();
     if (!ctx) return;
     try {
       const now = ctx.currentTime;
+      const dest = getBusDestination(ctx, 'battleSfxGain');
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(2400, now);
+      filter.connect(dest);
+
       const freqs = [1600, 2100, 2900, 3800];
       freqs.forEach((f, idx) => {
         const osc = ctx.createOscillator();
@@ -1420,11 +1682,11 @@ export const Sound = {
         osc.frequency.setValueAtTime(f, now + idx * 0.02);
         osc.frequency.exponentialRampToValueAtTime(f * 0.4, now + idx * 0.02 + 0.2);
 
-        gain.gain.setValueAtTime(0.18, now + idx * 0.02);
+        gain.gain.setValueAtTime(MIX_DEFAULTS.battleSfxGains.shieldShatter, now + idx * 0.02);
         gain.gain.exponentialRampToValueAtTime(0.005, now + idx * 0.02 + 0.22);
 
         osc.connect(gain);
-        gain.connect(ctx.destination);
+        gain.connect(filter);
         osc.start(now + idx * 0.02);
         osc.stop(now + idx * 0.02 + 0.23);
       });

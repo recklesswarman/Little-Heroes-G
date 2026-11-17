@@ -96,7 +96,10 @@ const testFiles = [
   'scratch/verify_arcade_classic_games_expansion.mjs',
   'scratch/verify_code_scanning_fixes.mjs',
   // Milestone Parent Analytics and ECharts Dashboard E2E Suite:
-  'scratch/verify_parent_analytics_e2e.mjs'
+  'scratch/verify_parent_analytics_e2e.mjs',
+  // AI Toothbrush Timer M1 Production Audit Suites (R1, R2, R3):
+  'scratch/verify_ai_vision_and_fallback.mjs',
+  'scratch/verify_combat_pacing_and_audio.mjs'
 ];
 
 let allPassed = true;

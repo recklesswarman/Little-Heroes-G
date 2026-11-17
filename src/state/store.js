@@ -135,7 +135,7 @@ const defaultState = {
     victoryReward: null,
     hasAwardedVictory: false,
     bossesDefeated: [],
-    showPipCam: false
+    showPipCam: true
   },
 
   // 3D Living Pet Sanctuary & Playpark Overhaul
@@ -1201,7 +1201,7 @@ class Store {
     }
   }
 
-  saveState(immediate = false) {
+  saveState(immediate = false, skipNotify = false) {
     try {
       this.syncSelectedHeroWithHeroes();
       this.stampHeroFieldChanges();
@@ -1217,7 +1217,7 @@ class Store {
     } catch (e) {
       console.warn('Failed to save store state', e);
     }
-    this.notify();
+    if (!skipNotify) this.notify();
   }
 
   subscribe(fn) {
@@ -1270,7 +1270,27 @@ class Store {
       return;
     }
 
+    const isBattleTarget = ['battle', 'ar_battle', 'dental_battle', 'boost', '/boost'].includes(targetView);
+    const wasBattleView = ['battle', 'ar_battle', 'dental_battle', 'boost', '/boost'].includes(this.state.activeView);
+
     if (this.state.activeView !== targetView) {
+      if (wasBattleView && !isBattleTarget) {
+        const col = this.getBossColosseumState();
+        col.isVictoryModalOpen = false;
+        col.isDefeatModalOpen = false;
+        col.hasAwardedVictory = false;
+        col.victoryReward = null;
+        col.defeatInfo = null;
+        this.state.hasExplicitBossSelection = false;
+        this.state.activeWaypointChoreKey = null;
+      }
+      if (isBattleTarget && !wasBattleView) {
+        const col = this.getBossColosseumState();
+        if (!col.isVictoryModalOpen && !col.isDefeatModalOpen) {
+          col.hasAwardedVictory = false;
+          col.victoryReward = null;
+        }
+      }
       this.state.previousView = this.state.activeView;
       this.state.activeView = targetView;
       if (params.petId) this.state.selectedPetDetailId = params.petId;
@@ -2611,6 +2631,21 @@ class Store {
     const laserMult = hasLaserToothbrush ? 1.3 : 1.0;
     const finalCoinsEarned = Math.round(coinsEarned * laserMult);
     const finalXpEarned = Math.round(xpEarned * laserMult);
+    const trophyRelic = boss.trophyRelicId || 'trophy_sugar_bandit';
+
+    // Set victory flags & reward payload BEFORE any sub-calls that trigger saveState()/notify(),
+    // preventing re-entrant startBattle() from launching behind the Victory Modal.
+    col.isVictoryModalOpen = true;
+    col.hasAwardedVictory = true;
+    col.victoryReward = {
+      bossId: boss.id,
+      bossName: boss.name,
+      cleansedTitle: boss.cleansedTitle || 'Minty Friend 🍬',
+      trophyId: trophyRelic,
+      coins: finalCoinsEarned,
+      xp: finalXpEarned,
+      sparks: sparksEarned
+    };
 
     // 1. Award Currency and Hero XP (Tokens credited immediately)
     if (currentHero) {
@@ -2807,8 +2842,6 @@ class Store {
     });
 
     // 7. Unlock 3D Trophy Relic in HQ
-    // 7. Unlock 3D Trophy Relic in HQ
-    const trophyRelic = boss.trophyRelicId || 'trophy_sugar_bandit';
     if (!this.state.recentlyUnlocked) this.state.recentlyUnlocked = [];
     if (!this.state.recentlyUnlocked.includes(trophyRelic)) {
       this.state.recentlyUnlocked.push(trophyRelic);
@@ -8150,10 +8183,21 @@ class Store {
         isDefeatModalOpen: false,
         defeatInfo: null,
         bossesDefeated: [],
-        showPipCam: false
+        showPipCam: true
       };
     }
     return this.state.bossColosseum;
+  }
+
+  getColosseumPhaseHpFloor(maxHp = 100, secondsRemaining = 120, totalDuration = 120) {
+    if (secondsRemaining <= 0) return 0;
+    const dur = Math.max(1, totalDuration || 120);
+    const timeRatio = Math.max(0, Math.min(1, secondsRemaining / dur));
+    if (timeRatio > 0.75) return Math.max(1, Math.ceil(maxHp * 0.75));
+    if (timeRatio > 0.50) return Math.max(1, Math.ceil(maxHp * 0.50));
+    if (timeRatio > 0.25) return Math.max(1, Math.ceil(maxHp * 0.25));
+    if (timeRatio > 0.083) return Math.max(1, Math.ceil(maxHp * 0.10));
+    return 1;
   }
 
   initColosseumBattle(bossId = 'sugar_bandit', durationSec = 120, skipNotify = false) {
@@ -8183,8 +8227,7 @@ class Store {
     col.hasAwardedVictory = false;
     col.isDefeatModalOpen = false;
     col.defeatInfo = null;
-    this.saveState(true);
-    if (!skipNotify) this.notify();
+    this.saveState(true, skipNotify);
     return col;
   }
 
@@ -8195,20 +8238,23 @@ class Store {
 
     if (secondsRemaining <= 0) {
       col.currentHp = 0;
+      col.isShieldActive = false;
       col.enamelCleanPercent = 100;
     } else {
-      const timeRatio = Math.max(0, secondsRemaining / totalDuration);
-      // Floor boss HP across 5 zones so it stays alive throughout the full routine (at least 1 HP)
-      const minHpFloor = Math.max(1, Math.round(col.maxHp * timeRatio * 0.75));
+      const timeRatio = Math.max(0, secondsRemaining / (totalDuration || 120));
+      // 5-stage phase-gated HP floor aligned with DENTAL_QUADRANTS (75% / 50% / 25% / 10% / 1)
+      const minHpFloor = this.getColosseumPhaseHpFloor(col.maxHp, secondsRemaining, totalDuration);
       col.currentHp = Math.max(minHpFloor, col.currentHp);
+      col.enamelCleanPercent = Math.min(100, Math.round(((col.maxHp - col.currentHp) / (col.maxHp || 100)) * 100));
 
-      // Trigger shield milestones based on timer progress (Zone 2 switch ~75% time, Zone 4 switch ~25% time)
+      // Trigger shield milestones offset slightly from quadrant boundaries (72% / 22% time)
+      // to avoid same-tick voice cancellations against Q2 (75%) and Q4 (25%) transitions
       const hpPercent = Math.round((col.currentHp / col.maxHp) * 100);
-      if ((hpPercent <= 90 || timeRatio <= 0.75) && !col.shieldMilestonesTriggered[90]) {
+      if ((hpPercent <= 90 || timeRatio <= 0.72) && !col.shieldMilestonesTriggered[90]) {
         col.shieldMilestonesTriggered[90] = true;
         col.isShieldActive = true;
         col.shieldHp = col.maxShieldHp;
-      } else if ((hpPercent <= 30 || timeRatio <= 0.25) && !col.shieldMilestonesTriggered[30]) {
+      } else if ((hpPercent <= 30 || timeRatio <= 0.22) && !col.shieldMilestonesTriggered[30]) {
         col.shieldMilestonesTriggered[30] = true;
         col.isShieldActive = true;
         col.shieldHp = col.maxShieldHp;
@@ -8219,7 +8265,7 @@ class Store {
     }
   }
 
-  fireColosseumBlaster() {
+  fireColosseumBlaster(customDamage = null, chargeGain = 4, skipNotify = false) {
     const col = this.getBossColosseumState();
     // Do not hit if battle is already concluded at 0s
     if (col.secondsRemaining !== undefined && col.secondsRemaining <= 0) return { hit: false, defeated: true };
@@ -8228,31 +8274,44 @@ class Store {
     const activePet = this.getActivePet();
     const equipped = (hero && activePet && hero.equippedPetGearMap) ? (hero.equippedPetGearMap[activePet.id] || {}) : {};
     const buffs = calculateActiveGearBuffs(equipped);
-    
-    // Base damage + gear boost
-    const baseDamage = 8;
-    const bonusDamage = Math.round(baseDamage * (buffs.damageMultiplier || 1.0));
-    
+
+    // Duration-normalized damage with capped gear multiplier (<= 1.5x)
+    const dur = Math.max(30, col.totalDuration || 120);
+    const defaultShotBase = (col.maxHp || 100) / (dur * 0.95);
+    const cappedGearMult = Math.min(1.5, Math.max(1.0, buffs.damageMultiplier || 1.0));
+    const bonusDamage = (typeof customDamage === 'number' && Number.isFinite(customDamage))
+      ? Math.max(0.25, customDamage)
+      : Number((defaultShotBase * cappedGearMult).toFixed(2));
+
     col.comboCount = (col.comboCount || 0) + 1;
 
+    let shieldBroken = false;
     // Damage shield or boss HP
     if (col.isShieldActive && col.shieldHp > 0) {
       col.shieldHp = Math.max(0, col.shieldHp - 1);
       if (col.shieldHp === 0) {
         col.isShieldActive = false;
-        if (typeof Sound?.sparkle === 'function') Sound.sparkle();
+        shieldBroken = true;
+        if (typeof Sound?.shieldShatter === 'function') Sound.shieldShatter();
+        else if (typeof Sound?.sparkle === 'function') Sound.sparkle();
       }
     } else {
-      // During active 2-minute battle, boss stays alive (min 1 HP) until 0 seconds remain
-      const minHp = (col.secondsRemaining === undefined || col.secondsRemaining > 0) ? 1 : 0;
-      col.currentHp = Math.max(minHp, col.currentHp - bonusDamage);
+      // Phase-gated HP floor keeps boss alive until 0 seconds remain
+      const secs = col.secondsRemaining !== undefined ? col.secondsRemaining : dur;
+      const minHp = this.getColosseumPhaseHpFloor(col.maxHp || 100, secs, dur);
+      col.currentHp = Math.max(minHp, Number((col.currentHp - bonusDamage).toFixed(2)));
+    }
+
+    // Charge Foam Power / Chore Supernova from active brushing
+    if (chargeGain > 0) {
+      col.choreSupernovaCharge = Math.min(100, (col.choreSupernovaCharge || 0) + chargeGain);
     }
 
     // Update clean enamel percentage
-    col.enamelCleanPercent = Math.min(100, Math.round(((col.maxHp - col.currentHp) / col.maxHp) * 100));
+    col.enamelCleanPercent = Math.min(100, Math.round(((col.maxHp - col.currentHp) / (col.maxHp || 100)) * 100));
 
     // Check shield milestones (at 90% and 30% HP)
-    const hpPercent = Math.round((col.currentHp / col.maxHp) * 100);
+    const hpPercent = Math.round((col.currentHp / (col.maxHp || 100)) * 100);
     if (hpPercent <= 90 && !col.shieldMilestonesTriggered[90]) {
       col.shieldMilestonesTriggered[90] = true;
       col.isShieldActive = true;
@@ -8266,11 +8325,13 @@ class Store {
     // Ammo drain and refill
     col.ammoTank = Math.max(20, (col.ammoTank || 100) - 1);
 
-    this.notify();
-    return { hit: true, damage: bonusDamage, defeated: false };
+    if (!skipNotify) {
+      this.notify();
+    }
+    return { hit: true, damage: bonusDamage, shieldBroken, currentHp: col.currentHp, defeated: false };
   }
 
-  triggerColosseumDeflect() {
+  triggerColosseumDeflect(skipNotify = false) {
     const col = this.getBossColosseumState();
     col.isDeflecting = true;
 
@@ -8279,38 +8340,43 @@ class Store {
     const equipped = (hero && activePet && hero.equippedPetGearMap) ? (hero.equippedPetGearMap[activePet.id] || {}) : {};
     const buffs = calculateActiveGearBuffs(equipped);
 
-    // Deflect damage bounced back to boss
-    const deflectDamage = Math.round(12 * (buffs.defenseMultiplier || 1.0));
-    const minHp = (col.secondsRemaining === undefined || col.secondsRemaining > 0) ? 1 : 0;
-    col.currentHp = Math.max(minHp, col.currentHp - deflectDamage);
+    // Deflect damage bounced back to boss (capped & phase-floored so boss never dies early)
+    const dur = Math.max(30, col.totalDuration || 120);
+    const secs = col.secondsRemaining !== undefined ? col.secondsRemaining : dur;
+    const deflectDamage = Math.min(12, Math.round(6 * Math.min(1.5, buffs.defenseMultiplier || 1.0)));
+    const minHp = this.getColosseumPhaseHpFloor(col.maxHp || 100, secs, dur);
+    col.currentHp = Math.max(minHp, Number((col.currentHp - deflectDamage).toFixed(2)));
     col.comboCount = (col.comboCount || 0) + 2;
-    col.enamelCleanPercent = Math.min(100, Math.round(((col.maxHp - col.currentHp) / col.maxHp) * 100));
+    col.choreSupernovaCharge = Math.min(100, (col.choreSupernovaCharge || 0) + 12);
+    col.enamelCleanPercent = Math.min(100, Math.round(((col.maxHp - col.currentHp) / (col.maxHp || 100)) * 100));
 
     if (typeof Sound?.hit === 'function') Sound.hit();
     else if (typeof Sound?.click === 'function') Sound.click();
 
     setTimeout(() => {
       col.isDeflecting = false;
-      this.notify();
+      if (!skipNotify) this.notify();
     }, 800);
 
-    this.notify();
+    if (!skipNotify) this.notify();
     return { deflected: true, damage: deflectDamage };
   }
 
-  unleashChoreSupernova() {
+  unleashChoreSupernova(skipNotify = false) {
     const col = this.getBossColosseumState();
     if ((col.choreSupernovaCharge || 0) < 40) return { success: false, message: 'Supernova charging!' };
 
-    // Screen clearing blast
+    // Screen clearing blast (respects phase HP floor so boss isn't defeated early)
     col.choreSupernovaCharge = 0;
     col.isShieldActive = false;
     col.shieldHp = 0;
-    const megaDamage = 35;
-    const minHp = (col.secondsRemaining === undefined || col.secondsRemaining > 0) ? 1 : 0;
-    col.currentHp = Math.max(minHp, col.currentHp - megaDamage);
+    const dur = Math.max(30, col.totalDuration || 120);
+    const secs = col.secondsRemaining !== undefined ? col.secondsRemaining : dur;
+    const megaDamage = Math.max(12, Math.round((col.maxHp || 100) * 0.18));
+    const minHp = this.getColosseumPhaseHpFloor(col.maxHp || 100, secs, dur);
+    col.currentHp = Math.max(minHp, Number((col.currentHp - megaDamage).toFixed(2)));
     col.comboCount = (col.comboCount || 0) + 5;
-    col.enamelCleanPercent = Math.min(100, Math.round(((col.maxHp - col.currentHp) / col.maxHp) * 100));
+    col.enamelCleanPercent = Math.min(100, Math.round(((col.maxHp - col.currentHp) / (col.maxHp || 100)) * 100));
 
     safeConfetti({
       particleCount: 80,
@@ -8321,7 +8387,7 @@ class Store {
 
     if (typeof Sound?.fanfare === 'function') Sound.fanfare();
 
-    this.notify();
+    if (!skipNotify) this.notify();
     return { success: true, damage: megaDamage };
   }
 
@@ -8358,10 +8424,10 @@ class Store {
     this.notify();
   }
 
-  closeColosseumVictoryModal() {
+  closeColosseumVictoryModal(skipNotify = false) {
     const col = this.getBossColosseumState();
     col.isVictoryModalOpen = false;
-    this.notify();
+    if (!skipNotify) this.notify();
   }
 
   // Shown when a kid quits/backs out of a battle before the timer finishes --
@@ -8380,10 +8446,10 @@ class Store {
     this.notify();
   }
 
-  closeColosseumDefeatModal() {
+  closeColosseumDefeatModal(skipNotify = false) {
     const col = this.getBossColosseumState();
     col.isDefeatModalOpen = false;
-    this.notify();
+    if (!skipNotify) this.notify();
   }
 
   // =========================================================================

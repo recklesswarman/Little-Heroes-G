@@ -58,6 +58,7 @@ let lastActiveViewForPetSanctuaryCleanup = null;
 // keep this list in sync with that case so the leave-check doesn't false-positive.
 const PET_SANCTUARY_VIEW_NAMES = ['pet_sanctuary', 'pet-sanctuary', 'pet_pen', 'pet-pen', 'evolution'];
 const DANCE_PARTY_VIEW_NAMES = ['dance_party', 'teamwork-preview', 'teamwork_preview', '/teamwork-preview', '/teamwork_preview'];
+const BATTLE_VIEW_NAMES = ['battle', 'ar_battle', 'dental_battle', 'boost', '/boost'];
 
 // Every view/modal is a full app.innerHTML replace with no DOM diffing, so a
 // re-render triggered by anything unrelated to the field the user is
@@ -144,8 +145,8 @@ function _renderAppInternal() {
   // own -- the timer keeps ticking and the music keeps playing behind
   // whatever screen they're now on. Catch that the instant we're about to
   // render a different view.
-  const wasOnBattleView = lastActiveViewForBattleCleanup === 'battle' || lastActiveViewForBattleCleanup === 'ar_battle';
-  const isLeavingBattleView = wasOnBattleView && activeView !== 'battle' && activeView !== 'ar_battle';
+  const wasOnBattleView = BATTLE_VIEW_NAMES.includes(lastActiveViewForBattleCleanup);
+  const isLeavingBattleView = wasOnBattleView && !BATTLE_VIEW_NAMES.includes(activeView);
   if (isLeavingBattleView) {
     abandonBattleIfRunning();
   }

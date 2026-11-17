@@ -120,13 +120,14 @@ export function getRewardAssetUrl(itemId, category = '') {
  * Strictly prevents "undefined" or broken image icons from ever displaying.
  */
 export function renderRewardImage(item = {}, classNames = 'w-full h-full object-contain', altText = '') {
-  const title = item.name || item.title || altText || 'Digital Reward';
-  const rawUrl = item.assetUrl || item.image || (item.id ? getRewardAssetUrl(item.id, item.category) : '');
+  const safeItem = item || {};
+  const title = safeItem.name || safeItem.title || altText || 'Digital Reward';
+  const rawUrl = safeItem.assetUrl || safeItem.image || (safeItem.id ? getRewardAssetUrl(safeItem.id, safeItem.category) : '');
   
   // Guard against string literal "undefined" or missing values
   let safeSrc = rawUrl;
   if (!safeSrc || safeSrc === 'undefined' || safeSrc === 'null') {
-    safeSrc = item.id ? getRewardAssetUrl(item.id, item.category) : REWARD_ASSET_MAP.reward_fallback;
+    safeSrc = safeItem.id ? getRewardAssetUrl(safeItem.id, safeItem.category) : REWARD_ASSET_MAP.reward_fallback;
   }
 
   const safeAlt = escapeHtml(title);

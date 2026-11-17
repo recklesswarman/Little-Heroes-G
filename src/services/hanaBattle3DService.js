@@ -136,6 +136,12 @@ class HanaBattle3DService {
     // Initialization guard
     this.isInitialized = false;
     this.showCanvasHud = false;
+    this.showDentalArchHud = true;
+    this.minBossHpFloor = 1;
+    this.sensorMode = 'vision';
+    this.movementSpeed = 0;
+    this.visionConfidence = 0;
+    this.isFinale = false;
 
     // Bind loop
     this.renderLoop = this.renderLoop.bind(this);
@@ -148,8 +154,13 @@ class HanaBattle3DService {
   resetBattleState() {
     this.isVictory = false;
     this.bossHp = this.maxHp || 100;
+    this.minBossHpFloor = 1;
     this.isShieldActive = false;
     this.isScrubbing = false;
+    this.isFinale = false;
+    this.sensorMode = 'vision';
+    this.movementSpeed = 0;
+    this.visionConfidence = 0;
     this.isDeflectActive = false;
     this.deflectTimer = 0;
     this.caramelBombs = [];
@@ -172,6 +183,10 @@ class HanaBattle3DService {
       p.intact = true;
       p.cracks = 0;
     });
+  }
+
+  setFinaleMode(active = true) {
+    this.isFinale = Boolean(active);
   }
 
   /**
@@ -445,6 +460,18 @@ class HanaBattle3DService {
       bombColor
     };
 
+    // Keep 3D service HP & maxHp synchronized with boss/store authority
+    if (typeof bossData.maxHp === 'number' && Number.isFinite(bossData.maxHp) && bossData.maxHp > 0) {
+      this.maxHp = bossData.maxHp;
+      if (typeof bossData.currentHp === 'number' && Number.isFinite(bossData.currentHp)) {
+        this.bossHp = this.isVictory ? 0 : Math.max(0, bossData.currentHp);
+      } else if (!quadrantCleanliness) {
+        this.bossHp = this.isVictory ? 0 : bossData.maxHp;
+      }
+    } else if (typeof bossData.currentHp === 'number' && Number.isFinite(bossData.currentHp)) {
+      this.bossHp = this.isVictory ? 0 : Math.max(0, bossData.currentHp);
+    }
+
     if (bossData.image) this.loadImage(bossData.image);
     if (bossData.cleansedImage) this.loadImage(bossData.cleansedImage);
 
@@ -474,13 +501,25 @@ class HanaBattle3DService {
     combatWeapon = null,
     equippedWeapon = null,
     weaponMultiplier = null,
-    combo = 1
+    combo = 1,
+    minBossHpFloor = null,
+    sensorMode = null,
+    movementSpeed = null,
+    visionConfidence = null,
+    isFinale = null
   } = {}) {
-    this.bossHp = bossHp;
+    if (typeof minBossHpFloor === 'number' && Number.isFinite(minBossHpFloor)) {
+      this.minBossHpFloor = Math.max(0, minBossHpFloor);
+    }
+    this.bossHp = this.isVictory ? 0 : Math.max(this.minBossHpFloor || 0, bossHp);
     this.maxHp = maxHp;
     this.isShieldActive = shieldActive;
     this.activeQuadrant = activeQuadrant;
     this.currentCombo = combo || 1;
+    if (sensorMode) this.sensorMode = sensorMode;
+    if (typeof movementSpeed === 'number') this.movementSpeed = movementSpeed;
+    if (typeof visionConfidence === 'number') this.visionConfidence = visionConfidence;
+    if (typeof isFinale === 'boolean') this.isFinale = isFinale;
     if (combatWeapon) {
       this.setEquippedWeapon(combatWeapon);
     } else {
@@ -489,7 +528,7 @@ class HanaBattle3DService {
       if (weaponMultiplier !== undefined) this.weaponMultiplier = weaponMultiplier;
     }
     this.cadenceScore = cadenceScore;
-    this.isScrubbing = isScrubbing;
+    this.isScrubbing = Boolean(isScrubbing);
 
     // Sync warrior teeth army and dental hologram progress
     if (quadrantCleanliness) {
@@ -533,10 +572,8 @@ class HanaBattle3DService {
       });
     }
 
-    // Trigger counter-attack if cadence is high, combo rising, or scrubbing
-    if (this.isScrubbing && (this.cadenceScore > 40 || (this.currentCombo && this.currentCombo > 5) || Math.random() < 0.25)) {
-      this.triggerWarriorCounterAttack(this.currentCombo || 1);
-    }
+    // NOTE: BattleView.js is the sole cooldown-gated trigger authority for
+    // triggerWarriorCounterAttack() — do NOT auto-fire projectiles here.
 
     // Sync Spline Runtime variables if active
     if (this.isSplineActive && this.splineApp) {
@@ -855,10 +892,27 @@ class HanaBattle3DService {
     // 3. Pearly Floating Tooth Platform
     this.renderFloatingToothPlatform(ctx, w, h);
 
-    // 4 & 5. Optional Canvas Mirror & Mouth HUD (used only if DOM HUD is not present)
+    // 4 & 5. Optional Canvas Mirror & Compact Corner Dental Arch Mini-HUD
     if (this.showCanvasHud) {
       this.renderFloatingHeroMirror(ctx, w, h);
+    }
+    if (this.showCanvasHud || this.showDentalArchHud) {
       this.render3DMouthHologram(ctx, w, h);
+    }
+
+    // Q5 Final 10s Sparkle Finale ambiance (Explorer Palette)
+    if (this.isFinale && !this.isVictory && this.sparkles.length < 35 && Math.random() < 0.35) {
+      const finaleColors = ['#00d2ff', '#10b981', '#fbbf24', '#ffffff'];
+      this.sparkles.push({
+        x: w * (0.2 + Math.random() * 0.6),
+        y: h * (0.2 + Math.random() * 0.5),
+        vx: (Math.random() - 0.5) * 2.5,
+        vy: -1.5 - Math.random() * 2.5,
+        color: finaleColors[Math.floor(Math.random() * finaleColors.length)],
+        size: 4 + Math.random() * 4,
+        alpha: 0.95,
+        life: 0.85
+      });
     }
 
     // 6. 3D Boss & Breakable Candy Armor
@@ -1103,31 +1157,31 @@ class HanaBattle3DService {
   }
 
   /**
-   * Interactive 3D Mouth Hologram HUD
+   * Compact Corner Dental Arch Mini-HUD (Explorer Palette — zero purple/pink)
    */
   render3DMouthHologram(ctx, w, h) {
-    const hudW = Math.min(115, w * 0.25);
-    const hudH = hudW * 0.95;
-    const hx = w * 0.82;
-    const hy = h * 0.22 + Math.cos(this.clock * 1.8) * 4;
+    const hudW = Math.min(96, Math.max(76, w * 0.19));
+    const hudH = hudW * 0.96;
+    const hx = w - hudW * 0.5 - 12;
+    const hy = Math.max(124, h * 0.27);
 
     ctx.save();
     ctx.translate(hx, hy);
 
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
-    ctx.strokeStyle = 'rgba(6, 182, 212, 0.6)';
+    ctx.fillStyle = 'rgba(9, 20, 30, 0.88)';
+    ctx.strokeStyle = 'rgba(0, 210, 255, 0.65)';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.roundRect(-hudW * 0.5, -hudH * 0.5, hudW, hudH, 16);
+    ctx.roundRect(-hudW * 0.5, -hudH * 0.5, hudW, hudH, 14);
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = '#38bdf8';
+    ctx.fillStyle = '#00d2ff';
     ctx.font = 'bold 8px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('3D DENTAL ARCH', 0, -hudH * 0.5 + 12);
+    ctx.fillText('SMILE MAP', 0, -hudH * 0.5 + 11);
 
-    const scale = hudW * 0.01;
+    const scale = hudW * 0.0086;
     this.dentalTeeth.forEach(tooth => {
       const tx = tooth.x * scale;
       const ty = tooth.y * scale + 2;
@@ -1135,33 +1189,37 @@ class HanaBattle3DService {
       const isActive = this.activeQuadrant === tooth.id;
 
       if (isActive) {
-        ctx.strokeStyle = '#22d3ee';
-        ctx.lineWidth = 1.6;
+        ctx.strokeStyle = '#00d2ff';
+        ctx.lineWidth = 1.8;
         ctx.beginPath();
-        ctx.arc(tx, ty, 7 + Math.sin(this.clock * 8) * 1.4, 0, Math.PI * 2);
+        ctx.arc(tx, ty, 6.2 + Math.sin(this.clock * 8) * 1.3, 0, Math.PI * 2);
         ctx.stroke();
       }
 
       ctx.beginPath();
-      ctx.arc(tx, ty, 4.5, 0, Math.PI * 2);
+      ctx.arc(tx, ty, 4, 0, Math.PI * 2);
 
       if (isDone) {
-        ctx.fillStyle = '#ffffff';
-        ctx.shadowColor = '#22d3ee';
-        ctx.shadowBlur = 8;
+        ctx.fillStyle = '#10b981';
+        ctx.shadowColor = '#00d2ff';
+        ctx.shadowBlur = 7;
+      } else if (isActive) {
+        ctx.fillStyle = '#fef08a';
+        ctx.shadowColor = '#00d2ff';
+        ctx.shadowBlur = 5;
       } else {
         const dirtyRatio = 1 - (tooth.cleanPct / 100);
-        ctx.fillStyle = dirtyRatio > 0.5 ? '#d97706' : '#fef08a';
+        ctx.fillStyle = dirtyRatio > 0.5 ? '#d97706' : '#f1c40f';
         ctx.shadowBlur = 0;
       }
       ctx.fill();
       ctx.shadowBlur = 0;
     });
 
-    const qUpper = this.activeQuadrant.toUpperCase();
-    ctx.fillStyle = '#22d3ee';
+    const qUpper = (this.activeQuadrant || 'q1').toUpperCase();
+    ctx.fillStyle = '#2ecc71';
     ctx.font = 'bold 8px sans-serif';
-    ctx.fillText(`ZONE: ${qUpper}`, 0, hudH * 0.5 - 6);
+    ctx.fillText(`ZONE ${qUpper}`, 0, hudH * 0.5 - 6);
 
     ctx.restore();
   }
@@ -1743,12 +1801,21 @@ class HanaBattle3DService {
   }
 
   /**
-   * Unleash Warrior Teeth counter-attack projectile at boss
+   * Unleash Warrior Teeth counter-attack projectile at boss (cooldown & cap gated)
    */
-  triggerWarriorCounterAttack(combo = 1) {
-    if (this.isVictory) return;
-    const firingTooth = this.warriorTeeth[Math.floor(Math.random() * this.warriorTeeth.length)];
-    if (!firingTooth) return;
+  triggerWarriorCounterAttack(combo = 1, options = {}) {
+    if (this.isVictory) return false;
+    const maxProjectiles = typeof options.maxProjectiles === 'number' ? options.maxProjectiles : 6;
+    if (this.counterAttackProjectiles.length >= maxProjectiles) {
+      return false;
+    }
+
+    // Prefer the active quadrant's Warrior Tooth when firing, with gentle variety
+    const activeTooth = this.warriorTeeth.find(t => t.id === this.activeQuadrant);
+    const firingTooth = (activeTooth && Math.random() < 0.65)
+      ? activeTooth
+      : this.warriorTeeth[Math.floor(Math.random() * this.warriorTeeth.length)];
+    if (!firingTooth) return false;
 
     firingTooth.recoil = 0.35;
     firingTooth.fireFlash = 0.45;
@@ -1767,8 +1834,11 @@ class HanaBattle3DService {
     const vx = (dx / dist) * speed;
     const vy = (dy / dist) * speed;
 
-    const mult = this.weaponMultiplier || 1.0;
+    const mult = Math.min(1.5, Math.max(1.0, this.weaponMultiplier || 1.0));
     const comboMultiplier = 1.0 + Math.min(2.0, (combo || 1) * 0.05);
+    const shotDamage = (typeof options.damage === 'number' && Number.isFinite(options.damage))
+      ? Math.max(0.25, options.damage)
+      : (3.5 * (this.weaponMultiplier || 1.0) * comboMultiplier);
     const weaponTitle = (this.equippedWeapon?.title || '').toLowerCase();
 
     let pType = 'laser_beam';
@@ -1781,8 +1851,8 @@ class HanaBattle3DService {
       pGlow = '#f59e0b';
     } else if (weaponTitle.includes('wand') || weaponTitle.includes('star')) {
       pType = 'star_sparkle';
-      pColor = '#ec4899';
-      pGlow = '#f472b6';
+      pColor = '#fbbf24';
+      pGlow = '#f59e0b';
     } else if (weaponTitle.includes('bubble') || weaponTitle.includes('foam')) {
       pType = 'bubble_burst';
       pColor = '#38bdf8';
@@ -1803,14 +1873,18 @@ class HanaBattle3DService {
       type: pType,
       color: pColor,
       glow: pGlow,
-      damage: 3.5 * mult * comboMultiplier,
-      radius: 7 * Math.min(1.5, mult) * Math.min(1.4, Math.sqrt(comboMultiplier)),
+      damage: shotDamage,
+      radius: 7 * Math.min(1.5, mult) * Math.min(1.3, Math.sqrt(comboMultiplier)),
       trail: [],
       life: dist / speed
     });
 
-    // If combo is high (>= 15), unleash simultaneous Captain support blast
-    if (combo >= 15 && !firingTooth.isCaptain) {
+    // Captain support blast: every 5th volley when BattleView passes allowCaptainBonus,
+    // or legacy fallback when called directly without options and combo >= 15
+    const allowCaptain = options.allowCaptainBonus !== undefined
+      ? Boolean(options.allowCaptainBonus)
+      : (combo >= 15);
+    if (allowCaptain && !firingTooth.isCaptain && this.counterAttackProjectiles.length < maxProjectiles) {
       const captain = this.warriorTeeth.find(t => t.isCaptain);
       if (captain) {
         captain.recoil = 0.3;
@@ -1830,7 +1904,9 @@ class HanaBattle3DService {
           type: pType,
           color: pColor,
           glow: pGlow,
-          damage: 2.5 * mult * comboMultiplier,
+          damage: typeof options.damage === 'number'
+            ? Number((shotDamage * 0.5).toFixed(2))
+            : (2.5 * (this.weaponMultiplier || 1.0) * comboMultiplier),
           radius: 6 * Math.min(1.5, mult),
           trail: [],
           life: cdist / speed
@@ -1840,6 +1916,7 @@ class HanaBattle3DService {
 
     if (typeof Sound?.laser === 'function') Sound.laser();
     else if (typeof Sound?.sparkle === 'function') Sound.sparkle();
+    return true;
   }
 
   /**
@@ -1937,10 +2014,9 @@ class HanaBattle3DService {
       }
       ctx.restore();
 
-      // Hit boss when lifetime expires or proximity reached
+      // Hit boss when lifetime expires (store.bossColosseum.currentHp is the single HP authority)
       if (p.life <= 0) {
         this.damageWobble = 0.25;
-        this.bossHp = Math.max(0, this.bossHp - p.damage);
         this.shockwaves.push({
           x: p.targetX || p.x,
           y: p.targetY || p.y,
@@ -2025,6 +2101,27 @@ class HanaBattle3DService {
 
       ctx.save();
       ctx.translate(tx, ty);
+
+      // Active Quadrant Spotlight Halo + Idle/Brushing Stance indicator
+      const isTargetZone = this.activeQuadrant === tooth.id;
+      if (isTargetZone && !this.isVictory) {
+        ctx.save();
+        const haloPulse = 1 + Math.sin(this.clock * 7) * 0.14;
+        const haloColor = this.isScrubbing ? 'rgba(0, 210, 255, 0.85)' : 'rgba(241, 196, 15, 0.75)';
+        ctx.strokeStyle = haloColor;
+        ctx.lineWidth = this.isScrubbing ? 3.2 : 2.2;
+        ctx.shadowColor = this.isScrubbing ? '#00d2ff' : '#f1c40f';
+        ctx.shadowBlur = this.isScrubbing ? 14 : 8;
+        ctx.beginPath();
+        ctx.arc(0, -th * 0.05, tw * 1.18 * haloPulse, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = this.isScrubbing ? '#00d2ff' : '#f1c40f';
+        ctx.font = 'bold 8px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(this.isScrubbing ? '⚡ ACTIVE' : '🪥 BRUSH!', 0, -th * 0.78);
+        ctx.restore();
+      }
 
       // Gleaming pearly aura when 100% clean
       const isPearly = tooth.cleanPct >= 100;
@@ -2166,7 +2263,7 @@ class HanaBattle3DService {
         ctx.arc(0, -th * 0.55, 3, 0, Math.PI * 2);
         ctx.fill();
       } else {
-        const qColor = tooth.id === 'q1' ? '#38bdf8' : tooth.id === 'q2' ? '#a78bfa' : tooth.id === 'q3' ? '#fbbf24' : '#34d399';
+        const qColor = tooth.id === 'q1' ? '#38bdf8' : tooth.id === 'q2' ? '#00d2ff' : tooth.id === 'q3' ? '#fbbf24' : '#34d399';
         ctx.strokeStyle = qColor;
         ctx.lineWidth = 2.5;
         ctx.beginPath();
