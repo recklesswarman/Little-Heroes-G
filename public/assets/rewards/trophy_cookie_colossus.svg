@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+  <defs>
+    <radialGradient id="tcc_bg" cx="35%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#92400e"/>
+      <stop offset="60%" stop-color="#451a03"/>
+      <stop offset="100%" stop-color="#1c0a00"/>
+    </radialGradient>
+    <radialGradient id="tcc_cookie" cx="40%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="65%" stop-color="#d97706"/>
+      <stop offset="100%" stop-color="#92400e"/>
+    </radialGradient>
+  </defs>
+  <circle cx="60" cy="60" r="54" fill="url(#tcc_bg)" stroke="#f59e0b" stroke-width="3.5"/>
+  <ellipse cx="50" cy="24" rx="28" ry="12" fill="#ffffff" opacity="0.12"/>
+  <rect x="36" y="86" width="48" height="12" rx="3" fill="#334155" stroke="#f59e0b" stroke-width="2"/>
+  <circle cx="60" cy="54" r="26" fill="url(#tcc_cookie)" stroke="#fde047" stroke-width="2.5"/>
+  <circle cx="50" cy="46" r="4" fill="#451a03"/>
+  <circle cx="68" cy="44" r="3.5" fill="#451a03"/>
+  <circle cx="54" cy="64" r="4" fill="#451a03"/>
+  <circle cx="70" cy="62" r="4.5" fill="#451a03"/>
+  <circle cx="60" cy="54" r="3" fill="#451a03"/>
+</svg>

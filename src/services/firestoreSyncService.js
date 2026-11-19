@@ -29,6 +29,7 @@ const LOCAL_ONLY_STATE_KEYS = new Set([
   'heroAiQuestsMap'
 ]);
 
+function sanitizeForFirestore(val) { if (val === undefined) return null; if (val === null || typeof val !== 'object') return val; if (val instanceof Date) return val.toISOString(); if (val._methodName || val.__op) return val; if (Array.isArray(val)) return val.map((item) => sanitizeForFirestore(item)); const out = {}; for (const [k, v] of Object.entries(val)) { if (v !== undefined) out[k] = sanitizeForFirestore(v); } return out; }
 function buildCloudStateSnapshot(state) {
   const snapshot = {};
   Object.entries(state || {}).forEach(([key, value]) => {
@@ -542,6 +543,35 @@ class FirestoreSyncService {
             arcadeCoinsEarnedToday: h.arcadeCoinsEarnedToday !== undefined ? Number(h.arcadeCoinsEarnedToday) : 0,
             arcadeCoinsLastDate: h.arcadeCoinsLastDate || '',
             inventory: h.inventory || [],
+            dentalBadges: Array.isArray(h.dentalBadges) ? [...h.dentalBadges] : ['enamel_guardian'],
+            dentalBattleHistory: Array.isArray(h.dentalBattleHistory) ? [...h.dentalBattleHistory] : [],
+            cleanseAlbum: (h.cleanseAlbum && typeof h.cleanseAlbum === 'object') ? { ...h.cleanseAlbum } : {},
+            brushStreakData: (h.brushStreakData && typeof h.brushStreakData === 'object')
+              ? {
+                  count: Number(h.brushStreakData.count) || 0,
+                  lastDate: h.brushStreakData.lastDate || null,
+                  morningDate: h.brushStreakData.morningDate || null,
+                  eveningDate: h.brushStreakData.eveningDate || null
+                }
+              : { count: 0, lastDate: null, morningDate: null, eveningDate: null },
+            weeklyChallenges: (h.weeklyChallenges && typeof h.weeklyChallenges === 'object') ? { ...h.weeklyChallenges } : {},
+            unlockedTrophyIds: Array.isArray(h.unlockedTrophyIds) ? [...h.unlockedTrophyIds] : ['rookie_hero_crest'],
+            featuredTrophyIds: Array.isArray(h.featuredTrophyIds) ? [...h.featuredTrophyIds] : ['rookie_hero_crest'],
+            colosseumBossesDefeated: Array.isArray(h.colosseumBossesDefeated) ? [...h.colosseumBossesDefeated] : [],
+            lastBossId: h.lastBossId || null,
+            bossRotationQueue: Array.isArray(h.bossRotationQueue) ? [...h.bossRotationQueue] : [],
+            lastBrushedMorning: h.lastBrushedMorning || null,
+            lastBrushedEvening: h.lastBrushedEvening || null,
+            brushStreak: Number(h.brushStreak) || 0,
+            dentalHabits: (h.dentalHabits && typeof h.dentalHabits === 'object')
+              ? {
+                  morningBrushDate: h.dentalHabits.morningBrushDate || null,
+                  bedtimeBrushDate: h.dentalHabits.bedtimeBrushDate || null
+                }
+              : { morningBrushDate: null, bedtimeBrushDate: null },
+            hazardRotationQueue: Array.isArray(h.hazardRotationQueue) ? [...h.hazardRotationQueue] : [],
+            lastHazardId: h.lastHazardId || null,
+            flawlessZonesBest: Number(h.flawlessZonesBest) || 0,
             // Every stamped field is always written (0 = never stamped): the
             // doc is written with {merge:true}, which deep-merges nested maps,
             // so a partial map would leave another device's newer stamp next
@@ -577,7 +607,7 @@ class FirestoreSyncService {
       this.lastKnownDevices = currentDevices;
       state.devices = currentDevices;
 
-      await setDoc(docRef, {
+      await setDoc(docRef, sanitizeForFirestore({
         // Generic snapshot keeps newly added mutable fields live across devices
         // without requiring a fragile allowlist update for every feature.
         stateSnapshot: buildCloudStateSnapshot(state),
@@ -586,6 +616,7 @@ class FirestoreSyncService {
         heroes: state.heroes || [],
         heroesMap: heroesMap,
         deletedHeroIds: state.deletedHeroIds || [],
+        deletedCustomItemIds: state.deletedCustomItemIds || [],
         selectedHero: state.selectedHero || null,
         pendingApprovals: state.pendingApprovals || [],
         resolvedApprovals: state.resolvedApprovals || [],
@@ -629,7 +660,7 @@ class FirestoreSyncService {
         lastWriterDeviceId: this.deviceId,
         devices: currentDevices,
         revokedDeviceIds: state.revokedDeviceIds || []
-      }, { merge: true });
+      }), { merge: true });
 
       state.household.lastSync = "Synced Just Now";
 

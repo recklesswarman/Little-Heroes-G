@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+  <defs>
+    <radialGradient id="ttt_bg" cx="35%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#1e40af"/>
+      <stop offset="60%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </radialGradient>
+    <linearGradient id="ttt_gem" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a5f3fc"/>
+      <stop offset="50%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#1d4ed8"/>
+    </linearGradient>
+  </defs>
+  <circle cx="60" cy="60" r="54" fill="url(#ttt_bg)" stroke="#22d3ee" stroke-width="3.5"/>
+  <ellipse cx="50" cy="24" rx="28" ry="12" fill="#ffffff" opacity="0.12"/>
+  <rect x="36" y="86" width="48" height="12" rx="3" fill="#334155" stroke="#22d3ee" stroke-width="2"/>
+  <polygon points="40,42 60,24 80,42 90,58 60,84 30,58" fill="url(#ttt_gem)" stroke="#ffffff" stroke-width="2"/>
+  <polygon points="40,42 60,24 60,84 44,58" fill="#ffffff" opacity="0.25"/>
+  <polygon points="60,24 80,42 60,54 40,42" fill="#e0f2fe" opacity="0.45"/>
+</svg>

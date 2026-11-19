@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+  <defs>
+    <radialGradient id="tpk_bg" cx="35%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#065f46"/>
+      <stop offset="60%" stop-color="#022c22"/>
+      <stop offset="100%" stop-color="#01120e"/>
+    </radialGradient>
+    <linearGradient id="tpk_cup" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#a7f3d0"/>
+      <stop offset="50%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#047857"/>
+    </linearGradient>
+  </defs>
+  <circle cx="60" cy="60" r="54" fill="url(#tpk_bg)" stroke="#10b981" stroke-width="3.5"/>
+  <ellipse cx="50" cy="24" rx="28" ry="12" fill="#ffffff" opacity="0.12"/>
+  <rect x="38" y="86" width="44" height="12" rx="3" fill="#334155" stroke="#10b981" stroke-width="2"/>
+  <rect x="52" y="70" width="16" height="16" fill="#0d9488"/>
+  <path d="M36 32 H84 L78 66 C76 74 44 74 42 66 Z" fill="url(#tpk_cup)" stroke="#ffffff" stroke-width="2"/>
+  <path d="M38 42 C24 42 22 60 36 62 M82 42 C96 42 98 60 84 62" fill="none" stroke="#6ee7b7" stroke-width="3.5" stroke-linecap="round"/>
+  <circle cx="60" cy="50" r="8" fill="#fef08a"/>
+</svg>

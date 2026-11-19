@@ -22,6 +22,7 @@
 import { Application } from '@splinetool/runtime';
 import { Sound } from '../audio/sfx.js';
 import { HYGIENE_BOSSES, SUGAR_ATTACK_HAZARDS } from '../data/hygieneBossesData.js';
+import { resolvePublicAssetUrl } from '../utils/assetUrl.js';
 
 class HanaBattle3DService {
   constructor() {
@@ -143,6 +144,38 @@ class HanaBattle3DService {
     this.visionConfidence = 0;
     this.isFinale = false;
 
+    // Overhaul State (F1, F2, F4, F5)
+    this.mintyShieldState = {
+      active: false,
+      charge: 0,
+      integrity: 0,
+      maxIntegrity: 3,
+      remainingSec: 0,
+      durationSec: 5,
+      attackBoostActive: false,
+      absorbPulse: 0,
+      absorbedCount: 0
+    };
+    this.mintyShield = this.mintyShieldState;
+    this.tartarShellState = {
+      active: false,
+      integrity: 0,
+      maxIntegrity: 100,
+      hardeningStage: 0,
+      recharging: false,
+      shattered: false,
+      flashTimer: 0,
+      vulnerable: false
+    };
+    this.tartarShell = this.tartarShellState;
+    this.sweetToothSprites = [];
+    this.stickyResidueState = { active: false, intensity: 0 };
+    this.stickyResidue = this.stickyResidueState;
+    this.foamWaveActive = false;
+    this.supernovaTimer = 0;
+    this.victoryBurstTimer = 0;
+    this.victoryBurstTriggered = false;
+
     // Bind loop
     this.renderLoop = this.renderLoop.bind(this);
     this.handleResize = this.handleResize.bind(this);
@@ -171,6 +204,37 @@ class HanaBattle3DService {
     this.counterAttackProjectiles = [];
     this.hazardImpactParticles = [];
     this.warriorCheerParticles = [];
+    this.mintyShieldState = {
+      active: false,
+      charge: 0,
+      integrity: 0,
+      maxIntegrity: 3,
+      remainingSec: 0,
+      durationSec: 5,
+      attackBoostActive: false,
+      absorbPulse: 0,
+      absorbedCount: 0
+    };
+    this.mintyShield = this.mintyShieldState;
+    const isTartarTyrant = this.bossData?.id === 'tartar_tyrant';
+    this.tartarShellState = {
+      active: isTartarTyrant,
+      integrity: isTartarTyrant ? 100 : 0,
+      maxIntegrity: 100,
+      hardeningStage: isTartarTyrant ? 1 : 0,
+      recharging: false,
+      shattered: false,
+      flashTimer: 0,
+      vulnerable: false
+    };
+    this.tartarShell = this.tartarShellState;
+    this.sweetToothSprites = [];
+    this.stickyResidueState = { active: false, intensity: 0 };
+    this.stickyResidue = this.stickyResidueState;
+    this.foamWaveActive = false;
+    this.supernovaTimer = 0;
+    this.victoryBurstTimer = 0;
+    this.victoryBurstTriggered = false;
     this.warriorTeeth.forEach(t => {
       t.cleanPct = 0;
       t.cheerTimer = 0;
@@ -206,6 +270,10 @@ class HanaBattle3DService {
       } else {
         if (options.equippedWeapon !== undefined) this.equippedWeapon = options.equippedWeapon;
         if (options.weaponMultiplier !== undefined) this.weaponMultiplier = options.weaponMultiplier;
+      }
+      if (!this.animId && this.ctx && !this.isSplineActive) {
+        const raf = (typeof requestAnimationFrame !== 'undefined') ? requestAnimationFrame : (cb => setTimeout(cb, 16));
+        this.animId = raf(this.renderLoop);
       }
       return true;
     }
@@ -313,6 +381,7 @@ class HanaBattle3DService {
         this.ctx.resetTransform();
         this.ctx.scale(this.dpr, this.dpr);
       }
+      this.renderProceduralScene(0.016);
     }
   }
 
@@ -365,6 +434,7 @@ class HanaBattle3DService {
         this.ctx.resetTransform();
         this.ctx.scale(this.dpr, this.dpr);
       }
+      this.renderProceduralScene(0.016);
     }
 
     this.lastTime = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
@@ -392,6 +462,12 @@ class HanaBattle3DService {
     if (this.imageCache[src]) return this.imageCache[src];
     try {
       const img = new Image();
+      const baseUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.BASE_URL)
+        ? String(import.meta.env.BASE_URL)
+        : '/';
+      const resolvedSrc = (baseUrl && baseUrl !== '/' && baseUrl !== './')
+        ? resolvePublicAssetUrl(src, baseUrl)
+        : src;
       img.onerror = () => {
         if (typeof src === 'string' && !img._retried) {
           img._retried = true;
@@ -404,8 +480,11 @@ class HanaBattle3DService {
           }
         }
       };
-      img.src = src;
+      img.src = resolvedSrc;
       this.imageCache[src] = img;
+      if (resolvedSrc !== src) {
+        this.imageCache[resolvedSrc] = img;
+      }
       if (typeof src === 'string' && src.startsWith('/')) {
         this.imageCache['.' + src] = img;
       }
@@ -441,10 +520,26 @@ class HanaBattle3DService {
       bodyColor = '#7c3aed';
       armorColor = '#8b5cf6';
       bombColor = '#a855f7';
+    } else if (bId === 'tartar_tyrant') {
+      bodyColor = '#0d9488';
+      armorColor = '#14b8a6';
+      bombColor = '#2dd4bf';
     } else if (bId === 'cavity_knight') {
       bodyColor = '#dc2626';
       armorColor = '#ef4444';
       bombColor = '#ef4444';
+    } else if (bId === 'cookie_colossus') {
+      bodyColor = '#b45309';
+      armorColor = '#d97706';
+      bombColor = '#f59e0b';
+    } else if (bId === 'fizz_serpent') {
+      bodyColor = '#0284c7';
+      armorColor = '#06b6d4';
+      bombColor = '#22d3ee';
+    } else if (bId === 'gummy_ghost') {
+      bodyColor = '#059669';
+      armorColor = '#10b981';
+      bombColor = '#34d399';
     } else if (bossData.color) {
       bodyColor = bossData.color;
       armorColor = bossData.color;
@@ -459,6 +554,31 @@ class HanaBattle3DService {
       armorColor,
       bombColor
     };
+
+    if (bId === 'tartar_tyrant') {
+      this.tartarShellState = {
+        active: !this.isVictory,
+        integrity: this.tartarShellState?.active ? this.tartarShellState.integrity : 100,
+        maxIntegrity: 100,
+        hardeningStage: this.tartarShellState?.hardeningStage || 1,
+        recharging: Boolean(this.tartarShellState?.recharging),
+        shattered: Boolean(this.tartarShellState?.shattered),
+        flashTimer: this.tartarShellState?.flashTimer || 0,
+        vulnerable: Boolean(this.tartarShellState?.vulnerable)
+      };
+    } else {
+      this.tartarShellState = {
+        active: false,
+        integrity: 0,
+        maxIntegrity: 100,
+        hardeningStage: 0,
+        recharging: false,
+        shattered: false,
+        flashTimer: 0,
+        vulnerable: false
+      };
+    }
+    this.tartarShell = this.tartarShellState;
 
     // Keep 3D service HP & maxHp synchronized with boss/store authority
     if (typeof bossData.maxHp === 'number' && Number.isFinite(bossData.maxHp) && bossData.maxHp > 0) {
@@ -790,28 +910,255 @@ class HanaBattle3DService {
   }
 
   /**
-   * Chore Supernova Screen-Clearing Mega Bubble
+   * Chore Supernova Screen-Clearing Mega Bubble / Minty Fresh Blast
    */
   triggerSupernova() {
+    this.triggerMintyFreshBlast();
+  }
+
+  /**
+   * F1. Minty Shield State Setter & Absorption Lifecycle
+   */
+  setMintyShieldState(partial = {}) {
+    if (!partial || typeof partial !== 'object') return this.mintyShieldState;
+    const prev = this.mintyShieldState || {
+      active: false,
+      charge: 0,
+      integrity: 0,
+      maxIntegrity: 3,
+      remainingSec: 0,
+      durationSec: 5,
+      attackBoostActive: false,
+      absorbPulse: 0,
+      absorbedCount: 0
+    };
+    const maxIntegrity = (typeof partial.maxIntegrity === 'number' && Number.isFinite(partial.maxIntegrity) && partial.maxIntegrity > 0)
+      ? Math.max(1, Math.round(partial.maxIntegrity))
+      : (prev.maxIntegrity || 3);
+    const rawIntegrity = (typeof partial.integrity === 'number' && Number.isFinite(partial.integrity))
+      ? partial.integrity
+      : (partial.active && prev.integrity <= 0 ? maxIntegrity : prev.integrity);
+    const integrity = Math.max(0, Math.min(maxIntegrity, Math.round(rawIntegrity)));
+    const durationSec = (typeof partial.durationSec === 'number' && Number.isFinite(partial.durationSec) && partial.durationSec > 0)
+      ? Math.max(1, partial.durationSec)
+      : (prev.durationSec || 5);
+    const rawRemaining = (typeof partial.remainingSec === 'number' && Number.isFinite(partial.remainingSec))
+      ? partial.remainingSec
+      : (partial.active && prev.remainingSec <= 0 ? durationSec : prev.remainingSec);
+    const remainingSec = Math.max(0, rawRemaining);
+    const charge = (typeof partial.charge === 'number' && Number.isFinite(partial.charge))
+      ? Math.max(0, Math.min(100, partial.charge))
+      : (prev.charge || 0);
+    const wantActive = partial.active !== undefined ? Boolean(partial.active) : Boolean(prev.active);
+    const active = Boolean(wantActive && integrity > 0 && remainingSec > 0);
+    const attackBoostActive = partial.attackBoostActive !== undefined
+      ? Boolean(partial.attackBoostActive)
+      : Boolean(active || prev.attackBoostActive);
+
+    this.mintyShieldState = {
+      ...prev,
+      ...partial,
+      active,
+      charge,
+      integrity,
+      maxIntegrity,
+      remainingSec,
+      durationSec,
+      attackBoostActive
+    };
+    this.mintyShield = this.mintyShieldState;
+    return this.mintyShieldState;
+  }
+
+  /**
+   * F2. Minty Fresh Blast (Foam Blast Counter-Move)
+   */
+  triggerMintyFreshBlast() {
+    this.foamWaveActive = true;
+    this.supernovaTimer = 1.6;
+    this.shockwaves.push({
+      x: this.width * 0.5,
+      y: this.height * 0.55,
+      radius: 18,
+      maxRadius: 420,
+      color: '#38bdf8',
+      alpha: 1.0
+    });
     this.shockwaves.push({
       x: this.width * 0.5,
       y: this.height * 0.42,
       radius: 12,
       maxRadius: 380,
-      color: '#fbbf24',
-      alpha: 1.0
+      color: '#22d3ee',
+      alpha: 0.95
     });
 
-    this.caramelBombs.forEach(b => {
-      b.vz = 8;
-      b.deflected = true;
-    });
+    // Clear all active hazards, bombs, and Sweet Tooth Sprite swarms
+    this.caramelBombs = [];
+    this.sweetToothSprites = [];
+    this.setStickyResidueState({ active: false, intensity: 0 });
+
+    // Spawn effervescent minty foam wave bubbles across the playfield
+    for (let i = 0; i < 40; i++) {
+      this.foamParticles.push({
+        x: Math.random() * this.width,
+        y: this.height * (0.3 + Math.random() * 0.6),
+        z: 15 + Math.random() * 45,
+        vx: (Math.random() - 0.5) * 4,
+        vy: -3 - Math.random() * 5,
+        vz: (Math.random() - 0.5) * 2,
+        radius: 6 + Math.random() * 10,
+        alpha: 0.95,
+        isLaser: false,
+        color: i % 2 === 0 ? '#e0f2fe' : '#67e8f9',
+        glowColor: '#22d3ee',
+        life: 1.25
+      });
+    }
 
     Object.keys(this.armorPlates).forEach(k => this.onArmorFracture(k));
     this.warriorTeeth.forEach(t => {
       t.cleanPct = 100;
       t.cheerTimer = 4.0;
     });
+    return true;
+  }
+
+  /**
+   * F7. Trigger Victory Burst during a boss phase shift
+   */
+  triggerVictoryBurst() {
+    this.victoryBurstTimer = 1.4;
+    this.victoryBurstTriggered = true;
+    this.shockwaves.push({
+      x: this.width * 0.5,
+      y: this.height * 0.45,
+      radius: 16,
+      maxRadius: 340,
+      color: '#34d399',
+      alpha: 1.0
+    });
+    for (let i = 0; i < 24; i++) {
+      const angle = (i / 24) * Math.PI * 2;
+      const speed = 3 + Math.random() * 5;
+      this.sparkles.push({
+        x: this.width * 0.5,
+        y: this.height * 0.45,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        color: ['#34d399', '#38bdf8', '#fbbf24', '#ffffff'][i % 4],
+        size: 5 + Math.random() * 5,
+        alpha: 1.0,
+        life: 1.2
+      });
+    }
+    return true;
+  }
+
+  /**
+   * F4. Tartar Tyrant Calcified Armor Shell State Setter
+   */
+  setTartarShellState(partial = {}) {
+    if (!partial || typeof partial !== 'object') return this.tartarShellState;
+    const prev = this.tartarShellState || {
+      active: false,
+      integrity: 0,
+      maxIntegrity: 100,
+      hardeningStage: 0,
+      recharging: false,
+      shattered: false,
+      flashTimer: 0,
+      vulnerable: false
+    };
+    const maxIntegrity = (typeof partial.maxIntegrity === 'number' && Number.isFinite(partial.maxIntegrity) && partial.maxIntegrity > 0)
+      ? partial.maxIntegrity
+      : (prev.maxIntegrity || 100);
+    const rawIntegrity = (typeof partial.integrity === 'number' && Number.isFinite(partial.integrity))
+      ? partial.integrity
+      : prev.integrity;
+    const integrity = Math.max(0, Math.min(maxIntegrity, rawIntegrity));
+    const shattered = partial.shattered !== undefined ? Boolean(partial.shattered) : Boolean(prev.shattered);
+    const flashTimer = (typeof partial.flashTimer === 'number' && Number.isFinite(partial.flashTimer))
+      ? Math.max(0, partial.flashTimer)
+      : (shattered && !prev.shattered ? 1.5 : (prev.flashTimer || 0));
+    const vulnerable = partial.vulnerable !== undefined ? Boolean(partial.vulnerable) : Boolean(shattered || prev.vulnerable);
+
+    this.tartarShellState = {
+      ...prev,
+      ...partial,
+      maxIntegrity,
+      integrity: shattered ? 0 : integrity,
+      shattered,
+      flashTimer,
+      vulnerable
+    };
+    this.tartarShell = this.tartarShellState;
+    return this.tartarShellState;
+  }
+
+  /**
+   * F5. Sweet Tooth Sprites Synchronization & Circular Brushstroke Clearing
+   */
+  syncSweetToothSprites(sprites = []) {
+    if (!Array.isArray(sprites)) {
+      this.sweetToothSprites = [];
+      return this.sweetToothSprites;
+    }
+    this.sweetToothSprites = sprites.map((sp, idx) => ({
+      id: sp.id || `sp_${idx + 1}`,
+      x: typeof sp.x === 'number' ? sp.x : (this.width * (0.25 + (idx * 0.22) % 0.5)),
+      y: typeof sp.y === 'number' ? sp.y : (this.height * 0.48),
+      hp: typeof sp.hp === 'number' ? sp.hp : 1,
+      radius: typeof sp.radius === 'number' ? sp.radius : 24,
+      shielding: sp.shielding !== undefined ? Boolean(sp.shielding) : true,
+      trail: Array.isArray(sp.trail) ? sp.trail : []
+    }));
+    return this.sweetToothSprites;
+  }
+
+  registerCircularScrubSweep(x, y, radius = 65) {
+    if (typeof radius !== 'number' || !Number.isFinite(radius) || radius <= 0) {
+      return [];
+    }
+    if (!Array.isArray(this.sweetToothSprites) || this.sweetToothSprites.length === 0) {
+      return [];
+    }
+    const cx = typeof x === 'number' && Number.isFinite(x) ? x : this.width * 0.5;
+    const cy = typeof y === 'number' && Number.isFinite(y) ? y : this.height * 0.5;
+    const clearedIds = [];
+    const remaining = [];
+
+    for (const sp of this.sweetToothSprites) {
+      const dist = Math.hypot((sp.x || 0) - cx, (sp.y || 0) - cy);
+      if (dist <= radius) {
+        clearedIds.push(sp.id);
+        this.spawnShieldSparks(sp.x || cx, sp.y || cy, '#38bdf8');
+      } else {
+        remaining.push(sp);
+      }
+    }
+    this.sweetToothSprites = remaining;
+    return clearedIds;
+  }
+
+  /**
+   * F5. Sticky Residue Debuff State Setter (Intensity clamped to [0, 1.5])
+   */
+  setStickyResidueState(partial = {}) {
+    if (!partial || typeof partial !== 'object') return this.stickyResidueState;
+    const prev = this.stickyResidueState || { active: false, intensity: 0 };
+    const active = partial.active !== undefined ? Boolean(partial.active) : Boolean(prev.active);
+    const rawIntensity = (typeof partial.intensity === 'number' && Number.isFinite(partial.intensity))
+      ? partial.intensity
+      : (active ? (prev.intensity || 0.75) : 0);
+    const intensity = active ? Math.max(0, Math.min(1.5, rawIntensity)) : 0;
+
+    this.stickyResidueState = {
+      active: active && intensity > 0,
+      intensity: active ? intensity : 0
+    };
+    this.stickyResidue = this.stickyResidueState;
+    return this.stickyResidueState;
   }
 
   /**
@@ -918,6 +1265,9 @@ class HanaBattle3DService {
     // 6. 3D Boss & Breakable Candy Armor
     this.render3DBossAndArmor(ctx, w, h, dt);
 
+    // 6b. Sweet Tooth Sprites & Sugary Residue Trails
+    this.renderSweetToothSprites(ctx, w, h, dt);
+
     // 7. Counter Attack Projectiles (Warrior Teeth vs Boss)
     this.renderCounterAttackProjectiles(ctx, dt);
 
@@ -941,7 +1291,7 @@ class HanaBattle3DService {
     // 12. Sparkles & Stars
     this.renderSparkles(ctx, dt);
 
-    // 11. Translucent 3D Enamel Shield Dome
+    // 13. Translucent 3D Enamel Shield Dome & Minty Shield Barrier
     if (this.deflectTimer > 0) {
       this.deflectTimer -= dt;
       if (this.deflectTimer <= 0) {
@@ -951,6 +1301,26 @@ class HanaBattle3DService {
 
     if (this.isDeflectActive) {
       this.renderEnamelShieldDome(ctx, w, h);
+    }
+
+    if (this.mintyShieldState?.active && this.mintyShieldState.integrity > 0 && this.mintyShieldState.remainingSec > 0) {
+      this.renderMintyShieldBarrier(ctx, w, h, dt);
+    }
+
+    // 14. Minty Fresh Blast Effervescent Wave & Victory Burst timers
+    if (this.supernovaTimer > 0) {
+      this.supernovaTimer = Math.max(0, this.supernovaTimer - dt);
+      if (this.supernovaTimer <= 0) {
+        this.foamWaveActive = false;
+      }
+    }
+    if (this.victoryBurstTimer > 0) {
+      this.victoryBurstTimer = Math.max(0, this.victoryBurstTimer - dt);
+    }
+
+    // 15. Sticky Residue Green Slime Overlay
+    if (this.stickyResidueState?.active && this.stickyResidueState.intensity > 0) {
+      this.renderStickyResidueOverlay(ctx, w, h);
     }
   }
 
@@ -1362,6 +1732,45 @@ class HanaBattle3DService {
       ctx.stroke();
     }
 
+    // F4. Tartar Tyrant Jagged Calcified Armor Shell & Crumble Flash
+    if (!this.isVictory && (this.bossData.id === 'tartar_tyrant' || this.tartarShellState?.active)) {
+      const shell = this.tartarShellState;
+      if (shell.recharging && !shell.shattered) {
+        shell.integrity = Math.min(shell.maxIntegrity || 100, (shell.integrity || 0) + dt * 25);
+      }
+      if (shell.flashTimer > 0) {
+        shell.flashTimer = Math.max(0, shell.flashTimer - dt);
+        ctx.save();
+        ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(0.95, shell.flashTimer)})`;
+        ctx.beginPath();
+        ctx.arc(0, 0, baseRadius * 1.35, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+      if (!shell.shattered && shell.integrity > 0) {
+        const stage = Math.max(1, shell.hardeningStage || 1);
+        const shellRadius = baseRadius * (1.14 + stage * 0.05);
+        ctx.save();
+        ctx.strokeStyle = shell.recharging ? '#2dd4bf' : (stage >= 3 ? '#94a3b8' : '#cbd5e1');
+        ctx.fillStyle = shell.recharging ? 'rgba(20, 184, 166, 0.28)' : 'rgba(148, 163, 184, 0.32)';
+        ctx.lineWidth = 2.5 + stage * 1.2;
+        ctx.beginPath();
+        const spikes = 12;
+        for (let s = 0; s < spikes; s++) {
+          const ang = (s / spikes) * Math.PI * 2 + this.clock * 0.6;
+          const r = (s % 2 === 0) ? shellRadius : (shellRadius * 0.88);
+          const sx = Math.cos(ang) * r;
+          const sy = Math.sin(ang) * r;
+          if (s === 0) ctx.moveTo(sx, sy);
+          else ctx.lineTo(sx, sy);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
     ctx.restore();
   }
 
@@ -1392,6 +1801,16 @@ class HanaBattle3DService {
       ctx.lineTo(baseRadius * 0.3, -baseRadius * 0.8);
       ctx.closePath();
       ctx.fill();
+    } else if (bId === 'tartar_tyrant') {
+      ctx.fillStyle = '#14b8a6';
+      for (let c = -2; c <= 2; c++) {
+        ctx.beginPath();
+        ctx.moveTo(c * baseRadius * 0.28 - 8, -baseRadius * 0.75);
+        ctx.lineTo(c * baseRadius * 0.32, -baseRadius * 1.35);
+        ctx.lineTo(c * baseRadius * 0.28 + 8, -baseRadius * 0.75);
+        ctx.closePath();
+        ctx.fill();
+      }
     } else if (bId === 'cavity_knight') {
       ctx.fillStyle = '#991b1b';
       ctx.beginPath();
@@ -1400,6 +1819,26 @@ class HanaBattle3DService {
       ctx.lineTo(baseRadius * 0.5, -baseRadius * 0.7);
       ctx.closePath();
       ctx.fill();
+    } else if (bId === 'cookie_colossus') {
+      ctx.fillStyle = '#78350f';
+      for (let c = 0; c < 6; c++) {
+        const ang = (c / 6) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.arc(Math.cos(ang) * baseRadius * 0.85, Math.sin(ang) * baseRadius * 0.85, baseRadius * 0.22, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (bId === 'fizz_serpent') {
+      ctx.fillStyle = '#22d3ee';
+      ctx.beginPath();
+      ctx.ellipse(0, -baseRadius * 1.05, baseRadius * 0.65, baseRadius * 0.25, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (bId === 'gummy_ghost') {
+      ctx.fillStyle = '#34d399';
+      for (let w = -2; w <= 2; w++) {
+        ctx.beginPath();
+        ctx.arc(w * baseRadius * 0.35, baseRadius * 0.82, baseRadius * 0.22, 0, Math.PI * 2);
+        ctx.fill();
+      }
     } else {
       ctx.fillStyle = '#fbbf24';
       ctx.beginPath();
@@ -1777,6 +2216,30 @@ class HanaBattle3DService {
 
       // Near player collision: Shield impact & spark deflection at elevated teeth line
       if (b.z <= 0 || (!b.deflected && b.y >= h * 0.72)) {
+        // F1. Minty Shield Absorption
+        if (this.mintyShieldState?.active && this.mintyShieldState.integrity > 0 && this.mintyShieldState.remainingSec > 0) {
+          this.mintyShieldState.integrity = Math.max(0, this.mintyShieldState.integrity - 1);
+          this.mintyShieldState.active = this.mintyShieldState.integrity > 0 && this.mintyShieldState.remainingSec > 0;
+          this.mintyShieldState.attackBoostActive = true;
+          this.mintyShieldState.absorbPulse = 1.0;
+          this.mintyShieldState.absorbedCount = (this.mintyShieldState.absorbedCount || 0) + 1;
+          this.mintyShield = this.mintyShieldState;
+
+          this.shockwaves.push({
+            x: b.x,
+            y: b.y,
+            radius: 18,
+            maxRadius: 165,
+            color: '#38bdf8',
+            alpha: 1.0
+          });
+          this.spawnShieldSparks(b.x, b.y, '#e0f2fe');
+          this.spawnThemedHazardImpact(haz, b.x, b.y);
+          if (typeof Sound?.sparkle === 'function') Sound.sparkle();
+          this.caramelBombs.splice(i, 1);
+          continue;
+        }
+
         let nearestTooth = null;
         let minDx = Infinity;
         this.warriorTeeth.forEach(tooth => {
@@ -2488,6 +2951,22 @@ class HanaBattle3DService {
         color = ['#f43f5e', '#facc15', '#38bdf8', '#fb7185'][i % 4];
         type = 'candy_shard';
         size = 6 + Math.random() * 5;
+      } else if (hazId === 'cinnamon_fireballs') {
+        color = ['#dc2626', '#ea580c', '#f97316', '#facc15'][i % 4];
+        type = 'candy_shard';
+        size = 6 + Math.random() * 6;
+      } else if (hazId === 'sour_apple_acid_drops') {
+        color = ['#84cc16', '#65a30d', '#a3e635', '#bef264'][i % 4];
+        type = 'foam_bubble';
+        size = 5 + Math.random() * 6;
+      } else if (hazId === 'donut' || hazId === 'cupcake') {
+        color = ['#38bdf8', '#facc15', '#34d399', '#d97706'][i % 4];
+        type = 'crumb';
+        size = 5 + Math.random() * 5;
+      } else if (hazId === 'chocolate_bar' || hazId === 'pudding_cup') {
+        color = ['#78350f', '#92400e', '#b45309', '#fef3c7'][i % 4];
+        type = 'fudge';
+        size = 6 + Math.random() * 5;
       }
 
       this.hazardImpactParticles.push({
@@ -2748,6 +3227,83 @@ class HanaBattle3DService {
         ctx.stroke();
         break;
       }
+      case 'cinnamon_fireballs': {
+        const fireGrad = ctx.createRadialGradient(-drawRadius * 0.2, -drawRadius * 0.2, 2, 0, 0, drawRadius);
+        fireGrad.addColorStop(0, '#fef08a');
+        fireGrad.addColorStop(0.5, '#f97316');
+        fireGrad.addColorStop(1, '#dc2626');
+        ctx.fillStyle = fireGrad;
+        ctx.beginPath();
+        ctx.arc(0, 0, drawRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+        break;
+      }
+      case 'sour_apple_acid_drops': {
+        const acidGrad = ctx.createRadialGradient(-drawRadius * 0.2, -drawRadius * 0.2, 2, 0, 0, drawRadius);
+        acidGrad.addColorStop(0, '#ecfccb');
+        acidGrad.addColorStop(0.55, '#84cc16');
+        acidGrad.addColorStop(1, '#4d7c0f');
+        ctx.fillStyle = acidGrad;
+        ctx.beginPath();
+        ctx.arc(0, 0, drawRadius * 0.92, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#bef264';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+        break;
+      }
+      case 'donut': {
+        ctx.fillStyle = '#d97706';
+        ctx.beginPath();
+        ctx.arc(0, 0, drawRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#38bdf8';
+        ctx.beginPath();
+        ctx.arc(0, 0, drawRadius * 0.82, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.arc(0, 0, drawRadius * 0.32, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      }
+      case 'cupcake': {
+        ctx.fillStyle = '#f59e0b';
+        ctx.beginPath();
+        ctx.moveTo(-drawRadius * 0.65, 0);
+        ctx.lineTo(drawRadius * 0.65, 0);
+        ctx.lineTo(drawRadius * 0.48, drawRadius * 0.85);
+        ctx.lineTo(-drawRadius * 0.48, drawRadius * 0.85);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#38bdf8';
+        ctx.beginPath();
+        ctx.arc(0, -drawRadius * 0.15, drawRadius * 0.72, Math.PI, 0);
+        ctx.fill();
+        break;
+      }
+      case 'chocolate_bar': {
+        ctx.fillStyle = '#78350f';
+        ctx.fillRect(-drawRadius * 0.75, -drawRadius * 0.55, drawRadius * 1.5, drawRadius * 1.1);
+        ctx.strokeStyle = '#451a03';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-drawRadius * 0.75, -drawRadius * 0.55, drawRadius * 1.5, drawRadius * 1.1);
+        break;
+      }
+      case 'pudding_cup': {
+        ctx.fillStyle = '#eab308';
+        ctx.beginPath();
+        ctx.arc(0, 0, drawRadius * 0.85, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#fef08a';
+        ctx.beginPath();
+        ctx.arc(0, -drawRadius * 0.2, drawRadius * 0.42, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      }
       default: {
         ctx.fillStyle = defaultColor || '#f59e0b';
         ctx.beginPath();
@@ -2928,6 +3484,95 @@ class HanaBattle3DService {
       ctx.stroke();
     }
 
+    ctx.restore();
+  }
+
+  /**
+   * F1. Render Minty Shield Translucent Frosty Blue/White Barrier
+   */
+  renderMintyShieldBarrier(ctx, w, h, dt) {
+    const shield = this.mintyShieldState;
+    if (!shield?.active) return;
+    if (shield.absorbPulse > 0) {
+      shield.absorbPulse = Math.max(0, shield.absorbPulse - dt * 2.5);
+    }
+
+    const cx = w * 0.5;
+    const cy = h * 0.76;
+    const pulse = 1 + Math.sin(this.clock * 6) * 0.03 + (shield.absorbPulse || 0) * 0.08;
+    const r = Math.min(205, w * 0.42) * pulse;
+    const integrityRatio = Math.max(0.25, (shield.integrity || 1) / (shield.maxIntegrity || 3));
+
+    ctx.save();
+    const grad = ctx.createRadialGradient(cx, cy, r * 0.25, cx, cy, r);
+    grad.addColorStop(0, `rgba(224, 242, 254, ${0.12 * integrityRatio})`);
+    grad.addColorStop(0.7, `rgba(56, 189, 248, ${0.28 * integrityRatio})`);
+    grad.addColorStop(1, `rgba(186, 230, 253, ${0.55 * integrityRatio})`);
+
+    ctx.fillStyle = grad;
+    ctx.strokeStyle = `rgba(224, 242, 254, ${0.65 + 0.3 * integrityRatio})`;
+    ctx.lineWidth = 3 + integrityRatio * 2;
+    ctx.shadowColor = '#38bdf8';
+    ctx.shadowBlur = 22;
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, Math.PI * 1.05, Math.PI * 1.95);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /**
+   * F5. Render Sweet Tooth Sprites & Sugary Residue Trails
+   */
+  renderSweetToothSprites(ctx, w, h, dt) {
+    if (this.isVictory || !Array.isArray(this.sweetToothSprites) || this.sweetToothSprites.length === 0) return;
+    const bx = w * 0.5;
+    const by = h * 0.40;
+
+    ctx.save();
+    this.sweetToothSprites.forEach((sp, idx) => {
+      const sx = (typeof sp.x === 'number' ? sp.x : w * 0.35) + Math.sin(this.clock * 3.5 + idx) * 6;
+      const sy = (typeof sp.y === 'number' ? sp.y : h * 0.48) + Math.cos(this.clock * 4 + idx) * 5;
+      const sr = sp.radius || 22;
+
+      // Shield tether beam to boss
+      ctx.strokeStyle = 'rgba(132, 204, 22, 0.55)';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(bx, by);
+      ctx.stroke();
+
+      // Translucent sticky imp body
+      ctx.fillStyle = 'rgba(163, 230, 53, 0.78)';
+      ctx.strokeStyle = '#ecfccb';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Imp eyes
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(sx - 5, sy - 2, 2.5, 0, Math.PI * 2);
+      ctx.arc(sx + 5, sy - 2, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.restore();
+  }
+
+  /**
+   * F5. Render Translucent Green Slime Sticky Residue Screen Overlay
+   */
+  renderStickyResidueOverlay(ctx, w, h) {
+    const intensity = Math.max(0, Math.min(1.5, this.stickyResidueState?.intensity || 0));
+    if (intensity <= 0) return;
+    ctx.save();
+    const alpha = Math.min(0.38, intensity * 0.24);
+    ctx.fillStyle = `rgba(132, 204, 22, ${alpha})`;
+    ctx.fillRect(0, 0, w, h);
     ctx.restore();
   }
 

@@ -8,6 +8,7 @@ import confetti from 'canvas-confetti';
 import { requestAutonomousMicroQuests, submitDailyQuest } from '../services/questService.js';
 import { chorePhotoProofModal } from '../components/ChorePhotoProofModal.js';
 import { checkProactiveTriggerAGY } from '../services/heroAgentService.js';
+import { getCurrentWeeklyChallenge } from '../data/hygieneBossesData.js';
 
 export function renderDashboardView() {
   const state = store.getState();
@@ -28,6 +29,15 @@ export function renderDashboardView() {
     ? Object.entries(petNeeds).sort((a, b) => a[1] - b[1])[0]
     : null;
   const showPetNeedsNudge = Boolean(neediestStat && neediestStat[1] < 55);
+  const dailyBrushStreakCount = hero?.brushStreakData?.count ?? hero?.brushStreak ?? state.brushStreak ?? 0;
+  const brushStreakMultiplier = typeof store.getBrushStreakMultiplier === 'function'
+    ? store.getBrushStreakMultiplier(hero)
+    : 1.0;
+  const activeWeeklyChallengeInfo = getCurrentWeeklyChallenge();
+  const activeWeeklyChallenge = activeWeeklyChallengeInfo?.challenge;
+  const weeklyChallengeState = typeof store.getWeeklyChallengeState === 'function'
+    ? store.getWeeklyChallengeState(hero?.id)
+    : { progress: 0, target: activeWeeklyChallenge?.targetCount || 3, completed: false };
 
   return `
     <div class="max-w-4xl mx-auto px-3 sm:px-4 pt-3 sm:pt-4 pb-28 flex flex-col gap-5 sm:gap-6 animate-fade-in w-full max-w-full min-w-0 overflow-x-hidden">
@@ -174,6 +184,60 @@ export function renderDashboardView() {
         <button id="dash-to-hero-hq-btn" class="w-full sm:w-auto bg-linear-to-r from-primary to-emerald-500 hover:from-primary/90 hover:to-emerald-400 text-on-primary font-headline text-xs sm:text-sm font-black px-5 py-3 min-h-[48px] rounded-2xl shadow-lg border-2 border-emerald-300 flex items-center justify-center gap-2 chunky-btn shrink-0 z-10 active:scale-95">
           <span class="material-symbols-outlined text-base sm:text-lg">cottage</span> Enter Hero HQ
         </button>
+      </section>
+
+      <!-- DAILY BRUSH STREAK & ROTATING WEEKLY CHALLENGE BANNER -->
+      <section class="grid grid-cols-1 md:grid-cols-2 gap-3.5 w-full max-w-full min-w-0">
+        <!-- Daily Brush Streak Card -->
+        <div class="bg-surface-container rounded-2xl p-4 border-2 border-cyan-500/40 card-shadow flex items-center justify-between gap-3">
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-12 h-12 rounded-2xl bg-cyan-950/80 border-2 border-cyan-400 flex items-center justify-center text-2xl shrink-0">
+              🪥🔥
+            </div>
+            <div class="flex flex-col min-w-0">
+              <span class="text-[10px] font-black uppercase tracking-wider text-cyan-300 font-headline">
+                Daily Brush Streak
+              </span>
+              <span class="font-headline text-base sm:text-lg font-black text-inverse-surface truncate">
+                ${dailyBrushStreakCount} Day Brush Streak
+              </span>
+              <span class="text-[11px] font-bold text-emerald-400">
+                ${brushStreakMultiplier.toFixed(2).replace(/0$/, '')}x Bonus Multiplier Active (+${Math.round((brushStreakMultiplier - 1) * 100)}%)
+              </span>
+            </div>
+          </div>
+          <span class="bg-cyan-500/20 text-cyan-300 border border-cyan-400/50 font-headline text-xs font-black px-3 py-1.5 rounded-xl shrink-0">
+            ${dailyBrushStreakCount} 🔥
+          </span>
+        </div>
+
+        <!-- Rotating Weekly Challenge Card -->
+        <div class="bg-surface-container rounded-2xl p-4 border-2 border-amber-500/40 card-shadow flex items-center justify-between gap-3">
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-12 h-12 rounded-2xl bg-amber-950/80 border-2 border-amber-400 flex items-center justify-center text-2xl shrink-0">
+              🏆⚡
+            </div>
+            <div class="flex flex-col min-w-0">
+              <span class="text-[10px] font-black uppercase tracking-wider text-amber-300 font-headline">
+                Weekly Challenge • ${escapeHtml(activeWeeklyChallengeInfo?.weekKey || '')}
+              </span>
+              <span class="font-headline text-sm sm:text-base font-black text-inverse-surface truncate">
+                ${escapeHtml(activeWeeklyChallenge?.title || 'Minty Shield Defender')}
+              </span>
+              <span class="text-[11px] text-on-surface-variant font-medium line-clamp-1">
+                ${escapeHtml(activeWeeklyChallenge?.description || 'Complete toothbrush boss battles this week!')}
+              </span>
+            </div>
+          </div>
+          <div class="flex flex-col items-end shrink-0">
+            <span class="bg-amber-500/20 text-amber-300 border border-amber-400/50 font-headline text-xs font-black px-3 py-1 rounded-xl">
+              ${weeklyChallengeState.progress} / ${weeklyChallengeState.target}
+            </span>
+            <span class="text-[9px] font-black text-emerald-400 mt-1">
+              ${weeklyChallengeState.completed ? 'Completed ✓' : `+${activeWeeklyChallenge?.rewardCoins || 75} 🪙`}
+            </span>
+          </div>
+        </div>
       </section>
 
       <!-- Toddler Easy Mode (Age 3-4) Rex Voice Guide Banner -->

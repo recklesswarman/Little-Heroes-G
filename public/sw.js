@@ -1,4 +1,4 @@
-const CACHE_NAME = 'little-heroes-v3.17.3-toothbrush-modal-floss-sync-20261117';
+const CACHE_NAME = 'little-heroes-v3.18.0-tooth-defenders-overhaul-20261119';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -66,7 +66,7 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(event.request).then((response) => {
       if (response && response.status === 200 && event.request.method === 'GET') {
-        const isAsset = url.pathname.startsWith('/assets/');
+        const isAsset = url.pathname.includes('/assets/');
         const isHtml = (response.headers.get('content-type') || '').includes('text/html');
         // Never cache HTML responses for asset endpoints
         if (!isAsset || !isHtml) {

@@ -462,6 +462,7 @@ export function getFurnitureForSlot(slot) {
  * - Habit Streak Milestones
  */
 export function getTrophiesForDisplay(storeState = {}) {
+  const safeState = (storeState && typeof storeState === 'object') ? storeState : {};
   const trophies = [];
 
   // 1. Starter / Rookie Hero Trophy (Always unlocked so the child immediately has proud achievements)
@@ -477,7 +478,7 @@ export function getTrophiesForDisplay(storeState = {}) {
   });
 
   // 2. Hygiene Battles Trophies
-  const hygiene = storeState.hygieneBattle || {};
+  const hygiene = safeState.hygieneBattle || {};
   const bossesDefeated = hygiene.bossesDefeated || [];
   if (bossesDefeated.includes('sugarfang') || hygiene.sugarfangDefeated) {
     trophies.push({
@@ -504,9 +505,31 @@ export function getTrophiesForDisplay(storeState = {}) {
     });
   }
 
-  // 2b. 3D Colosseum Boss Trophies
-  const colosseumBosses = hygiene.colosseumBossesDefeated || storeState.bossColosseum?.bossesDefeated || [];
-  if (colosseumBosses.includes('sugar_bandit') || bossesDefeated.includes('sugar_bandit')) {
+  // 2b. 3D Colosseum Boss Trophies (Per-Kid when selectedHero is present, fallback to legacy household state)
+  const selectedHero = safeState.selectedHero || null;
+  const heroAlbum = selectedHero?.cleanseAlbum || safeState.cleanseAlbum || {};
+  const unlockedTrophyIds = new Set(selectedHero?.unlockedTrophyIds || safeState.unlockedTrophyIds || []);
+  const hasPerHeroBossTracking = Boolean(
+    selectedHero && (
+      Array.isArray(selectedHero.colosseumBossesDefeated) ||
+      (selectedHero.cleanseAlbum && Object.keys(selectedHero.cleanseAlbum).length > 0) ||
+      Array.isArray(selectedHero.unlockedTrophyIds)
+    )
+  );
+  const colosseumBosses = hasPerHeroBossTracking
+    ? Array.from(new Set([
+        ...(selectedHero.colosseumBossesDefeated || []),
+        ...Object.keys(heroAlbum).filter((id) => (heroAlbum[id]?.cleansedCount || 0) > 0)
+      ]))
+    : (hygiene.colosseumBossesDefeated || safeState.bossColosseum?.bossesDefeated || []);
+
+  const hasDefeatedBoss = (id, trophyId) =>
+    colosseumBosses.includes(id) ||
+    bossesDefeated.includes(id) ||
+    (heroAlbum[id]?.cleansedCount || 0) > 0 ||
+    (trophyId && unlockedTrophyIds.has(trophyId));
+
+  if (hasDefeatedBoss('sugar_bandit', 'trophy_sugar_bandit')) {
     trophies.push({
       id: 'trophy_sugar_bandit',
       title: "Sugar Bandit's Golden Candy Crown",
@@ -518,7 +541,7 @@ export function getTrophiesForDisplay(storeState = {}) {
       rexPraise: 'ROAR! You blasted away all that sticky caramel! The Sugar Bandit is now a sweet little minty buddy!'
     });
   }
-  if (colosseumBosses.includes('plaque_kraken') || bossesDefeated.includes('plaque_kraken')) {
+  if (hasDefeatedBoss('plaque_kraken', 'trophy_plaque_kraken')) {
     trophies.push({
       id: 'trophy_plaque_kraken',
       title: "Plaque Kraken's Pearly Goblet",
@@ -530,7 +553,7 @@ export function getTrophiesForDisplay(storeState = {}) {
       rexPraise: 'Those back molars are sparkling clean! The Plaque Kraken has released the deep biofilm grip!'
     });
   }
-  if (colosseumBosses.includes('cavity_knight') || bossesDefeated.includes('cavity_knight')) {
+  if (hasDefeatedBoss('cavity_knight', 'trophy_cavity_knight')) {
     trophies.push({
       id: 'trophy_cavity_knight',
       title: "Cavity Knight's Enamel Shield Crest",
@@ -542,11 +565,111 @@ export function getTrophiesForDisplay(storeState = {}) {
       rexPraise: 'Invincible enamel! The Cavity Knight’s acid has been completely neutralized by your mint foam blaster!'
     });
   }
+  if (hasDefeatedBoss('tartar_titan', 'trophy_tartar_titan')) {
+    trophies.push({
+      id: 'trophy_tartar_titan',
+      title: "Tartar Titan's Crystal Prism",
+      category: '3D Colosseum Arena',
+      emoji: '💎',
+      iconColor: 'from-cyan-400 to-blue-600',
+      dateEarned: 'Boss Cleansed',
+      lore: 'A gleaming gemstone prism purified from the Tartar Titan’s hardened sugar crystals!',
+      rexPraise: 'ROAR! You shattered every sugar crystal and turned the Tartar Titan into a shining Gemstone Golem!'
+    });
+  }
+  if (hasDefeatedBoss('fizz_serpent', 'trophy_fizz_serpent')) {
+    trophies.push({
+      id: 'trophy_fizz_serpent',
+      title: "Fizz Serpent's Spring Crown",
+      category: '3D Colosseum Arena',
+      emoji: '🥤',
+      iconColor: 'from-sky-400 to-cyan-500',
+      dateEarned: 'Boss Cleansed',
+      lore: 'A sparkling bottlecap crown purified in crystal-clear spring water after calming the Fizz Serpent King!',
+      rexPraise: 'Bubble blast victory! The Fizz Serpent now swirls pure refreshing mint spring bubbles!'
+    });
+  }
+  if (hasDefeatedBoss('cookie_colossus', 'trophy_cookie_colossus')) {
+    trophies.push({
+      id: 'trophy_cookie_colossus',
+      title: "Cookie Colossus's Golden Crumb Crest",
+      category: '3D Colosseum Arena',
+      emoji: '🍪',
+      iconColor: 'from-amber-500 to-orange-600',
+      dateEarned: 'Boss Cleansed',
+      lore: 'Awarded for crumbling the Cookie Colossus’s crusty sugar armor with diamond brushing power!',
+      rexPraise: 'Crunchy victory! Not a single cookie crumb remains on your sparkling molars!'
+    });
+  }
+  if (hasDefeatedBoss('gummy_ghost', 'trophy_gummy_ghost')) {
+    trophies.push({
+      id: 'trophy_gummy_ghost',
+      title: "Gummy Ghost's Mint Lantern",
+      category: '3D Colosseum Arena',
+      emoji: '👻',
+      iconColor: 'from-teal-400 to-emerald-500',
+      dateEarned: 'Boss Cleansed',
+      lore: 'An ethereal mint-glowing lantern left behind when the Gummy Goo Ghost transformed into a friendly spirit!',
+      rexPraise: 'Spooky-clean brushing! The Gummy Goo Ghost is now a cheerful minty marshmallow buddy!'
+    });
+  }
+  if (hasDefeatedBoss('tartar_tyrant', 'trophy_tartar_tyrant')) {
+    trophies.push({
+      id: 'trophy_tartar_tyrant',
+      title: "Tartar Tyrant's Pearl Crown",
+      category: '3D Colosseum Arena',
+      emoji: '🪨',
+      iconColor: 'from-teal-400 to-amber-500',
+      dateEarned: 'Boss Cleansed',
+      lore: 'Forged from polished pearl armor after shattering the Tartar Tyrant’s calcified rocky shell before it could recharge!',
+      rexPraise: 'MEGA ROAR! You shattered the Tartar Tyrant’s toughest shell! You are a true Polished Pearl Paladin!'
+    });
+  }
+
+  // 2c. Flawless Zone Transition Trophies
+  const maxFlawlessZones = Math.max(
+    Number(safeState.flawlessZonesCount) || 0,
+    Number(safeState.flawlessZoneCount) || 0,
+    Number(safeState.flawlessZones) || 0,
+    Number(hygiene.flawlessZones) || 0,
+    Number(hygiene.flawlessZoneCount) || 0,
+    Number(hygiene.flawlessZonesCount) || 0,
+    Number(safeState.bossColosseum?.flawlessZones) || 0,
+    Number(selectedHero?.flawlessZonesBest) || 0,
+    Number(selectedHero?.flawlessZoneCount) || 0,
+    Number(selectedHero?.flawlessZones) || 0,
+    Number(selectedHero?.flawlessZonesCount) || 0,
+    ...Object.values(heroAlbum).map((entry) => ((entry?.flawlessCount || 0) > 0 ? 4 : 0))
+  );
+  if (unlockedTrophyIds.has('trophy_flawless_zones') || unlockedTrophyIds.has('trophy_flawless_zone') || maxFlawlessZones >= 1) {
+    trophies.push({
+      id: 'trophy_flawless_zones',
+      title: 'Flawless Quadrant Master Cup',
+      category: '3D Colosseum Arena',
+      emoji: '✨',
+      iconColor: 'from-cyan-400 to-emerald-500',
+      dateEarned: 'Flawless Zones',
+      lore: 'Presented to heroes who glide smoothly through every oral quadrant transition without losing scrub rhythm!',
+      rexPraise: 'Every zone transition was spotless! You brushed all four quadrants like a true dental champion!'
+    });
+  }
+  if (unlockedTrophyIds.has('trophy_flawless_sweep') || maxFlawlessZones >= 4) {
+    trophies.push({
+      id: 'trophy_flawless_sweep',
+      title: 'Perfect 4-Zone Sweep Crest',
+      category: '3D Colosseum Arena',
+      emoji: '🌟',
+      iconColor: 'from-amber-400 to-cyan-500',
+      dateEarned: 'Perfect Sweep',
+      lore: 'Awarded for achieving a complete 4-quadrant flawless transition sweep in a single heroic toothbrushing battle!',
+      rexPraise: 'FOUR FOR FOUR! Zero missed transitions—that is a legendary Perfect 4-Zone Sweep!'
+    });
+  }
 
   // 3. Movement / Dance Party Trophies
-  const danceRoutines = storeState.movementRoutines || storeState.dancePartyHistory || [];
-  const completedRoutinesCount = Array.isArray(danceRoutines) ? danceRoutines.length : (storeState.movementCompletedCount || 0);
-  if (completedRoutinesCount >= 1 || storeState.danceChampion) {
+  const danceRoutines = safeState.movementRoutines || safeState.dancePartyHistory || [];
+  const completedRoutinesCount = Array.isArray(danceRoutines) ? danceRoutines.length : (safeState.movementCompletedCount || 0);
+  if (completedRoutinesCount >= 1 || safeState.danceChampion) {
     trophies.push({
       id: 'trophy_dance_star',
       title: 'Groove Master Disco Star',
@@ -560,7 +683,7 @@ export function getTrophiesForDisplay(storeState = {}) {
   }
 
   // 4. Learning Adventures Trophies
-  const learningProgress = storeState.learningGames || {};
+  const learningProgress = safeState.learningGames || {};
   const completedSubjects = learningProgress.completedSubjects || [];
   if (completedSubjects.length > 0 || learningProgress.totalStars >= 5) {
     trophies.push({
@@ -576,9 +699,9 @@ export function getTrophiesForDisplay(storeState = {}) {
   }
 
   // 5. Pet Companion & Expedition Trophies
-  const expeditions = storeState.petExpeditions || {};
+  const expeditions = safeState.petExpeditions || {};
   const completedExp = expeditions.completedExpeditions || [];
-  if (completedExp.length >= 1 || storeState.expeditionChampion) {
+  if (completedExp.length >= 1 || safeState.expeditionChampion) {
     trophies.push({
       id: 'trophy_explorer_compass',
       title: 'Pioneer Explorer Golden Compass',
@@ -592,7 +715,7 @@ export function getTrophiesForDisplay(storeState = {}) {
   }
 
   // 5b. World Map Exploration Trophy: every (non-seasonal) shrine found in at least one biome
-  const discoveredSecrets = storeState.worldAdventureMap?.discoveredSecrets || [];
+  const discoveredSecrets = safeState.worldAdventureMap?.discoveredSecrets || [];
   const shrinesByBiome = {};
   SECRET_SHRINES.filter(s => !s.seasonId).forEach((s) => {
     if (!shrinesByBiome[s.biomeId]) shrinesByBiome[s.biomeId] = [];
@@ -615,8 +738,8 @@ export function getTrophiesForDisplay(storeState = {}) {
   }
 
   // 5c. Learning Realms Hard-Tier Mastery Trophy
-  const gameMastery = storeState.gameMasteryMap || {};
-  const hasHardTierMastery = storeState.selectedHero?.gameDifficulty === 'hard'
+  const gameMastery = safeState.gameMasteryMap || {};
+  const hasHardTierMastery = safeState.selectedHero?.gameDifficulty === 'hard'
     && Object.values(gameMastery).some((g) => (g?.stars || 0) >= 3);
   if (hasHardTierMastery) {
     trophies.push({
@@ -632,7 +755,7 @@ export function getTrophiesForDisplay(storeState = {}) {
   }
 
   // 6. Real-life Habit Streak Trophy
-  const streak = storeState.habitStreak || storeState.brushStreak || 3;
+  const streak = safeState.habitStreak || safeState.brushStreak || 3;
   if (streak >= 3) {
     trophies.push({
       id: 'trophy_habit_flame',
@@ -647,7 +770,7 @@ export function getTrophiesForDisplay(storeState = {}) {
   }
 
   // 7. Chores Hero Trophy
-  const choresCompleted = storeState.choresCompletedCount || storeState.completedTasksCount || 5;
+  const choresCompleted = safeState.choresCompletedCount || safeState.completedTasksCount || 5;
   if (choresCompleted >= 3) {
     trophies.push({
       id: 'trophy_chore_shield',

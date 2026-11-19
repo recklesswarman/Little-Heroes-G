@@ -278,27 +278,34 @@ export async function getBattleCoachAdvice(bossId, bossHpPercent, currentQuadran
   const state = store.getState?.() || {};
   const currentHero = store.getSelectedHero?.() || state.selectedHero || {};
   const effectiveHeroName = heroName || currentHero.name || "Little Hero";
-  const endpoint = AGY_REX_URL ? `${AGY_REX_URL}/api/rex/battle-coach` : '/api/rex/battle-coach';
-  try {
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        bossId,
-        bossHpPercent,
-        currentQuadrant,
-        cadenceScore,
-        equippedWeapon,
-        heroName: effectiveHeroName,
-        childName: effectiveHeroName,
-      }),
-      signal: AbortSignal.timeout(6000)
-    });
-    if (res.ok) {
-      return guardTextField(await res.json(), 'coach_text', { petName: 'Rex', childName: effectiveHeroName, heroId: currentHero.id });
+  const isLocalStaticPreview = typeof window !== 'undefined' &&
+    !AGY_REX_URL &&
+    (window.location?.hostname === '127.0.0.1' || window.location?.hostname === 'localhost') &&
+    window.location?.port !== '8000' &&
+    window.location?.port !== '5173';
+  if (!isLocalStaticPreview) {
+    const endpoint = AGY_REX_URL ? `${AGY_REX_URL}/api/rex/battle-coach` : '/api/rex/battle-coach';
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bossId,
+          bossHpPercent,
+          currentQuadrant,
+          cadenceScore,
+          equippedWeapon,
+          heroName: effectiveHeroName,
+          childName: effectiveHeroName,
+        }),
+        signal: AbortSignal.timeout(6000)
+      });
+      if (res.ok) {
+        return guardTextField(await res.json(), 'coach_text', { petName: 'Rex', childName: effectiveHeroName, heroId: currentHero.id });
+      }
+    } catch (err) {
+      console.warn("[heroAgentService] Battle coach unavailable:", err?.message || err);
     }
-  } catch (err) {
-    console.warn("[heroAgentService] Battle coach unavailable:", err?.message || err);
   }
   return {
     coach_text: `ENAMEL POWER SURGE! Keep scrubbing those sweet treats away, ${effectiveHeroName}!`,
@@ -368,6 +375,14 @@ export async function generateBedtimeChapterAGY(params) {
  * Invokes the Proactive Trigger AGY agent
  */
 export async function checkProactiveTriggerAGY(params) {
+  const isLocalStaticPreview = typeof window !== 'undefined' &&
+    !AGY_REX_URL &&
+    (window.location?.hostname === '127.0.0.1' || window.location?.hostname === 'localhost') &&
+    window.location?.port !== '8000' &&
+    window.location?.port !== '5173';
+  if (isLocalStaticPreview) {
+    return null;
+  }
   const endpoint = AGY_REX_URL ? `${AGY_REX_URL}/api/rex/proactive` : '/api/rex/proactive';
   try {
     const res = await fetch(endpoint, {

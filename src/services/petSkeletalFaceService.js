@@ -6,6 +6,7 @@
 
 import { Sound } from '../audio/sfx.js';
 import { getPet3DProfile, isWebGLSupported } from './pet3DService.js';
+import { resolvePublicAssetUrl } from '../utils/assetUrl.js';
 
 export { isWebGLSupported };
 
@@ -436,7 +437,9 @@ export class PetSkeletalFaceCanvas {
     const p = this.profile;
     const radius = Math.min(this.width, this.height) * 0.44;
 
-    const petImgSrc = `assets/pets/${this.petId || 'rex'}.png`;
+    const rawPetKey = String(this.petId || 'rex').toLowerCase();
+    const safePetKey = (rawPetKey === '1' || /^\d+$/.test(rawPetKey)) ? (this.profile?.id || 'rex') : rawPetKey;
+    const petImgSrc = resolvePublicAssetUrl(`assets/pets/${safePetKey}.png`);
     if (!this.petImg || this.petImgSrc !== petImgSrc) {
       this.petImgSrc = petImgSrc;
       this.petImg = new Image();
@@ -448,7 +451,7 @@ export class PetSkeletalFaceCanvas {
     if (this.petImgLoaded && this.petImg.complete && this.petImg.naturalWidth > 0) {
       const size = Math.min(this.width, this.height) * 0.92;
       ctx.drawImage(this.petImg, -size / 2, -size / 2, size, size);
-      this.renderHearts(ctx);
+      this.renderHeartParticles(ctx);
       ctx.restore();
       return;
     }

@@ -25,6 +25,9 @@ import {
 } from '../data/petGearStudioData.js';
 import { getPetLevelData, calculatePetStatBonus } from '../data/petsData.js';
 import { preserveScrollPosition } from '../utils/scrollPreserve.js';
+import { HYGIENE_BOSSES, DENTAL_BADGES } from '../data/hygieneBossesData.js';
+import { resolvePublicAssetUrl } from '../utils/assetUrl.js';
+import { setExplicitBossSelection } from './BattleView.js';
 
 // Local UI state for live previewing and interactive widgets
 let activePreviewItem = null;
@@ -285,7 +288,7 @@ export function renderHeroHQView() {
                 
                 <!-- 3D Chunky Figurine Image -->
                 <img 
-                  src="${activePet.avatar || `assets/pets/${activePet.key || 'rex'}.png`}" 
+                  src="${resolvePublicAssetUrl(activePet.avatar || `assets/pets/${activePet.key || 'rex'}.png`)}" 
                   alt="${escapeHtml(activePet.name)}"
                   class="w-28 h-28 sm:w-36 sm:h-36 object-contain drop-shadow-[0_12px_24px_rgba(0,0,0,0.7)] animate-float-gentle transition-transform group-hover:scale-110"
                 />
@@ -444,6 +447,9 @@ export function renderHeroHQView() {
 
     </div>
 
+    <!-- Dental Achievement Badges & Cleansed Villains / Cleanse Album Gallery -->
+    ${renderDentalBadgesAndCleanseAlbumSection(state, hero)}
+
     <!-- Redecorate Studio Slide-Up Drawer -->
     ${heroHQ.redecorateDrawerOpen ? renderRedecorateDrawer(state) : ''}
 
@@ -460,6 +466,100 @@ export function renderHeroHQView() {
     ${isWeaponModalOpen ? renderWeaponModal(state, equippedWeapon) : ''}
 
   </div>
+  `;
+}
+
+function renderDentalBadgesAndCleanseAlbumSection(state, hero) {
+  const unlockedBadges = new Set(Array.isArray(hero?.dentalBadges) ? hero.dentalBadges : (state.dentalBadges || []));
+  const album = typeof store.getCleanseAlbum === 'function'
+    ? store.getCleanseAlbum(hero?.id)
+    : (hero?.cleanseAlbum || state.cleanseAlbum || {});
+
+  return `
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <!-- Dental Achievement Badges -->
+      <section class="bg-surface-container/90 backdrop-blur-md rounded-3xl p-4 sm:p-5 border-2 border-surface-container-highest shadow-lg flex flex-col gap-3">
+        <div class="flex items-center justify-between border-b border-white/10 pb-2">
+          <div class="flex items-center gap-2">
+            <span class="text-xl">🏅</span>
+            <h2 class="font-headline text-sm sm:text-base font-black text-inverse-surface uppercase tracking-wide">
+              Dental Achievement Badges (${unlockedBadges.size}/${DENTAL_BADGES.length})
+            </h2>
+          </div>
+          <span class="text-[10px] font-black text-cyan-300 bg-cyan-950/60 border border-cyan-500/40 px-2.5 py-0.5 rounded-full">
+            Tooth Defenders Milestones
+          </span>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          ${DENTAL_BADGES.map(badge => {
+            const isUnlocked = unlockedBadges.has(badge.id);
+            return `
+              <div class="rounded-2xl p-2.5 border ${isUnlocked ? 'bg-cyan-950/50 border-cyan-400/70 shadow-[0_0_12px_rgba(34,211,238,0.2)]' : 'bg-surface-container-low/60 border-white/10 opacity-60'} flex flex-col items-center text-center gap-1">
+                <span class="text-2xl">${badge.icon || '🏅'}</span>
+                <span class="font-headline text-[11px] font-black ${isUnlocked ? 'text-cyan-200' : 'text-on-surface-variant'} leading-tight">${escapeHtml(badge.title || badge.name)}</span>
+                <span class="text-[9px] text-on-surface-variant line-clamp-2">${escapeHtml(badge.desc)}</span>
+                <span class="text-[8px] font-black uppercase px-2 py-0.5 rounded-full mt-auto ${isUnlocked ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40' : 'bg-slate-800 text-slate-400'}">
+                  ${isUnlocked ? 'Unlocked ✓' : 'Locked'}
+                </span>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </section>
+
+      <!-- Cleansed Villains Gallery / Cleanse Album -->
+      <section class="bg-surface-container/90 backdrop-blur-md rounded-3xl p-4 sm:p-5 border-2 border-surface-container-highest shadow-lg flex flex-col gap-3">
+        <div class="flex items-center justify-between border-b border-white/10 pb-2">
+          <div class="flex items-center gap-2">
+            <span class="text-xl">📖✨</span>
+            <h2 class="font-headline text-sm sm:text-base font-black text-inverse-surface uppercase tracking-wide">
+              Cleansed Villains • Cleanse Album (${Object.keys(album).length}/${HYGIENE_BOSSES.length})
+            </h2>
+          </div>
+          <span class="text-[10px] font-black text-emerald-300 bg-emerald-950/60 border border-emerald-500/40 px-2.5 py-0.5 rounded-full">
+            Tap for Boss Rematch
+          </span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[320px] overflow-y-auto pr-1">
+          ${HYGIENE_BOSSES.map(boss => {
+            const entry = album[boss.id] || null;
+            const isCleansed = Boolean(entry && entry.cleansedCount > 0);
+            const imgSrc = resolvePublicAssetUrl(isCleansed ? (boss.cleansedImage || boss.image) : boss.image);
+            const bestMs = entry?.bestSpeedScrubMs;
+            const bestSecStr = (typeof bestMs === 'number' && bestMs > 0)
+              ? `${(bestMs / 1000).toFixed(1)}s (${bestMs}ms)`
+              : null;
+            const bestMult = entry?.bestSpeedScrubMultiplier || 1;
+
+            return `
+              <div class="rounded-2xl p-3 border ${isCleansed ? 'bg-emerald-950/35 border-emerald-400/60' : 'bg-surface-container-low/60 border-white/10'} flex items-center justify-between gap-2.5">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <div class="w-12 h-12 rounded-xl overflow-hidden border-2 ${isCleansed ? 'border-emerald-400' : 'border-slate-700'} bg-slate-900 shrink-0 flex items-center justify-center">
+                    <img src="${imgSrc}" alt="${escapeHtml(isCleansed ? boss.cleansedTitle : boss.name)}" class="w-full h-full object-cover" />
+                  </div>
+                  <div class="flex flex-col min-w-0">
+                    <span class="font-headline text-xs font-black text-white truncate">
+                      ${escapeHtml(isCleansed ? boss.cleansedTitle : boss.name)}
+                    </span>
+                    <span class="text-[10px] text-amber-300 font-bold truncate">
+                      ${escapeHtml(boss.name)} ${isCleansed ? `• Cleansed ${entry.cleansedCount}x` : '• Not Yet Cleansed'}
+                    </span>
+                    ${isCleansed && bestSecStr ? `
+                      <span class="text-[9px] text-cyan-300 font-black">
+                        ⚡ Best Speed Scrub: ${bestSecStr} • ${bestMult}x
+                      </span>
+                    ` : ''}
+                  </div>
+                </div>
+                <button data-rematch-boss-id="${boss.id}" data-boss-id="${boss.id}" class="hq-cleanse-rematch-btn shrink-0 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-headline text-[10px] font-black px-2.5 py-1.5 rounded-xl border border-cyan-200 shadow-xs active:scale-95 cursor-pointer">
+                  ⚔️ Rematch
+                </button>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </section>
+    </div>
   `;
 }
 
@@ -1043,14 +1143,34 @@ function renderWeaponModal(state, equippedWeapon) {
 
 export function attachHeroHQListeners() {
   // Initialize 3D Roaming Companion Pet in Hero HQ
+  const activePetForViewer = store.getActivePet ? store.getActivePet() : null;
   const hqPetController = initPet3DViewer('hq-roaming-pet-3d', {
-    petId: store.getActivePet()?.id || 'rex',
+    petId: activePetForViewer?.key || 'rex',
     stage: 1,
     mode: 'hq'
   });
   // See PetPenView.js's identical registration for why this is needed --
   // Pet3DViewer.js alone never stops this canvas's RAF loop on navigate-away.
   if (hqPetController) registerActiveCanvas(hqPetController);
+
+  // Cleanse Album Boss Rematch Buttons
+  document.querySelectorAll('[data-rematch-boss-id]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const bossId = btn.getAttribute('data-rematch-boss-id');
+      if (!bossId) return;
+      Sound.tap();
+      setExplicitBossSelection(true);
+      if (typeof store.setSelectedBossId === 'function') {
+        store.setSelectedBossId(bossId);
+      }
+      if (store.state) {
+        store.state.selectedBossId = bossId;
+        store.state.hasExplicitBossSelection = true;
+      }
+      store.navigate('battle');
+    });
+  });
 
   const container = document.querySelector('.hero-hq-container');
   if (!container) return;

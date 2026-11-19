@@ -3,6 +3,7 @@ import { speakRex } from '../services/voiceService.js';
 import { Sound } from '../audio/sfx.js';
 import { preserveScrollPosition } from '../utils/scrollPreserve.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
+import { resolvePublicAssetUrl } from '../utils/assetUrl.js';
 import {
   renderRewardImage,
   getRewardRarityBorderClass,
@@ -120,7 +121,7 @@ export function renderShopView() {
         </div>
 
         <!-- Currency Display -->
-        <div class="flex items-center gap-3 w-full sm:w-auto">
+        <div class="flex items-center gap-3 w-full sm:w-auto flex-wrap">
           <!-- Habit Coins (Digital) -->
           <div class="flex-1 sm:flex-none flex items-center bg-surface-container/90 backdrop-blur-md px-4 py-2.5 rounded-full border-2 border-secondary-container gap-2.5 shadow-xs">
             <div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center border-b-2 border-on-secondary-container shadow-inner">
@@ -129,6 +130,17 @@ export function renderShopView() {
             <div class="flex flex-col">
               <span class="text-[9px] text-on-surface-variant uppercase font-black tracking-wider">Habit Tokens</span>
               <span class="font-headline text-sm font-black text-secondary leading-none">${(hero.coins || 0).toLocaleString()}</span>
+            </div>
+          </div>
+
+          <!-- Pet Sparks (Evolution & Shield Upgrades) -->
+          <div class="flex-1 sm:flex-none flex items-center bg-surface-container/90 backdrop-blur-md px-4 py-2.5 rounded-full border-2 border-cyan-500/40 gap-2.5 shadow-xs">
+            <div class="w-8 h-8 rounded-full bg-cyan-950 flex items-center justify-center border-b-2 border-cyan-400 shadow-inner">
+              <span class="material-symbols-outlined text-cyan-300 text-xl" style="font-variation-settings: 'FILL' 1;">bolt</span>
+            </div>
+            <div class="flex flex-col">
+              <span class="text-[9px] text-on-surface-variant uppercase font-black tracking-wider">Pet Sparks</span>
+              <span class="font-headline text-sm font-black text-cyan-300 leading-none">${typeof store.getPetSparks === 'function' ? store.getPetSparks(hero.activePetId || 1, hero.id) : (hero.sparks || hero.evolutionSparks || 0)} Sparks ⚡</span>
             </div>
           </div>
 
@@ -259,7 +271,11 @@ export function renderShopView() {
                   }
 
                   const itemPrice = item.costCoins || item.price || 0;
-                  const canAfford = (hero.coins || 0) >= itemPrice;
+                  const itemSparks = item.costSparks || 0;
+                  const activePetSparks = typeof store.getPetSparks === 'function'
+                    ? store.getPetSparks(hero.activePetId || 1, hero.id)
+                    : (hero.sparks || hero.evolutionSparks || 0);
+                  const canAfford = ((hero.coins || 0) >= itemPrice) && (activePetSparks >= itemSparks);
                   const isParentCrafted = Boolean(item.isParentCrafted || item.isCustomAI);
                   const socketIconMap = { head: '👑 Head', back: '🚀 Back', chest: '🛡️ Chest', feet: '👟 Paws', weapon: '⚔️ Weapon' };
                   const targetSocket = item.targetPetSocket || item.equipSlot;
@@ -327,9 +343,16 @@ export function renderShopView() {
                     </div>
 
                     <div class="flex items-center justify-between pt-3 border-t border-surface-container-highest">
-                      <div class="flex items-center gap-1 font-headline text-sm font-black text-secondary">
-                        <span class="material-symbols-outlined text-base">monetization_on</span>
-                        <span>${itemPrice} Tokens</span>
+                      <div class="flex items-center gap-2 font-headline text-sm font-black text-secondary flex-wrap">
+                        <span class="flex items-center gap-1">
+                          <span class="material-symbols-outlined text-base">monetization_on</span>
+                          <span>${itemPrice} Tokens</span>
+                        </span>
+                        ${itemSparks > 0 ? `
+                          <span class="text-xs font-black text-cyan-300 bg-cyan-950/60 border border-cyan-500/40 px-2 py-0.5 rounded-full">
+                            ⚡ ${itemSparks} Sparks
+                          </span>
+                        ` : ''}
                       </div>
 
                       <div>
@@ -349,13 +372,13 @@ export function renderShopView() {
                             `
                               : canAfford
                               ? `
-                              <button data-buy-gear-id="${item.id}" class="buy-gear-btn min-h-[44px] bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2 rounded-xl chunky-btn border-secondary-container shadow-chunky-sm hover:brightness-110 active:scale-95">
+                              <button data-buy-gear-id="${item.id}" data-cost-sparks="${itemSparks}" class="buy-gear-btn min-h-[44px] bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2 rounded-xl chunky-btn border-secondary-container shadow-chunky-sm hover:brightness-110 active:scale-95">
                                 Buy Weapon
                               </button>
                             `
                               : `
                               <button class="min-h-[44px] bg-surface-container-highest text-on-surface-variant font-headline text-xs font-black px-4 py-2 rounded-xl border border-surface-container-low opacity-60 cursor-not-allowed">
-                                Need ${itemPrice - (hero.coins || 0)} more
+                                Need ${Math.max(0, itemPrice - (hero.coins || 0))} more
                               </button>
                             `
                             : isFood
@@ -367,7 +390,7 @@ export function renderShopView() {
                                   <span>Feed Rex (${servingsCount})</span>
                                 </button>
                                 ${canAfford ? `
-                                  <button data-buy-gear-id="${item.id}" class="buy-gear-btn min-h-[44px] bg-surface-container-high hover:bg-surface-bright text-secondary font-headline text-xs font-black px-2.5 py-2 rounded-xl border border-secondary/40" title="Buy More Servings">
+                                  <button data-buy-gear-id="${item.id}" data-cost-sparks="${itemSparks}" class="buy-gear-btn min-h-[44px] bg-surface-container-high hover:bg-surface-bright text-secondary font-headline text-xs font-black px-2.5 py-2 rounded-xl border border-secondary/40" title="Buy More Servings">
                                     +🪙
                                   </button>
                                 ` : ''}
@@ -375,13 +398,13 @@ export function renderShopView() {
                             `
                               : canAfford
                               ? `
-                              <button data-buy-gear-id="${item.id}" class="buy-gear-btn min-h-[44px] bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2 rounded-xl chunky-btn border-secondary-container shadow-chunky-sm hover:brightness-110 active:scale-95">
+                              <button data-buy-gear-id="${item.id}" data-cost-sparks="${itemSparks}" class="buy-gear-btn min-h-[44px] bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2 rounded-xl chunky-btn border-secondary-container shadow-chunky-sm hover:brightness-110 active:scale-95">
                                 Buy Snack (${item.maxServings || item.servingsMax || 1}x)
                               </button>
                             `
                               : `
                               <button class="min-h-[44px] bg-surface-container-highest text-on-surface-variant font-headline text-xs font-black px-4 py-2 rounded-xl border border-surface-container-low opacity-60 cursor-not-allowed">
-                                Need ${itemPrice - (hero.coins || 0)} more
+                                Need ${Math.max(0, itemPrice - (hero.coins || 0))} more
                               </button>
                             `
                             : isBadgeOrTrophy && isOwned
@@ -398,19 +421,19 @@ export function renderShopView() {
                         `
                             : isOwned
                             ? `
-                          <button data-buy-gear-id="${item.id}" class="buy-gear-btn min-h-[44px] bg-surface-container-high hover:bg-surface-bright text-inverse-surface font-headline text-xs font-black px-4 py-2 rounded-xl border border-surface-container-highest chunky-btn-sm active:scale-95">
+                          <button data-buy-gear-id="${item.id}" data-cost-sparks="${itemSparks}" class="buy-gear-btn min-h-[44px] bg-surface-container-high hover:bg-surface-bright text-inverse-surface font-headline text-xs font-black px-4 py-2 rounded-xl border border-surface-container-highest chunky-btn-sm active:scale-95">
                             Equip
                           </button>
                         `
                             : canAfford
                             ? `
-                          <button data-buy-gear-id="${item.id}" class="buy-gear-btn min-h-[44px] bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2 rounded-xl chunky-btn border-secondary-container shadow-chunky-sm hover:brightness-110 active:scale-95">
+                          <button data-buy-gear-id="${item.id}" data-cost-sparks="${itemSparks}" class="buy-gear-btn min-h-[44px] bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2 rounded-xl chunky-btn border-secondary-container shadow-chunky-sm hover:brightness-110 active:scale-95">
                             Buy Now
                           </button>
                         `
                             : `
                           <button class="min-h-[44px] bg-surface-container-highest text-on-surface-variant font-headline text-xs font-black px-4 py-2 rounded-xl border border-surface-container-low opacity-60 cursor-not-allowed">
-                            Need ${itemPrice - (hero.coins || 0)} more
+                            Need ${Math.max(0, itemPrice - (hero.coins || 0))} more
                           </button>
                         `
                         }
@@ -546,7 +569,7 @@ export function renderShopView() {
                     <div class="w-16 h-16 rounded-2xl bg-tertiary/15 text-tertiary flex items-center justify-center text-3xl shadow-inner border border-tertiary/30 shrink-0 p-1">
                       ${
                         reward.image?.startsWith('data:image') || reward.image?.startsWith('http') || reward.image?.startsWith('/')
-                          ? `<img src="${reward.image}" class="w-12 h-12 object-contain" alt="${escapeHtml(reward.title)}" />`
+                          ? `<img src="${resolvePublicAssetUrl(reward.image)}" class="w-12 h-12 object-contain" alt="${escapeHtml(reward.title)}" />`
                           : `<span class="material-symbols-outlined text-3xl">${reward.icon || 'card_giftcard'}</span>`
                       }
                     </div>

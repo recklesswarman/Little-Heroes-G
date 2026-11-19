@@ -3,6 +3,7 @@ import { Sound } from '../audio/sfx.js';
 import { speakRex } from '../services/voiceService.js';
 import { triggerInteractiveCelebration, closeInteractiveCelebration } from './InteractiveCelebrationOverlay.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
+import { resolvePublicAssetUrl } from '../utils/assetUrl.js';
 
 let shaderAnimationId = null;
 
@@ -12,7 +13,8 @@ function generateCelebrationIcon(reward) {
   }
 
   // 1. If an explicit image URL is provided (e.g. task image, reward image, pet avatar)
-  const imageSrc = reward.assetUrl || reward.image;
+  const rawImageSrc = reward.assetUrl || reward.image;
+  const imageSrc = rawImageSrc ? resolvePublicAssetUrl(rawImageSrc) : null;
   if (imageSrc && imageSrc !== 'undefined' && imageSrc !== 'null') {
     return `
       <img

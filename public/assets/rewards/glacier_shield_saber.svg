@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+  <defs>
+    <radialGradient id="gss_bg" cx="35%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#0369a1"/>
+      <stop offset="60%" stop-color="#0c4a6e"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </radialGradient>
+    <linearGradient id="gss_ice" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e0f2fe"/>
+      <stop offset="50%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+  </defs>
+  <circle cx="60" cy="60" r="54" fill="url(#gss_bg)" stroke="#38bdf8" stroke-width="3.5"/>
+  <ellipse cx="50" cy="24" rx="28" ry="12" fill="#ffffff" opacity="0.14"/>
+  <polygon points="60,20 88,36 84,74 60,98 36,74 32,36" fill="url(#gss_ice)" opacity="0.28" stroke="#7dd3fc" stroke-width="3"/>
+  <path d="M34 86 L86 34" stroke="url(#gss_ice)" stroke-width="10" stroke-linecap="round"/>
+  <path d="M36 84 L84 36" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round"/>
+  <rect x="26" y="76" width="22" height="10" rx="3" transform="rotate(-45 37 81)" fill="#f59e0b" stroke="#ffffff" stroke-width="1.5"/>
+  <polygon points="60,34 64,46 76,50 64,54 60,66 56,54 44,50 56,46" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="1.5"/>
+  <circle cx="84" cy="76" r="4" fill="#fde047"/>
+</svg>

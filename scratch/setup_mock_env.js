@@ -123,6 +123,7 @@ function createMockElement(tag = 'div') {
   const el = {
     tagName: (tag || 'DIV').toUpperCase(),
     className: '',
+    disabled: false,
     dataset: {},
     style: {},
     children: [],
@@ -149,6 +150,7 @@ function createMockElement(tag = 'div') {
       return true;
     },
     click() {
+      if (el.disabled) return;
       if (listeners['click']) {
         const evt = { type: 'click', target: el, stopPropagation: () => {} };
         listeners['click'].forEach(fn => fn(evt));
@@ -219,6 +221,10 @@ function createMockElement(tag = 'div') {
             childEl.dataset[camelKey] = attrVal;
           }
         }
+        const bareAttrs = attrs.replace(/([a-zA-Z0-9-_:]+)=["']([^"']*)["']/g, '');
+        for (const bm of bareAttrs.matchAll(/\b(disabled|checked|readonly|hidden|selected|multiple|required)\b/gi)) {
+          childEl.setAttribute(bm[1].toLowerCase(), '');
+        }
         if (childEl.id) {
           elementsByIdMap.set(childEl.id, childEl);
         }
@@ -249,6 +255,9 @@ function createMockElement(tag = 'div') {
     setAttribute(name, val) {
       if (name === 'id') el.id = val;
       else if (name === 'class') el.className = val;
+      else if (name === 'disabled' || name === 'checked' || name === 'readonly' || name === 'hidden' || name === 'selected' || name === 'multiple' || name === 'required') {
+        el[name] = val !== false && val !== 'false';
+      }
       else if (name === 'style') {
         if (typeof val === 'string') {
           val.split(';').forEach(pair => {
@@ -265,7 +274,11 @@ function createMockElement(tag = 'div') {
       return el[name] || null;
     },
     removeAttribute(name) {
-      delete el[name];
+      if (name === 'disabled' || name === 'checked' || name === 'readonly' || name === 'hidden' || name === 'selected' || name === 'multiple' || name === 'required') {
+        el[name] = false;
+      } else {
+        delete el[name];
+      }
     },
     classList: {
       add(...cls) {

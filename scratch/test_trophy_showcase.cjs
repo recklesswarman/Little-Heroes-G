@@ -5,6 +5,10 @@ async function testTrophyShowcase() {
 
   // Setup DOM mocks
   global.window = {
+    navigator: {
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+      platform: 'Win32'
+    },
     addEventListener: () => {},
     removeEventListener: () => {},
     localStorage: {
@@ -13,6 +17,7 @@ async function testTrophyShowcase() {
       removeItem: () => {}
     }
   };
+  global.localStorage = global.window.localStorage;
   global.document = {
     addEventListener: () => {},
     getElementById: () => null,

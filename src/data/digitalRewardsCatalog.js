@@ -41,6 +41,7 @@ export const REWARD_CATEGORIES = {
 export const STAT_BOOST_TYPES = [
   { id: 'damage_boost', label: 'AR Battle Damage', icon: 'swords', color: '#ef4444' },
   { id: 'defense_boost', label: 'Shield & Armor', icon: 'shield', color: '#10b981' },
+  { id: 'shield_duration', label: 'Minty Shield Duration', icon: 'ac_unit', color: '#06b6d4' },
   { id: 'coin_boost', label: 'Extra Habit Tokens', icon: 'monetization_on', color: '#f59e0b' },
   { id: 'xp_boost', label: 'Quest XP Multiplier', icon: 'star', color: '#06b6d4' },
   { id: 'speed_boost', label: 'Quest Speed Haste', icon: 'bolt', color: '#3b82f6' },
@@ -48,6 +49,12 @@ export const STAT_BOOST_TYPES = [
   { id: 'energy_boost', label: 'Energy Restoration', icon: 'battery_charging_full', color: '#f59e0b' },
   { id: 'hygiene_boost', label: 'Cleanliness Recovery', icon: 'water_drop', color: '#06b6d4' }
 ];
+
+Object.defineProperty(STAT_BOOST_TYPES, 'SHIELD_DURATION', {
+  value: 'shield_duration',
+  enumerable: false,
+  configurable: true
+});
 
 export const DIGITAL_REWARDS_CATALOG = [
   // =========================================================================
@@ -656,6 +663,81 @@ export const DIGITAL_REWARDS_CATALOG = [
     renderGradient: 'from-amber-900/60 via-slate-900 to-slate-950',
     modelUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
     voiceLine: "True north to victory! The Galactic Compass guides us to awesome secret treasures!",
+    isUnlocked: false
+  },
+  {
+    id: 'minty_frost_brush',
+    name: 'Minty Frost Guard Brush',
+    title: 'Minty Frost Guard Brush',
+    desc: 'Frost-infused toothbrush charm that extends your Minty Shield barrier by +2 seconds!',
+    category: 'Accessories',
+    subCategory: 'shield_upgrade',
+    subcategory: 'shield_upgrade',
+    equipSlot: 'shield',
+    rarity: 'rare',
+    price: 180,
+    costCoins: 180,
+    costSparks: 15,
+    shieldDurationBonusSec: 2,
+    assetUrl: getRewardAssetUrl('minty_frost_brush'),
+    image: getRewardAssetUrl('minty_frost_brush'),
+    fallbackSvgDataUri: DEFAULT_FALLBACK_DATA_URI,
+    statBonusType: 'shield_duration',
+    statBonusPercent: 40,
+    statBonusLabel: '+2s Minty Shield Duration',
+    renderGradient: 'from-cyan-900/60 via-slate-900 to-blue-950/80',
+    modelUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+    voiceLine: "Chill out, sugar bugs! The Minty Frost Guard Brush adds 2 extra seconds to your Minty Shield!",
+    isUnlocked: false
+  },
+  {
+    id: 'glacier_shield_saber',
+    name: 'Glacier Aegis Tooth-Saber',
+    title: 'Glacier Aegis Tooth-Saber',
+    desc: 'Crystallized arctic mint emitter that fortifies your Minty Shield duration by +3 seconds!',
+    category: 'Accessories',
+    subCategory: 'shield_upgrade',
+    subcategory: 'shield_upgrade',
+    equipSlot: 'shield',
+    rarity: 'epic',
+    price: 280,
+    costCoins: 280,
+    costSparks: 25,
+    shieldDurationBonusSec: 3,
+    assetUrl: getRewardAssetUrl('glacier_shield_saber'),
+    image: getRewardAssetUrl('glacier_shield_saber'),
+    fallbackSvgDataUri: DEFAULT_FALLBACK_DATA_URI,
+    statBonusType: 'shield_duration',
+    statBonusPercent: 60,
+    statBonusLabel: '+3s Minty Shield Duration',
+    renderGradient: 'from-sky-900/60 via-slate-900 to-cyan-950/80',
+    modelUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+    voiceLine: "Frosty defense! The Glacier Aegis Tooth-Saber reinforces your Minty Shield for 3 extra seconds!",
+    isUnlocked: false
+  },
+  {
+    id: 'cryo_mint_aegis_brush',
+    name: 'Cryo-Mint Barrier Cannon',
+    title: 'Cryo-Mint Barrier Cannon',
+    desc: 'Legendary cryo-mint shield projector extending your Minty Shield barrier by +5 full seconds!',
+    category: 'Accessories',
+    subCategory: 'shield_upgrade',
+    subcategory: 'shield_upgrade',
+    equipSlot: 'shield',
+    rarity: 'legendary',
+    price: 420,
+    costCoins: 420,
+    costSparks: 40,
+    shieldDurationBonusSec: 5,
+    assetUrl: getRewardAssetUrl('cryo_mint_aegis_brush'),
+    image: getRewardAssetUrl('cryo_mint_aegis_brush'),
+    fallbackSvgDataUri: DEFAULT_FALLBACK_DATA_URI,
+    statBonusType: 'shield_duration',
+    statBonusPercent: 100,
+    statBonusLabel: '+5s Minty Shield Duration',
+    renderGradient: 'from-emerald-900/60 via-slate-900 to-cyan-950/80',
+    modelUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+    voiceLine: "Unbreakable mint armor! The Cryo-Mint Barrier Cannon extends your Minty Shield by 5 whole seconds!",
     isUnlocked: false
   },
 

@@ -7,6 +7,7 @@
 import { Sound } from '../audio/sfx.js';
 import { getPetFaceProfile } from './petSkeletalFaceService.js';
 import { getGearItem, COLOR_DYES } from '../data/petGearStudioData.js';
+import { resolvePublicAssetUrl } from '../utils/assetUrl.js';
 
 export const RUNWAY_POSES = {
   IDLE: 'idle',
@@ -496,7 +497,9 @@ export class PetSkeletalBodyCanvas {
     // 1. Draw Runway Floor Shockwaves & Pedestal
     this.renderFloorPedestal(ctx);
 
-    const petImgSrc = `assets/pets/${this.petId || 'rex'}.png`;
+    const rawPetKey = String(this.petId || 'rex').toLowerCase();
+    const safePetKey = (rawPetKey === '1' || /^\d+$/.test(rawPetKey)) ? (this.profile?.id || 'rex') : rawPetKey;
+    const petImgSrc = resolvePublicAssetUrl(`assets/pets/${safePetKey}.png`);
     if (!this.petImg || this.petImgSrc !== petImgSrc) {
       this.petImgSrc = petImgSrc;
       this.petImg = new Image();

@@ -9,6 +9,7 @@
  */
 
 import { escapeHtml } from './escapeHtml.js';
+import { resolvePublicAssetUrl } from './assetUrl.js';
 
 export const REWARD_ASSET_BASE_PATH = '/assets/rewards';
 
@@ -45,6 +46,9 @@ export const REWARD_ASSET_MAP = {
   scout_headband: `${REWARD_ASSET_BASE_PATH}/scout_headband.svg`,
   astro_belt: `${REWARD_ASSET_BASE_PATH}/astro_belt.svg`,
   cosmic_compass: `${REWARD_ASSET_BASE_PATH}/cosmic_compass.svg`,
+  minty_frost_brush: `${REWARD_ASSET_BASE_PATH}/minty_frost_brush.svg`,
+  glacier_shield_saber: `${REWARD_ASSET_BASE_PATH}/glacier_shield_saber.svg`,
+  cryo_mint_aegis_brush: `${REWARD_ASSET_BASE_PATH}/cryo_mint_aegis_brush.svg`,
 
   // Badges
   mint_knight_badge: `${REWARD_ASSET_BASE_PATH}/mint_knight_badge.svg`,
@@ -60,6 +64,16 @@ export const REWARD_ASSET_MAP = {
   trophy_sugarfang: `${REWARD_ASSET_BASE_PATH}/trophy_sugarfang.svg`,
   trophy_plaque_phantom: `${REWARD_ASSET_BASE_PATH}/trophy_plaque_phantom.svg`,
   trophy_sugar_bandit: `${REWARD_ASSET_BASE_PATH}/trophy_sugar_bandit.svg`,
+  trophy_plaque_kraken: `${REWARD_ASSET_BASE_PATH}/trophy_plaque_kraken.svg`,
+  trophy_cavity_knight: `${REWARD_ASSET_BASE_PATH}/trophy_cavity_knight.svg`,
+  trophy_tartar_titan: `${REWARD_ASSET_BASE_PATH}/trophy_tartar_titan.svg`,
+  trophy_fizz_serpent: `${REWARD_ASSET_BASE_PATH}/trophy_fizz_serpent.svg`,
+  trophy_cookie_colossus: `${REWARD_ASSET_BASE_PATH}/trophy_cookie_colossus.svg`,
+  trophy_gummy_ghost: `${REWARD_ASSET_BASE_PATH}/trophy_gummy_ghost.svg`,
+  trophy_tartar_tyrant: `${REWARD_ASSET_BASE_PATH}/trophy_tartar_tyrant.svg`,
+  trophy_flawless_zones: `${REWARD_ASSET_BASE_PATH}/trophy_flawless_zones.svg`,
+  trophy_flawless_zone: `${REWARD_ASSET_BASE_PATH}/trophy_flawless_zones.svg`,
+  trophy_flawless_sweep: `${REWARD_ASSET_BASE_PATH}/trophy_flawless_sweep.svg`,
 
   // Stickers
   starlight_dino: `${REWARD_ASSET_BASE_PATH}/starlight_dino.svg`,
@@ -129,6 +143,7 @@ export function renderRewardImage(item = {}, classNames = 'w-full h-full object-
   if (!safeSrc || safeSrc === 'undefined' || safeSrc === 'null') {
     safeSrc = safeItem.id ? getRewardAssetUrl(safeItem.id, safeItem.category) : REWARD_ASSET_MAP.reward_fallback;
   }
+  safeSrc = resolvePublicAssetUrl(safeSrc);
 
   const safeAlt = escapeHtml(title);
   const fallback = DEFAULT_FALLBACK_DATA_URI;

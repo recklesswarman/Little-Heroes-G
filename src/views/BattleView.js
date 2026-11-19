@@ -9,6 +9,7 @@ import { brushAudioAnalyzer } from '../audio/brushAudioAnalyzer.js';
 import { brushVisionTracker } from '../services/brushVisionTracker.js';
 import { DIGITAL_REWARDS_CATALOG } from '../data/digitalRewardsCatalog.js';
 import { getBattleCoachAdvice } from '../services/heroAgentService.js';
+import { resolvePublicAssetUrl } from '../utils/assetUrl.js';
 
 const sugarVillainEscapedImg = new URL('../assets/sugar_villain_escaped.jpg', import.meta.url).href;
 
@@ -40,7 +41,7 @@ function getActiveHeroId() {
 // =========================================================================
 
 // Battle State Variables
-export const ROTATING_VILLAINS = ['sugar_bandit', 'plaque_kraken', 'cavity_knight', 'tartar_titan'];
+export const ROTATING_VILLAINS = HYGIENE_BOSSES.map(b => b.id);
 let hasExplicitBossSelection = false;
 let sessionRotatedBossId = null;
 let selectedBossId = 'sugar_bandit';
@@ -128,7 +129,59 @@ let isPointerScrubbing = false;
 let lastPointerScrubAt = 0;
 let isFinaleSpeedActive = false;
 
+// Overhaul Combat State (F1, F2, F3, F4, F5, F7)
+let mintyShieldCharge = 0;
+let mintyShieldActive = false;
+let mintyShieldRemainingSec = 0;
+let mintyShieldDurationSec = 5;
+let mintyShieldActiveSeconds = 0;
+let lastShieldScrubRefreshSec = -1;
+let brushPhaseStartTimeMs = 0;
+let tartarShellAgeSec = 0;
+let tartarShellEverRecharged = false;
+let shellShatteredBeforeRecharge = false;
+let speedScrubMs = null;
+let speedScrubMultiplier = 1;
+let spritesSpawnedCount = 0;
+let spritesClearedNoDamage = false;
+let victoryBurstOnPhaseShift = false;
+let lastPhaseShiftAtMs = 0;
+let recentFoamBlastAtMs = 0;
+let pointerDragMoveCount = 0;
+
+// Voice Recognition & Companion TTS Echo Gating State (F3)
+let battleSpeechRecognizer = null;
+let isCompanionSpeakingNow = false;
+let lastCompanionSpeechEndMs = 0;
+let lastCompanionSpeechText = '';
+
+function resetOverhaulCombatState() {
+  mintyShieldCharge = 0;
+  mintyShieldActive = false;
+  mintyShieldRemainingSec = 0;
+  const bonusSec = typeof store.getMintyShieldUpgradeBonusSec === 'function'
+    ? (store.getMintyShieldUpgradeBonusSec(getActiveHeroId()) || 0)
+    : 0;
+  mintyShieldDurationSec = 5 + bonusSec;
+  mintyShieldActiveSeconds = 0;
+  lastShieldScrubRefreshSec = -1;
+  brushPhaseStartTimeMs = Date.now();
+  tartarShellAgeSec = 0;
+  tartarShellEverRecharged = false;
+  shellShatteredBeforeRecharge = false;
+  speedScrubMs = null;
+  speedScrubMultiplier = 1;
+  spritesSpawnedCount = 0;
+  spritesClearedNoDamage = false;
+  victoryBurstOnPhaseShift = false;
+  lastPhaseShiftAtMs = Date.now();
+  recentFoamBlastAtMs = 0;
+  pointerDragMoveCount = 0;
+}
+
 export function getBattleTelemetryState() {
+  const stickyState = hanaBattle3DService.stickyResidueState || hanaBattle3DService.stickyResidue;
+  const shieldState = hanaBattle3DService.mintyShieldState || hanaBattle3DService.mintyShield;
   return {
     isBattleRunning,
     isBattlePaused,
@@ -146,7 +199,11 @@ export function getBattleTelemetryState() {
     volleyCount,
     lastCounterAttackAt,
     totalScrubHits,
-    quadrantCleanliness: { ...quadrantCleanliness }
+    quadrantCleanliness: { ...quadrantCleanliness },
+    stickyResidueActive: Boolean(stickyState?.active),
+    mintyShieldActive: Boolean(shieldState?.active || mintyShieldActive),
+    mintyShieldCharge,
+    mintyShieldRemainingSec: shieldState?.remainingSec ?? mintyShieldRemainingSec
   };
 }
 
@@ -274,8 +331,12 @@ export function renderBattleView() {
   const isExplicit = hasExplicitBossSelection || store.state?.hasExplicitBossSelection || store.state?.selectedBossId === 'sugar_boss';
   if (!isExplicit && !isBattleRunning && !store.getBossColosseumState()?.isVictoryModalOpen && !store.getBossColosseumState()?.isDefeatModalOpen) {
     if (!sessionRotatedBossId) {
-      const randomIndex = Math.floor(Math.random() * ROTATING_VILLAINS.length);
-      sessionRotatedBossId = ROTATING_VILLAINS[randomIndex];
+      if (typeof store.drawNextHygieneBossId === 'function') {
+        sessionRotatedBossId = store.drawNextHygieneBossId(getActiveHeroId());
+      } else {
+        const randomIndex = Math.floor(Math.random() * ROTATING_VILLAINS.length);
+        sessionRotatedBossId = ROTATING_VILLAINS[randomIndex];
+      }
     }
     selectedBossId = sessionRotatedBossId;
     if (store.state) store.state.selectedBossId = selectedBossId;
@@ -330,15 +391,12 @@ export function renderBattleView() {
   const showMouthwashBadge = hygieneKidId ? store.isHygieneReminderActive(hygieneKidId, 'mouthwash') : false;
 
   // List of primary hygiene bosses for bottom villain dock
-  const availableVillains = [
-    { id: 'sugar_bandit', name: 'Sugar Bandit', emoji: '🍬', color: '#f59e0b' },
-    { id: 'plaque_kraken', name: 'Plaque Kraken', emoji: '🐙', color: '#06b6d4' },
-    { id: 'cavity_knight', name: 'Cavity Knight', emoji: '⚔️', color: '#8b5cf6' },
-    { id: 'tartar_titan', name: 'Tartar Titan', emoji: '💎', color: '#0284c7' },
-    { id: 'fizz_serpent', name: 'Fizz Serpent', emoji: '🥤', color: '#0ea5e9' },
-    { id: 'cookie_colossus', name: 'Cookie Colossus', emoji: '🍪', color: '#b45309' },
-    { id: 'gummy_ghost', name: 'Gummy Ghost', emoji: '👻', color: '#14b8a6' }
-  ];
+  const availableVillains = HYGIENE_BOSSES.map(b => ({
+    id: b.id,
+    name: b.name.replace(/^The\s+/i, ''),
+    emoji: b.emoji || b.avatar || '🍬',
+    color: b.color || '#f59e0b'
+  }));
   const parentBosses = store.getParentCustomBosses ? store.getParentCustomBosses() : [];
   parentBosses.forEach(pb => {
     if (!availableVillains.some(v => v.id === pb.id)) {
@@ -498,14 +556,17 @@ export function renderBattleView() {
       ${battlePhase === 'brush' ? `
         <div id="supernova-hud" class="absolute bottom-15 sm:bottom-17 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 pointer-events-auto">
           <div class="bg-slate-900/90 backdrop-blur-md border-2 border-cyan-400/60 rounded-full px-3 py-1 flex items-center gap-2 shadow-lg">
-            <span class="text-[9px] font-black text-cyan-300 uppercase tracking-wider">FOAM POWER</span>
+            <span class="text-[9px] font-black text-cyan-300 uppercase tracking-wider">MINTY FRESH BLAST</span>
             <div class="w-16 sm:w-24 h-2 bg-slate-950 rounded-full overflow-hidden border border-cyan-500/40">
               <div id="supernova-charge-bar" class="h-full bg-linear-to-r from-cyan-400 via-emerald-400 to-amber-300 rounded-full transition-all duration-300" style="width: ${Math.min(100, Math.round(colState.choreSupernovaCharge || 0))}%;"></div>
             </div>
             <button id="supernova-blast-btn" class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase transition-all cursor-pointer ${(colState.choreSupernovaCharge || 0) >= 40 ? 'bg-linear-to-r from-amber-400 to-emerald-400 text-slate-950 shadow-[0_0_12px_rgba(16,185,129,0.8)] animate-pulse' : 'bg-slate-800 text-slate-400 cursor-not-allowed'}" ${(colState.choreSupernovaCharge || 0) >= 40 ? '' : 'disabled'}>
-              FOAM BLAST! 🌟
+              MINTY FRESH BLAST! 🌟
             </button>
           </div>
+          <button id="minty-shield-btn" data-active="${mintyShieldActive ? 'true' : 'false'}" class="px-3 py-1 rounded-full text-[10px] font-black uppercase border-2 transition-all ${mintyShieldActive ? 'bg-linear-to-r from-cyan-300 to-sky-400 text-slate-950 border-white shadow-[0_0_14px_rgba(56,189,248,0.85)]' : (mintyShieldCharge >= 40 ? 'bg-linear-to-r from-sky-400 to-cyan-400 text-slate-950 border-cyan-200 shadow-lg animate-pulse cursor-pointer' : 'bg-slate-900/90 text-slate-400 border-slate-700 cursor-not-allowed')}" ${(mintyShieldCharge >= 40 || mintyShieldActive) ? '' : 'disabled'}>
+            ${mintyShieldActive ? `MINTY SHIELD ACTIVE (${Math.ceil(mintyShieldRemainingSec)}s) ❄️` : `MINTY SHIELD (${mintyShieldDurationSec}s) ❄️`}
+          </button>
           <button id="fallback-scrub-btn" class="${isCameraActive ? 'hidden' : 'flex'} items-center gap-1 bg-linear-to-r from-cyan-400 to-emerald-400 text-slate-950 font-black text-[10px] sm:text-xs px-3 py-1.5 rounded-full border-2 border-white/60 shadow-lg active:scale-95 transition-all cursor-pointer">
             <span>🪥</span>
             <span>SCRUB!</span>
@@ -584,6 +645,11 @@ function renderVictoryModal(colState, currentBoss) {
   const hygieneKidId = hygieneKid?.id || (store.getSelectedKidId ? store.getSelectedKidId() : store.getState().selectedKidId);
   const showMouthwashInModal = hygieneKidId && store.isHygieneReminderActive(hygieneKidId, 'mouthwash');
   const isMouthwashAcknowledged = hygieneKidId ? store.hasAcknowledgedHygieneReminderToday(hygieneKidId, 'mouthwash') : false;
+  const unlockedBadgeIds = Array.isArray(reward.badgesUnlocked) && reward.badgesUnlocked.length > 0
+    ? reward.badgesUnlocked
+    : (Array.isArray(hygieneKid?.dentalBadges) ? hygieneKid.dentalBadges : (store.state?.dentalBadges || []));
+  const unlockedBadgeObjects = DENTAL_BADGES.filter(b => unlockedBadgeIds.includes(b.id));
+  const resolvedCleansedImage = currentBoss.cleansedImage ? resolvePublicAssetUrl(currentBoss.cleansedImage) : '';
 
   return `
     <div id="colosseum-victory-modal" class="fixed inset-0 z-40 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
@@ -593,8 +659,8 @@ function renderVictoryModal(colState, currentBoss) {
         <div class="relative mb-3 flex items-center justify-center">
           <div class="absolute -inset-3 rounded-full bg-linear-to-r from-pink-500 via-amber-400 via-emerald-400 via-cyan-400 to-purple-500 blur-md opacity-85 animate-pulse"></div>
           <div class="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-emerald-400 bg-slate-900/90 overflow-hidden shadow-[0_0_35px_rgba(52,211,153,0.8)] flex items-center justify-center">
-            ${currentBoss.cleansedImage
-              ? `<img src="${currentBoss.cleansedImage}" alt="${escapeHtml(reward.cleansedTitle)}" class="w-full h-full object-cover" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\\'text-5xl\\'>${currentBoss.cleansedAvatar || currentBoss.avatar || '✨'}</span>';" />`
+            ${resolvedCleansedImage
+              ? `<img src="${resolvedCleansedImage}" alt="${escapeHtml(reward.cleansedTitle)}" class="w-full h-full object-cover" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\\'text-5xl\\'>${currentBoss.cleansedAvatar || currentBoss.avatar || '✨'}</span>';" />`
               : `<span class="text-5xl animate-bounce">${currentBoss.cleansedAvatar || currentBoss.avatar || '✨'}</span>`
             }
           </div>
@@ -615,6 +681,17 @@ function renderVictoryModal(colState, currentBoss) {
           <span class="font-headline font-black text-xs sm:text-sm text-white">${trophyTitle}</span>
           <span class="text-[10px] text-slate-400">Permanently spotlighted in your Hero HQ hideout!</span>
         </div>
+
+        ${unlockedBadgeObjects.length > 0 ? `
+          <div class="w-full bg-slate-950/90 rounded-2xl p-2.5 border border-cyan-400/40 flex flex-wrap items-center justify-center gap-1.5 mb-3">
+            ${unlockedBadgeObjects.map(b => `
+              <span class="px-2 py-0.5 rounded-full bg-cyan-950/80 border border-cyan-400/50 text-[10px] font-black text-cyan-300 flex items-center gap-1">
+                <span>${b.icon || '🏅'}</span>
+                <span>${escapeHtml(b.title || b.name)}</span>
+              </span>
+            `).join('')}
+          </div>
+        ` : ''}
 
         <div class="w-full bg-slate-950/90 rounded-2xl p-2.5 border-2 border-slate-800 flex items-center justify-around mb-3 shadow-inner">
           <div class="flex flex-col items-center">
@@ -1052,6 +1129,7 @@ async function flipCamera() {
 function stopSensors() {
   sensorInitToken++;
   sensorAbortEpoch++;
+  stopBattleVoiceRecognition();
   brushAudioAnalyzer.stopListening();
   if (videoStream) {
     stopStreamTracks(videoStream);
@@ -1068,6 +1146,146 @@ function stopSensors() {
   isCameraMotionDetected = false;
   brushVisionTracker.reset();
   visionSnapshot = brushVisionTracker.getSnapshot();
+}
+
+function normalizeSpeechPhrase(str) {
+  return String(str || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function attachCompanionSpeechGateListeners() {
+  if (typeof window === 'undefined') return;
+  if (window._battleCompanionSpeechStartHandler) {
+    window.removeEventListener('companion-speech-start', window._battleCompanionSpeechStartHandler);
+  }
+  if (window._battleCompanionSpeechEndHandler) {
+    window.removeEventListener('companion-speech-end', window._battleCompanionSpeechEndHandler);
+  }
+  window._battleCompanionSpeechStartHandler = (e) => {
+    isCompanionSpeakingNow = true;
+    const txt = e?.detail?.text || '';
+    if (txt) lastCompanionSpeechText = String(txt);
+  };
+  window._battleCompanionSpeechEndHandler = (e) => {
+    isCompanionSpeakingNow = false;
+    lastCompanionSpeechEndMs = Date.now();
+    const txt = e?.detail?.text || '';
+    if (txt) lastCompanionSpeechText = String(txt);
+  };
+  window.addEventListener('companion-speech-start', window._battleCompanionSpeechStartHandler);
+  window.addEventListener('companion-speech-end', window._battleCompanionSpeechEndHandler);
+}
+
+function isVoiceCommandEchoGated(transcript) {
+  const now = Date.now();
+  if (isCompanionSpeakingNow) return true;
+  if (typeof window !== 'undefined' && window.speechSynthesis && window.speechSynthesis.speaking) return true;
+  if (lastCompanionSpeechEndMs > 0 && (now - lastCompanionSpeechEndMs) < 350) return true;
+
+  const normTranscript = normalizeSpeechPhrase(transcript);
+  if (!normTranscript) return true;
+  const normRecent = normalizeSpeechPhrase(lastCompanionSpeechText);
+  if (normRecent && normTranscript.length >= 12 && (normRecent.includes(normTranscript) || normTranscript.includes(normRecent))) {
+    return true;
+  }
+  if (normRecent && normTranscript === normRecent && normTranscript !== 'blast' && normTranscript !== 'shield up') {
+    return true;
+  }
+  return false;
+}
+
+function handleBattleVoiceTranscript(rawText) {
+  if (!isBattleRunning || isBattlePaused || battlePhase !== 'brush') return false;
+  const text = String(rawText || '').trim();
+  if (!text) return false;
+  if (isVoiceCommandEchoGated(text)) return false;
+
+  const norm = normalizeSpeechPhrase(text);
+  if (!norm) return false;
+
+  if (/\bshield\s+up\b|\bshield\b/.test(norm)) {
+    return activateMintyShield('voice');
+  }
+  if (/\bblast\b|\bminty\s+fresh\s+blast\b|\bfoam\s+blast\b/.test(norm)) {
+    return triggerSupernovaBlast('voice');
+  }
+  return false;
+}
+
+function initBattleVoiceRecognition() {
+  stopBattleVoiceRecognition();
+  attachCompanionSpeechGateListeners();
+  if (typeof window === 'undefined') return null;
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (typeof SpeechRec !== 'function') return null;
+
+  try {
+    const rec = new SpeechRec();
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.lang = 'en-US';
+    rec.onresult = (event) => {
+      if (!event || !event.results) return;
+      const startIdx = typeof event.resultIndex === 'number' ? event.resultIndex : 0;
+      for (let i = startIdx; i < event.results.length; i++) {
+        const resItem = event.results[i];
+        const alt = resItem && resItem[0];
+        const transcript = alt?.transcript || '';
+        if (transcript) {
+          handleBattleVoiceTranscript(transcript);
+        }
+      }
+    };
+    rec.onerror = () => {
+      // Silent fallback to brushing/HUD triggers on not-allowed or audio-capture error
+    };
+    battleSpeechRecognizer = rec;
+    rec.start();
+    return rec;
+  } catch (e) {
+    battleSpeechRecognizer = null;
+    return null;
+  }
+}
+
+function stopBattleVoiceRecognition() {
+  if (battleSpeechRecognizer) {
+    try {
+      if (typeof battleSpeechRecognizer.stop === 'function') battleSpeechRecognizer.stop();
+      else if (typeof battleSpeechRecognizer.abort === 'function') battleSpeechRecognizer.abort();
+    } catch {}
+    battleSpeechRecognizer = null;
+  }
+}
+
+export function activateMintyShield(source = 'button') {
+  if (!isBattleRunning || isBattlePaused || battlePhase !== 'brush') return false;
+  const currentSt = hanaBattle3DService.mintyShieldState || hanaBattle3DService.mintyShield;
+  if (mintyShieldCharge < 40 && !mintyShieldActive && !currentSt?.active) {
+    return false;
+  }
+  const bonusSec = typeof store.getMintyShieldUpgradeBonusSec === 'function'
+    ? (store.getMintyShieldUpgradeBonusSec(getActiveHeroId()) || 0)
+    : 0;
+  mintyShieldDurationSec = 5 + bonusSec;
+  mintyShieldRemainingSec = mintyShieldDurationSec;
+  mintyShieldActive = true;
+  lastShieldScrubRefreshSec = -1;
+
+  hanaBattle3DService.setMintyShieldState?.({
+    active: true,
+    charge: mintyShieldCharge,
+    integrity: 3,
+    maxIntegrity: 3,
+    remainingSec: mintyShieldRemainingSec,
+    durationSec: mintyShieldDurationSec,
+    attackBoostActive: true
+  });
+
+  if (source !== 'refresh') {
+    showComicHit(`MINTY SHIELD ACTIVE (${mintyShieldDurationSec}s)! ❄️🛡️`);
+  }
+  syncCockpitHUD();
+  return true;
 }
 
 function startOpticalMotionTracker() {
@@ -1260,6 +1478,7 @@ export function advanceToBrushPhase() {
   lastSpokenQuadId = null;
   quadrantCleanliness = { q1: 0, q2: 0, q3: 0, q4: 0, q5: 0 };
   lastProgressTimestamp = { q1: 0, q2: 0, q3: 0, q4: 0, q5: 0 };
+  resetOverhaulCombatState();
 
   store.initColosseumBattle(selectedBossId, bossDuration, true);
 
@@ -1348,12 +1567,19 @@ export function startBattle() {
   sensorMode = 'initializing';
   isBattleRunning = true;
   isBattlePaused = false;
+  isCompanionSpeakingNow = false;
+  lastCompanionSpeechEndMs = 0;
+  lastCompanionSpeechText = '';
 
   const isExplicit = hasExplicitBossSelection || store.state?.hasExplicitBossSelection || store.state?.selectedBossId === 'sugar_boss';
   if (!isExplicit) {
     if (!sessionRotatedBossId) {
-      const randomIndex = Math.floor(Math.random() * ROTATING_VILLAINS.length);
-      sessionRotatedBossId = ROTATING_VILLAINS[randomIndex];
+      if (typeof store.drawNextHygieneBossId === 'function') {
+        sessionRotatedBossId = store.drawNextHygieneBossId(getActiveHeroId());
+      } else {
+        const randomIndex = Math.floor(Math.random() * ROTATING_VILLAINS.length);
+        sessionRotatedBossId = ROTATING_VILLAINS[randomIndex];
+      }
     }
     selectedBossId = sessionRotatedBossId;
     if (store.state) store.state.selectedBossId = selectedBossId;
@@ -1361,6 +1587,7 @@ export function startBattle() {
     selectedBossId = store.getSelectedBossId ? store.getSelectedBossId() : (store.state?.selectedBossId || selectedBossId);
   }
   const currentBoss = getBattleBoss(selectedBossId);
+  resetOverhaulCombatState();
   hanaBattle3DService.resetBattleState?.();
   hanaBattle3DService.setBoss(currentBoss);
   syncCockpitHUD();
@@ -1417,6 +1644,7 @@ export function startBattle() {
 
   Sound.startBattleRhythm();
   initSensors();
+  initBattleVoiceRecognition();
 
   if (battlePhase === 'floss') {
     currentRexCoachText = "Time to floss, Little Hero! Clean between those teeth so the sugar villains have nowhere to hide!";
@@ -1508,6 +1736,50 @@ export function startBattle() {
 
     store.updateColosseumTimer(secondsRemaining, totalDuration);
 
+    // F1. Minty Shield 1Hz Lifecycle & Uptime Tracking
+    const liveShield = hanaBattle3DService.mintyShieldState || hanaBattle3DService.mintyShield;
+    if (liveShield?.active && (liveShield.integrity ?? 1) > 0) {
+      mintyShieldActive = true;
+      mintyShieldActiveSeconds++;
+      const brushedThisTick = (lastShieldScrubRefreshSec >= secondsRemaining);
+      if (brushedThisTick) {
+        mintyShieldRemainingSec = mintyShieldDurationSec;
+        hanaBattle3DService.setMintyShieldState?.({
+          active: true,
+          remainingSec: mintyShieldRemainingSec,
+          durationSec: mintyShieldDurationSec
+        });
+      } else {
+        mintyShieldRemainingSec = Math.max(0, (liveShield.remainingSec ?? mintyShieldRemainingSec) - 1);
+        mintyShieldActive = mintyShieldRemainingSec > 0 && (liveShield.integrity ?? 1) > 0;
+        hanaBattle3DService.setMintyShieldState?.({
+          active: mintyShieldActive,
+          remainingSec: mintyShieldRemainingSec
+        });
+      }
+    } else {
+      mintyShieldActive = false;
+      mintyShieldRemainingSec = 0;
+    }
+
+    // F4. Tartar Tyrant Armor Shell Hardening & Recharging Lifecycle
+    if (selectedBossId === 'tartar_tyrant' || hanaBattle3DService.bossData?.id === 'tartar_tyrant') {
+      const shell = hanaBattle3DService.tartarShellState || hanaBattle3DService.tartarShell;
+      if (shell && shell.active && !shell.shattered) {
+        tartarShellAgeSec++;
+        const nextStage = tartarShellAgeSec >= 12 ? 3 : (tartarShellAgeSec >= 5 ? 2 : 1);
+        const shouldRecharge = tartarShellAgeSec >= 8;
+        if (shouldRecharge) {
+          tartarShellEverRecharged = true;
+        }
+        hanaBattle3DService.setTartarShellState?.({
+          active: true,
+          hardeningStage: Math.max(shell.hardeningStage || 1, nextStage),
+          recharging: Boolean(shell.recharging || shouldRecharge)
+        });
+      }
+    }
+
     const mins = Math.floor(secondsRemaining / 60);
     const secs = secondsRemaining % 60;
     const timeStr = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
@@ -1518,6 +1790,9 @@ export function startBattle() {
     const activeQuad = getDentalQuadrant(secondsRemaining, totalDuration);
     const isHalfwayMark = secondsRemaining > 0 && secondsRemaining === Math.floor(totalDuration / 2);
     const isZoneSwitch = activeQuad.id !== lastSpokenQuadId;
+    if (isZoneSwitch) {
+      lastPhaseShiftAtMs = Date.now();
+    }
 
     if (secondsRemaining > 0) {
       sync3DServiceFromStore(activeQuad);
@@ -1642,11 +1917,27 @@ function updateRexDialogue() {
 
 function triggerSupernovaBlast() {
   if (!isBattleRunning || isBattlePaused || battlePhase !== 'brush') return false;
+  const col = store.getBossColosseumState ? store.getBossColosseumState() : {};
+  if ((col.choreSupernovaCharge || 0) < 40) return false;
   const res = store.unleashChoreSupernova ? store.unleashChoreSupernova(true) : null;
   if (res?.success) {
+    recentFoamBlastAtMs = Date.now();
+    const hadSprites = (hanaBattle3DService.sweetToothSprites || []).length;
+    if (hadSprites > 0) {
+      spritesSpawnedCount = Math.max(spritesSpawnedCount, hadSprites);
+      spritesClearedNoDamage = true;
+    }
     sync3DServiceFromStore(null);
-    hanaBattle3DService.triggerSupernova?.();
-    showComicHit('SUPERNOVA FOAM BLAST! 🌟');
+    if (typeof hanaBattle3DService.triggerMintyFreshBlast === 'function') {
+      hanaBattle3DService.triggerMintyFreshBlast();
+    } else {
+      hanaBattle3DService.triggerSupernova?.();
+    }
+    if ((Date.now() - lastPhaseShiftAtMs) <= 8000 || col.isShieldActive) {
+      victoryBurstOnPhaseShift = true;
+      hanaBattle3DService.triggerVictoryBurst?.();
+    }
+    showComicHit('MINTY FRESH BLAST! 🌟🫧');
     syncCockpitHUD();
     return true;
   }
@@ -1661,6 +1952,65 @@ function handleScrubHit(activeQuad, source = 'manual', vision = null) {
   totalScrubHits++;
   lastScrubTimestamp = now;
   currentCombo = Math.min(50, currentCombo + 1);
+
+  // F1. Charge & Refresh Minty Shield via continuous brushing
+  mintyShieldCharge = Math.min(100, mintyShieldCharge + (source === 'assist' ? 8 : 15));
+  const currentShieldState = hanaBattle3DService.mintyShieldState || hanaBattle3DService.mintyShield;
+  if (mintyShieldActive || currentShieldState?.active) {
+    lastShieldScrubRefreshSec = secondsRemaining;
+    mintyShieldRemainingSec = mintyShieldDurationSec;
+    mintyShieldActive = true;
+    hanaBattle3DService.setMintyShieldState?.({
+      active: true,
+      charge: mintyShieldCharge,
+      remainingSec: mintyShieldRemainingSec,
+      durationSec: mintyShieldDurationSec,
+      attackBoostActive: true
+    });
+  } else {
+    hanaBattle3DService.setMintyShieldState?.({
+      charge: mintyShieldCharge
+    });
+  }
+
+  // F4. Tartar Tyrant Calcified Armor Shell Scrubbing & Shatter
+  if (selectedBossId === 'tartar_tyrant' || hanaBattle3DService.bossData?.id === 'tartar_tyrant') {
+    const shell = hanaBattle3DService.tartarShellState || hanaBattle3DService.tartarShell;
+    if (shell && shell.active && !shell.shattered) {
+      const nextIntegrity = Math.max(0, (shell.integrity ?? 100) - (source === 'assist' ? 2 : 9));
+      if (nextIntegrity <= 0) {
+        const realElapsedMs = Math.max(500, now - (brushPhaseStartTimeMs || now));
+        const timerElapsedMs = Math.max(500, ((totalDuration || 120) - secondsRemaining) * 1000);
+        const elapsedMs = Math.min(realElapsedMs, timerElapsedMs);
+        const bossObj = getBattleBoss('tartar_tyrant');
+        const tripleMs = bossObj?.armorShell?.speedScrubThresholds?.tripleMs || 6000;
+        const doubleMs = bossObj?.armorShell?.speedScrubThresholds?.doubleMs || 11000;
+        speedScrubMs = elapsedMs;
+        speedScrubMultiplier = elapsedMs <= tripleMs ? 3 : (elapsedMs <= doubleMs ? 2 : 1);
+        shellShatteredBeforeRecharge = !tartarShellEverRecharged && !shell.recharging;
+        hanaBattle3DService.setTartarShellState?.({
+          active: true,
+          integrity: 0,
+          shattered: true,
+          recharging: false,
+          flashTimer: 1.5,
+          vulnerable: true
+        });
+        showComicHit(`TARTAR SHELL SHATTERED! (${speedScrubMultiplier}x SPEED SCRUB!) 💥`);
+      } else {
+        hanaBattle3DService.setTartarShellState?.({
+          active: true,
+          integrity: nextIntegrity
+        });
+      }
+    }
+  }
+
+  // F5. Cleanse Sticky Residue when rapid scrubbing follows Minty Fresh Blast
+  const stickyState = hanaBattle3DService.stickyResidueState || hanaBattle3DService.stickyResidue;
+  if (stickyState?.active && recentFoamBlastAtMs > 0 && (now - recentFoamBlastAtMs) <= 10000) {
+    hanaBattle3DService.setStickyResidueState?.({ active: false, intensity: 0 });
+  }
 
   const combatWeapon = getActiveCombatWeapon();
   const hasLaser = combatWeapon.hasWeapon;
@@ -1725,12 +2075,27 @@ function handleScrubHit(activeQuad, source = 'manual', vision = null) {
     const dur = Math.max(30, totalDuration || 120);
     const rawMult = scrubMultiplier * (1 + (damageBoost / 100));
     const cappedMult = Math.min(1.5, Math.max(1.0, rawMult));
-    const shotDamage = Number(((maxHp / (dur * 0.95)) * cappedMult).toFixed(2));
+    const shieldSt = hanaBattle3DService.mintyShieldState || hanaBattle3DService.mintyShield;
+    const shieldAttackBoost = (mintyShieldActive || shieldSt?.active || shieldSt?.attackBoostActive) ? 1.35 : 1.0;
+    const activeSprites = (hanaBattle3DService.sweetToothSprites || []).length;
+    if (activeSprites > 0) {
+      spritesSpawnedCount = Math.max(spritesSpawnedCount, activeSprites);
+    }
+    const stickyActive = Boolean((hanaBattle3DService.stickyResidueState || hanaBattle3DService.stickyResidue)?.active);
+    const stickyPenalty = stickyActive ? 0.65 : 1.0;
+    let shotDamage = Number(((maxHp / (dur * 0.95)) * cappedMult * shieldAttackBoost * stickyPenalty).toFixed(2));
+    if (activeSprites > 0) {
+      shotDamage = 0.25;
+    }
 
     const shotRes = store.fireColosseumBlaster ? store.fireColosseumBlaster(shotDamage, source === 'assist' ? 2 : 5, true) : null;
     if (shotRes?.shieldBroken) {
       hanaBattle3DService.onArmorFracture('shield');
       showComicHit('SUGAR SHIELD SHATTERED! 💥');
+      if (recentFoamBlastAtMs > 0 && (now - recentFoamBlastAtMs) <= 8000) {
+        victoryBurstOnPhaseShift = true;
+        hanaBattle3DService.triggerVictoryBurst?.();
+      }
     }
 
     hanaBattle3DService.triggerWarriorCounterAttack(currentCombo, {
@@ -1818,6 +2183,27 @@ function syncCockpitHUD() {
     }
   }
 
+  const shieldBtn = document.getElementById('minty-shield-btn');
+  if (shieldBtn) {
+    const st = hanaBattle3DService.mintyShieldState || hanaBattle3DService.mintyShield;
+    const isActive = Boolean(mintyShieldActive || (st?.active && (st?.remainingSec ?? 0) > 0 && (st?.integrity ?? 1) > 0));
+    const remSec = Math.max(1, Math.ceil(st?.remainingSec || mintyShieldRemainingSec || mintyShieldDurationSec || 5));
+    shieldBtn.dataset.active = isActive ? 'true' : 'false';
+    if (isActive) {
+      shieldBtn.disabled = false;
+      shieldBtn.textContent = `MINTY SHIELD ACTIVE (${remSec}s) ❄️`;
+      shieldBtn.className = 'px-3 py-1 rounded-full text-[10px] font-black uppercase border-2 transition-all bg-linear-to-r from-cyan-300 to-sky-400 text-slate-950 border-white shadow-[0_0_14px_rgba(56,189,248,0.85)] cursor-pointer';
+    } else if (mintyShieldCharge >= 40) {
+      shieldBtn.disabled = false;
+      shieldBtn.textContent = `MINTY SHIELD (${mintyShieldDurationSec}s) ❄️`;
+      shieldBtn.className = 'px-3 py-1 rounded-full text-[10px] font-black uppercase border-2 transition-all bg-linear-to-r from-sky-400 to-cyan-400 text-slate-950 border-cyan-200 shadow-lg animate-pulse cursor-pointer';
+    } else {
+      shieldBtn.disabled = true;
+      shieldBtn.textContent = `MINTY SHIELD (${Math.round(mintyShieldCharge)}%) ❄️`;
+      shieldBtn.className = 'px-3 py-1 rounded-full text-[10px] font-black uppercase border-2 transition-all bg-slate-900/90 text-slate-400 border-slate-700 cursor-not-allowed';
+    }
+  }
+
   updateVisionHudState();
 }
 
@@ -1879,9 +2265,28 @@ function concludeVictory() {
 
     store.updateColosseumTimer(0, totalDuration);
 
+    const cleanZonesCount = ['q1', 'q2', 'q3', 'q4'].filter(q => (quadrantCleanliness[q] || 0) >= 80).length;
+    const shieldUptimePass = mintyShieldActiveSeconds >= Math.max(3, Math.floor((totalDuration || 120) * 0.75));
+    const isTartarTyrant = selectedBossId === 'tartar_tyrant' || hanaBattle3DService.bossData?.id === 'tartar_tyrant';
+    const shellState = hanaBattle3DService.tartarShellState || hanaBattle3DService.tartarShell;
+    const didShatterBeforeRecharge = Boolean(
+      shellShatteredBeforeRecharge ||
+      (isTartarTyrant && shellState?.shattered)
+    );
+
     // Directly complete the toothbrush battle: records task in pendingApprovals for parent issuance,
     // awards sparks/XP/badges, opens victory modal, and saves state to Cloud Firestore immediately.
-    store.completeToothbrushBattle(selectedBossId, totalDuration, avgCadence);
+    store.completeToothbrushBattle(selectedBossId, totalDuration, avgCadence, {
+      spritesSpawned: spritesSpawnedCount,
+      spritesClearedNoDamage: Boolean(spritesSpawnedCount > 0 && (spritesClearedNoDamage || (hanaBattle3DService.sweetToothSprites || []).length === 0)),
+      shellShatteredBeforeRecharge: didShatterBeforeRecharge,
+      speedScrubMs: didShatterBeforeRecharge ? (speedScrubMs || 3500) : speedScrubMs,
+      speedScrubMultiplier: didShatterBeforeRecharge ? Math.max(2, speedScrubMultiplier || 2) : (speedScrubMultiplier || 1),
+      mintyShieldFullBattleUptime: shieldUptimePass,
+      victoryBurstOnPhaseShift: Boolean(victoryBurstOnPhaseShift || hanaBattle3DService.victoryBurstTriggered),
+      flawlessZones: cleanZonesCount,
+      weeklyChallengeCompleted: true
+    });
 
     // When Mouthwash reminder is active for this kid, Rex reminds them in the victory modal
     const hygieneKid = store.getSelectedHero ? store.getSelectedHero() : store.getState().selectedHero;
@@ -1939,6 +2344,10 @@ function stopBattleSensorsAndTimers() {
   if (typeof Sound?.speedUpBattleRhythm === 'function') Sound.speedUpBattleRhythm(false);
   isFinaleSpeedActive = false;
   isPointerScrubbing = false;
+  mintyShieldActive = false;
+  mintyShieldRemainingSec = 0;
+  hanaBattle3DService.setStickyResidueState?.({ active: false, intensity: 0 });
+  hanaBattle3DService.setMintyShieldState?.({ active: false, remainingSec: 0 });
   brushAudioAnalyzer.stopListening();
   stopSensors();
   hanaBattle3DService.destroy();
@@ -2151,6 +2560,7 @@ export function attachBattleListeners() {
     canvas.addEventListener('pointerdown', (e) => {
       if (isBattleRunning && !isBattlePaused && battlePhase === 'brush') {
         isPointerScrubbing = true;
+        pointerDragMoveCount = 0;
         lastPointerScrubAt = Date.now();
         const rect = canvas.getBoundingClientRect();
         const scaleX = canvas.width / (rect.width || 1);
@@ -2182,17 +2592,36 @@ export function attachBattleListeners() {
       }
     });
 
-    canvas.addEventListener('pointermove', () => {
+    canvas.addEventListener('pointermove', (e) => {
       if (!isPointerScrubbing || !isBattleRunning || isBattlePaused || battlePhase !== 'brush') return;
+      pointerDragMoveCount++;
+      if (pointerDragMoveCount >= 2 && typeof hanaBattle3DService.registerCircularScrubSweep === 'function') {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = (hanaBattle3DService.width || canvas.width || 600) / (rect.width || 600);
+        const scaleY = (hanaBattle3DService.height || canvas.height || 420) / (rect.height || 420);
+        const cx = typeof e.clientX === 'number' ? (e.clientX - (rect.left || 0)) * scaleX : 300;
+        const cy = typeof e.clientY === 'number' ? (e.clientY - (rect.top || 0)) * scaleY : 260;
+        const beforeSprites = (hanaBattle3DService.sweetToothSprites || []).length;
+        if (beforeSprites > 0) {
+          spritesSpawnedCount = Math.max(spritesSpawnedCount, beforeSprites);
+        }
+        const cleared = hanaBattle3DService.registerCircularScrubSweep(cx, cy, 85);
+        if (Array.isArray(cleared) && cleared.length > 0 && (hanaBattle3DService.sweetToothSprites || []).length === 0) {
+          spritesClearedNoDamage = true;
+        }
+      }
       const now = Date.now();
-      if (now - lastPointerScrubAt < 150) return;
+      if (now - lastPointerScrubAt < 65) return;
       lastPointerScrubAt = now;
       const activeQuad = getDentalQuadrant(secondsRemaining, totalDuration);
       const manualSnap = brushVisionTracker.recordManualInput(activeQuad.id, now);
       handleScrubHit(activeQuad, 'manual', manualSnap);
     });
 
-    const stopPointerScrub = () => { isPointerScrubbing = false; };
+    const stopPointerScrub = () => {
+      isPointerScrubbing = false;
+      pointerDragMoveCount = 0;
+    };
     canvas.addEventListener('pointerup', stopPointerScrub);
     canvas.addEventListener('pointercancel', stopPointerScrub);
     canvas.addEventListener('pointerleave', stopPointerScrub);
@@ -2241,6 +2670,13 @@ export function attachBattleListeners() {
   if (novaBlastBtn) {
     novaBlastBtn.addEventListener('click', () => {
       triggerSupernovaBlast();
+    });
+  }
+
+  const mintyShieldBtn = document.getElementById('minty-shield-btn');
+  if (mintyShieldBtn) {
+    mintyShieldBtn.addEventListener('click', () => {
+      activateMintyShield('button');
     });
   }
 
@@ -2455,7 +2891,9 @@ export function attachBattleListeners() {
 
     window._rexBattleShieldHandler = (e) => {
       if (isBattleRunning && !isBattlePaused && battlePhase === 'brush') {
-        if (isDeflectFlurryActive) {
+        if (mintyShieldCharge >= 40 || mintyShieldActive) {
+          activateMintyShield('voice');
+        } else if (isDeflectFlurryActive) {
           triggerDeflectSuccess();
         } else {
           showComicHit('HERO BUBBLE SHIELD! 🛡️✨');

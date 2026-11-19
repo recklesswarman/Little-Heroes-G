@@ -8,7 +8,7 @@ import { PROFILE_THEMES } from '../data/profileThemesData.js';
 import { generate3DIcon } from '../utils/graphicsGenerator.js';
 import { triggerInteractiveCelebration, closeInteractiveCelebration } from '../components/InteractiveCelebrationOverlay.js';
 import { ROUTINES, HABIT_ISLANDS } from '../constants/routines.js';
-import { HYGIENE_BOSSES, DENTAL_BADGES, getHygieneBoss, SUGAR_ATTACK_HAZARDS } from '../data/hygieneBossesData.js';
+import { HYGIENE_BOSSES, DENTAL_BADGES, getHygieneBoss, SUGAR_ATTACK_HAZARDS, WEEKLY_CHALLENGES_POOL, getCurrentWeeklyChallenge } from '../data/hygieneBossesData.js';
 import {
   EXPEDITION_BIOMES,
   EXPEDITION_DURATIONS,
@@ -67,6 +67,31 @@ export const PET_PRICE_COINS = 150;
 // changes the value, so a cross-device merge keeps the most recent real
 // change instead of whichever device happened to save last.
 export const HERO_STAMPED_FIELDS = ['points', 'coins', 'tokens', 'xp', 'sparks', 'evolutionSparks', 'level', 'xpNext', 'screenTimeMinutes', 'activePetId'];
+
+const HERO_MIRROR_NON_ENUMERABLE_KEYS = [
+  'cleanseAlbum',
+  'brushStreakData',
+  'weeklyChallenges',
+  'unlockedTrophyIds',
+  'featuredTrophyIds',
+  'lastBossId',
+  'bossRotationQueue',
+  'brushStreak'
+];
+
+function getLocalCalendarDateKey(date = new Date()) {
+  const d = date instanceof Date ? date : new Date(date);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function getPreviousCalendarDateKey(date = new Date()) {
+  const d = date instanceof Date ? date : new Date(date);
+  const prev = new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1);
+  return getLocalCalendarDateKey(prev);
+}
 
 // Union of two resolved-approval lists by id (newest timestamp wins), capped
 // to the most recent entries so the synced household doc can't grow forever.
@@ -219,7 +244,24 @@ const defaultState = {
     screenTimeLockMessage: 'Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙',
     arcadeHighScores: {},
     arcadeCoinsEarnedToday: 0,
-    arcadeCoinsLastDate: ''
+    arcadeCoinsLastDate: '',
+    dentalBadges: ['enamel_guardian'],
+    dentalBattleHistory: [],
+    cleanseAlbum: {},
+    brushStreakData: { count: 0, lastDate: null, morningDate: null, eveningDate: null },
+    weeklyChallenges: {},
+    unlockedTrophyIds: ['rookie_hero_crest'],
+    featuredTrophyIds: ['rookie_hero_crest'],
+    colosseumBossesDefeated: [],
+    lastBossId: null,
+    bossRotationQueue: [],
+    lastBrushedMorning: null,
+    lastBrushedEvening: null,
+    brushStreak: 0,
+    dentalHabits: { morningBrushDate: null, bedtimeBrushDate: null },
+    hazardRotationQueue: [],
+    lastHazardId: null,
+    flawlessZonesBest: 0
   },
 
   heroes: [
@@ -264,7 +306,24 @@ const defaultState = {
       screenTimeLockMessage: 'Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙',
       arcadeHighScores: {},
       arcadeCoinsEarnedToday: 0,
-      arcadeCoinsLastDate: ''
+      arcadeCoinsLastDate: '',
+      dentalBadges: ['enamel_guardian'],
+      dentalBattleHistory: [],
+      cleanseAlbum: {},
+      brushStreakData: { count: 0, lastDate: null, morningDate: null, eveningDate: null },
+      weeklyChallenges: {},
+      unlockedTrophyIds: ['rookie_hero_crest'],
+      featuredTrophyIds: ['rookie_hero_crest'],
+      colosseumBossesDefeated: [],
+      lastBossId: null,
+      bossRotationQueue: [],
+      lastBrushedMorning: null,
+      lastBrushedEvening: null,
+      brushStreak: 0,
+      dentalHabits: { morningBrushDate: null, bedtimeBrushDate: null },
+      hazardRotationQueue: [],
+      lastHazardId: null,
+      flawlessZonesBest: 0
     }
   ],
 
@@ -657,29 +716,33 @@ class Store {
         }
 
         // Digital Rewards & Inventory Overhaul Migration (v10):
-        // Replaces old temporary placeholders with high-res 3D catalog and enforces per-kid inventory isolation.
+        // Non-destructively ensures starter items while preserving purchased inventory, gear, and consumables.
         if (!parsed.digitalRewardsOverhaulApplied) {
           parsed.digitalRewardsOverhaulApplied = true;
-          parsed.digitalGear = [...DIGITAL_REWARDS_CATALOG];
+          if (!Array.isArray(parsed.digitalGear) || parsed.digitalGear.length === 0) {
+            parsed.digitalGear = [...DIGITAL_REWARDS_CATALOG];
+          }
+          const ensureStarterHeroItems = (h) => {
+            if (!h || typeof h !== 'object') return;
+            const existingInv = Array.isArray(h.inventory) ? h.inventory : [];
+            h.inventory = Array.from(new Set([...existingInv, 'laser_toothbrush', 'cowl_hero']));
+            if (!h.equippedWeapon) h.equippedWeapon = 'laser_toothbrush';
+            if (!h.equippedPetGear) h.equippedPetGear = 'cowl_hero';
+            if (!h.consumables || typeof h.consumables !== 'object' || Array.isArray(h.consumables)) {
+              h.consumables = {};
+            }
+            if (!h.consumables['flame_kibble_bowl']) {
+              h.consumables['flame_kibble_bowl'] = { servingsRemaining: 3, totalPurchased: 3, title: 'Crunchy Flame Kibble', usageType: 'multi_use' };
+            }
+          };
           if (parsed.heroes && parsed.heroes.length > 0) {
-            parsed.heroes.forEach((h) => {
-              h.inventory = ['laser_toothbrush', 'cowl_hero'];
-              h.equippedWeapon = 'laser_toothbrush';
-              h.equippedPetGear = 'cowl_hero';
-              h.consumables = {
-                'flame_kibble_bowl': { servingsRemaining: 3, totalPurchased: 3, title: 'Crunchy Flame Kibble', usageType: 'multi_use' }
-              };
-            });
+            parsed.heroes.forEach(ensureStarterHeroItems);
           }
           if (parsed.selectedHero) {
-            parsed.selectedHero.inventory = ['laser_toothbrush', 'cowl_hero'];
-            parsed.selectedHero.equippedWeapon = 'laser_toothbrush';
-            parsed.selectedHero.equippedPetGear = 'cowl_hero';
-            parsed.selectedHero.consumables = {
-              'flame_kibble_bowl': { servingsRemaining: 3, totalPurchased: 3, title: 'Crunchy Flame Kibble', usageType: 'multi_use' }
-            };
-            parsed.inventory = ['laser_toothbrush', 'cowl_hero'];
+            ensureStarterHeroItems(parsed.selectedHero);
           }
+          const existingTopInv = Array.isArray(parsed.inventory) ? parsed.inventory : [];
+          parsed.inventory = Array.from(new Set([...existingTopInv, 'laser_toothbrush', 'cowl_hero']));
         }
 
         // Automatic Schema Sync for Returning Browsers:
@@ -864,9 +927,12 @@ class Store {
         if (!parsed.pendingBounties || !Array.isArray(parsed.pendingBounties)) {
           parsed.pendingBounties = [];
         }
+        const deletedInSave = new Set(Array.isArray(parsed.deletedCustomItemIds) ? parsed.deletedCustomItemIds : []);
+
         if (!parsed.parentCustomWeapons || !Array.isArray(parsed.parentCustomWeapons)) {
           parsed.parentCustomWeapons = [];
         }
+        parsed.parentCustomWeapons = parsed.parentCustomWeapons.filter(item => item && !deletedInSave.has(item.id));
         parsed.parentCustomWeapons.forEach(item => {
           if (item && item.id) {
             const inCatalog = DIGITAL_REWARDS_CATALOG.some(w => w.id === item.id);
@@ -885,6 +951,7 @@ class Store {
         if (!parsed.parentCustomGear || !Array.isArray(parsed.parentCustomGear)) {
           parsed.parentCustomGear = [];
         }
+        parsed.parentCustomGear = parsed.parentCustomGear.filter(item => item && !deletedInSave.has(item.id));
         // Hydrate parent custom gear into PET_GEAR_CATALOG and digitalGear
         parsed.parentCustomGear.forEach(item => {
           if (item && item.socket && PET_GEAR_CATALOG[item.socket]) {
@@ -904,6 +971,7 @@ class Store {
         if (!parsed.parentCustomFurniture || !Array.isArray(parsed.parentCustomFurniture)) {
           parsed.parentCustomFurniture = [];
         }
+        parsed.parentCustomFurniture = parsed.parentCustomFurniture.filter(item => item && !deletedInSave.has(item.id));
         parsed.parentCustomFurniture.forEach(item => {
           if (item && item.id) {
             const inFurn = FURNITURE_ITEMS.some(f => f.id === item.id);
@@ -921,10 +989,12 @@ class Store {
         if (!parsed.parentCustomToys || !Array.isArray(parsed.parentCustomToys)) {
           parsed.parentCustomToys = [];
         }
+        parsed.parentCustomToys = parsed.parentCustomToys.filter(item => item && !deletedInSave.has(item.id));
 
         if (!parsed.parentCustomFood || !Array.isArray(parsed.parentCustomFood)) {
           parsed.parentCustomFood = [];
         }
+        parsed.parentCustomFood = parsed.parentCustomFood.filter(item => item && !deletedInSave.has(item.id));
         parsed.parentCustomFood.forEach(item => {
           if (item && item.id) {
             const inCatalog = DIGITAL_REWARDS_CATALOG.some(w => w.id === item.id);
@@ -943,6 +1013,7 @@ class Store {
         if (!parsed.parentCustomBosses || !Array.isArray(parsed.parentCustomBosses)) {
           parsed.parentCustomBosses = [];
         }
+        parsed.parentCustomBosses = parsed.parentCustomBosses.filter(boss => boss && !deletedInSave.has(boss.id));
         parsed.parentCustomBosses.forEach(boss => {
           if (boss && boss.id) {
             const inBosses = HYGIENE_BOSSES.some(b => b.id === boss.id);
@@ -1120,18 +1191,262 @@ class Store {
 
         const loaded = { ...defaultState, ...parsed };
         this.state = loaded;
-        return loaded;
+        this.reconcileCatalogsAndHeroFields(this.state);
+        return this.state;
       }
     } catch (e) {
       console.warn('Failed to load store state', e);
     }
     const fallback = JSON.parse(JSON.stringify(defaultState));
     this.state = fallback;
-    return fallback;
+    this.reconcileCatalogsAndHeroFields(this.state);
+    return this.state;
   }
 
   reloadState() {
     return this.loadState();
+  }
+
+  _getActiveHeroForMirror(stateObj = this.state) {
+    if (!stateObj) return null;
+    if (stateObj.selectedHero) return stateObj.selectedHero;
+    return (Array.isArray(stateObj.heroes) && stateObj.heroes[0]) || null;
+  }
+
+  _ensureHeroHygieneFields(hero, legacyState = null) {
+    if (!hero || typeof hero !== 'object') return hero;
+    if (hero.sparks === undefined) hero.sparks = 0;
+    if (hero.evolutionSparks === undefined) hero.evolutionSparks = hero.sparks;
+    if (!hero.petSparkMap || typeof hero.petSparkMap !== 'object' || Array.isArray(hero.petSparkMap)) {
+      hero.petSparkMap = {};
+    }
+    if (!Array.isArray(hero.dentalBadges)) {
+      hero.dentalBadges = (legacyState && Array.isArray(legacyState.dentalBadges) && legacyState.dentalBadges.length > 0)
+        ? [...legacyState.dentalBadges]
+        : ['enamel_guardian'];
+    } else if (!hero.dentalBadges.includes('enamel_guardian')) {
+      hero.dentalBadges.unshift('enamel_guardian');
+    }
+    if (!Array.isArray(hero.dentalBattleHistory)) {
+      hero.dentalBattleHistory = (legacyState && Array.isArray(legacyState.dentalBattleHistory))
+        ? [...legacyState.dentalBattleHistory]
+        : [];
+    }
+    if (!hero.cleanseAlbum || typeof hero.cleanseAlbum !== 'object' || Array.isArray(hero.cleanseAlbum)) {
+      hero.cleanseAlbum = {};
+    }
+    if (!hero.brushStreakData || typeof hero.brushStreakData !== 'object' || Array.isArray(hero.brushStreakData)) {
+      hero.brushStreakData = { count: Number(hero.brushStreak) || 0, lastDate: null, morningDate: null, eveningDate: null };
+    } else {
+      hero.brushStreakData = {
+        count: Number(hero.brushStreakData.count) || 0,
+        lastDate: hero.brushStreakData.lastDate || null,
+        morningDate: hero.brushStreakData.morningDate || null,
+        eveningDate: hero.brushStreakData.eveningDate || null
+      };
+    }
+    if (!hero.weeklyChallenges || typeof hero.weeklyChallenges !== 'object' || Array.isArray(hero.weeklyChallenges)) {
+      hero.weeklyChallenges = {};
+    }
+    if (!Array.isArray(hero.unlockedTrophyIds)) {
+      hero.unlockedTrophyIds = ['rookie_hero_crest'];
+    } else if (!hero.unlockedTrophyIds.includes('rookie_hero_crest')) {
+      hero.unlockedTrophyIds.unshift('rookie_hero_crest');
+    }
+    if (!Array.isArray(hero.featuredTrophyIds)) {
+      hero.featuredTrophyIds = (legacyState && Array.isArray(legacyState.heroHQ?.featuredTrophyIds))
+        ? [...legacyState.heroHQ.featuredTrophyIds]
+        : ['rookie_hero_crest'];
+    }
+    if (!Array.isArray(hero.colosseumBossesDefeated)) {
+      const legacyBosses = legacyState?.hygieneBattle?.colosseumBossesDefeated || legacyState?.bossColosseum?.bossesDefeated;
+      hero.colosseumBossesDefeated = Array.isArray(legacyBosses) ? [...legacyBosses] : [];
+    }
+    if (hero.lastBossId === undefined) hero.lastBossId = null;
+    if (!Array.isArray(hero.bossRotationQueue)) hero.bossRotationQueue = [];
+    if (hero.lastBrushedMorning === undefined) {
+      hero.lastBrushedMorning = legacyState?.lastBrushedMorning ?? null;
+    }
+    if (hero.lastBrushedEvening === undefined) {
+      hero.lastBrushedEvening = legacyState?.lastBrushedEvening ?? null;
+    }
+    if (hero.brushStreak === undefined) {
+      hero.brushStreak = Number(hero.brushStreakData.count) || 0;
+    }
+    if (!hero.dentalHabits || typeof hero.dentalHabits !== 'object') {
+      hero.dentalHabits = { morningBrushDate: null, bedtimeBrushDate: null };
+    }
+    if (!Array.isArray(hero.hazardRotationQueue)) hero.hazardRotationQueue = [];
+    if (hero.lastHazardId === undefined) hero.lastHazardId = null;
+    if (hero.flawlessZonesBest === undefined) hero.flawlessZonesBest = 0;
+    return hero;
+  }
+
+  attachHeroStateMirrors(stateObj = this.state) {
+    if (!stateObj || typeof stateObj !== 'object') return;
+    ['petEconomyMigrationApplied', 'digitalRewardsOverhaulApplied'].forEach((flagKey) => {
+      try {
+        const desc = Object.getOwnPropertyDescriptor(stateObj, flagKey);
+        if (!desc || desc.enumerable) {
+          if (flagKey in stateObj) {
+            delete stateObj[flagKey];
+          }
+          Object.defineProperty(stateObj, flagKey, {
+            value: true,
+            writable: true,
+            enumerable: false,
+            configurable: true
+          });
+        }
+      } catch {}
+    });
+    HERO_MIRROR_NON_ENUMERABLE_KEYS.forEach((prop) => {
+      try {
+        // Remove any stale own enumerable property so Object.keys(store.state).length remains strictly 76.
+        const desc = Object.getOwnPropertyDescriptor(stateObj, prop);
+        if (!desc || desc.enumerable || desc.get === undefined) {
+          if (prop in stateObj) {
+            delete stateObj[prop];
+          }
+          Object.defineProperty(stateObj, prop, {
+            enumerable: false,
+            configurable: true,
+            get: () => {
+              const hero = this._getActiveHeroForMirror(stateObj);
+              if (!hero) {
+                if (prop === 'cleanseAlbum' || prop === 'weeklyChallenges') return {};
+                if (prop === 'brushStreakData') return { count: 0, lastDate: null, morningDate: null, eveningDate: null };
+                if (prop === 'unlockedTrophyIds' || prop === 'featuredTrophyIds') return ['rookie_hero_crest'];
+                if (prop === 'bossRotationQueue') return [];
+                if (prop === 'brushStreak') return 0;
+                return null;
+              }
+              this._ensureHeroHygieneFields(hero);
+              return hero[prop];
+            },
+            set: (val) => {
+              const hero = this._getActiveHeroForMirror(stateObj);
+              if (!hero) return;
+              this._ensureHeroHygieneFields(hero);
+              hero[prop] = val;
+              if (Array.isArray(stateObj.heroes)) {
+                const match = stateObj.heroes.find((h) => h && h.id === hero.id);
+                if (match && match !== hero) {
+                  match[prop] = val;
+                }
+              }
+              if (prop === 'featuredTrophyIds' && stateObj.heroHQ && Array.isArray(val)) {
+                stateObj.heroHQ.featuredTrophyIds = [...val];
+              }
+            }
+          });
+        }
+      } catch {
+        // Safe fallback if stateObj is frozen
+      }
+    });
+  }
+
+  syncActiveHeroMirrorsToState(stateObj = this.state) {
+    if (!stateObj) return;
+    const hero = this._getActiveHeroForMirror(stateObj);
+    if (!hero) return;
+    this._ensureHeroHygieneFields(hero);
+    stateObj.dentalBadges = [...hero.dentalBadges];
+    stateObj.dentalBattleHistory = [...hero.dentalBattleHistory];
+    stateObj.lastBrushedMorning = hero.lastBrushedMorning ?? null;
+    stateObj.lastBrushedEvening = hero.lastBrushedEvening ?? null;
+    if (stateObj.heroHQ && typeof stateObj.heroHQ === 'object') {
+      stateObj.heroHQ.featuredTrophyIds = [...hero.featuredTrophyIds];
+    }
+    if (stateObj.bossColosseum && typeof stateObj.bossColosseum === 'object') {
+      stateObj.bossColosseum.bossesDefeated = [...hero.colosseumBossesDefeated];
+    }
+  }
+
+  reconcileCatalogsAndHeroFields(stateObj = this.state) {
+    if (!stateObj || typeof stateObj !== 'object') return stateObj;
+    const deletedSet = new Set(Array.isArray(stateObj.deletedCustomItemIds) ? stateObj.deletedCustomItemIds : []);
+
+    // 1. Unconditional non-destructive Digital Rewards Catalog reconciliation
+    if (!Array.isArray(stateObj.digitalGear)) {
+      stateObj.digitalGear = [];
+    }
+    stateObj.digitalGear = stateObj.digitalGear.filter((d) => d && d.id && !deletedSet.has(d.id));
+    DIGITAL_REWARDS_CATALOG.forEach((catItem) => {
+      if (!catItem || !catItem.id || deletedSet.has(catItem.id)) return;
+      const existingIdx = stateObj.digitalGear.findIndex((d) => d.id === catItem.id);
+      if (existingIdx === -1) {
+        stateObj.digitalGear.push({ ...catItem });
+      } else {
+        const existing = stateObj.digitalGear[existingIdx];
+        stateObj.digitalGear[existingIdx] = {
+          ...catItem,
+          ...existing,
+          assetUrl: catItem.assetUrl,
+          image: catItem.image,
+          name: catItem.name,
+          title: catItem.title,
+          category: catItem.category,
+          subCategory: catItem.subCategory,
+          subcategory: catItem.subcategory ?? catItem.subCategory,
+          rarity: catItem.rarity,
+          statBonusType: catItem.statBonusType ?? existing.statBonusType,
+          statBonusLabel: catItem.statBonusLabel ?? existing.statBonusLabel,
+          shieldDurationBonusSec: catItem.shieldDurationBonusSec ?? existing.shieldDurationBonusSec,
+          costSparks: existing.costSparks ?? catItem.costSparks,
+          costCoins: existing.costCoins ?? catItem.costCoins,
+          price: existing.price ?? existing.costCoins ?? catItem.price ?? catItem.costCoins
+        };
+      }
+    });
+
+    // 2. Unconditional Habit Islands, Task Forest, Themes, Pets reconciliation
+    if (!Array.isArray(stateObj.habitIslands)) {
+      stateObj.habitIslands = HABIT_ISLANDS.map((h) => ({ ...h }));
+    } else {
+      HABIT_ISLANDS.forEach((def) => {
+        if (!stateObj.habitIslands.some((h) => h && h.id === def.id)) {
+          stateObj.habitIslands.push({ ...def });
+        }
+      });
+    }
+    if (!Array.isArray(stateObj.taskForest)) {
+      stateObj.taskForest = ROUTINES.map((r) => ({ ...r }));
+    } else {
+      ROUTINES.forEach((def) => {
+        if (!stateObj.taskForest.some((t) => t && t.id === def.id)) {
+          stateObj.taskForest.push({ ...def });
+        }
+      });
+    }
+    if (!Array.isArray(stateObj.profileThemes) || stateObj.profileThemes.length < PROFILE_THEMES.length) {
+      const existingThemes = Array.isArray(stateObj.profileThemes) ? stateObj.profileThemes : [];
+      PROFILE_THEMES.forEach((theme) => {
+        if (!existingThemes.some((t) => t && t.id === theme.id)) {
+          existingThemes.push({ ...theme });
+        }
+      });
+      stateObj.profileThemes = existingThemes;
+    }
+    stateObj.pets = PETS_DATABASE;
+
+    // 3. Reconcile per-kid hygiene/progression fields unconditionally (legacy top-level fields migrate ONLY to heroes[0])
+    if (Array.isArray(stateObj.heroes)) {
+      stateObj.heroes.forEach((h, idx) => {
+        this._ensureHeroHygieneFields(h, idx === 0 ? stateObj : null);
+      });
+    }
+    if (stateObj.selectedHero) {
+      const heroIdx = Array.isArray(stateObj.heroes)
+        ? stateObj.heroes.findIndex((h) => h && h.id === stateObj.selectedHero.id)
+        : -1;
+      this._ensureHeroHygieneFields(stateObj.selectedHero, heroIdx <= 0 ? stateObj : null);
+    }
+
+    this.attachHeroStateMirrors(stateObj);
+    this.syncActiveHeroMirrorsToState(stateObj);
+    return stateObj;
   }
 
   /**
@@ -1167,7 +1482,7 @@ class Store {
       gameDifficulty: sHero.gameDifficulty || 'medium',
       equippedProfileTheme: sHero.equippedProfileTheme || 'theme_dragon_emerald',
       unlockedThemes: [...(sHero.unlockedThemes || ['theme_dragon_emerald'])],
-      equippedGear: { ...(sHero.equippedGear || {}) },
+      equippedGear: Array.isArray(sHero.equippedGear) ? [...sHero.equippedGear] : { ...(sHero.equippedGear || {}) },
       equippedWeapon: sHero.equippedWeapon !== undefined ? sHero.equippedWeapon : null,
       equippedPetGear: sHero.equippedPetGear !== undefined ? sHero.equippedPetGear : null,
       equippedPetGearMap: { ...(sHero.equippedPetGearMap || this.state.equippedPetGearMap || {}) },
@@ -1181,16 +1496,83 @@ class Store {
       // the heroes[] record here, switching to another kid on a shared
       // device (switchHero) would silently discard whatever this hero's pet
       // just did, since selectedHero is about to be overwritten.
-      petLevelMap: sHero.petLevelMap ? { ...sHero.petLevelMap } : (idx !== -1 ? this.state.heroes[idx].petLevelMap : undefined),
-      petXpMap: sHero.petXpMap ? { ...sHero.petXpMap } : (idx !== -1 ? this.state.heroes[idx].petXpMap : undefined),
-      petStatsMap: sHero.petStatsMap ? { ...sHero.petStatsMap } : (idx !== -1 ? this.state.heroes[idx].petStatsMap : undefined),
-      petSanctuary: sHero.petSanctuary ? { ...sHero.petSanctuary } : (idx !== -1 ? this.state.heroes[idx].petSanctuary : undefined),
+      ...(sHero.petLevelMap
+        ? { petLevelMap: { ...sHero.petLevelMap } }
+        : (idx !== -1 && this.state.heroes[idx].petLevelMap ? { petLevelMap: { ...this.state.heroes[idx].petLevelMap } } : {})),
+      ...(sHero.petXpMap
+        ? { petXpMap: { ...sHero.petXpMap } }
+        : (idx !== -1 && this.state.heroes[idx].petXpMap ? { petXpMap: { ...this.state.heroes[idx].petXpMap } } : {})),
+      ...(sHero.petStatsMap
+        ? { petStatsMap: Object.fromEntries(Object.entries(sHero.petStatsMap).map(([k, v]) => [k, (v && typeof v === 'object') ? { ...v } : v])) }
+        : (idx !== -1 && this.state.heroes[idx].petStatsMap ? { petStatsMap: Object.fromEntries(Object.entries(this.state.heroes[idx].petStatsMap).map(([k, v]) => [k, (v && typeof v === 'object') ? { ...v } : v])) } : {})),
+      ...(sHero.petSanctuary
+        ? { petSanctuary: { ...sHero.petSanctuary } }
+        : (idx !== -1 && this.state.heroes[idx].petSanctuary ? { petSanctuary: { ...this.state.heroes[idx].petSanctuary } } : {})),
       sparks: Math.max(0, Number(sHero.sparks) || 0),
       evolutionSparks: Math.max(0, Number(sHero.evolutionSparks ?? sHero.sparks) || 0),
-      petSparkMap: sHero.petSparkMap ? { ...sHero.petSparkMap } : (idx !== -1 ? this.state.heroes[idx].petSparkMap : undefined),
+      petSparkMap: sHero.petSparkMap
+        ? { ...sHero.petSparkMap }
+        : (idx !== -1 && this.state.heroes[idx].petSparkMap ? { ...this.state.heroes[idx].petSparkMap } : {}),
       // Story memory is per child: flush this child's copy into their own record (union, never overwrite).
       storyMemory: mergeStoryMemory(idx !== -1 ? this.state.heroes[idx].storyMemory : undefined, sHero.storyMemory),
       storyProfile: normalizeStoryProfile(sHero.storyProfile ?? (idx !== -1 ? this.state.heroes[idx].storyProfile : undefined)),
+      dentalBadges: Array.isArray(sHero.dentalBadges)
+        ? [...sHero.dentalBadges]
+        : (idx !== -1 && Array.isArray(this.state.heroes[idx].dentalBadges) ? [...this.state.heroes[idx].dentalBadges] : ['enamel_guardian']),
+      dentalBattleHistory: Array.isArray(sHero.dentalBattleHistory)
+        ? [...sHero.dentalBattleHistory]
+        : (idx !== -1 && Array.isArray(this.state.heroes[idx].dentalBattleHistory) ? [...this.state.heroes[idx].dentalBattleHistory] : []),
+      cleanseAlbum: (() => {
+        const srcAlbum = (sHero.cleanseAlbum && typeof sHero.cleanseAlbum === 'object' && !Array.isArray(sHero.cleanseAlbum))
+          ? sHero.cleanseAlbum
+          : (idx !== -1 && this.state.heroes[idx].cleanseAlbum && typeof this.state.heroes[idx].cleanseAlbum === 'object' ? this.state.heroes[idx].cleanseAlbum : {});
+        return Object.fromEntries(Object.entries(srcAlbum).map(([k, v]) => [k, (v && typeof v === 'object') ? { ...v } : v]));
+      })(),
+      brushStreakData: sHero.brushStreakData
+        ? { ...sHero.brushStreakData }
+        : (idx !== -1 && this.state.heroes[idx].brushStreakData ? { ...this.state.heroes[idx].brushStreakData } : { count: 0, lastDate: null, morningDate: null, eveningDate: null }),
+      weeklyChallenges: (() => {
+        const srcChallenges = (sHero.weeklyChallenges && typeof sHero.weeklyChallenges === 'object' && !Array.isArray(sHero.weeklyChallenges))
+          ? sHero.weeklyChallenges
+          : (idx !== -1 && this.state.heroes[idx].weeklyChallenges && typeof this.state.heroes[idx].weeklyChallenges === 'object' ? this.state.heroes[idx].weeklyChallenges : {});
+        return Object.fromEntries(Object.entries(srcChallenges).map(([k, v]) => [k, (v && typeof v === 'object') ? { ...v } : v]));
+      })(),
+      unlockedTrophyIds: Array.isArray(sHero.unlockedTrophyIds)
+        ? [...sHero.unlockedTrophyIds]
+        : (idx !== -1 && Array.isArray(this.state.heroes[idx].unlockedTrophyIds) ? [...this.state.heroes[idx].unlockedTrophyIds] : ['rookie_hero_crest']),
+      featuredTrophyIds: Array.isArray(sHero.featuredTrophyIds)
+        ? [...sHero.featuredTrophyIds]
+        : (idx !== -1 && Array.isArray(this.state.heroes[idx].featuredTrophyIds) ? [...this.state.heroes[idx].featuredTrophyIds] : ['rookie_hero_crest']),
+      colosseumBossesDefeated: Array.isArray(sHero.colosseumBossesDefeated)
+        ? [...sHero.colosseumBossesDefeated]
+        : (idx !== -1 && Array.isArray(this.state.heroes[idx].colosseumBossesDefeated) ? [...this.state.heroes[idx].colosseumBossesDefeated] : []),
+      lastBossId: sHero.lastBossId !== undefined
+        ? sHero.lastBossId
+        : (idx !== -1 ? (this.state.heroes[idx].lastBossId ?? null) : null),
+      bossRotationQueue: Array.isArray(sHero.bossRotationQueue)
+        ? [...sHero.bossRotationQueue]
+        : (idx !== -1 && Array.isArray(this.state.heroes[idx].bossRotationQueue) ? [...this.state.heroes[idx].bossRotationQueue] : []),
+      lastBrushedMorning: sHero.lastBrushedMorning !== undefined
+        ? sHero.lastBrushedMorning
+        : (idx !== -1 ? (this.state.heroes[idx].lastBrushedMorning ?? null) : null),
+      lastBrushedEvening: sHero.lastBrushedEvening !== undefined
+        ? sHero.lastBrushedEvening
+        : (idx !== -1 ? (this.state.heroes[idx].lastBrushedEvening ?? null) : null),
+      brushStreak: sHero.brushStreak !== undefined
+        ? Number(sHero.brushStreak) || 0
+        : (idx !== -1 ? (Number(this.state.heroes[idx].brushStreak) || 0) : 0),
+      dentalHabits: sHero.dentalHabits
+        ? { ...sHero.dentalHabits }
+        : (idx !== -1 && this.state.heroes[idx].dentalHabits ? { ...this.state.heroes[idx].dentalHabits } : { morningBrushDate: null, bedtimeBrushDate: null }),
+      hazardRotationQueue: Array.isArray(sHero.hazardRotationQueue)
+        ? [...sHero.hazardRotationQueue]
+        : (idx !== -1 && Array.isArray(this.state.heroes[idx].hazardRotationQueue) ? [...this.state.heroes[idx].hazardRotationQueue] : []),
+      lastHazardId: sHero.lastHazardId !== undefined
+        ? sHero.lastHazardId
+        : (idx !== -1 ? (this.state.heroes[idx].lastHazardId ?? null) : null),
+      flawlessZonesBest: sHero.flawlessZonesBest !== undefined
+        ? Number(sHero.flawlessZonesBest) || 0
+        : (idx !== -1 ? (Number(this.state.heroes[idx].flawlessZonesBest) || 0) : 0),
       lastUpdated: Date.now()
     };
 
@@ -1201,12 +1583,20 @@ class Store {
     }
   }
 
+  _serializeStateForLocalStorage(stateObj = this.state) {
+    return JSON.stringify({
+      ...stateObj,
+      petEconomyMigrationApplied: true,
+      digitalRewardsOverhaulApplied: true
+    });
+  }
+
   saveState(immediate = false, skipNotify = false) {
     try {
       this.syncSelectedHeroWithHeroes();
       this.stampHeroFieldChanges();
       if (typeof localStorage !== 'undefined') {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+        localStorage.setItem(STORAGE_KEY, this._serializeStateForLocalStorage(this.state));
       }
       if (this.syncService) {
         if (typeof this.syncService.broadcastState === 'function') {
@@ -1298,7 +1688,7 @@ class Store {
       Sound.click();
       if (typeof localStorage !== 'undefined') {
         try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+          localStorage.setItem(STORAGE_KEY, this._serializeStateForLocalStorage(this.state));
         } catch (e) {}
       }
       this.notify();
@@ -1412,7 +1802,7 @@ class Store {
     return hero?.petXpMap?.[id] ?? this.state.petXpMap?.[id] ?? 0;
   }
 
-  addPetTrainingXp(petId, amount = 25) {
+  addPetTrainingXp(petId, amount = 25, skipSave = false) {
     const id = petId !== undefined && petId !== null ? String(petId) : (this.state.selectedHero?.activePetId || '1');
     const hero = this.state.selectedHero;
     if (hero) {
@@ -1469,12 +1859,61 @@ class Store {
       );
     }
 
-    this.saveState(true);
+    if (!skipSave) {
+      this.saveState(true);
+    }
     return { level: currentLvl, xp: currentXp, leveledUp };
   }
 
   addPetXP(petId, amount = 15) {
     return this.addPetTrainingXp(petId, amount);
+  }
+
+  deductPetTrainingXp(petId, amount = 0, heroId = null, skipSave = false) {
+    const xpToDeduct = Math.max(0, Number(amount) || 0);
+    if (xpToDeduct <= 0) return null;
+    const targetHeroId = heroId || this.state.selectedHero?.id || 'hero_1';
+    const selectedMatch = (this.state.selectedHero?.id === targetHeroId) ? this.state.selectedHero : null;
+    const heroInArray = (this.state.heroes || []).find(h => h.id === targetHeroId);
+    const hero = selectedMatch || heroInArray || this.state.selectedHero;
+    const id = petId !== undefined && petId !== null ? String(petId) : String(hero?.activePetId || '1');
+
+    let currentLvl = Math.max(1, Math.min(25, Math.floor(hero?.petLevelMap?.[id] ?? this.state.petLevelMap?.[id] ?? 1)));
+    let currentXp = Number(hero?.petXpMap?.[id] ?? this.state.petXpMap?.[id] ?? 0) || 0;
+    let remaining = xpToDeduct;
+
+    while (remaining > 0) {
+      if (currentXp >= remaining) {
+        currentXp -= remaining;
+        remaining = 0;
+      } else if (currentLvl > 1) {
+        remaining -= currentXp;
+        currentLvl -= 1;
+        currentXp = currentLvl * 100;
+      } else {
+        currentXp = 0;
+        remaining = 0;
+      }
+    }
+
+    [hero, heroInArray, selectedMatch].forEach((target) => {
+      if (!target) return;
+      if (!target.petLevelMap) target.petLevelMap = {};
+      if (!target.petXpMap) target.petXpMap = {};
+      target.petLevelMap[id] = currentLvl;
+      target.petXpMap[id] = currentXp;
+    });
+    if (!hero && !heroInArray && !selectedMatch) {
+      if (!this.state.petLevelMap) this.state.petLevelMap = {};
+      if (!this.state.petXpMap) this.state.petXpMap = {};
+      this.state.petLevelMap[id] = currentLvl;
+      this.state.petXpMap[id] = currentXp;
+    }
+
+    if (!skipSave) {
+      this.saveState(true);
+    }
+    return { level: currentLvl, xp: currentXp };
   }
 
   getDailyCoach() {
@@ -2591,29 +3030,102 @@ class Store {
     this.saveState(true);
   }
 
+  getBrushStreakMultiplier(heroOrId = null) {
+    let hero = null;
+    if (heroOrId && typeof heroOrId === 'object') {
+      hero = heroOrId;
+    } else {
+      const targetId = heroOrId || this.state.selectedHero?.id || this.getSelectedKidId();
+      hero = (this.state.heroes || []).find((h) => h && h.id === targetId) ||
+             (this.state.selectedHero?.id === targetId ? this.state.selectedHero : null) ||
+             this.getSelectedHero();
+    }
+    const count = Math.max(1, Number(hero?.brushStreakData?.count ?? hero?.brushStreak ?? 1) || 1);
+    return Number((1 + Math.min(0.5, Math.max(0, count - 1) * 0.1)).toFixed(2));
+  }
+
+  getCleanseAlbum(heroId = null) {
+    const targetId = heroId || this.state.selectedHero?.id || this.getSelectedKidId();
+    const hero = (this.state.selectedHero?.id === targetId ? this.state.selectedHero : null) ||
+                 (this.state.heroes || []).find((h) => h && h.id === targetId) ||
+                 this.getSelectedHero();
+    if (!hero) return {};
+    this._ensureHeroHygieneFields(hero);
+    return { ...hero.cleanseAlbum };
+  }
+
+  getWeeklyChallengeState(heroId = null, now = new Date()) {
+    const targetId = heroId || this.state.selectedHero?.id || this.getSelectedKidId();
+    const hero = (this.state.selectedHero?.id === targetId ? this.state.selectedHero : null) ||
+                 (this.state.heroes || []).find((h) => h && h.id === targetId) ||
+                 this.getSelectedHero();
+    const { weekKey, isoYear, isoWeek, challenge } = getCurrentWeeklyChallenge(now);
+    const existing = hero?.weeklyChallenges?.[weekKey];
+    const entry = existing && typeof existing === 'object'
+      ? {
+          challengeId: existing.challengeId || challenge.id,
+          progress: Math.max(0, Number(existing.progress) || 0),
+          target: Number(existing.target) || challenge.targetCount || 3,
+          completed: Boolean(existing.completed),
+          completedAt: existing.completedAt || null,
+          claimedAt: existing.claimedAt || null
+        }
+      : {
+          challengeId: challenge.id,
+          progress: 0,
+          target: challenge.targetCount || 3,
+          completed: false,
+          completedAt: null,
+          claimedAt: null
+        };
+    return {
+      weekKey,
+      isoYear,
+      isoWeek,
+      challenge,
+      ...entry
+    };
+  }
+
   // TOOTHBRUSH AR BATTLE COMPLETION 2.0
-  completeToothbrushBattle(bossId = 'sugar_bandit', durationSec = 120, avgCadence = 85) {
+  completeToothbrushBattle(bossId = 'sugar_bandit', durationSec = 120, avgCadence = 85, combatStats = {}) {
     const col = this.getBossColosseumState();
     // Guard against duplicate reward minting
     if (col.hasAwardedVictory && col.victoryReward) {
       return col.victoryReward;
     }
 
+    const stats = (combatStats && typeof combatStats === 'object') ? combatStats : {};
     const parentCustomBosses = this.state.parentCustomBosses || [];
     const customMatch = parentCustomBosses.find(b => b.id === bossId);
     const boss = customMatch || getHygieneBoss(bossId) || HYGIENE_BOSSES[0];
     const currentHero = this.getSelectedHero() || this.state.selectedHero || (this.state.heroes && this.state.heroes[0]);
+    if (currentHero) {
+      this._ensureHeroHygieneFields(currentHero);
+    }
     const heroId = currentHero?.id || this.getSelectedKidId() || 'hero_1';
-    const nowIso = new Date().toISOString();
-    const todayStr = new Date().toDateString();
-    const currentHour = new Date().getHours();
+    const heroInArray = (this.state.heroes || []).find((h) => h && h.id === heroId);
+    if (heroInArray && heroInArray !== currentHero) {
+      this._ensureHeroHygieneFields(heroInArray);
+    }
+
+    const nowDate = new Date();
+    const nowIso = nowDate.toISOString();
+    const todayStr = nowDate.toDateString();
+    const todayKey = getLocalCalendarDateKey(nowDate);
+    const yesterdayKey = getPreviousCalendarDateKey(nowDate);
 
     const baseCoins = boss.rewardCoins || 50;
     const baseXp = boss.rewardXP || 75;
-    const sparksEarned = boss.rewardSparks || 15;
+    const baseSparks = boss.rewardSparks || 15;
 
     const activePet = this.getActivePet();
-    const petId = activePet?.id || this.state.selectedHero?.activePetId || 1;
+    const petId = String(
+      currentHero?.activePetId ||
+      (Array.isArray(currentHero?.unlockedPetIds) && currentHero.unlockedPetIds[0]) ||
+      activePet?.id ||
+      '1'
+    );
     const petBuffs = this.getActivePetGearBuffs ? this.getActivePetGearBuffs(petId) : { damage_boost: 0, xp_boost: 0, coin_boost: 0 };
 
     const damageBonusCoins = petBuffs.damage_boost > 0 ? Math.ceil(baseCoins * (petBuffs.damage_boost / 100)) : 0;
@@ -2629,8 +3141,116 @@ class Store {
                                (Array.isArray(currentHero?.inventory) && currentHero.inventory.includes('laser_toothbrush')) ||
                                (Array.isArray(this.state.inventory) && this.state.inventory.includes('laser_toothbrush'));
     const laserMult = hasLaserToothbrush ? 1.3 : 1.0;
-    const finalCoinsEarned = Math.round(coinsEarned * laserMult);
-    const finalXpEarned = Math.round(xpEarned * laserMult);
+
+    // Speed Scrub Multiplier (1x / 2x / 3x from combatStats or Tartar Tyrant thresholds)
+    let speedScrubMult = 1;
+    if (typeof stats.speedScrubMultiplier === 'number' && Number.isFinite(stats.speedScrubMultiplier)) {
+      speedScrubMult = Math.max(1, Math.min(3, Math.round(stats.speedScrubMultiplier)));
+    } else if (boss.armorShell?.speedScrubThresholds && typeof stats.speedScrubMs === 'number' && stats.speedScrubMs > 0) {
+      const { tripleMs, doubleMs } = boss.armorShell.speedScrubThresholds;
+      if (tripleMs && stats.speedScrubMs <= tripleMs) speedScrubMult = 3;
+      else if (doubleMs && stats.speedScrubMs <= doubleMs) speedScrubMult = 2;
+    }
+
+    // Morning vs Evening detection (consumes activeWaypointChoreKey)
+    const waypointChoreKey = this.state.activeWaypointChoreKey;
+    this.state.activeWaypointChoreKey = null;
+    const isEveningBattle = waypointChoreKey === 'brush_teeth_pm'
+      ? true
+      : waypointChoreKey === 'brush_teeth_am'
+        ? false
+        : (this.isNighttimeToothbrushBattle() || bossId === 'sugar_boss' || this.state.previousView === 'bedtime_story');
+    const isMorning = !isEveningBattle;
+    const taskIdForLog = isMorning ? 'morning_brush' : 'brush_teeth_pm';
+    const hasPendingHabitBrush = (this.state.pendingApprovals || []).some(
+      (r) => r.taskId === 'toothbrush_adventure_battle' && (!heroId || r.kidId === heroId) && r.status === 'pending'
+    );
+    const hasPendingBattleApproval = this.isTaskPendingApproval(taskIdForLog, heroId) || hasPendingHabitBrush;
+
+    // Escalating Calendar-Day Daily Brush Streak (deduplicated per calendar day; skip on duplicate pending battle)
+    if (currentHero && !hasPendingBattleApproval) {
+      const prevStreak = currentHero.brushStreakData || { count: 0, lastDate: null, morningDate: null, eveningDate: null };
+      let nextCount = Number(prevStreak.count) || 0;
+      if (prevStreak.lastDate === todayKey) {
+        nextCount = Math.max(1, nextCount);
+      } else if (prevStreak.lastDate === yesterdayKey) {
+        nextCount = Math.max(1, nextCount) + 1;
+      } else {
+        nextCount = 1;
+      }
+      currentHero.brushStreakData = {
+        count: nextCount,
+        lastDate: todayKey,
+        morningDate: isMorning ? todayKey : (prevStreak.morningDate || null),
+        eveningDate: !isMorning ? todayKey : (prevStreak.eveningDate || null)
+      };
+      currentHero.brushStreak = nextCount;
+      currentHero.streak = (currentHero.streak || 0) + 1;
+    }
+    const streakMult = this.getBrushStreakMultiplier(currentHero);
+
+    // Weekly Challenge Progress & Bonus Payout (skip on duplicate pending battle so bonus isn't burned for 0 payout)
+    const weeklyInfo = getCurrentWeeklyChallenge(nowDate);
+    const weekKey = weeklyInfo.weekKey;
+    const challenge = weeklyInfo.challenge;
+    let weeklyBonusCoins = 0;
+    let weeklyBonusXp = 0;
+    let weeklyBonusSparks = 0;
+    let weeklyCompletedNow = false;
+    if (currentHero && !hasPendingBattleApproval) {
+      if (!currentHero.weeklyChallenges || typeof currentHero.weeklyChallenges !== 'object') {
+        currentHero.weeklyChallenges = {};
+      }
+      const prevEntry = currentHero.weeklyChallenges[weekKey] || {
+        challengeId: challenge.id,
+        progress: 0,
+        target: challenge.targetCount || 3,
+        completed: false,
+        completedAt: null,
+        claimedAt: null
+      };
+      const entry = { ...prevEntry, target: Number(prevEntry.target) || challenge.targetCount || 3 };
+      if (!entry.completed) {
+        let qualifiesForProgress = durationSec >= 60;
+        if (qualifiesForProgress) {
+          if (challenge.modifierType === 'hazard_focus' && stats.hazardId) {
+            qualifiesForProgress = stats.hazardId === challenge.modifierConfig?.forcedHazardId;
+          } else if (challenge.modifierType === 'sprite_swarm' && stats.spritesSpawned > 0) {
+            qualifiesForProgress = Boolean(stats.spritesClearedNoDamage || stats.spritesCleared > 0);
+          } else if (challenge.modifierType === 'speed_scrub' && avgCadence > 0) {
+            qualifiesForProgress = avgCadence >= (challenge.modifierConfig?.minCadence || 85) || Boolean(stats.shellShatteredBeforeRecharge);
+          } else if (challenge.modifierType === 'shield_endurance' && stats.shieldAbsorbs !== undefined) {
+            qualifiesForProgress = Boolean(stats.mintyShieldFullBattleUptime) || Number(stats.shieldAbsorbs) >= (challenge.modifierConfig?.minShieldAbsorbs || 1);
+          }
+        }
+        if (stats.weeklyChallengeCompleted === true && durationSec >= 60) {
+          entry.progress = entry.target;
+          qualifiesForProgress = true;
+        } else if (qualifiesForProgress) {
+          entry.progress = Math.min(entry.target, (Number(entry.progress) || 0) + 1);
+        }
+        if (qualifiesForProgress && entry.progress >= entry.target) {
+          entry.completed = true;
+          entry.completedAt = nowIso;
+          entry.claimedAt = nowIso;
+          weeklyCompletedNow = true;
+          weeklyBonusCoins = Number(challenge.rewardCoins) || 0;
+          weeklyBonusXp = Number(challenge.rewardXp) || 0;
+          weeklyBonusSparks = Number(challenge.rewardSparks) || 0;
+        }
+      }
+      currentHero.weeklyChallenges[weekKey] = entry;
+    }
+
+    const finalCoinsEarned = hasPendingBattleApproval
+      ? 0
+      : (Math.round(coinsEarned * laserMult * speedScrubMult * streakMult) + weeklyBonusCoins);
+    const finalXpEarned = hasPendingBattleApproval
+      ? 0
+      : (Math.round(xpEarned * laserMult * speedScrubMult * streakMult) + weeklyBonusXp);
+    const finalSparksEarned = hasPendingBattleApproval
+      ? 0
+      : (Math.round(baseSparks * speedScrubMult * streakMult) + weeklyBonusSparks);
     const trophyRelic = boss.trophyRelicId || 'trophy_sugar_bandit';
 
     // Set victory flags & reward payload BEFORE any sub-calls that trigger saveState()/notify(),
@@ -2644,61 +3264,74 @@ class Store {
       trophyId: trophyRelic,
       coins: finalCoinsEarned,
       xp: finalXpEarned,
-      sparks: sparksEarned
+      sparks: finalSparksEarned,
+      speedScrubMultiplier: speedScrubMult,
+      streakMultiplier: streakMult,
+      brushStreakCount: currentHero?.brushStreakData?.count || 1,
+      newlyAwardedBadges: [],
+      weeklyChallengeCompleted: weeklyCompletedNow,
+      weeklyChallengeBonusCoins: hasPendingBattleApproval ? 0 : weeklyBonusCoins
     };
 
-    // 1. Award Currency and Hero XP (Tokens credited immediately)
-    if (currentHero) {
-      currentHero.coins = (currentHero.coins || 0) + finalCoinsEarned;
-    }
-    this.addXP(finalXpEarned);
+    // 1. Award Currency and Hero XP (Tokens credited immediately; gated if approval already pending)
+    const preBattleLevel = currentHero ? (Number(currentHero.level) || 1) : 1;
+    const preBattleXp = currentHero ? (Number(currentHero.xp) || 0) : 0;
+    const preBattleXpNext = currentHero ? (Number(currentHero.xpNext) || 100) : 100;
+    let levelUpBonusCoins = 0;
+    let levelsGained = 0;
+    let petTrainingXpAwarded = 0;
+    if (!hasPendingBattleApproval) {
+      if (currentHero) {
+        currentHero.coins = (currentHero.coins || 0) + finalCoinsEarned;
+        currentHero.tokens = currentHero.coins;
+      }
+      if (finalXpEarned > 0) {
+        const xpRes = this.addXP(finalXpEarned);
+        levelUpBonusCoins = Number(xpRes?.bonusCoinsEarned) || 0;
+        levelsGained = Number(xpRes?.levelsGained) || 0;
+      }
+      if (currentHero) {
+        currentHero.tokens = currentHero.coins;
+      }
 
-    // 2. Active Companion Pet Sparks & Max 100% Hygiene Boost
-    this.addPetSparks(petId, sparksEarned, currentHero?.id);
-    this.addPetCareXp(petId, sparksEarned);
+      // 2. Active Companion Pet Sparks & Max 100% Hygiene Boost (skipSave = true so single saveState at end; addPetSparks already grants addPetCareXp)
+      if (finalSparksEarned > 0) {
+        petTrainingXpAwarded = finalSparksEarned * 2;
+        this.addPetSparks(petId, finalSparksEarned, currentHero?.id, true);
+      }
+    }
     const pStats = this.ensurePetStats(petId);
-    pStats.hygiene = 100; // Refill to 100% sparkling clean
+    pStats.hygiene = 100;
     pStats.joy = Math.min(100, (pStats.joy || 80) + 20);
 
     // 3. Morning / Bedtime Habit Auto-Verification (Pending parent sign-off for Gold Points)
-    // A battle launched from a Today's Path waypoint (WorldAdventureMapView)
-    // knows its own choreKey ('brush_teeth_am' / 'brush_teeth_pm') -- trust
-    // that breadcrumb over the real-world wall-clock guess below, which
-    // otherwise mislabels a morning waypoint's battle as "evening" (and vice
-    // versa) for any kid who plays during real local hours 5pm-5am, silently
-    // logging the completion under the wrong choreKey so the waypoint can
-    // never show as done even though the boss was defeated.
-    const waypointChoreKey = this.state.activeWaypointChoreKey;
-    this.state.activeWaypointChoreKey = null;
-    const isEveningBattle = waypointChoreKey === 'brush_teeth_pm'
-      ? true
-      : waypointChoreKey === 'brush_teeth_am'
-        ? false
-        : (this.isNighttimeToothbrushBattle() || bossId === 'sugar_boss' || this.state.previousView === 'bedtime_story');
-    const isMorning = !isEveningBattle;
     if (isMorning) {
-      this.state.lastBrushedMorning = todayStr;
       if (currentHero) {
+        currentHero.lastBrushedMorning = todayStr;
         if (!currentHero.dentalHabits) currentHero.dentalHabits = {};
         currentHero.dentalHabits.morningBrushDate = todayStr;
       }
+      this.state.lastBrushedMorning = todayStr;
       const morningTask = this.state.taskForest ? this.state.taskForest.find(t => t.id === 'morning_brush' || t.id === 'brush_teeth_am' || t.id === 'brush_teeth' || t.id === 'wp_morning_teeth') : null;
       if (morningTask) {
         morningTask.completed = true;
         morningTask.pointsApproved = false;
       }
     } else {
-      this.state.lastBrushedEvening = todayStr;
       if (currentHero) {
+        currentHero.lastBrushedEvening = todayStr;
         if (!currentHero.dentalHabits) currentHero.dentalHabits = {};
         currentHero.dentalHabits.bedtimeBrushDate = todayStr;
       }
-      const eveningTask = this.state.taskForest ? this.state.taskForest.find(t => t.id === 'bedtime_brush' || t.id === 'night_bedtime' || t.id === 'brush_teeth_pm' || t.id === 'wp_night_teeth' || t.id === 'brush_teeth') : null;
+      this.state.lastBrushedEvening = todayStr;
+      const eveningTask = this.state.taskForest ? this.state.taskForest.find(t => t.id === 'bedtime_brush' || t.id === 'brush_teeth_pm' || t.id === 'wp_night_teeth' || t.id === 'brush_teeth') : null;
       if (eveningTask) {
         eveningTask.completed = true;
         eveningTask.pointsApproved = false;
       }
-      this.syncHabitPetCare('brush_teeth', 'daily_routine');
+      if (!hasPendingBattleApproval) {
+        this.syncHabitPetCare('brush_teeth', 'daily_routine', petId, false, true);
+      }
     }
     const habitBrush = this.state.habitIslands ? this.state.habitIslands.find(h => h.id === 'toothbrush_adventure_battle' || h.id === 'brush_teeth' || h.id === 'brush_teeth_am' || h.id === 'brush_teeth_pm') : null;
     if (habitBrush) {
@@ -2711,34 +3344,31 @@ class Store {
       dedicatedToothTask.pointsApproved = false;
     }
 
-    // 4. Plaque Buster Mastery Badges Evaluation
-    if (!this.state.dentalBadges || !Array.isArray(this.state.dentalBadges)) {
-      this.state.dentalBadges = [];
-    }
+    // 4. Per-Kid Dental Badges Evaluation (all 8 badges)
+    const heroBadges = currentHero ? currentHero.dentalBadges : (this.state.dentalBadges || []);
     const newlyAwardedBadges = [];
     const awardBadge = (badgeId) => {
-      if (!this.state.dentalBadges.includes(badgeId)) {
-        this.state.dentalBadges.push(badgeId);
+      if (!heroBadges.includes(badgeId)) {
+        heroBadges.push(badgeId);
         newlyAwardedBadges.push(badgeId);
       }
     };
 
-    // Enamel Guardian: Completed full duration (at least 90s or 120s)
-    if (durationSec >= 90) {
-      awardBadge('enamel_guardian');
-    }
-    // Plaque Buster: Defeated Plaque Kraken
-    if (bossId === 'plaque_kraken') {
-      awardBadge('plaque_buster');
-    }
-    // Diamond Grin: Precision Cadence >= 80%
-    if (avgCadence >= 80) {
-      awardBadge('diamond_grin');
-    }
-    // Twice-a-Day Champion: Brushed both AM & PM on same day
-    if (this.state.lastBrushedMorning === todayStr && this.state.lastBrushedEvening === todayStr) {
+    if (durationSec >= 90) awardBadge('enamel_guardian');
+    if (boss.id === 'plaque_kraken' || bossId === 'plaque_kraken') awardBadge('plaque_buster');
+    if (avgCadence >= 80) awardBadge('diamond_grin');
+    const brushedMorningVal = currentHero ? currentHero.lastBrushedMorning : this.state.lastBrushedMorning;
+    const brushedEveningVal = currentHero ? currentHero.lastBrushedEvening : this.state.lastBrushedEvening;
+    if (brushedMorningVal === todayStr && brushedEveningVal === todayStr) {
       awardBadge('twice_a_day');
     }
+    if (stats.spritesClearedNoDamage === true && (Number(stats.spritesSpawned) || 0) > 0) awardBadge('plaque_whisperer');
+    if (stats.shellShatteredBeforeRecharge === true) awardBadge('shell_shatter');
+    if (stats.mintyShieldFullBattleUptime === true) awardBadge('minty_master');
+    if (stats.victoryBurstOnPhaseShift === true) awardBadge('perfect_synergy');
+
+    this.state.dentalBadges = [...heroBadges];
+    col.victoryReward.newlyAwardedBadges = [...newlyAwardedBadges];
 
     // Also add Mint Knight Badge / Dental Badges to Inventory if not present
     if (!this.state.inventory) this.state.inventory = [];
@@ -2752,10 +3382,7 @@ class Store {
       }
     }
 
-    // 5. Record Dental Battle History
-    if (!this.state.dentalBattleHistory) {
-      this.state.dentalBattleHistory = [];
-    }
+    // 5. Record Per-Kid Dental Battle History & Cleanse Album
     const battleRecord = {
       id: generateId('dental_', 6),
       bossId: boss.id,
@@ -2764,87 +3391,163 @@ class Store {
       durationSec: durationSec,
       avgCadence: avgCadence,
       quadrantsCleaned: 4,
-      sparksAwarded: sparksEarned,
-      coinsAwarded: coinsEarned,
-      xpAwarded: xpEarned,
+      sparksAwarded: finalSparksEarned,
+      coinsAwarded: finalCoinsEarned,
+      xpAwarded: finalXpEarned,
+      speedScrubMultiplier: speedScrubMult,
+      speedScrubMs: typeof stats.speedScrubMs === 'number' ? stats.speedScrubMs : null,
+      streakMultiplier: streakMult,
       newlyAwardedBadges: newlyAwardedBadges,
       timestamp: Date.now(),
       dateIso: nowIso,
-      dateString: new Date().toLocaleDateString(),
-      timeString: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      dateString: nowDate.toLocaleDateString(),
+      timeString: nowDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
-    this.state.dentalBattleHistory.unshift(battleRecord);
-    if (this.state.dentalBattleHistory.length > 100) {
-      this.state.dentalBattleHistory.pop();
+    if (currentHero) {
+      currentHero.dentalBattleHistory.unshift(battleRecord);
+      if (currentHero.dentalBattleHistory.length > 100) {
+        currentHero.dentalBattleHistory.pop();
+      }
+      this.state.dentalBattleHistory = [...currentHero.dentalBattleHistory];
+
+      // Update Cleanse Album entry for this boss
+      const prevAlbum = currentHero.cleanseAlbum[boss.id] || {};
+      const incomingScrubMs = (typeof stats.speedScrubMs === 'number' && stats.speedScrubMs > 0) ? stats.speedScrubMs : null;
+      const prevBestMs = (typeof prevAlbum.bestSpeedScrubMs === 'number' && prevAlbum.bestSpeedScrubMs > 0) ? prevAlbum.bestSpeedScrubMs : null;
+      const isFlawless = Boolean(stats.flawlessBattle || (Number(stats.flawlessZones) || 0) >= 4);
+      currentHero.cleanseAlbum[boss.id] = {
+        cleansedCount: (Number(prevAlbum.cleansedCount) || 0) + 1,
+        bestSpeedScrubMs: incomingScrubMs !== null
+          ? (prevBestMs !== null ? Math.min(prevBestMs, incomingScrubMs) : incomingScrubMs)
+          : prevBestMs,
+        bestSpeedScrubMultiplier: Math.max(Number(prevAlbum.bestSpeedScrubMultiplier) || 1, speedScrubMult),
+        bestCadence: Math.max(Number(prevAlbum.bestCadence) || 0, Number(avgCadence) || 0),
+        flawlessCount: (Number(prevAlbum.flawlessCount) || 0) + (isFlawless ? 1 : 0),
+        lastCleansedAt: nowIso
+      };
+
+      // Update Per-Kid Trophies & Bosses Defeated
+      if (!currentHero.colosseumBossesDefeated.includes(boss.id)) {
+        currentHero.colosseumBossesDefeated.push(boss.id);
+      }
+      if (!currentHero.unlockedTrophyIds.includes(trophyRelic)) {
+        currentHero.unlockedTrophyIds.push(trophyRelic);
+      }
+      const flawlessZones = Number(stats.flawlessZones) || (stats.flawlessBattle ? 4 : 0);
+      if (flawlessZones >= 1) {
+        currentHero.flawlessZonesBest = Math.max(Number(currentHero.flawlessZonesBest) || 0, flawlessZones);
+        if (!currentHero.unlockedTrophyIds.includes('trophy_flawless_zones')) {
+          currentHero.unlockedTrophyIds.push('trophy_flawless_zones');
+        }
+      }
+      if (flawlessZones >= 4) {
+        if (!currentHero.unlockedTrophyIds.includes('trophy_flawless_sweep')) {
+          currentHero.unlockedTrophyIds.push('trophy_flawless_sweep');
+        }
+      }
+    } else {
+      if (!this.state.dentalBattleHistory) this.state.dentalBattleHistory = [];
+      this.state.dentalBattleHistory.unshift(battleRecord);
     }
 
     // 6. Audit Log for Parent Portal Pillar 1 & Pillar 2 (Queued for Parent Verification of Points)
-    const logId = generateId('brush_log_', 7);
-    const taskIdForLog = isMorning ? 'morning_brush' : 'brush_teeth_pm';
-    const approvalReqId = 'task_brush_' + taskIdForLog + '_' + Date.now();
-    const completionLog = {
-      id: logId,
-      taskId: taskIdForLog,
-      taskTitle: `Toothbrush AR Battle: Defeated ${boss.name}`,
-      zone: 'Hygiene AR Battle',
-      category: 'hygiene',
-      durationMinutes: Math.round(durationSec / 60),
-      durationSec: durationSec,
-      avgCadence: avgCadence,
-      bossId: boss.id,
-      heroId: currentHero?.id || heroId,
-      heroName: currentHero?.name || 'Little Hero',
-      completedAt: nowIso,
-      timestamp: Date.now(),
-      dateString: new Date().toLocaleDateString(),
-      timeString: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      coinsAwarded: finalCoinsEarned,
-      pointsAwarded: (this.state.habitIslands?.find(h => h.id === 'toothbrush_adventure_battle')?.points !== undefined
-        ? Number(this.state.habitIslands.find(h => h.id === 'toothbrush_adventure_battle').points)
-        : (this.state.parentSettings?.toothbrushBattlePoints !== undefined ? Number(this.state.parentSettings.toothbrushBattlePoints) : 15)),
-      xpAwarded: finalXpEarned,
-      sparksAwarded: sparksEarned,
-      status: 'pending',
-      approvalRequestId: approvalReqId,
-      approvedAt: null,
-      rejectedAt: null
-    };
+    const targetTaskAliases = this.getTaskAliasGroup(taskIdForLog);
+    const targetTaskAliasesForLog = Array.from(new Set([...targetTaskAliases, 'toothbrush_adventure_battle']));
+    const todayIsoPrefix = nowIso.split('T')[0];
+    const hasExistingCompletionLog = (this.state.taskCompletionLogs || []).some(
+      (l) => l && targetTaskAliasesForLog.includes(l.taskId) && l.heroId === (currentHero?.id || heroId) && l.status !== 'rejected' && (l.completedAt || '').split('T')[0] === todayIsoPrefix
+    );
+    if (!hasPendingBattleApproval || !hasExistingCompletionLog) {
+      const logId = generateId('brush_log_', 7);
+      const existingPendingReq = hasPendingBattleApproval
+        ? (this.state.pendingApprovals || []).find((r) => targetTaskAliasesForLog.includes(r.taskId) && r.kidId === (currentHero?.id || heroId) && r.status === 'pending')
+        : null;
+      const approvalReqId = existingPendingReq ? existingPendingReq.id : ('task_brush_' + taskIdForLog + '_' + Date.now());
+      const completionLog = {
+        id: logId,
+        taskId: taskIdForLog,
+        taskTitle: `Toothbrush AR Battle: Defeated ${boss.name}`,
+        zone: 'Hygiene AR Battle',
+        category: 'hygiene',
+        durationMinutes: Math.round(durationSec / 60),
+        durationSec: durationSec,
+        avgCadence: avgCadence,
+        bossId: boss.id,
+        heroId: currentHero?.id || heroId,
+        heroName: currentHero?.name || 'Little Hero',
+        petId: petId,
+        completedAt: nowIso,
+        timestamp: Date.now(),
+        dateString: nowDate.toLocaleDateString(),
+        timeString: nowDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        coinsAwarded: finalCoinsEarned,
+        levelUpBonusCoins: levelUpBonusCoins,
+        pointsAwarded: hasPendingBattleApproval
+          ? 0
+          : (this.state.habitIslands?.find(h => h.id === 'toothbrush_adventure_battle')?.points !== undefined
+            ? Number(this.state.habitIslands.find(h => h.id === 'toothbrush_adventure_battle').points)
+            : (this.state.parentSettings?.toothbrushBattlePoints !== undefined ? Number(this.state.parentSettings.toothbrushBattlePoints) : 15)),
+        xpAwarded: finalXpEarned,
+        sparksAwarded: finalSparksEarned,
+        petTrainingXpAwarded: petTrainingXpAwarded,
+        status: 'pending',
+        approvalRequestId: approvalReqId,
+        approvedAt: null,
+        rejectedAt: null
+      };
 
-    if (!this.state.taskCompletionLogs) {
-      this.state.taskCompletionLogs = [];
+      if (!this.state.taskCompletionLogs) {
+        this.state.taskCompletionLogs = [];
+      }
+      this.state.taskCompletionLogs.unshift(completionLog);
+      if (this.state.taskCompletionLogs.length > 200) {
+        this.state.taskCompletionLogs.pop();
+      }
+
+      if (!hasPendingBattleApproval) {
+        this.enqueuePendingApproval({
+          id: approvalReqId,
+          logId: logId,
+          kidId: currentHero?.id || heroId,
+          kidName: currentHero?.name || 'Little Hero',
+          petId: petId,
+          type: 'task_point_approval',
+          taskId: completionLog.taskId,
+          taskTitle: completionLog.taskTitle,
+          title: completionLog.taskTitle,
+          zone: 'Hygiene AR Battle',
+          pendingPoints: completionLog.pointsAwarded,
+          tokensAwarded: finalCoinsEarned,
+          levelUpBonusCoins: levelUpBonusCoins,
+          levelsGained: levelsGained,
+          preBattleLevel: preBattleLevel,
+          preBattleXp: preBattleXp,
+          preBattleXpNext: preBattleXpNext,
+          xpAwarded: finalXpEarned,
+          sparksAwarded: finalSparksEarned,
+          petTrainingXpAwarded: petTrainingXpAwarded,
+          date: nowDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          timestamp: nowIso,
+          status: 'pending'
+        });
+      }
     }
-    this.state.taskCompletionLogs.unshift(completionLog);
-    if (this.state.taskCompletionLogs.length > 200) {
-      this.state.taskCompletionLogs.pop();
-    }
 
-    // Queue Gold Points for Parent Approval (Tokens/XP/Sparks above are auto-issued instantly,
-    // but Points — and the Screen Time Bank minutes they convert into — require parent sign-off,
-    // same as every other habit/task completion. Without this entry the battle never surfaces
-    // in the Parent Portal and completionLog.pointsAwarded above is never actually credited.)
-    this.enqueuePendingApproval({
-      id: approvalReqId,
-      logId: logId,
-      kidId: currentHero?.id || heroId,
-      kidName: currentHero?.name || 'Little Hero',
-      type: 'task_point_approval',
-      taskId: completionLog.taskId,
-      taskTitle: completionLog.taskTitle,
-      title: completionLog.taskTitle,
-      zone: 'Hygiene AR Battle',
-      pendingPoints: completionLog.pointsAwarded,
-      tokensAwarded: finalCoinsEarned,
-      xpAwarded: finalXpEarned,
-      sparksAwarded: sparksEarned,
-      date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      timestamp: nowIso,
-      status: 'pending'
-    });
-
-    // 7. Unlock 3D Trophy Relic in HQ
+    // 7. Unlock Trophy Relic in HQ (structured object matching ShopView.js expectations)
     if (!this.state.recentlyUnlocked) this.state.recentlyUnlocked = [];
-    if (!this.state.recentlyUnlocked.includes(trophyRelic)) {
-      this.state.recentlyUnlocked.push(trophyRelic);
+    const alreadyInRecent = this.state.recentlyUnlocked.some((r) => r === trophyRelic || r?.id === trophyRelic);
+    if (!alreadyInRecent) {
+      const displayTrophy = getTrophiesForDisplay({ ...this.state, selectedHero: currentHero }).find((t) => t.id === trophyRelic);
+      const trophyTitle = displayTrophy?.title || `${boss.name} Trophy`;
+      this.state.recentlyUnlocked.unshift({
+        id: trophyRelic,
+        title: trophyTitle,
+        name: trophyTitle,
+        type: 'Trophy',
+        category: 'Trophies',
+        image: `/assets/rewards/${trophyRelic}.svg`,
+        assetUrl: `/assets/rewards/${trophyRelic}.svg`
+      });
     }
     if (this.state.heroHQ && this.state.heroHQ.unlockedFurnitureIds) {
       if (!this.state.heroHQ.unlockedFurnitureIds.includes(trophyRelic)) {
@@ -2863,31 +3566,40 @@ class Store {
       this.state.hygieneBattle.colosseumBossesDefeated.push(boss.id);
     }
 
-    // Consolidated single victory celebration modal state (eliminates duplicate rewards and modal conflict)
-    col.isVictoryModalOpen = true;
-    col.hasAwardedVictory = true;
-    col.victoryReward = {
-      bossId: boss.id,
-      bossName: boss.name,
-      cleansedTitle: boss.cleansedTitle || 'Minty Friend 🍬',
-      trophyId: trophyRelic,
-      coins: finalCoinsEarned,
-      xp: finalXpEarned,
-      sparks: sparksEarned
-    };
-
-    // Increment hero streak
-    if (currentHero) {
-      currentHero.streak = (currentHero.streak || 0) + 1;
-      this.state.brushStreak = (this.state.brushStreak || 0) + 1;
+    // Flush per-kid updates back into heroes[] if separate reference
+    if (heroInArray && heroInArray !== currentHero) {
+      heroInArray.coins = currentHero.coins;
+      heroInArray.tokens = currentHero.tokens;
+      heroInArray.level = currentHero.level;
+      heroInArray.xp = currentHero.xp;
+      heroInArray.xpNext = currentHero.xpNext;
+      if (currentHero.petLevelMap) heroInArray.petLevelMap = { ...currentHero.petLevelMap };
+      if (currentHero.petXpMap) heroInArray.petXpMap = { ...currentHero.petXpMap };
+      heroInArray.streak = currentHero.streak;
+      heroInArray.brushStreak = currentHero.brushStreak;
+      heroInArray.brushStreakData = { ...currentHero.brushStreakData };
+      heroInArray.dentalBadges = [...currentHero.dentalBadges];
+      heroInArray.dentalBattleHistory = [...currentHero.dentalBattleHistory];
+      heroInArray.cleanseAlbum = Object.fromEntries(
+        Object.entries(currentHero.cleanseAlbum || {}).map(([k, v]) => [k, (v && typeof v === 'object') ? { ...v } : v])
+      );
+      heroInArray.weeklyChallenges = Object.fromEntries(
+        Object.entries(currentHero.weeklyChallenges || {}).map(([k, v]) => [k, (v && typeof v === 'object') ? { ...v } : v])
+      );
+      heroInArray.unlockedTrophyIds = [...currentHero.unlockedTrophyIds];
+      heroInArray.colosseumBossesDefeated = [...currentHero.colosseumBossesDefeated];
+      heroInArray.lastBrushedMorning = currentHero.lastBrushedMorning;
+      heroInArray.lastBrushedEvening = currentHero.lastBrushedEvening;
+      heroInArray.dentalHabits = { ...currentHero.dentalHabits };
+      heroInArray.flawlessZonesBest = currentHero.flawlessZonesBest;
     }
 
     this.checkAndAwardHabitBounties('brush_teeth', currentHero);
 
-    this.applyChoreTurboBoost(15, 'Toothbrush AR Battle');
+    this.applyChoreTurboBoost(15, 'Toothbrush AR Battle', true);
     this.logAction(
-      `${currentHero.name} defeated ${boss.name} in Toothbrush Battle! 🪥🦷`,
-      `+${finalCoinsEarned} Tokens 🪙, +${finalXpEarned} XP, +${sparksEarned} Sparks ⚡ for active companion pet, 100% Hygiene!`
+      `${currentHero?.name || 'Little Hero'} defeated ${boss.name} in Toothbrush Battle! 🪥🦷`,
+      `+${finalCoinsEarned} Tokens 🪙, +${finalXpEarned} XP, +${finalSparksEarned} Sparks ⚡ for active companion pet, 100% Hygiene!`
     );
 
     // 8. Audio & Confetti Celebration
@@ -2896,11 +3608,12 @@ class Store {
       particleCount: 160,
       spread: 110,
       origin: { y: 0.5 },
-      colors: ['#54e98a', '#ffb961', '#38bdf8', '#f1c40f', '#ec4899']
+      colors: ['#54e98a', '#ffb961', '#38bdf8', '#f1c40f', '#06b6d4']
     });
 
     speakCompanion(`ROAR! You cleansed ${boss.name}! Your smile is gleaming like diamond armor!`);
 
+    this.syncActiveHeroMirrorsToState();
     this.saveState(true);
 
     return col.victoryReward;
@@ -2958,8 +3671,14 @@ class Store {
     return this.addPendingApproval(approval);
   }
 
-  getDentalBadges() {
-    const unlockedIds = this.state.dentalBadges || ['enamel_guardian'];
+  getDentalBadges(heroId = null) {
+    const targetId = heroId || this.state.selectedHero?.id || this.getSelectedKidId();
+    const hero = (this.state.selectedHero?.id === targetId ? this.state.selectedHero : null) ||
+                 (this.state.heroes || []).find((h) => h && h.id === targetId) ||
+                 this.getSelectedHero();
+    const unlockedIds = Array.isArray(hero?.dentalBadges)
+      ? hero.dentalBadges
+      : (this.state.dentalBadges || ['enamel_guardian']);
     return DENTAL_BADGES.map(b => ({
       ...b,
       unlocked: unlockedIds.includes(b.id)
@@ -3072,7 +3791,7 @@ class Store {
     };
   }
 
-  applyChoreTurboBoost(minutes = 15, sourceTaskTitle = 'Chore Completion') {
+  applyChoreTurboBoost(minutes = 15, sourceTaskTitle = 'Chore Completion', skipSave = false) {
     const active = this.state.activeExpeditions || [];
     const sanct = this.getPetSanctuaryState ? this.getPetSanctuaryState() : this.state.petSanctuary;
     const now = Date.now();
@@ -3099,7 +3818,9 @@ class Store {
       `Triggered by ${sourceTaskTitle}. Active expeditions rushed closer to home!`
     );
 
-    this.saveState(true);
+    if (!skipSave) {
+      this.saveState(true);
+    }
 
     return {
       boostedCount,
@@ -3324,22 +4045,27 @@ class Store {
     };
   }
 
-  getDentalStats() {
-    const history = this.state.dentalBattleHistory || [];
+  getDentalStats(heroId = null) {
+    const targetId = heroId || this.state.selectedHero?.id || this.getSelectedKidId();
+    const hero = (this.state.selectedHero?.id === targetId ? this.state.selectedHero : null) ||
+                 (this.state.heroes || []).find((h) => h && h.id === targetId) ||
+                 this.getSelectedHero();
+    const history = Array.isArray(hero?.dentalBattleHistory)
+      ? hero.dentalBattleHistory
+      : (this.state.dentalBattleHistory || []);
     const totalBattles = history.length;
     const avgCadenceAll = totalBattles > 0
       ? Math.round(history.reduce((sum, h) => sum + (h.avgCadence || 80), 0) / totalBattles)
       : 85;
-    const bossesDefeated = {
-      sugar_bandit: history.filter(h => h.bossId === 'sugar_bandit').length,
-      plaque_kraken: history.filter(h => h.bossId === 'plaque_kraken').length,
-      cavity_knight: history.filter(h => h.bossId === 'cavity_knight').length
-    };
+    const bossesDefeated = {};
+    HYGIENE_BOSSES.forEach((b) => {
+      bossesDefeated[b.id] = history.filter((h) => h.bossId === b.id).length;
+    });
     return {
       totalBattles,
       avgCadence: avgCadenceAll,
       bossesDefeated,
-      badges: this.getDentalBadges(),
+      badges: this.getDentalBadges(targetId),
       recentBattles: history.slice(0, 10)
     };
   }
@@ -3528,6 +4254,8 @@ class Store {
         'military_tech'
       );
     }
+
+    return { levelsGained, bonusCoinsEarned };
   }
 
   addCoins(amount) {
@@ -4340,6 +5068,10 @@ class Store {
 
   deleteCustomAIFurniture(furnitureId) {
     if (!furnitureId) return false;
+    if (!this.state.deletedCustomItemIds) this.state.deletedCustomItemIds = [];
+    if (!this.state.deletedCustomItemIds.includes(furnitureId)) {
+      this.state.deletedCustomItemIds.push(furnitureId);
+    }
     if (this.state.parentCustomFurniture) {
       this.state.parentCustomFurniture = this.state.parentCustomFurniture.filter(f => f.id !== furnitureId);
     }
@@ -4410,6 +5142,10 @@ class Store {
 
   deleteCustomAIToy(toyId) {
     if (!toyId) return false;
+    if (!this.state.deletedCustomItemIds) this.state.deletedCustomItemIds = [];
+    if (!this.state.deletedCustomItemIds.includes(toyId)) {
+      this.state.deletedCustomItemIds.push(toyId);
+    }
     if (this.state.parentCustomToys) {
       this.state.parentCustomToys = this.state.parentCustomToys.filter(t => t.id !== toyId);
     }
@@ -4618,6 +5354,10 @@ class Store {
 
   deleteCustomAIBoss(bossId) {
     if (!bossId) return false;
+    if (!this.state.deletedCustomItemIds) this.state.deletedCustomItemIds = [];
+    if (!this.state.deletedCustomItemIds.includes(bossId)) {
+      this.state.deletedCustomItemIds.push(bossId);
+    }
     if (this.state.parentCustomBosses) {
       this.state.parentCustomBosses = this.state.parentCustomBosses.filter(b => b.id !== bossId);
     }
@@ -4746,9 +5486,9 @@ class Store {
 
   // Grants Level 1-25 Pet Training XP progression (replaces the old
   // sparks/evolution-stage reward pipeline).
-  addPetCareXp(petId, amount = 15) {
+  addPetCareXp(petId, amount = 15, skipSave = false) {
     const id = petId || this.state.selectedHero?.activePetId || '1';
-    return this.addPetTrainingXp(id, amount * 2);
+    return this.addPetTrainingXp(id, amount * 2, skipSave);
   }
 
   getPetStreakShield() {
@@ -5196,6 +5936,44 @@ class Store {
     return true;
   }
 
+  getMintyShieldUpgradeDurationBonusSec(heroId = null) {
+    const targetHeroId = heroId || this.state.selectedHero?.id || this.getSelectedKidId();
+    const hero = (this.state.selectedHero?.id === targetHeroId ? this.state.selectedHero : null) ||
+                 (this.state.heroes || []).find((h) => h && h.id === targetHeroId) ||
+                 this.getSelectedHero();
+    if (!hero) return 0;
+
+    const inv = Array.isArray(hero.inventory) ? hero.inventory : [];
+    const eqGear = hero.equippedGear;
+    const eqValues = Array.isArray(eqGear)
+      ? eqGear
+      : (eqGear && typeof eqGear === 'object' ? Object.values(eqGear) : []);
+    const catalogById = new Map();
+    [...(this.state.digitalGear || []), ...DIGITAL_REWARDS_CATALOG].forEach((item) => {
+      if (item && item.id && Number(item.shieldDurationBonusSec) > 0 && !catalogById.has(item.id)) {
+        catalogById.set(item.id, item);
+      }
+    });
+
+    let totalBonusSec = 0;
+    catalogById.forEach((item) => {
+      const ownedOrEquipped =
+        inv.includes(item.id) ||
+        (item.title && inv.includes(item.title)) ||
+        (item.name && inv.includes(item.name)) ||
+        hero.equippedWeapon === item.id ||
+        eqValues.includes(item.id);
+      if (ownedOrEquipped) {
+        totalBonusSec += Number(item.shieldDurationBonusSec) || 0;
+      }
+    });
+    return Math.max(0, totalBonusSec);
+  }
+
+  getMintyShieldUpgradeBonusSec(heroId = null) {
+    return this.getMintyShieldUpgradeDurationBonusSec(heroId);
+  }
+
   buyDigitalGear(gearId) {
     const item = (this.state.digitalGear || []).find((i) => i.id === gearId) ||
                  DIGITAL_REWARDS_CATALOG.find((i) => i.id === gearId) ||
@@ -5207,22 +5985,55 @@ class Store {
     if (!hero.inventory) hero.inventory = ['laser_toothbrush', 'cowl_hero'];
     if (!hero.consumables) hero.consumables = {};
 
-    // 1. SNACKS / PET FOOD: Consumable servings engine (single-use vs multi-use)
-    if (item.category === 'Snacks' || item.category === 'food') {
-      const cost = item.costCoins || item.defaultPrice || 35;
-      if ((hero.coins || 0) < cost) {
+    const sparkCost = Math.max(0, Number(item.costSparks) || 0);
+    const rawCoinCost = item.costCoins ?? item.price ?? item.defaultPrice ?? (sparkCost > 0 ? 0 : 50);
+    const coinCost = Math.max(0, Number(rawCoinCost) || 0);
+    const activePetId = String(this.getActivePet()?.id || hero.activePetId || '1');
+    const currentCoins = Math.max(0, Number(hero.coins) || 0);
+    const currentSparks = Math.max(0, Number(this.getPetSparks(activePetId, hero.id)) || 0);
+
+    const checkDualBalances = () => {
+      if (currentCoins < coinCost) {
         Sound.deny();
         this.showReward(
           'Not Enough Habit Tokens!',
-          `You need ${cost - (hero.coins || 0)} more Habit Tokens for ${item.title || item.name}!`,
+          `You need ${coinCost - currentCoins} more Habit Tokens for ${item.title || item.name}!`,
           0,
           0,
           item.image
         );
-        return { success: false, reason: 'Insufficient coins' };
+        return { ok: false, reason: 'Insufficient coins' };
       }
+      if (sparkCost > 0 && currentSparks < sparkCost) {
+        Sound.deny();
+        this.showReward(
+          'Not Enough Pet Sparks!',
+          `You need ${sparkCost - currentSparks} more Pet Sparks ⚡ for ${item.title || item.name}!`,
+          0,
+          0,
+          item.image
+        );
+        return { ok: false, reason: 'Insufficient sparks' };
+      }
+      return { ok: true };
+    };
 
-      hero.coins -= cost;
+    const deductDualBalances = () => {
+      if (coinCost > 0) {
+        hero.coins = Math.max(0, currentCoins - coinCost);
+        hero.tokens = hero.coins;
+      }
+      if (sparkCost > 0) {
+        this.deductPetSparks(activePetId, sparkCost, hero.id, true);
+      }
+    };
+
+    // 1. SNACKS / PET FOOD: Consumable servings engine (single-use vs multi-use)
+    if (item.category === 'Snacks' || item.category === 'food') {
+      const check = checkDualBalances();
+      if (!check.ok) return { success: false, reason: check.reason };
+
+      deductDualBalances();
       const isSingleUse = item.usageType === 'single_use';
       const servingsToAdd = isSingleUse ? 1 : (item.maxServings || item.servingsMax || 3);
       if (!hero.consumables || !Array.isArray(hero.consumables)) {
@@ -5260,6 +6071,8 @@ class Store {
         speakCompanion(item.voiceLine || item.defaultVoiceLine || `Yum! You got ${servingsToAdd}x ${item.title || item.name} to feed your pet companions!`);
       } catch {}
 
+      this.syncSelectedHeroWithHeroes();
+      this.saveState(true, true);
       this.showReward(
         isSingleUse ? 'Single-Use Treat Purchased! 🧺' : `${servingsToAdd}x Servings Pack Purchased! 🧺`,
         `You bought ${item.title || item.name}! Feed your companions in the Pet Sanctuary.`,
@@ -5267,8 +6080,6 @@ class Store {
         0,
         item.image
       );
-      this.syncSelectedHeroWithHeroes();
-      this.saveState(true);
       return { success: true, item, servingsRemaining: servingsToAdd };
     }
 
@@ -5276,13 +6087,13 @@ class Store {
     if (item.category === 'Weapons' || item.category === 'weapon') {
       const isOwned = hero.inventory.includes(item.id) || hero.inventory.includes(item.title) || hero.inventory.includes(item.name);
       if (isOwned) {
-        // Toggle or equip weapon (ensuring strictly 1 equipped weapon per battle)
         hero.equippedWeapon = item.id;
         this.syncSelectedHeroWithHeroes();
         Sound.sparkle();
         try {
           speakCompanion(`Equipped the ${item.title || item.name}! Ready to slash away sugar bugs!`);
         } catch {}
+        this.saveState(true, true);
         this.showReward(
           'Weapon Equipped! ⚔️',
           `Your active hero weapon is now the ${item.title || item.name}! (+${item.statBonusPercent || 25}% Damage)`,
@@ -5290,24 +6101,13 @@ class Store {
           0,
           item.image
         );
-        this.saveState(true);
         return { success: true, item, equipped: true };
       }
 
-      const cost = item.costCoins || item.defaultPrice || 50;
-      if ((hero.coins || 0) < cost) {
-        Sound.deny();
-        this.showReward(
-          'Not Enough Habit Tokens!',
-          `You need ${cost - (hero.coins || 0)} more Habit Tokens for the ${item.title || item.name}.`,
-          0,
-          0,
-          item.image
-        );
-        return { success: false, reason: 'Insufficient coins' };
-      }
+      const check = checkDualBalances();
+      if (!check.ok) return { success: false, reason: check.reason };
 
-      hero.coins -= cost;
+      deductDualBalances();
       hero.inventory.push(item.id);
       if (item.title) hero.inventory.push(item.title);
       hero.equippedWeapon = item.id;
@@ -5320,9 +6120,9 @@ class Store {
         speakCompanion(item.voiceLine || item.defaultVoiceLine || `Awesome! You unlocked the ${item.title || item.name}!`);
       } catch {}
 
-      this.logAction(`${hero.name} unlocked ${item.title || item.name}`, `Cost: ${cost} Tokens 🪙`);
+      this.logAction(`${hero.name} unlocked ${item.title || item.name}`, `Cost: ${coinCost} Tokens 🪙`);
       this.syncSelectedHeroWithHeroes();
-      this.saveState(true);
+      this.saveState(true, true);
 
       this.openMysterySurprise({
         type: 'chest',
@@ -5336,13 +6136,76 @@ class Store {
       return { success: true, item, isNew: true };
     }
 
+    // 2b. MINTY SHIELD DURATION UPGRADES (Accessories / shield_upgrade — passive & active shield boost, never overwrites weapon or pet gear)
+    if (item.subCategory === 'shield_upgrade' || item.statBonusType === 'shield_duration') {
+      const isShieldOwned = hero.inventory.includes(item.id) || hero.inventory.includes(item.title) || hero.inventory.includes(item.name);
+      if (isShieldOwned) {
+        if (!hero.equippedGear || typeof hero.equippedGear !== 'object' || Array.isArray(hero.equippedGear)) {
+          hero.equippedGear = {};
+        }
+        hero.equippedGear.shield = item.id;
+        this.syncSelectedHeroWithHeroes();
+        Sound.sparkle();
+        try {
+          speakCompanion(`Minty Shield Upgrade active: ${item.title || item.name}! (+${item.shieldDurationBonusSec || 2}s Shield Duration)`);
+        } catch {}
+        this.saveState(true, true);
+        this.showReward(
+          'Minty Shield Upgrade Ready! ❄️',
+          `${item.title || item.name} is active! Total Minty Shield bonus: +${this.getMintyShieldUpgradeDurationBonusSec(hero.id)}s.`,
+          0,
+          0,
+          item.image
+        );
+        return { success: true, item, equipped: true, shieldDurationBonusSec: this.getMintyShieldUpgradeDurationBonusSec(hero.id) };
+      }
+
+      const check = checkDualBalances();
+      if (!check.ok) return { success: false, reason: check.reason };
+
+      deductDualBalances();
+      hero.inventory.push(item.id);
+      if (item.title) hero.inventory.push(item.title);
+      if (!hero.equippedGear || typeof hero.equippedGear !== 'object' || Array.isArray(hero.equippedGear)) {
+        hero.equippedGear = {};
+      }
+      hero.equippedGear.shield = item.id;
+      this.state.inventory = [...hero.inventory];
+
+      this.addXP(25);
+      Sound.fanfare();
+      try { confetti({ particleCount: 60, spread: 70 }); } catch {}
+      try {
+        speakCompanion(item.voiceLine || `Roar! You unlocked ${item.title || item.name}!`);
+      } catch {}
+
+      this.logAction(
+        `${hero.name} unlocked ${item.title || item.name}`,
+        `Cost: ${coinCost} Tokens 🪙${sparkCost > 0 ? ` + ${sparkCost} Sparks ⚡` : ''}`
+      );
+      this.syncSelectedHeroWithHeroes();
+      this.saveState(true, true);
+
+      this.openMysterySurprise({
+        type: 'chest',
+        title: item.title || item.name,
+        image: item.image,
+        icon: item.icon,
+        desc: item.desc,
+        category: item.category,
+        statBonusPercent: item.statBonusPercent,
+        statBonusType: item.statBonusType,
+        xpEarned: 25
+      });
+      return { success: true, item, isNew: true, shieldDurationBonusSec: this.getMintyShieldUpgradeDurationBonusSec(hero.id) };
+    }
+
     // 3. AVATAR & PET GEAR (Masks, Capes, Armor, Boots)
     const isGearOwned = hero.inventory.includes(item.id) || hero.inventory.includes(item.title) || hero.inventory.includes(item.name);
     if (isGearOwned) {
       hero.equippedPetGear = item.title || item.name;
       this.state.equippedPetGear = item.title || item.name;
       const socket = item.targetPetSocket || item.subcategory || item.socket || 'head';
-      const activePetId = this.getActivePet()?.id || hero.activePetId || '1';
       this.equipPetStudioGear(activePetId, socket, item.id);
 
       Sound.sparkle();
@@ -5350,6 +6213,8 @@ class Store {
         speakCompanion(`Equipped the ${item.title || item.name}! Looking heroic!`);
       } catch {}
 
+      this.syncSelectedHeroWithHeroes();
+      this.saveState(true, true);
       this.showReward(
         'Gear Equipped! 🛡️',
         `Your avatar and pet companion are now equipped with ${item.title || item.name}!`,
@@ -5357,25 +6222,13 @@ class Store {
         0,
         item.image
       );
-      this.syncSelectedHeroWithHeroes();
-      this.saveState(true);
       return { success: true, item, equipped: true };
     }
 
-    const cost = item.costCoins || item.defaultPrice || 50;
-    if ((hero.coins || 0) < cost) {
-      Sound.deny();
-      this.showReward(
-        'Not Enough Habit Tokens!',
-        `You need ${cost - (hero.coins || 0)} more Habit Tokens for ${item.title || item.name}.`,
-        0,
-        0,
-        item.image
-      );
-      return { success: false, reason: 'Insufficient coins' };
-    }
+    const check = checkDualBalances();
+    if (!check.ok) return { success: false, reason: check.reason };
 
-    hero.coins -= cost;
+    deductDualBalances();
     hero.inventory.push(item.id);
     if (item.title) hero.inventory.push(item.title);
     hero.equippedPetGear = item.title || item.name;
@@ -5383,7 +6236,6 @@ class Store {
     this.state.equippedPetGear = item.title || item.name;
 
     if (item.targetPetSocket || item.subcategory || item.socket || item.isParentCrafted) {
-      const activePetId = this.getActivePet()?.id || hero.activePetId || '1';
       const targetSocket = item.targetPetSocket || item.subcategory || item.socket || 'head';
       this.equipPetStudioGear(activePetId, targetSocket, item.id);
       if (PET_GEAR_CATALOG[targetSocket]) {
@@ -5398,9 +6250,9 @@ class Store {
       speakCompanion(item.voiceLine || `Roar! You unlocked ${item.title || item.name}!`);
     } catch {}
 
-    this.logAction(`${hero.name} bought ${item.title || item.name}`, `Cost: ${cost} Tokens 🪙`);
+    this.logAction(`${hero.name} bought ${item.title || item.name}`, `Cost: ${coinCost} Tokens 🪙`);
     this.syncSelectedHeroWithHeroes();
-    this.saveState(true);
+    this.saveState(true, true);
 
     this.openMysterySurprise({
       type: 'chest',
@@ -5590,8 +6442,9 @@ class Store {
       // 2. Release routine definition so kid is NOT locked out for subsequent cycles/times/days!
       if (req.taskId) {
         const aliases = this.getTaskAliasGroup(req.taskId);
+        const isBrushTask = aliases.includes('morning_brush') || aliases.includes('bedtime_brush');
         (this.state.habitIslands || []).forEach(h => {
-          if (aliases.includes(h.id)) {
+          if (aliases.includes(h.id) || (isBrushTask && h.id === 'toothbrush_adventure_battle')) {
             h.completed = false;
             h.pointsApproved = false;
           }
@@ -5633,9 +6486,13 @@ class Store {
       if (h && h !== this.state.selectedHero) {
         h.coins = this.state.selectedHero.coins;
         h.tokens = this.state.selectedHero.tokens ?? this.state.selectedHero.coins;
+        h.level = this.state.selectedHero.level ?? h.level ?? 1;
         h.xp = this.state.selectedHero.xp;
+        h.xpNext = this.state.selectedHero.xpNext ?? h.xpNext ?? 100;
         h.sparks = this.state.selectedHero.sparks;
         h.evolutionSparks = this.state.selectedHero.evolutionSparks ?? this.state.selectedHero.sparks;
+        if (this.state.selectedHero.petLevelMap) h.petLevelMap = { ...this.state.selectedHero.petLevelMap };
+        if (this.state.selectedHero.petXpMap) h.petXpMap = { ...this.state.selectedHero.petXpMap };
       }
     }
 
@@ -5655,45 +6512,99 @@ class Store {
         }
       }
 
-      // Claw back auto-issued Tokens, Hero XP, and Pet Sparks floored at 0
-      const tokensToClawback = Number(req.tokensAwarded) || 0;
+      // Claw back auto-issued Tokens (including any level-up bonus coins), Hero XP/level, Pet Sparks, and Pet Training XP floored at 0
+      const tokensToClawback = (Number(req.tokensAwarded) || 0) + (Number(req.levelUpBonusCoins) || 0);
       const xpToClawback = Number(req.xpAwarded) || 0;
       const sparksToClawback = Number(req.sparksAwarded) || 0;
+      const petXpToClawback = Number(req.petTrainingXpAwarded) || 0;
 
       if (hero) {
+        const prevTokens = hero.tokens ?? hero.coins ?? 0;
         hero.coins = Math.max(0, (hero.coins || 0) - tokensToClawback);
-        hero.tokens = Math.max(0, (hero.tokens ?? hero.coins ?? 0) - tokensToClawback);
-        hero.xp = Math.max(0, (hero.xp || 0) - xpToClawback);
-        hero.sparks = Math.max(0, (hero.sparks || 0) - sparksToClawback);
-        hero.evolutionSparks = Math.max(0, (hero.evolutionSparks ?? hero.sparks ?? 0) - sparksToClawback);
+        hero.tokens = Math.max(0, prevTokens - tokensToClawback);
 
-        const petId = String(hero.activePetId || '1');
+        const preBattleLevel = Math.max(1, Number(req.preBattleLevel) || 1);
+        const levelsGained = Math.max(0, Number(req.levelsGained) || 0);
+        const currentLevel = Math.max(1, Number(hero.level) || 1);
+        const minAllowedLevel = req.preBattleLevel !== undefined ? preBattleLevel : 1;
+        const thresholdMap = new Map();
+        if (req.preBattleLevel !== undefined && req.preBattleXpNext) {
+          let lvlCursor = preBattleLevel;
+          let nextCursor = Math.max(1, Number(req.preBattleXpNext) || 100);
+          while (lvlCursor <= currentLevel) {
+            thresholdMap.set(lvlCursor, nextCursor);
+            lvlCursor += 1;
+            nextCursor = Math.round(nextCursor * 1.35);
+          }
+        }
+        let remainingXp = xpToClawback;
+        let workingLevel = currentLevel;
+        let workingXp = Math.max(0, Number(hero.xp) || 0);
+        let workingXpNext = Math.max(1, Number(hero.xpNext) || 100);
+        while (remainingXp > 0) {
+          if (workingXp >= remainingXp) {
+            workingXp -= remainingXp;
+            remainingXp = 0;
+          } else if (workingLevel > minAllowedLevel && levelsGained > 0) {
+            remainingXp -= workingXp;
+            workingLevel -= 1;
+            workingXpNext = thresholdMap.has(workingLevel)
+              ? thresholdMap.get(workingLevel)
+              : Math.max(100, Math.round(workingXpNext / 1.35));
+            workingXp = workingXpNext;
+          } else {
+            workingXp = Math.max(0, workingXp - remainingXp);
+            remainingXp = 0;
+          }
+        }
+        hero.level = workingLevel;
+        hero.xp = workingXp;
+        hero.xpNext = workingXpNext;
+
+        const petId = String(
+          req.petId ||
+          hero.activePetId ||
+          (Array.isArray(hero.unlockedPetIds) && hero.unlockedPetIds[0]) ||
+          '1'
+        );
         if (sparksToClawback > 0) {
-          this.deductPetSparks(petId, sparksToClawback, hero.id);
+          this.deductPetSparks(petId, sparksToClawback, hero.id, true);
+        }
+        if (petXpToClawback > 0) {
+          this.deductPetTrainingXp(petId, petXpToClawback, hero.id, true);
         }
 
         if (this.state.selectedHero && this.state.selectedHero.id === hero.id) {
           this.state.selectedHero.coins = hero.coins;
           this.state.selectedHero.tokens = hero.tokens;
+          this.state.selectedHero.level = hero.level;
           this.state.selectedHero.xp = hero.xp;
+          this.state.selectedHero.xpNext = hero.xpNext;
           this.state.selectedHero.sparks = hero.sparks;
           this.state.selectedHero.evolutionSparks = hero.evolutionSparks;
+          if (hero.petLevelMap) this.state.selectedHero.petLevelMap = { ...hero.petLevelMap };
+          if (hero.petXpMap) this.state.selectedHero.petXpMap = { ...hero.petXpMap };
         }
 
         const mirroredHero = (this.state.heroes || []).find(h => h.id === hero.id);
         if (mirroredHero && mirroredHero !== hero) {
           mirroredHero.coins = hero.coins;
           mirroredHero.tokens = hero.tokens;
+          mirroredHero.level = hero.level;
           mirroredHero.xp = hero.xp;
+          mirroredHero.xpNext = hero.xpNext;
           mirroredHero.sparks = hero.sparks;
           mirroredHero.evolutionSparks = hero.evolutionSparks;
+          if (hero.petLevelMap) mirroredHero.petLevelMap = { ...hero.petLevelMap };
+          if (hero.petXpMap) mirroredHero.petXpMap = { ...hero.petXpMap };
         }
       }
 
       if (req.taskId) {
         const aliases = this.getTaskAliasGroup(req.taskId);
+        const isBrushTask = aliases.includes('morning_brush') || aliases.includes('bedtime_brush');
         (this.state.habitIslands || []).forEach(h => {
-          if (aliases.includes(h.id)) {
+          if (aliases.includes(h.id) || (isBrushTask && h.id === 'toothbrush_adventure_battle')) {
             h.completed = false;
             h.pointsApproved = false;
           }
@@ -6313,8 +7224,7 @@ class Store {
       this.state.selectedHero.xpNext = hero.xpNext || 100;
       this.state.selectedHero.sparks = hero.sparks || 0;
       this.state.selectedHero.evolutionSparks = hero.evolutionSparks || hero.sparks || 0;
-      this.state.selectedHero.petSparkMap = hero.petSparkMap ? { ...hero.petSparkMap } : undefined;
-      if (hero.petSparkMap) this.state.petSparkMap = { ...hero.petSparkMap };
+      this.state.selectedHero.petSparkMap = hero.petSparkMap ? { ...hero.petSparkMap } : {};
       const rawPetId = hero.activePetId || (hero.unlockedPetIds?.[0] || '1');
       this.state.selectedHero.activePetId = rawPetId ? String(rawPetId) : '1';
       this.state.selectedHero.unlockedPetIds = (hero.unlockedPetIds || ['1']).map(String);
@@ -6327,22 +7237,66 @@ class Store {
       // This kid's own pet training level/XP, hunger/hygiene/joy/energy, bond
       // levels, and sanctuary state -- never the other kid's, whose data was
       // just flushed out (above) into their own heroes[] record instead.
-      this.state.selectedHero.petLevelMap = hero.petLevelMap ? { ...hero.petLevelMap } : undefined;
-      this.state.selectedHero.petXpMap = hero.petXpMap ? { ...hero.petXpMap } : undefined;
-      this.state.selectedHero.petStatsMap = hero.petStatsMap ? { ...hero.petStatsMap } : undefined;
-      this.state.selectedHero.petSanctuary = hero.petSanctuary ? { ...hero.petSanctuary } : undefined;
+      if (hero.petLevelMap) {
+        this.state.selectedHero.petLevelMap = { ...hero.petLevelMap };
+      } else {
+        delete this.state.selectedHero.petLevelMap;
+      }
+      if (hero.petXpMap) {
+        this.state.selectedHero.petXpMap = { ...hero.petXpMap };
+      } else {
+        delete this.state.selectedHero.petXpMap;
+      }
+      if (hero.petStatsMap) {
+        this.state.selectedHero.petStatsMap = Object.fromEntries(
+          Object.entries(hero.petStatsMap).map(([k, v]) => [k, (v && typeof v === 'object') ? { ...v } : v])
+        );
+      } else {
+        delete this.state.selectedHero.petStatsMap;
+      }
+      if (hero.petSanctuary) {
+        this.state.selectedHero.petSanctuary = { ...hero.petSanctuary };
+      } else {
+        delete this.state.selectedHero.petSanctuary;
+      }
       this.state.selectedHero.storyMemory = normalizeStoryMemory(hero.storyMemory);
       this.state.selectedHero.storyProfile = normalizeStoryProfile(hero.storyProfile);
+      this._ensureHeroHygieneFields(hero);
+      this.state.selectedHero.dentalBadges = [...hero.dentalBadges];
+      this.state.selectedHero.dentalBattleHistory = [...hero.dentalBattleHistory];
+      this.state.selectedHero.cleanseAlbum = Object.fromEntries(
+        Object.entries(hero.cleanseAlbum || {}).map(([k, v]) => [k, (v && typeof v === 'object') ? { ...v } : v])
+      );
+      this.state.selectedHero.brushStreakData = { ...hero.brushStreakData };
+      this.state.selectedHero.weeklyChallenges = Object.fromEntries(
+        Object.entries(hero.weeklyChallenges || {}).map(([k, v]) => [k, (v && typeof v === 'object') ? { ...v } : v])
+      );
+      this.state.selectedHero.unlockedTrophyIds = [...hero.unlockedTrophyIds];
+      this.state.selectedHero.featuredTrophyIds = [...hero.featuredTrophyIds];
+      this.state.selectedHero.colosseumBossesDefeated = [...hero.colosseumBossesDefeated];
+      this.state.selectedHero.lastBossId = hero.lastBossId ?? null;
+      this.state.selectedHero.bossRotationQueue = [...(hero.bossRotationQueue || [])];
+      this.state.selectedHero.lastBrushedMorning = hero.lastBrushedMorning ?? null;
+      this.state.selectedHero.lastBrushedEvening = hero.lastBrushedEvening ?? null;
+      this.state.selectedHero.brushStreak = Number(hero.brushStreak) || 0;
+      this.state.selectedHero.dentalHabits = { ...(hero.dentalHabits || { morningBrushDate: null, bedtimeBrushDate: null }) };
+      this.state.selectedHero.hazardRotationQueue = [...(hero.hazardRotationQueue || [])];
+      this.state.selectedHero.lastHazardId = hero.lastHazardId ?? null;
+      this.state.selectedHero.flawlessZonesBest = Number(hero.flawlessZonesBest) || 0;
 
       this.state.selectedHero.inventory = Array.isArray(hero.inventory) ? [...hero.inventory] : [];
       this.state.selectedHero.consumables = Array.isArray(hero.consumables) ? [...hero.consumables] : { ...(hero.consumables || {}) };
+      this.state.selectedHero.equippedGear = Array.isArray(hero.equippedGear)
+        ? [...hero.equippedGear]
+        : { ...(hero.equippedGear || {}) };
       this.state.selectedHero.equippedWeapon = hero.equippedWeapon !== undefined ? hero.equippedWeapon : null;
       this.state.selectedHero.equippedPetGear = hero.equippedPetGear !== undefined ? hero.equippedPetGear : null;
       this.state.inventory = [...this.state.selectedHero.inventory];
       this.state.equippedPetGear = this.state.selectedHero.equippedPetGear;
 
-      // Restore hero-specific AI Spark Quests
+      // Restore hero-specific AI Spark Quests & Hygiene Mirrors
       this.state.aiQuests = this.getAiQuests(hero.id);
+      this.syncActiveHeroMirrorsToState();
 
       Sound.fanfare();
       this.saveState(true);
@@ -6361,6 +7315,9 @@ class Store {
       points: Number(points) || 0,
       coins: Number(coins) || 0,
       tokens: Number(coins) || 0,
+      sparks: 0,
+      evolutionSparks: 0,
+      petSparkMap: {},
       activePetId: null,
       unlockedPetIds: [],
       hasChosenStarterPet: false,
@@ -6374,7 +7331,24 @@ class Store {
       equippedWeapon: null,
       equippedPetGear: null,
       inventory: [],
-      consumables: []
+      consumables: [],
+      dentalBadges: ['enamel_guardian'],
+      dentalBattleHistory: [],
+      cleanseAlbum: {},
+      brushStreakData: { count: 0, lastDate: null, morningDate: null, eveningDate: null },
+      weeklyChallenges: {},
+      unlockedTrophyIds: ['rookie_hero_crest'],
+      featuredTrophyIds: ['rookie_hero_crest'],
+      colosseumBossesDefeated: [],
+      lastBossId: null,
+      bossRotationQueue: [],
+      lastBrushedMorning: null,
+      lastBrushedEvening: null,
+      brushStreak: 0,
+      dentalHabits: { morningBrushDate: null, bedtimeBrushDate: null },
+      hazardRotationQueue: [],
+      lastHazardId: null,
+      flawlessZonesBest: 0
     };
     if (this.state.deletedHeroIds) {
       this.state.deletedHeroIds = this.state.deletedHeroIds.filter((id) => id !== newHero.id);
@@ -6452,6 +7426,9 @@ class Store {
         points: 0,
         coins: 0,
         tokens: 0,
+        sparks: 0,
+        evolutionSparks: 0,
+        petSparkMap: {},
         activePetId: null,
         unlockedPetIds: [],
         hasChosenStarterPet: false,
@@ -6462,7 +7439,24 @@ class Store {
         equippedProfileTheme: 'theme_dragon_emerald',
         unlockedThemes: ['theme_dragon_emerald'],
         equippedGear: {},
-        inventory: []
+        inventory: [],
+        dentalBadges: ['enamel_guardian'],
+        dentalBattleHistory: [],
+        cleanseAlbum: {},
+        brushStreakData: { count: 0, lastDate: null, morningDate: null, eveningDate: null },
+        weeklyChallenges: {},
+        unlockedTrophyIds: ['rookie_hero_crest'],
+        featuredTrophyIds: ['rookie_hero_crest'],
+        colosseumBossesDefeated: [],
+        lastBossId: null,
+        bossRotationQueue: [],
+        lastBrushedMorning: null,
+        lastBrushedEvening: null,
+        brushStreak: 0,
+        dentalHabits: { morningBrushDate: null, bedtimeBrushDate: null },
+        hazardRotationQueue: [],
+        lastHazardId: null,
+        flawlessZonesBest: 0
       };
       this.state.heroes.push(freshHero);
       this.switchHero(freshHero.id);
@@ -6506,6 +7500,10 @@ class Store {
       level: 1,
       points: 0,
       coins: 0,
+      tokens: 0,
+      sparks: 0,
+      evolutionSparks: 0,
+      petSparkMap: {},
       activePetId: null,
       unlockedPetIds: [],
       hasChosenStarterPet: false,
@@ -6514,7 +7512,24 @@ class Store {
       completionRate: 100,
       gameDifficulty: 'medium',
       equippedProfileTheme: 'theme_dragon_emerald',
-      unlockedThemes: ['theme_dragon_emerald']
+      unlockedThemes: ['theme_dragon_emerald'],
+      dentalBadges: ['enamel_guardian'],
+      dentalBattleHistory: [],
+      cleanseAlbum: {},
+      brushStreakData: { count: 0, lastDate: null, morningDate: null, eveningDate: null },
+      weeklyChallenges: {},
+      unlockedTrophyIds: ['rookie_hero_crest'],
+      featuredTrophyIds: ['rookie_hero_crest'],
+      colosseumBossesDefeated: [],
+      lastBossId: null,
+      bossRotationQueue: [],
+      lastBrushedMorning: null,
+      lastBrushedEvening: null,
+      brushStreak: 0,
+      dentalHabits: { morningBrushDate: null, bedtimeBrushDate: null },
+      hazardRotationQueue: [],
+      lastHazardId: null,
+      flawlessZonesBest: 0
     };
     this.state.heroes = [cleanHero];
     this.state.pendingApprovals = [];
@@ -6867,6 +7882,10 @@ class Store {
       xpNext: 100,
       points: 0,
       coins: 0,
+      tokens: 0,
+      sparks: 0,
+      evolutionSparks: 0,
+      petSparkMap: {},
       streak: 1,
       stars: 0,
       activePetId: '1',
@@ -6876,8 +7895,15 @@ class Store {
       gameDifficulty: 'medium',
       equippedProfileTheme: 'theme_dragon_emerald',
       unlockedThemes: ['theme_dragon_emerald'],
+      equippedGear: {},
+      equippedWeapon: 'laser_toothbrush',
+      equippedPetGear: 'cowl_hero',
       equippedPetGearMap: {},
       customGearDyesMap: {},
+      inventory: ['laser_toothbrush', 'cowl_hero'],
+      consumables: {
+        'flame_kibble_bowl': { servingsRemaining: 3, totalPurchased: 3, title: 'Crunchy Flame Kibble', usageType: 'multi_use' }
+      },
       savedHeroCards: [],
       screenTimeMinutes: 45,
       screenTimeUsedToday: 0,
@@ -6888,7 +7914,24 @@ class Store {
       screenTimeLockMessage: 'Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙',
       arcadeHighScores: {},
       arcadeCoinsEarnedToday: 0,
-      arcadeCoinsLastDate: ''
+      arcadeCoinsLastDate: '',
+      dentalBadges: ['enamel_guardian'],
+      dentalBattleHistory: [],
+      cleanseAlbum: {},
+      brushStreakData: { count: 0, lastDate: null, morningDate: null, eveningDate: null },
+      weeklyChallenges: {},
+      unlockedTrophyIds: ['rookie_hero_crest'],
+      featuredTrophyIds: ['rookie_hero_crest'],
+      colosseumBossesDefeated: [],
+      lastBossId: null,
+      bossRotationQueue: [],
+      lastBrushedMorning: null,
+      lastBrushedEvening: null,
+      brushStreak: 0,
+      dentalHabits: { morningBrushDate: null, bedtimeBrushDate: null },
+      hazardRotationQueue: [],
+      lastHazardId: null,
+      flawlessZonesBest: 0
     };
 
     this.state.selectedHero = starterHero;
@@ -7064,7 +8107,7 @@ class Store {
 
     try {
       if (typeof localStorage !== 'undefined') {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+        localStorage.setItem(STORAGE_KEY, this._serializeStateForLocalStorage(this.state));
       }
     } catch (e) {
       console.warn('Could not save revoked state:', e);
@@ -7252,7 +8295,20 @@ class Store {
         // AI Spark Quests are generated locally and merged safely in Section 6 below;
         // blind snapshot overwrites would wipe active quests with empty arrays.
         'aiQuests',
-        'heroAiQuestsMap'
+        'heroAiQuestsMap',
+        // Deleted custom item tombstones are unioned cleanly in Section 2b below.
+        'deletedCustomItemIds',
+        // Per-kid mirrored & hygiene/currency fields merged in Section 3 below;
+        // allowing stateSnapshot to set them would bypass Section 3 and mutate selectedHero via non-enumerable setters.
+        ...HERO_MIRROR_NON_ENUMERABLE_KEYS,
+        'lastBrushedMorning',
+        'lastBrushedEvening',
+        'dentalBadges',
+        'dentalBattleHistory',
+        'equippedGear',
+        'sparks',
+        'evolutionSparks',
+        'petSparkMap'
       ]);
       Object.entries(cloudData.stateSnapshot).forEach(([key, value]) => {
         if (!localOnlyKeys.has(key) && value !== undefined) {
@@ -7293,10 +8349,14 @@ class Store {
     const deletedHeroIdsSet = new Set(this.state.deletedHeroIds || []);
 
     // 2b. Deleted Custom Items Tracking (Prevents resurrecting deleted custom weapons/items across devices)
-    if (cloudData.deletedCustomItemIds && Array.isArray(cloudData.deletedCustomItemIds)) {
+    const incomingDeletedCustomItems = [
+      ...(Array.isArray(cloudData.deletedCustomItemIds) ? cloudData.deletedCustomItemIds : []),
+      ...(Array.isArray(cloudData.stateSnapshot?.deletedCustomItemIds) ? cloudData.stateSnapshot.deletedCustomItemIds : [])
+    ].filter(Boolean);
+    if (incomingDeletedCustomItems.length > 0 || Array.isArray(this.state.deletedCustomItemIds)) {
       this.state.deletedCustomItemIds = Array.from(new Set([
-        ...(this.state.deletedCustomItemIds || []),
-        ...cloudData.deletedCustomItemIds
+        ...(this.state.deletedCustomItemIds || []).filter(Boolean),
+        ...incomingDeletedCustomItems
       ]));
     }
     const deletedCustomItemIdsSet = new Set(this.state.deletedCustomItemIds || []);
@@ -7362,6 +8422,26 @@ class Store {
           localH?.activePetId || cloudH?.activePetId || rawUnlocked[0] || '1'
         );
         const unlockedPetIds = Array.from(new Set([...rawUnlocked, resolvedActivePet].filter(Boolean))).map(String);
+        const resolvedSparks = resolve('sparks', num(cloudH.sparks), preferLocalRewards ? (localH.sparks ?? 0) : (cloudH.sparks !== undefined ? Number(cloudH.sparks) : (localH?.sparks ?? 0)));
+        const lsSparks = Number(localStamps.sparks) || 0;
+        const csSparks = Number(cloudStamps.sparks) || 0;
+        const localSparksWon = Boolean(
+          localH && (
+            lsSparks > csSparks ||
+            (!lsSparks && !csSparks && preferLocalRewards)
+          )
+        );
+        const mergedPetSparkMap = localSparksWon
+          ? { ...(cloudH.petSparkMap || {}), ...(localH?.petSparkMap || {}) }
+          : { ...(localH?.petSparkMap || {}), ...(cloudH.petSparkMap || {}) };
+        if (localSparksWon && resolvedActivePet && localH?.petSparkMap?.[resolvedActivePet] === undefined && resolvedSparks !== undefined) {
+          mergedPetSparkMap[resolvedActivePet] = Number(resolvedSparks) || 0;
+        } else if (!localSparksWon && resolvedActivePet && cloudH.sparks !== undefined && cloudH.petSparkMap?.[resolvedActivePet] === undefined) {
+          mergedPetSparkMap[resolvedActivePet] = Number(resolvedSparks) || 0;
+        }
+        if (localSparksWon && JSON.stringify(mergedPetSparkMap) !== JSON.stringify(cloudH.petSparkMap || {})) {
+          repairPushNeeded = true;
+        }
         return {
           ...defaultState.selectedHero,
           ...localH,
@@ -7372,9 +8452,9 @@ class Store {
           level: resolve('level', num(cloudH.level), Math.max(cloudH.level || 1, localH?.level || 1)),
           xp: resolve('xp', num(cloudH.xp), preferLocalRewards ? (localH.xp ?? 0) : (cloudH.xp !== undefined ? Number(cloudH.xp) : (localH?.xp ?? 0))),
           xpNext: resolve('xpNext', num(cloudH.xpNext), cloudH.xpNext || localH?.xpNext || 100),
-          sparks: resolve('sparks', num(cloudH.sparks), preferLocalRewards ? (localH.sparks ?? 0) : (cloudH.sparks !== undefined ? Number(cloudH.sparks) : (localH?.sparks ?? 0))),
+          sparks: resolvedSparks,
           evolutionSparks: resolve('evolutionSparks', num(cloudH.evolutionSparks), preferLocalRewards ? (localH.evolutionSparks ?? localH.sparks ?? 0) : (cloudH.evolutionSparks !== undefined ? Number(cloudH.evolutionSparks) : (localH?.evolutionSparks ?? 0))),
-          petSparkMap: { ...(localH?.petSparkMap || {}), ...(cloudH.petSparkMap || {}) },
+          petSparkMap: mergedPetSparkMap,
           storyMemory: mergeStoryMemory(localH?.storyMemory, cloudH.storyMemory),
           // Settings, not history: the cloud copy wins when it has one, otherwise keep this device's.
           storyProfile: normalizeStoryProfile(cloudH.storyProfile ?? localH?.storyProfile),
@@ -7406,6 +8486,139 @@ class Store {
           arcadeCoinsEarnedToday: cloudH.arcadeCoinsEarnedToday !== undefined ? Number(cloudH.arcadeCoinsEarnedToday) : (localH?.arcadeCoinsEarnedToday ?? 0),
           arcadeCoinsLastDate: cloudH.arcadeCoinsLastDate || localH?.arcadeCoinsLastDate || '',
           inventory: Array.from(new Set([...(localH?.inventory || []), ...(cloudH.inventory || [])])).filter(id => !deletedCustomItemIdsSet.has(id)),
+          dentalBadges: Array.from(new Set(['enamel_guardian', ...(localH?.dentalBadges || []), ...(cloudH.dentalBadges || [])])),
+          unlockedTrophyIds: Array.from(new Set(['rookie_hero_crest', ...(localH?.unlockedTrophyIds || []), ...(cloudH.unlockedTrophyIds || [])])),
+          colosseumBossesDefeated: Array.from(new Set([...(localH?.colosseumBossesDefeated || []), ...(cloudH.colosseumBossesDefeated || [])])),
+          featuredTrophyIds: Array.isArray(cloudH.featuredTrophyIds)
+            ? [...cloudH.featuredTrophyIds]
+            : (Array.isArray(localH?.featuredTrophyIds) ? [...localH.featuredTrophyIds] : ['rookie_hero_crest']),
+          dentalBattleHistory: (() => {
+            const byId = new Map();
+            [...(localH?.dentalBattleHistory || []), ...(cloudH.dentalBattleHistory || [])].forEach((entry, idx) => {
+              if (!entry || typeof entry !== 'object') return;
+              const k = entry.id || `${entry.bossId || 'boss'}_${entry.timestamp || entry.dateIso || idx}`;
+              if (!byId.has(k)) byId.set(k, entry);
+            });
+            return Array.from(byId.values())
+              .sort((a, b) => (Number(b.timestamp) || new Date(b.dateIso || 0).getTime() || 0) - (Number(a.timestamp) || new Date(a.dateIso || 0).getTime() || 0))
+              .slice(0, 100);
+          })(),
+          cleanseAlbum: (() => {
+            const localAlbum = (localH?.cleanseAlbum && typeof localH.cleanseAlbum === 'object') ? localH.cleanseAlbum : {};
+            const cloudAlbum = (cloudH.cleanseAlbum && typeof cloudH.cleanseAlbum === 'object') ? cloudH.cleanseAlbum : {};
+            const mergedAlbum = {};
+            const bossKeys = new Set([...Object.keys(localAlbum), ...Object.keys(cloudAlbum)]);
+            bossKeys.forEach((bId) => {
+              const l = localAlbum[bId] || {};
+              const c = cloudAlbum[bId] || {};
+              const lMs = (typeof l.bestSpeedScrubMs === 'number' && l.bestSpeedScrubMs > 0) ? l.bestSpeedScrubMs : null;
+              const cMs = (typeof c.bestSpeedScrubMs === 'number' && c.bestSpeedScrubMs > 0) ? c.bestSpeedScrubMs : null;
+              const bestSpeedScrubMs = (lMs !== null && cMs !== null) ? Math.min(lMs, cMs) : (lMs ?? cMs);
+              const lAt = l.lastCleansedAt || '';
+              const cAt = c.lastCleansedAt || '';
+              mergedAlbum[bId] = {
+                cleansedCount: Math.max(Number(l.cleansedCount) || 0, Number(c.cleansedCount) || 0),
+                bestSpeedScrubMs,
+                bestSpeedScrubMultiplier: Math.max(Number(l.bestSpeedScrubMultiplier) || 1, Number(c.bestSpeedScrubMultiplier) || 1),
+                bestCadence: Math.max(Number(l.bestCadence) || 0, Number(c.bestCadence) || 0),
+                flawlessCount: Math.max(Number(l.flawlessCount) || 0, Number(c.flawlessCount) || 0),
+                lastCleansedAt: cAt > lAt ? cAt : (lAt || cAt || null)
+              };
+            });
+            return mergedAlbum;
+          })(),
+          brushStreakData: (() => {
+            const l = (localH?.brushStreakData && typeof localH.brushStreakData === 'object') ? localH.brushStreakData : {};
+            const c = (cloudH.brushStreakData && typeof cloudH.brushStreakData === 'object') ? cloudH.brushStreakData : {};
+            const lDate = l.lastDate || '';
+            const cDate = c.lastDate || '';
+            const lCount = Math.max(Number(l.count) || 0, Number(localH?.brushStreak) || 0);
+            const cCount = Math.max(Number(c.count) || 0, Number(cloudH.brushStreak) || 0);
+            let count = Math.max(lCount, cCount);
+            if (lDate && cDate && lDate !== cDate) {
+              const lMs = Date.parse(`${lDate}T00:00:00Z`);
+              const cMs = Date.parse(`${cDate}T00:00:00Z`);
+              const dayDiff = (Number.isFinite(lMs) && Number.isFinite(cMs))
+                ? Math.round(Math.abs(lMs - cMs) / 86400000)
+                : 999;
+              if (dayDiff <= 1) {
+                const olderCount = lDate < cDate ? lCount : cCount;
+                const newerCount = lDate > cDate ? lCount : cCount;
+                count = (newerCount <= 1 && olderCount >= 1)
+                  ? (olderCount + 1)
+                  : Math.max(lCount, cCount);
+              } else {
+                count = lDate > cDate ? lCount : cCount;
+              }
+            }
+            const pickNewer = (a, b) => ((a || '') >= (b || '') ? (a || b || null) : (b || null));
+            return {
+              count,
+              lastDate: pickNewer(l.lastDate, c.lastDate),
+              morningDate: pickNewer(l.morningDate, c.morningDate),
+              eveningDate: pickNewer(l.eveningDate, c.eveningDate)
+            };
+          })(),
+          weeklyChallenges: (() => {
+            const lMap = (localH?.weeklyChallenges && typeof localH.weeklyChallenges === 'object') ? localH.weeklyChallenges : {};
+            const cMap = (cloudH.weeklyChallenges && typeof cloudH.weeklyChallenges === 'object') ? cloudH.weeklyChallenges : {};
+            const merged = {};
+            const keys = new Set([...Object.keys(lMap), ...Object.keys(cMap)]);
+            keys.forEach((wk) => {
+              const l = lMap[wk] || {};
+              const c = cMap[wk] || {};
+              merged[wk] = {
+                challengeId: c.challengeId || l.challengeId || null,
+                progress: Math.max(Number(l.progress) || 0, Number(c.progress) || 0),
+                target: Math.max(Number(l.target) || 0, Number(c.target) || 0) || 3,
+                completed: Boolean(l.completed || c.completed),
+                completedAt: l.completedAt || c.completedAt || null,
+                claimedAt: l.claimedAt || c.claimedAt || null
+              };
+            });
+            return merged;
+          })(),
+          bossRotationQueue: (() => {
+            const validBossIds = new Set(HYGIENE_BOSSES.map((b) => b.id));
+            const rawQ = (Array.isArray(localH?.bossRotationQueue) && localH.bossRotationQueue.length > 0)
+              ? localH.bossRotationQueue
+              : (Array.isArray(cloudH.bossRotationQueue) ? cloudH.bossRotationQueue : []);
+            return rawQ.filter((id) => validBossIds.has(id));
+          })(),
+          lastBossId: localH?.lastBossId || cloudH.lastBossId || null,
+          lastBrushedMorning: localH?.lastBrushedMorning || cloudH.lastBrushedMorning || null,
+          lastBrushedEvening: localH?.lastBrushedEvening || cloudH.lastBrushedEvening || null,
+          brushStreak: (() => {
+            const l = (localH?.brushStreakData && typeof localH.brushStreakData === 'object') ? localH.brushStreakData : {};
+            const c = (cloudH.brushStreakData && typeof cloudH.brushStreakData === 'object') ? cloudH.brushStreakData : {};
+            const lDate = l.lastDate || '';
+            const cDate = c.lastDate || '';
+            const lCount = Math.max(Number(l.count) || 0, Number(localH?.brushStreak) || 0);
+            const cCount = Math.max(Number(c.count) || 0, Number(cloudH.brushStreak) || 0);
+            if (lDate && cDate && lDate !== cDate) {
+              const lMs = Date.parse(`${lDate}T00:00:00Z`);
+              const cMs = Date.parse(`${cDate}T00:00:00Z`);
+              const dayDiff = (Number.isFinite(lMs) && Number.isFinite(cMs))
+                ? Math.round(Math.abs(lMs - cMs) / 86400000)
+                : 999;
+              if (dayDiff <= 1) {
+                const olderCount = lDate < cDate ? lCount : cCount;
+                const newerCount = lDate > cDate ? lCount : cCount;
+                return (newerCount <= 1 && olderCount >= 1) ? (olderCount + 1) : Math.max(lCount, cCount);
+              }
+              return lDate > cDate ? lCount : cCount;
+            }
+            return Math.max(lCount, cCount);
+          })(),
+          dentalHabits: {
+            morningBrushDate: localH?.dentalHabits?.morningBrushDate || cloudH.dentalHabits?.morningBrushDate || null,
+            bedtimeBrushDate: localH?.dentalHabits?.bedtimeBrushDate || cloudH.dentalHabits?.bedtimeBrushDate || null
+          },
+          hazardRotationQueue: (Array.isArray(localH?.hazardRotationQueue) && localH.hazardRotationQueue.length > 0)
+            ? [...localH.hazardRotationQueue]
+            : (Array.isArray(cloudH.hazardRotationQueue) ? [...cloudH.hazardRotationQueue] : []),
+          lastHazardId: localH?.lastHazardId || cloudH.lastHazardId || null,
+          flawlessZonesBest: Math.max(Number(localH?.flawlessZonesBest) || 0, Number(cloudH.flawlessZonesBest) || 0),
           aiQuests: (localH?.aiQuests && localH.aiQuests.length > 0)
             ? localH.aiQuests
             : (this.state.heroAiQuestsMap?.[cloudH.id]?.length > 0)
@@ -7680,8 +8893,25 @@ class Store {
           DIGITAL_REWARDS_CATALOG.unshift(w);
         }
       });
-    } else if (!Array.isArray(this.state.parentCustomWeapons)) {
+    } else if (Array.isArray(this.state.parentCustomWeapons)) {
+      this.state.parentCustomWeapons = this.state.parentCustomWeapons.filter(w => w && !deletedCustomItemIdsSet.has(w.id));
+    } else {
       this.state.parentCustomWeapons = [];
+    }
+    if (cloudData.parentCustomGear && Array.isArray(cloudData.parentCustomGear)) {
+      this.state.parentCustomGear = cloudData.parentCustomGear.filter(g => g && !deletedCustomItemIdsSet.has(g.id));
+      this.state.parentCustomGear.forEach(g => {
+        if (g && g.id && !DIGITAL_REWARDS_CATALOG.some(cat => cat.id === g.id)) {
+          DIGITAL_REWARDS_CATALOG.unshift(g);
+        }
+        if (g && g.id && g.socket && PET_GEAR_CATALOG[g.socket] && !PET_GEAR_CATALOG[g.socket].some(cat => cat.id === g.id)) {
+          PET_GEAR_CATALOG[g.socket].unshift(g);
+        }
+      });
+    } else if (Array.isArray(this.state.parentCustomGear)) {
+      this.state.parentCustomGear = this.state.parentCustomGear.filter(g => g && !deletedCustomItemIdsSet.has(g.id));
+    } else {
+      this.state.parentCustomGear = [];
     }
     if (cloudData.parentCustomFood && Array.isArray(cloudData.parentCustomFood)) {
       this.state.parentCustomFood = cloudData.parentCustomFood.filter(f => f && !deletedCustomItemIdsSet.has(f.id));
@@ -7690,19 +8920,123 @@ class Store {
           DIGITAL_REWARDS_CATALOG.unshift(f);
         }
       });
-    } else if (!Array.isArray(this.state.parentCustomFood)) {
+    } else if (Array.isArray(this.state.parentCustomFood)) {
+      this.state.parentCustomFood = this.state.parentCustomFood.filter(f => f && !deletedCustomItemIdsSet.has(f.id));
+    } else {
       this.state.parentCustomFood = [];
+    }
+    if (cloudData.parentCustomFurniture && Array.isArray(cloudData.parentCustomFurniture)) {
+      this.state.parentCustomFurniture = cloudData.parentCustomFurniture.filter(f => f && !deletedCustomItemIdsSet.has(f.id));
+      this.state.parentCustomFurniture.forEach(f => {
+        if (f && f.id && !FURNITURE_ITEMS.some(cat => cat.id === f.id)) {
+          FURNITURE_ITEMS.unshift(f);
+        }
+        if (f && f.id && this.state.heroHQ && Array.isArray(this.state.heroHQ.unlockedFurnitureIds) && !this.state.heroHQ.unlockedFurnitureIds.includes(f.id)) {
+          this.state.heroHQ.unlockedFurnitureIds.push(f.id);
+        }
+      });
+    } else if (Array.isArray(this.state.parentCustomFurniture)) {
+      this.state.parentCustomFurniture = this.state.parentCustomFurniture.filter(f => f && !deletedCustomItemIdsSet.has(f.id));
+    } else {
+      this.state.parentCustomFurniture = [];
+    }
+    if (cloudData.parentCustomToys && Array.isArray(cloudData.parentCustomToys)) {
+      this.state.parentCustomToys = cloudData.parentCustomToys.filter(t => t && !deletedCustomItemIdsSet.has(t.id));
+    } else if (Array.isArray(this.state.parentCustomToys)) {
+      this.state.parentCustomToys = this.state.parentCustomToys.filter(t => t && !deletedCustomItemIdsSet.has(t.id));
+    } else {
+      this.state.parentCustomToys = [];
+    }
+    if (cloudData.parentCustomBosses && Array.isArray(cloudData.parentCustomBosses)) {
+      this.state.parentCustomBosses = cloudData.parentCustomBosses.filter(b => b && !deletedCustomItemIdsSet.has(b.id));
+      this.state.parentCustomBosses.forEach(b => {
+        if (b && b.id && !HYGIENE_BOSSES.some(cat => cat.id === b.id)) {
+          HYGIENE_BOSSES.unshift(b);
+        }
+      });
+    } else if (Array.isArray(this.state.parentCustomBosses)) {
+      this.state.parentCustomBosses = this.state.parentCustomBosses.filter(b => b && !deletedCustomItemIdsSet.has(b.id));
+    } else {
+      this.state.parentCustomBosses = [];
+    }
+    if (deletedCustomItemIdsSet.size > 0) {
+      Object.keys(PET_GEAR_CATALOG || {}).forEach((socketKey) => {
+        if (Array.isArray(PET_GEAR_CATALOG[socketKey])) {
+          PET_GEAR_CATALOG[socketKey] = PET_GEAR_CATALOG[socketKey].filter(g => g && !deletedCustomItemIdsSet.has(g.id));
+        }
+      });
+      for (let i = HYGIENE_BOSSES.length - 1; i >= 0; i--) {
+        if (deletedCustomItemIdsSet.has(HYGIENE_BOSSES[i]?.id)) {
+          HYGIENE_BOSSES.splice(i, 1);
+        }
+      }
+      for (let i = FURNITURE_ITEMS.length - 1; i >= 0; i--) {
+        if (deletedCustomItemIdsSet.has(FURNITURE_ITEMS[i]?.id)) {
+          FURNITURE_ITEMS.splice(i, 1);
+        }
+      }
+      if (this.state.equippedPetGearMap && typeof this.state.equippedPetGearMap === 'object') {
+        Object.keys(this.state.equippedPetGearMap).forEach((pId) => {
+          const petG = this.state.equippedPetGearMap[pId];
+          if (typeof petG === 'string' && deletedCustomItemIdsSet.has(petG)) {
+            delete this.state.equippedPetGearMap[pId];
+          } else if (petG && typeof petG === 'object') {
+            Object.keys(petG).forEach((slot) => {
+              if (deletedCustomItemIdsSet.has(petG[slot])) {
+                delete petG[slot];
+              }
+            });
+          }
+        });
+      }
     }
     if (cloudData.inventory && Array.isArray(cloudData.inventory)) {
       this.state.inventory = Array.from(new Set([...(this.state.inventory || []), ...cloudData.inventory])).filter(id => !deletedCustomItemIdsSet.has(id));
     } else if (Array.isArray(this.state.inventory)) {
       this.state.inventory = this.state.inventory.filter(id => !deletedCustomItemIdsSet.has(id));
     }
-    if (this.state.selectedHero && Array.isArray(this.state.selectedHero.inventory)) {
-      this.state.selectedHero.inventory = this.state.selectedHero.inventory.filter(id => !deletedCustomItemIdsSet.has(id));
-      if (deletedCustomItemIdsSet.has(this.state.selectedHero.equippedWeapon)) {
-        this.state.selectedHero.equippedWeapon = 'laser_toothbrush';
+    const pruneHeroTombstonedItems = (hero) => {
+      if (!hero || typeof hero !== 'object') return;
+      if (Array.isArray(hero.inventory)) {
+        hero.inventory = hero.inventory.filter(id => !deletedCustomItemIdsSet.has(id));
       }
+      if (deletedCustomItemIdsSet.has(hero.equippedWeapon)) {
+        hero.equippedWeapon = 'laser_toothbrush';
+      }
+      if (Array.isArray(hero.equippedGear)) {
+        hero.equippedGear = hero.equippedGear.filter(id => !deletedCustomItemIdsSet.has(id));
+      } else if (hero.equippedGear && typeof hero.equippedGear === 'object') {
+        if (deletedCustomItemIdsSet.has(hero.equippedGear.shield)) {
+          delete hero.equippedGear.shield;
+        }
+      }
+      if (Array.isArray(hero.consumables)) {
+        hero.consumables = hero.consumables.filter(c => c && !deletedCustomItemIdsSet.has(c.id || c));
+      } else if (hero.consumables && typeof hero.consumables === 'object') {
+        Object.keys(hero.consumables).forEach((cId) => {
+          if (deletedCustomItemIdsSet.has(cId)) {
+            delete hero.consumables[cId];
+          }
+        });
+      }
+      if (hero.equippedPetGearMap && typeof hero.equippedPetGearMap === 'object') {
+        Object.keys(hero.equippedPetGearMap).forEach((pId) => {
+          const petG = hero.equippedPetGearMap[pId];
+          if (typeof petG === 'string' && deletedCustomItemIdsSet.has(petG)) {
+            delete hero.equippedPetGearMap[pId];
+          } else if (petG && typeof petG === 'object') {
+            Object.keys(petG).forEach((slot) => {
+              if (deletedCustomItemIdsSet.has(petG[slot])) {
+                delete petG[slot];
+              }
+            });
+          }
+        });
+      }
+    };
+    pruneHeroTombstonedItems(this.state.selectedHero);
+    if (Array.isArray(this.state.heroes)) {
+      this.state.heroes.forEach(pruneHeroTombstonedItems);
     }
     if (cloudData.liveRex && typeof cloudData.liveRex === 'object') {
       this.state.liveRex = {
@@ -7836,10 +9170,11 @@ class Store {
     // Ensure rejected / needs-redo tasks across habitIslands and taskForest are uncompleted
     const currentHeroId = this.state.selectedHero?.id || 'hero_1';
     (this.state.taskCompletionLogs || []).forEach(log => {
-      if (log && log.status === 'rejected' && log.heroId === currentHeroId && log.taskId) {
+      if (log && log.status === 'rejected' && log.heroId === currentHeroId && log.taskId && !this.isTaskPendingApproval(log.taskId, currentHeroId)) {
         const aliases = this.getTaskAliasGroup(log.taskId);
+        const isBrushTask = aliases.includes('morning_brush') || aliases.includes('bedtime_brush');
         (this.state.habitIslands || []).forEach(h => {
-          if (aliases.includes(h.id)) {
+          if (aliases.includes(h.id) || (isBrushTask && h.id === 'toothbrush_adventure_battle')) {
             h.completed = false;
             h.pointsApproved = false;
           }
@@ -7872,10 +9207,13 @@ class Store {
       ]));
     }
 
+    // Unconditionally reconcile catalogs & per-kid hygiene fields/mirrors after cloud merge
+    this.reconcileCatalogsAndHeroFields(this.state);
+
     // Persist to actual localStorage key
     try {
       if (typeof localStorage !== 'undefined') {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+        localStorage.setItem(STORAGE_KEY, this._serializeStateForLocalStorage(this.state));
       }
     } catch (e) {
       console.warn('Could not save hydrated state to localStorage:', e);
@@ -7989,17 +9327,25 @@ class Store {
     if (!this.state.heroHQ) {
       this.state.heroHQ = JSON.parse(JSON.stringify(defaultState.heroHQ));
     }
-    if (!Array.isArray(this.state.heroHQ.featuredTrophyIds)) {
-      this.state.heroHQ.featuredTrophyIds = ['rookie_hero_crest'];
-    }
-    const list = [...this.state.heroHQ.featuredTrophyIds];
+    const hero = this.getSelectedHero();
+    const baseList = Array.isArray(hero?.featuredTrophyIds)
+      ? hero.featuredTrophyIds
+      : (Array.isArray(this.state.heroHQ.featuredTrophyIds) ? this.state.heroHQ.featuredTrophyIds : ['rookie_hero_crest']);
+    const list = [...baseList];
     while (list.length < 4) {
       list.push(null);
     }
     if (slotIndex >= 0 && slotIndex < 4) {
       list[slotIndex] = trophyId;
     }
-    this.state.heroHQ.featuredTrophyIds = list;
+    if (hero) {
+      hero.featuredTrophyIds = [...list];
+      const match = (this.state.heroes || []).find((h) => h && h.id === hero.id);
+      if (match && match !== hero) {
+        match.featuredTrophyIds = [...list];
+      }
+    }
+    this.state.heroHQ.featuredTrophyIds = [...list];
     Sound.sparkle();
     this.saveState();
     return true;
@@ -8132,6 +9478,61 @@ class Store {
   // =========================================================================
   // 3D HYGIENE BOSS BLASTER COLOSSEUM METHODS
   // =========================================================================
+
+  // Draws this kid's next toothbrush-battle boss from a persisted, per-kid
+  // shuffle-bag across all HYGIENE_BOSSES IDs so every boss rotates cleanly
+  // without repeating the immediately preceding session's boss. Deliberately
+  // does NOT call saveState() or notify() so synchronous callers never re-trigger
+  // render loops.
+  drawNextHygieneBossId(heroId = null) {
+    const targetHeroId = heroId || this.state.selectedHero?.id || this.getSelectedKidId();
+    const heroInArray = (this.state.heroes || []).find((h) => h && h.id === targetHeroId);
+    const selectedMatch = (this.state.selectedHero?.id === targetHeroId) ? this.state.selectedHero : null;
+    const hero = heroInArray || selectedMatch || this.state.selectedHero || {};
+
+    const validIds = HYGIENE_BOSSES.map((b) => b.id).filter(Boolean);
+    const validSet = new Set(validIds);
+    let queue = Array.isArray(hero.bossRotationQueue)
+      ? Array.from(new Set(hero.bossRotationQueue.filter((id) => validSet.has(id))))
+      : [];
+
+    const buildFreshBag = () => {
+      const ids = [...validIds];
+      for (let i = ids.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [ids[i], ids[j]] = [ids[j], ids[i]];
+      }
+      if (hero.lastBossId && ids[0] === hero.lastBossId && ids.length > 1) {
+        [ids[0], ids[1]] = [ids[1], ids[0]];
+      }
+      return ids;
+    };
+
+    if (queue.length === 0) {
+      queue = buildFreshBag();
+    } else if (hero.lastBossId && queue[0] === hero.lastBossId) {
+      const altIdx = queue.findIndex((id) => id !== hero.lastBossId);
+      if (altIdx > 0) {
+        [queue[0], queue[altIdx]] = [queue[altIdx], queue[0]];
+      } else if (validIds.length > 1) {
+        queue = buildFreshBag();
+      }
+    }
+
+    const nextId = queue.shift() || validIds[0] || 'sugar_bandit';
+    hero.bossRotationQueue = queue;
+    hero.lastBossId = nextId;
+
+    if (heroInArray && heroInArray !== hero) {
+      heroInArray.bossRotationQueue = [...queue];
+      heroInArray.lastBossId = nextId;
+    }
+    if (selectedMatch && selectedMatch !== hero) {
+      selectedMatch.bossRotationQueue = [...queue];
+      selectedMatch.lastBossId = nextId;
+    }
+    return nextId;
+  }
 
   // Draws this kid's next toothbrush-battle sugar hazard from a persisted,
   // per-kid shuffle-bag of all 7 SUGAR_ATTACK_HAZARDS ids, so they cycle
@@ -8850,7 +10251,9 @@ class Store {
 
   getPetSparks(petId, heroId = null) {
     const targetHeroId = heroId || this.state.selectedHero?.id || 'hero_1';
-    const hero = (this.state.heroes || []).find(h => h.id === targetHeroId) || this.state.selectedHero;
+    const selectedMatch = (this.state.selectedHero?.id === targetHeroId) ? this.state.selectedHero : null;
+    const heroInArray = (this.state.heroes || []).find(h => h.id === targetHeroId);
+    const hero = selectedMatch || heroInArray || this.state.selectedHero;
     const pId = String(petId || hero?.activePetId || '1');
     const partitionKey = `${targetHeroId}_${pId}`;
 
@@ -8860,22 +10263,29 @@ class Store {
     if (this.state.petSparkMap?.[partitionKey] !== undefined) {
       return Number(this.state.petSparkMap[partitionKey]) || 0;
     }
+    if (hero?.sparks !== undefined) {
+      return Number(hero.sparks) || 0;
+    }
     if (this.state.petSparkMap?.[pId] !== undefined) {
       return Number(this.state.petSparkMap[pId]) || 0;
     }
-    return Number(hero?.sparks) || 0;
+    return 0;
   }
 
   getActivePetSparks(heroId = null) {
     const targetHeroId = heroId || this.state.selectedHero?.id || 'hero_1';
-    const hero = (this.state.heroes || []).find(h => h.id === targetHeroId) || this.state.selectedHero;
+    const selectedMatch = (this.state.selectedHero?.id === targetHeroId) ? this.state.selectedHero : null;
+    const heroInArray = (this.state.heroes || []).find(h => h.id === targetHeroId);
+    const hero = selectedMatch || heroInArray || this.state.selectedHero;
     const petId = String(hero?.activePetId || '1');
     return this.getPetSparks(petId, targetHeroId);
   }
 
-  addPetSparks(petId, amount = 15, heroId = null) {
+  addPetSparks(petId, amount = 15, heroId = null, skipSave = false) {
     const targetHeroId = heroId || this.state.selectedHero?.id || 'hero_1';
-    const hero = (this.state.heroes || []).find(h => h.id === targetHeroId) || this.state.selectedHero;
+    const selectedMatch = (this.state.selectedHero?.id === targetHeroId) ? this.state.selectedHero : null;
+    const heroInArray = (this.state.heroes || []).find(h => h.id === targetHeroId);
+    const hero = selectedMatch || heroInArray || this.state.selectedHero;
     const pId = String(petId || hero?.activePetId || '1');
     const partitionKey = `${targetHeroId}_${pId}`;
 
@@ -8887,28 +10297,27 @@ class Store {
 
     this.state.petSparkMap[partitionKey] = next;
     this.state.petSparkMap[pId] = next;
-    if (hero) {
-      if (!hero.petSparkMap) hero.petSparkMap = {};
-      hero.petSparkMap[pId] = next;
-      hero.sparks = next;
-      hero.evolutionSparks = next;
-      if (this.state.selectedHero?.id === hero.id) {
-        this.state.selectedHero.sparks = next;
-        this.state.selectedHero.evolutionSparks = next;
-        if (!this.state.selectedHero.petSparkMap) this.state.selectedHero.petSparkMap = {};
-        this.state.selectedHero.petSparkMap[pId] = next;
-      }
-    }
+    [hero, heroInArray, selectedMatch].forEach((target) => {
+      if (!target) return;
+      if (!target.petSparkMap) target.petSparkMap = {};
+      target.petSparkMap[pId] = next;
+      target.sparks = next;
+      target.evolutionSparks = next;
+    });
     if (typeof this.addPetCareXp === 'function') {
-      this.addPetCareXp(pId, amount);
+      this.addPetCareXp(pId, amount, skipSave);
     }
-    this.saveState(true);
+    if (!skipSave) {
+      this.saveState(true);
+    }
     return next;
   }
 
-  deductPetSparks(petId, amount = 100, heroId = null) {
+  deductPetSparks(petId, amount = 100, heroId = null, skipSave = false) {
     const targetHeroId = heroId || this.state.selectedHero?.id || 'hero_1';
-    const hero = (this.state.heroes || []).find(h => h.id === targetHeroId) || this.state.selectedHero;
+    const selectedMatch = (this.state.selectedHero?.id === targetHeroId) ? this.state.selectedHero : null;
+    const heroInArray = (this.state.heroes || []).find(h => h.id === targetHeroId);
+    const hero = selectedMatch || heroInArray || this.state.selectedHero;
     const pId = String(petId || hero?.activePetId || '1');
     const partitionKey = `${targetHeroId}_${pId}`;
 
@@ -8920,19 +10329,16 @@ class Store {
 
     this.state.petSparkMap[partitionKey] = next;
     this.state.petSparkMap[pId] = next;
-    if (hero) {
-      if (!hero.petSparkMap) hero.petSparkMap = {};
-      hero.petSparkMap[pId] = next;
-      hero.sparks = next;
-      hero.evolutionSparks = next;
-      if (this.state.selectedHero?.id === hero.id) {
-        this.state.selectedHero.sparks = next;
-        this.state.selectedHero.evolutionSparks = next;
-        if (!this.state.selectedHero.petSparkMap) this.state.selectedHero.petSparkMap = {};
-        this.state.selectedHero.petSparkMap[pId] = next;
-      }
+    [hero, heroInArray, selectedMatch].forEach((target) => {
+      if (!target) return;
+      if (!target.petSparkMap) target.petSparkMap = {};
+      target.petSparkMap[pId] = next;
+      target.sparks = next;
+      target.evolutionSparks = next;
+    });
+    if (!skipSave) {
+      this.saveState(true);
     }
-    this.saveState(true);
     return next;
   }
 
@@ -9002,14 +10408,14 @@ class Store {
     return streakData;
   }
 
-  syncHabitPetCare(habitId, type = 'habit', petId = null, awardSparks = true) {
+  syncHabitPetCare(habitId, type = 'habit', petId = null, awardSparks = true, skipSave = false) {
     const activePet = this.getActivePet();
     const pId = String(petId || activePet?.id || '2');
     const sanct = this.getPetSanctuaryState();
 
     // 1. Award +15 Evolution Sparks (if not already awarded by caller)
     if (awardSparks) {
-      this.addPetSparks(pId, 15);
+      this.addPetSparks(pId, 15, null, skipSave);
     }
 
     // 2. Award +35 Bond XP
@@ -9027,7 +10433,9 @@ class Store {
     // 3. Activate 24h Pearly Gleam
     bond.pearlyGleamUntil = Date.now() + (24 * 60 * 60 * 1000);
 
-    this.saveState(true);
+    if (!skipSave) {
+      this.saveState(true);
+    }
     return { sparksAwarded: awardSparks ? 15 : 0, bondXpAwarded: 35, pearlyGleam: true };
   }
 

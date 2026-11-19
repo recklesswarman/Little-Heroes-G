@@ -199,6 +199,44 @@ export const HYGIENE_BOSSES = [
     bombName: 'Sticky Goo Orb',
     cleansedTitle: 'Minty Marshmallow Spirit 👻',
     cleansedAvatar: '👻✨'
+  },
+  {
+    id: "tartar_tyrant",
+    name: "The Tartar Tyrant",
+    title: "Calcified Crown Warlord",
+    avatar: "🪨",
+    image: "/assets/bosses/tartar_tyrant.jpg",
+    cleansedImage: "/assets/bosses/tartar_tyrant_cleansed.jpg",
+    color: "#0d9488",
+    accentBorder: "border-teal-500",
+    gradient: "from-slate-800/30 via-teal-700/15 to-amber-600/10",
+    maxHp: 170,
+    shieldHp: 14,
+    shieldMilestones: [70, 35],
+    shieldName: "Calcified Tartar Shell",
+    attackName: "Calcified Boulder Barrage",
+    description: "Encased in jagged calcified rock armor that hardens over time—scrub rapidly to shatter it before it recharges!",
+    weakness: "Rapid Speed Scrub",
+    difficulty: "Supreme Boss Battle",
+    rewardCoins: 60,
+    rewardXP: 90,
+    rewardSparks: 20,
+    trophyRelicId: 'trophy_tartar_tyrant',
+    meshType: 'tartar_tyrant',
+    bombColor: '#d97706',
+    bombName: 'Calcified Tartar Meteor',
+    cleansedTitle: 'Polished Pearl Paladin 🦷',
+    cleansedAvatar: '🦷✨',
+    armorShell: {
+      maxIntegrity: 100,
+      hardenRatePerSec: 6,
+      rechargeDurationMs: 12000,
+      vulnerableDurationMs: 8000,
+      speedScrubThresholds: {
+        tripleMs: 6000,
+        doubleMs: 11000
+      }
+    }
   }
 ];
 
@@ -348,6 +386,32 @@ export const SUGAR_ATTACK_HAZARDS = [
     rexWarning: "Wobbly Pudding Splash! Don't let it jiggle onto your molars -- brush it off!",
     shatterType: 'pudding_splatter',
     shatterColors: ['#d97706', '#fef3c7', '#451a03']
+  },
+  {
+    id: 'cinnamon_fireballs',
+    name: 'Cinnamon Fireballs',
+    shortName: 'Fireballs',
+    emoji: '🔥',
+    color: '#dc2626',
+    accentColor: '#f97316',
+    image: '/assets/hazards/cinnamon_fireballs.jpg',
+    flavorText: 'Spicy red-hot cinnamon candy meteors! Raise your Minty Shield to cool them down!',
+    rexWarning: "Whoa, Cinnamon Fireballs incoming! Activate your Minty Shield to absorb the spicy heat!",
+    shatterType: 'ember_sparks',
+    shatterColors: ['#dc2626', '#f97316', '#fbbf24', '#fef08a']
+  },
+  {
+    id: 'sour_apple_acid_drops',
+    name: 'Sour Apple Acid Drops',
+    shortName: 'Acid Drops',
+    emoji: '🍏',
+    color: '#84cc16',
+    accentColor: '#22c55e',
+    image: '/assets/hazards/sour_apple_acid_drops.jpg',
+    flavorText: 'Tangy neon-green sour apple acid drops! Block them with your frosty Minty Shield!',
+    rexWarning: "Watch out! Sour Apple Acid Drops! Raise your Minty Shield before that tangy acid hits!",
+    shatterType: 'acid_droplets',
+    shatterColors: ['#84cc16', '#22c55e', '#a3e635', '#bef264']
   }
 ];
 
@@ -383,8 +447,128 @@ export const DENTAL_BADGES = [
     icon: "☀️🌙",
     desc: "Brush teeth both in the morning and at bedtime on the same day.",
     category: "Habit Streak"
+  },
+  {
+    id: "plaque_whisperer",
+    name: "Plaque Whisperer",
+    icon: "🧚",
+    desc: "Clear a swarm of Sweet Tooth Sprites without taking damage.",
+    category: "Minion Mastery"
+  },
+  {
+    id: "shell_shatter",
+    name: "Shell Shatter",
+    icon: "💥",
+    desc: "Break The Tartar Tyrant's armor before it recharges.",
+    category: "Armor Breaker"
+  },
+  {
+    id: "minty_master",
+    name: "Minty Master",
+    icon: "❄️",
+    desc: "Keep the Minty Shield active for the entire two-minute battle.",
+    category: "Shield Endurance"
+  },
+  {
+    id: "perfect_synergy",
+    name: "Perfect Synergy",
+    icon: "⚡",
+    desc: "Trigger a Victory Burst during a boss phase shift.",
+    category: "Combo Timing"
   }
 ];
+
+// -------------------------------------------------------------
+// Deterministic Weekly Challenges Pool (Calendar ISO Week)
+// -------------------------------------------------------------
+export const WEEKLY_CHALLENGES_POOL = [
+  {
+    id: 'cinnamon_barrage',
+    title: 'Cinnamon Barrage Week',
+    description: 'Defeat 3 bosses firing Spicy Cinnamon Fireballs while keeping your Minty Shield ready!',
+    modifierType: 'hazard_focus',
+    modifierConfig: { forcedHazardId: 'cinnamon_fireballs', attackRateMult: 1.2 },
+    targetCount: 3,
+    rewardCoins: 75,
+    rewardXp: 100,
+    rewardSparks: 25
+  },
+  {
+    id: 'sour_acid_storm',
+    title: 'Sour Acid Storm',
+    description: 'Cleanse 3 bosses while blocking Sour Apple Acid Drops with your frosty Minty Shield!',
+    modifierType: 'hazard_focus',
+    modifierConfig: { forcedHazardId: 'sour_apple_acid_drops', attackRateMult: 1.2 },
+    targetCount: 3,
+    rewardCoins: 80,
+    rewardXp: 110,
+    rewardSparks: 25
+  },
+  {
+    id: 'sprite_swarm_blitz',
+    title: 'Sweet Tooth Swarm Blitz',
+    description: 'Clear Sweet Tooth Sprites cleanly across 3 brushing battles with zero sticky hits!',
+    modifierType: 'sprite_swarm',
+    modifierConfig: { extraSprites: 2, spriteSpeedMult: 1.15 },
+    targetCount: 3,
+    rewardCoins: 85,
+    rewardXp: 115,
+    rewardSparks: 30
+  },
+  {
+    id: 'tartar_speed_scrub',
+    title: 'Calcified Shell Breaker',
+    description: 'Complete 2 battles with rapid scrubbing speed (85%+ cadence) to shatter tough boss shells!',
+    modifierType: 'speed_scrub',
+    modifierConfig: { minCadence: 85, bonusShellArmor: true },
+    targetCount: 2,
+    rewardCoins: 90,
+    rewardXp: 120,
+    rewardSparks: 30
+  },
+  {
+    id: 'minty_shield_fortress',
+    title: 'Minty Shield Fortress',
+    description: 'Maintain high Minty Shield uptime across 3 full two-minute battles!',
+    modifierType: 'shield_endurance',
+    modifierConfig: { minShieldAbsorbs: 2 },
+    targetCount: 3,
+    rewardCoins: 80,
+    rewardXp: 105,
+    rewardSparks: 25
+  },
+  {
+    id: 'foam_blast_sweep',
+    title: 'Effervescent Foam Sweep',
+    description: 'Unleash Minty Fresh Blast to sweep away hazards and finish 3 full brushing victories!',
+    modifierType: 'foam_blast',
+    modifierConfig: { foamChargeBonus: 1.15 },
+    targetCount: 3,
+    rewardCoins: 75,
+    rewardXp: 100,
+    rewardSparks: 25
+  }
+];
+
+export function getCurrentWeeklyChallenge(now = new Date()) {
+  const inputDate = now instanceof Date ? now : new Date(now);
+  const safeDate = Number.isNaN(inputDate.getTime()) ? new Date() : inputDate;
+  const utc = new Date(Date.UTC(safeDate.getUTCFullYear(), safeDate.getUTCMonth(), safeDate.getUTCDate()));
+  const dayNum = utc.getUTCDay() || 7;
+  utc.setUTCDate(utc.getUTCDate() + 4 - dayNum);
+  const isoYear = utc.getUTCFullYear();
+  const yearStart = new Date(Date.UTC(isoYear, 0, 1));
+  const isoWeek = Math.ceil((((utc - yearStart) / 86400000) + 1) / 7);
+  const weekKey = `${isoYear}-W${String(isoWeek).padStart(2, '0')}`;
+  const index = Math.abs((isoYear * 53 + isoWeek)) % WEEKLY_CHALLENGES_POOL.length;
+  const challenge = WEEKLY_CHALLENGES_POOL[index];
+  return {
+    weekKey,
+    isoYear,
+    isoWeek,
+    challenge
+  };
+}
 
 export const DENTAL_QUADRANTS = [
   {
