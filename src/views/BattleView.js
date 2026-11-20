@@ -1271,6 +1271,10 @@ export function activateMintyShield(source = 'button') {
   mintyShieldActive = true;
   lastShieldScrubRefreshSec = -1;
 
+  if (source !== 'refresh') {
+    mintyShieldCharge = 0;
+  }
+
   hanaBattle3DService.setMintyShieldState?.({
     active: true,
     charge: mintyShieldCharge,
@@ -1927,6 +1931,8 @@ function triggerSupernovaBlast() {
       spritesSpawnedCount = Math.max(spritesSpawnedCount, hadSprites);
       spritesClearedNoDamage = true;
     }
+    // F5. Minty Fresh Blast immediately cleanses Sticky Residue on release.
+    hanaBattle3DService.setStickyResidueState?.({ active: false, intensity: 0 });
     sync3DServiceFromStore(null);
     if (typeof hanaBattle3DService.triggerMintyFreshBlast === 'function') {
       hanaBattle3DService.triggerMintyFreshBlast();
@@ -2609,9 +2615,21 @@ export function attachBattleListeners() {
         if (Array.isArray(cleared) && cleared.length > 0 && (hanaBattle3DService.sweetToothSprites || []).length === 0) {
           spritesClearedNoDamage = true;
         }
+        // F5. Sticky Residue applies on contact with any sprite/trail the
+        // circular sweep didn't just clear.
+        if (beforeSprites > 0 && typeof hanaBattle3DService.applyStickyResidueContactAt === 'function') {
+          const contacted = hanaBattle3DService.applyStickyResidueContactAt(cx, cy);
+          if (contacted) {
+            spritesClearedNoDamage = false;
+          }
+        }
       }
+      const stickyNow = hanaBattle3DService.stickyResidueState || hanaBattle3DService.stickyResidue;
+      const scrubThrottleMs = stickyNow?.active
+        ? 65 + Math.round(55 * Math.min(1.5, stickyNow.intensity || 1))
+        : 65;
       const now = Date.now();
-      if (now - lastPointerScrubAt < 65) return;
+      if (now - lastPointerScrubAt < scrubThrottleMs) return;
       lastPointerScrubAt = now;
       const activeQuad = getDentalQuadrant(secondsRemaining, totalDuration);
       const manualSnap = brushVisionTracker.recordManualInput(activeQuad.id, now);

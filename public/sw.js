@@ -1,4 +1,4 @@
-const CACHE_NAME = 'little-heroes-v3.18.0-tooth-defenders-overhaul-20261119';
+const CACHE_NAME = 'little-heroes-v3.18.1-sticky-residue-shield-fix-20261120';
 const STATIC_ASSETS = [
   './',
   './index.html',
