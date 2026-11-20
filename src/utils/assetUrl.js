@@ -12,17 +12,40 @@ export function getPublicBaseUrl() {
   return raw.endsWith('/') ? raw : `${raw}/`;
 }
 
+// firebase.json marks everything under assets/** as immutable with a
+// one-year max-age so unchanging bundle assets stay cheap to serve. Content
+// under /assets (boss portraits, pet art, reward icons, ...) is regenerated
+// in place at the same filename when it's refreshed, though, so without a
+// cache-busting suffix browsers and the CDN edge would keep serving the old
+// bytes for that whole year. Tag every resolved asset URL with the same
+// APP_BUILD_VERSION index.html/sw.js already bump on any such refresh, so a
+// version bump reliably forces a fresh fetch everywhere the asset is used.
+function getAssetCacheBustVersion() {
+  return (typeof window !== 'undefined' && window.__LITTLE_HEROES_VERSION__) || '';
+}
+
 export function resolvePublicAssetUrl(assetPath) {
   if (!assetPath || typeof assetPath !== 'string') return '';
   const trimmed = assetPath.trim();
   if (!trimmed) return '';
-  if (/^(?:data:|blob:|https?:\/\/|\/\/[^/])/i.test(trimmed)) {
+  if (/^(?:data:|blob:)/i.test(trimmed)) {
     return trimmed;
   }
+  // External/absolute URLs (CDNs, Firebase Storage signed URLs, ...) are
+  // returned as-is -- they're outside our hosting cache-control rules, and
+  // appending a query param could break a signed URL's signature.
+  if (/^(?:https?:\/\/|\/\/[^/])/i.test(trimmed)) {
+    return trimmed;
+  }
+  const version = getAssetCacheBustVersion();
+  const withVersion = (url) => {
+    if (!version) return url;
+    return `${url}${url.includes('?') ? '&' : '?'}v=${encodeURIComponent(version)}`;
+  };
   const base = getPublicBaseUrl();
   if (base !== '/' && base !== './' && trimmed.startsWith(base)) {
-    return trimmed;
+    return withVersion(trimmed);
   }
   const clean = trimmed.replace(/^\.\//, '').replace(/^\/+/, '');
-  return `${base}${clean}`;
+  return withVersion(`${base}${clean}`);
 }

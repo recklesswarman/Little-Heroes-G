@@ -1,4 +1,4 @@
-const CACHE_NAME = 'little-heroes-v3.18.7-boss-rotation-retry-fix-20261120';
+const CACHE_NAME = 'little-heroes-v3.18.8-boss-cleanse-art-cachefix-20261120';
 const STATIC_ASSETS = [
   './',
   './index.html',

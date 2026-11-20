@@ -340,7 +340,16 @@ export function renderBattleView() {
     }
     selectedBossId = sessionRotatedBossId;
     if (store.state) store.state.selectedBossId = selectedBossId;
-  } else {
+  } else if (!isBattleRunning) {
+    // Only re-derive from the store when there's no battle actively running.
+    // While a battle IS running, selectedBossId is the single source of
+    // truth for the boss that was locked in when it started -- re-reading
+    // store.state.selectedBossId here on every render tick (HP updates,
+    // timer ticks, any store.notify()) let an unrelated write to that field
+    // silently swap the active boss mid-fight. The most common unrelated
+    // writer is the real-time Firestore sync (hydrateFromCloud), which can
+    // land mid-battle and overwrite store.state.selectedBossId with a stale
+    // value from another explicit selection.
     selectedBossId = store.getSelectedBossId ? store.getSelectedBossId() : (store.state?.selectedBossId || selectedBossId);
   }
   const currentBoss = getBattleBoss(selectedBossId);
