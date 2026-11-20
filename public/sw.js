@@ -1,4 +1,4 @@
-const CACHE_NAME = 'little-heroes-v3.18.3-boss-art-refresh-20261120';
+const CACHE_NAME = 'little-heroes-v3.18.4-parent-studio-ai-image-gen-20261120';
 const STATIC_ASSETS = [
   './',
   './index.html',
