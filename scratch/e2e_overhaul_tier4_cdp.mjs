@@ -827,7 +827,7 @@ const scenarios = [
           await new Promise(r => setTimeout(r, 250));
         }
         assert.strictEqual(blasted, true, 'S2: #supernova-blast-btn charged and triggered Minty Fresh Blast');
-        const postBlastWidth = await client.eval(`parseInt(document.getElementById('supernova-charge-bar')?.style?.width || '0', 10)`);
+        const postBlastWidth = await client.eval(`parseInt(document.getElementById('supernova-charge-bar')?.style?.height || '0', 10)`);
         assert.ok(postBlastWidth < 40, `S2: Minty Fresh Blast must consume charge (postWidth=${postBlastWidth}%)`);
         await assertCanvasAnimatingAndPainted(client, 'S2 Foam Blast');
         assertNoNetworkOrRuntimeErrors(client, 'S2');
@@ -866,7 +866,7 @@ const scenarios = [
         for (let i = 0; i < 12; i++) {
           await dispatchCircularMouseSweep(client, 320, 260, 70, 8);
           chargedReady = await client.eval(`(() => {
-            const pct = parseInt(document.getElementById('supernova-charge-bar')?.style?.width || '0', 10);
+            const pct = parseInt(document.getElementById('supernova-charge-bar')?.style?.height || '0', 10);
             const sb = document.getElementById('minty-shield-btn');
             const bb = document.getElementById('supernova-blast-btn');
             return pct >= 40 && Boolean(sb && !sb.disabled) && Boolean(bb && !bb.disabled);
@@ -881,7 +881,7 @@ const scenarios = [
           window.dispatchEvent(new CustomEvent('companion-speech-start', { detail: { text: 'Blast!' } }));
           window.__emitVoiceCommand('Blast!', true);
         })()`);
-        const chargeGatedPct = await client.eval(`parseInt(document.getElementById('supernova-charge-bar')?.style?.width || '0', 10)`);
+        const chargeGatedPct = await client.eval(`parseInt(document.getElementById('supernova-charge-bar')?.style?.height || '0', 10)`);
         assert.ok(chargeGatedPct >= 40, `S3A: Echo-gated "Blast!" must NOT consume charge while companion speaks (got ${chargeGatedPct}%)`);
 
         // Wait past 350ms post-TTS tail, verify speechSynthesis.speaking === true also gates, then issue real voice commands
@@ -892,7 +892,7 @@ const scenarios = [
           window.__speechMock.setSpeaking(true);
           window.__emitVoiceCommand('Blast!', true);
         })()`);
-        const chargeGatedBySynthPct = await client.eval(`parseInt(document.getElementById('supernova-charge-bar')?.style?.width || '0', 10)`);
+        const chargeGatedBySynthPct = await client.eval(`parseInt(document.getElementById('supernova-charge-bar')?.style?.height || '0', 10)`);
         assert.ok(chargeGatedBySynthPct >= 40, `S3A: speechSynthesis.speaking=true must gate "Blast!" (got ${chargeGatedBySynthPct}%)`);
         await client.eval(`window.__speechMock.setSpeaking(false)`);
 
@@ -938,7 +938,7 @@ const scenarios = [
         await client.eval(`window.__emitVoiceCommand('Blast!', true)`);
         await new Promise(r => setTimeout(r, 150));
         const blastPostCheck = await client.eval(`(() => ({
-          pct: parseInt(document.getElementById('supernova-charge-bar')?.style?.width || '0', 10),
+          pct: parseInt(document.getElementById('supernova-charge-bar')?.style?.height || '0', 10),
           btnDisabled: Boolean(document.getElementById('supernova-blast-btn')?.disabled)
         }))()`);
         assert.ok(blastPostCheck.pct < 40 && blastPostCheck.btnDisabled, `S3A: Post-cooldown "Blast!" must trigger Foam Blast and consume charge (got ${JSON.stringify(blastPostCheck)})`);
