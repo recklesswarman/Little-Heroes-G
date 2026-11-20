@@ -8277,8 +8277,13 @@ class Store {
         'devices',
         // A live AR Toothbrush Battle is single-device and second-to-second (HP,
         // countdown, victory modal); a wholesale overwrite here would reset or
-        // clobber an in-progress battle from a stale/foreign snapshot.
+        // clobber an in-progress battle from a stale/foreign snapshot. The
+        // boss that battle is fighting is just as single-device/session-scoped
+        // -- without this, a cloud snapshot landing mid-fight could silently
+        // swap the active boss for whatever was last explicitly selected on
+        // another device.
         'bossColosseum',
+        'selectedBossId',
         // These three have dedicated, conflict-safe merges further down in this
         // function (heroes: preferLocalRewards guard; selectedHero: re-derived
         // from the merged heroes array, keyed off this device's own currently
