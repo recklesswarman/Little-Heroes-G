@@ -36,9 +36,19 @@ jobs:
           TARGET_HOST: 'firebase'
           VITE_IMAGE_GEN_API_URL: 'https://little-heroes-free-image-api.recklesswarman.workers.dev'
       - name: Deploy to Firebase Hosting
+        id: firebase_deploy
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: "${{ secrets.GITHUB_TOKEN }}"
           firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}"
           projectId: little-heroes-quest-8842
           channelId: live
+      # Check the live sites AFTER deploying (never before: a broken live site must not block the deploy that repairs it).
+      - name: Verify the live sites
+        if: steps.firebase_deploy.outcome == 'success'
+        continue-on-error: true
+        env:
+          PARITY_LIVE: '1'
+        run: |
+          sleep 30
+          node scratch/verify_multi_host_parity.mjs

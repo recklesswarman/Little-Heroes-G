@@ -48,3 +48,13 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+      # Check the live sites AFTER deploying (never before: a broken live site must not block the deploy that repairs it).
+      # Shown as a warning when something is off; it does not fail the deployment.
+      - name: Verify the live sites
+        if: steps.deployment.outcome == 'success'
+        continue-on-error: true
+        env:
+          PARITY_LIVE: '1'
+        run: |
+          sleep 60
+          node scratch/verify_multi_host_parity.mjs
