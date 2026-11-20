@@ -59,6 +59,59 @@ class FirebaseAILogicService {
     return this._storyModel;
   }
 
+  /**
+   * Calls the app's own free Cloudflare Workers AI image generator directly from the browser
+   * (same worker + no-API-key pattern as bedtimeIllustrationService). Returns a data: URI, or
+   * null on failure/timeout so callers fall back to the procedural generate3DIcon() vector art.
+   */
+  async generateCloudflareImage({ prompt, shortPrompt, seed, negative_prompt } = {}) {
+    if (!prompt) return null;
+    const apiUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_IMAGE_GEN_API_URL) ||
+                   'https://little-heroes-free-image-api.recklesswarman.workers.dev';
+    try {
+      const cleanUrl = apiUrl.endsWith('/') ? apiUrl : `${apiUrl}/`;
+      const res = await fetch(cleanUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt,
+          shortPrompt: shortPrompt || prompt,
+          seed: seed ?? ((Math.random() * 2147483647) | 0),
+          negative_prompt: negative_prompt || 'pink, purple, magenta, violet, neon pink, scary, dark, deformed, blurry, text, watermark',
+          format: 'base64'
+        }),
+        signal: AbortSignal.timeout(20000)
+      });
+      if (!res.ok) return null;
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const data = await res.json();
+        return data.dataUri || data.imageUrl || null;
+      }
+      const arrayBuffer = await res.arrayBuffer();
+      if (typeof btoa === 'undefined') return null;
+      let binary = '';
+      const bytes = new Uint8Array(arrayBuffer);
+      for (let i = 0; i < bytes.byteLength; i += 8192) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + 8192, bytes.byteLength)));
+      }
+      return `data:${contentType || 'image/jpeg'};base64,${btoa(binary)}`;
+    } catch (err) {
+      console.warn('Cloudflare Workers AI image generation note:', err.message);
+      return null;
+    }
+  }
+
+  /**
+   * Resolves the artwork for a Parent Portal AI-generated item: tries the free in-house
+   * Cloudflare image generator first, falling back to the procedural vector icon if it is
+   * unavailable, rate-limited, or fails.
+   */
+  async resolveItemGraphic({ iconPrompt, icon, colorTheme, label }) {
+    const image = await this.generateCloudflareImage({ prompt: iconPrompt, shortPrompt: iconPrompt });
+    return image || generate3DIcon(icon, colorTheme, (label || '').slice(0, 12));
+  }
+
   async generateRewardItem(promptText, typeCategory = 'gear', defaultPrice = 150) {
     let title = promptText;
     let description = `A powerful custom ${typeCategory} crafted to help little heroes on their daily quests.`;
@@ -94,10 +147,15 @@ Return ONLY a valid JSON object with these exact keys (no markdown code blocks, 
       }
     }
 
-    // Generate high-resolution 3D tactile vector graphic
-    const graphicDataUrl = generate3DIcon(iconName, colorTheme, title.slice(0, 12));
+    // Generate artwork via the free in-house Cloudflare image generator, falling back to the procedural icon
+    const graphicDataUrl = await this.resolveItemGraphic({
+      iconPrompt: buildIconPrompt(typeCategory, title, description),
+      icon: iconName,
+      colorTheme,
+      label: title
+    });
 
-    const categoryName = typeCategory === 'gear' 
+    const categoryName = typeCategory === 'gear'
       ? 'Avatar Gear' 
       : typeCategory === 'weapon' 
       ? 'Weapons' 
@@ -245,7 +303,12 @@ Generate a creative, epic, and encouraging gear item. Return ONLY a valid JSON o
     }
 
     const uniqueId = `ai_gear_${Date.now()}`;
-    const graphicDataUrl = generate3DIcon(icon, getThemeColorName(primaryColor), name.slice(0, 12));
+    const graphicDataUrl = await this.resolveItemGraphic({
+      iconPrompt: buildIconPrompt('pet gear', name, desc, `A ${meshArchetype} worn by a companion pet, colors ${primaryColor} and ${secondaryColor}.`),
+      icon,
+      colorTheme: getThemeColorName(primaryColor),
+      label: name
+    });
     const statBonusLabel = `+${statBonusPercent}% ${formatStatBonusName(statBonusType)}`;
 
     return {
@@ -350,7 +413,12 @@ Generate a whimsical, comforting 3D furniture piece. Return ONLY valid JSON:
     }
 
     const uniqueId = `ai_furn_${Date.now()}`;
-    const graphicDataUrl = generate3DIcon(icon, getThemeColorName(primaryColor), name.slice(0, 12));
+    const graphicDataUrl = await this.resolveItemGraphic({
+      iconPrompt: buildIconPrompt('furniture', name, desc, `A ${furnitureType} for a kid's hero headquarters bedroom.`),
+      icon,
+      colorTheme: getThemeColorName(primaryColor),
+      label: name
+    });
 
     return {
       id: uniqueId,
@@ -449,7 +517,12 @@ Generate an exciting 3D pet playground toy. Return ONLY valid JSON:
     }
 
     const uniqueId = `ai_toy_${Date.now()}`;
-    const graphicDataUrl = generate3DIcon(icon, getThemeColorName(primaryColor), name.slice(0, 12));
+    const graphicDataUrl = await this.resolveItemGraphic({
+      iconPrompt: buildIconPrompt('pet toy', name, desc, `A ${toyType} playground toy for pets.`),
+      icon,
+      colorTheme: getThemeColorName(primaryColor),
+      label: name
+    });
 
     return {
       id: uniqueId,
@@ -545,7 +618,12 @@ Generate a fun, healthy-sounding pet snack pack. Return ONLY valid JSON (no mark
     }
 
     const uniqueId = `ai_food_${Date.now()}`;
-    const graphicDataUrl = generate3DIcon(icon, getThemeColorName(primaryColor), name.slice(0, 12));
+    const graphicDataUrl = await this.resolveItemGraphic({
+      iconPrompt: buildIconPrompt('pet food snack', name, desc),
+      icon,
+      colorTheme: getThemeColorName(primaryColor),
+      label: name
+    });
 
     return {
       id: uniqueId,
@@ -639,7 +717,12 @@ Generate a fun, cartoonish villain boss for kids to defeat. Return ONLY valid JS
     }
 
     const uniqueId = `ai_boss_${Date.now()}`;
-    const graphicDataUrl = generate3DIcon(icon, getThemeColorName(primaryColor), name.slice(0, 12));
+    const graphicDataUrl = await this.resolveItemGraphic({
+      iconPrompt: buildIconPrompt('villain boss character', name, desc, `A cartoonish, harmless-looking villain for a kids' AR chore battle game, domain: ${domain}.`),
+      icon,
+      colorTheme: getThemeColorName(primaryColor),
+      label: name
+    });
 
     return {
       id: uniqueId,
@@ -717,7 +800,12 @@ Generate an equippable AR battle weapon for kids (ages 3-9). Return ONLY valid J
     }
 
     const uniqueId = `ai_weapon_${Date.now()}`;
-    const graphicDataUrl = generate3DIcon(def.icon, getThemeColorName(primaryColor), name.slice(0, 12));
+    const graphicDataUrl = await this.resolveItemGraphic({
+      iconPrompt: buildIconPrompt('AR battle weapon', name, desc),
+      icon: def.icon,
+      colorTheme: getThemeColorName(primaryColor),
+      label: name
+    });
 
     return {
       id: uniqueId,
@@ -810,7 +898,12 @@ Generate a cute 3D companion pet. Return ONLY valid JSON:
     }
 
     const uniqueId = `ai_pet_${Date.now()}`;
-    const graphicDataUrl = generate3DIcon(icon, getThemeColorName(primaryColor), name.slice(0, 12));
+    const graphicDataUrl = await this.resolveItemGraphic({
+      iconPrompt: buildIconPrompt('companion pet creature', name, desc, `Archetype: ${chosenArch}.`),
+      icon,
+      colorTheme: getThemeColorName(primaryColor),
+      label: name
+    });
 
     return {
       id: uniqueId,
@@ -994,6 +1087,13 @@ function formatStatBonusName(type) {
 function capitalize(str) {
   if (!str) return '';
   return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+/** Builds the prompt sent to the free Cloudflare image generator for a Parent Portal AI item icon. */
+function buildIconPrompt(category, name, desc, extra = '') {
+  return `3D Pixar-style clay render icon of ${name}, a ${category} for a kids' adventure app: ${desc} ${extra} Vibrant kid-friendly colors, strictly no pink or purple, soft studio lighting, clean simple background, no text, no watermark, video game item icon style.`
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function getThemeColorName(hex) {

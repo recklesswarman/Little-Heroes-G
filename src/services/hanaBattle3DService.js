@@ -1162,6 +1162,42 @@ class HanaBattle3DService {
   }
 
   /**
+   * F5. Sticky Residue Contact Detection — applies the debuff when the
+   * player's cursor/brush touches a Sweet Tooth Sprite or its sugary trail.
+   */
+  applyStickyResidueContactAt(x, y) {
+    if (!Array.isArray(this.sweetToothSprites) || this.sweetToothSprites.length === 0) {
+      return false;
+    }
+    const cx = typeof x === 'number' && Number.isFinite(x) ? x : this.width * 0.5;
+    const cy = typeof y === 'number' && Number.isFinite(y) ? y : this.height * 0.5;
+
+    let contacted = false;
+    for (const sp of this.sweetToothSprites) {
+      const contactRadius = (sp.radius || 24) + 14;
+      if (Math.hypot((sp.x || 0) - cx, (sp.y || 0) - cy) <= contactRadius) {
+        contacted = true;
+        break;
+      }
+      if (Array.isArray(sp.trail)) {
+        for (const pt of sp.trail) {
+          if (Math.hypot((pt?.x || 0) - cx, (pt?.y || 0) - cy) <= 20) {
+            contacted = true;
+            break;
+          }
+        }
+      }
+      if (contacted) break;
+    }
+
+    if (contacted) {
+      const nextIntensity = Math.min(1.5, (this.stickyResidueState?.intensity || 0) + 0.5);
+      this.setStickyResidueState({ active: true, intensity: nextIntensity });
+    }
+    return contacted;
+  }
+
+  /**
    * 3D Cleanse Victory Sequence
    */
   onCleanseVictory() {
