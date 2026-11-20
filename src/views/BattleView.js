@@ -2833,6 +2833,14 @@ export function attachBattleListeners() {
       } else {
         store.closeColosseumVictoryModal(false);
       }
+      // Draw a fresh boss for the replay instead of refighting the one just
+      // beaten -- sessionRotatedBossId otherwise stays set from the battle
+      // that just ended, so startBattle()'s own "if (!sessionRotatedBossId)"
+      // guard would silently reuse it. Leave an explicitly chosen boss
+      // (Quest Map / waypoint) alone; only the casual rotation resets.
+      if (!hasExplicitBossSelection && !(store.state && store.state.hasExplicitBossSelection)) {
+        sessionRotatedBossId = null;
+      }
       if (!isBattleRunning) {
         startBattle();
       }
@@ -2881,6 +2889,11 @@ export function attachBattleListeners() {
         col.hasAwardedVictory = false;
       }
       store.closeColosseumDefeatModal(false);
+      // Same reasoning as Play Again: draw a fresh boss for the retry
+      // instead of refighting the one that just defeated the player.
+      if (!hasExplicitBossSelection && !(store.state && store.state.hasExplicitBossSelection)) {
+        sessionRotatedBossId = null;
+      }
       if (!isBattleRunning) {
         startBattle();
       }
