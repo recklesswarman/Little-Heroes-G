@@ -6,6 +6,12 @@
 
 import crypto from 'node:crypto';
 import { computeMd5 } from '../src/utils/md5.js';
+import { extractSceneMoment, buildDetailedPrompt, estimatePromptTokens } from '../shared/storyEngine/scenes.js';
+import { DEFAULT_HERO_LOOK_DETAILED } from '../shared/storyEngine/avatarLook.js';
+
+// FLUX.1 schnell reads long prompts. Cloudflare retired the SDXL models on 2026-11-20; the Worker keeps its own
+// fallback chain, so this is just the model asked for first.
+const DEFAULT_IMAGE_MODEL = '@cf/black-forest-labs/flux-1-schnell';
 
 const imageCache = new Map();
 const MAX_CACHE_SIZE = 50;
@@ -16,51 +22,34 @@ const MAX_CACHE_SIZE = 50;
  */
 export function buildBedtimeIllustrationPrompt(params = {}) {
   const {
-    chapterTitle = '',
     chapterText = '',
     chapterNumber = 1,
+    sceneType = 'scene_a',
     realmName = 'Starlight Woods',
-    realmId = 'woods',
-    heroName = 'Little Hero',
-    petName = 'Rex',
     petArchetype = 'dino',
     magicItem = 'Starlight Lantern'
   } = params;
+  // Same builder as the planned pictures: detailed, name-free, on-palette (no colour is ever named to be avoided).
+  const moment = extractSceneMoment(chapterText, sceneType)
+    || (sceneType === 'scene_b'
+      ? 'the hero and the companion share a quiet magical moment together'
+      : 'the hero and the companion set out together on a cozy evening journey');
+  return buildDetailedPrompt({
+    moment,
+    heroDesc: `a cheerful toddler with a big happy smile, ${DEFAULT_HERO_LOOK_DETAILED}`,
+    petDesc: `a cute baby ${petArchetype}`,
+    setting: `a magical bedtime realm of ${realmName}`,
+    centralObject: `a softly glowing ${magicItem}`,
+    chapterIndex: Math.max(0, Math.min(3, (Number(chapterNumber) || 1) - 1)),
+    sceneType
+  });
+}
 
-  // Unabridged chapter narrative without truncation
-  const fullNarrativeText = (chapterText || '').trim();
-
-  // Core character depiction (null-safe guard)
-  const safeHeroName = (params.heroName || heroName || 'Little Hero').trim() || 'Little Hero';
-  const safePetName = (params.petName || petName || 'Rex').trim() || 'Rex';
-  const heroDescription = `a cute cheerful toddler adventurer named ${safeHeroName} wearing cozy pajamas and a soft heroic cape`;
-  const petDescription = `a friendly lovable companion pet named ${safePetName} (${petArchetype})`;
-
-  // Realm atmosphere
-  const realmAtmosphere = `peaceful nighttime atmosphere in the magical realm of ${realmName}, gentle glowing fireflies, soft twilight sky with twinkling stars, cozy storybook diorama`;
-
-  // Chapter-specific focus
-  let chapterAction = '';
-  if (chapterNumber === 1) {
-    chapterAction = `${safeHeroName} and ${safePetName} embarking on their evening bedtime journey holding a glowing ${magicItem}`;
-  } else if (chapterNumber === 2) {
-    chapterAction = `${safeHeroName} and ${safePetName} discovering a sleepy gentle bedtime friend under moonbeams`;
-  } else if (chapterNumber === 3) {
-    chapterAction = `${safeHeroName} and ${safePetName} solving a gentle puzzle with kindness and friendship`;
-  } else {
-    chapterAction = `${safeHeroName} and ${safePetName} curled up cozily asleep in a warm starlight nest drifting to peaceful dreams`;
-  }
-
-  // 3D Pixar / Claymation style guidelines with strict Explorer Palette enforcement
-  const stylePrompt = [
-    `3D Pixar style digital art, soft rounded claymation character textures, stop-motion charm`,
-    `adorable cartoon proportions, warm cinematic volumetric bedtime lighting`,
-    `Explorer Palette: deep midnight slate, luminous starlight cyan, solar orange warmth, and emerald green accents (no pink, no purple, cozy bedtime atmosphere)`,
-    `award-winning children's storybook illustration, cozy, peaceful, 8k render, masterpiece`
-  ].join(', ');
-
-  const contextPart = fullNarrativeText ? ` Context: ${fullNarrativeText}.` : '';
-  return `${chapterAction}, ${heroDescription}, ${petDescription}. Setting: ${realmAtmosphere}.${contextPart} Style: ${stylePrompt}.`;
+/** The compact prompt for models that only read the first ~77 tokens. */
+export function buildCompactIllustrationPrompt(params = {}) {
+  const { heroName = 'Little Hero', petName = 'Rex', petArchetype = 'dino', realmName = 'Starlight Woods' } = params;
+  const text = `cute 3D toddler ${heroName} and baby ${petArchetype} ${petName}, cozy night in ${realmName}, soft 3D clay claymation storybook render, amber and cyan glow`;
+  return estimatePromptTokens(text) > 70 ? text.split(' ').slice(0, 40).join(' ') : text;
 }
 
 /**
@@ -83,25 +72,24 @@ export async function handleStoryIllustrationRequest(req, res) {
       format = 'base64',
       seed: reqSeed,
       negative_prompt: reqNegPrompt,
-      prompt: customPrompt
+      prompt: customPrompt,
+      shortPrompt: customShortPrompt,
+      sceneType: reqSceneType
     } = req.body || {};
 
     const chIdx = chapterIndex ?? (chapterNumber - 1);
     const safeSessionId = typeof sessionId === 'string' && sessionId ? sessionId.slice(0, 128) : 'story';
     const safeChapterText = typeof chapterText === 'string' ? chapterText.slice(0, 20000) : '';
-    const cacheKey = `${safeSessionId}_ch${chIdx}_${computeMd5(safeChapterText)}`;
+    const sceneType = reqSceneType === 'scene_b' ? 'scene_b' : 'scene_a';
+    const safePrompt = typeof customPrompt === 'string' ? customPrompt.slice(0, 4000) : '';
+    const safeShort = typeof customShortPrompt === 'string' ? customShortPrompt.slice(0, 1000) : '';
+    // The two pictures of a chapter share a session and chapter text: the key must tell them apart (and follow the
+    // prompt), or the second picture would come back as the first one's cached image.
+    const cacheKey = `${safeSessionId}_ch${chIdx}_${sceneType}_${computeMd5(safeChapterText)}_${computeMd5(safePrompt)}`;
 
-    const prompt = customPrompt || buildBedtimeIllustrationPrompt({
-      chapterTitle,
-      chapterText,
-      chapterNumber,
-      realmName,
-      realmId,
-      heroName,
-      petName,
-      petArchetype,
-      magicItem
-    });
+    const promptParams = { chapterTitle, chapterText: safeChapterText, chapterNumber, realmName, realmId, heroName, petName, petArchetype, magicItem, sceneType };
+    const prompt = safePrompt || buildBedtimeIllustrationPrompt(promptParams);
+    const shortPrompt = safeShort || buildCompactIllustrationPrompt(promptParams);
 
     const seed = reqSeed !== undefined && reqSeed !== null
       ? Number(reqSeed)
@@ -138,7 +126,8 @@ export async function handleStoryIllustrationRequest(req, res) {
           },
           body: JSON.stringify({
             prompt,
-            model: process.env.CLOUDFLARE_AI_MODEL || '@cf/bytedance/stable-diffusion-xl-lightning',
+            shortPrompt,
+            model: process.env.CLOUDFLARE_AI_MODEL || DEFAULT_IMAGE_MODEL,
             seed,
             negative_prompt,
             format: 'base64'

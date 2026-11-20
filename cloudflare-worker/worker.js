@@ -9,6 +9,16 @@
  * POST requests must come from an allowed Origin (ALLOWED_ORIGINS, comma-separated, exact match)
  * and are rate limited per IP (RATE_LIMITER binding, see wrangler.toml). An Origin header can be
  * forged by non-browser clients, so this limits casual abuse; the free-tier quota is the ceiling.
+ *
+ * Models: Cloudflare retires image models from time to time (the old SDXL base model stopped
+ * working on 2026-11-20 and, because it was the only fallback, took every picture down with it).
+ * So this Worker keeps an ordered chain. The requested model goes first, then the rest of the
+ * chain, and the response says which model made the picture. If every model fails, the error lists
+ * what each one said, so a retired model is visible at once instead of being hidden behind the
+ * last fallback.
+ *
+ * Prompts: models that read long text (FLUX) get `prompt`, the detailed description. Models that only
+ * read the first ~77 tokens (SDXL family) get `shortPrompt` when the client sent one.
  */
 
 const DEFAULT_ALLOWED_ORIGINS = [
@@ -19,20 +29,63 @@ const DEFAULT_ALLOWED_ORIGINS = [
   "http://localhost:3000"
 ];
 
-const ALLOWED_MODELS = [
-  "@cf/bytedance/stable-diffusion-xl-lightning",
-  "@cf/blackforestlabs/flux-1-schnell",
-  "@cf/stabilityai/stable-diffusion-xl-base-1.0",
-  "@cf/lykon/dreamshaper-8-lcm"
-];
+const FLUX = "@cf/black-forest-labs/flux-1-schnell";
+const SDXL_LIGHTNING = "@cf/bytedance/stable-diffusion-xl-lightning";
+const DREAMSHAPER = "@cf/lykon/dreamshaper-8-lcm";
+const SDXL_BASE = "@cf/stabilityai/stable-diffusion-xl-base-1.0";
+
+// Order of preference when the requested model is unavailable.
+const MODEL_CHAIN = [FLUX, SDXL_LIGHTNING, DREAMSHAPER, SDXL_BASE];
+
+// Names older clients (and the first version of this Worker) used.
+const MODEL_ALIASES = {
+  "@cf/blackforestlabs/flux-1-schnell": FLUX
+};
+
+const ALLOWED_MODELS = [...MODEL_CHAIN, ...Object.keys(MODEL_ALIASES)];
 
 const MAX_PROMPT_CHARS = 4000;
+const FLUX_PROMPT_CHARS = 2000; // flux-1-schnell accepts up to 2048
+const FLUX_STEPS = 6; // schnell is distilled for 1-8 steps; 6 is a good detail/speed balance
 
 function getAllowedOrigins(env) {
   const configured = typeof env.ALLOWED_ORIGINS === "string"
     ? env.ALLOWED_ORIGINS.split(",").map(o => o.trim()).filter(Boolean)
     : [];
   return configured.length > 0 ? configured : DEFAULT_ALLOWED_ORIGINS;
+}
+
+/** Requested model first, then every other model of the chain, no repeats. */
+export function buildModelOrder(requested) {
+  const first = MODEL_ALIASES[requested] || requested;
+  return [first, ...MODEL_CHAIN.filter(m => m !== first)];
+}
+
+/** Input each model family understands. FLUX takes no negative prompt or seed; the SDXL family does. */
+export function buildModelInput(model, { prompt, shortPrompt, seed, negative_prompt }) {
+  if (model === FLUX) {
+    return { prompt: String(prompt).slice(0, FLUX_PROMPT_CHARS), steps: FLUX_STEPS };
+  }
+  // CLIP-based models read ~77 tokens: use the compact prompt when the client sent one.
+  return { prompt: String(shortPrompt || prompt).slice(0, 1000), seed, negative_prompt };
+}
+
+/** Normalise what a model returned (binary stream, or JSON with base64) into JPEG/PNG bytes. */
+export async function resultToBytes(result) {
+  if (result && typeof result === "object" && typeof result.image === "string") {
+    const bin = atob(result.image);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes;
+  }
+  return new Uint8Array(await new Response(result).arrayBuffer());
+}
+
+function sniffMime(bytes) {
+  if (bytes[0] === 0x89 && bytes[1] === 0x50) return "image/png";
+  if (bytes[0] === 0xff && bytes[1] === 0xd8) return "image/jpeg";
+  if (bytes[0] === 0x52 && bytes[1] === 0x49) return "image/webp";
+  return "image/jpeg";
 }
 
 export default {
@@ -63,7 +116,7 @@ export default {
       return json({
         status: "ok",
         service: "little-heroes-free-image-api",
-        models: ALLOWED_MODELS
+        models: MODEL_CHAIN
       }, 200, corsHeaders);
     }
 
@@ -92,7 +145,8 @@ export default {
     try {
       const body = await request.json().catch(() => ({}));
       const prompt = body.prompt;
-      const model = body.model || ALLOWED_MODELS[0];
+      const shortPrompt = typeof body.shortPrompt === "string" ? body.shortPrompt : "";
+      const requestedModel = body.model || MODEL_CHAIN[0];
       const format = body.format || "image"; // "image" | "base64" | "json"
       const seed = body.seed !== undefined && body.seed !== null
         ? Number(body.seed)
@@ -103,12 +157,12 @@ export default {
         return json({ error: "Prompt is required and must be a string" }, 400, corsHeaders);
       }
 
-      if (prompt.length > MAX_PROMPT_CHARS) {
+      if (prompt.length > MAX_PROMPT_CHARS || shortPrompt.length > MAX_PROMPT_CHARS) {
         return json({ error: `Prompt is too long (max ${MAX_PROMPT_CHARS} characters)` }, 400, corsHeaders);
       }
 
-      if (typeof model !== "string" || !ALLOWED_MODELS.includes(model)) {
-        return json({ error: "Unsupported model", allowed: ALLOWED_MODELS }, 400, corsHeaders);
+      if (typeof requestedModel !== "string" || !ALLOWED_MODELS.includes(requestedModel)) {
+        return json({ error: "Unsupported model", allowed: MODEL_CHAIN }, 400, corsHeaders);
       }
 
       if (!env.AI) {
@@ -118,28 +172,42 @@ export default {
         }, 500, corsHeaders);
       }
 
-      const aiOptions = {
-        prompt,
-        seed,
-        negative_prompt
-      };
-
-      // Generate image using Cloudflare Workers AI
-      let result;
-      try {
-        result = await env.AI.run(model, aiOptions);
-      } catch (aiErr) {
-        // Fallback to SDXL base 1.0 if selected model is busy or unavailable
-        console.warn(`Model ${model} failed, falling back to SDXL base:`, aiErr.message);
-        result = await env.AI.run("@cf/stabilityai/stable-diffusion-xl-base-1.0", aiOptions);
+      // Try the requested model, then the rest of the chain; remember every failure.
+      const attempts = [];
+      let bytes = null;
+      let usedModel = "";
+      for (const model of buildModelOrder(requestedModel)) {
+        try {
+          const result = await env.AI.run(model, buildModelInput(model, { prompt, shortPrompt, seed, negative_prompt }));
+          const out = await resultToBytes(result);
+          if (out.byteLength < 1000) throw new Error(`model returned only ${out.byteLength} bytes`);
+          bytes = out;
+          usedModel = model;
+          break;
+        } catch (aiErr) {
+          const message = String(aiErr && aiErr.message ? aiErr.message : aiErr).slice(0, 300);
+          console.warn(`Model ${model} failed: ${message}`);
+          attempts.push({ model, error: message });
+        }
       }
 
-      // Return raw JPEG image
+      if (!bytes) {
+        return json({
+          error: "Failed to generate image",
+          details: attempts.map(a => `${a.model}: ${a.error}`).join(" | "),
+          attempts
+        }, 502, corsHeaders);
+      }
+
+      const mimeType = sniffMime(bytes);
+
+      // Return the raw image
       if (format === "image" || format === "binary") {
-        return new Response(result, {
+        return new Response(bytes, {
           status: 200,
           headers: {
-            "Content-Type": "image/jpeg",
+            "Content-Type": mimeType,
+            "X-Image-Model": usedModel,
             "Cache-Control": "public, max-age=604800, immutable",
             ...corsHeaders
           }
@@ -147,15 +215,13 @@ export default {
       }
 
       // Return Base64 Data URI in JSON format
-      const buffer = await new Response(result).arrayBuffer();
-      const base64 = arrayBufferToBase64(buffer);
-      const dataUri = `data:image/jpeg;base64,${base64}`;
-
       return json({
         success: true,
-        dataUri,
-        mimeType: "image/jpeg",
-        prompt,
+        dataUri: `data:${mimeType};base64,${arrayBufferToBase64(bytes)}`,
+        mimeType,
+        model: usedModel,
+        fallbackFrom: usedModel !== buildModelOrder(requestedModel)[0] ? attempts : undefined,
+        prompt: prompt.slice(0, 600),
         seed
       }, 200, corsHeaders);
 
@@ -178,12 +244,12 @@ function json(data, status = 200, headers = {}) {
   });
 }
 
-function arrayBufferToBase64(buffer) {
+function arrayBufferToBase64(bytes) {
   let binary = "";
-  const bytes = new Uint8Array(buffer);
   const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
+  // Chunked: String.fromCharCode(...bigArray) overflows the stack on a full-size picture.
+  for (let i = 0; i < len; i += 8192) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + 8192, len)));
   }
   return btoa(binary);
 }

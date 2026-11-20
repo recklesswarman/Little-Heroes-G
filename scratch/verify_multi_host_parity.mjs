@@ -194,9 +194,34 @@ testAssert(swJs.includes('caches.delete'), 'public/sw.js deletes outdated cache 
 testAssert(swJs.includes('self.clients.claim()'), 'public/sw.js claims clients immediately on activate');
 
 // =========================================================================
+// 4b. Deploy safety: the live probe never gates a deploy, and nothing else publishes to Pages
+// =========================================================================
+console.log('\n--- 4b. Deploy workflows keep the live check AFTER the deploy and Pages has one publisher ---');
+{
+  const wf = (name) => fs.readFileSync(path.join(process.cwd(), '.github', 'workflows', name), 'utf8');
+  for (const [file, deployStep] of [['deploy.yml', 'Deploy to GitHub Pages'], ['firebase-hosting-deploy.yml', 'Deploy to Firebase Hosting']]) {
+    const text = wf(file);
+    const live = text.indexOf('PARITY_LIVE');
+    testAssert(live > text.indexOf(deployStep) && text.indexOf(deployStep) > 0, `${file}: the live-site probe runs after "${deployStep}", never before it`);
+    const block = text.slice(text.lastIndexOf('- name:', live), live + 120);
+    testAssert(/continue-on-error:\s*true/.test(block), `${file}: the live-site probe cannot fail the deployment`);
+    testAssert(/-\s+name:\s+Test\s+run:\s+npm test\s+(?!.*PARITY_LIVE)/s.test(text.slice(0, live)) && !/PARITY_LIVE/.test(text.slice(0, text.indexOf(deployStep))), `${file}: the pre-deploy test step does not probe the live sites`);
+  }
+  const workflows = fs.readdirSync(path.join(process.cwd(), '.github', 'workflows'));
+  const pagesPublishers = workflows.filter(f => /deploy-pages|upload-pages-artifact/.test(wf(f)));
+  testAssert(pagesPublishers.length === 1 && pagesPublishers[0] === 'deploy.yml', `only deploy.yml publishes to GitHub Pages (found: ${pagesPublishers.join(', ')})`);
+  testAssert(!/path:\s*['"]?\.['"]?\s*$/m.test(wf('deploy.yml')), 'Pages never uploads the whole repository (path: ".")');
+}
+
+// =========================================================================
 // 5. Live Multi-Host Endpoints Health & Parity Synthetic Probe
 // =========================================================================
 console.log('\n--- 5. Probing Live Multi-Host Endpoints (Synthetic HTTP Health Checks) ---');
+// The live probes look at what is deployed NOW, so they cannot gate the deploy that replaces it: from 2026-11-15 a stray
+// workflow published the raw repo to Pages, this probe failed, and neither real deploy could run to repair it. They are
+// opt-in (PARITY_LIVE=1) and run as a step AFTER each deploy (see deploy.yml and firebase-hosting-deploy.yml).
+const LIVE_PROBES = process.env.PARITY_LIVE === '1';
+if (!LIVE_PROBES) console.log('  (skipped: set PARITY_LIVE=1 to probe the live sites; the deploy workflows do this after deploying)');
 
 const endpointsToProbe = [
   {
@@ -232,7 +257,7 @@ let liveProbesSucceeded = 0;
 const hostDefects = [];
 const skippedProbes = [];
 
-for (const ep of endpointsToProbe) {
+for (const ep of (LIVE_PROBES ? endpointsToProbe : [])) {
   liveProbesRun++;
   console.log(`\n  ▶️ Probing ${ep.name} at: ${ep.url}`);
   try {

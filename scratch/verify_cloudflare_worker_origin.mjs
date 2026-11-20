@@ -12,7 +12,7 @@ async function check(desc, fn) {
 const ALLOWED = 'https://little-heroes-quest-8842.web.app';
 const aiCalls = [];
 const env = {
-  AI: { run: async (model, opts) => { aiCalls.push({ model, opts }); return new Uint8Array([0xff, 0xd8, 0xff]); } }
+  AI: { run: async (model, opts) => { aiCalls.push({ model, opts }); const jpeg = new Uint8Array(2000); jpeg[0] = 0xff; jpeg[1] = 0xd8; return jpeg; } } // the Worker treats a tiny reply as a failed model
 };
 
 const post = (body, headers = {}, e = env) => worker.fetch(new Request('https://w.example/', {

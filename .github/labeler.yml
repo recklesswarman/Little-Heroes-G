@@ -1,0 +1,46 @@
+# Labels applied to pull requests by the paths they change (actions/labeler@v4, see .github/workflows/label.yml).
+# Keep every pattern pointing at a real path: scratch/verify_labeler_config.mjs checks that.
+
+story-engine:
+  - shared/storyEngine/**
+  - functions/src/storyEngine/**
+  - server/geminiService.js
+  - src/services/bedtimeStoryService.js
+  - src/views/BedtimeStoryView.js
+
+illustrations:
+  - cloudflare-worker/**
+  - server/imageGenService.js
+  - src/services/bedtimeIllustrationService.js
+  - shared/storyEngine/scenes.js
+  - shared/storyEngine/avatarLook.js
+
+companion-chat:
+  - shared/storyEngine/companionGuard.js
+  - functions/src/petCompanion.ts
+  - src/services/companionSafety.js
+
+frontend:
+  - src/**
+  - index.html
+  - public/**
+
+backend:
+  - server/**
+  - server.js
+  - functions/**
+  - firebase.json
+  - firestore.rules
+
+ci-deploy:
+  - .github/**
+  - apphosting.yaml
+
+tests:
+  - scratch/**
+
+dependencies:
+  - package.json
+  - package-lock.json
+  - functions/package.json
+  - functions/package-lock.json
