@@ -561,21 +561,32 @@ export function renderBattleView() {
         ` : ''}
       `}
 
-      <!-- ================= 5. FOAM POWER / SUPERNOVA BAR & FALLBACK SCRUB TRIGGER ================= -->
+      <!-- ================= 5. MINTY FOAM BLAST (LEFT) & MINTY SHIELD (RIGHT) VERTICAL METERS, FALLBACK SCRUB TRIGGER ================= -->
       ${battlePhase === 'brush' ? `
-        <div id="supernova-hud" class="absolute bottom-15 sm:bottom-17 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 pointer-events-auto">
-          <div class="bg-slate-900/90 backdrop-blur-md border-2 border-cyan-400/60 rounded-full px-3 py-1 flex items-center gap-2 shadow-lg">
-            <span class="text-[9px] font-black text-cyan-300 uppercase tracking-wider">MINTY FRESH BLAST</span>
-            <div class="w-16 sm:w-24 h-2 bg-slate-950 rounded-full overflow-hidden border border-cyan-500/40">
-              <div id="supernova-charge-bar" class="h-full bg-linear-to-r from-cyan-400 via-emerald-400 to-amber-300 rounded-full transition-all duration-300" style="width: ${Math.min(100, Math.round(colState.choreSupernovaCharge || 0))}%;"></div>
-            </div>
-            <button id="supernova-blast-btn" class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase transition-all cursor-pointer ${(colState.choreSupernovaCharge || 0) >= 40 ? 'bg-linear-to-r from-amber-400 to-emerald-400 text-slate-950 shadow-[0_0_12px_rgba(16,185,129,0.8)] animate-pulse' : 'bg-slate-800 text-slate-400 cursor-not-allowed'}" ${(colState.choreSupernovaCharge || 0) >= 40 ? '' : 'disabled'}>
-              MINTY FRESH BLAST! 🌟
-            </button>
+        <!-- Left-mid dock: Minty Foam Blast button + vertical charge meter (fills bottom-to-top) -->
+        <div id="blast-hud-left" class="absolute left-1.5 sm:left-3 top-1/2 -translate-y-1/2 z-30 flex flex-col items-center gap-1 landscape:gap-0.5 pointer-events-auto bg-slate-900/85 backdrop-blur-md border-2 border-cyan-400/60 rounded-2xl px-1.5 sm:px-2 py-2 landscape:py-1 shadow-lg">
+          <span class="text-[7px] sm:text-[8px] font-black text-cyan-300 uppercase tracking-wider text-center leading-tight landscape:hidden">MINTY<br/>FOAM<br/>BLAST</span>
+          <div class="relative w-6 sm:w-7 h-20 sm:h-28 landscape:h-12 bg-slate-950 rounded-full overflow-hidden border border-cyan-500/40">
+            <div id="supernova-charge-bar" class="absolute bottom-0 left-0 right-0 bg-linear-to-t from-cyan-400 via-emerald-400 to-amber-300 rounded-full transition-all duration-300" style="height: ${Math.min(100, Math.round(colState.choreSupernovaCharge || 0))}%;"></div>
           </div>
-          <button id="minty-shield-btn" data-active="${mintyShieldActive ? 'true' : 'false'}" class="px-3 py-1 rounded-full text-[10px] font-black uppercase border-2 transition-all ${mintyShieldActive ? 'bg-linear-to-r from-cyan-300 to-sky-400 text-slate-950 border-white shadow-[0_0_14px_rgba(56,189,248,0.85)]' : (mintyShieldCharge >= 40 ? 'bg-linear-to-r from-sky-400 to-cyan-400 text-slate-950 border-cyan-200 shadow-lg animate-pulse cursor-pointer' : 'bg-slate-900/90 text-slate-400 border-slate-700 cursor-not-allowed')}" ${(mintyShieldCharge >= 40 || mintyShieldActive) ? '' : 'disabled'}>
-            ${mintyShieldActive ? `MINTY SHIELD ACTIVE (${Math.ceil(mintyShieldRemainingSec)}s) ❄️` : `MINTY SHIELD (${mintyShieldDurationSec}s) ❄️`}
+          <button id="supernova-blast-btn" title="Minty Fresh Blast" aria-label="Minty Fresh Blast" class="px-1.5 sm:px-2 py-1 rounded-full text-[8px] sm:text-[9px] font-black uppercase leading-tight transition-all cursor-pointer ${(colState.choreSupernovaCharge || 0) >= 40 ? 'bg-linear-to-r from-amber-400 to-emerald-400 text-slate-950 shadow-[0_0_12px_rgba(16,185,129,0.8)] animate-pulse' : 'bg-slate-800 text-slate-400 cursor-not-allowed'}" ${(colState.choreSupernovaCharge || 0) >= 40 ? '' : 'disabled'}>
+            BLAST! 🌟
           </button>
+        </div>
+
+        <!-- Right-mid dock: Minty Shield button + vertical readiness meter (fills bottom-to-top), symmetrical to Blast -->
+        <div id="shield-hud-right" class="absolute right-1.5 sm:right-3 top-1/2 -translate-y-1/2 z-30 flex flex-col items-center gap-1 landscape:gap-0.5 pointer-events-auto bg-slate-900/85 backdrop-blur-md border-2 border-sky-400/60 rounded-2xl px-1.5 sm:px-2 py-2 landscape:py-1 shadow-lg">
+          <span class="text-[7px] sm:text-[8px] font-black text-sky-300 uppercase tracking-wider text-center leading-tight landscape:hidden">MINTY<br/>SHIELD</span>
+          <div class="relative w-6 sm:w-7 h-20 sm:h-28 landscape:h-12 bg-slate-950 rounded-full overflow-hidden border border-sky-500/40">
+            <div id="minty-shield-charge-bar" class="absolute bottom-0 left-0 right-0 bg-linear-to-t from-sky-400 to-cyan-300 rounded-full transition-all duration-300" style="height: ${mintyShieldActive ? 100 : Math.min(100, Math.round(mintyShieldCharge))}%;"></div>
+          </div>
+          <button id="minty-shield-btn" data-active="${mintyShieldActive ? 'true' : 'false'}" title="Minty Shield" aria-label="Minty Shield" class="px-1.5 sm:px-2 py-1 rounded-full text-[8px] sm:text-[9px] font-black uppercase leading-tight border-2 transition-all ${mintyShieldActive ? 'bg-linear-to-r from-cyan-300 to-sky-400 text-slate-950 border-white shadow-[0_0_14px_rgba(56,189,248,0.85)]' : (mintyShieldCharge >= 40 ? 'bg-linear-to-r from-sky-400 to-cyan-400 text-slate-950 border-cyan-200 shadow-lg animate-pulse cursor-pointer' : 'bg-slate-900/90 text-slate-400 border-slate-700 cursor-not-allowed')}" ${(mintyShieldCharge >= 40 || mintyShieldActive) ? '' : 'disabled'}>
+            ${mintyShieldActive ? `${Math.ceil(mintyShieldRemainingSec)}s ❄️` : `SHIELD ❄️`}
+          </button>
+        </div>
+
+        <!-- Bottom-center: manual scrub fallback trigger (camera-off mode) -->
+        <div id="supernova-hud" class="absolute bottom-15 sm:bottom-17 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 pointer-events-auto">
           <button id="fallback-scrub-btn" class="${isCameraActive ? 'hidden' : 'flex'} items-center gap-1 bg-linear-to-r from-cyan-400 to-emerald-400 text-slate-950 font-black text-[10px] sm:text-xs px-3 py-1.5 rounded-full border-2 border-white/60 shadow-lg active:scale-95 transition-all cursor-pointer">
             <span>🪥</span>
             <span>SCRUB!</span>
@@ -2185,37 +2196,42 @@ function syncCockpitHUD() {
 
   const novaBar = document.getElementById('supernova-charge-bar');
   const novaCharge = Math.min(100, Math.round(colState.choreSupernovaCharge || 0));
-  if (novaBar) novaBar.style.width = `${novaCharge}%`;
+  if (novaBar) novaBar.style.height = `${novaCharge}%`;
 
   const novaBtn = document.getElementById('supernova-blast-btn');
   if (novaBtn) {
     if (novaCharge >= 40) {
       novaBtn.disabled = false;
-      novaBtn.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase transition-all cursor-pointer bg-linear-to-r from-amber-400 to-emerald-400 text-slate-950 shadow-[0_0_12px_rgba(16,185,129,0.8)] animate-pulse';
+      novaBtn.className = 'px-1.5 sm:px-2 py-1 rounded-full text-[8px] sm:text-[9px] font-black uppercase leading-tight transition-all cursor-pointer bg-linear-to-r from-amber-400 to-emerald-400 text-slate-950 shadow-[0_0_12px_rgba(16,185,129,0.8)] animate-pulse';
     } else {
       novaBtn.disabled = true;
-      novaBtn.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase transition-all bg-slate-800 text-slate-400 cursor-not-allowed';
+      novaBtn.className = 'px-1.5 sm:px-2 py-1 rounded-full text-[8px] sm:text-[9px] font-black uppercase leading-tight transition-all bg-slate-800 text-slate-400 cursor-not-allowed';
     }
   }
 
+  const shieldBar = document.getElementById('minty-shield-charge-bar');
   const shieldBtn = document.getElementById('minty-shield-btn');
-  if (shieldBtn) {
+  if (shieldBar || shieldBtn) {
     const st = hanaBattle3DService.mintyShieldState || hanaBattle3DService.mintyShield;
     const isActive = Boolean(mintyShieldActive || (st?.active && (st?.remainingSec ?? 0) > 0 && (st?.integrity ?? 1) > 0));
     const remSec = Math.max(1, Math.ceil(st?.remainingSec || mintyShieldRemainingSec || mintyShieldDurationSec || 5));
-    shieldBtn.dataset.active = isActive ? 'true' : 'false';
-    if (isActive) {
-      shieldBtn.disabled = false;
-      shieldBtn.textContent = `MINTY SHIELD ACTIVE (${remSec}s) ❄️`;
-      shieldBtn.className = 'px-3 py-1 rounded-full text-[10px] font-black uppercase border-2 transition-all bg-linear-to-r from-cyan-300 to-sky-400 text-slate-950 border-white shadow-[0_0_14px_rgba(56,189,248,0.85)] cursor-pointer';
-    } else if (mintyShieldCharge >= 40) {
-      shieldBtn.disabled = false;
-      shieldBtn.textContent = `MINTY SHIELD (${mintyShieldDurationSec}s) ❄️`;
-      shieldBtn.className = 'px-3 py-1 rounded-full text-[10px] font-black uppercase border-2 transition-all bg-linear-to-r from-sky-400 to-cyan-400 text-slate-950 border-cyan-200 shadow-lg animate-pulse cursor-pointer';
-    } else {
-      shieldBtn.disabled = true;
-      shieldBtn.textContent = `MINTY SHIELD (${Math.round(mintyShieldCharge)}%) ❄️`;
-      shieldBtn.className = 'px-3 py-1 rounded-full text-[10px] font-black uppercase border-2 transition-all bg-slate-900/90 text-slate-400 border-slate-700 cursor-not-allowed';
+    const shieldCharge = Math.min(100, Math.round(mintyShieldCharge));
+    if (shieldBar) shieldBar.style.height = `${isActive ? 100 : shieldCharge}%`;
+    if (shieldBtn) {
+      shieldBtn.dataset.active = isActive ? 'true' : 'false';
+      if (isActive) {
+        shieldBtn.disabled = false;
+        shieldBtn.textContent = `${remSec}s ❄️`;
+        shieldBtn.className = 'px-1.5 sm:px-2 py-1 rounded-full text-[8px] sm:text-[9px] font-black uppercase leading-tight border-2 transition-all bg-linear-to-r from-cyan-300 to-sky-400 text-slate-950 border-white shadow-[0_0_14px_rgba(56,189,248,0.85)] cursor-pointer';
+      } else if (shieldCharge >= 40) {
+        shieldBtn.disabled = false;
+        shieldBtn.textContent = `SHIELD ❄️`;
+        shieldBtn.className = 'px-1.5 sm:px-2 py-1 rounded-full text-[8px] sm:text-[9px] font-black uppercase leading-tight border-2 transition-all bg-linear-to-r from-sky-400 to-cyan-400 text-slate-950 border-cyan-200 shadow-lg animate-pulse cursor-pointer';
+      } else {
+        shieldBtn.disabled = true;
+        shieldBtn.textContent = `${shieldCharge}% ❄️`;
+        shieldBtn.className = 'px-1.5 sm:px-2 py-1 rounded-full text-[8px] sm:text-[9px] font-black uppercase leading-tight border-2 transition-all bg-slate-900/90 text-slate-400 border-slate-700 cursor-not-allowed';
+      }
     }
   }
 
