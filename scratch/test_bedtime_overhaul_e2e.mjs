@@ -281,8 +281,9 @@ runTest('tier1', 'F1', 'T1_F1_4: Multi-chapter prompt generation produces distin
   const ch1Prompt = buildBedtimeIllustrationPrompt({ chapterNumber: 1, chapterText: 'Chapter 1: Arrival with lantern at twilight path.' });
   const ch4Prompt = buildBedtimeIllustrationPrompt({ chapterNumber: 4, chapterText: 'Chapter 4: Curling up in a cozy starlight nest, breathing softly.' });
   assertTrue(ch1Prompt !== ch4Prompt, 'Prompts for different chapters must differ');
-  assertTrue(ch1Prompt.includes('lantern') || ch1Prompt.includes('Arrival'), 'Ch 1 prompt must reflect arrival context');
-  assertTrue(ch4Prompt.includes('nest') || ch4Prompt.includes('breathing') || ch4Prompt.includes('asleep') || ch4Prompt.includes('slumber'), 'Ch 4 prompt must reflect sleep/nest context');
+  // The prompt carries the chapter's own time of night and a different shot, not the raw chapter text.
+  assertTrue(ch1Prompt.includes('dusk') && ch1Prompt.includes('first stars'), 'Ch 1 prompt must reflect arrival (dusk, first stars)');
+  assertTrue(ch4Prompt.includes('sleepiest hour') && ch4Prompt.includes('drowsy'), 'Ch 4 prompt must reflect the sleepy ending');
 });
 
 runTest('tier1', 'F1', 'T1_F1_5: Prompt sanitization preserves narrative paragraphs without JSON-breaking corruption', () => {
@@ -913,7 +914,10 @@ runTest('tier2', 'F1', 'T2_F1_3: Special characters, quotes, and punctuation san
     chapterNumber: 2,
     chapterText: specialText
   });
-  assertTrue(prompt.includes('help the dragon'), 'Dialogue and special characters preserved in prompt context');
+  // Quoted speech is never a scene, and markup/special characters must not reach the picture model.
+  assertTrue(!/["&<>{}]/.test(prompt), 'Quotes, ampersands and markup characters are removed from the prompt');
+  assertTrue(!prompt.includes("Let's help"), 'Quoted dialogue does not reach the picture prompt');
+  assertTrue(prompt.split(/\s+/).length >= 110, 'The prompt is still the full detailed description');
 });
 
 runTest('tier2', 'F1', 'T2_F1_4: Missing hero or pet metadata falls back to default values', () => {
@@ -921,7 +925,9 @@ runTest('tier2', 'F1', 'T2_F1_4: Missing hero or pet metadata falls back to defa
     chapterNumber: 1,
     chapterText: 'Exploring the quiet valley.'
   });
-  assertTrue(prompt.includes('Little Hero') && prompt.includes('Rex'), 'Default hero and pet names applied when omitted');
+  // Names are never put in a picture prompt (the model paints them as text); a plain default hero and pet stand in.
+  assertTrue(!prompt.includes('Little Hero') && !prompt.includes('Rex'), 'Names stay out of the picture prompt');
+  assertTrue(prompt.includes('cheerful toddler') && prompt.includes('cute baby dino'), 'A plain default hero and pet are described when none are given');
 });
 
 runTest('tier2', 'F1', 'T2_F1_5: Out-of-bounds chapter number clamped or handled safely', () => {

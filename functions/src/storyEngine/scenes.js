@@ -8,9 +8,12 @@
 
 import { cleanField } from './safety.js';
 import { hashString } from './seeds.js';
-import { DEFAULT_HERO_LOOK } from './avatarLook.js';
+import { DEFAULT_HERO_LOOK, DEFAULT_HERO_LOOK_DETAILED, detailedLook } from './avatarLook.js';
 
 export const MAX_PROMPT_TOKENS = 70;
+// The detailed prompt is for models that read long text (FLUX). Size window in words.
+export const DETAILED_MIN_WORDS = 110;
+export const DETAILED_MAX_WORDS = 185;
 export const MAX_FOCAL_WORDS = 22;
 export const NEGATIVE_PROMPT = 'pink, purple, magenta, violet, neon pink, scary, dark, deformed, blurry, text, letters, words, watermark, logo';
 export const STYLE_SUFFIX = 'soft 3D clay claymation storybook render, amber and cyan glow';
@@ -73,8 +76,8 @@ export function estimatePromptTokens(text) {
  * The most visual sentence of one half of the chapter. scene_a = first half, scene_b = second half.
  * (Picking by position alone gave near-identical prompts for every story.)
  */
-export function extractSceneFocalNarrative(chapterText = '', sceneType = 'scene_a') {
-  if (!chapterText || typeof chapterText !== 'string') return '';
+function visualSentences(chapterText) {
+  if (!chapterText || typeof chapterText !== 'string') return [];
   const cleaned = chapterText
     .replace(/["“][^"”]*["”]/g, '. ')
     .replace(/\[[^\]]*\]|\*[^*]*\*/g, ' ')
@@ -84,6 +87,11 @@ export function extractSceneFocalNarrative(chapterText = '', sceneType = 'scene_
     .split(/(?<=[.!?])\s+/)
     .map(s => s.trim().replace(/^[\s:,;'‘’]+|[\s:,;'‘’]+$/g, ''))
     .filter(s => s.length > 25 && /^[A-Z]/.test(s) && !CLOSING_LINE_PATTERN.test(s));
+  return sentences;
+}
+
+export function extractSceneFocalNarrative(chapterText = '', sceneType = 'scene_a') {
+  const sentences = visualSentences(chapterText);
   if (sentences.length === 0) return '';
   if (sentences.length === 1) return sceneType === 'scene_b' ? '' : condenseSceneSentence(sentences[0]);
   const mid = Math.ceil(sentences.length / 2);
@@ -95,6 +103,27 @@ export function extractSceneFocalNarrative(chapterText = '', sceneType = 'scene_
     if (score > bestScore) { best = sentence; bestScore = score; }
   }
   return condenseSceneSentence(best);
+}
+
+/**
+ * The moment a picture shows, for the detailed prompt: the most visual sentence of that half of the chapter
+ * plus the sentence that follows it when there is room, with abstract feelings left out. Longer than the
+ * focal narrative, because the long-prompt model can use it.
+ */
+export function extractSceneMoment(chapterText = '', sceneType = 'scene_a', maxWords = 46) {
+  const sentences = visualSentences(chapterText);
+  if (sentences.length === 0) return '';
+  const mid = sentences.length === 1 ? 1 : Math.ceil(sentences.length / 2);
+  const half = sentences.length === 1 ? (sceneType === 'scene_b' ? [] : sentences) : (sceneType === 'scene_b' ? sentences.slice(mid) : sentences.slice(0, mid));
+  if (!half.length) return '';
+  let bestIndex = 0; let bestScore = -Infinity;
+  half.forEach((sentence, i) => { const score = scoreVisualSentence(sentence); if (score > bestScore) { bestIndex = i; bestScore = score; } });
+  const pick = [half[bestIndex]];
+  if (half[bestIndex + 1]) pick.push(half[bestIndex + 1]);
+  const words = pick.join(' ').split(/\s+/).filter(w => !ABSTRACT_WORDS.has(w.toLowerCase().replace(/[^a-z'-]/g, '')));
+  const clipped = words.slice(0, maxWords);
+  while (clipped.length > 6 && DANGLING_END_WORDS.has(clipped[clipped.length - 1].toLowerCase().replace(/[^a-z]/g, ''))) clipped.pop();
+  return clipped.join(' ').replace(/[\s,;:.!?-]+$/, '');
 }
 
 /** Remove palette-breaking colour words. */
@@ -112,6 +141,12 @@ export function compressLook(raw, maxWords = LOOK_WORDS) {
   return words.join(' ').replace(/[\s,;:.!?-]+$/, '');
 }
 
+/** A whole look sheet (not cut to a few words), cleaned and on-palette. */
+function fullLook(raw, max = 170) {
+  const text = cleanField(typeof raw === 'string' ? raw : '', max);
+  return text ? scrubColors(text.replace(/^(a|an|the)\s+/i, '')).replace(/[\s,;:.!?-]+$/, '') : '';
+}
+
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /**
@@ -123,6 +158,8 @@ export function genericizeNames(text, { heroName = '', petName = '', petNoun = '
   const swap = (name, noun) => {
     const n = String(name || '').trim();
     if (n.length < 2) return;
+    // "an owl named Pip" -> "an owl": the introduction goes with the name instead of becoming "named a friend".
+    out = out.replace(new RegExp(`\\s+(?:named|called)\\s+${escapeRe(n)}(?![\\w-])`, 'gi'), '');
     out = out.replace(new RegExp(`(?<![\\w-])${escapeRe(n)}(?![\\w-])(['’]s)?`, 'gi'), (_m, poss) => (poss ? `${noun}'s` : noun));
   };
   swap(heroName, 'the toddler');
@@ -145,6 +182,94 @@ function composePrompt(focus, descriptors, setting) {
   return text();
 }
 
+// ---- Detailed prompts (long-prompt models) -------------------------------------------------------------
+// One picture = one paragraph: the camera, the moment, who is in it (fixed look sheets, so the child, pet and
+// friends look the same in every picture), the place, the light and the mood of that chapter. Names become plain
+// nouns, there are no negatives (FLUX has no negative prompt, and naming a colour to avoid can bring it in), and
+// the palette is stated positively so pink and purple never appear.
+
+const DETAILED_STYLE = "A soft 3D clay claymation children's storybook illustration with rounded friendly shapes, fuzzy felt and clay textures, shallow depth of field and soft volumetric light";
+const DETAILED_FINISH = 'Everything has gentle rounded edges, tiny hand-made details, soft shadows and a cozy, safe, dreamy feeling.';
+const DETAILED_PALETTE = 'Color palette: deep midnight teal, glowing starlight cyan, warm amber orange and fresh emerald green; every glow, spark and symbol is cyan, amber or green.';
+
+// Time, light and mood by chapter (the story has four).
+const CHAPTER_ATMOSPHERE = [
+  { time: 'dusk with the very first stars appearing', light: 'warm golden afterglow low on the horizon under a cool teal sky', air: 'a few drifting fireflies', mood: 'curious and welcoming, with bright wide-open eyes' },
+  { time: 'a calm starlit night', light: 'bright silver-cyan starlight with a soft amber lantern glow on the characters', air: 'glowing fireflies and ribbons of soft aurora', mood: 'full of wonder, with gentle excited smiles' },
+  { time: 'a deep starry night with a bright round moon', light: 'cool moonbeams with warm amber highlights and tiny glowing magic motes', air: 'slowly drifting aurora ribbons', mood: 'kind and cooperative, with warm proud smiles' },
+  { time: 'the sleepiest hour of the night', light: 'a very soft, dim amber glow with a gentle halo of starlight and low contrast', air: 'slowly falling starlight snow', mood: 'peaceful and drowsy, with eyes half closed and tiny content smiles' }
+];
+
+// Two different camera positions per chapter so the two pictures of a chapter never look alike.
+const SHOTS = {
+  scene_a: [
+    'a wide establishing shot at eye level, the characters small in the lower third and the place filling the frame',
+    'a wide three-quarter view from slightly above, a winding path leading the eye into the scene',
+    'a wide low-angle shot looking up at the setting, with the characters in the foreground',
+    'a wide, calm, symmetrical shot of the sleepy place, the characters centered and small'
+  ],
+  scene_b: [
+    'a close medium shot at the characters\' eye level, focused on their happy faces and what they hold',
+    'an over-the-shoulder medium shot looking toward what they have just discovered',
+    'a close, slightly low-angle shot of the characters working together, hands and faces large in the frame',
+    'a very close, soft-focus shot of the characters curled up together and nearly asleep'
+  ]
+};
+
+// A picture model repaints anything the prompt leaves open, so the child's hair and the pet's colour would change from
+// picture to picture. When no look sheet fixes them, one of each is picked from the story's seed and used in all eight.
+const HAIR_LOOKS = ['short wavy brown hair', 'soft curly dark hair', 'short ginger hair', 'straight black hair'];
+const PET_SKINS = ['soft emerald green', 'warm amber orange', 'gentle teal', 'sunny golden yellow'];
+
+const wordCount = (t) => (String(t).match(/\S+/g) || []).length;
+
+/**
+ * The long prompt for one picture. `parts`: { moment, heroDesc, petDesc, friendDesc, setting, centralObject,
+ * chapterIndex, sceneType }. Always on-palette, name-free, between DETAILED_MIN_WORDS and DETAILED_MAX_WORDS words.
+ */
+export function buildDetailedPrompt(parts = {}) {
+  const idx = Math.max(0, Math.min(3, Number.isInteger(parts.chapterIndex) ? parts.chapterIndex : 0));
+  const sceneType = parts.sceneType === 'scene_b' ? 'scene_b' : 'scene_a';
+  const atmo = CHAPTER_ATMOSPHERE[idx];
+  // Every field is cleaned and capped on its own, so no single long input can push the prompt out of its window.
+  const clean = (t, max) => scrubColors(String(t || '').replace(/[\u0000-\u001f\u007f<>{}`"]/g, ' ').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean).slice(0, max).join(' ')).replace(/[.\s]+$/, '');
+
+  const assemble = (caps, { finish, place }) => {
+    const moment = clean(parts.moment, caps.moment);
+    const setting = clean(parts.setting, 20);
+    const centralObject = clean(parts.centralObject, 10);
+    const cast = [`The hero is ${clean(parts.heroDesc, caps.hero) || 'a cheerful toddler with a big happy smile'}.`];
+    if (parts.petDesc) cast.push(`Beside the hero is ${clean(parts.petDesc, caps.pet)}.`);
+    if (parts.friendDesc) cast.push(`Also in the scene is ${clean(parts.friendDesc, caps.friend)}.`);
+    return [
+      `${DETAILED_STYLE}, shown as ${SHOTS[sceneType][idx]}.`,
+      moment ? `What is happening: ${moment}.` : '',
+      cast.join(' '),
+      place && setting ? `The setting is ${setting}${centralObject ? `, with ${centralObject} as a glowing focal detail` : ''}.` : '',
+      `It is ${atmo.time}. Lighting: ${atmo.light}. In the air: ${atmo.air}. The mood is ${atmo.mood}.`,
+      finish ? DETAILED_FINISH : '',
+      DETAILED_PALETTE
+    ].filter(Boolean).join(' ').replace(/\s{2,}/g, ' ').trim();
+  };
+
+  // Over budget: give up the least important things first, one step at a time, and stop as soon as it fits.
+  // The moment and the cast are cut last and never removed.
+  const steps = [
+    { finish: false },
+    { place: false },
+    { moment: 30 }, { friend: 14 }, { moment: 20 }, { pet: 16 }, { hero: 28 }, { moment: 12 }, { friend: 9 }, { hero: 20 }, { pet: 10 }
+  ];
+  const caps = { moment: 46, hero: 38, pet: 24, friend: 20 };
+  const keep = { finish: true, place: true };
+  let text = assemble(caps, keep);
+  for (const step of steps) {
+    if (wordCount(text) <= DETAILED_MAX_WORDS) break;
+    for (const [k, v] of Object.entries(step)) { if (k in keep) keep[k] = v; else caps[k] = Math.min(caps[k], v); }
+    text = assemble(caps, keep);
+  }
+  return text;
+}
+
 /**
  * Plan the two pictures of one chapter. Never throws: on any problem it returns null and the
  * client falls back to its own prompt builder.
@@ -161,13 +286,23 @@ export function buildScenePlan(args) {
     const species = String(request.petSpecies || '').toLowerCase();
     const petNoun = species || 'pet';
     const petLookRaw = compressLook(pet?.visualSheet);
+    const seed = hashString(`${bible.archetypeId || bible.title || ''}|${hero?.name || ''}`) % 2147483647;
+    // Long versions of the same sheets for the detailed prompt: the avatar's full outfit when the child's avatar is a
+    // built-in one, else the planner's whole look sheet, else the default.
+    const heroDetailed = `a cheerful toddler with ${HAIR_LOOKS[seed % HAIR_LOOKS.length]} and a big happy smile, ${detailedLook(request.heroLook) || fullLook(hero?.visualSheet) || (request.heroLook ? request.heroLook : DEFAULT_HERO_LOOK_DETAILED)}`;
+    const petSpeciesWords = species || 'pet';
+    const petSheetFull = fullLook(pet?.visualSheet);
+    const hasColour = /\b(green|orange|blue|teal|yellow|golden|gold|amber|brown|red|cream|white|gr[ae]y|silver|black|emerald|tan)\b/i.test(petSheetFull);
+    const seededSkin = `${PET_SKINS[(seed >> 3) % PET_SKINS.length]} skin and a soft cream belly`;
+    const petDetailed = petSheetFull && species && petSheetFull.toLowerCase().includes(species)
+      ? `a cute ${petSheetFull}${hasColour ? '' : ` with ${seededSkin}`}`
+      : `a cute baby ${petSpeciesWords}${petSheetFull ? `, ${petSheetFull}` : ''}${hasColour ? '' : ` with ${seededSkin}`}`;
     const heroDesc = `a cheerful toddler ${heroLook}`;
     const petDesc = `a cute baby ${species || 'pet'}${petLookRaw && !petLookRaw.toLowerCase().includes(species) ? `, ${petLookRaw}` : (petLookRaw && !species ? petLookRaw : '')}`.replace(/,\s*$/, '');
 
     const names = { heroName: hero?.name, petName: pet?.name || request.petName, petNoun, friendNames: friends.map(f => f.name) };
     const beat = bible.beats?.[Math.max(0, Math.min(3, chapterIndex))]?.summary || '';
     const setting = compressLook(bible.plotDNA?.setting, 5);
-    const seed = hashString(`${bible.archetypeId || bible.title || ''}|${hero?.name || ''}`) % 2147483647;
 
     const scenes = ['scene_a', 'scene_b'].map(id => {
       const raw = extractSceneFocalNarrative(chapterText, id) || cleanField(beat, 120);
@@ -180,7 +315,22 @@ export function buildScenePlan(args) {
         const look = compressLook(f.visualSheet);
         descriptors.push(look ? `a friendly ${look}` : 'a gentle friend');
       }
-      return { id, focus, prompt: composePrompt(focus, descriptors, setting) };
+      const momentRaw = extractSceneMoment(chapterText, id) || cleanField(beat, 160) || focusRaw;
+      const moment = scrubColors(genericizeNames(momentRaw, names));
+      const friendsInMoment = friends.filter(f => f.name && new RegExp(`\\b${escapeRe(f.name)}\\b`, 'i').test(momentRaw));
+      const friendLook = friendsInMoment.length ? fullLook(friendsInMoment[0].visualSheet) : '';
+      const petInMoment = !!pet && (new RegExp(`\\b${escapeRe(pet.name)}\\b`, 'i').test(momentRaw) || !friendsInMoment.length);
+      const detailedPrompt = buildDetailedPrompt({
+        moment,
+        heroDesc: heroDetailed,
+        petDesc: petInMoment ? petDetailed : '',
+        friendDesc: friendsInMoment.length ? `a friendly ${friendLook || 'gentle friend'}` : '',
+        setting: cleanField(bible.plotDNA?.setting, 140),
+        centralObject: cleanField(bible.plotDNA?.centralObject, 80),
+        chapterIndex,
+        sceneType: id
+      });
+      return { id, focus, prompt: composePrompt(focus, descriptors, setting), detailedPrompt };
     });
 
     return { version: 1, seed, negativePrompt: NEGATIVE_PROMPT, scenes };
@@ -196,5 +346,12 @@ export function scenePromptFromPlan(plan, sceneType = 'scene_a') {
   // The plan arrives over the network: keep it short and on-palette before it reaches the image model.
   const prompt = scrubColors(scene.prompt.replace(/[\u0000-\u001f\u007f<>{}`]/g, ' ').replace(/\s+/g, ' ').trim()).slice(0, 400);
   if (!prompt) return null;
-  return { prompt, seed: Number.isFinite(plan.seed) ? Math.abs(Math.floor(plan.seed)) % 2147483647 : undefined };
+  const detailed = typeof scene.detailedPrompt === 'string'
+    ? scrubColors(scene.detailedPrompt.replace(/[\u0000-\u001f\u007f<>{}`]/g, ' ').replace(/\s+/g, ' ').trim()).slice(0, 1900)
+    : '';
+  return {
+    prompt,
+    ...(detailed ? { detailedPrompt: detailed } : {}),
+    seed: Number.isFinite(plan.seed) ? Math.abs(Math.floor(plan.seed)) % 2147483647 : undefined
+  };
 }
