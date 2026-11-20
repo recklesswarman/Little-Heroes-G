@@ -87,6 +87,8 @@ const testFiles = [
   'scratch/verify_story_seeds.mjs',
   'scratch/verify_story_seed_refresh.mjs',
   'scratch/verify_story_scenes.mjs',
+  'scratch/verify_image_worker.mjs',
+  'scratch/verify_labeler_config.mjs',
   'scratch/verify_story_controls.mjs',
   'scratch/verify_story_hosts.mjs',
   'scratch/verify_companion_safety.mjs',

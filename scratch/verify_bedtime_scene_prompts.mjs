@@ -158,7 +158,9 @@ async function run() {
       assert.ok(res.imageUrl, 'backup route should supply the image');
       const proxy = requests.find(r => r.url.includes('/api/story/illustration'));
       assert.ok(proxy, 'backup route should have been called');
-      assert.ok(proxy.body.prompt && /Pixar/.test(proxy.body.prompt), 'backup route must receive the built prompt');
+      // The long prompt (for FLUX) and the compact one (for the SDXL fallbacks) both travel to the backup route.
+      assert.ok(proxy.body.prompt && /claymation/.test(proxy.body.prompt) && proxy.body.prompt.split(/\s+/).length >= 110, 'backup route must receive the built, detailed prompt');
+      assert.ok(proxy.body.shortPrompt && /Pixar/.test(proxy.body.shortPrompt), 'backup route must receive the compact prompt too');
       assert.ok(!proxy.body.prompt.includes(whaleStory), 'backup route must not receive the full chapter text');
     } finally {
       globalThis.fetch = realFetch;

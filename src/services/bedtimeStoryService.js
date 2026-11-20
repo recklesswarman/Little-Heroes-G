@@ -809,10 +809,16 @@ class BedtimeStoryService {
     }
   }
 
-  /** {prompt, seed} for one scene when the server planned the pictures; {} to use the built-in prompt. */
+  /** {prompt, shortPrompt, seed} for one scene when the server planned the pictures; {} to use the built-in prompt. */
   scenePlanArgs(act, sceneType) {
     const planned = scenePromptFromPlan(act?.scenePlan, sceneType);
-    return planned ? { prompt: planned.prompt, ...(planned.seed !== undefined ? { seed: planned.seed } : {}) } : {};
+    if (!planned) return {};
+    // `prompt` is the detailed description (for the long-prompt model), `shortPrompt` the compact one (SDXL fallbacks).
+    return {
+      prompt: planned.detailedPrompt || planned.prompt,
+      shortPrompt: planned.prompt,
+      ...(planned.seed !== undefined ? { seed: planned.seed } : {})
+    };
   }
 
   createOfflineAct(actNumber, realm, moral, heroName, petName, customWish, previousChoice, antiRepetition = {}) {
