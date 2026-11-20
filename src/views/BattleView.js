@@ -10,6 +10,7 @@ import { brushVisionTracker } from '../services/brushVisionTracker.js';
 import { DIGITAL_REWARDS_CATALOG } from '../data/digitalRewardsCatalog.js';
 import { getBattleCoachAdvice } from '../services/heroAgentService.js';
 import { resolvePublicAssetUrl } from '../utils/assetUrl.js';
+import { safeConfetti } from '../utils/safeConfetti.js';
 
 const sugarVillainEscapedImg = new URL('../assets/sugar_villain_escaped.jpg', import.meta.url).href;
 
@@ -120,6 +121,8 @@ let lastShieldActiveState = false;
 // Cooldown-Gated Firing & Auto-Assist Fallback State
 let lastScrubTimestamp = 0;
 let lastCounterAttackAt = 0;
+let lastZoneFlairConfettiAt = 0;
+let lastFoamSplashImpactAt = 0;
 let volleyCount = 0;
 let autoAssistInterval = null;
 let isAutoAssistPulseActive = false;
@@ -716,7 +719,7 @@ function renderVictoryModal(colState, currentBoss) {
         <div class="w-full bg-slate-950/90 rounded-2xl p-2.5 border-2 border-slate-800 flex items-center justify-around mb-3 shadow-inner">
           <div class="flex flex-col items-center">
             <span class="text-xs text-slate-400 font-bold">COINS 🪙</span>
-            <span class="font-headline font-black text-base text-amber-400">+${reward.coins}</span>
+            <span id="victory-coin-counter" data-target-coins="${reward.coins}" class="font-headline font-black text-base text-amber-400">+0</span>
           </div>
           <div class="h-6 w-0.5 bg-slate-800"></div>
           <div class="flex flex-col items-center">
@@ -2088,6 +2091,14 @@ function handleScrubHit(activeQuad, source = 'manual', vision = null) {
   const intensity = Math.min(1.8, Math.max(0.6, activeSpeedScore / 55));
   hanaBattle3DService.onFoamStream(intensity, hasLaser, Math.min(25, damageBoost));
 
+  // Minty-foam splash impact right on the boss when a brush stroke actually
+  // lands, distinct from the continuous stream above -- throttled so rapid
+  // scrub ticks still read as one satisfying splash rather than noise.
+  if (now - lastFoamSplashImpactAt >= 220) {
+    lastFoamSplashImpactAt = now;
+    hanaBattle3DService.onFoamSplashImpact?.();
+  }
+
   // Cooldown-gated single-source counter-attack firing & duration-normalized boss damage
   const isOverdrive = activeQuad.id === 'q5' || (vision?.movementSpeed >= 75) || (micCadenceScore >= 75);
   const fireCooldownMs = source === 'assist' ? 2000 : (isOverdrive ? 600 : 750);
@@ -2181,6 +2192,35 @@ function syncCockpitHUD() {
   const zoneBadge = document.getElementById('current-zone-badge');
   if (zoneBadge) {
     zoneBadge.textContent = `${activeQuad.zone}/5`;
+  }
+
+  // Zone-accuracy flair: gold glow + confetti while a scrub is actively
+  // landing on the current zone; a gentler cyan "keep brushing here" pulse
+  // (the banner's existing look) the rest of the time -- never a penalty.
+  const zoneBanner = document.getElementById('active-zone-banner');
+  if (zoneBanner) {
+    const isLandingHits = Boolean(hanaBattle3DService.isScrubbing);
+    if (isLandingHits) {
+      zoneBanner.classList.remove('border-cyan-400', 'shadow-[0_0_20px_rgba(6,182,212,0.4)]');
+      zoneBanner.classList.add('border-amber-300', 'shadow-[0_0_26px_rgba(251,191,36,0.8)]');
+      const now = Date.now();
+      if (now - lastZoneFlairConfettiAt >= 4000) {
+        lastZoneFlairConfettiAt = now;
+        safeConfetti({
+          particleCount: 18,
+          spread: 55,
+          startVelocity: 22,
+          gravity: 0.9,
+          scalar: 0.7,
+          ticks: 80,
+          origin: { x: 0.5, y: 0.22 },
+          colors: ['#fbbf24', '#fde68a', '#34d399', '#ffffff']
+        });
+      }
+    } else {
+      zoneBanner.classList.remove('border-amber-300', 'shadow-[0_0_26px_rgba(251,191,36,0.8)]');
+      zoneBanner.classList.add('border-cyan-400', 'shadow-[0_0_20px_rgba(6,182,212,0.4)]');
+    }
   }
 
   const shieldBanner = document.getElementById('boss-shield-banner');
@@ -2758,6 +2798,34 @@ export function attachBattleListeners() {
         store.acknowledgeHygieneReminder(kidId, 'mouthwash');
       }
     });
+  }
+
+  // Victory coin counter: animate +0 -> +coins once per modal opening (guarded
+  // by a key so a re-render while the modal stays open doesn't replay it),
+  // paired with a second bigger confetti burst for the reward reveal itself.
+  const coinCounterEl = document.getElementById('victory-coin-counter');
+  if (coinCounterEl) {
+    const targetCoins = parseInt(coinCounterEl.dataset.targetCoins, 10) || 0;
+    if (coinCounterEl.dataset.animated !== 'true') {
+      coinCounterEl.dataset.animated = 'true';
+      const durationMs = 900;
+      const startedAt = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+      const tick = () => {
+        const el = document.getElementById('victory-coin-counter');
+        if (!el) return;
+        const elapsed = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - startedAt;
+        const progress = Math.min(1, elapsed / durationMs);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        el.textContent = `+${Math.round(targetCoins * eased)}`;
+        if (progress < 1) {
+          requestAnimationFrame(tick);
+        } else {
+          el.textContent = `+${targetCoins}`;
+        }
+      };
+      requestAnimationFrame(tick);
+      safeConfetti({ particleCount: 60, spread: 70, startVelocity: 38, origin: { y: 0.45 }, colors: ['#fbbf24', '#34d399', '#38bdf8', '#ffffff'] });
+    }
   }
 
   const visitHqBtn = document.getElementById('colosseum-visit-hq-btn');

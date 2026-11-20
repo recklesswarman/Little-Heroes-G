@@ -61,6 +61,8 @@ class HanaBattle3DService {
     this.isDeflectActive = false;
     this.deflectTimer = 0;
     this.isVictory = false;
+    this.cleanseRevealStartMs = 0;
+    this.cleanseRevealDurationMs = 1400;
 
     // Equipped Weapon Synergy & Stat Multiplier
     this.equippedWeapon = null;
@@ -319,6 +321,8 @@ class HanaBattle3DService {
         HYGIENE_BOSSES.forEach(b => {
           if (b.image) this.loadImage(b.image);
           if (b.cleansedImage) this.loadImage(b.cleansedImage);
+          if (b.damageImage1) this.loadImage(b.damageImage1);
+          if (b.damageImage2) this.loadImage(b.damageImage2);
         });
       }
       const hazardAssets = [
@@ -594,6 +598,8 @@ class HanaBattle3DService {
 
     if (bossData.image) this.loadImage(bossData.image);
     if (bossData.cleansedImage) this.loadImage(bossData.cleansedImage);
+    if (bossData.damageImage1) this.loadImage(bossData.damageImage1);
+    if (bossData.damageImage2) this.loadImage(bossData.damageImage2);
 
     // Set colors for armor plates based on boss, preserving completed quadrants
     Object.values(this.armorPlates).forEach(p => {
@@ -851,6 +857,41 @@ class HanaBattle3DService {
         isLaser: hasLaser,
         color: hasLaser ? '#22d3ee' : randColor,
         glowColor: hasLaser ? '#06b6d4' : '#bae6fd',
+        life: 1.0
+      });
+    }
+
+    if (this.foamParticles.length > 100) {
+      this.foamParticles.splice(0, this.foamParticles.length - 100);
+    }
+  }
+
+  /**
+   * Minty-foam splash impact right on the boss, for the moment a brush
+   * stroke actually lands -- a quick radial burst distinct from the
+   * continuous bottom-up foam stream of onFoamStream().
+   */
+  onFoamSplashImpact() {
+    const bx = this.width * 0.5;
+    const by = this.height * 0.40 + Math.sin(this.clock * 2.5) * 8;
+    const mintColors = ['#5eead4', '#a7f3d0', '#ffffff', '#38bdf8'];
+    const splashCount = 10;
+
+    for (let i = 0; i < splashCount; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 2.5 + Math.random() * 5.5;
+      this.foamParticles.push({
+        x: bx,
+        y: by,
+        z: 30 + Math.random() * 20,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        vz: Math.random() * 3,
+        radius: 5 + Math.random() * 6,
+        alpha: 0.95,
+        isLaser: false,
+        color: mintColors[Math.floor(Math.random() * mintColors.length)],
+        glowColor: '#bae6fd',
         life: 1.0
       });
     }
@@ -1203,9 +1244,40 @@ class HanaBattle3DService {
   onCleanseVictory() {
     this.isVictory = true;
     this.bossHp = 0;
+    this.cleanseRevealStartMs = performance.now();
     this.caramelBombs = []; // Clear active hazard projectiles on victory
     this.counterAttackProjectiles = [];
     Object.keys(this.armorPlates).forEach(k => this.onArmorFracture(k));
+
+    // Crumble/dissolve burst: the lingering battle-damaged shell breaks apart
+    // right as the reveal crossfade to the cleansed portrait begins.
+    {
+      const bx = this.width * 0.5;
+      const by = this.height * 0.40;
+      const crumbleColors = [this.bossData.armorColor || this.bossData.color || '#fbbf24', this.bossData.bodyColor || '#fbbf24', '#ffffff'];
+      for (let i = 0; i < 40; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 2.0 + Math.random() * 6.0;
+        this.candyShards.push({
+          x: bx + Math.cos(angle) * 60,
+          y: by + Math.sin(angle) * 60,
+          z: 15 + Math.random() * 35,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - 1.5,
+          vz: Math.random() * 3 - 1.5,
+          rotX: Math.random() * Math.PI,
+          rotY: Math.random() * Math.PI,
+          rotZ: Math.random() * Math.PI,
+          vRotX: (Math.random() - 0.5) * 0.3,
+          vRotY: (Math.random() - 0.5) * 0.3,
+          vRotZ: (Math.random() - 0.5) * 0.3,
+          size: 6 + Math.random() * 9,
+          color: crumbleColors[i % crumbleColors.length],
+          alpha: 1.0,
+          gravity: 0.15
+        });
+      }
+    }
 
     // Polish all 5 Warrior Teeth to gleaming diamond armor and start celebration cheering
     this.warriorTeeth.forEach(t => {
@@ -1673,9 +1745,30 @@ class HanaBattle3DService {
       ctx.fill();
     }
 
-    // Check for high-res illustrated boss art
-    const bossImgSrc = this.isVictory ? this.bossData.cleansedImage : this.bossData.image;
+    // Check for high-res illustrated boss art -- below ~50% HP, swap in the
+    // cracked/dented damage-stage portrait, and below ~20% the heavily
+    // battered one, so the art itself telegraphs how close the boss is to
+    // falling (not just the HP bar).
+    const hpRatio = this.maxHp > 0 ? this.bossHp / this.maxHp : 1;
+    let preVictoryImgSrc = this.bossData.image;
+    if (hpRatio <= 0.2 && this.bossData.damageImage2) {
+      preVictoryImgSrc = this.bossData.damageImage2;
+    } else if (hpRatio <= 0.5 && this.bossData.damageImage1) {
+      preVictoryImgSrc = this.bossData.damageImage1;
+    }
+
+    const bossImgSrc = preVictoryImgSrc;
     const bossImg = bossImgSrc ? (this.imageCache[bossImgSrc] || this.loadImage(bossImgSrc)) : null;
+
+    // During the cleanse-victory reveal, crossfade from the last damaged
+    // portrait up to the cleansed one rather than snapping to it instantly.
+    let cleanseRevealAlpha = 0;
+    let cleansedImg = null;
+    if (this.isVictory && this.bossData.cleansedImage) {
+      const elapsedMs = performance.now() - this.cleanseRevealStartMs;
+      cleanseRevealAlpha = Math.max(0, Math.min(1, elapsedMs / this.cleanseRevealDurationMs));
+      cleansedImg = this.imageCache[this.bossData.cleansedImage] || this.loadImage(this.bossData.cleansedImage);
+    }
 
     if (bossImg && bossImg.complete && bossImg.naturalWidth > 0) {
       ctx.save();
@@ -1688,6 +1781,11 @@ class HanaBattle3DService {
       ctx.arc(0, 0, baseRadius, 0, Math.PI * 2);
       ctx.clip();
       ctx.drawImage(bossImg, -baseRadius, -baseRadius, baseRadius * 2, baseRadius * 2);
+      if (cleansedImg && cleansedImg.complete && cleansedImg.naturalWidth > 0 && cleanseRevealAlpha > 0) {
+        ctx.globalAlpha = cleanseRevealAlpha;
+        ctx.drawImage(cleansedImg, -baseRadius, -baseRadius, baseRadius * 2, baseRadius * 2);
+        ctx.globalAlpha = 1;
+      }
       ctx.restore();
 
       // Outer glowing rim
