@@ -156,6 +156,12 @@ let lastPhaseShiftAtMs = 0;
 let recentFoamBlastAtMs = 0;
 let pointerDragMoveCount = 0;
 
+// Brush Streak Meter, Boss Dodge Cue & Mini-Challenge State (Kid-Friendly Mechanics & Pacing)
+let brushStreakCount = 0;
+let nextDodgeWarningSec = 0;
+let nextMiniChallengeSec = 0;
+let activeMiniChallenge = null; // { type, label, endSec, hitCountAtStart, targetHits, failed }
+
 // Voice Recognition & Companion TTS Echo Gating State (F3)
 let battleSpeechRecognizer = null;
 let isCompanionSpeakingNow = false;
@@ -184,6 +190,25 @@ function resetOverhaulCombatState() {
   lastPhaseShiftAtMs = Date.now();
   recentFoamBlastAtMs = 0;
   pointerDragMoveCount = 0;
+  brushStreakCount = 0;
+  activeMiniChallenge = null;
+  hideMiniChallengeBanner();
+  // First dodge-cue and mini-challenge land partway into the battle so the
+  // opening seconds stay calm; later ones re-schedule off the current clock.
+  nextDodgeWarningSec = scheduleNextDodgeWarning(totalDuration - 8);
+  nextMiniChallengeSec = scheduleNextMiniChallenge(totalDuration - 14);
+}
+
+// Purely dramatic, zero-mechanical-effect boss "dodge" flash -- picks a next
+// trigger time 15-25s before `fromSec` (a secondsRemaining countdown value).
+function scheduleNextDodgeWarning(fromSec) {
+  return fromSec - (15 + Math.floor(Math.random() * 11));
+}
+
+// Mini-challenges need a gap wide enough that two never overlap once a
+// 5-6s challenge plus its result flash are accounted for.
+function scheduleNextMiniChallenge(fromSec) {
+  return fromSec - (24 + Math.floor(Math.random() * 13));
 }
 
 export function getBattleTelemetryState() {
@@ -431,6 +456,14 @@ export function renderBattleView() {
       <!-- ================= 1. FULL VIEWPORT 3D WEBGL ARENA CANVAS ================= -->
       <canvas id="battle-webgl-canvas" class="absolute inset-0 w-full h-full z-0 block cursor-crosshair"></canvas>
 
+      <!-- ================= 1B. PULSING DIRECTIONAL ARROW -- POINTS AT THE NEXT ZONE TO BRUSH ================= -->
+      ${battlePhase === 'brush' && activeQuad.brushPosition ? `
+        <div id="zone-direction-arrow" class="absolute z-10 pointer-events-none flex flex-col items-center transition-all duration-500" style="left: ${activeQuad.brushPosition.x}%; top: ${activeQuad.brushPosition.y}%; transform: translate(-50%, -50%);">
+          <span class="text-2xl sm:text-3xl drop-shadow-[0_0_10px_rgba(6,182,212,0.9)] animate-bounce" style="transform: rotate(${activeQuad.brushPosition.rotation || 0}deg);">⬇️</span>
+          <span class="block w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-cyan-300/80 -mt-3 animate-ping"></span>
+        </div>
+      ` : ''}
+
       <!-- ================= 2A. PROMINENT CENTERED FLOATING COUNTDOWN TIMER ================= -->
       <div class="absolute top-2 sm:top-3 left-1/2 -translate-x-1/2 z-35 pointer-events-auto">
         <div id="battle-timer-capsule" class="bg-slate-900/95 backdrop-blur-md px-3.5 sm:px-5 py-1 sm:py-1.5 rounded-full border-2 sm:border-3 ${battlePhase === 'floss' ? 'border-emerald-400 shadow-[0_0_25px_rgba(16,185,129,0.65)]' : 'border-amber-400 shadow-[0_0_25px_rgba(251,191,36,0.65)]'} flex items-center gap-1.5 sm:gap-2">
@@ -541,6 +574,7 @@ export function renderBattleView() {
           <span class="text-xs font-black text-cyan-300 uppercase tracking-wide">BRUSHING ZONE:</span>
           <span id="current-zone-status-text" class="text-xs font-black text-white">${activeQuad.name}</span>
           <span id="current-zone-badge" class="text-[10px] font-bold text-amber-300 bg-amber-950/80 px-2 py-0.5 rounded-full border border-amber-500/40">${activeQuad.zone}/5</span>
+          <span id="brush-streak-badge" class="text-[10px] font-black text-orange-300 bg-orange-950/80 px-2 py-0.5 rounded-full border border-orange-500/40 ${brushStreakCount >= 2 ? '' : 'hidden'}">🔥 x${brushStreakCount}</span>
         </div>
 
         <!-- Boss Sugar Shield Banner (Shown during 75% & 25% shield milestones) -->
@@ -607,6 +641,15 @@ export function renderBattleView() {
           <span id="deflect-hazard-emoji" class="text-xl">${currentSugarHazard?.emoji || '🍬'}</span>
           <span id="deflect-hazard-text">${currentSugarHazard ? `${currentSugarHazard.name.toUpperCase()} INCOMING! DEFLECT!` : 'SUGAR HAZARD! SCRUB TO DEFLECT!'}</span>
           <span class="text-xl">🛡️</span>
+        </div>
+      </div>
+
+      <!-- ================= 6B. TIMED MINI-CHALLENGE BANNER (bonus Habit Coins for a short burst) ================= -->
+      <div id="mini-challenge-banner" class="absolute top-44 sm:top-48 left-1/2 transform -translate-x-1/2 z-40 pointer-events-none transition-all duration-300 opacity-0 scale-90">
+        <div class="bg-linear-to-r from-fuchsia-500 via-violet-500 to-fuchsia-500 text-white font-headline font-black text-[10px] sm:text-xs px-4 py-2 rounded-full shadow-[0_0_24px_rgba(168,85,247,0.8)] border-2 border-white/70 flex items-center gap-2">
+          <span class="text-base">⭐</span>
+          <span id="mini-challenge-label">MINI-CHALLENGE!</span>
+          <span id="mini-challenge-countdown" class="bg-slate-950/40 px-2 py-0.5 rounded-full">5s</span>
         </div>
       </div>
 
@@ -913,6 +956,13 @@ function activateFallbackMode(reason = 'Camera unavailable') {
 }
 
 function setSensorIdleState(activeQuad) {
+  // A brushing lull breaks the streak and fails any "keep the streak alive"
+  // mini-challenge in progress, but never a "land N hits" one -- that type
+  // only cares about hits actually landed within its own window.
+  brushStreakCount = 0;
+  if (activeMiniChallenge && activeMiniChallenge.type === 'focusStreak' && !activeMiniChallenge.failed) {
+    activeMiniChallenge.failed = true;
+  }
   const colState = store.getBossColosseumState ? store.getBossColosseumState() : {};
   const minFloor = store.getColosseumPhaseHpFloor
     ? store.getColosseumPhaseHpFloor(colState.maxHp || 100, secondsRemaining, totalDuration)
@@ -1628,7 +1678,6 @@ export function startBattle() {
     selectedBossId = store.getSelectedBossId ? store.getSelectedBossId() : (store.state?.selectedBossId || selectedBossId);
   }
   const currentBoss = getBattleBoss(selectedBossId);
-  resetOverhaulCombatState();
   hanaBattle3DService.resetBattleState?.();
   hanaBattle3DService.setBoss(currentBoss);
   syncCockpitHUD();
@@ -1657,6 +1706,10 @@ export function startBattle() {
     secondsRemaining = bossDuration;
     totalDuration = bossDuration;
   }
+
+  // Must run after totalDuration is finalized above -- it schedules the
+  // dodge-warning/mini-challenge timers off the real battle duration.
+  resetOverhaulCombatState();
 
   totalScrubHits = 0;
   currentCombo = 0;
@@ -1903,6 +1956,23 @@ export function startBattle() {
       triggerSupernovaBlast();
     }
 
+    // Boss Dodge Warning Cue: fires periodically, re-schedules further out
+    // each time. Stops rescheduling in the closing seconds so none fires
+    // right on top of the victory moment.
+    if (secondsRemaining > 0 && secondsRemaining <= nextDodgeWarningSec) {
+      triggerBossDodgeWarning();
+      nextDodgeWarningSec = secondsRemaining > 20 ? scheduleNextDodgeWarning(secondsRemaining) : -1;
+    }
+
+    // Timed Mini-Challenge: starts periodically, re-schedules further out.
+    if (!activeMiniChallenge && secondsRemaining > 8 && secondsRemaining <= nextMiniChallengeSec) {
+      startMiniChallenge(secondsRemaining);
+      nextMiniChallengeSec = secondsRemaining > 24 ? scheduleNextMiniChallenge(secondsRemaining) : -1;
+    }
+    if (activeMiniChallenge) {
+      updateMiniChallengeTick(secondsRemaining);
+    }
+
     syncCockpitHUD();
 
     if (secondsRemaining <= 0) {
@@ -1991,6 +2061,75 @@ function triggerSupernovaBlast() {
   return false;
 }
 
+// Boss "Dodge" Warning Cue -- purely dramatic flash, zero mechanical penalty.
+// Kids just keep brushing through it.
+function triggerBossDodgeWarning() {
+  if (!isBattleRunning || isBattlePaused || battlePhase !== 'brush') return;
+  hanaBattle3DService.triggerDodgeWarning?.();
+  if (typeof Sound?.shieldDeflect === 'function') Sound.shieldDeflect();
+  showComicHit('WATCH OUT! 😮');
+}
+
+function hideMiniChallengeBanner() {
+  if (typeof document === 'undefined') return;
+  const banner = document.getElementById('mini-challenge-banner');
+  if (banner) {
+    banner.classList.add('opacity-0', 'scale-90');
+  }
+}
+
+function showMiniChallengeBanner(challenge) {
+  if (typeof document === 'undefined') return;
+  const banner = document.getElementById('mini-challenge-banner');
+  const label = document.getElementById('mini-challenge-label');
+  if (label) label.textContent = challenge.label;
+  if (banner) {
+    banner.classList.remove('opacity-0', 'scale-90');
+  }
+}
+
+// Mini-Challenge: periodic short-burst bonus objective (Habit Coins reward).
+// Keep-it-simple: just 2 types, no general mini-challenge framework.
+function startMiniChallenge(secRemaining) {
+  if (!isBattleRunning || isBattlePaused || battlePhase !== 'brush') return;
+  const type = Math.random() < 0.5 ? 'speedBurst' : 'focusStreak';
+  const durationSec = 6;
+  activeMiniChallenge = type === 'speedBurst'
+    ? { type, label: 'BRUSH BURST! ⭐', endSec: secRemaining - durationSec, targetHits: 5, hitCount: 0, failed: false }
+    : { type, label: 'KEEP THE STREAK! 🔥', endSec: secRemaining - durationSec, failed: false };
+  showMiniChallengeBanner(activeMiniChallenge);
+  if (typeof Sound?.levelUp === 'function') Sound.levelUp();
+  showComicHit(`${activeMiniChallenge.label}`);
+}
+
+function updateMiniChallengeTick(secRemaining) {
+  if (!activeMiniChallenge) return;
+  const countdown = typeof document !== 'undefined' ? document.getElementById('mini-challenge-countdown') : null;
+  const secsLeft = Math.max(0, activeMiniChallenge.endSec - secRemaining + 1);
+  if (countdown) countdown.textContent = `${Math.max(0, secsLeft)}s`;
+
+  if (activeMiniChallenge.failed) {
+    resolveMiniChallenge(false);
+    return;
+  }
+  if (secRemaining <= activeMiniChallenge.endSec) {
+    const success = activeMiniChallenge.type === 'speedBurst'
+      ? (activeMiniChallenge.hitCount || 0) >= activeMiniChallenge.targetHits
+      : !activeMiniChallenge.failed;
+    resolveMiniChallenge(success);
+  }
+}
+
+function resolveMiniChallenge(success) {
+  hideMiniChallengeBanner();
+  if (success) {
+    store.addCoins?.(10);
+    showComicHit('MINI-CHALLENGE WIN! +10 COINS 🪙');
+    if (typeof Sound?.levelUp === 'function') Sound.levelUp();
+  }
+  activeMiniChallenge = null;
+}
+
 // Scrub Hit Handler: Updates cleanliness, triggers 3D foam streams, enforces cooldown-gated pacing
 function handleScrubHit(activeQuad, source = 'manual', vision = null) {
   if (isBattlePaused || !isBattleRunning || battlePhase !== 'brush') return;
@@ -1999,6 +2138,18 @@ function handleScrubHit(activeQuad, source = 'manual', vision = null) {
   totalScrubHits++;
   lastScrubTimestamp = now;
   currentCombo = Math.min(50, currentCombo + 1);
+
+  // Mini-Challenge: a landed hit counts toward an active "speedBurst" goal.
+  if (activeMiniChallenge && activeMiniChallenge.type === 'speedBurst' && !activeMiniChallenge.failed) {
+    activeMiniChallenge.hitCount = (activeMiniChallenge.hitCount || 0) + 1;
+  }
+
+  // Brush Streak Meter: consecutive landed hits (reset on an idle gap in
+  // setSensorIdleState) boost the Blast/Shield charge rate the longer it
+  // holds, capped at +50% so the streak rewards sustained brushing without
+  // trivializing the charge-up pacing.
+  brushStreakCount = Math.min(20, brushStreakCount + 1);
+  const streakChargeMult = 1 + Math.min(0.5, brushStreakCount * 0.025);
 
   // F1. Charge & Refresh Minty Shield via continuous brushing
   // The service state is the source of truth: a caramel bomb can break the
@@ -2009,7 +2160,7 @@ function handleScrubHit(activeQuad, source = 'manual', vision = null) {
   const currentShieldState = hanaBattle3DService.mintyShieldState || hanaBattle3DService.mintyShield;
   const shieldIsUp = Boolean(currentShieldState?.active && (currentShieldState.integrity ?? 1) > 0);
   if (!shieldIsUp) {
-    mintyShieldCharge = Math.min(100, mintyShieldCharge + (source === 'assist' ? 8 : 15));
+    mintyShieldCharge = Math.min(100, mintyShieldCharge + Math.round((source === 'assist' ? 8 : 15) * streakChargeMult));
   }
   if (shieldIsUp && source !== 'assist') {
     lastShieldScrubRefreshSec = secondsRemaining;
@@ -2151,7 +2302,8 @@ function handleScrubHit(activeQuad, source = 'manual', vision = null) {
       shotDamage = 0.25;
     }
 
-    const shotRes = store.fireColosseumBlaster ? store.fireColosseumBlaster(shotDamage, source === 'assist' ? 2 : 5, true) : null;
+    const baseChargeGain = source === 'assist' ? 2 : 5;
+    const shotRes = store.fireColosseumBlaster ? store.fireColosseumBlaster(shotDamage, Math.round(baseChargeGain * streakChargeMult), true) : null;
     if (shotRes?.shieldBroken) {
       hanaBattle3DService.onArmorFracture('shield');
       showComicHit('SUGAR SHIELD SHATTERED! 💥');
@@ -2218,6 +2370,24 @@ function syncCockpitHUD() {
   const zoneBadge = document.getElementById('current-zone-badge');
   if (zoneBadge) {
     zoneBadge.textContent = `${activeQuad.zone}/5`;
+  }
+
+  // Brush Streak Meter badge
+  const streakBadge = document.getElementById('brush-streak-badge');
+  if (streakBadge) {
+    streakBadge.textContent = `🔥 x${brushStreakCount}`;
+    streakBadge.classList.toggle('hidden', brushStreakCount < 2);
+  }
+
+  // Directional zone arrow -- points at and tracks the active brushing zone
+  const zoneArrow = document.getElementById('zone-direction-arrow');
+  if (zoneArrow && activeQuad.brushPosition) {
+    zoneArrow.style.left = `${activeQuad.brushPosition.x}%`;
+    zoneArrow.style.top = `${activeQuad.brushPosition.y}%`;
+    const arrowGlyph = zoneArrow.querySelector('span');
+    if (arrowGlyph) {
+      arrowGlyph.style.transform = `rotate(${activeQuad.brushPosition.rotation || 0}deg)`;
+    }
   }
 
   // Zone-accuracy flair: gold glow + confetti while a scrub is actively

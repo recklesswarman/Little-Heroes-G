@@ -64,6 +64,11 @@ class HanaBattle3DService {
     this.cleanseRevealStartMs = 0;
     this.cleanseRevealDurationMs = 1400;
 
+    // Boss "Dodge" Warning Cue -- purely cosmetic flash, no mechanical effect
+    this.dodgeWarningActive = false;
+    this.dodgeWarningStartMs = 0;
+    this.dodgeWarningDurationMs = 1600;
+
     // Equipped Weapon Synergy & Stat Multiplier
     this.equippedWeapon = null;
     this.weaponMultiplier = 1.0;
@@ -188,6 +193,8 @@ class HanaBattle3DService {
    */
   resetBattleState() {
     this.isVictory = false;
+    this.dodgeWarningActive = false;
+    this.dodgeWarningStartMs = 0;
     this.bossHp = this.maxHp || 100;
     this.minBossHpFloor = 1;
     this.isShieldActive = false;
@@ -911,6 +918,17 @@ class HanaBattle3DService {
     if (this.foamParticles.length > 100) {
       this.foamParticles.splice(0, this.foamParticles.length - 100);
     }
+  }
+
+  /**
+   * Boss "dodge" warning cue -- a purely dramatic flash on the boss with
+   * zero mechanical effect (no damage, no charge change). Kids just keep
+   * brushing through it. Auto-fades over dodgeWarningDurationMs, matching
+   * the decay-per-frame pattern used by damageWobble.
+   */
+  triggerDodgeWarning() {
+    this.dodgeWarningActive = true;
+    this.dodgeWarningStartMs = this.clock * 1000;
   }
 
   setDeflectActive(active = true) {
@@ -1723,6 +1741,17 @@ class HanaBattle3DService {
     if (this.damageWobble > 0) {
       this.damageWobble = Math.max(0, this.damageWobble - dt * 2.5);
     }
+    let dodgeWarningAlpha = 0;
+    if (this.dodgeWarningActive) {
+      const dodgeElapsedMs = (this.clock * 1000) - this.dodgeWarningStartMs;
+      if (dodgeElapsedMs >= this.dodgeWarningDurationMs) {
+        this.dodgeWarningActive = false;
+      } else {
+        const progress = dodgeElapsedMs / this.dodgeWarningDurationMs;
+        // Quick flash in, slow fade out -- reads as a warning blink, not a glitch.
+        dodgeWarningAlpha = progress < 0.25 ? progress / 0.25 : 1 - ((progress - 0.25) / 0.75);
+      }
+    }
     const wobble = Math.sin(this.clock * 3.5) * 0.05 + Math.sin(this.clock * 26) * this.damageWobble;
     const breatheScaleY = 1 + Math.sin(this.clock * 3.5) * 0.04;
     const breatheScaleX = 1 - Math.sin(this.clock * 3.5) * 0.02;
@@ -1755,6 +1784,22 @@ class HanaBattle3DService {
       ctx.beginPath();
       ctx.arc(0, 0, baseRadius * 1.6, 0, Math.PI * 2);
       ctx.fill();
+    }
+
+    // Boss "dodge" warning flash -- a pulsing red-orange ring with zero
+    // mechanical effect, purely dramatic (see triggerDodgeWarning()).
+    if (dodgeWarningAlpha > 0) {
+      const dodgeRingPulse = 1 + Math.sin(this.clock * 18) * 0.08;
+      ctx.save();
+      ctx.globalAlpha = dodgeWarningAlpha * 0.8;
+      ctx.strokeStyle = '#f97316';
+      ctx.lineWidth = 6;
+      ctx.shadowColor = '#ef4444';
+      ctx.shadowBlur = 24;
+      ctx.beginPath();
+      ctx.arc(0, 0, baseRadius * 1.18 * dodgeRingPulse, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
     }
 
     // Check for high-res illustrated boss art -- below ~50% HP, swap in the
