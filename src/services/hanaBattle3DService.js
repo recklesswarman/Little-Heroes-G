@@ -473,22 +473,27 @@ class HanaBattle3DService {
     if (this.imageCache[src]) return this.imageCache[src];
     try {
       const img = new Image();
-      const baseUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.BASE_URL)
-        ? String(import.meta.env.BASE_URL)
-        : '/';
-      const resolvedSrc = (baseUrl && baseUrl !== '/' && baseUrl !== './')
-        ? resolvePublicAssetUrl(src, baseUrl)
-        : src;
+      // Always resolve through resolvePublicAssetUrl -- it prefixes the
+      // GitHub Pages sub-path AND appends the ?v=<APP_BUILD_VERSION>
+      // cache-buster. Root hosting (Firebase / App Hosting, BASE_URL '/')
+      // previously skipped it, so boss/hazard art regenerated in place under
+      // the same filename stayed pinned to the year-long immutable cache.
+      const resolvedSrc = (typeof src === 'string' ? resolvePublicAssetUrl(src) : src) || src;
       img.onerror = () => {
         if (typeof src === 'string' && !img._retried) {
           img._retried = true;
+          let retrySrc;
           if (src.startsWith('/')) {
-            img.src = '.' + src;
+            retrySrc = '.' + src;
           } else if (src.startsWith('./')) {
-            img.src = src.substring(1);
+            retrySrc = src.substring(1);
           } else {
-            img.src = '/' + src;
+            retrySrc = '/' + src;
           }
+          const version = (typeof window !== 'undefined' && window.__LITTLE_HEROES_VERSION__) || '';
+          img.src = (version && !/^(?:data:|blob:|https?:)/i.test(retrySrc))
+            ? `${retrySrc}${retrySrc.includes('?') ? '&' : '?'}v=${encodeURIComponent(version)}`
+            : retrySrc;
         }
       };
       img.src = resolvedSrc;
@@ -559,6 +564,13 @@ class HanaBattle3DService {
 
     this.bossData = {
       ...this.bossData,
+      // Portrait/stage art must never carry over from the previously fought
+      // boss (e.g. a parent-crafted boss with no damage/cleansed art would
+      // otherwise show the last hygiene boss's portraits at 50% HP / victory).
+      image: null,
+      damageImage1: null,
+      damageImage2: null,
+      cleansedImage: null,
       ...bossData,
       id: bId,
       bodyColor,

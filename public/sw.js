@@ -1,4 +1,4 @@
-const CACHE_NAME = 'little-heroes-v3.19.0-battle-juice-feedback-20261120';
+const CACHE_NAME = 'little-heroes-v3.19.1-battle-audit-fixes-20261120';
 const STATIC_ASSETS = [
   './',
   './index.html',

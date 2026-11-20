@@ -135,6 +135,10 @@ let isFinaleSpeedActive = false;
 // Overhaul Combat State (F1, F2, F3, F4, F5, F7)
 let mintyShieldCharge = 0;
 let mintyShieldActive = false;
+// Victory reward object whose coin count-up + confetti has already played.
+let animatedVictoryRewardKey = null;
+// Explicit/waypoint boss to relaunch if the kid taps "Battle Again" after quitting mid-battle.
+let pendingRetryExplicitBossId = null;
 let mintyShieldRemainingSec = 0;
 let mintyShieldDurationSec = 5;
 let mintyShieldActiveSeconds = 0;
@@ -690,8 +694,18 @@ export function renderBattleView() {
   `;
 }
 
-function renderVictoryModal(colState, currentBoss) {
+function renderVictoryModal(colState, selectedBoss) {
   if (!colState.isVictoryModalOpen) return '';
+  // Show the boss that was actually defeated (recorded at victory time), not
+  // whatever selectedBossId points at now -- it can change while the modal is
+  // open (cloud sync removing a custom boss, rotation, ...).
+  // getBattleBoss() never returns null -- it falls back to the first hygiene
+  // boss for an unknown id -- so only switch when the id actually resolved.
+  const defeatedBossId = colState.victoryReward?.bossId;
+  const defeatedBoss = (defeatedBossId && defeatedBossId !== selectedBoss?.id)
+    ? getBattleBoss(defeatedBossId)
+    : null;
+  const currentBoss = (defeatedBoss && defeatedBoss.id === defeatedBossId) ? defeatedBoss : selectedBoss;
 
   const reward = colState.victoryReward || {
     bossName: currentBoss.name,
@@ -1834,10 +1848,14 @@ export function startBattle() {
         mintyShieldActive = mintyShieldRemainingSec > 0 && (liveShield.integrity ?? 1) > 0;
         hanaBattle3DService.setMintyShieldState?.({
           active: mintyShieldActive,
-          remainingSec: mintyShieldRemainingSec
+          remainingSec: mintyShieldRemainingSec,
+          attackBoostActive: mintyShieldActive
         });
       }
     } else {
+      if (mintyShieldActive || liveShield?.attackBoostActive) {
+        hanaBattle3DService.setMintyShieldState?.({ active: false, attackBoostActive: false });
+      }
       mintyShieldActive = false;
       mintyShieldRemainingSec = 0;
     }
@@ -2134,9 +2152,17 @@ function handleScrubHit(activeQuad, source = 'manual', vision = null) {
   const streakChargeMult = 1 + Math.min(0.5, brushStreakCount * 0.025);
 
   // F1. Charge & Refresh Minty Shield via continuous brushing
-  mintyShieldCharge = Math.min(100, mintyShieldCharge + Math.round((source === 'assist' ? 8 : 15) * streakChargeMult));
+  // The service state is the source of truth: a caramel bomb can break the
+  // shield (integrity 0) between 1 Hz ticks while the module flag is still
+  // true, and refreshing then would resurrect it at full integrity. Charge
+  // doesn't build while the shield is up (it was drained on activation), and
+  // auto-assist hits don't keep it alive -- only real brushing does.
   const currentShieldState = hanaBattle3DService.mintyShieldState || hanaBattle3DService.mintyShield;
-  if (mintyShieldActive || currentShieldState?.active) {
+  const shieldIsUp = Boolean(currentShieldState?.active && (currentShieldState.integrity ?? 1) > 0);
+  if (!shieldIsUp) {
+    mintyShieldCharge = Math.min(100, mintyShieldCharge + Math.round((source === 'assist' ? 8 : 15) * streakChargeMult));
+  }
+  if (shieldIsUp && source !== 'assist') {
     lastShieldScrubRefreshSec = secondsRemaining;
     mintyShieldRemainingSec = mintyShieldDurationSec;
     mintyShieldActive = true;
@@ -2264,7 +2290,7 @@ function handleScrubHit(activeQuad, source = 'manual', vision = null) {
     const rawMult = scrubMultiplier * (1 + (damageBoost / 100));
     const cappedMult = Math.min(1.5, Math.max(1.0, rawMult));
     const shieldSt = hanaBattle3DService.mintyShieldState || hanaBattle3DService.mintyShield;
-    const shieldAttackBoost = (mintyShieldActive || shieldSt?.active || shieldSt?.attackBoostActive) ? 1.35 : 1.0;
+    const shieldAttackBoost = (shieldSt?.active && (shieldSt.integrity ?? 1) > 0) ? 1.35 : 1.0;
     const activeSprites = (hanaBattle3DService.sweetToothSprites || []).length;
     if (activeSprites > 0) {
       spritesSpawnedCount = Math.max(spritesSpawnedCount, activeSprites);
@@ -2600,11 +2626,17 @@ export function quitBattle() {
   isBattleRunning = false;
   isBattlePaused = false;
   isFallbackManualOverride = false;
-  hasExplicitBossSelection = false;
   // The synced store-side flag (set by setSelectedBossId whenever a boss is
   // explicitly chosen from the Quest Map or a waypoint) never resets on its
   // own and otherwise permanently overrides the rotating-villain system for
   // every future casual battle launch, on every device, once set even once.
+  // When quitting mid-battle, remember an explicit/waypoint boss so the
+  // defeat modal's "Battle Again" can relaunch that SAME boss (see
+  // defeatRetryBtn) instead of falling into the casual rotation.
+  pendingRetryExplicitBossId = (wasMidBattle && (hasExplicitBossSelection || (store.state && store.state.hasExplicitBossSelection)))
+    ? selectedBossId
+    : null;
+  hasExplicitBossSelection = false;
   if (store.state) store.state.hasExplicitBossSelection = false;
   sessionRotatedBossId = null;
   battlePhase = 'brush';
@@ -2976,8 +3008,15 @@ export function attachBattleListeners() {
   const coinCounterEl = document.getElementById('victory-coin-counter');
   if (coinCounterEl) {
     const targetCoins = parseInt(coinCounterEl.dataset.targetCoins, 10) || 0;
-    if (coinCounterEl.dataset.animated !== 'true') {
+    // The modal DOM is rebuilt on every store render, so a guard on the node
+    // itself resets each time. Key the one-shot count-up + confetti on the
+    // victory reward object instead (one per won battle).
+    const rewardKey = colState.victoryReward || null;
+    if (rewardKey && animatedVictoryRewardKey === rewardKey) {
+      coinCounterEl.textContent = `+${targetCoins}`;
+    } else if (coinCounterEl.dataset.animated !== 'true') {
       coinCounterEl.dataset.animated = 'true';
+      animatedVictoryRewardKey = rewardKey;
       const durationMs = 900;
       const startedAt = (typeof performance !== 'undefined' ? performance.now() : Date.now());
       const tick = () => {
@@ -3090,19 +3129,22 @@ export function attachBattleListeners() {
         col.hasAwardedVictory = false;
         col.victoryReward = null;
       }
-      if (store.state?.rewardModal) {
-        store.closeColosseumVictoryModal(true);
-        store.closeReward();
-      } else {
-        store.closeColosseumVictoryModal(false);
-      }
       // Draw a fresh boss for the replay instead of refighting the one just
       // beaten -- sessionRotatedBossId otherwise stays set from the battle
       // that just ended, so startBattle()'s own "if (!sessionRotatedBossId)"
       // guard would silently reuse it. Leave an explicitly chosen boss
       // (Quest Map / waypoint) alone; only the casual rotation resets.
+      // NOTE: this must run BEFORE closing the modal: closing it calls
+      // notify(), which re-renders synchronously and lets
+      // attachBattleListeners() auto-start the next battle right away.
       if (!hasExplicitBossSelection && !(store.state && store.state.hasExplicitBossSelection)) {
         sessionRotatedBossId = null;
+      }
+      if (store.state?.rewardModal) {
+        store.closeColosseumVictoryModal(true);
+        store.closeReward();
+      } else {
+        store.closeColosseumVictoryModal(false);
       }
       if (!isBattleRunning) {
         startBattle();
@@ -3124,6 +3166,7 @@ export function attachBattleListeners() {
       // This is the real "give up" decision quitBattle() deferred -- clear
       // the waypoint breadcrumb now that there's no retry coming.
       if (store.state) store.state.activeWaypointChoreKey = null;
+      pendingRetryExplicitBossId = null;
       store.closeColosseumDefeatModal(true);
       const targetView = (store.state && store.state.previousView === 'quest_map')
         ? 'quest_map'
@@ -3151,12 +3194,22 @@ export function attachBattleListeners() {
       if (col) {
         col.hasAwardedVictory = false;
       }
-      store.closeColosseumDefeatModal(false);
-      // Same reasoning as Play Again: draw a fresh boss for the retry
-      // instead of refighting the one that just defeated the player.
-      if (!hasExplicitBossSelection && !(store.state && store.state.hasExplicitBossSelection)) {
+      // An explicit/waypoint battle retries the SAME boss; a casual battle
+      // draws a fresh boss instead of refighting the one that just won.
+      // Must run before closing the modal (its notify() auto-starts the
+      // battle synchronously).
+      if (pendingRetryExplicitBossId) {
+        selectedBossId = pendingRetryExplicitBossId;
+        hasExplicitBossSelection = true;
+        if (store.state) {
+          store.state.selectedBossId = pendingRetryExplicitBossId;
+          store.state.hasExplicitBossSelection = true;
+        }
+        pendingRetryExplicitBossId = null;
+      } else if (!hasExplicitBossSelection && !(store.state && store.state.hasExplicitBossSelection)) {
         sessionRotatedBossId = null;
       }
+      store.closeColosseumDefeatModal(false);
       if (!isBattleRunning) {
         startBattle();
       }
