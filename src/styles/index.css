@@ -872,3 +872,24 @@ button:not(.no-squish):active, .tactile-check-btn:active, .squishy-toy-btn:activ
 
 
 
+
+
+/* Easy-reading mode (per kid, toggled in Parent Portal > Kids).
+   Atkinson Hyperlegible (Braille Institute, SIL Open Font License) keeps
+   look-alike letters such as b/d, I/l/1 and O/0 clearly different, which
+   helps early readers. */
+html.reading-font-mode {
+  --font-sans: 'Atkinson Hyperlegible', Quicksand, sans-serif;
+  --font-body: 'Atkinson Hyperlegible', Quicksand, sans-serif;
+  --font-body-lg: 'Atkinson Hyperlegible', Quicksand, sans-serif;
+  --font-body-md: 'Atkinson Hyperlegible', Quicksand, sans-serif;
+  --font-label-xl: 'Atkinson Hyperlegible', Quicksand, sans-serif;
+  --font-headline: 'Atkinson Hyperlegible', 'Plus Jakarta Sans', sans-serif;
+  --font-headline-lg: 'Atkinson Hyperlegible', 'Plus Jakarta Sans', sans-serif;
+  --font-headline-lg-mobile: 'Atkinson Hyperlegible', 'Plus Jakarta Sans', sans-serif;
+  --font-display-lg: 'Atkinson Hyperlegible', 'Plus Jakarta Sans', sans-serif;
+  letter-spacing: 0.01em;
+}
+html.reading-font-mode body {
+  font-family: 'Atkinson Hyperlegible', Quicksand, sans-serif;
+}

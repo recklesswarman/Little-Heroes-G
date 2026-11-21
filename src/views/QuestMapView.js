@@ -1,6 +1,7 @@
 import { store } from '../state/store.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
 import { ADVENTURE_GAMES, getGameChallenges } from '../data/learningGamesData.js';
+import { GRADE_LEVEL_LABELS, STANDARD_DESCRIPTIONS } from '../data/gradeLevelSkillsData.js';
 import { Sound } from '../audio/sfx.js';
 import { voicePrompts } from '../utils/voicePrompts.js';
 import { geminiLiveService } from '../services/geminiLiveService.js';
@@ -33,6 +34,7 @@ export function renderQuestMapView() {
           </button>
           <div class="flex items-center gap-2">
             <span class="text-xs font-black uppercase text-secondary">${activeGame.subject}</span>
+            ${challenge.standard ? `<span class="hidden sm:inline bg-primary/15 text-primary px-2 py-0.5 rounded-full text-[10px] font-black border border-primary/30" title="${escapeHtml(STANDARD_DESCRIPTIONS[challenge.standard] || '')}">${escapeHtml(GRADE_LEVEL_LABELS[kidDifficulty] || '')} · ${escapeHtml(challenge.standard)}</span>` : ''}
             <span class="bg-surface-container-high px-3 py-1 rounded-full text-xs font-bold text-primary border border-primary/30">
               Challenge ${currentChallengeIdx + 1} / ${challenges.length}
             </span>
@@ -249,6 +251,30 @@ export function renderQuestMapView() {
       align: 'end',
       stars: 1,
       yPos: '12%'
+    },
+    {
+      stopNumber: 7,
+      gameId: 'rex_reading_rocket',
+      title: "Rex's Reading Rocket",
+      biome: 'School Skills',
+      subject: 'Reading at Your Grade',
+      icon: 'auto_stories',
+      color: '#00d2ff',
+      align: 'start',
+      stars: 3,
+      yPos: '6%'
+    },
+    {
+      stopNumber: 8,
+      gameId: 'rex_math_mountain',
+      title: "Rex's Math Mountain",
+      biome: 'School Skills',
+      subject: 'Math at Your Grade',
+      icon: 'landscape',
+      color: '#ffb300',
+      align: 'end',
+      stars: 3,
+      yPos: '2%'
     }
   ];
 
@@ -424,7 +450,7 @@ export function renderQuestMapView() {
             </button>
           </div>
 
-          <!-- THE 6 PET ADVENTURE MINI GAME STOPS -->
+          <!-- PET ADVENTURE MINI GAME STOPS (6 realms + 2 grade-level skill quests) -->
           ${mapStops
             .slice()
             .reverse()
@@ -533,7 +559,12 @@ export function attachQuestMapListeners() {
       options: challenge.options,
       correctAnswerIndex: challenge.answer,
       currentStop: currentChallengeIdx + 1,
-      totalStops: challenges.length
+      totalStops: challenges.length,
+      gradeLevel: GRADE_LEVEL_LABELS[kidDiff] || null,
+      skill: challenge.standard
+        ? `${challenge.standard}: ${STANDARD_DESCRIPTIONS[challenge.standard] || ''}`
+        : null,
+      hint: challenge.hint || null
     });
 
     // Auto-connect Rex in toddler easy mode if not already connected
@@ -761,7 +792,7 @@ export function attachQuestMapListeners() {
     });
   });
 
-  // Open any of the 6 mini games directly from the Quest Map stops
+  // Open any of the mini games directly from the Quest Map stops
   document.querySelectorAll('.map-game-stop-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       const gId = btn.getAttribute('data-map-game-id');
@@ -808,7 +839,7 @@ export function attachQuestMapListeners() {
       const challenge = challenges[currentChallengeIdx] || challenges[0];
 
       if (chosenIdx === challenge.answer) {
-        Sound.fanfare();
+        Sound.correctAnswer();
         confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
 
         if (kidDiff === 'easy') {
@@ -835,7 +866,7 @@ export function attachQuestMapListeners() {
           store.playAdventureGame(g.id, true);
         }
       } else {
-        Sound.hit();
+        Sound.wrongAnswer();
         if (kidDiff === 'easy') {
           voicePrompts.speakTryAgain();
         }
