@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import { handleChatRequest, handleBedtimeStoryRequest, attachGeminiLiveWebSocket, getRequestIp } from './server/geminiService.js';
 import { handleStoryIllustrationRequest } from './server/imageGenService.js';
 import { createLocalAiHandlers } from './server/localAiService.js';
+import { createApiCors } from './server/corsPolicy.js';
 import { handleStoryWeaverBooksRequest } from './server/storyweaverService.js';
 import { handleNotifyRequest } from './server/ntfyService.js';
 import { handleVoiceSttRequest, handleVoiceTtsRequest, handleVoiceStatusRequest, MAX_AUDIO_BYTES } from './server/voiceLabService.js';
@@ -25,6 +26,8 @@ const staticRequestLimiter = rateLimit({
   validate: { xForwardedForHeader: false }
 });
 
+// Cross-origin access for the family's static sites only (see server/corsPolicy.js).
+app.use('/api', createApiCors());
 app.use(express.json({ limit: '2mb' }));
 
 // Health check endpoint for Cloud Run / App Hosting

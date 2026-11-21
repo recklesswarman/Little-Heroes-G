@@ -1,6 +1,7 @@
 // Rex Voice Lab: mic -> whisper.cpp -> Rex (Gemini chat) -> Piper.
 // Server side lives in server/voiceLabService.js (env: WHISPER_CPP_URL, PIPER_URL, PIPER_MODE, PIPER_VOICE).
 import { encodeWav, resampleMono, toMono } from './wav.js';
+import { serverApiUrl } from '../services/serverApi.js';
 
 const $ = id => document.getElementById(id);
 const history = [];
@@ -18,7 +19,7 @@ async function checkStatus() {
   setDot('whisper-dot', null);
   setDot('piper-dot', null);
   try {
-    const r = await fetch('/api/voice/status');
+    const r = await fetch(serverApiUrl('/api/voice/status'));
     const s = await r.json();
     setDot('whisper-dot', Boolean(s.whisper?.reachable));
     setDot('piper-dot', Boolean(s.piper?.reachable));
@@ -64,14 +65,14 @@ async function blobToWav(blob) {
 }
 
 async function transcribe(wavBlob) {
-  const r = await fetch('/api/voice/stt', { method: 'POST', headers: { 'Content-Type': 'audio/wav' }, body: wavBlob });
+  const r = await fetch(serverApiUrl('/api/voice/stt'), { method: 'POST', headers: { 'Content-Type': 'audio/wav' }, body: wavBlob });
   const json = await r.json().catch(() => ({}));
   if (!r.ok || !json.ok) throw new Error(json.error || `Speech-to-text failed (${r.status})`);
   return json.text || '';
 }
 
 async function askRex(message) {
-  const r = await fetch('/api/gemini/chat', {
+  const r = await fetch(serverApiUrl('/api/gemini/chat'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ message, history: history.slice(-8), petId: 'rex', speedMode: 'fast', childName: 'Little Hero' })
@@ -82,7 +83,7 @@ async function askRex(message) {
 }
 
 async function speak(text) {
-  const r = await fetch('/api/voice/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
+  const r = await fetch(serverApiUrl('/api/voice/tts'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
   if (!r.ok) {
     const json = await r.json().catch(() => ({}));
     throw new Error(json.error || `Piper failed (${r.status})`);

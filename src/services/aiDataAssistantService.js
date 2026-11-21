@@ -14,6 +14,7 @@
 import { store } from '../state/store.js';
 import { firebaseAI } from './firebaseAILogicService.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
+import { serverApiUrl } from './serverApi.js';
 
 /**
  * Extracts and synthesizes grounded household state for the given kid (or all kids).
@@ -284,7 +285,7 @@ INSTRUCTIONS:
   // Tier 2: Backend /api/gemini/chat endpoint if reachable
   if (typeof fetch !== 'undefined') {
     try {
-      const response = await fetch('/api/gemini/chat', {
+      const response = await fetch(serverApiUrl('/api/gemini/chat'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
