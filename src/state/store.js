@@ -3168,15 +3168,26 @@ class Store {
     const hasPendingBattleApproval = this.isTaskPendingApproval(taskIdForLog, heroId) || hasPendingHabitBrush;
 
     // Escalating Calendar-Day Daily Brush Streak (deduplicated per calendar day; skip on duplicate pending battle)
+    // DAILY_STREAK_MILESTONES: one-time escalating bonus coins awarded the day the
+    // streak first reaches each threshold (never re-awarded for repeat battles the
+    // same day, since nextCount only advances on a genuinely new calendar day below).
+    const DAILY_STREAK_MILESTONES = { 3: 25, 7: 60, 14: 125, 30: 300 };
+    let dailyStreakMilestoneBonusCoins = 0;
+    let dailyStreakMilestoneHit = null;
     if (currentHero && !hasPendingBattleApproval) {
       const prevStreak = currentHero.brushStreakData || { count: 0, lastDate: null, morningDate: null, eveningDate: null };
       let nextCount = Number(prevStreak.count) || 0;
+      const isNewStreakDay = prevStreak.lastDate !== todayKey;
       if (prevStreak.lastDate === todayKey) {
         nextCount = Math.max(1, nextCount);
       } else if (prevStreak.lastDate === yesterdayKey) {
         nextCount = Math.max(1, nextCount) + 1;
       } else {
         nextCount = 1;
+      }
+      if (isNewStreakDay && DAILY_STREAK_MILESTONES[nextCount]) {
+        dailyStreakMilestoneBonusCoins = DAILY_STREAK_MILESTONES[nextCount];
+        dailyStreakMilestoneHit = nextCount;
       }
       currentHero.brushStreakData = {
         count: nextCount,
@@ -3244,7 +3255,7 @@ class Store {
 
     const finalCoinsEarned = hasPendingBattleApproval
       ? 0
-      : (Math.round(coinsEarned * laserMult * speedScrubMult * streakMult) + weeklyBonusCoins);
+      : (Math.round(coinsEarned * laserMult * speedScrubMult * streakMult) + weeklyBonusCoins + dailyStreakMilestoneBonusCoins);
     const finalXpEarned = hasPendingBattleApproval
       ? 0
       : (Math.round(xpEarned * laserMult * speedScrubMult * streakMult) + weeklyBonusXp);
@@ -3268,6 +3279,8 @@ class Store {
       speedScrubMultiplier: speedScrubMult,
       streakMultiplier: streakMult,
       brushStreakCount: currentHero?.brushStreakData?.count || 1,
+      dailyStreakMilestoneHit,
+      dailyStreakMilestoneBonusCoins: hasPendingBattleApproval ? 0 : dailyStreakMilestoneBonusCoins,
       newlyAwardedBadges: [],
       weeklyChallengeCompleted: weeklyCompletedNow,
       weeklyChallengeBonusCoins: hasPendingBattleApproval ? 0 : weeklyBonusCoins
@@ -6198,6 +6211,63 @@ class Store {
         xpEarned: 25
       });
       return { success: true, item, isNew: true, shieldDurationBonusSec: this.getMintyShieldUpgradeDurationBonusSec(hero.id) };
+    }
+
+    // 2c. BATTLE MUSIC TRACKS (Equippable 1-at-a-time procedural battle rhythm style for AR Toothbrush Battles)
+    if (item.subCategory === 'music_track' || item.category === 'Music') {
+      const isMusicOwned = hero.inventory.includes(item.id) || hero.inventory.includes(item.title) || hero.inventory.includes(item.name);
+      if (isMusicOwned) {
+        if (!hero.equippedGear || typeof hero.equippedGear !== 'object' || Array.isArray(hero.equippedGear)) {
+          hero.equippedGear = {};
+        }
+        hero.equippedGear.music = item.id;
+        this.syncSelectedHeroWithHeroes();
+        Sound.sparkle();
+        try {
+          speakCompanion(`Battle music set to ${item.title || item.name}! Let's brush to the beat!`);
+        } catch {}
+        this.saveState(true, true);
+        this.showReward(
+          'Battle Music Equipped! 🎵',
+          `Your AR Battle soundtrack is now ${item.title || item.name}!`,
+          0,
+          0,
+          item.image
+        );
+        return { success: true, item, equipped: true };
+      }
+
+      const check = checkDualBalances();
+      if (!check.ok) return { success: false, reason: check.reason };
+
+      deductDualBalances();
+      hero.inventory.push(item.id);
+      if (item.title) hero.inventory.push(item.title);
+      if (!hero.equippedGear || typeof hero.equippedGear !== 'object' || Array.isArray(hero.equippedGear)) {
+        hero.equippedGear = {};
+      }
+      hero.equippedGear.music = item.id;
+      this.state.inventory = [...hero.inventory];
+
+      this.addXP(15);
+      Sound.fanfare();
+      try { confetti({ particleCount: 40, spread: 60 }); } catch {}
+      try {
+        speakCompanion(item.voiceLine || `Sweet new beat unlocked! ${item.title || item.name} is ready to rock your next battle!`);
+      } catch {}
+
+      this.logAction(`${hero.name} unlocked ${item.title || item.name}`, `Cost: ${coinCost} Tokens 🪙`);
+      this.syncSelectedHeroWithHeroes();
+      this.saveState(true, true);
+
+      this.showReward(
+        'New Battle Track Unlocked! 🎵',
+        `${item.title || item.name} is now in your AR Battle jukebox!`,
+        0,
+        15,
+        item.image
+      );
+      return { success: true, item, isNew: true };
     }
 
     // 3. AVATAR & PET GEAR (Masks, Capes, Armor, Boots)

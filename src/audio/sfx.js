@@ -18,6 +18,34 @@ let lullabyMasterGain = null;
 let battleBpm = 118;
 let lastBattleRhythmOnBeat = null;
 let lastBloopTime = 0;
+let activeBattleMusicTrack = 'cosmic_pulse';
+
+// BATTLE_MUSIC_TRACKS: selectable procedural note/instrumentation presets for
+// startBattleRhythm(), unlocked via the Unlock Shop's "Music" category and
+// equipped through hero.equippedGear.music. Each track reuses the same
+// generative drum & bass engine (no new audio provider/files) but varies the
+// bass/lead note sets and lead oscillator timbre for a genuinely distinct feel.
+const BATTLE_MUSIC_TRACKS = {
+  cosmic_pulse: {
+    bassNotes: [110, 110, 130.81, 146.83, 110, 110, 164.81, 146.83],
+    leadNotes: [440, 523.25, 587.33, 659.25, 523.25, 587.33, 659.25, 783.99],
+    leadType: 'sine'
+  },
+  turbo_groove_track: {
+    bassNotes: [98, 98, 123.47, 110, 98, 98, 146.83, 130.81],
+    leadNotes: [392, 493.88, 523.25, 587.33, 493.88, 523.25, 587.33, 698.46],
+    leadType: 'square'
+  },
+  starlight_serenade_track: {
+    bassNotes: [130.81, 130.81, 164.81, 196, 130.81, 130.81, 174.61, 196],
+    leadNotes: [523.25, 659.25, 783.99, 880, 659.25, 783.99, 880, 987.77],
+    leadType: 'triangle'
+  }
+};
+
+function setBattleMusicTrack(trackId) {
+  activeBattleMusicTrack = BATTLE_MUSIC_TRACKS[trackId] ? trackId : 'cosmic_pulse';
+}
 let isSpeechDucked = false;
 
 // Audio Mix Constants (R3 Normalized Headroom & Voice Ducking)
@@ -690,6 +718,87 @@ export const Sound = {
     }
   },
 
+  // 6c3. STREAK TICK (Bright ascending ping at brush-streak milestones, e.g. every +5 combo)
+  streakTick() {
+    if (isMuted) return;
+    if (!canDebounceSfx('streakTick', 300)) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const dest = getBusDestination(ctx, 'battleSfxGain');
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(880, now);
+      osc.frequency.exponentialRampToValueAtTime(1320, now + 0.1);
+      gain.gain.setValueAtTime(0.16, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+      osc.connect(gain);
+      gain.connect(dest);
+      osc.start(now);
+      osc.stop(now + 0.18);
+    } catch (e) {
+      console.debug('Audio error', e);
+    }
+  },
+
+  // 6c4. MINI-CHALLENGE START (Quick two-note alert cueing a timed mini-challenge)
+  miniChallengeStart() {
+    if (isMuted) return;
+    if (!canDebounceSfx('miniChallengeStart', 200)) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const dest = getBusDestination(ctx, 'uiSfxGain');
+      const notes = [740, 988];
+      notes.forEach((freq, idx) => {
+        const start = now + idx * 0.08;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(freq, start);
+        gain.gain.setValueAtTime(0.1, start);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.12);
+        osc.connect(gain);
+        gain.connect(dest);
+        osc.start(start);
+        osc.stop(start + 0.12);
+      });
+    } catch (e) {
+      console.debug('Audio error', e);
+    }
+  },
+
+  // 6c5. MINI-CHALLENGE COMPLETE (Triumphant short fanfare on win)
+  miniChallengeComplete() {
+    if (isMuted) return;
+    if (!canDebounceSfx('miniChallengeComplete', 200)) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const dest = getBusDestination(ctx, 'uiSfxGain');
+      const notes = [523.25, 659.25, 783.99, 1046.5];
+      notes.forEach((freq, idx) => {
+        const start = now + idx * 0.05;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, start);
+        gain.gain.setValueAtTime(0.16, start);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.22);
+        osc.connect(gain);
+        gain.connect(dest);
+        osc.start(start);
+        osc.stop(start + 0.22);
+      });
+    } catch (e) {
+      console.debug('Audio error', e);
+    }
+  },
+
   // 6d. EVOLUTION ASCENT (Epic rising harmonic sweep and major chord for evolution ceremony)
   evolutionAscent() {
     if (isMuted) return;
@@ -1186,6 +1295,11 @@ export const Sound = {
     }
   },
 
+  // Selects which Unlock Shop battle-music track preset startBattleRhythm() uses next.
+  setBattleMusicTrack(trackId) {
+    setBattleMusicTrack(trackId);
+  },
+
   // 17. HEROIC TOOTHBRUSH BATTLE RHYTHM (Procedural energetic chiptune drum & bass groove, routed via bgmGain)
   startBattleRhythm(onBeat = lastBattleRhythmOnBeat) {
     lastBattleRhythmOnBeat = typeof onBeat === 'function' ? onBeat : null;
@@ -1197,8 +1311,10 @@ export const Sound = {
     if (!ctx) return;
 
     let step = 0;
-    const bassNotes = [110, 110, 130.81, 146.83, 110, 110, 164.81, 146.83]; // A2, A2, C3, D3, A2, A2, E3, D3
-    const leadNotes = [440, 523.25, 587.33, 659.25, 523.25, 587.33, 659.25, 783.99]; // A4, C5, D5, E5...
+    const trackPreset = BATTLE_MUSIC_TRACKS[activeBattleMusicTrack] || BATTLE_MUSIC_TRACKS.cosmic_pulse;
+    const bassNotes = trackPreset.bassNotes;
+    const leadNotes = trackPreset.leadNotes;
+    const leadOscType = trackPreset.leadType || 'sine';
 
     const intervalMs = Math.round(60000 / (battleBpm * 2));
 
@@ -1262,7 +1378,7 @@ export const Sound = {
         if (step % 2 === 1) {
           const lead = ctx.createOscillator();
           const leadGain = ctx.createGain();
-          lead.type = 'sine';
+          lead.type = leadOscType;
           lead.frequency.setValueAtTime(leadNotes[step % leadNotes.length], now);
           leadGain.gain.setValueAtTime(MIX_DEFAULTS.rhythmGains.lead, now);
           leadGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);

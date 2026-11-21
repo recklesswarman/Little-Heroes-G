@@ -250,6 +250,50 @@ export const DIGITAL_REWARDS_CATALOG = [
   },
 
   // =========================================================================
+  // 1b. BATTLE MUSIC TRACKS (Equippable AR Battle soundtrack, procedurally
+  // generated client-side via the same Web Audio drum & bass engine as the
+  // default "Cosmic Pulse" track -- no new audio files/providers)
+  // =========================================================================
+  {
+    id: 'turbo_groove_track',
+    name: 'Turbo Groove',
+    title: 'Turbo Groove',
+    desc: 'A punchy, square-wave powered battle beat that pushes your brushing tempo into overdrive!',
+    category: 'Music',
+    subCategory: 'music_track',
+    subcategory: 'music_track',
+    equipSlot: 'music',
+    rarity: 'common',
+    price: 80,
+    costCoins: 80,
+    assetUrl: getRewardAssetUrl('turbo_groove_track'),
+    image: getRewardAssetUrl('turbo_groove_track'),
+    fallbackSvgDataUri: DEFAULT_FALLBACK_DATA_URI,
+    modelUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+    voiceLine: "New beat unlocked! Turbo Groove will pump up your next AR Battle!",
+    isUnlocked: false
+  },
+  {
+    id: 'starlight_serenade_track',
+    name: 'Starlight Serenade',
+    title: 'Starlight Serenade',
+    desc: 'A sparkling, triangle-wave melody with a soaring lead line for a dreamier battle vibe.',
+    category: 'Music',
+    subCategory: 'music_track',
+    subcategory: 'music_track',
+    equipSlot: 'music',
+    rarity: 'rare',
+    price: 120,
+    costCoins: 120,
+    assetUrl: getRewardAssetUrl('starlight_serenade_track'),
+    image: getRewardAssetUrl('starlight_serenade_track'),
+    fallbackSvgDataUri: DEFAULT_FALLBACK_DATA_URI,
+    modelUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+    voiceLine: "New beat unlocked! Starlight Serenade will light up your next AR Battle!",
+    isUnlocked: false
+  },
+
+  // =========================================================================
   // 2. AVATAR GEAR (Equippable Sockets for Hero)
   // =========================================================================
   {
