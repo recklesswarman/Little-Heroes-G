@@ -179,7 +179,7 @@ await test('Pi job decodes the Firestore document and posts the report', async (
   const urls = [];
   const fetchImpl = async (url, init) => {
     urls.push(url);
-    if (url.includes('firestore.googleapis.com')) return { ok: true, status: 200, json: async () => doc };
+    if (new URL(url).hostname === 'firestore.googleapis.com') return { ok: true, status: 200, json: async () => doc };
     assert.match(init.body, /Mia: 1 chore/);
     assert.match(init.body, /Reading sessions: 1/);
     return { ok: true, status: 200 };
