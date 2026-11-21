@@ -3055,6 +3055,11 @@ export function attachBattleListeners() {
       };
       requestAnimationFrame(tick);
       safeConfetti({ particleCount: 60, spread: 70, startVelocity: 38, origin: { y: 0.45 }, colors: ['#fbbf24', '#34d399', '#38bdf8', '#ffffff'] });
+      store.celebrate?.('trophy');
+      store.notifyParents?.('boss_defeated', {
+        kidName: store.getSelectedHero?.()?.name || store.state?.selectedHero?.name || '',
+        title: colState.victoryReward?.bossName || ''
+      });
     }
   }
 

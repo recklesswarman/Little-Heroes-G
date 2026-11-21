@@ -3681,7 +3681,10 @@ class Store {
       status: 'pending'
     };
 
-    return this.addPendingApproval(approval);
+    const added = this.addPendingApproval(approval);
+    this.celebrate('confetti');
+    this.notifyParents('task_submitted', { kidName: heroName, title });
+    return added;
   }
 
   getDentalBadges(heroId = null) {
@@ -5888,6 +5891,8 @@ class Store {
     this.state.pendingApprovals.push(newApproval);
     Sound.coin();
     this.logAction(`${this.state.selectedHero.name} requested reward '${reward.title}'`, `Cost: ${reward.costPoints} Points ⭐ (Awaiting Parent Sign-off)`);
+    this.celebrate('coins');
+    this.notifyParents('reward_requested', { kidName: this.state.selectedHero.name, title: reward.title });
     this.showReward(
       'Request Sent to Parent!',
       `Your request for "${reward.title}" was submitted to the Parent Admin Inbox for sign-off!`,
@@ -7618,6 +7623,30 @@ class Store {
       status: 'Recorded'
     });
     if (this.state.taskLedgerLogs.length > 50) this.state.taskLedgerLogs.pop();
+  }
+
+  // Ask the UI to play a LottieFiles-style reward animation ('confetti' | 'trophy' | 'coins').
+  // Decoupled through a window event so the store stays free of DOM/animation code;
+  // src/services/rewardAnimationService.js listens for it.
+  celebrate(kind = 'confetti') {
+    if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function' || typeof CustomEvent === 'undefined') return;
+    try {
+      window.dispatchEvent(new CustomEvent('lh:celebrate', { detail: { kind } }));
+    } catch {
+      // Never let a celebration break a reward flow.
+    }
+  }
+
+  // Ask the app to push a parent alert through the family Pi's ntfy server
+  // (server/ntfyService.js). Same window-event decoupling as celebrate();
+  // src/services/parentNotifyService.js does the network call.
+  notifyParents(kind, data = {}) {
+    if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function' || typeof CustomEvent === 'undefined') return;
+    try {
+      window.dispatchEvent(new CustomEvent('lh:parent-notify', { detail: { kind, kidName: data.kidName || '', title: data.title || '' } }));
+    } catch {
+      // Alerts are best-effort; never block the kid's flow.
+    }
   }
 
   showReward(title, message, coins = 0, xp = 0, image = null, icon = null) {
