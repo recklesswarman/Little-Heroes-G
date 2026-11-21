@@ -6,6 +6,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { handleChatRequest, handleBedtimeStoryRequest, attachGeminiLiveWebSocket, getRequestIp } from './server/geminiService.js';
 import { handleStoryIllustrationRequest } from './server/imageGenService.js';
+import { createLocalAiHandlers } from './server/localAiService.js';
 import { handleStoryWeaverBooksRequest } from './server/storyweaverService.js';
 import { handleNotifyRequest } from './server/ntfyService.js';
 import { handleVoiceSttRequest, handleVoiceTtsRequest, handleVoiceStatusRequest, MAX_AUDIO_BYTES } from './server/voiceLabService.js';
@@ -53,6 +54,23 @@ app.post('/api/notify', handleNotifyRequest);
 app.get('/api/voice/status', handleVoiceStatusRequest);
 app.post('/api/voice/stt', express.raw({ type: ['audio/wav', 'audio/x-wav', 'application/octet-stream'], limit: MAX_AUDIO_BYTES }), handleVoiceSttRequest);
 app.post('/api/voice/tts', handleVoiceTtsRequest);
+
+// Local offline AI on the family Raspberry Pi (Piper TTS, whisper.cpp STT) for Rex's voice.
+// Each route answers 503 when its *_URL env var is unset, and the client falls back.
+const localAi = createLocalAiHandlers();
+const localAiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => ipKeyGenerator(getRequestIp(req)),
+  validate: { xForwardedForHeader: false }
+});
+app.get('/api/local/status', localAiLimiter, localAi.handleStatus);
+app.post('/api/local/tts', localAiLimiter, localAi.handleTts);
+app.post('/api/local/stt', localAiLimiter,
+  express.raw({ type: ['audio/*', 'video/webm', 'application/octet-stream'], limit: localAi.STT_MAX_BYTES }),
+  localAi.handleStt);
 
 const distPath = path.join(__dirname, 'dist');
 

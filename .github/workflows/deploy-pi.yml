@@ -1,0 +1,26 @@
+name: Deploy to family Pi
+
+# Runs only on the self-hosted Raspberry Pi runner, and only for pushes to main
+# (never for pull requests, so code from forks can't run on the Pi).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-pi
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.repository == 'recklesswarman/Little-Heroes-G'
+    runs-on: [self-hosted, pi]
+    timeout-minutes: 30
+    env:
+      XDG_RUNTIME_DIR: /run/user/1000
+    steps:
+      - name: Pull, build and restart Little Heroes on the Pi
+        run: ~/bin/update-little-heroes.sh main

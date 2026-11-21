@@ -32,6 +32,21 @@ env:
     secret: GEMINI_API_KEY
     availability:
       - RUNTIME
+  # Parent chore/reward alerts: the server's /api/notify posts to the family Pi's ntfy
+  # through Tailscale Funnel. Publish-only token for the little-heroes topic, kept server-side.
+  # -- set once with: firebase apphosting:secrets:set NTFY_TOKEN
+  - variable: NTFY_URL
+    value: https://meshlink.tail9d175a.ts.net
+    availability:
+      - RUNTIME
+  - variable: NTFY_TOPIC
+    value: little-heroes
+    availability:
+      - RUNTIME
+  - variable: NTFY_TOKEN
+    secret: NTFY_TOKEN
+    availability:
+      - RUNTIME
   # Cloudflare Workers AI free image generator for Bedtime AI Storybook
   - variable: CLOUDFLARE_IMAGE_API_URL
     value: https://little-heroes-free-image-api.recklesswarman.workers.dev

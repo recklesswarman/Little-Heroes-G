@@ -1,0 +1,11 @@
+[Unit]
+Description=Little Heroes app (server.js on port 3000)
+After=network-online.target piper-tts.service whisper-server.service
+[Service]
+WorkingDirectory=%h/apps/little-heroes
+EnvironmentFile=%h/apps/little-heroes.env
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=5
+[Install]
+WantedBy=default.target
