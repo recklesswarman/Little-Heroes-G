@@ -14,8 +14,8 @@ import { Sound } from '../audio/sfx.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
 import { safeImageUrl } from '../utils/safeImageUrl.js';
 import { STORYWEAVER_SEED_BOOKS } from '../data/storyweaverSeedBooks.js';
-import {
 import { serverApiUrl } from '../services/serverApi.js';
+import {
   STORYWEAVER_LICENSE,
   STORYWEAVER_ORIGIN,
   normalizeStoryWeaverBook,
