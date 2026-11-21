@@ -44,6 +44,10 @@ import { renderPetLockerView, attachPetLockerListeners } from './views/PetLocker
 import { renderHeroHQView, attachHeroHQListeners } from './views/HeroHQView.js';
 import { renderDinoWorkoutView, attachDinoWorkoutListeners, abandonDinoWorkoutIfRunning } from './views/DinoWorkoutView.js';
 import { renderBedtimeStoryView, setupBedtimeStoryListeners } from './views/BedtimeStoryView.js';
+import { renderStoryLibraryView, attachStoryLibraryListeners } from './views/StoryLibraryView.js';
+import { registerServiceWorker } from './pwa/registerServiceWorker.js';
+import { initRewardAnimations } from './services/rewardAnimationService.js';
+import { initParentNotifications } from './services/parentNotifyService.js';
 import { destroyActiveCanvas } from './utils/activeViewCanvasRegistry.js';
 import { isExistingActiveHousehold } from './utils/householdHeuristics.js';
 
@@ -361,6 +365,11 @@ function _renderAppInternal() {
       mainContent = renderBedtimeStoryView();
       attachViewListeners = setupBedtimeStoryListeners;
       break;
+    case 'story_library':
+    case 'picture_books':
+      mainContent = renderStoryLibraryView();
+      attachViewListeners = attachStoryLibraryListeners;
+      break;
     default:
       mainContent = renderDashboardView();
       attachViewListeners = attachDashboardListeners;
@@ -481,6 +490,8 @@ window.addEventListener('keydown', (e) => {
 
 // Initial Listeners & Store Subscription
 initTactileSoundEngine();
+initRewardAnimations();
+initParentNotifications();
 initParentLockModal();
 initHouseholdModal();
 store.subscribe(handleStateUpdate);
@@ -573,6 +584,9 @@ window.addEventListener('popstate', () => {
 
 // Initial Render
 renderApp();
+
+// Offline support: vite-plugin-pwa service worker (see vite.config.js).
+registerServiceWorker();
 
 // Initialize client-side voice synthesis so voices are populated and ready instantly.
 warmUpVoiceEngine();

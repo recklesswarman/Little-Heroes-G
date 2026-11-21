@@ -7,6 +7,9 @@ import { fileURLToPath } from 'url';
 import { handleChatRequest, handleBedtimeStoryRequest, attachGeminiLiveWebSocket, getRequestIp } from './server/geminiService.js';
 import { handleStoryIllustrationRequest } from './server/imageGenService.js';
 import { createLocalAiHandlers } from './server/localAiService.js';
+import { handleStoryWeaverBooksRequest } from './server/storyweaverService.js';
+import { handleNotifyRequest } from './server/ntfyService.js';
+import { handleVoiceSttRequest, handleVoiceTtsRequest, handleVoiceStatusRequest, MAX_AUDIO_BYTES } from './server/voiceLabService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -40,7 +43,19 @@ app.post('/api/rex/bedtime-story', handleBedtimeStoryRequest);
 app.post('/api/story/illustration', handleStoryIllustrationRequest);
 app.post('/api/ai/image', handleStoryIllustrationRequest);
 
-// Local offline AI on the family Raspberry Pi (Piper TTS, whisper.cpp STT, ntfy alerts).
+// StoryWeaver picture-book search proxy (CC BY 4.0 books, attribution kept in the view)
+app.get('/api/storyweaver/books', handleStoryWeaverBooksRequest);
+
+// Parent alerts via the Pi's ntfy server (NTFY_URL / NTFY_TOPIC, see server/ntfyService.js)
+app.post('/api/notify', handleNotifyRequest);
+
+// Offline Rex voice chat test (whisper.cpp speech-to-text + Piper text-to-speech on the Pi).
+// See server/voiceLabService.js for the WHISPER_CPP_URL / PIPER_URL env vars.
+app.get('/api/voice/status', handleVoiceStatusRequest);
+app.post('/api/voice/stt', express.raw({ type: ['audio/wav', 'audio/x-wav', 'application/octet-stream'], limit: MAX_AUDIO_BYTES }), handleVoiceSttRequest);
+app.post('/api/voice/tts', handleVoiceTtsRequest);
+
+// Local offline AI on the family Raspberry Pi (Piper TTS, whisper.cpp STT) for Rex's voice.
 // Each route answers 503 when its *_URL env var is unset, and the client falls back.
 const localAi = createLocalAiHandlers();
 const localAiLimiter = rateLimit({
@@ -51,20 +66,11 @@ const localAiLimiter = rateLimit({
   keyGenerator: (req) => ipKeyGenerator(getRequestIp(req)),
   validate: { xForwardedForHeader: false }
 });
-const notifyLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  limit: 10,
-  standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator: (req) => ipKeyGenerator(getRequestIp(req)),
-  validate: { xForwardedForHeader: false }
-});
 app.get('/api/local/status', localAiLimiter, localAi.handleStatus);
 app.post('/api/local/tts', localAiLimiter, localAi.handleTts);
 app.post('/api/local/stt', localAiLimiter,
   express.raw({ type: ['audio/*', 'video/webm', 'application/octet-stream'], limit: localAi.STT_MAX_BYTES }),
   localAi.handleStt);
-app.post('/api/local/notify', notifyLimiter, localAi.handleNotify);
 
 const distPath = path.join(__dirname, 'dist');
 
@@ -90,7 +96,8 @@ app.use(express.static(distPath, {
   setHeaders: (res, filePath) => {
     if (filePath.includes(path.sep + 'assets' + path.sep)) {
       res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-    } else if (filePath.endsWith('.html')) {
+    } else if (filePath.endsWith('.html') || filePath.endsWith('.json') || path.basename(filePath) === 'sw.js') {
+      // The vite-plugin-pwa service worker must never be HTTP-cached, or updates stall.
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');

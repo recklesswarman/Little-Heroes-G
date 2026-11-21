@@ -35,28 +35,24 @@ function okResponse(body, { status = 200 } = {}) {
 }
 
 const PI_ENV = {
-  PIPER_TTS_URL: 'http://pi:5000/',
-  WHISPER_URL: 'http://pi:8178',
-  NTFY_URL: 'http://pi:8090',
-  NTFY_TOPIC: 'pi-alerts'
+  PIPER_URL: 'http://pi:5000/',
+  WHISPER_CPP_URL: 'http://pi:8178'
 };
 
 console.log('🧪 Local Pi AI routes');
 
-await test('config trims trailing slashes and sanitises the topic', () => {
-  const cfg = getLocalAiConfig({ ...PI_ENV, NTFY_TOPIC: 'pi alerts/../x' });
-  assert.equal(cfg.piperUrl, 'http://pi:5000');
-  assert.equal(cfg.ntfyTopic, 'pialertsx');
+await test('config shares the voice lab env vars and lets the *_TTS_URL / WHISPER_URL names override', () => {
+  assert.equal(getLocalAiConfig(PI_ENV).piperUrl, 'http://pi:5000');
+  assert.equal(getLocalAiConfig(PI_ENV).whisperUrl, 'http://pi:8178');
+  assert.equal(getLocalAiConfig({ ...PI_ENV, PIPER_TTS_URL: 'http://other:5000' }).piperUrl, 'http://other:5000');
 });
 
 await test('every route answers 503 with a fallback when nothing is configured', async () => {
   const h = createLocalAiHandlers({ env: {}, fetchImpl: async () => { throw new Error('should not fetch'); } });
   const tts = mockRes(); await h.handleTts({ socket: LAN, body: { text: 'hi' } }, tts);
   const stt = mockRes(); await h.handleStt({ socket: LAN, body: Buffer.from('x'), headers: {} }, stt);
-  const ntf = mockRes(); await h.handleNotify({ socket: LAN, body: { message: 'hi' } }, ntf);
   assert.equal(tts.statusCode, 503); assert.equal(tts.body.fallback, 'web-speech');
   assert.equal(stt.statusCode, 503);
-  assert.equal(ntf.statusCode, 503);
 });
 
 await test('status reports each service from its health probe', async () => {
@@ -68,7 +64,7 @@ await test('status reports each service from its health probe', async () => {
     }
   });
   const res = mockRes(); await h.handleStatus({ socket: LAN }, res);
-  assert.deepEqual(res.body, { tts: true, stt: false, notify: true });
+  assert.deepEqual(res.body, { tts: true, stt: false });
 });
 
 await test('TTS forwards text to Piper /synthesize and returns WAV', async () => {
@@ -124,18 +120,6 @@ await test('STT rejects a missing body', async () => {
   assert.equal(res.statusCode, 400);
 });
 
-await test('notify posts to the ntfy topic with header-safe title and tags', async () => {
-  let seen;
-  const h = createLocalAiHandlers({ env: PI_ENV, fetchImpl: async (url, init) => { seen = { url, init }; return okResponse('{}'); } });
-  const res = mockRes();
-  await h.handleNotify({ socket: LAN, body: { title: 'Star earned!\r\nX-Evil: 1', message: 'Mia finished brushing 🦷', tags: 'tada, star;rm' } }, res);
-  assert.equal(seen.url, 'http://pi:8090/pi-alerts');
-  assert.equal(seen.init.headers.Title, 'Star earned! X-Evil: 1');
-  assert.equal(seen.init.headers.Tags, 'tada,starrm');
-  assert.equal(seen.init.body, 'Mia finished brushing 🦷');
-  assert.deepEqual(res.body, { ok: true });
-});
-
 await test('family-network check accepts home and Tailscale addresses only', () => {
   for (const ip of ['127.0.0.1', '::1', '::ffff:192.168.1.20', '10.0.0.5', '172.20.1.1', '100.101.102.103', 'fd7a:115c:a1e0::1']) {
     assert.equal(isFamilyNetworkAddress(ip), true, ip);
@@ -150,17 +134,15 @@ await test('requests from outside the family network are refused, even with a sp
   const outside = { remoteAddress: '203.0.113.9' };
   const xff = { 'x-forwarded-for': '192.168.1.5' };
   const tts = mockRes(); await h.handleTts({ socket: outside, headers: xff, body: { text: 'hi' } }, tts);
-  const ntf = mockRes(); await h.handleNotify({ socket: outside, headers: xff, body: { message: 'spam' } }, ntf);
   const st = mockRes(); await h.handleStatus({ socket: outside, headers: xff }, st);
   assert.equal(tts.statusCode, 403);
-  assert.equal(ntf.statusCode, 403);
-  assert.deepEqual(st.body, { tts: false, stt: false, notify: false });
+  assert.deepEqual(st.body, { tts: false, stt: false });
 });
 
 await test('requests relayed through a Cloudflare Tunnel are refused even from 127.0.0.1', async () => {
   const h = createLocalAiHandlers({ env: PI_ENV, fetchImpl: async () => { throw new Error('should not fetch'); } });
   const res = mockRes();
-  await h.handleNotify({ socket: { remoteAddress: '127.0.0.1' }, headers: { 'cf-connecting-ip': '198.51.100.7' }, body: { message: 'spam' } }, res);
+  await h.handleTts({ socket: { remoteAddress: '127.0.0.1' }, headers: { 'cf-connecting-ip': '198.51.100.7' }, body: { text: 'hi' } }, res);
   assert.equal(res.statusCode, 403);
 });
 
@@ -171,14 +153,14 @@ await test('client reports the Pi as unavailable when the status route serves HT
   const mod = await import('../src/services/localVoiceService.js');
   mod.resetLocalAiStatusCache();
   const status = await mod.getLocalAiStatus({ force: true });
-  assert.deepEqual({ ...status }, { tts: false, stt: false, notify: false });
+  assert.deepEqual({ ...status }, { tts: false, stt: false });
   assert.equal(await mod.isLocalVoiceAvailable(), false);
 });
 
 await test('client uses the Pi voice when status says TTS is up, unless the parent turned it off', async () => {
   const store = {};
   globalThis.localStorage = { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = String(v); } };
-  globalThis.fetch = async () => ({ ok: true, status: 200, headers: { get: () => 'application/json' }, json: async () => ({ tts: true, stt: true, notify: true }) });
+  globalThis.fetch = async () => ({ ok: true, status: 200, headers: { get: () => 'application/json' }, json: async () => ({ tts: true, stt: true }) });
   const mod = await import('../src/services/localVoiceService.js');
   mod.resetLocalAiStatusCache();
   assert.equal(await mod.isLocalVoiceAvailable(), true);

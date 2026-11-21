@@ -27,6 +27,7 @@
     "express-rate-limit": "^8.7.3",
     "firebase": "^12.19.0",
     "firebase-admin": "^14.4.0",
+    "lottie-web": "^5.13.0",
     "ws": "^8.21.3"
   },
   "devDependencies": {
@@ -36,6 +37,7 @@
     "@types/ws": "^8.18.1",
     "postcss": "^8.5.3",
     "tailwindcss": "^4.3.3",
-    "vite": "^6.2.0"
+    "vite": "^6.2.0",
+    "vite-plugin-pwa": "^1.3.0"
   }
 }

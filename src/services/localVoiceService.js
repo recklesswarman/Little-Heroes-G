@@ -3,7 +3,6 @@
 // When the app is served by server.js on the Pi, these routes reach:
 //   /api/local/tts     -> Piper text-to-speech (WAV)
 //   /api/local/stt     -> whisper.cpp speech-to-text ({ text })
-//   /api/local/notify  -> ntfy family alerts
 // Anywhere else (GitHub Pages, Firebase) the status check reports everything as
 // unavailable and callers keep using the browser's Web Speech API.
 
@@ -15,7 +14,7 @@ let statusCache = null;
 let statusCheckedAt = 0;
 let statusPromise = null;
 
-const OFFLINE_STATUS = Object.freeze({ tts: false, stt: false, notify: false });
+const OFFLINE_STATUS = Object.freeze({ tts: false, stt: false });
 
 function apiUrl(path) {
   return path; // server.js serves the app at the origin root
@@ -44,7 +43,7 @@ export async function getLocalAiStatus({ force = false } = {}) {
       const { res, data } = await fetchWithTimeout(apiUrl('/api/local/status'), { cache: 'no-store' }, STATUS_TIMEOUT_MS,
         (r) => ((r.headers?.get?.('content-type') || '').includes('json') ? r.json() : null));
       if (!res.ok || !data) return OFFLINE_STATUS;
-      return { tts: data?.tts === true, stt: data?.stt === true, notify: data?.notify === true };
+      return { tts: data?.tts === true, stt: data?.stt === true };
     } catch {
       return OFFLINE_STATUS;
     }
@@ -176,18 +175,3 @@ export function recordAndTranscribe({ maxMs = 8000 } = {}) {
   return { stop, result };
 }
 
-/** Sends a phone notification to the family ntfy topic. Resolves true when delivered. */
-export async function sendFamilyAlert({ title = '', message = '', tags = '' } = {}) {
-  const text = String(message || '').trim();
-  if (!text) return false;
-  try {
-    const res = await fetchWithTimeout(apiUrl('/api/local/notify'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, message: text, tags })
-    }, 10000);
-    return res.ok;
-  } catch {
-    return false;
-  }
-}

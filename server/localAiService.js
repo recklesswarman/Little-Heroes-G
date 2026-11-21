@@ -1,17 +1,14 @@
-// Local, offline AI services that run on the family Raspberry Pi.
+// Rex's everyday offline voice on the family Raspberry Pi (/api/local/*).
 //
-//   PIPER_TTS_URL  e.g. http://127.0.0.1:5000   (Piper HTTP server, POST /synthesize -> WAV)
-//   WHISPER_URL    e.g. http://127.0.0.1:8178   (whisper.cpp server, POST /inference -> {text})
-//   NTFY_URL       e.g. http://127.0.0.1:8090   (ntfy server)
-//   NTFY_TOPIC     e.g. pi-alerts               (topic parent alerts are published to)
+//   PIPER_URL / PIPER_TTS_URL       Piper HTTP server, POST /synthesize -> WAV
+//   WHISPER_CPP_URL / WHISPER_URL   whisper.cpp server, POST /inference -> {text}
 //
-// Every variable is optional. When one is not set (for example on Firebase Hosting or
-// GitHub Pages) the matching route answers 503 and the client falls back to the
-// browser's Web Speech API, so nothing breaks off the Pi.
+// Shares PIPER_URL / WHISPER_CPP_URL with the voice lab (server/voiceLabService.js).
+// When neither is set (Firebase, GitHub Pages) the routes answer 503 and the client
+// keeps using the browser's Web Speech API. Parent alerts live in server/ntfyService.js.
 
 const TTS_MAX_CHARS = 600;
 const STT_MAX_BYTES = 5 * 1024 * 1024;
-const NOTIFY_MAX_CHARS = 1000;
 const UPSTREAM_TIMEOUT_MS = 30000;
 // Recording formats browsers produce, mapped to the file extension whisper/ffmpeg expects.
 const STT_CONTENT_TYPES = Object.freeze({
@@ -26,10 +23,8 @@ function trimSlash(url) {
 
 export function getLocalAiConfig(env = process.env) {
   return {
-    piperUrl: trimSlash(env.PIPER_TTS_URL),
-    whisperUrl: trimSlash(env.WHISPER_URL),
-    ntfyUrl: trimSlash(env.NTFY_URL),
-    ntfyTopic: String(env.NTFY_TOPIC || 'pi-alerts').trim().replace(/[^A-Za-z0-9_-]/g, '') || 'pi-alerts'
+    piperUrl: trimSlash(env.PIPER_TTS_URL || env.PIPER_URL),
+    whisperUrl: trimSlash(env.WHISPER_URL || env.WHISPER_CPP_URL)
   };
 }
 
@@ -99,16 +94,15 @@ export function createLocalAiHandlers({ env = process.env, fetchImpl = globalThi
   async function handleStatus(req, res) {
     if (env.LOCAL_AI_ALLOW_ANY_NETWORK !== 'true' && !isFamilyNetworkRequest(req)) {
       res.setHeader('Cache-Control', 'no-store');
-      return res.json({ tts: false, stt: false, notify: false });
+      return res.json({ tts: false, stt: false });
     }
-    const { piperUrl, whisperUrl, ntfyUrl } = cfg();
-    const [tts, stt, notify] = await Promise.all([
+    const { piperUrl, whisperUrl } = cfg();
+    const [tts, stt] = await Promise.all([
       probe(piperUrl && `${piperUrl}/voices`, { method: 'GET' }, fetchImpl),
-      probe(whisperUrl && `${whisperUrl}/`, { method: 'GET' }, fetchImpl),
-      probe(ntfyUrl && `${ntfyUrl}/v1/health`, { method: 'GET' }, fetchImpl)
+      probe(whisperUrl && `${whisperUrl}/`, { method: 'GET' }, fetchImpl)
     ]);
     res.setHeader('Cache-Control', 'no-store');
-    res.json({ tts, stt, notify });
+    res.json({ tts, stt });
   }
 
   async function handleTts(req, res) {
@@ -168,31 +162,6 @@ export function createLocalAiHandlers({ env = process.env, fetchImpl = globalThi
     }
   }
 
-  async function handleNotify(req, res) {
-    if (rejectOutsideFamilyNetwork(req, res, env)) return;
-    const { ntfyUrl, ntfyTopic } = cfg();
-    if (!ntfyUrl) return res.status(503).json({ error: 'Family alerts are not configured' });
-    const message = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
-    if (!message) return res.status(400).json({ error: 'message is required' });
-    const clean = (value, max) => String(value || '').replace(/[\r\n]+/g, ' ').replace(/[^\x20-\x7E]/g, '').slice(0, max).trim();
-    const headers = { 'Content-Type': 'text/plain; charset=utf-8' };
-    const title = clean(req.body?.title, 120);
-    const tags = clean(req.body?.tags, 80).replace(/[^A-Za-z0-9_,-]/g, '');
-    if (title) headers.Title = title;
-    if (tags) headers.Tags = tags;
 
-    try {
-      const upstream = await fetchWithTimeout(`${ntfyUrl}/${ntfyTopic}`, {
-        method: 'POST',
-        headers,
-        body: message.slice(0, NOTIFY_MAX_CHARS)
-      }, 10000, fetchImpl);
-      if (!upstream.ok) return res.status(502).json({ error: `ntfy returned ${upstream.status}` });
-      return res.json({ ok: true });
-    } catch {
-      return res.status(502).json({ error: 'Family alerts are unavailable' });
-    }
-  }
-
-  return { handleStatus, handleTts, handleStt, handleNotify, STT_MAX_BYTES };
+  return { handleStatus, handleTts, handleStt, STT_MAX_BYTES };
 }
