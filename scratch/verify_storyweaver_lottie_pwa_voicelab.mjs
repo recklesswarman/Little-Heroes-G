@@ -120,7 +120,12 @@ await test('library view shows seed books with escaped credits and license link'
   assert.ok(html.includes('Picture Book Library'));
   assert.ok(html.includes('https://creativecommons.org/licenses/by/4.0/'), 'links the CC BY 4.0 license');
   assert.ok(html.includes('Written by'), 'per-book credits');
-  assert.ok(html.includes('https://storyweaver.org.in/en/stories/16411-too-big-too-small'));
+  // Compare whole href values (not substrings) so the check can't be fooled by a URL embedded elsewhere.
+  const hrefs = [...html.matchAll(/href="([^"]+)"/g)].map(m => m[1]);
+  assert.ok(hrefs.some(h => {
+    const u = new URL(h);
+    return u.origin === 'https://storyweaver.org.in' && u.pathname === '/en/stories/16411-too-big-too-small';
+  }), 'links the book on storyweaver.org.in');
   assert.ok(html.includes('rel="noopener noreferrer"'));
   assert.ok(!html.includes('<script'), 'no raw script tags');
 });
