@@ -1,0 +1,8 @@
+[Unit]
+Description=Little Heroes Sunday parent report (ntfy little-heroes)
+After=network-online.target
+[Service]
+Type=oneshot
+WorkingDirectory=%h/apps/little-heroes
+EnvironmentFile=%h/apps/little-heroes.env
+ExecStart=/usr/bin/node scripts/pi/weekly-report.mjs

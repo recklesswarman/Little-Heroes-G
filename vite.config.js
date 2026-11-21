@@ -142,11 +142,19 @@ async function setupGeminiMiddleware(server) {
   }
 }
 
-// Same /api/storyweaver, /api/notify and /api/voice routes server.js exposes, for `npm run dev` / `vite preview`.
+// Same /api/storyweaver, /api/notify, /api/rex/agent, /api/report/weekly and /api/voice routes server.js exposes, for `npm run dev` / `vite preview`.
 async function setupFamilyApiMiddleware(server) {
   let storyweaver = null;
   let voiceLab = null;
   let ntfy = null;
+  let rexAgent = null;
+  let weeklyReport = null;
+  try {
+    rexAgent = await import('./server/rexAgentService.js');
+    weeklyReport = await import('./server/weeklyReportService.js');
+  } catch (err) {
+    console.warn('Rex agent / weekly report middleware notice:', err.message);
+  }
   try {
     ntfy = await import('./server/ntfyService.js');
   } catch (err) {
@@ -203,6 +211,18 @@ async function setupFamilyApiMiddleware(server) {
         const raw = await readRawBody(req, 8 * 1024);
         req.body = raw.length ? JSON.parse(raw.toString('utf8')) : {};
         return await ntfy.handleNotifyRequest(req, res);
+      }
+      if (rexAgent && url === '/api/rex/agent' && req.method === 'POST') {
+        shim(res);
+        const raw = await readRawBody(req, 256 * 1024);
+        req.body = raw.length ? JSON.parse(raw.toString('utf8')) : {};
+        return await rexAgent.handleRexAgentRequest(req, res);
+      }
+      if (weeklyReport && url === '/api/report/weekly' && req.method === 'POST') {
+        shim(res);
+        const raw = await readRawBody(req, 64 * 1024);
+        req.body = raw.length ? JSON.parse(raw.toString('utf8')) : {};
+        return await weeklyReport.handleWeeklyReportRequest(req, res);
       }
       if (voiceLab && url === '/api/voice/status' && req.method === 'GET') {
         shim(res);

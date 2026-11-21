@@ -113,7 +113,9 @@ const testFiles = [
   // Static sites call App Hosting's API (CORS limited to the family's origins):
   'scratch/verify_static_sites_use_app_hosting_api.mjs',
   // App Hosting -> Pi voice relay over Funnel (token-gated) and Umami loader:
-  'scratch/verify_pi_relay_and_analytics.mjs'
+  'scratch/verify_pi_relay_and_analytics.mjs',
+  // Rex function calling (/api/rex/agent) and the Sunday parent report (ntfy):
+  'scratch/verify_rex_function_calling_and_weekly_report.mjs'
 ];
 
 let allPassed = true;
