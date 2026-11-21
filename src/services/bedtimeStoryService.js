@@ -28,6 +28,7 @@ import { makeFirebaseGenerate } from './firebaseEngineAdapter.js';
 import { memoryForRequest } from '../../shared/storyEngine/memory.js';
 import { lookForAvatarId } from '../../shared/storyEngine/avatarLook.js';
 import { scenePromptFromPlan } from '../../shared/storyEngine/scenes.js';
+import { getServerApiBase } from './serverApi.js';
 
 /**
  * Resolves which pet's voice should narrate bedtime stories: a parent-chosen
@@ -575,7 +576,7 @@ class BedtimeStoryService {
     try {
       this.isGenerating = true;
       const baseUrl = typeof window !== 'undefined' && window.location?.origin
-        ? ''
+        ? getServerApiBase()
         : (process.env.TEST_SERVER_URL || '');
 
       if (baseUrl !== '' || (typeof window !== 'undefined' && window.location?.origin)) {
@@ -870,7 +871,7 @@ class BedtimeStoryService {
     const moral = BEDTIME_MORALS.find(m => m.id === options.moralId) || BEDTIME_MORALS[0];
 
     try {
-      const baseUrl = typeof window !== 'undefined' && window.location?.origin ? '' : (process.env.TEST_SERVER_URL || '');
+      const baseUrl = typeof window !== 'undefined' && window.location?.origin ? getServerApiBase() : (process.env.TEST_SERVER_URL || '');
       if (baseUrl !== '' || (typeof window !== 'undefined' && window.location?.origin)) {
         const res = await fetch(`${baseUrl}/api/gemini/bedtime-story`, {
           method: 'POST',

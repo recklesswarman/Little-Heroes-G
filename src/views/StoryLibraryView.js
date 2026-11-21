@@ -14,6 +14,7 @@ import { Sound } from '../audio/sfx.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
 import { safeImageUrl } from '../utils/safeImageUrl.js';
 import { STORYWEAVER_SEED_BOOKS } from '../data/storyweaverSeedBooks.js';
+import { serverApiUrl } from '../services/serverApi.js';
 import {
   STORYWEAVER_LICENSE,
   STORYWEAVER_ORIGIN,
@@ -38,8 +39,8 @@ const libraryState = {
 };
 
 function apiUrl(path) {
-  const base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/';
-  return `${base.replace(/\/$/, '')}${path}`;
+  // Same-origin on the Pi / App Hosting; App Hosting's API on static hosts.
+  return serverApiUrl(path);
 }
 
 function visibleBooks() {

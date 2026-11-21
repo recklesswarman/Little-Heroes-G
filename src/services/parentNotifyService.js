@@ -10,6 +10,7 @@
 //    The message text comes from the same whitelist as the server (ntfyEvents.js).
 // Turn off on a build with VITE_PARENT_NOTIFY=false.
 import { buildNtfyRequest, NTFY_EVENT_KINDS } from './ntfyEvents.js';
+import { serverApiUrl } from './serverApi.js';
 
 function readEnv(name) {
   try {
@@ -30,7 +31,7 @@ export function getDirectNtfyConfig(env = null) {
 
 async function postViaAppServer(payload, fetchImpl) {
   try {
-    const res = await fetchImpl('/api/notify', {
+    const res = await fetchImpl(serverApiUrl('/api/notify'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),

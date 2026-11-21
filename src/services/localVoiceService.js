@@ -5,6 +5,7 @@
 //   /api/local/stt     -> whisper.cpp speech-to-text ({ text })
 // Anywhere else (GitHub Pages, Firebase) the status check reports everything as
 // unavailable and callers keep using the browser's Web Speech API.
+import { serverApiUrl } from './serverApi.js';
 
 const STATUS_TTL_MS = 60 * 1000;
 const STATUS_TIMEOUT_MS = 3000;
@@ -17,7 +18,7 @@ let statusPromise = null;
 const OFFLINE_STATUS = Object.freeze({ tts: false, stt: false });
 
 function apiUrl(path) {
-  return path; // server.js serves the app at the origin root
+  return serverApiUrl(path);
 }
 
 // The timeout also covers reading the body (`read`), so a stalled response can't hang.

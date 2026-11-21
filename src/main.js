@@ -48,6 +48,7 @@ import { renderStoryLibraryView, attachStoryLibraryListeners } from './views/Sto
 import { registerServiceWorker } from './pwa/registerServiceWorker.js';
 import { initRewardAnimations } from './services/rewardAnimationService.js';
 import { initParentNotifications } from './services/parentNotifyService.js';
+import { initAnalytics } from './services/analyticsService.js';
 import { destroyActiveCanvas } from './utils/activeViewCanvasRegistry.js';
 import { isExistingActiveHousehold } from './utils/householdHeuristics.js';
 
@@ -500,6 +501,7 @@ window.addEventListener('keydown', (e) => {
 initTactileSoundEngine();
 initRewardAnimations();
 initParentNotifications();
+initAnalytics();
 initParentLockModal();
 initHouseholdModal();
 store.subscribe(handleStateUpdate);

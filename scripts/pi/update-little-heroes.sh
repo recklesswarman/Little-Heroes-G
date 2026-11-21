@@ -15,7 +15,9 @@ cd "$APP_DIR"
 git fetch -q origin "$BRANCH"
 git checkout -q -B "$BRANCH" "origin/$BRANCH"
 npm ci --no-audit --no-fund --loglevel=error
-npm run build --silent >/dev/null
+# Build with the Pi's settings so VITE_* values (e.g. Umami) are baked in; only VITE_*
+# names ever reach the browser bundle.
+( set -a; [ -f "$HOME/apps/little-heroes.env" ] && . "$HOME/apps/little-heroes.env"; set +a; npm run build --silent >/dev/null )
 # Keep the installed copy of this script in step with the repo.
 [ -f scripts/pi/update-little-heroes.sh ] && install -m 0755 scripts/pi/update-little-heroes.sh "$HOME/bin/update-little-heroes.sh"
 systemctl --user restart little-heroes.service

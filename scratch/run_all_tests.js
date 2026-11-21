@@ -109,7 +109,11 @@ const testFiles = [
   // Family Raspberry Pi offline AI proxy (Piper TTS, whisper.cpp STT, ntfy alerts):
   'scratch/verify_local_pi_ai_routes.mjs',
   // Parent alerts from hosted sites (app server first, then publish-only direct to the Pi's ntfy):
-  'scratch/verify_parent_alerts_hosted.mjs'
+  'scratch/verify_parent_alerts_hosted.mjs',
+  // Static sites call App Hosting's API (CORS limited to the family's origins):
+  'scratch/verify_static_sites_use_app_hosting_api.mjs',
+  // App Hosting -> Pi voice relay over Funnel (token-gated) and Umami loader:
+  'scratch/verify_pi_relay_and_analytics.mjs'
 ];
 
 let allPassed = true;
