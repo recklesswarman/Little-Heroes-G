@@ -113,7 +113,9 @@ const testFiles = [
   // Static sites call App Hosting's API (CORS limited to the family's origins):
   'scratch/verify_static_sites_use_app_hosting_api.mjs',
   // App Hosting -> Pi voice relay over Funnel (token-gated) and Umami loader:
-  'scratch/verify_pi_relay_and_analytics.mjs'
+  'scratch/verify_pi_relay_and_analytics.mjs',
+  // AI hero agent routes relayed from server.js to the AGY Cloud Run service:
+  'scratch/verify_rex_agy_relay.mjs'
 ];
 
 let allPassed = true;

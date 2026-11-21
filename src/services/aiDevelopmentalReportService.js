@@ -1,3 +1,4 @@
+import { rexUrl } from './serverApi.js';
 import { cloudFunctionsService } from './cloudFunctionsService.js';
 
 /**
@@ -113,9 +114,7 @@ class AIDevelopmentalReportService {
 
     // 1. Try Google Antigravity (AGY) Parent Intelligence Agent
     try {
-      const agyEndpoint = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_AGY_REX_URL)
-        ? `${import.meta.env.VITE_AGY_REX_URL}/api/rex/parent-report`
-        : '/api/rex/parent-report';
+      const agyEndpoint = rexUrl('/api/rex/parent-report');
 
       const res = await fetch(agyEndpoint, {
         method: 'POST',
