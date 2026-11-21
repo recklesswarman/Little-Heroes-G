@@ -211,11 +211,19 @@ function renderSanctuaryHub(library, sanctuary, hero, pet, availableMorals) {
           </div>
         </div>
 
+        <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto shrink-0">
+        <!-- Picture Book Library (StoryWeaver, CC BY 4.0) -->
+        <button id="hub-open-picture-books-btn" class="w-full sm:w-auto px-4 py-2.5 rounded-2xl bg-surface-container-lowest hover:bg-[#0c1f2d] border border-surface-container-highest text-[#00d2d3] font-headline font-black text-xs flex items-center justify-center gap-2 active:scale-95 transition-all shrink-0 min-h-[44px]">
+          <span class="material-symbols-outlined text-base">local_library</span>
+          <span>Picture Books</span>
+        </button>
+
         <!-- Bookshelf Preview Pill -->
         <button id="hub-open-bookshelf-btn" class="w-full sm:w-auto px-4 py-2.5 rounded-2xl bg-surface-container-lowest hover:bg-[#0c1f2d] border border-surface-container-highest text-[#ffb961] font-headline font-black text-xs flex items-center justify-center gap-2 active:scale-95 transition-all shrink-0 min-h-[44px]">
           <span class="material-symbols-outlined text-base">auto_stories</span>
           <span>Bookshelf (${library.length} Stories)</span>
         </button>
+        </div>
       </div>
 
       <!-- 3-STEP EVENING WIND-DOWN PROGRESSION (Responsive: stacks neatly on phone, 3-cols on tablet) -->
@@ -844,6 +852,12 @@ export function setupBedtimeStoryListeners() {
     activeViewMode = activeViewMode === 'bookshelf' ? 'sanctuary' : 'bookshelf';
     readingSavedStory = null;
     store.notify();
+  });
+
+  document.getElementById('hub-open-picture-books-btn')?.addEventListener('click', () => {
+    Sound.bloop();
+    stopCompanionAudio();
+    store.navigate('story_library');
   });
 
   document.getElementById('hub-open-bookshelf-btn')?.addEventListener('click', () => {

@@ -3681,7 +3681,9 @@ class Store {
       status: 'pending'
     };
 
-    return this.addPendingApproval(approval);
+    const added = this.addPendingApproval(approval);
+    this.celebrate('confetti');
+    return added;
   }
 
   getDentalBadges(heroId = null) {
@@ -5888,6 +5890,7 @@ class Store {
     this.state.pendingApprovals.push(newApproval);
     Sound.coin();
     this.logAction(`${this.state.selectedHero.name} requested reward '${reward.title}'`, `Cost: ${reward.costPoints} Points ⭐ (Awaiting Parent Sign-off)`);
+    this.celebrate('coins');
     this.showReward(
       'Request Sent to Parent!',
       `Your request for "${reward.title}" was submitted to the Parent Admin Inbox for sign-off!`,
@@ -7618,6 +7621,18 @@ class Store {
       status: 'Recorded'
     });
     if (this.state.taskLedgerLogs.length > 50) this.state.taskLedgerLogs.pop();
+  }
+
+  // Ask the UI to play a LottieFiles-style reward animation ('confetti' | 'trophy' | 'coins').
+  // Decoupled through a window event so the store stays free of DOM/animation code;
+  // src/services/rewardAnimationService.js listens for it.
+  celebrate(kind = 'confetti') {
+    if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function' || typeof CustomEvent === 'undefined') return;
+    try {
+      window.dispatchEvent(new CustomEvent('lh:celebrate', { detail: { kind } }));
+    } catch {
+      // Never let a celebration break a reward flow.
+    }
   }
 
   showReward(title, message, coins = 0, xp = 0, image = null, icon = null) {

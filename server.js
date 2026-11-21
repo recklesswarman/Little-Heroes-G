@@ -6,6 +6,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { handleChatRequest, handleBedtimeStoryRequest, attachGeminiLiveWebSocket, getRequestIp } from './server/geminiService.js';
 import { handleStoryIllustrationRequest } from './server/imageGenService.js';
+import { handleStoryWeaverBooksRequest } from './server/storyweaverService.js';
+import { handleVoiceSttRequest, handleVoiceTtsRequest, handleVoiceStatusRequest, MAX_AUDIO_BYTES } from './server/voiceLabService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -39,6 +41,15 @@ app.post('/api/rex/bedtime-story', handleBedtimeStoryRequest);
 app.post('/api/story/illustration', handleStoryIllustrationRequest);
 app.post('/api/ai/image', handleStoryIllustrationRequest);
 
+// StoryWeaver picture-book search proxy (CC BY 4.0 books, attribution kept in the view)
+app.get('/api/storyweaver/books', handleStoryWeaverBooksRequest);
+
+// Offline Rex voice chat test (whisper.cpp speech-to-text + Piper text-to-speech on the Pi).
+// See server/voiceLabService.js for the WHISPER_CPP_URL / PIPER_URL env vars.
+app.get('/api/voice/status', handleVoiceStatusRequest);
+app.post('/api/voice/stt', express.raw({ type: ['audio/wav', 'audio/x-wav', 'application/octet-stream'], limit: MAX_AUDIO_BYTES }), handleVoiceSttRequest);
+app.post('/api/voice/tts', handleVoiceTtsRequest);
+
 const distPath = path.join(__dirname, 'dist');
 
 app.use(staticRequestLimiter);
@@ -63,7 +74,8 @@ app.use(express.static(distPath, {
   setHeaders: (res, filePath) => {
     if (filePath.includes(path.sep + 'assets' + path.sep)) {
       res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-    } else if (filePath.endsWith('.html')) {
+    } else if (filePath.endsWith('.html') || filePath.endsWith('.json') || path.basename(filePath) === 'sw.js') {
+      // The vite-plugin-pwa service worker must never be HTTP-cached, or updates stall.
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');

@@ -752,24 +752,12 @@ suite('Tier 4: Real-World Scenarios & Deployment Parity');
 
     // Scenario 3: PWA Cache and Build Version Parity
     console.log('  Scenario 3: Verifying multi-deployment cache version synchronization...');
-    const swPath = path.join(projectRoot, 'public', 'sw.js');
-    const indexHtmlPath = path.join(projectRoot, 'index.html');
-
-    const swContent = fs.readFileSync(swPath, 'utf8');
-    const indexHtmlContent = fs.readFileSync(indexHtmlPath, 'utf8');
-
-    const swCacheMatch = swContent.match(/const\s+CACHE_NAME\s*=\s*['"]([^'"]+)['"]/);
-    const indexVersionMatch = indexHtmlContent.match(/const\s+APP_BUILD_VERSION\s*=\s*['"]([^'"]+)['"]/);
-
-    assert(Boolean(swCacheMatch && swCacheMatch[1]), 'public/sw.js defines CACHE_NAME');
-    assert(Boolean(indexVersionMatch && indexVersionMatch[1]), 'index.html defines APP_BUILD_VERSION');
-
-    if (swCacheMatch && indexVersionMatch) {
-      const swCache = swCacheMatch[1];
-      const indexVer = indexVersionMatch[1];
-      const versionsAligned = swCache === indexVer || swCache.includes(indexVer) || indexVer.includes(swCache.replace('little-heroes-', ''));
-      assert(versionsAligned, `CACHE_NAME ("${swCache}") and APP_BUILD_VERSION ("${indexVer}") are synchronized`);
-    }
+    // vite-plugin-pwa now generates the service worker and the build version is
+    // stamped automatically, so there is no CACHE_NAME / APP_BUILD_VERSION pair to sync.
+    const indexHtmlContent = fs.readFileSync(path.join(projectRoot, 'index.html'), 'utf8');
+    const viteConfigContent = fs.readFileSync(path.join(projectRoot, 'vite.config.js'), 'utf8');
+    assert(indexHtmlContent.includes('%VITE_APP_BUILD_VERSION%'), 'index.html takes APP_BUILD_VERSION from the build');
+    assert(viteConfigContent.includes('VitePWA(') && viteConfigContent.includes('cleanupOutdatedCaches: true'), 'vite-plugin-pwa cleans outdated caches');
 
     // Scenario 4: Vite configuration check
     const viteConfigPath = path.join(projectRoot, 'vite.config.js');

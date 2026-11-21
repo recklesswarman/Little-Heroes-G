@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <title>Rex Voice Lab</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0b0f19; --card:#111827; --line:#1f2937; --text:#f8fafc; --muted:#94a3b8; --ok:#34d399; --bad:#f87171; --accent:#22d3ee; --warm:#fbbf24; }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font:16px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif; }
+    main { max-width: 680px; margin: 0 auto; padding: 20px 16px 48px; display:flex; flex-direction:column; gap:16px; }
+    h1 { font-size: 24px; margin: 0; }
+    p { margin: 0; }
+    .muted { color: var(--muted); font-size: 14px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px; display:flex; flex-direction:column; gap:10px; }
+    .status { display:flex; gap:10px; flex-wrap:wrap; font-size:14px; }
+    .pill { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; border:1px solid var(--line); }
+    .dot { width:9px; height:9px; border-radius:50%; background:var(--muted); }
+    .dot.ok { background:var(--ok); } .dot.bad { background:var(--bad); }
+    button { font: inherit; font-weight:700; border-radius:14px; border:0; padding:12px 16px; cursor:pointer; }
+    #talk-btn { background: linear-gradient(90deg,#10b981,#06b6d4); color:#04131a; font-size:18px; padding:18px; touch-action:none; user-select:none; }
+    #talk-btn.recording { background: var(--bad); color:#fff; }
+    button:disabled { opacity:.5; cursor:default; }
+    .row { display:flex; gap:8px; }
+    .row input[type=text] { flex:1; min-width:0; font:inherit; padding:10px 12px; border-radius:12px; border:1px solid var(--line); background:#0b1220; color:var(--text); }
+    .secondary { background:#1e293b; color:var(--text); }
+    #log { display:flex; flex-direction:column; gap:8px; }
+    .msg { padding:10px 12px; border-radius:12px; max-width:90%; }
+    .msg.kid { align-self:flex-end; background:#0e3a46; }
+    .msg.rex { align-self:flex-start; background:#1f2937; }
+    .msg small { display:block; color:var(--muted); font-size:12px; margin-top:4px; }
+    .warn { color: var(--warm); font-size:14px; }
+    code { background:#0b1220; padding:1px 5px; border-radius:6px; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <main>
+    <div>
+      <h1>🦖 Rex Voice Lab</h1>
+      <p class="muted">Test page for an offline voice chat. Your speech goes to whisper.cpp on the Pi, Rex answers through the normal Rex chat, and Piper reads the answer out loud.</p>
+    </div>
+
+    <section class="card">
+      <div class="status" id="status">
+        <span class="pill"><span class="dot" id="whisper-dot"></span> whisper.cpp <span class="muted" id="whisper-url"></span></span>
+        <span class="pill"><span class="dot" id="piper-dot"></span> Piper <span class="muted" id="piper-url"></span></span>
+        <button class="secondary" id="recheck-btn" style="padding:4px 10px;font-size:13px;">Check again</button>
+      </div>
+      <p class="warn" id="secure-warning" hidden>
+        The microphone only works on a secure page. Open this page as <code>http://localhost:3000/voice-lab.html</code> on the Pi itself, or through HTTPS. You can still upload a recording or type below.
+      </p>
+    </section>
+
+    <section class="card">
+      <button id="talk-btn">Hold to talk to Rex</button>
+      <p class="muted">Keep it short: recordings stop by themselves after 10 seconds.</p>
+      <div class="row">
+        <label class="secondary" style="border-radius:14px;padding:10px 14px;font-weight:700;cursor:pointer;">
+          Upload a recording <input type="file" id="file-input" accept="audio/*" capture hidden />
+        </label>
+      </div>
+      <div class="row">
+        <input type="text" id="text-input" placeholder="Or type to Rex (skips whisper.cpp)" maxlength="300" />
+        <button class="secondary" id="send-btn">Send</button>
+      </div>
+      <button class="secondary" id="piper-test-btn">Test Piper's voice only</button>
+      <label class="muted"><input type="checkbox" id="browser-voice-fallback" checked /> If Piper fails, use the browser's voice instead</label>
+    </section>
+
+    <section class="card">
+      <div id="log"><p class="muted">Conversation shows up here, with how long each step took.</p></div>
+    </section>
+  </main>
+  <script type="module" src="/src/voiceLab/main.js"></script>
+</body>
+</html>
