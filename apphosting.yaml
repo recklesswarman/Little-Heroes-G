@@ -47,6 +47,16 @@ env:
     secret: NTFY_TOKEN
     availability:
       - RUNTIME
+  # Rex's offline Pi voice (Piper + Whisper) relayed over Tailscale Funnel; the token
+  # stays server-side. -- set once with: firebase apphosting:secrets:set PI_RELAY_TOKEN
+  - variable: PI_RELAY_URL
+    value: https://meshlink.tail9d175a.ts.net/pi-voice
+    availability:
+      - RUNTIME
+  - variable: PI_RELAY_TOKEN
+    secret: PI_RELAY_TOKEN
+    availability:
+      - RUNTIME
   # Cloudflare Workers AI free image generator for Bedtime AI Storybook
   - variable: CLOUDFLARE_IMAGE_API_URL
     value: https://little-heroes-free-image-api.recklesswarman.workers.dev

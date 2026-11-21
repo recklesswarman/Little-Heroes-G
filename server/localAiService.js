@@ -1,3 +1,5 @@
+import { timingSafeEqual } from 'node:crypto';
+
 // Rex's everyday offline voice on the family Raspberry Pi (/api/local/*).
 //
 //   PIPER_URL / PIPER_TTS_URL       Piper HTTP server, POST /synthesize -> WAV
@@ -64,15 +66,37 @@ export function isFamilyNetworkAddress(address) {
 // A request is from the family network when its TCP peer is a home/Tailscale address
 // and it did not arrive through a public tunnel or proxy (Cloudflare Tunnel connects
 // from 127.0.0.1 but always adds CF-Connecting-IP).
+// Requests that came through a proxy (Cloudflare Tunnel, Tailscale Funnel/Serve) reach
+// us from 127.0.0.1 but carry forwarding headers, so they never count as the family LAN.
+function arrivedThroughProxy(headers) {
+  return Boolean(headers['cf-connecting-ip'] || headers['cf-ray'] || headers['x-forwarded-for']
+    || headers['tailscale-funnel-request'] || headers['forwarded']);
+}
+
 export function isFamilyNetworkRequest(req) {
   const headers = req.headers || {};
-  if (headers['cf-connecting-ip'] || headers['cf-ray']) return false;
+  if (arrivedThroughProxy(headers)) return false;
   return isFamilyNetworkAddress(req.socket?.remoteAddress ?? req.connection?.remoteAddress);
 }
 
+// App Hosting relays Rex's voice to the Pi through Tailscale Funnel with this shared
+// secret (LOCAL_AI_RELAY_TOKEN on the Pi = PI_RELAY_TOKEN secret on App Hosting).
+export function hasValidRelayToken(req, env = process.env) {
+  const expected = String(env.LOCAL_AI_RELAY_TOKEN || '');
+  if (expected.length < 24) return false;
+  const header = req.headers?.authorization;
+  if (typeof header !== 'string' || !header.startsWith('Bearer ')) return false;
+  const given = Buffer.from(header.slice(7));
+  const want = Buffer.from(expected);
+  return given.length === want.length && timingSafeEqual(given, want);
+}
+
+function isAllowedCaller(req, env) {
+  return env.LOCAL_AI_ALLOW_ANY_NETWORK === 'true' || isFamilyNetworkRequest(req) || hasValidRelayToken(req, env);
+}
+
 function rejectOutsideFamilyNetwork(req, res, env) {
-  if (env.LOCAL_AI_ALLOW_ANY_NETWORK === 'true') return false;
-  if (isFamilyNetworkRequest(req)) return false;
+  if (isAllowedCaller(req, env)) return false;
   res.status(403).json({ error: 'Local Pi services are only available on the family network', fallback: 'web-speech' });
   return true;
 }
@@ -92,7 +116,7 @@ export function createLocalAiHandlers({ env = process.env, fetchImpl = globalThi
   const cfg = () => getLocalAiConfig(env);
 
   async function handleStatus(req, res) {
-    if (env.LOCAL_AI_ALLOW_ANY_NETWORK !== 'true' && !isFamilyNetworkRequest(req)) {
+    if (!isAllowedCaller(req, env)) {
       res.setHeader('Cache-Control', 'no-store');
       return res.json({ tts: false, stt: false });
     }

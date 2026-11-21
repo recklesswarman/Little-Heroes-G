@@ -8,6 +8,7 @@ import { handleChatRequest, handleBedtimeStoryRequest, attachGeminiLiveWebSocket
 import { handleStoryIllustrationRequest } from './server/imageGenService.js';
 import { createLocalAiHandlers } from './server/localAiService.js';
 import { createApiCors } from './server/corsPolicy.js';
+import { createPiRelayHandlers, getPiRelayConfig, RELAY_MAX_AUDIO_BYTES } from './server/piRelayService.js';
 import { handleStoryWeaverBooksRequest } from './server/storyweaverService.js';
 import { handleNotifyRequest } from './server/ntfyService.js';
 import { handleVoiceSttRequest, handleVoiceTtsRequest, handleVoiceStatusRequest, MAX_AUDIO_BYTES } from './server/voiceLabService.js';
@@ -52,16 +53,12 @@ app.get('/api/storyweaver/books', handleStoryWeaverBooksRequest);
 // Parent alerts via the Pi's ntfy server (NTFY_URL / NTFY_TOPIC, see server/ntfyService.js)
 app.post('/api/notify', handleNotifyRequest);
 
-// Offline Rex voice chat test (whisper.cpp speech-to-text + Piper text-to-speech on the Pi).
-// See server/voiceLabService.js for the WHISPER_CPP_URL / PIPER_URL env vars.
-app.get('/api/voice/status', handleVoiceStatusRequest);
-app.post('/api/voice/stt', express.raw({ type: ['audio/wav', 'audio/x-wav', 'application/octet-stream'], limit: MAX_AUDIO_BYTES }), handleVoiceSttRequest);
-app.post('/api/voice/tts', handleVoiceTtsRequest);
-
-// Local offline AI on the family Raspberry Pi (Piper TTS, whisper.cpp STT) for Rex's voice.
-// Each route answers 503 when its *_URL env var is unset, and the client falls back.
-const localAi = createLocalAiHandlers();
-const localAiLimiter = rateLimit({
+// Offline voice on the family Pi: Piper text-to-speech + whisper.cpp speech-to-text.
+//  - On the Pi itself (PIPER_URL / WHISPER_CPP_URL) the routes call the Pi services directly.
+//  - On a hosted server with PI_RELAY_URL + PI_RELAY_TOKEN (Firebase App Hosting), the same
+//    routes relay to the Pi over Tailscale Funnel; the token stays on the server.
+//  - Otherwise they answer 503 and the client keeps using the browser's Web Speech voice.
+const voiceLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: 60,
   standardHeaders: true,
@@ -69,11 +66,27 @@ const localAiLimiter = rateLimit({
   keyGenerator: (req) => ipKeyGenerator(getRequestIp(req)),
   validate: { xForwardedForHeader: false }
 });
-app.get('/api/local/status', localAiLimiter, localAi.handleStatus);
-app.post('/api/local/tts', localAiLimiter, localAi.handleTts);
-app.post('/api/local/stt', localAiLimiter,
-  express.raw({ type: ['audio/*', 'video/webm', 'application/octet-stream'], limit: localAi.STT_MAX_BYTES }),
-  localAi.handleStt);
+const rawAudio = (limit) => express.raw({ type: ['audio/*', 'video/webm', 'application/octet-stream'], limit });
+
+if (getPiRelayConfig()) {
+  const relay = createPiRelayHandlers();
+  app.get('/api/voice/status', voiceLimiter, relay.handleVoiceStatus);
+  app.post('/api/voice/stt', voiceLimiter, rawAudio(RELAY_MAX_AUDIO_BYTES), relay.handleVoiceStt);
+  app.post('/api/voice/tts', voiceLimiter, relay.handleVoiceTts);
+  app.get('/api/local/status', voiceLimiter, relay.handleLocalStatus);
+  app.post('/api/local/tts', voiceLimiter, relay.handleLocalTts);
+  app.post('/api/local/stt', voiceLimiter, rawAudio(RELAY_MAX_AUDIO_BYTES), relay.handleLocalStt);
+} else {
+  // Voice lab page (server/voiceLabService.js)
+  app.get('/api/voice/status', handleVoiceStatusRequest);
+  app.post('/api/voice/stt', express.raw({ type: ['audio/wav', 'audio/x-wav', 'application/octet-stream'], limit: MAX_AUDIO_BYTES }), handleVoiceSttRequest);
+  app.post('/api/voice/tts', handleVoiceTtsRequest);
+  // Rex's everyday voice (server/localAiService.js): family network, or the relay token from App Hosting
+  const localAi = createLocalAiHandlers();
+  app.get('/api/local/status', voiceLimiter, localAi.handleStatus);
+  app.post('/api/local/tts', voiceLimiter, localAi.handleTts);
+  app.post('/api/local/stt', voiceLimiter, rawAudio(localAi.STT_MAX_BYTES), localAi.handleStt);
+}
 
 const distPath = path.join(__dirname, 'dist');
 
