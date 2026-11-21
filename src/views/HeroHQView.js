@@ -736,6 +736,8 @@ function renderAllTrophiesShowcaseModal(state, equippedWeapon) {
   const heroHQ = state.heroHQ || {};
   const trophies = getTrophiesForDisplay(state);
   const featuredIds = heroHQ.featuredTrophyIds || ['rookie_hero_crest'];
+  const defeatedBossIds = store.getBossColosseumState?.()?.bossesDefeated || [];
+  const bossTrophyCaseCount = HYGIENE_BOSSES.filter((b) => defeatedBossIds.includes(b.id)).length;
 
   return `
   <div id="hq-all-trophies-modal-backdrop" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-5 animate-fade-in font-body">
@@ -789,6 +791,35 @@ function renderAllTrophiesShowcaseModal(state, equippedWeapon) {
           <span class="material-symbols-outlined text-base">swords</span>
           <span>Switch Weapon</span>
         </button>
+      </div>
+
+      <!-- Boss Trophy Case: cleansed-villain gallery, defeated vs. not-yet-defeated -->
+      <div class="flex flex-col gap-2 bg-black/40 rounded-2xl p-3 border border-white/10">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-headline font-black text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
+            <span>🐲</span> Boss Trophy Case
+          </span>
+          <span class="text-[10px] text-white/60 font-bold">${bossTrophyCaseCount}/${HYGIENE_BOSSES.length} Cleansed</span>
+        </div>
+        <div class="grid grid-cols-4 sm:grid-cols-8 gap-2 pt-1">
+          ${HYGIENE_BOSSES.map((boss) => {
+            const isDefeated = defeatedBossIds.includes(boss.id);
+            const cleansedArt = boss.cleansedImage ? resolvePublicAssetUrl(boss.cleansedImage) : '';
+            return `
+              <div class="flex flex-col items-center gap-1 rounded-xl p-1.5 border ${isDefeated ? 'bg-emerald-950/60 border-emerald-400/50' : 'bg-white/5 border-white/15'}" title="${escapeHtml(boss.name)}">
+                <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl overflow-hidden flex items-center justify-center ${isDefeated ? '' : 'grayscale opacity-40'} bg-slate-900/60">
+                  ${cleansedArt
+                    ? `<img src="${cleansedArt}" alt="${escapeHtml(boss.name)}" class="w-full h-full object-cover" onerror="this.onerror=null; this.style.display='none';" />`
+                    : `<span class="text-xl">${isDefeated ? (boss.cleansedAvatar || boss.avatar || '✨') : '❓'}</span>`
+                  }
+                </div>
+                <span class="text-[7px] font-black text-center truncate max-w-[52px] ${isDefeated ? 'text-emerald-200' : 'text-white/40'}">
+                  ${isDefeated ? escapeHtml(boss.cleansedTitle || boss.name) : 'Not Yet'}
+                </span>
+              </div>
+            `;
+          }).join('')}
+        </div>
       </div>
 
       <!-- Spotlight Pedestals Mini-Overview -->

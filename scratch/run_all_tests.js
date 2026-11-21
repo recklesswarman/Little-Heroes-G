@@ -101,7 +101,9 @@ const testFiles = [
   'scratch/verify_parent_analytics_e2e.mjs',
   // AI Toothbrush Timer M1 Production Audit Suites (R1, R2, R3):
   'scratch/verify_ai_vision_and_fallback.mjs',
-  'scratch/verify_combat_pacing_and_audio.mjs'
+  'scratch/verify_combat_pacing_and_audio.mjs',
+  // Batch 3 — Audio, Voice & Progression Hooks Suite:
+  'scratch/verify_batch3_audio_voice_progression.mjs'
 ];
 
 let allPassed = true;

@@ -44,6 +44,9 @@ export function renderShopView() {
     if (selectedCategory === 'weapons') {
       return cat === 'weapons' || sub === 'weapon';
     }
+    if (selectedCategory === 'music') {
+      return cat === 'music' || sub === 'music_track';
+    }
     if (selectedCategory === 'avatar_gear') {
       return cat === 'avatar gear' || cat === 'avatar_gear';
     }
@@ -80,6 +83,7 @@ export function renderShopView() {
 
   const isDigitalCat = [
     'weapons',
+    'music',
     'avatar_gear',
     'pet_gear',
     'accessories',
@@ -98,6 +102,7 @@ export function renderShopView() {
   const CATEGORY_TABS = [
     { id: 'all', label: 'All Items', icon: 'grid_view' },
     { id: 'weapons', label: '⚔️ Weapons' },
+    { id: 'music', label: '🎵 Battle Music' },
     { id: 'avatar_gear', label: '🛡️ Avatar Gear' },
     { id: 'pet_gear', label: '🐾 Pet Gear' },
     { id: 'accessories', label: '👓 Accessories' },

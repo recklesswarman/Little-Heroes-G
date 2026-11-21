@@ -11,6 +11,7 @@ import { DIGITAL_REWARDS_CATALOG } from '../data/digitalRewardsCatalog.js';
 import { getBattleCoachAdvice } from '../services/heroAgentService.js';
 import { resolvePublicAssetUrl } from '../utils/assetUrl.js';
 import { safeConfetti } from '../utils/safeConfetti.js';
+import { speakHype } from '../services/announcerService.js';
 
 const sugarVillainEscapedImg = new URL('../assets/sugar_villain_escaped.jpg', import.meta.url).href;
 
@@ -761,6 +762,13 @@ function renderVictoryModal(colState, selectedBoss) {
           <span class="font-headline font-black text-xs sm:text-sm text-white">${trophyTitle}</span>
           <span class="text-[10px] text-slate-400">Permanently spotlighted in your Hero HQ hideout!</span>
         </div>
+
+        ${reward.dailyStreakMilestoneHit ? `
+          <div class="w-full bg-orange-950/80 rounded-2xl p-2.5 border-2 border-orange-400/60 flex flex-col items-center gap-0.5 mb-3 shadow-[0_0_20px_rgba(251,146,60,0.3)] animate-pulse">
+            <span class="text-[9px] font-black uppercase text-orange-300 tracking-wider">🔥 ${reward.dailyStreakMilestoneHit}-DAY BRUSH STREAK!</span>
+            <span class="font-headline font-black text-xs text-white">+${reward.dailyStreakMilestoneBonusCoins} BONUS COINS 🪙</span>
+          </div>
+        ` : ''}
 
         ${unlockedBadgeObjects.length > 0 ? `
           <div class="w-full bg-slate-950/90 rounded-2xl p-2.5 border border-cyan-400/40 flex flex-wrap items-center justify-center gap-1.5 mb-3">
@@ -1736,6 +1744,9 @@ export function startBattle() {
   if (typeof Sound?.speedUpBattleRhythm === 'function') Sound.speedUpBattleRhythm(false);
   hanaBattle3DService.setFinaleMode?.(false);
 
+  if (typeof Sound?.setBattleMusicTrack === 'function') {
+    Sound.setBattleMusicTrack(store.getState?.()?.selectedHero?.equippedGear?.music || 'cosmic_pulse');
+  }
   Sound.startBattleRhythm();
   initSensors();
   initBattleVoiceRecognition();
@@ -1911,6 +1922,7 @@ export function startBattle() {
       lastSpokenQuadId = activeQuad.id;
       if (typeof Sound?.zoneChime === 'function') Sound.zoneChime();
       else if (typeof Sound?.picnicChime === 'function') Sound.picnicChime();
+      speakHype('zoneSwitch');
 
       if (typeof document !== 'undefined') {
         const zoneBanner = document.getElementById('active-zone-banner');
@@ -2098,8 +2110,10 @@ function startMiniChallenge(secRemaining) {
     ? { type, label: 'BRUSH BURST! ⭐', endSec: secRemaining - durationSec, targetHits: 5, hitCount: 0, failed: false }
     : { type, label: 'KEEP THE STREAK! 🔥', endSec: secRemaining - durationSec, failed: false };
   showMiniChallengeBanner(activeMiniChallenge);
-  if (typeof Sound?.levelUp === 'function') Sound.levelUp();
+  if (typeof Sound?.miniChallengeStart === 'function') Sound.miniChallengeStart();
+  else if (typeof Sound?.levelUp === 'function') Sound.levelUp();
   showComicHit(`${activeMiniChallenge.label}`);
+  speakHype('miniChallengeStart');
 }
 
 function updateMiniChallengeTick(secRemaining) {
@@ -2125,7 +2139,9 @@ function resolveMiniChallenge(success) {
   if (success) {
     store.addCoins?.(10);
     showComicHit('MINI-CHALLENGE WIN! +10 COINS 🪙');
-    if (typeof Sound?.levelUp === 'function') Sound.levelUp();
+    if (typeof Sound?.miniChallengeComplete === 'function') Sound.miniChallengeComplete();
+    else if (typeof Sound?.levelUp === 'function') Sound.levelUp();
+    speakHype('miniChallengeWin');
   }
   activeMiniChallenge = null;
 }
@@ -2150,6 +2166,11 @@ function handleScrubHit(activeQuad, source = 'manual', vision = null) {
   // trivializing the charge-up pacing.
   brushStreakCount = Math.min(20, brushStreakCount + 1);
   const streakChargeMult = 1 + Math.min(0.5, brushStreakCount * 0.025);
+  speakHype('hit');
+  if (brushStreakCount > 0 && brushStreakCount % 5 === 0) {
+    if (typeof Sound?.streakTick === 'function') Sound.streakTick();
+    speakHype('streak');
+  }
 
   // F1. Charge & Refresh Minty Shield via continuous brushing
   // The service state is the source of truth: a caramel bomb can break the
