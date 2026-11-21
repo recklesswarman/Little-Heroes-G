@@ -23,6 +23,12 @@ const MAX_PROMPT_TOKENS = 70;
 
 // Main model of the image Worker. Cloudflare retired the SDXL models on 2026-11-20 (the Worker still falls back
 // through its own chain), and FLUX.1 schnell is the one that understands detailed, paragraph-length prompts.
+/** A random picture seed (1..2^31-1). Uses crypto so code scanning doesn't flag it. */
+export function randomPictureSeed() {
+  const n = globalThis.crypto?.getRandomValues?.(new Uint32Array(1))[0] ?? Date.now();
+  return (n & 0x7fffffff) || 1;
+}
+
 export const IMAGE_MODEL = '@cf/black-forest-labs/flux-1-schnell';
 
 // Same characters on every page: from chapter 2 on, the story's first picture goes to the image
@@ -180,7 +186,7 @@ export class BedtimeIllustrationService {
         const chIdx = chapterIndex ?? (chapterNumber - 1);
         const seed = paramSeed !== undefined && paramSeed !== null
           ? Number(paramSeed)
-          : (((globalThis.crypto?.getRandomValues?.(new Uint32Array(1))[0] ?? Date.now()) & 0x7fffffff) || 1);
+          : randomPictureSeed();
         const negative_prompt = "pink, purple, magenta, violet, neon pink, scary, dark, deformed, blurry";
 
         // Built once so the direct call and the backup route send the same scene summary.

@@ -21,7 +21,7 @@ import {
   generateFullBedtimeStory
 } from '../data/bedtimeStoryData.js';
 import { PETS_DATABASE } from '../data/petsData.js';
-import { bedtimeIllustrationService, isReferenceCandidate } from './bedtimeIllustrationService.js';
+import { bedtimeIllustrationService, isReferenceCandidate, randomPictureSeed } from './bedtimeIllustrationService.js';
 import { sanitizeWish } from '../../shared/storyEngine/safety.js';
 import { petSpeciesFromName, buildRequest, generateBedtimeChapter } from '../../shared/storyEngine/engine.js';
 import { makeFirebaseGenerate } from './firebaseEngineAdapter.js';
@@ -633,7 +633,7 @@ class BedtimeStoryService {
         chapterNumber: actNumber,
         chapterTitle: generatedAct.title,
         chapterText: generatedAct.chapterText || generatedAct.text,
-        seed: Math.floor(Math.random() * 2147483647),
+        seed: randomPictureSeed(),
         realmId: realm.id,
         realmName: realm.name,
         heroName,
@@ -666,7 +666,7 @@ class BedtimeStoryService {
           chapterNumber: actNumber,
           chapterTitle: generatedAct.title,
           chapterText: generatedAct.chapterText || generatedAct.text,
-          seed: Math.floor(Math.random() * 2147483647),
+          seed: randomPictureSeed(),
           realmId: realm.id,
           realmName: realm.name,
           heroName,
