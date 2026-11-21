@@ -1604,12 +1604,14 @@ async function playLocalPiperSpeech(cleanSpoken, petId, callback, myGeneration) 
       }
       try { URL.revokeObjectURL(url); } catch {}
       if (currentAudio === audio) currentAudio = null;
-      if (myGeneration === speechGeneration && (played || started)) {
+      // Once Rex has started talking, never replay the line with Web Speech.
+      const handled = played || started;
+      if (myGeneration === speechGeneration && handled) {
         store.setLiveRexState({ isSpeaking: false, status: 'idle' }, true);
         dispatchSpeechEvent('companion-speech-end', { petId });
-        if (played && typeof callback === 'function') callback();
+        if (typeof callback === 'function') callback();
       }
-      resolve(played);
+      resolve(handled);
     };
     audio.onended = () => finish(true);
     audio.onerror = () => finish(false);
@@ -1620,7 +1622,7 @@ async function playLocalPiperSpeech(cleanSpoken, petId, callback, myGeneration) 
       if (settled || started) return;
       started = true;
       if (watchdog) clearTimeout(watchdog);
-      watchdog = setTimeout(() => finish(true), LOCAL_VOICE_MAX_PLAY_MS);
+      watchdog = setTimeout(() => { try { audio.pause(); } catch {} finish(true); }, LOCAL_VOICE_MAX_PLAY_MS);
       store.setLiveRexState({ isSpeaking: true, status: 'speaking' }, true);
       dispatchSpeechEvent('companion-speech-start', { text: cleanSpoken, petId, voice: 'piper' });
       syllableTimer = setInterval(() => {

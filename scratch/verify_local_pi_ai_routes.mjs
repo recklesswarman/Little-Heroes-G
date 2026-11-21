@@ -157,6 +157,13 @@ await test('requests from outside the family network are refused, even with a sp
   assert.deepEqual(st.body, { tts: false, stt: false, notify: false });
 });
 
+await test('requests relayed through a Cloudflare Tunnel are refused even from 127.0.0.1', async () => {
+  const h = createLocalAiHandlers({ env: PI_ENV, fetchImpl: async () => { throw new Error('should not fetch'); } });
+  const res = mockRes();
+  await h.handleNotify({ socket: { remoteAddress: '127.0.0.1' }, headers: { 'cf-connecting-ip': '198.51.100.7' }, body: { message: 'spam' } }, res);
+  assert.equal(res.statusCode, 403);
+});
+
 console.log('🧪 Client helper (off the Pi)');
 
 await test('client reports the Pi as unavailable when the status route serves HTML', async () => {

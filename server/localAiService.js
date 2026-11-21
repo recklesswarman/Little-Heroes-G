@@ -60,10 +60,18 @@ export function isFamilyNetworkAddress(address) {
   return lower.startsWith('fd') || lower.startsWith('fc') || lower.startsWith('fe80:'); // ULA (incl. Tailscale) / link-local
 }
 
+// A request is from the family network when its TCP peer is a home/Tailscale address
+// and it did not arrive through a public tunnel or proxy (Cloudflare Tunnel connects
+// from 127.0.0.1 but always adds CF-Connecting-IP).
+export function isFamilyNetworkRequest(req) {
+  const headers = req.headers || {};
+  if (headers['cf-connecting-ip'] || headers['cf-ray']) return false;
+  return isFamilyNetworkAddress(req.socket?.remoteAddress ?? req.connection?.remoteAddress);
+}
+
 function rejectOutsideFamilyNetwork(req, res, env) {
   if (env.LOCAL_AI_ALLOW_ANY_NETWORK === 'true') return false;
-  const peer = req.socket?.remoteAddress ?? req.connection?.remoteAddress;
-  if (isFamilyNetworkAddress(peer)) return false;
+  if (isFamilyNetworkRequest(req)) return false;
   res.status(403).json({ error: 'Local Pi services are only available on the family network', fallback: 'web-speech' });
   return true;
 }
@@ -83,7 +91,7 @@ export function createLocalAiHandlers({ env = process.env, fetchImpl = globalThi
   const cfg = () => getLocalAiConfig(env);
 
   async function handleStatus(req, res) {
-    if (env.LOCAL_AI_ALLOW_ANY_NETWORK !== 'true' && !isFamilyNetworkAddress(req.socket?.remoteAddress ?? req.connection?.remoteAddress)) {
+    if (env.LOCAL_AI_ALLOW_ANY_NETWORK !== 'true' && !isFamilyNetworkRequest(req)) {
       res.setHeader('Cache-Control', 'no-store');
       return res.json({ tts: false, stt: false, notify: false });
     }
