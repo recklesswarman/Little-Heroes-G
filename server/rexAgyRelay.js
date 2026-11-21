@@ -77,7 +77,7 @@ export function createRexRelay({ env = process.env, fetchImpl = globalThis.fetch
       return res.send(text);
     } catch (err) {
       const timedOut = err?.name === 'AbortError';
-      console.warn(`[rexAgyRelay] ${routePath} ${timedOut ? 'timed out' : 'failed'}:`, err?.message || err);
+      console.warn('[rexAgyRelay] %s %s: %s', routePath, timedOut ? 'timed out' : 'failed', String(err?.message || err));
       return res.status(timedOut ? 504 : 502).json({ error: 'AI hero agent unavailable' });
     } finally {
       clearTimeout(timer);
