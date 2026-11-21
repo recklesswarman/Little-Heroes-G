@@ -21,11 +21,14 @@ function apiUrl(path) {
   return path; // server.js serves the app at the origin root
 }
 
-async function fetchWithTimeout(url, init = {}, timeoutMs = 20000) {
+// The timeout also covers reading the body (`read`), so a stalled response can't hang.
+async function fetchWithTimeout(url, init = {}, timeoutMs = 20000, read = null) {
   const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
   const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
   try {
-    return await fetch(url, controller ? { ...init, signal: controller.signal } : init);
+    const res = await fetch(url, controller ? { ...init, signal: controller.signal } : init);
+    if (!read) return res;
+    return { res, data: res.ok ? await read(res) : null };
   } finally {
     if (timer) clearTimeout(timer);
   }
@@ -38,10 +41,9 @@ export async function getLocalAiStatus({ force = false } = {}) {
   if (statusPromise) return statusPromise;
   statusPromise = (async () => {
     try {
-      const res = await fetchWithTimeout(apiUrl('/api/local/status'), { cache: 'no-store' }, STATUS_TIMEOUT_MS);
-      const type = res.headers?.get?.('content-type') || '';
-      if (!res.ok || !type.includes('json')) return OFFLINE_STATUS;
-      const data = await res.json();
+      const { res, data } = await fetchWithTimeout(apiUrl('/api/local/status'), { cache: 'no-store' }, STATUS_TIMEOUT_MS,
+        (r) => ((r.headers?.get?.('content-type') || '').includes('json') ? r.json() : null));
+      if (!res.ok || !data) return OFFLINE_STATUS;
       return { tts: data?.tts === true, stt: data?.stt === true, notify: data?.notify === true };
     } catch {
       return OFFLINE_STATUS;
@@ -92,16 +94,15 @@ export async function fetchLocalSpeechUrl(text, { lengthScale } = {}) {
   try {
     const body = { text: clean };
     if (Number.isFinite(lengthScale)) body.length_scale = lengthScale;
-    const res = await fetchWithTimeout(apiUrl('/api/local/tts'), {
+    const { res, data: blob } = await fetchWithTimeout(apiUrl('/api/local/tts'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
-    });
+    }, 20000, (r) => r.blob());
     if (!res.ok) {
-      if (res.status === 503) resetLocalAiStatusCache();
+      if (res.status === 503 || res.status === 403) resetLocalAiStatusCache();
       return null;
     }
-    const blob = await res.blob();
     return blob && blob.size > 44 ? URL.createObjectURL(blob) : null;
   } catch {
     return null;
@@ -112,13 +113,12 @@ export async function fetchLocalSpeechUrl(text, { lengthScale } = {}) {
 export async function transcribeWithLocalWhisper(audioBlob) {
   if (!audioBlob || !audioBlob.size) return null;
   try {
-    const res = await fetchWithTimeout(apiUrl('/api/local/stt'), {
+    const { res, data } = await fetchWithTimeout(apiUrl('/api/local/stt'), {
       method: 'POST',
       headers: { 'Content-Type': audioBlob.type || 'audio/webm' },
       body: audioBlob
-    }, 45000);
+    }, 45000, (r) => r.json());
     if (!res.ok) return null;
-    const data = await res.json();
     return typeof data?.text === 'string' ? data.text.trim() : '';
   } catch {
     return null;
@@ -134,7 +134,10 @@ export function recordAndTranscribe({ maxMs = 8000 } = {}) {
   let recorder = null;
   let stream = null;
   let timer = null;
+  let stopRequested = false;
+  const releaseMic = () => { try { stream?.getTracks().forEach((track) => track.stop()); } catch {} };
   const stop = () => {
+    stopRequested = true;
     if (timer) clearTimeout(timer);
     if (recorder && recorder.state === 'recording') recorder.stop();
   };
@@ -147,18 +150,26 @@ export function recordAndTranscribe({ maxMs = 8000 } = {}) {
     } catch {
       return null;
     }
+    if (stopRequested) { releaseMic(); return null; }
     const chunks = [];
     const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg', 'audio/mp4']
       .find((type) => MediaRecorder.isTypeSupported?.(type)) || '';
-    recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
-    const done = new Promise((resolve) => {
-      recorder.ondataavailable = (event) => { if (event.data?.size) chunks.push(event.data); };
-      recorder.onstop = resolve;
-    });
-    recorder.start();
+    let done;
+    try {
+      recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      done = new Promise((resolve) => {
+        recorder.ondataavailable = (event) => { if (event.data?.size) chunks.push(event.data); };
+        recorder.onstop = resolve;
+        recorder.onerror = resolve;
+      });
+      recorder.start();
+    } catch {
+      releaseMic();
+      return null;
+    }
     timer = setTimeout(stop, maxMs);
     await done;
-    stream.getTracks().forEach((track) => track.stop());
+    releaseMic();
     const blob = new Blob(chunks, { type: recorder.mimeType || mimeType || 'audio/webm' });
     return transcribeWithLocalWhisper(blob);
   })();

@@ -1570,16 +1570,12 @@ async function speakPipelinedChunks(chunks, cleanSpoken, petId, callback, myGene
 }
 
 /**
- * Unified Spoken Voice Entrypoint for Pet Companions
- * 0. Synchronous AudioContext gesture unlock + Zero-Latency Cache lookup.
- * 1. Pipelined sentence streaming for multi-sentence bedtime chapters & long guidance.
- * 2. Primary: Enhanced Multi-Profile Client-Side Web Speech Synthesis API.
- */
-/**
  * Plays `cleanSpoken` through the family Pi's Piper voice. Resolves true when it played
- * to the end, false when the Pi voice is unavailable or playback failed (so the caller
- * falls back to Web Speech) or when a newer utterance interrupted it.
+ * to the end, false when the Pi voice is unavailable, playback failed or stalled (so the
+ * caller falls back to Web Speech), or a newer utterance interrupted it.
  */
+const LOCAL_VOICE_START_TIMEOUT_MS = 8000;
+const LOCAL_VOICE_MAX_PLAY_MS = 90000;
 async function playLocalPiperSpeech(cleanSpoken, petId, callback, myGeneration) {
   if (typeof Audio === 'undefined') return false;
   if (!(await isLocalVoiceAvailable())) return false;
@@ -1594,17 +1590,24 @@ async function playLocalPiperSpeech(cleanSpoken, petId, callback, myGeneration) 
   return new Promise((resolve) => {
     const audio = new Audio(url);
     let settled = false;
+    let started = false;
     let syllableTimer = null;
+    let watchdog = null;
     const finish = (played) => {
       if (settled) return;
       settled = true;
       if (syllableTimer) clearInterval(syllableTimer);
+      if (watchdog) clearTimeout(watchdog);
+      audio.onended = audio.onerror = audio.onpause = audio.onplaying = null;
+      if (!played) {
+        try { audio.pause(); } catch {}
+      }
       try { URL.revokeObjectURL(url); } catch {}
       if (currentAudio === audio) currentAudio = null;
-      if (played && myGeneration === speechGeneration) {
+      if (myGeneration === speechGeneration && (played || started)) {
         store.setLiveRexState({ isSpeaking: false, status: 'idle' }, true);
         dispatchSpeechEvent('companion-speech-end', { petId });
-        if (typeof callback === 'function') callback();
+        if (played && typeof callback === 'function') callback();
       }
       resolve(played);
     };
@@ -1614,13 +1617,18 @@ async function playLocalPiperSpeech(cleanSpoken, petId, callback, myGeneration) 
       if (myGeneration !== speechGeneration) finish(false);
     };
     audio.onplaying = () => {
-      if (settled) return;
+      if (settled || started) return;
+      started = true;
+      if (watchdog) clearTimeout(watchdog);
+      watchdog = setTimeout(() => finish(true), LOCAL_VOICE_MAX_PLAY_MS);
       store.setLiveRexState({ isSpeaking: true, status: 'speaking' }, true);
       dispatchSpeechEvent('companion-speech-start', { text: cleanSpoken, petId, voice: 'piper' });
       syllableTimer = setInterval(() => {
         dispatchSpeechEvent('companion-speech-syllable', { text: cleanSpoken, petId });
       }, 110);
     };
+    // If the clip never starts (autoplay blocked, decoder stalled), fall back to Web Speech.
+    watchdog = setTimeout(() => { if (!started) finish(false); }, LOCAL_VOICE_START_TIMEOUT_MS);
     currentAudio = audio;
     pendingUnlockSpeech = null;
     const playAttempt = audio.play();
@@ -1630,6 +1638,12 @@ async function playLocalPiperSpeech(cleanSpoken, petId, callback, myGeneration) 
   });
 }
 
+/**
+ * Unified Spoken Voice Entrypoint for Pet Companions
+ * 0. Synchronous AudioContext gesture unlock + Zero-Latency Cache lookup.
+ * 1. Pipelined sentence streaming for multi-sentence bedtime chapters & long guidance.
+ * 2. Primary: Enhanced Multi-Profile Client-Side Web Speech Synthesis API.
+ */
 export const speakCompanion = async (text, petIdOrOptions = null, onEndedOrOptions = null, options = {}) => {
   // Unlock & resume AudioContext synchronously while user tap gesture is still active
   ensureSharedAudioContextReady();

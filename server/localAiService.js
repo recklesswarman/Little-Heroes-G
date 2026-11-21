@@ -27,14 +27,45 @@ export function getLocalAiConfig(env = process.env) {
   };
 }
 
-async function fetchWithTimeout(url, init = {}, timeoutMs = UPSTREAM_TIMEOUT_MS, fetchImpl = globalThis.fetch) {
+// The timer covers reading the body too (`read`), so a stalled upstream can't hang a request.
+async function fetchWithTimeout(url, init = {}, timeoutMs = UPSTREAM_TIMEOUT_MS, fetchImpl = globalThis.fetch, read = null) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await fetchImpl(url, { ...init, signal: controller.signal });
+    const res = await fetchImpl(url, { ...init, signal: controller.signal });
+    if (!read) return res;
+    return { res, data: res.ok ? await read(res) : null };
   } finally {
     clearTimeout(timer);
   }
+}
+
+// These routes reach services on the family Pi, so only answer devices on the home
+// network or the family Tailscale network. Uses the TCP peer address, never
+// X-Forwarded-For, so it can't be spoofed with a header.
+export function isFamilyNetworkAddress(address) {
+  const ip = String(address || '').replace(/^::ffff:/i, '').trim();
+  if (!ip) return false;
+  if (ip === '::1' || ip.startsWith('127.')) return true;
+  if (/^10\./.test(ip) || /^192\.168\./.test(ip)) return true;
+  const m = ip.match(/^(\d+)\.(\d+)\./);
+  if (m) {
+    const a = Number(m[1]); const b = Number(m[2]);
+    if (a === 172 && b >= 16 && b <= 31) return true;   // private
+    if (a === 100 && b >= 64 && b <= 127) return true;  // Tailscale CGNAT range
+    if (a === 169 && b === 254) return true;            // link-local
+    return false;
+  }
+  const lower = ip.toLowerCase();
+  return lower.startsWith('fd') || lower.startsWith('fc') || lower.startsWith('fe80:'); // ULA (incl. Tailscale) / link-local
+}
+
+function rejectOutsideFamilyNetwork(req, res, env) {
+  if (env.LOCAL_AI_ALLOW_ANY_NETWORK === 'true') return false;
+  const peer = req.socket?.remoteAddress ?? req.connection?.remoteAddress;
+  if (isFamilyNetworkAddress(peer)) return false;
+  res.status(403).json({ error: 'Local Pi services are only available on the family network', fallback: 'web-speech' });
+  return true;
 }
 
 async function probe(url, init, fetchImpl) {
@@ -52,6 +83,10 @@ export function createLocalAiHandlers({ env = process.env, fetchImpl = globalThi
   const cfg = () => getLocalAiConfig(env);
 
   async function handleStatus(req, res) {
+    if (env.LOCAL_AI_ALLOW_ANY_NETWORK !== 'true' && !isFamilyNetworkAddress(req.socket?.remoteAddress ?? req.connection?.remoteAddress)) {
+      res.setHeader('Cache-Control', 'no-store');
+      return res.json({ tts: false, stt: false, notify: false });
+    }
     const { piperUrl, whisperUrl, ntfyUrl } = cfg();
     const [tts, stt, notify] = await Promise.all([
       probe(piperUrl && `${piperUrl}/voices`, { method: 'GET' }, fetchImpl),
@@ -63,6 +98,7 @@ export function createLocalAiHandlers({ env = process.env, fetchImpl = globalThi
   }
 
   async function handleTts(req, res) {
+    if (rejectOutsideFamilyNetwork(req, res, env)) return;
     const { piperUrl } = cfg();
     if (!piperUrl) return res.status(503).json({ error: 'Local voice is not configured', fallback: 'web-speech' });
     const text = typeof req.body?.text === 'string' ? req.body.text.trim() : '';
@@ -75,13 +111,13 @@ export function createLocalAiHandlers({ env = process.env, fetchImpl = globalThi
     if (Number.isFinite(lengthScale) && lengthScale >= 0.5 && lengthScale <= 2) payload.length_scale = lengthScale;
 
     try {
-      const upstream = await fetchWithTimeout(`${piperUrl}/synthesize`, {
+      const { res: upstream, data } = await fetchWithTimeout(`${piperUrl}/synthesize`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
-      }, UPSTREAM_TIMEOUT_MS, fetchImpl);
+      }, UPSTREAM_TIMEOUT_MS, fetchImpl, (r) => r.arrayBuffer());
       if (!upstream.ok) return res.status(502).json({ error: `Piper returned ${upstream.status}`, fallback: 'web-speech' });
-      const audio = Buffer.from(await upstream.arrayBuffer());
+      const audio = Buffer.from(data);
       res.setHeader('Content-Type', 'audio/wav');
       res.setHeader('Cache-Control', 'no-store');
       return res.send(audio);
@@ -91,6 +127,7 @@ export function createLocalAiHandlers({ env = process.env, fetchImpl = globalThi
   }
 
   async function handleStt(req, res) {
+    if (rejectOutsideFamilyNetwork(req, res, env)) return;
     const { whisperUrl } = cfg();
     if (!whisperUrl) return res.status(503).json({ error: 'Local speech recognition is not configured', fallback: 'web-speech' });
     const body = req.body;
@@ -105,9 +142,9 @@ export function createLocalAiHandlers({ env = process.env, fetchImpl = globalThi
     form.append('temperature', '0.0');
 
     try {
-      const upstream = await fetchWithTimeout(`${whisperUrl}/inference`, { method: 'POST', body: form }, UPSTREAM_TIMEOUT_MS, fetchImpl);
+      const { res: upstream, data } = await fetchWithTimeout(`${whisperUrl}/inference`, { method: 'POST', body: form },
+        UPSTREAM_TIMEOUT_MS, fetchImpl, (r) => r.json().catch(() => ({})));
       if (!upstream.ok) return res.status(502).json({ error: `Whisper returned ${upstream.status}`, fallback: 'web-speech' });
-      const data = await upstream.json().catch(() => ({}));
       const text = String(data?.text || '').replace(/\s+/g, ' ').trim();
       return res.json({ text });
     } catch (err) {
@@ -116,6 +153,7 @@ export function createLocalAiHandlers({ env = process.env, fetchImpl = globalThi
   }
 
   async function handleNotify(req, res) {
+    if (rejectOutsideFamilyNetwork(req, res, env)) return;
     const { ntfyUrl, ntfyTopic } = cfg();
     if (!ntfyUrl) return res.status(503).json({ error: 'Family alerts are not configured' });
     const message = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
