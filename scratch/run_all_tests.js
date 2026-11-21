@@ -55,6 +55,7 @@ const testFiles = [
   'scratch/verify_pet_sanctuary_treats_and_decay.mjs',
   'scratch/verify_shop_catalog_expansion.mjs',
   'scratch/verify_badge_ladders_world_map_and_learning.mjs',
+  'scratch/verify_grade_level_skills_reading_font_and_sfx.mjs',
   'scratch/verify_hero_avatar_presets_expansion.mjs',
   'scratch/verify_routine_approvals_pipeline.mjs',
   'scratch/verify_fragmentation_and_rewards_fixes.mjs',

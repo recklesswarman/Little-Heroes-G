@@ -91,7 +91,7 @@ class GeminiLiveService {
       const optionsText = Array.isArray(context.options)
         ? context.options.map((opt, i) => `[Option ${i} (${String.fromCharCode(65 + i)}): "${opt}"]`).join(', ')
         : '';
-      const promptText = `[GAME CONTEXT UPDATE: Child is playing "${context.gameTitle || 'Quest'}", Question: "${context.question}". Choices: ${optionsText}. Correct answer index: ${context.correctAnswerIndex ?? 'unknown'}. Guide the child encouragingly!]`;
+      const promptText = `[GAME CONTEXT UPDATE: Child is playing "${context.gameTitle || 'Quest'}", Question: "${context.question}". Choices: ${optionsText}. Correct answer index: ${context.correctAnswerIndex ?? 'unknown'}.${context.skill ? ` This is a ${context.gradeLevel || 'school'} skill (${context.skill}). Teach the skill with a hint like "${context.hint || ''}" and never just say the answer.` : ''} Guide the child encouragingly!]`;
       
       this.sendTextMessage(promptText);
     } catch (err) {

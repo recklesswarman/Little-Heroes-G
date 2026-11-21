@@ -1480,6 +1480,7 @@ class Store {
       stars: sHero.stars || 0,
       completionRate: sHero.completionRate ?? 100,
       gameDifficulty: sHero.gameDifficulty || 'medium',
+      readingFont: Boolean(sHero.readingFont),
       equippedProfileTheme: sHero.equippedProfileTheme || 'theme_dragon_emerald',
       unlockedThemes: [...(sHero.unlockedThemes || ['theme_dragon_emerald'])],
       equippedGear: Array.isArray(sHero.equippedGear) ? [...sHero.equippedGear] : { ...(sHero.equippedGear || {}) },
@@ -2142,6 +2143,19 @@ class Store {
     this.logAction('Parent updated shop pricing & stat bonuses', 'Shop prices, stat bonus percentages, and food usage rules updated');
     Sound.fanfare();
     this.showReward('Pricing & Settings Updated!', 'All reward prices, stat bonus percentages, and food rules have been updated in the Hero Shop!', 0, 0, null, 'payments');
+    this.saveState(true);
+  }
+
+  // Per-kid easy-reading font (Atkinson Hyperlegible) toggle (Parent Portal)
+  setKidReadingFont(kidId, enabled) {
+    const hero = this.state.heroes.find(h => h.id === kidId);
+    if (!hero) return;
+    hero.readingFont = Boolean(enabled);
+    if (this.state.selectedHero.id === kidId) {
+      this.state.selectedHero.readingFont = hero.readingFont;
+    }
+    this.logAction(`Parent turned ${hero.readingFont ? 'on' : 'off'} easy-reading font for ${hero.name}`, 'Reading Font');
+    Sound.click();
     this.saveState(true);
   }
 
@@ -7302,6 +7316,7 @@ class Store {
       this.state.selectedHero.habitatSlots = hero.habitatSlots || 1;
       this.state.selectedHero.streak = hero.streak || 1;
       this.state.selectedHero.gameDifficulty = hero.gameDifficulty || 'medium';
+      this.state.selectedHero.readingFont = Boolean(hero.readingFont);
       this.state.selectedHero.equippedProfileTheme = hero.equippedProfileTheme || 'theme_dragon_emerald';
       this.state.selectedHero.unlockedThemes = hero.unlockedThemes || ['theme_dragon_emerald'];
       // This kid's own pet training level/XP, hunger/hygiene/joy/energy, bond

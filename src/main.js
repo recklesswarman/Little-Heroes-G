@@ -407,7 +407,15 @@ function _renderAppInternal() {
 let lastRenderedView = null;
 let activeTransition = null;
 
+function applyReadingFontMode() {
+  try {
+    const on = Boolean(store.getState().selectedHero?.readingFont);
+    document.documentElement?.classList?.toggle('reading-font-mode', on);
+  } catch {}
+}
+
 function handleStateUpdate() {
+  applyReadingFontMode();
   const currentView = store.getState().activeView;
   const isViewChange = lastRenderedView !== null && lastRenderedView !== currentView;
   lastRenderedView = currentView;
@@ -484,6 +492,7 @@ initTactileSoundEngine();
 initParentLockModal();
 initHouseholdModal();
 store.subscribe(handleStateUpdate);
+applyReadingFontMode();
 
 // Start Real-Time Live Multi-Device Sync on App Launch ONLY if household is configured
 const activeHouseholdCode = store.getState().household.syncCode;

@@ -319,7 +319,7 @@ function renderTodaysPathTab(hero, activePet, mapState) {
         </div>
 
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-          ${ADVENTURE_GAMES.slice(0, 3).map(g => `
+          ${[...ADVENTURE_GAMES.filter(g => g.gradeAligned), ...ADVENTURE_GAMES.filter(g => !g.gradeAligned).slice(0, 3)].map(g => `
             <button data-launch-game="${g.id}" class="bg-[#0f2334] hover:bg-[#16334a] p-3 rounded-2xl border-2 border-surface-container-highest flex items-center gap-2.5 text-left active:scale-95 transition-all">
               <span class="material-symbols-outlined text-2xl text-primary-container">${g.icon}</span>
               <div class="flex flex-col min-w-0">
@@ -865,7 +865,7 @@ export function attachWorldAdventureMapListeners() {
       const optIdx = parseInt(btn.getAttribute('data-opt-idx'), 10);
 
       if (optIdx === challenge.answer) {
-        Sound.fanfare();
+        Sound.correctAnswer();
         confetti({ particleCount: 40, spread: 60, origin: { y: 0.6 } });
         btn.classList.add('bg-emerald-500/20', 'border-emerald-400');
         setTimeout(() => {
@@ -883,7 +883,7 @@ export function attachWorldAdventureMapListeners() {
           }
         }, 500);
       } else {
-        Sound.boing();
+        Sound.wrongAnswer();
         btn.classList.add('border-red-500', 'text-red-400', 'animate-shake');
         setTimeout(() => btn.classList.remove('border-red-500', 'text-red-400', 'animate-shake'), 600);
       }

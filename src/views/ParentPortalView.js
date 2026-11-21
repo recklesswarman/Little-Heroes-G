@@ -3235,7 +3235,7 @@ export function renderParentPortalView() {
                         currentDiff === 'hard' ? 'bg-error/20 text-error border border-error/40' :
                         'bg-secondary/20 text-secondary border border-secondary/40'
                       }">
-                        ${currentDiff === 'easy' ? '🟢 Easy (Toddler 3-4)' : currentDiff === 'hard' ? '🔵 Hard (Kids 7-9)' : '🟡 Medium (Kids 5-6)'}
+                        ${currentDiff === 'easy' ? '🟢 Easy (Pre-K & K)' : currentDiff === 'hard' ? '🔵 Hard (2nd Grade)' : '🟡 Medium (Kindergarten Stretch)'}
                       </span>
                     </div>
 
@@ -3245,21 +3245,21 @@ export function renderParentPortalView() {
                         currentDiff === 'easy' ? 'bg-primary text-on-primary border-primary-container shadow-xs font-black' : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border-surface-container-highest'
                       }">
                         <span class="text-xs font-headline font-black">Easy</span>
-                        <span class="text-[9px] leading-tight ${currentDiff === 'easy' ? 'text-on-primary/90' : 'text-on-surface-variant'}">Age 3–4 (Voice Prompts)</span>
+                        <span class="text-[9px] leading-tight ${currentDiff === 'easy' ? 'text-on-primary/90' : 'text-on-surface-variant'}">Pre-K & K · Voice Prompts</span>
                       </button>
 
                       <button data-kid-id="${h.id}" data-diff-level="medium" class="kid-diff-btn rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 border-2 transition-all ${
                         currentDiff === 'medium' ? 'bg-secondary text-on-secondary border-secondary-container shadow-xs font-black' : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border-surface-container-highest'
                       }">
                         <span class="text-xs font-headline font-black">Medium</span>
-                        <span class="text-[9px] leading-tight ${currentDiff === 'medium' ? 'text-on-secondary/90' : 'text-on-surface-variant'}">Age 5–6 (Reading)</span>
+                        <span class="text-[9px] leading-tight ${currentDiff === 'medium' ? 'text-on-secondary/90' : 'text-on-surface-variant'}">Kindergarten Stretch</span>
                       </button>
 
                       <button data-kid-id="${h.id}" data-diff-level="hard" class="kid-diff-btn rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 border-2 transition-all ${
                         currentDiff === 'hard' ? 'bg-error text-on-error border-error-container shadow-xs font-black' : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border-surface-container-highest'
                       }">
                         <span class="text-xs font-headline font-black">Hard</span>
-                        <span class="text-[9px] leading-tight ${currentDiff === 'hard' ? 'text-on-error/90' : 'text-on-surface-variant'}">Age 7–9 (Advanced)</span>
+                        <span class="text-[9px] leading-tight ${currentDiff === 'hard' ? 'text-on-error/90' : 'text-on-surface-variant'}">2nd Grade · Advanced</span>
                       </button>
                     </div>
 
@@ -3268,6 +3268,9 @@ export function renderParentPortalView() {
                         ${currentDiff === 'easy' ? '✨ Realistic toddler voice narration.' : currentDiff === 'hard' ? '🧠 Advanced math & logic.' : '📚 Phonics & counting.'}
                       </p>
                       <div class="flex items-center gap-1">
+                        <button data-kid-id="${h.id}" data-reading-font="${h.readingFont ? 'off' : 'on'}" class="kid-reading-font-btn ${h.readingFont ? 'bg-primary text-on-primary border-primary-container' : 'bg-surface-container hover:bg-surface-bright text-primary border-surface-container-highest'} font-headline text-[10px] font-black px-2.5 py-1 rounded-lg border flex items-center gap-1 active:scale-95" title="Easy-reading font (Atkinson Hyperlegible)" aria-pressed="${h.readingFont ? 'true' : 'false'}">
+                          <span class="material-symbols-outlined text-xs">format_size</span> ${h.readingFont ? 'Easy Font On' : 'Easy Font'}
+                        </button>
                         <button data-kid-id="${h.id}" class="admin-edit-kid-btn bg-surface-container hover:bg-surface-bright text-secondary font-headline text-[10px] font-black px-2.5 py-1 rounded-lg border border-surface-container-highest flex items-center gap-1 active:scale-95" title="Edit Kid Profile">
                           <span class="material-symbols-outlined text-xs">edit</span> Edit
                         </button>
@@ -5337,6 +5340,14 @@ export function attachParentPortalListeners() {
         Sound.click();
         await store.removeDevice(devId);
       }
+    });
+  });
+
+  // KID EASY-READING FONT TOGGLE (Settings Tab)
+  document.querySelectorAll('.kid-reading-font-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const kidId = btn.getAttribute('data-kid-id');
+      store.setKidReadingFont(kidId, btn.getAttribute('data-reading-font') === 'on');
     });
   });
 
