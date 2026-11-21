@@ -22,6 +22,7 @@ import {
 } from '../data/worldMapData.js';
 import { PETS_DATABASE } from '../data/petsData.js';
 import { renderStoryControlsTab, bindStoryControlsTab } from './StoryControlsPanel.js';
+import { renderWeeklyReportCard, bindWeeklyReportCard } from './WeeklyReportCard.js';
 import { speakCompanion } from '../services/voiceService.js';
 import {
   renderAnalyticsChartsSection,
@@ -602,6 +603,7 @@ export function renderParentPortalView() {
         activeAdminTab === 'reports'
           ? `
         <section class="flex flex-col gap-6 animate-fade-in printable-report-area">
+          ${renderWeeklyReportCard()}
           
           <!-- Header Banner -->
           <div class="bg-surface-container rounded-3xl p-5 sm:p-6 border-2 border-primary/40 card-shadow flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -4553,6 +4555,7 @@ export function attachParentPortalListeners() {
   preserveScrollBarPosition('admin-tab-bar');
 
   if (activeAdminTab === 'story') bindStoryControlsTab();
+  if (activeAdminTab === 'reports') bindWeeklyReportCard();
 
   // APPROVALS TAB
   const clearAllPendingBtn = document.getElementById('admin-clear-all-pending-btn');
