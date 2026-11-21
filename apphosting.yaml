@@ -47,6 +47,15 @@ env:
     secret: NTFY_TOKEN
     availability:
       - RUNTIME
+  # Cookie-free Umami page views on the family Pi (tracker + /api/send only, via Funnel)
+  - variable: VITE_UMAMI_HOST
+    value: https://meshlink.tail9d175a.ts.net/umami
+    availability:
+      - BUILD
+  - variable: VITE_UMAMI_WEBSITE_ID
+    value: 0e6c6bb6-261e-4977-9ca6-1e41d3a3f8fb
+    availability:
+      - BUILD
   # Rex's offline Pi voice (Piper + Whisper) relayed over Tailscale Funnel; the token
   # stays server-side. -- set once with: firebase apphosting:secrets:set PI_RELAY_TOKEN
   - variable: PI_RELAY_URL
