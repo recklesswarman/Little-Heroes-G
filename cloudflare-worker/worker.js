@@ -86,7 +86,7 @@ export async function buildKleinInput({ prompt, seed, references }) {
   references.forEach((ref, i) => form.append(`input_image_${i}`, new Blob([ref.bytes], { type: ref.type }), `ref${i}.${ref.type === "image/png" ? "png" : "jpg"}`));
   form.append("width", String(KLEIN_WIDTH));
   form.append("height", String(KLEIN_HEIGHT));
-  if (Number.isFinite(seed)) form.append("seed", String(Math.abs(Math.floor(seed)) % 2147483647));
+  if (Number.isFinite(seed)) form.append("seed", String(Math.min(Math.abs(Math.floor(seed)), 2147483646)));
   // Passing the FormData through a Response serialises it and sets the boundary header.
   const packed = new Response(form);
   return { multipart: { body: packed.body, contentType: packed.headers.get("content-type") } };

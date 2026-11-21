@@ -180,7 +180,7 @@ export class BedtimeIllustrationService {
         const chIdx = chapterIndex ?? (chapterNumber - 1);
         const seed = paramSeed !== undefined && paramSeed !== null
           ? Number(paramSeed)
-          : Math.floor(Math.random() * 2147483647);
+          : (((globalThis.crypto?.getRandomValues?.(new Uint32Array(1))[0] ?? Date.now()) & 0x7fffffff) || 1);
         const negative_prompt = "pink, purple, magenta, violet, neon pink, scary, dark, deformed, blurry";
 
         // Built once so the direct call and the backup route send the same scene summary.
