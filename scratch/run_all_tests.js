@@ -59,6 +59,7 @@ const testFiles = [
   'scratch/verify_hero_avatar_presets_expansion.mjs',
   'scratch/verify_routine_approvals_pipeline.mjs',
   'scratch/verify_fragmentation_and_rewards_fixes.mjs',
+  'scratch/verify_storyweaver_lottie_pwa_voicelab.mjs',
   // 3 Existing Offline Suites (49-51):
   'scratch/verify_agy_persistent_fixes.mjs',
   'scratch/verify_name_and_memory_retention.mjs',
