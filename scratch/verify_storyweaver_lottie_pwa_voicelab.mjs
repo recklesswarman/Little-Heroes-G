@@ -245,6 +245,19 @@ await test('Piper: post-json and get request styles', async () => {
   await assert.rejects(() => voice.synthesizeWithPiper('   ', { fetchImpl: fakeFetch }), /Text is required/);
 });
 
+await test('voice handlers reject tampered (array/string) bodies with 400', async () => {
+  const mkRes = () => ({ code: 0, body: null, setHeader() {}, status(c) { this.code = c; return this; }, json(d) { this.body = d; } });
+  const r1 = mkRes();
+  await voice.handleVoiceTtsRequest({ body: { text: ['a', 'b'] } }, r1);
+  assert.equal(r1.code, 400);
+  const r2 = mkRes();
+  await voice.handleVoiceSttRequest({ body: ['RIFF'] }, r2);
+  assert.equal(r2.code, 400);
+  const r3 = mkRes();
+  await voice.handleVoiceSttRequest({ body: 'RIFF....WAVE' }, r3);
+  assert.equal(r3.code, 400);
+});
+
 await test('server.js and Vite dev server expose the new routes; voice lab page is a build input', () => {
   const server = fs.readFileSync('server.js', 'utf8');
   for (const r of ["'/api/storyweaver/books'", "'/api/voice/status'", "'/api/voice/stt'", "'/api/voice/tts'"]) {

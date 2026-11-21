@@ -48,12 +48,13 @@ async function withTimeout(ms, fn) {
 }
 
 function looksLikeWav(buf) {
-  return buf && buf.length > 44 && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WAVE';
+  // Request bodies are untrusted: only a real Buffer (never an array or string) can pass.
+  return Buffer.isBuffer(buf) && buf.length > 44 && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WAVE';
 }
 
 /** Send a WAV buffer to whisper.cpp and return the transcript text. */
 export async function transcribeWithWhisper(wavBuffer, { config = getVoiceLabConfig(), fetchImpl = globalThis.fetch } = {}) {
-  if (!Buffer.isBuffer(wavBuffer) || !looksLikeWav(wavBuffer)) {
+  if (!looksLikeWav(wavBuffer)) {
     const err = new Error('Expected a WAV recording.');
     err.status = 400;
     throw err;
@@ -82,7 +83,8 @@ export async function transcribeWithWhisper(wavBuffer, { config = getVoiceLabCon
 
 /** Ask Piper to speak `text`; returns a WAV Buffer. */
 export async function synthesizeWithPiper(text, { config = getVoiceLabConfig(), fetchImpl = globalThis.fetch } = {}) {
-  const clean = String(text || '').replace(/\s+/g, ' ').trim().slice(0, MAX_TTS_CHARS);
+  if (typeof text !== 'string') text = '';
+  const clean = text.replace(/\s+/g, ' ').trim().slice(0, MAX_TTS_CHARS);
   if (!clean) {
     const err = new Error('Text is required.');
     err.status = 400;
@@ -137,6 +139,9 @@ function sendError(res, err) {
 
 export async function handleVoiceSttRequest(req, res) {
   try {
+    if (!Buffer.isBuffer(req.body)) {
+      return res.status(400).json({ ok: false, error: 'Expected a WAV recording.' });
+    }
     const text = await transcribeWithWhisper(req.body);
     return res.status(200).json({ ok: true, text });
   } catch (err) {
@@ -146,7 +151,11 @@ export async function handleVoiceSttRequest(req, res) {
 
 export async function handleVoiceTtsRequest(req, res) {
   try {
-    const wav = await synthesizeWithPiper(req.body?.text);
+    const text = req.body?.text;
+    if (typeof text !== 'string') {
+      return res.status(400).json({ ok: false, error: 'Text is required.' });
+    }
+    const wav = await synthesizeWithPiper(text);
     res.setHeader('Content-Type', 'audio/wav');
     res.setHeader('Cache-Control', 'no-store');
     res.statusCode = 200;
