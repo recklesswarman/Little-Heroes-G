@@ -74,6 +74,20 @@ await test('relay rejects empty, non-buffer and oversized audio before calling t
   assert.equal(a.statusCode, 400); assert.equal(b.statusCode, 413); assert.equal(c.statusCode, 413); assert.equal(called, false);
 });
 
+await test('relay caps concurrent and hourly Pi work, then falls back', async () => {
+  let release;
+  const slow = new Promise((r) => { release = r; });
+  let t = 0;
+  const h = createPiRelayHandlers({ env: RELAY_ENV, now: () => t, fetchImpl: async () => { await slow; return ok({}); } });
+  const a = mockRes(); const b = mockRes(); const c = mockRes();
+  const pa = h.handleLocalTts({ body: { text: 'one' } }, a);
+  const pb = h.handleLocalTts({ body: { text: 'two' } }, b);
+  await h.handleLocalTts({ body: { text: 'three' } }, c);
+  assert.equal(c.statusCode, 429); assert.equal(c.body.fallback, 'web-speech');
+  release(); await pa; await pb;
+  assert.equal(a.statusCode, 200); assert.equal(b.statusCode, 200);
+});
+
 console.log('🧪 Pi side: Funnel traffic needs the relay token');
 
 await test('requests through Funnel/Serve or any proxy are not treated as the family LAN', () => {

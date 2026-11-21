@@ -18,9 +18,9 @@ export function createApiCors({ env = process.env } = {}) {
   const allowed = getAllowedOrigins(env);
   return function apiCors(req, res, next) {
     const origin = typeof req.headers?.origin === 'string' ? req.headers.origin : '';
+    res.setHeader('Vary', 'Origin');
     if (origin && allowed.has(origin)) {
       res.setHeader('Access-Control-Allow-Origin', origin);
-      res.setHeader('Vary', 'Origin');
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
       res.setHeader('Access-Control-Max-Age', '600');

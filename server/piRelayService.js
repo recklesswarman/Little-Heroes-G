@@ -52,8 +52,23 @@ function audioType(req) {
   return STT_TYPES.has(type) ? type : 'audio/webm';
 }
 
-export function createPiRelayHandlers({ env = process.env, fetchImpl = globalThis.fetch } = {}) {
+// The Pi is small, so cap how much relayed speech work one server instance can ask
+// of it, on top of the per-IP limit in server.js.
+const RELAY_BUDGET_PER_HOUR = 300;
+const RELAY_MAX_CONCURRENT = 2;
+
+export function createPiRelayHandlers({ env = process.env, fetchImpl = globalThis.fetch, now = () => Date.now() } = {}) {
   const cfg = () => getPiRelayConfig(env);
+  let windowStart = now();
+  let usedThisHour = 0;
+  let inFlight = 0;
+  function takeSlot() {
+    if (now() - windowStart > 3600000) { windowStart = now(); usedThisHour = 0; }
+    if (usedThisHour >= RELAY_BUDGET_PER_HOUR || inFlight >= RELAY_MAX_CONCURRENT) return false;
+    usedThisHour++; inFlight++;
+    return true;
+  }
+  const releaseSlot = () => { inFlight = Math.max(0, inFlight - 1); };
 
   async function status() {
     const c = cfg();
@@ -70,6 +85,7 @@ export function createPiRelayHandlers({ env = process.env, fetchImpl = globalThi
   async function tts(text) {
     const c = cfg();
     if (!c) return { status: 503 };
+    if (!takeSlot()) return { status: 429 };
     try {
       const { res, data } = await relayFetch(c, '/tts', {
         method: 'POST',
@@ -79,12 +95,15 @@ export function createPiRelayHandlers({ env = process.env, fetchImpl = globalThi
       return res.ok ? { status: 200, audio: Buffer.from(data) } : { status: 502 };
     } catch {
       return { status: 502 };
+    } finally {
+      releaseSlot();
     }
   }
 
   async function stt(body, type) {
     const c = cfg();
     if (!c) return { status: 503 };
+    if (!takeSlot()) return { status: 429 };
     try {
       const { res, data } = await relayFetch(c, '/stt', {
         method: 'POST',
@@ -94,6 +113,8 @@ export function createPiRelayHandlers({ env = process.env, fetchImpl = globalThi
       return res.ok ? { status: 200, text: cleanText(data?.text) } : { status: 502 };
     } catch {
       return { status: 502 };
+    } finally {
+      releaseSlot();
     }
   }
 

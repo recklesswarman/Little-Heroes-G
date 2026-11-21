@@ -8,9 +8,7 @@ const TRACKED_DOMAINS = [
   'recklesswarman.github.io',
   'little-heroes-quest-8842.web.app',
   'little-heroes-quest-8842.firebaseapp.com',
-  'littleheroes-g1--little-heroes-quest-8842.us-east4.hosted.app',
-  'meshlink',
-  '192.168.1.163'
+  'littleheroes-g1--little-heroes-quest-8842.us-east4.hosted.app'
 ];
 
 export function getUmamiConfig(env = null) {
@@ -21,7 +19,9 @@ export function getUmamiConfig(env = null) {
   const host = read('VITE_UMAMI_HOST').replace(/\/+$/, '');
   const websiteId = read('VITE_UMAMI_WEBSITE_ID');
   if (!/^https:\/\//i.test(host) || !/^[0-9a-f-]{36}$/i.test(websiteId)) return null;
-  return { host, websiteId };
+  // Extra hostnames (e.g. the Pi's own name) come from the Pi's build env, not the repo.
+  const extraDomains = read('VITE_UMAMI_EXTRA_DOMAINS').split(',').map((d) => d.trim()).filter((d) => /^[a-z0-9.-]+$/i.test(d));
+  return { host, websiteId, extraDomains };
 }
 
 export function initAnalytics(config = getUmamiConfig(), doc = (typeof document !== 'undefined' ? document : null)) {
@@ -32,7 +32,7 @@ export function initAnalytics(config = getUmamiConfig(), doc = (typeof document 
   script.src = `${config.host}/script.js`;
   script.setAttribute('data-website-id', config.websiteId);
   script.setAttribute('data-host-url', config.host);
-  script.setAttribute('data-domains', TRACKED_DOMAINS.join(','));
+  script.setAttribute('data-domains', [...TRACKED_DOMAINS, ...(config.extraDomains || [])].join(','));
   script.setAttribute('data-do-not-track', 'true');
   doc.head.appendChild(script);
   return true;
