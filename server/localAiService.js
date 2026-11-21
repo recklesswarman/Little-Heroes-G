@@ -139,7 +139,8 @@ export function createLocalAiHandlers({ env = process.env, fetchImpl = globalThi
     const { whisperUrl } = cfg();
     if (!whisperUrl) return res.status(503).json({ error: 'Local speech recognition is not configured', fallback: 'web-speech' });
     const body = req.body;
-    if (!Buffer.isBuffer(body) || body.length === 0) return res.status(400).json({ error: 'Send the recorded audio as the request body' });
+    // Explicit string/array guards (CodeQL type-confusion): only a raw Buffer is accepted.
+    if (typeof body === 'string' || Array.isArray(body) || !Buffer.isBuffer(body) || body.length === 0) return res.status(400).json({ error: 'Send the recorded audio as the request body' });
     if (body.length > STT_MAX_BYTES) return res.status(413).json({ error: 'Recording is too long' });
 
     const rawType = req.headers?.['content-type'];
