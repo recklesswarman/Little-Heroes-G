@@ -13,6 +13,12 @@ const TTS_MAX_CHARS = 600;
 const STT_MAX_BYTES = 5 * 1024 * 1024;
 const NOTIFY_MAX_CHARS = 1000;
 const UPSTREAM_TIMEOUT_MS = 30000;
+// Recording formats browsers produce, mapped to the file extension whisper/ffmpeg expects.
+const STT_CONTENT_TYPES = Object.freeze({
+  'audio/webm': 'webm', 'video/webm': 'webm', 'audio/ogg': 'ogg', 'audio/mp4': 'mp4',
+  'audio/mpeg': 'mp3', 'audio/wav': 'wav', 'audio/x-wav': 'wav', 'audio/wave': 'wav',
+  'application/octet-stream': 'webm'
+});
 
 function trimSlash(url) {
   return String(url || '').trim().replace(/\/+$/, '');
@@ -142,8 +148,10 @@ export function createLocalAiHandlers({ env = process.env, fetchImpl = globalThi
     if (!Buffer.isBuffer(body) || body.length === 0) return res.status(400).json({ error: 'Send the recorded audio as the request body' });
     if (body.length > STT_MAX_BYTES) return res.status(413).json({ error: 'Recording is too long' });
 
-    const contentType = String(req.headers['content-type'] || 'audio/webm').split(';')[0];
-    const ext = (contentType.split('/')[1] || 'webm').replace(/[^a-z0-9]/gi, '') || 'webm';
+    const rawType = req.headers?.['content-type'];
+    const requested = typeof rawType === 'string' ? rawType.split(';')[0].trim().toLowerCase() : '';
+    const contentType = STT_CONTENT_TYPES[requested] ? requested : 'audio/webm';
+    const ext = STT_CONTENT_TYPES[contentType];
     const form = new FormData();
     form.append('file', new Blob([body], { type: contentType }), `speech.${ext}`);
     form.append('response_format', 'json');
