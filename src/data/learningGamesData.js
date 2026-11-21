@@ -1,3 +1,5 @@
+import { GRADE_LEVEL_GAMES } from './gradeLevelSkillsData.js';
+
 // 5 Comprehensive Educational Adventure Realms (+ Backwards Compatibility Aliases)
 // Supports 3 Difficulty Levels configured per child:
 // - Easy: Toddler Level (Ages 3-4) with high-contrast emojis & realistic voice prompts
@@ -322,6 +324,10 @@ ADVENTURE_GAMES.push(
     challengesByDifficulty: shapeKingdomGame.challengesByDifficulty
   }
 );
+
+// Grade-aligned skill quests (Common Core via Learning Commons) -- see
+// gradeLevelSkillsData.js. Appended so existing realm ids/order stay stable.
+ADVENTURE_GAMES.push(...GRADE_LEVEL_GAMES);
 
 export function getGameChallenges(game, difficulty = 'medium') {
   const diffKey = ['easy', 'medium', 'hard'].includes(difficulty) ? difficulty : 'medium';

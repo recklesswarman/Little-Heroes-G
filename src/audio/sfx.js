@@ -271,9 +271,123 @@ function getAudioContext() {
   return audioCtx;
 }
 
+// Recorded sample layer: small sound clips by Kenney (kenney.nl), taken from
+// Kenney's official Starter Kit repos (MIT licence, see
+// public/assets/audio/kenney/LICENSE.md). Samples are fetched and decoded
+// lazily on first use and cached per AudioContext. Every sample call falls
+// back to the procedural synth sound if the file can't be loaded (offline,
+// old browser, or test env), so nothing ever goes silent.
+const SAMPLE_FILES = {
+  correct: 'match.mp3',
+  coin: 'coin.mp3',
+  oops: 'fall.mp3',
+  select: 'swap.mp3',
+  place: 'place.mp3',
+  bounce: 'jump.mp3'
+};
+const sampleBuffers = new Map();
+const sampleLoads = new Map();
+
+function resolveSampleUrl(file) {
+  let base = '/';
+  try {
+    base = (import.meta && import.meta.env && import.meta.env.BASE_URL) || '/';
+  } catch {}
+  if (!base.endsWith('/')) base += '/';
+  return `${base}assets/audio/kenney/${file}`;
+}
+
+function loadSample(ctx, name) {
+  const file = SAMPLE_FILES[name];
+  if (!ctx || !file || typeof fetch !== 'function' || typeof ctx.decodeAudioData !== 'function') {
+    return Promise.resolve(null);
+  }
+  if (sampleBuffers.has(name)) return Promise.resolve(sampleBuffers.get(name));
+  if (!sampleLoads.has(name)) {
+    const p = fetch(resolveSampleUrl(file))
+      .then((r) => (r.ok ? r.arrayBuffer() : null))
+      .then((ab) => (ab ? new Promise((res, rej) => {
+        const out = ctx.decodeAudioData(ab, res, rej);
+        if (out && typeof out.then === 'function') out.then(res, rej);
+      }) : null))
+      .then((buf) => {
+        if (buf) sampleBuffers.set(name, buf);
+        return buf;
+      })
+      .catch(() => null);
+    sampleLoads.set(name, p);
+  }
+  return sampleLoads.get(name);
+}
+
+// Plays a decoded sample on the UI SFX bus. Returns true when it played, false
+// when the caller should use its procedural fallback instead.
+function playSampleNow(ctx, name, volume = 0.8, rate = 1) {
+  const buf = sampleBuffers.get(name);
+  if (!ctx || !buf || typeof ctx.createBufferSource !== 'function') return false;
+  try {
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    if (src.playbackRate?.setValueAtTime) src.playbackRate.setValueAtTime(rate, ctx.currentTime);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(volume, ctx.currentTime);
+    src.connect(gain);
+    gain.connect(getBusDestination(ctx, 'uiSfxGain'));
+    src.start();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function playSampleOr(name, fallback, volume, rate) {
+  if (isMuted) return;
+  const ctx = getAudioContext();
+  if (playSampleNow(ctx, name, volume, rate)) return;
+  // Not loaded yet: use the synth sound now, and warm the cache for next time.
+  loadSample(ctx, name);
+  if (typeof fallback === 'function') fallback();
+}
+
+export const SAMPLE_SFX_FILES = { ...SAMPLE_FILES };
+
 export const Sound = {
   isMuted() {
     return isMuted;
+  },
+
+  // Preload the recorded samples (call once after the first user tap).
+  preloadSamples() {
+    const ctx = getAudioContext();
+    if (!ctx) return Promise.resolve([]);
+    return Promise.all(Object.keys(SAMPLE_FILES).map((n) => loadSample(ctx, n)));
+  },
+
+  // Learning-quest answer feedback (recorded samples, synth fallback).
+  correctAnswer() {
+    playSampleOr('correct', () => this.fanfare(), 0.85);
+    setTimeout(() => playSampleOr('coin', null, 0.55), 140);
+  },
+
+  wrongAnswer() {
+    // Gentle "oops", never a harsh buzzer, for little learners.
+    playSampleOr('oops', () => this.boing(), 0.6);
+  },
+
+  answerSelect() {
+    playSampleOr('select', () => this.tap(), 0.5);
+  },
+
+  sampleCoin() {
+    playSampleOr('coin', () => this.coin(), 0.7);
+  },
+
+  samplePlace() {
+    playSampleOr('place', () => this.placeFurniture(), 0.7);
+  },
+
+  sampleBounce() {
+    playSampleOr('bounce', () => this.boing(), 0.6);
   },
 
   getAudioContext() {
@@ -2266,6 +2380,8 @@ export function initTactileSoundEngine() {
   // 1. Gesture Unlock for Browser Audio Context
   const unlockAudio = () => {
     getAudioContext();
+    // Warm the recorded sample cache so the first quiz answer already uses them.
+    try { Sound.preloadSamples(); } catch {}
     window.removeEventListener('pointerdown', unlockAudio);
     window.removeEventListener('keydown', unlockAudio);
   };
