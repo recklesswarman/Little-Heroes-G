@@ -47,6 +47,7 @@ import { renderBedtimeStoryView, setupBedtimeStoryListeners } from './views/Bedt
 import { renderStoryLibraryView, attachStoryLibraryListeners } from './views/StoryLibraryView.js';
 import { registerServiceWorker } from './pwa/registerServiceWorker.js';
 import { initRewardAnimations } from './services/rewardAnimationService.js';
+import { initParentNotifications } from './services/parentNotifyService.js';
 import { destroyActiveCanvas } from './utils/activeViewCanvasRegistry.js';
 import { isExistingActiveHousehold } from './utils/householdHeuristics.js';
 
@@ -490,6 +491,7 @@ window.addEventListener('keydown', (e) => {
 // Initial Listeners & Store Subscription
 initTactileSoundEngine();
 initRewardAnimations();
+initParentNotifications();
 initParentLockModal();
 initHouseholdModal();
 store.subscribe(handleStateUpdate);

@@ -270,5 +270,53 @@ await test('server.js and Vite dev server expose the new routes; voice lab page 
   assert.ok(fs.existsSync('voice-lab.html'));
 });
 
+console.log('\n--- ntfy parent alerts ---');
+const ntfy = await import('../server/ntfyService.js');
+
+await test('ntfy request is built from a whitelist with cleaned fields', () => {
+  const cfg = ntfy.getNtfyConfig({ NTFY_URL: 'http://192.168.1.163:8090/', NTFY_TOPIC: 'little heroes!' });
+  assert.equal(cfg.topic, 'littleheroes');
+  const r = ntfy.buildNtfyRequest('task_submitted', { kidName: 'Leo\nX-Evil: 1', title: 'Brush teeth' }, cfg);
+  assert.equal(r.url, 'http://192.168.1.163:8090/littleheroes');
+  assert.equal(r.init.method, 'POST');
+  assert.ok(r.init.body.includes('Leo X-Evil: 1 finished "Brush teeth"'), 'control chars flattened');
+  assert.equal(r.init.headers.Title, 'Chore ready to approve');
+  assert.equal(ntfy.buildNtfyRequest('anything_else', {}, cfg), null);
+  assert.equal(ntfy.buildNtfyRequest('__proto__', {}, cfg), null);
+  assert.equal(ntfy.getNtfyConfig({}).url, 'http://127.0.0.1:8090');
+  assert.notEqual(ntfy.getNtfyConfig({}).topic, 'pi-alerts');
+});
+
+await test('sendNtfy posts to ntfy, honors NTFY_ENABLED=false, handler rejects unknown kinds', async () => {
+  const calls = [];
+  const fakeFetch = async (url, init) => { calls.push({ url, init }); return { ok: true, status: 200 }; };
+  const out = await ntfy.sendNtfy('reward_requested', { kidName: 'Mia', title: 'Movie night' }, { config: ntfy.getNtfyConfig({}), fetchImpl: fakeFetch });
+  assert.equal(out.sent, true);
+  assert.ok(calls[0].init.body.includes('Mia asked to redeem "Movie night"'));
+  const off = await ntfy.sendNtfy('reward_requested', {}, { config: ntfy.getNtfyConfig({ NTFY_ENABLED: 'false' }), fetchImpl: fakeFetch });
+  assert.equal(off.sent, false);
+  assert.equal(calls.length, 1);
+  let code = 0;
+  const res = { status(c) { code = c; return this; }, json() {} };
+  await ntfy.handleNotifyRequest({ body: { kind: ['task_submitted'] }, headers: {}, socket: {} }, res);
+  assert.equal(code, 400);
+});
+
+await test('app wires parent alerts: store events, battle win, client service, server route', async () => {
+  const { store } = await import('../src/state/store.js');
+  const seen = [];
+  const prev = window.dispatchEvent;
+  window.dispatchEvent = evt => { if (evt?.type === 'lh:parent-notify') seen.push(evt.detail); return true; };
+  store.notifyParents('boss_defeated', { kidName: 'Leo', title: 'Sugar Bandit' });
+  window.dispatchEvent = prev;
+  assert.deepEqual(seen, [{ kind: 'boss_defeated', kidName: 'Leo', title: 'Sugar Bandit' }]);
+  const storeSrc = fs.readFileSync('src/state/store.js', 'utf8');
+  assert.ok(storeSrc.includes("this.notifyParents('task_submitted'") && storeSrc.includes("this.notifyParents('reward_requested'"));
+  assert.ok(fs.readFileSync('src/views/BattleView.js', 'utf8').includes("store.notifyParents?.('boss_defeated'"));
+  assert.ok(fs.readFileSync('src/main.js', 'utf8').includes('initParentNotifications()'));
+  assert.ok(fs.readFileSync('server.js', 'utf8').includes("app.post('/api/notify', handleNotifyRequest)"));
+  assert.ok(fs.readFileSync('vite.config.js', 'utf8').includes("url === '/api/notify'"));
+});
+
 console.log(`\nTEST RESULTS: ${passed} PASSED, ${failed} FAILED`);
 if (failed) process.exit(1);

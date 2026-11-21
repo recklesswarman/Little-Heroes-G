@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import { handleChatRequest, handleBedtimeStoryRequest, attachGeminiLiveWebSocket, getRequestIp } from './server/geminiService.js';
 import { handleStoryIllustrationRequest } from './server/imageGenService.js';
 import { handleStoryWeaverBooksRequest } from './server/storyweaverService.js';
+import { handleNotifyRequest } from './server/ntfyService.js';
 import { handleVoiceSttRequest, handleVoiceTtsRequest, handleVoiceStatusRequest, MAX_AUDIO_BYTES } from './server/voiceLabService.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -43,6 +44,9 @@ app.post('/api/ai/image', handleStoryIllustrationRequest);
 
 // StoryWeaver picture-book search proxy (CC BY 4.0 books, attribution kept in the view)
 app.get('/api/storyweaver/books', handleStoryWeaverBooksRequest);
+
+// Parent alerts via the Pi's ntfy server (NTFY_URL / NTFY_TOPIC, see server/ntfyService.js)
+app.post('/api/notify', handleNotifyRequest);
 
 // Offline Rex voice chat test (whisper.cpp speech-to-text + Piper text-to-speech on the Pi).
 // See server/voiceLabService.js for the WHISPER_CPP_URL / PIPER_URL env vars.

@@ -142,10 +142,16 @@ async function setupGeminiMiddleware(server) {
   }
 }
 
-// Same /api/storyweaver and /api/voice routes server.js exposes, for `npm run dev` / `vite preview`.
+// Same /api/storyweaver, /api/notify and /api/voice routes server.js exposes, for `npm run dev` / `vite preview`.
 async function setupFamilyApiMiddleware(server) {
   let storyweaver = null;
   let voiceLab = null;
+  let ntfy = null;
+  try {
+    ntfy = await import('./server/ntfyService.js');
+  } catch (err) {
+    console.warn('ntfy middleware notice:', err.message);
+  }
   try {
     storyweaver = await import('./server/storyweaverService.js');
   } catch (err) {
@@ -191,6 +197,12 @@ async function setupFamilyApiMiddleware(server) {
         shim(res);
         req.query = Object.fromEntries(new URLSearchParams(qs));
         return await storyweaver.handleStoryWeaverBooksRequest(req, res);
+      }
+      if (ntfy && url === '/api/notify' && req.method === 'POST') {
+        shim(res);
+        const raw = await readRawBody(req, 8 * 1024);
+        req.body = raw.length ? JSON.parse(raw.toString('utf8')) : {};
+        return await ntfy.handleNotifyRequest(req, res);
       }
       if (voiceLab && url === '/api/voice/status' && req.method === 'GET') {
         shim(res);
