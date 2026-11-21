@@ -117,7 +117,8 @@ const testFiles = [
   // AI hero agent routes relayed from server.js to the AGY Cloud Run service:
   'scratch/verify_rex_agy_relay.mjs',
   // Rex function calling (/api/rex/agent) and the Sunday parent report (ntfy):
-  'scratch/verify_rex_function_calling_and_weekly_report.mjs'
+  'scratch/verify_rex_function_calling_and_weekly_report.mjs',
+  'scratch/verify_fridge_calendar_rex_live_and_story_refs.mjs'
 ];
 
 let allPassed = true;

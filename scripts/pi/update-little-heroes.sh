@@ -22,11 +22,16 @@ npm ci --no-audit --no-fund --loglevel=error
 [ -f scripts/pi/update-little-heroes.sh ] && install -m 0755 scripts/pi/update-little-heroes.sh "$HOME/bin/update-little-heroes.sh"
 # Sunday parent report timer (scripts/pi/weekly-report.mjs); units live in the repo.
 mkdir -p "$HOME/.config/systemd/user"
-for unit in little-heroes-weekly-report.service little-heroes-weekly-report.timer; do
+# Evening calendar heads-up timer (scripts/pi/calendar-prep.mjs) too.
+for unit in little-heroes-weekly-report.service little-heroes-weekly-report.timer \
+            little-heroes-calendar-prep.service little-heroes-calendar-prep.timer; do
   install -m 0644 "scripts/pi/$unit" "$HOME/.config/systemd/user/$unit"
 done
 systemctl --user daemon-reload
 systemctl --user enable --now little-heroes-weekly-report.timer >/dev/null 2>&1 || true
+systemctl --user enable --now little-heroes-calendar-prep.timer >/dev/null 2>&1 || true
+# Fridge Display shortcut + launcher (scripts/pi/install-extras.sh).
+bash scripts/pi/install-extras.sh || true
 systemctl --user restart little-heroes.service
 sleep 3
 curl -fsS -m 5 http://127.0.0.1:3000/healthz >/dev/null

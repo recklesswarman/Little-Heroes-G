@@ -1,0 +1,8 @@
+[Unit]
+Description=Send the family calendar heads-up every evening at 6:30 PM (Pi local time, US Eastern)
+[Timer]
+OnCalendar=*-*-* 18:30:00
+Persistent=false
+RandomizedDelaySec=60
+[Install]
+WantedBy=timers.target

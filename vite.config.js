@@ -142,13 +142,21 @@ async function setupGeminiMiddleware(server) {
   }
 }
 
-// Same /api/storyweaver, /api/notify, /api/rex/agent, /api/report/weekly and /api/voice routes server.js exposes, for `npm run dev` / `vite preview`.
+// Same /api/storyweaver, /api/notify, /api/rex/agent, /api/report/weekly, /api/calendar, /api/fridge and /api/voice routes server.js exposes, for `npm run dev` / `vite preview`.
 async function setupFamilyApiMiddleware(server) {
   let storyweaver = null;
   let voiceLab = null;
   let ntfy = null;
   let rexAgent = null;
   let weeklyReport = null;
+  let calendar = null;
+  let fridge = null;
+  try {
+    calendar = await import('./server/calendarService.js');
+    fridge = await import('./server/fridgeService.js');
+  } catch (err) {
+    console.warn('Calendar / fridge middleware notice:', err.message);
+  }
   try {
     rexAgent = await import('./server/rexAgentService.js');
     weeklyReport = await import('./server/weeklyReportService.js');
@@ -223,6 +231,16 @@ async function setupFamilyApiMiddleware(server) {
         const raw = await readRawBody(req, 64 * 1024);
         req.body = raw.length ? JSON.parse(raw.toString('utf8')) : {};
         return await weeklyReport.handleWeeklyReportRequest(req, res);
+      }
+      if (calendar && (url === '/api/calendar/plan' || url === '/api/local/calendar') && req.method === 'POST') {
+        shim(res);
+        const raw = await readRawBody(req, 32 * 1024);
+        req.body = raw.length ? JSON.parse(raw.toString('utf8')) : {};
+        return await calendar.calendarService.handlePlanRequest(req, res);
+      }
+      if (fridge && url === '/api/fridge/snapshot' && req.method === 'GET') {
+        shim(res);
+        return await fridge.handleFridgeSnapshot(req, res);
       }
       if (voiceLab && url === '/api/voice/status' && req.method === 'GET') {
         shim(res);

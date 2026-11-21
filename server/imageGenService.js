@@ -74,8 +74,13 @@ export async function handleStoryIllustrationRequest(req, res) {
       negative_prompt: reqNegPrompt,
       prompt: customPrompt,
       shortPrompt: customShortPrompt,
-      sceneType: reqSceneType
+      sceneType: reqSceneType,
+      referenceImages: reqReferences
     } = req.body || {};
+    // The story's first picture(s), so later pages keep the same characters (the Worker uses FLUX.2 klein).
+    const referenceImages = Array.isArray(reqReferences)
+      ? reqReferences.filter((r) => typeof r === 'string' && /^data:image\/(jpeg|png|webp);base64,/i.test(r) && r.length < 600000).slice(0, 2)
+      : [];
 
     const chIdx = chapterIndex ?? (chapterNumber - 1);
     const safeSessionId = typeof sessionId === 'string' && sessionId ? sessionId.slice(0, 128) : 'story';
@@ -130,9 +135,10 @@ export async function handleStoryIllustrationRequest(req, res) {
             model: process.env.CLOUDFLARE_AI_MODEL || DEFAULT_IMAGE_MODEL,
             seed,
             negative_prompt,
+            ...(referenceImages.length ? { referenceImages } : {}),
             format: 'base64'
           }),
-          signal: AbortSignal.timeout(25000)
+          signal: AbortSignal.timeout(referenceImages.length ? 36000 : 25000)
         });
 
         if (cfRes.ok) {

@@ -332,6 +332,96 @@ export async function handleChatRequest(req, res) {
   }
 }
 
+
+// ── Rex's live voice: model choice, feelings and quiet quests ───────────────────
+// Affective dialog (Rex hears frustration or excitement in a kid's voice and adapts) and
+// proactive audio (Rex may decide not to answer, so he doesn't talk over a kid who is
+// thinking) are only on the native-audio Live model. If that model can't be opened, Rex
+// falls back to the standard Live model, and the same behaviour comes from the prompt plus
+// the "stuck" nudges the app sends (geminiLiveService.reportQuestAnswer).
+export const REX_LIVE_MODELS = [
+  { model: 'gemini-2.5-flash-native-audio-preview-12-2025', affectiveDialog: true, proactiveAudio: true },
+  { model: 'gemini-3.1-flash-live-preview', affectiveDialog: false, proactiveAudio: false }
+];
+
+export const REX_LIVE_GUIDELINES = `You are actively listening and speaking with a young child (ages 4 to 7) in real time.
+Guidelines:
+1. Speak in very short, energetic, joyful kid-friendly sentences (1-2 sentences maximum).
+2. Listen to how the child sounds, not just the words. If they sound frustrated, sad or tired, or say things like "this is hard", "I can't" or "I give up": slow down, use a calm warm voice, tell them it is okay to find it tricky, and offer a Dino Breath break (smell the flower, blow out the candle, three times) before trying again. If they sound excited, celebrate with them.
+3. Messages that start with [QUIET CONTEXT] are notes for you only. Never reply to them out loud. Use them to understand what the child is playing.
+4. During a quest, stay quiet and let the child think. Only speak when the child talks to you, asks for help, or a [CHILD IS STUCK] or [CHILD SEEMS FRUSTRATED] note arrives. Then give one gentle hint and never just say the answer.
+5. If the child mentions teeth brushing, celebrate with "Scrub circles! Top and bottom!". If they say "Blast", "Foam" or "Laser", shout "Toothpaste Foam Cannon! Super Blast!".
+6. If the child completes a chore or habit, celebrate them enthusiastically.`;
+
+export function buildRexLiveConfig(option, { voiceName, systemText }) {
+  const config = {
+    responseModalities: ['audio'],
+    speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName } } },
+    systemInstruction: { parts: [{ text: systemText }] }
+  };
+  if (option.affectiveDialog) config.enableAffectiveDialog = true;
+  if (option.proactiveAudio) config.proactivity = { proactiveAudio: true };
+  return config;
+}
+
+/** Live models to try, in order (REX_LIVE_MODEL picks one to try first). */
+export function rexLiveModelOrder(env = process.env) {
+  const wanted = String(env.REX_LIVE_MODEL || '').trim();
+  if (!wanted) return REX_LIVE_MODELS;
+  const known = REX_LIVE_MODELS.find((m) => m.model === wanted);
+  const first = known || { model: wanted, affectiveDialog: /native-audio/.test(wanted), proactiveAudio: /native-audio/.test(wanted) };
+  return [first, ...REX_LIVE_MODELS.filter((m) => m.model !== wanted)];
+}
+
+/**
+ * Opens a Live session on the first model that answers. A model that is retired or not on
+ * this key either throws or closes before setup completes; then the next one is tried.
+ */
+export async function connectRexLive(ai, { voiceName, systemText, callbacks, env = process.env, setupTimeoutMs = 8000 }) {
+  let lastError = null;
+  for (const option of rexLiveModelOrder(env)) {
+    try {
+      const session = await new Promise((resolve, reject) => {
+        let settled = false;
+        let opened = null;
+        const finish = (err, value) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          if (err) reject(err); else resolve(value);
+        };
+        const timer = setTimeout(() => {
+          // No setupComplete yet: an open session is still usable, a missing one is not.
+          if (opened) finish(null, opened); else finish(new Error(`${option.model}: setup timed out`));
+        }, setupTimeoutMs);
+        ai.live.connect({
+          model: option.model,
+          config: buildRexLiveConfig(option, { voiceName, systemText }),
+          callbacks: {
+            onmessage: (message) => {
+              if (message?.setupComplete && opened) finish(null, opened);
+              callbacks.onmessage?.(message);
+            },
+            onclose: (e) => {
+              if (!settled) finish(new Error(`${option.model}: closed during setup${e?.reason ? ` (${e.reason})` : ''}`));
+              else callbacks.onclose?.(e);
+            },
+            onerror: (e) => {
+              if (!settled) finish(new Error(`${option.model}: ${e?.message || 'error during setup'}`));
+              else callbacks.onerror?.(e);
+            }
+          }
+        }).then((s) => { opened = s; }).catch((err) => finish(err));
+      });
+      return { session, model: option.model, features: { affectiveDialog: option.affectiveDialog, proactiveAudio: option.proactiveAudio } };
+    } catch (err) {
+      lastError = err;
+      console.warn(`Rex Live model unavailable, trying the next one: ${err?.message || err}`);
+    }
+  }
+  throw lastError || new Error('No Live model available');
+}
+
 /**
  * Attaches the Gemini Live WebSocket server to the HTTP server
  * Bridges audio between browser client and gemini-3.8-live
@@ -365,6 +455,9 @@ export function attachGeminiLiveWebSocket(httpServer) {
 
     let session = null;
     let isSessionAlive = true;
+    let liveReady = false;
+    let liveModel = '';
+    let liveFeatures = { affectiveDialog: false, proactiveAudio: false };
 
     try {
       const ai = getGeminiClient();
@@ -373,29 +466,7 @@ export function attachGeminiLiveWebSocket(httpServer) {
         return;
       }
 
-      session = await ai.live.connect({
-        model: 'gemini-3.1-flash-live-preview',
-        config: {
-          responseModalities: ['audio'],
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: { voiceName }
-            }
-          },
-          systemInstruction: {
-            parts: [{
-              text: `${persona.prompt}
-You are Rex the Dino (or companion pet), actively listening and speaking with a toddler or young child in real time.
-Guidelines:
-1. Speak in very short, energetic, joyful kid-friendly sentences (1-2 sentences maximum).
-2. If the child mentions teeth brushing, celebrate with "Scrub circles! Top and bottom!".
-3. If the child says "Blast", "Foam", or "Laser", shout "Toothpaste Foam Cannon! Super Blast!".
-4. If the child completes a chore or habit, celebrate them enthusiastically.
-5. If the child asks for a hint, give a fun gentle clue.`
-            }]
-          }
-        },
-        callbacks: {
+      const callbacks = {
           onmessage: (message) => {
             if (!isSessionAlive || clientWs.readyState !== clientWs.OPEN) return;
 
@@ -443,15 +514,31 @@ Guidelines:
               clientWs.send(JSON.stringify({ error: err?.message || 'Live session error' }));
             }
           }
+        };
+
+      const live = await connectRexLive(ai, {
+        voiceName,
+        systemText: `${persona.prompt}\n${REX_LIVE_GUIDELINES}`,
+        callbacks: {
+          ...callbacks,
+          onclose: (...args) => { if (!liveReady) return; callbacks.onclose(...args); },
+          onerror: (...args) => { if (!liveReady) return; callbacks.onerror(...args); }
         }
       });
+      session = live.session;
+      liveModel = live.model;
+      liveFeatures = live.features;
+      liveReady = true;
 
       // Send initial handshake success to client
       clientWs.send(JSON.stringify({
         status: 'ready',
         petId: normalizedPetId,
         voice: voiceName,
-        model: 'gemini-3.1-flash-live-preview'
+        model: liveModel,
+        // Proactive audio: Rex may choose to stay quiet (quest context is sent as quiet notes).
+        proactive: liveFeatures.proactiveAudio,
+        affective: liveFeatures.affectiveDialog
       }));
 
       clientWs.on('message', (data) => {
@@ -467,6 +554,19 @@ Guidelines:
                 mimeType: 'audio/pcm;rate=16000'
               }
             });
+          } else if (typeof msg.context === 'string' && msg.context.trim()) {
+            // Quest notes for Rex: with proactive audio he can read them and stay quiet;
+            // otherwise they join the conversation without asking for a reply.
+            const note = `[QUIET CONTEXT] ${msg.context.trim().slice(0, 1500)}`;
+            if (liveFeatures.proactiveAudio) {
+              session.sendRealtimeInput({ text: note });
+            } else {
+              try {
+                session.sendClientContent({ turns: [{ role: 'user', parts: [{ text: note }] }], turnComplete: false });
+              } catch (ctxErr) {
+                console.warn('Quiet quest note not sent:', ctxErr?.message || ctxErr);
+              }
+            }
           } else if (msg.text) {
             session.sendRealtimeInput({
               text: msg.text

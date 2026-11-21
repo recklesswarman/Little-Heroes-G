@@ -41,6 +41,13 @@ export function renderWeeklyReportCard() {
       </div>
       ${rows || '<p class="text-xs text-on-surface-variant">No hero profiles yet.</p>'}
       ${status.text ? `<p class="text-xs font-bold ${statusColor}" role="status">${escapeHtml(status.text)}</p>` : ''}
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-surface-container-highest">
+        <p class="text-xs text-on-surface-variant font-bold">Fridge Display: a big family board of today's chores, streaks and calendar. The Pi's desktop has a "Fridge Display" shortcut. Calendar chores show up the evening before (📅).</p>
+        <button id="open-fridge-display-btn" class="bg-surface-container-high text-inverse-surface font-headline text-xs font-black px-4 py-2.5 rounded-xl border border-surface-container-highest flex items-center justify-center gap-1.5 active:scale-95 shrink-0">
+          <span class="material-symbols-outlined text-sm">kitchen</span>
+          <span>Open Fridge Display</span>
+        </button>
+      </div>
     </div>`;
 }
 
@@ -57,6 +64,9 @@ export async function sendWeeklyReportNow({ fetchImpl = globalThis.fetch, state 
 }
 
 export function bindWeeklyReportCard() {
+  document.getElementById('open-fridge-display-btn')?.addEventListener('click', () => {
+    store.navigate('fridge');
+  });
   const btn = document.getElementById('weekly-report-send-btn');
   if (!btn) return;
   btn.addEventListener('click', async () => {

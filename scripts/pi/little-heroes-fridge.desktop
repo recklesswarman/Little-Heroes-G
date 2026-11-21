@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Fridge Display
+GenericName=Little Heroes family board
+Comment=Open the Little Heroes Fridge Display full screen
+Exec=@HOME@/bin/fridge-display.sh
+Icon=@HOME@/.local/share/icons/little-heroes.png
+Terminal=false
+Categories=Education;Utility;
+StartupNotify=false
