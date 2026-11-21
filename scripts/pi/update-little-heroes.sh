@@ -5,7 +5,8 @@ set -euo pipefail
 BRANCH="${1:-main}"
 APP_DIR="$HOME/apps/little-heroes"
 NTFY=http://192.168.1.163:8090/pi-alerts
-notify(){ curl -s -m 10 -H "Title: $1" -H "Tags: $2" -d "$3" "$NTFY" >/dev/null || true; }
+NTFY_AUTH="Authorization: Bearer $(cat "$HOME/.config/ntfy/pi-scripts-token" 2>/dev/null)"
+notify(){ curl -s -m 10 -H "$NTFY_AUTH" -H "Title: $1" -H "Tags: $2" -d "$3" "$NTFY" >/dev/null || true; }
 trap 'notify "Little Heroes update FAILED" warning "Update to $BRANCH failed - see journalctl --user -u little-heroes"' ERR
 if [ ! -d "$APP_DIR/.git" ]; then
   git clone -q https://github.com/recklesswarman/Little-Heroes-G.git "$APP_DIR"

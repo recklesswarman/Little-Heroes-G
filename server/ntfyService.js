@@ -7,29 +7,9 @@
 //   NTFY_TOKEN  optional access token if the topic is protected
 //   NTFY_ENABLED set to "false" to turn alerts off
 import { isRateLimited, getRequestIp } from './geminiService.js';
+import { NTFY_EVENT_KINDS, buildNtfyRequest as buildSharedNtfyRequest } from '../src/services/ntfyEvents.js';
 
-const EVENTS = {
-  task_submitted: {
-    title: 'Chore ready to approve',
-    tags: 'white_check_mark',
-    priority: '3',
-    message: d => `${d.kidName} finished "${d.title}" and is waiting for your approval.`
-  },
-  reward_requested: {
-    title: 'Reward request',
-    tags: 'gift',
-    priority: '4',
-    message: d => `${d.kidName} asked to redeem "${d.title}".`
-  },
-  boss_defeated: {
-    title: 'Boss defeated!',
-    tags: 'trophy',
-    priority: '2',
-    message: d => `${d.kidName} beat ${d.title || 'a boss'} in the brushing battle.`
-  }
-};
-
-export const NTFY_EVENT_KINDS = Object.keys(EVENTS);
+export { NTFY_EVENT_KINDS };
 
 export function getNtfyConfig(env = process.env) {
   const topic = String(env.NTFY_TOPIC || 'little-heroes').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 64) || 'little-heroes';
@@ -41,19 +21,9 @@ export function getNtfyConfig(env = process.env) {
   };
 }
 
-function cleanField(value, max) {
-  if (typeof value !== 'string') return '';
-  return value.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
-}
-
 /** Build the ntfy request for an event, or null if the event is unknown. */
 export function buildNtfyRequest(kind, data = {}, config = getNtfyConfig()) {
-  const event = typeof kind === 'string' && Object.prototype.hasOwnProperty.call(EVENTS, kind) ? EVENTS[kind] : null;
-  if (!event) return null;
-  const fields = { kidName: cleanField(data.kidName, 40) || 'Your hero', title: cleanField(data.title, 80) };
-  const headers = { Title: event.title, Tags: event.tags, Priority: event.priority, 'Content-Type': 'text/plain; charset=utf-8' };
-  if (config.token) headers.Authorization = `Bearer ${config.token}`;
-  return { url: `${config.url}/${config.topic}`, init: { method: 'POST', headers, body: event.message(fields) } };
+  return buildSharedNtfyRequest(kind, data, config);
 }
 
 export async function sendNtfy(kind, data, { config = getNtfyConfig(), fetchImpl = globalThis.fetch } = {}) {

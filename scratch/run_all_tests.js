@@ -106,7 +106,9 @@ const testFiles = [
   // Batch 3 — Audio, Voice & Progression Hooks Suite:
   'scratch/verify_batch3_audio_voice_progression.mjs',
   // Family Raspberry Pi offline AI proxy (Piper TTS, whisper.cpp STT, ntfy alerts):
-  'scratch/verify_local_pi_ai_routes.mjs'
+  'scratch/verify_local_pi_ai_routes.mjs',
+  // Parent alerts from hosted sites (app server first, then publish-only direct to the Pi's ntfy):
+  'scratch/verify_parent_alerts_hosted.mjs'
 ];
 
 let allPassed = true;
