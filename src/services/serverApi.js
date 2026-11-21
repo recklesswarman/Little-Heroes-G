@@ -24,3 +24,18 @@ export function serverApiUrl(path) {
   const clean = String(path || '').startsWith('/') ? path : `/${path}`;
   return `${getServerApiBase()}${clean}`;
 }
+
+/**
+ * URL for an AI hero agent route such as '/api/rex/chat'. VITE_AGY_REX_URL (local
+ * uvicorn during development) wins; otherwise it is a normal server route, which
+ * server.js relays to the AGY Cloud Run service (server/rexAgyRelay.js).
+ */
+export function rexUrl(path) {
+  let agy = '';
+  try {
+    agy = String(import.meta.env?.VITE_AGY_REX_URL ?? '').trim().replace(/\/+$/, '');
+  } catch {
+    agy = '';
+  }
+  return /^https?:\/\//i.test(agy) ? `${agy}${path}` : serverApiUrl(path);
+}
