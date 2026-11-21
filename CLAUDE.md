@@ -17,8 +17,10 @@
   `little-heroes-agy-service/` (AI companion agents, Cloud Run service
   `little-heroes-rex-agy`) is deployed manually (`gcloud run deploy`, see its
   own README) -- there is no CI automation for it, and "Deploy Everywhere" above
-  doesn't cover it. Reached from the main app via `firebase.json`'s hosting rewrite
-  (`/api/rex/**`) and, for direct client calls, `VITE_AGY_REX_URL`. Voice narration
+  doesn't cover it. The client calls `/api/rex/*` on the app's own server
+  (`rexUrl()` in `src/services/serverApi.js`), and `server.js` relays it to Cloud Run
+  server-side (`server/rexAgyRelay.js`, `AGY_REX_SERVICE_URL` to override), so it works
+  on the Pi, App Hosting and both static sites. `VITE_AGY_REX_URL` is for local dev only. Voice narration
   is handled entirely on the client via the Web Speech API.
 
 ## Cache Sync, Store Migrations & Multi-Host Base Path

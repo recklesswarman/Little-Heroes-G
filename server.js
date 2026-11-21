@@ -11,6 +11,7 @@ import { createApiCors } from './server/corsPolicy.js';
 import { createPiRelayHandlers, getPiRelayConfig, RELAY_MAX_AUDIO_BYTES } from './server/piRelayService.js';
 import { handleStoryWeaverBooksRequest } from './server/storyweaverService.js';
 import { handleNotifyRequest } from './server/ntfyService.js';
+import { createRexRelay } from './server/rexAgyRelay.js';
 import { handleVoiceSttRequest, handleVoiceTtsRequest, handleVoiceStatusRequest, MAX_AUDIO_BYTES } from './server/voiceLabService.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -29,6 +30,20 @@ const staticRequestLimiter = rateLimit({
 
 // Cross-origin access for the family's static sites only (see server/corsPolicy.js).
 app.use('/api', createApiCors());
+
+// AI hero agent routes (/api/rex/chat, audio, battle-coach, quest-guide, parent-report,
+// proactive) relay to the AGY Cloud Run service (server/rexAgyRelay.js). Mounted before
+// express.json() so audio uploads pass through as-is; other /api/rex paths fall through.
+const rexLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => ipKeyGenerator(getRequestIp(req)),
+  validate: { xForwardedForHeader: false }
+});
+app.use('/api/rex', rexLimiter, createRexRelay());
+
 app.use(express.json({ limit: '2mb' }));
 
 // Health check endpoint for Cloud Run / App Hosting

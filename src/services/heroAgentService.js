@@ -4,6 +4,7 @@ import { auth, functions as existingFunctions } from "../config/firebase.js";
 import { signInAnonymously } from "firebase/auth";
 import { speakCompanion } from "./voiceService.js";
 import { store } from "../state/store.js";
+import { rexUrl } from "./serverApi.js";
 import { guardOutgoingMessage, guardRexData, guardReplyText, guardTextField, householdAvoidTopics, logServerSafetyEvents } from './companionSafety.js';
 
 // Initialize functions using centralized configuration with explicit us-central1 region
@@ -17,8 +18,10 @@ if (!functions) {
 }
 
 // ── AGY Rex microservice URL ──────────────────────────────────────────────────
-// In development, point to local uvicorn server (python main.py).
-// In production (Cloud Run), the /api/rex/* path is proxied via firebase.json rewrites.
+// In development, VITE_AGY_REX_URL can point at a local uvicorn server (python main.py).
+// Otherwise every host calls the app's own server (same origin on the Pi and App Hosting,
+// VITE_SERVER_API_BASE on GitHub Pages / web.app), which relays to the AGY Cloud Run
+// service server-side (server/rexAgyRelay.js).
 const AGY_REX_URL = import.meta.env?.VITE_AGY_REX_URL || '';
 
 /**
@@ -116,9 +119,7 @@ export async function talkToRexAGY(message, heroId = null, petId = null) {
   if (!outgoing.ok) return { reply: outgoing.reply, emotion: 'calm', voiceTone: 'gentle' };
 
   // ── 1. AGY Rex microservice (primary) ──────────────────────────────────────
-  const agyEndpoint = AGY_REX_URL
-    ? `${AGY_REX_URL}/api/rex/chat`
-    : '/api/rex/chat';
+  const agyEndpoint = rexUrl('/api/rex/chat');
 
   try {
     const res = await fetch(agyEndpoint, {
@@ -205,9 +206,7 @@ export async function sendRexAudioAGY(audioBlob, heroId = null, petId = null) {
   const heroName = appState.hero.name || "Little Hero";
   const safetyCtx = { petName: activePet?.shortName || activePet?.name || 'Rex', childName: heroName, heroId: effectiveHeroId };
 
-  const agyAudioEndpoint = AGY_REX_URL
-    ? `${AGY_REX_URL}/api/rex/audio`
-    : '/api/rex/audio';
+  const agyAudioEndpoint = rexUrl('/api/rex/audio');
 
   try {
     const formData = new FormData();
@@ -284,7 +283,7 @@ export async function getBattleCoachAdvice(bossId, bossHpPercent, currentQuadran
     window.location?.port !== '8000' &&
     window.location?.port !== '5173';
   if (!isLocalStaticPreview) {
-    const endpoint = AGY_REX_URL ? `${AGY_REX_URL}/api/rex/battle-coach` : '/api/rex/battle-coach';
+    const endpoint = rexUrl('/api/rex/battle-coach');
     try {
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -322,7 +321,7 @@ export async function getQuestGuideDirections(heroName = null, level = 1, comple
   const state = store.getState?.() || {};
   const currentHero = store.getSelectedHero?.() || state.selectedHero || {};
   const effectiveHeroName = heroName || currentHero.name || "Little Hero";
-  const endpoint = AGY_REX_URL ? `${AGY_REX_URL}/api/rex/quest-guide` : '/api/rex/quest-guide';
+  const endpoint = rexUrl('/api/rex/quest-guide');
   try {
     const res = await fetch(endpoint, {
       method: 'POST',
@@ -354,7 +353,7 @@ export async function getQuestGuideDirections(heroName = null, level = 1, comple
  * Invokes the Bedtime Story Narrator AGY agent
  */
 export async function generateBedtimeChapterAGY(params) {
-  const endpoint = AGY_REX_URL ? `${AGY_REX_URL}/api/rex/bedtime-story` : '/api/rex/bedtime-story';
+  const endpoint = rexUrl('/api/rex/bedtime-story');
   try {
     const res = await fetch(endpoint, {
       method: 'POST',
@@ -383,7 +382,7 @@ export async function checkProactiveTriggerAGY(params) {
   if (isLocalStaticPreview) {
     return null;
   }
-  const endpoint = AGY_REX_URL ? `${AGY_REX_URL}/api/rex/proactive` : '/api/rex/proactive';
+  const endpoint = rexUrl('/api/rex/proactive');
   try {
     const res = await fetch(endpoint, {
       method: 'POST',
