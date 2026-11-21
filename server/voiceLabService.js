@@ -49,7 +49,8 @@ async function withTimeout(ms, fn) {
 
 function looksLikeWav(buf) {
   // Request bodies are untrusted: only a real Buffer (never an array or string) can pass.
-  return Buffer.isBuffer(buf) && buf.length > 44 && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WAVE';
+  if (typeof buf === 'string' || Array.isArray(buf) || !Buffer.isBuffer(buf)) return false;
+  return buf.length > 44 && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WAVE';
 }
 
 /** Send a WAV buffer to whisper.cpp and return the transcript text. */
@@ -139,7 +140,7 @@ function sendError(res, err) {
 
 export async function handleVoiceSttRequest(req, res) {
   try {
-    if (!Buffer.isBuffer(req.body)) {
+    if (typeof req.body === 'string' || Array.isArray(req.body) || !Buffer.isBuffer(req.body)) {
       return res.status(400).json({ ok: false, error: 'Expected a WAV recording.' });
     }
     const text = await transcribeWithWhisper(req.body);
