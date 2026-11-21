@@ -1,0 +1,8 @@
+[Unit]
+Description=Send the Little Heroes weekly report Sundays at 6 PM (Pi local time, US Eastern)
+[Timer]
+OnCalendar=Sun *-*-* 18:00:00
+Persistent=true
+RandomizedDelaySec=120
+[Install]
+WantedBy=timers.target

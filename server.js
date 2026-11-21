@@ -11,6 +11,8 @@ import { createApiCors } from './server/corsPolicy.js';
 import { createPiRelayHandlers, getPiRelayConfig, RELAY_MAX_AUDIO_BYTES } from './server/piRelayService.js';
 import { handleStoryWeaverBooksRequest } from './server/storyweaverService.js';
 import { handleNotifyRequest } from './server/ntfyService.js';
+import { handleRexAgentRequest } from './server/rexAgentService.js';
+import { handleWeeklyReportRequest } from './server/weeklyReportService.js';
 import { handleVoiceSttRequest, handleVoiceTtsRequest, handleVoiceStatusRequest, MAX_AUDIO_BYTES } from './server/voiceLabService.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -40,6 +42,8 @@ app.get('/healthz', (req, res) => {
 app.post('/api/gemini/chat', handleChatRequest);
 app.post('/api/gemini/bedtime-story', handleBedtimeStoryRequest);
 app.post('/api/rex/bedtime-story', handleBedtimeStoryRequest);
+// Rex with Gemini function calling over the kid's app snapshot (server/rexAgentService.js)
+app.post('/api/rex/agent', handleRexAgentRequest);
 
 // Voice narration is handled on the client via the Web Speech API in src/services/voiceService.js.
 
@@ -52,6 +56,8 @@ app.get('/api/storyweaver/books', handleStoryWeaverBooksRequest);
 
 // Parent alerts via the Pi's ntfy server (NTFY_URL / NTFY_TOPIC, see server/ntfyService.js)
 app.post('/api/notify', handleNotifyRequest);
+// Parent Portal "Send weekly report now" (the Sunday one runs on the Pi: scripts/pi/weekly-report.mjs)
+app.post('/api/report/weekly', handleWeeklyReportRequest);
 
 // Offline voice on the family Pi: Piper text-to-speech + whisper.cpp speech-to-text.
 //  - On the Pi itself (PIPER_URL / WHISPER_CPP_URL) the routes call the Pi services directly.

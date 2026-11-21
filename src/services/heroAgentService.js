@@ -4,6 +4,7 @@ import { auth, functions as existingFunctions } from "../config/firebase.js";
 import { signInAnonymously } from "firebase/auth";
 import { speakCompanion } from "./voiceService.js";
 import { store } from "../state/store.js";
+import { askRexAgent, applyRexActions } from './rexAgentClient.js';
 import { guardOutgoingMessage, guardRexData, guardReplyText, guardTextField, householdAvoidTopics, logServerSafetyEvents } from './companionSafety.js';
 
 // Initialize functions using centralized configuration with explicit us-central1 region
@@ -114,6 +115,17 @@ export async function talkToRexAGY(message, heroId = null, petId = null) {
   // A message about a topic the parent asked to avoid never leaves the app: Rex redirects kindly.
   const outgoing = guardOutgoingMessage(message, safetyCtx);
   if (!outgoing.ok) return { reply: outgoing.reply, emotion: 'calm', voiceTone: 'gentle' };
+
+  // ── 0. Rex with function calling (server/rexAgentService.js) ──────────────
+  // Looks up chores/points/rewards/week via Gemini tools and can submit a chore for parent
+  // approval, ask for a reward, or open a kid screen. Falls through to AGY if unavailable.
+  const agent = await askRexAgent({ message, hero: currentHero.id === effectiveHeroId ? currentHero : null, petId: effectivePetId, childName: heroName, appState });
+  if (agent?.reply) {
+    const checked = guardReplyText(agent.reply, safetyCtx);
+    if (checked.blocked) return { reply: checked.text, emotion: 'calm', voiceTone: 'gentle' };
+    const applied = applyRexActions(agent.actions);
+    return { reply: checked.text, emotion: agent.emotion || 'happy', voiceTone: agent.voiceTone || 'energetic', actions: applied, source: 'rex-agent' };
+  }
 
   // ── 1. AGY Rex microservice (primary) ──────────────────────────────────────
   const agyEndpoint = AGY_REX_URL

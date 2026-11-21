@@ -7136,6 +7136,7 @@ class Store {
     }
     const sessionRecord = {
       id: generateId('move_', 6),
+      heroId: this.state.selectedHero?.id || null,
       routineId: routine.id,
       title: routine.title,
       category: routine.category,
