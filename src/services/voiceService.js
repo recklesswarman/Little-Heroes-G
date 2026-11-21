@@ -15,6 +15,7 @@
 import { store } from '../state/store.js';
 import { DINO_WORKOUTS } from '../data/petsData.js';
 import { Sound } from '../audio/sfx.js';
+import { isLocalVoiceAvailable, fetchLocalSpeechUrl } from './localVoiceService.js';
 
 // Default voice timeout contract
 export const VOICE_DEFAULT_TIMEOUT_MS = 14000;
@@ -1574,6 +1575,61 @@ async function speakPipelinedChunks(chunks, cleanSpoken, petId, callback, myGene
  * 1. Pipelined sentence streaming for multi-sentence bedtime chapters & long guidance.
  * 2. Primary: Enhanced Multi-Profile Client-Side Web Speech Synthesis API.
  */
+/**
+ * Plays `cleanSpoken` through the family Pi's Piper voice. Resolves true when it played
+ * to the end, false when the Pi voice is unavailable or playback failed (so the caller
+ * falls back to Web Speech) or when a newer utterance interrupted it.
+ */
+async function playLocalPiperSpeech(cleanSpoken, petId, callback, myGeneration) {
+  if (typeof Audio === 'undefined') return false;
+  if (!(await isLocalVoiceAvailable())) return false;
+  if (myGeneration !== speechGeneration) return false;
+  const url = await fetchLocalSpeechUrl(cleanSpoken);
+  if (!url) return false;
+  if (myGeneration !== speechGeneration) {
+    try { URL.revokeObjectURL(url); } catch {}
+    return false;
+  }
+
+  return new Promise((resolve) => {
+    const audio = new Audio(url);
+    let settled = false;
+    let syllableTimer = null;
+    const finish = (played) => {
+      if (settled) return;
+      settled = true;
+      if (syllableTimer) clearInterval(syllableTimer);
+      try { URL.revokeObjectURL(url); } catch {}
+      if (currentAudio === audio) currentAudio = null;
+      if (played && myGeneration === speechGeneration) {
+        store.setLiveRexState({ isSpeaking: false, status: 'idle' }, true);
+        dispatchSpeechEvent('companion-speech-end', { petId });
+        if (typeof callback === 'function') callback();
+      }
+      resolve(played);
+    };
+    audio.onended = () => finish(true);
+    audio.onerror = () => finish(false);
+    audio.onpause = () => {
+      if (myGeneration !== speechGeneration) finish(false);
+    };
+    audio.onplaying = () => {
+      if (settled) return;
+      store.setLiveRexState({ isSpeaking: true, status: 'speaking' }, true);
+      dispatchSpeechEvent('companion-speech-start', { text: cleanSpoken, petId, voice: 'piper' });
+      syllableTimer = setInterval(() => {
+        dispatchSpeechEvent('companion-speech-syllable', { text: cleanSpoken, petId });
+      }, 110);
+    };
+    currentAudio = audio;
+    pendingUnlockSpeech = null;
+    const playAttempt = audio.play();
+    if (playAttempt && typeof playAttempt.catch === 'function') {
+      playAttempt.catch(() => finish(false));
+    }
+  });
+}
+
 export const speakCompanion = async (text, petIdOrOptions = null, onEndedOrOptions = null, options = {}) => {
   // Unlock & resume AudioContext synchronously while user tap gesture is still active
   ensureSharedAudioContextReady();
@@ -1651,6 +1707,13 @@ export const speakCompanion = async (text, petIdOrOptions = null, onEndedOrOptio
   if (cachedData && !cachedData.prewarmed && (cachedData.audio || cachedData.audioBuffer)) {
     const played = await playPcmTtsResponse(cachedData, cleanSpoken, petId, callback, myGeneration, opts);
     if (played) return;
+    if (myGeneration !== speechGeneration) return;
+  }
+
+  // --- Family Pi voice: Rex speaks with offline Piper TTS when server.js on the Pi offers it ---
+  if (petId === 'rex' && opts.engine !== 'web-speech' && hasUserInteracted) {
+    const playedLocally = await playLocalPiperSpeech(cleanSpoken, petId, callback, myGeneration);
+    if (playedLocally) return;
     if (myGeneration !== speechGeneration) return;
   }
 

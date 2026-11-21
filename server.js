@@ -6,6 +6,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { handleChatRequest, handleBedtimeStoryRequest, attachGeminiLiveWebSocket, getRequestIp } from './server/geminiService.js';
 import { handleStoryIllustrationRequest } from './server/imageGenService.js';
+import { createLocalAiHandlers } from './server/localAiService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -38,6 +39,32 @@ app.post('/api/rex/bedtime-story', handleBedtimeStoryRequest);
 // Bedtime storybook illustration endpoint (Cloudflare Workers AI free image generator)
 app.post('/api/story/illustration', handleStoryIllustrationRequest);
 app.post('/api/ai/image', handleStoryIllustrationRequest);
+
+// Local offline AI on the family Raspberry Pi (Piper TTS, whisper.cpp STT, ntfy alerts).
+// Each route answers 503 when its *_URL env var is unset, and the client falls back.
+const localAi = createLocalAiHandlers();
+const localAiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => ipKeyGenerator(getRequestIp(req)),
+  validate: { xForwardedForHeader: false }
+});
+const notifyLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => ipKeyGenerator(getRequestIp(req)),
+  validate: { xForwardedForHeader: false }
+});
+app.get('/api/local/status', localAiLimiter, localAi.handleStatus);
+app.post('/api/local/tts', localAiLimiter, localAi.handleTts);
+app.post('/api/local/stt', localAiLimiter,
+  express.raw({ type: ['audio/*', 'video/webm', 'application/octet-stream'], limit: localAi.STT_MAX_BYTES }),
+  localAi.handleStt);
+app.post('/api/local/notify', notifyLimiter, localAi.handleNotify);
 
 const distPath = path.join(__dirname, 'dist');
 
