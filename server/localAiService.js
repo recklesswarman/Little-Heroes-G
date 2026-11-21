@@ -150,7 +150,7 @@ export function createLocalAiHandlers({ env = process.env, fetchImpl = globalThi
 
     const rawType = req.headers?.['content-type'];
     const requested = typeof rawType === 'string' ? rawType.split(';')[0].trim().toLowerCase() : '';
-    const contentType = STT_CONTENT_TYPES[requested] ? requested : 'audio/webm';
+    const contentType = Object.hasOwn(STT_CONTENT_TYPES, requested) ? requested : 'audio/webm';
     const ext = STT_CONTENT_TYPES[contentType];
     const form = new FormData();
     form.append('file', new Blob([body], { type: contentType }), `speech.${ext}`);
