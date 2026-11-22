@@ -28,6 +28,8 @@ await test('word matching allows homophones and one-letter slips on longer words
   assert.equal(wordsMatch('two', 'too'), true);
   assert.equal(wordsMatch('night', 'knight'), true);
   assert.equal(wordsMatch('brown', 'browne'), true);
+  assert.equal(wordsMatch('they', 'then'), false); // short-word slips are real mistakes
+  assert.equal(wordsMatch('with', 'wish'), false);
   assert.equal(wordsMatch('cat', 'cut'), false); // a real reading mistake on a short word
   assert.equal(wordsMatch('dog', 'dig'), false);
 });

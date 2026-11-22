@@ -19,6 +19,11 @@ for (const g of GRADE_LEVEL_GAMES) {
   for (const diff of ['easy', 'medium', 'hard']) {
     const cs = getGameChallenges(g, diff);
     assert(cs.length >= 10, `${g.id} ${diff} has >= 10 challenges (${cs.length})`);
+    if (g.mode === 'read-along') {
+      // Read-Along is spoken, not multiple choice: each challenge is a sentence with a standard.
+      assert(cs.every((c) => typeof c.sentence === 'string' && c.sentence.length > 3 && STANDARD_DESCRIPTIONS[c.standard]), `${g.id} ${diff}: every read-along sentence is tagged with a described standard`);
+      continue;
+    }
     const badAnswer = cs.filter((c) => !(Number.isInteger(c.answer) && c.answer >= 0 && c.answer < c.options.length));
     assert(badAnswer.length === 0, `${g.id} ${diff}: every answer index points at a real option`);
     const untagged = cs.filter((c) => !c.standard || !STANDARD_DESCRIPTIONS[c.standard]);
@@ -30,6 +35,7 @@ for (const g of GRADE_LEVEL_GAMES) {
   const hardCodes = getGameChallenges(g, 'hard').map((c) => c.standard);
   assert(easyCodes.every((c) => /\.K\.|^K\./.test(c)), `${g.id} easy set uses only Kindergarten standards`);
   assert(hardCodes.every((c) => /\.2\.|^2\./.test(c)), `${g.id} hard set uses only Grade 2 standards`);
+  if (g.mode === 'read-along') continue;
   const answerSpread = new Set(getGameChallenges(g, 'easy').map((c) => c.answer));
   assert(answerSpread.size > 1, `${g.id} easy answers are not always in the same position`);
 }

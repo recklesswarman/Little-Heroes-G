@@ -113,10 +113,11 @@ export async function defineWord(word, { fetchImpl = globalThis.fetch, now = Dat
 
   let value = null;
   try {
+    let timer = null;
     const meaning = await Promise.race([
       generate(word),
-      new Promise((resolve) => setTimeout(() => resolve(''), TIMEOUT_MS * 2))
-    ]);
+      new Promise((resolve) => { timer = setTimeout(() => resolve(''), TIMEOUT_MS * 2); })
+    ]).finally(() => clearTimeout(timer));
     if (meaning) value = { status: 200, entry: { word, phonetic: '', source: '', meanings: [{ partOfSpeech: '', definition: meaning }] } };
   } catch {
     value = null; // fall through to the dictionary

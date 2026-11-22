@@ -4,7 +4,7 @@
 // Pi is unreachable, the browser's own speech recognition. Both are imperfect with young
 // children, so matching is forgiving: punctuation and capitals are ignored, number digits
 // become words, same-sounding words (to/too/two) count, one-letter slips on longer words
-// count, extra filler words are ignored, and a small number of misses is allowed.
+// count on longer words, extra filler words are ignored, and a small number of misses is allowed.
 // Pure functions only (no DOM) so they can be tested under plain Node.
 
 const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
@@ -50,8 +50,9 @@ export function wordsMatch(target, heard) {
   if (target === heard) return true;
   const a = HOMOPHONE_INDEX.get(target);
   if (a !== undefined && a === HOMOPHONE_INDEX.get(heard)) return true;
-  // One-letter slips only on words of 4+ letters: "cat" vs "cut" is a real reading mistake.
-  return target.length >= 4 && heard.length >= 4 && editDistance(target, heard) <= 1;
+  // One-letter slips are forgiven only on words of 5+ letters. On short words a one-letter
+  // difference is a real reading mistake: cat/cut, they/then, with/wish.
+  return target.length >= 5 && heard.length >= 5 && editDistance(target, heard) <= 1;
 }
 
 /** How many words may be missed and still count as a successful read. */

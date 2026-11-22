@@ -674,7 +674,7 @@ function renderBookshelfLibrary(library) {
         <div class="relative bg-surface-container-lowest rounded-3xl sm:rounded-4xl border-4 border-surface-container-highest shadow-[0_16px_0_0_#030910] min-h-[300px] overflow-hidden flex items-center justify-center">
           ${act.imageUrl ? `
             <div class="relative w-full h-full min-h-[300px] max-h-[50vh] flex items-center justify-center bg-[#050f18] group">
-              <img src="${act.imageUrl}" alt="${escapeHtml(act.title || 'Saved Story Chapter')}" class="w-full h-full object-cover select-none" />
+              <img src="${escapeHtml(safeImageUrl(act.imageUrl))}" alt="${escapeHtml(act.title || 'Saved Story Chapter')}" class="w-full h-full object-cover select-none" />
               <div class="absolute inset-0 bg-radial-[circle_at_center,_transparent_50%,_#09141e_100%] opacity-50 pointer-events-none"></div>
               <div class="absolute bottom-3 left-3 bg-[#09141e]/85 backdrop-blur-xs px-2.5 py-1 rounded-full text-[10px] font-bold text-[#00d2d3] border border-[#00d2d3]/40 flex items-center gap-1 shadow-md">
                 <span>🎨</span><span>3D AI Storybook Art</span>
@@ -685,12 +685,12 @@ function renderBookshelfLibrary(library) {
 
         <div class="bg-[#09141e] border-2 border-surface-container-highest rounded-3xl p-5 text-left flex flex-col gap-3">
           <div class="flex items-center justify-between">
-            <h3 class="font-headline font-black text-base text-white">${act.title || `Chapter ${currentSavedActIndex + 1}`}</h3>
+            <h3 class="font-headline font-black text-base text-white">${escapeHtml(act.title || `Chapter ${currentSavedActIndex + 1}`)}</h3>
             <button data-toggle-fav="${readingSavedStory.id}" class="text-sm ${readingSavedStory.isFavorite ? 'text-[#ffb961]' : 'text-slate-500'}">
               ${readingSavedStory.isFavorite ? '★ Favorited' : '☆ Favorite'}
             </button>
           </div>
-          <p class="font-body text-base text-slate-200 leading-relaxed">${act.text || ''}</p>
+          <p class="font-body text-base text-slate-200 leading-relaxed">${wrapTappableWords(act.text || '')}</p>
           ${act.childChoice ? `
             <div class="bg-[#0f2334] px-3 py-1.5 rounded-xl border border-[#00d2d3]/30 text-xs text-[#ffb961] font-bold">
               ★ Hero Choice: "${act.childChoice}"
@@ -791,7 +791,7 @@ function renderBookshelfLibrary(library) {
                   ` : ''}
 
                   <p class="text-[11px] text-slate-400 mt-2 line-clamp-2">
-                    ${story.acts && story.acts[0] ? story.acts[0].text : 'A magical bedtime adventure'}
+                    ${escapeHtml(story.acts && story.acts[0] ? story.acts[0].text : 'A magical bedtime adventure')}
                   </p>
                 </div>
 
