@@ -1,3 +1,4 @@
+import { secureRandomInteger } from '../utils/secureRandom.js';
 import { app, isFirebaseAvailable } from '../config/firebase.js';
 import { generate3DIcon } from '../utils/graphicsGenerator.js';
 import { THREE_D_ASSETS, getThreeDAssetsByCategory, matchBestThreeDAsset } from '../data/threeDAssetCatalog.js';
@@ -70,7 +71,7 @@ class FirebaseAILogicService {
     const refs = Array.isArray(referenceImages)
       ? referenceImages.filter((r) => typeof r === 'string' && /^data:image\/(jpeg|png|webp);base64,/i.test(r)).slice(0, 2)
       : [];
-    const usedSeed = seed ?? ((Math.random() * 2147483647) | 0);
+    const usedSeed = seed ?? secureRandomInteger(0, 2147483646);
     const negative = negative_prompt || 'pink, purple, magenta, violet, neon pink, scary, dark, deformed, blurry, text, watermark';
     const apiUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_IMAGE_GEN_API_URL) ||
                    'https://little-heroes-free-image-api.recklesswarman.workers.dev';
