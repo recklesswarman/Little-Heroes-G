@@ -25,6 +25,21 @@ let wakeLock = null;
 let lastSnapshot = null;
 let lastSource = '';
 
+const CAL_VIEW_KEY = 'lh-fridge-calendar-view';
+/** 'week' or 'month', remembered on this screen. */
+export function getCalendarView() {
+  try {
+    return globalThis.localStorage?.getItem(CAL_VIEW_KEY) === 'month' ? 'month' : 'week';
+  } catch {
+    return 'week';
+  }
+}
+export function setCalendarView(view) {
+  try {
+    globalThis.localStorage?.setItem(CAL_VIEW_KEY, view === 'month' ? 'month' : 'week');
+  } catch {}
+}
+
 export const FRIDGE_VIEW_NAMES = ['fridge', 'fridge_display', 'fridge-display', 'kiosk'];
 
 export function isNightTime(date = new Date()) {
@@ -92,7 +107,7 @@ function renderEvents(snapshot) {
   if (!snapshot.events.length) {
     return snapshot.calendarConfigured
       ? '<p class="text-lg text-slate-400 font-bold">Nothing on the calendar this week.</p>'
-      : '<p class="text-base text-slate-500 font-bold">Add the family calendar on the Pi to see school days here.</p>';
+      : '<p class="text-base text-slate-500 font-bold">Add your Google Calendar on the Pi to see the week here.</p>';
   }
   return `<ul class="flex flex-col gap-2">${snapshot.events.map((e) => `
     <li class="flex items-center gap-3 rounded-2xl bg-slate-800/70 border border-slate-700 px-3 py-2">
@@ -104,7 +119,49 @@ function renderEvents(snapshot) {
     </li>`).join('')}</ul>`;
 }
 
-export function renderFridgeBody(snapshot, { now = new Date() } = {}) {
+function renderCalendarSwitch(view) {
+  const btn = (v, label) => `<button type="button" data-fridge-cal-view="${v}" aria-pressed="${view === v}"
+      class="px-4 py-1.5 rounded-full text-base font-black ${view === v ? 'bg-cyan-400 text-slate-950' : 'text-slate-300'}">${label}</button>`;
+  return `<div class="flex rounded-full bg-slate-800 border border-slate-700 p-1" role="group" aria-label="Calendar view">${btn('week', 'Week')}${btn('month', 'Month')}</div>`;
+}
+
+const DAY_MS = 86400000;
+const keyToUtc = (k) => { const [y, m, d] = k.split('-').map(Number); return Date.UTC(y, m - 1, d); };
+const utcToKey = (t) => new Date(t).toISOString().slice(0, 10);
+
+/** Month grid: 6 weeks, Sunday first, up to 3 events a day plus "+N more". */
+export function renderMonthGrid(snapshot) {
+  const m = snapshot.month;
+  if (!m) {
+    return snapshot.calendarConfigured
+      ? '<p class="text-lg text-slate-400 font-bold">The month view needs the Pi to update. Try again in a minute.</p>'
+      : '<p class="text-base text-slate-500 font-bold">Add your Google Calendar on the Pi to see the month here.</p>';
+  }
+  const byDay = new Map();
+  for (const e of m.events) {
+    if (!byDay.has(e.day)) byDay.set(e.day, []);
+    byDay.get(e.day).push(e);
+  }
+  const start = keyToUtc(m.start);
+  const monthName = new Date(keyToUtc(`${m.month}-01`)).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  const heads = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => `<div class="text-center text-xs font-black uppercase text-slate-400">${d}</div>`).join('');
+  const cells = [];
+  for (let i = 0; i < 42; i++) {
+    const key = utcToKey(start + i * DAY_MS);
+    const inMonth = key.slice(0, 7) === m.month;
+    const isToday = key === snapshot.today;
+    const past = key < snapshot.today;
+    const list = byDay.get(key) || [];
+    const chips = list.slice(0, 3).map((e) => `<div class="truncate text-[11px] leading-tight font-bold text-slate-100" title="${escapeHtml(e.title)}">${escapeHtml(e.emoji)} ${escapeHtml(e.time ? `${e.time} ` : '')}${escapeHtml(e.title)}</div>`).join('');
+    const more = list.length > 3 ? `<div class="text-[11px] font-black text-cyan-300">+${list.length - 3} more</div>` : '';
+    cells.push(`<div class="min-w-0 min-h-[4.5rem] rounded-lg p-1 border ${isToday ? 'border-cyan-400 bg-cyan-500/15' : 'border-slate-800 bg-slate-800/50'} ${inMonth ? '' : 'opacity-40'} ${past && !isToday ? 'opacity-60' : ''}">
+      <div class="text-xs font-black ${isToday ? 'text-cyan-200' : 'text-slate-300'}">${Number(key.slice(8))}</div>${chips}${more}</div>`);
+  }
+  return `<div class="text-lg font-black text-slate-200 mb-2">${escapeHtml(monthName)}</div>
+    <div class="grid grid-cols-7 gap-1" data-fridge-month>${heads}${cells.join('')}</div>`;
+}
+
+export function renderFridgeBody(snapshot, { now = new Date(), calendarView = getCalendarView() } = {}) {
   if (!snapshot) {
     return `
       <div class="flex-1 flex flex-col items-center justify-center text-center gap-4 p-8">
@@ -125,13 +182,17 @@ export function renderFridgeBody(snapshot, { now = new Date() } = {}) {
       </div>`;
   }
   const cols = Math.min(Math.max(snapshot.heroes.length, 1), 3);
+  const monthView = calendarView === 'month';
   return `
-    <div class="flex-1 grid gap-4 p-4 min-h-0" style="grid-template-columns: repeat(${cols}, minmax(0, 1fr)) minmax(280px, 0.8fr);">
+    <div class="flex-1 grid gap-4 p-4 min-h-0" style="grid-template-columns: repeat(${cols}, minmax(0, 1fr)) ${monthView ? 'minmax(420px, 1.8fr)' : 'minmax(280px, 0.8fr)'};">
       ${snapshot.heroes.map(renderHero).join('') || '<p class="text-2xl text-slate-300 font-bold">No hero profiles yet.</p>'}
       <aside class="flex flex-col gap-4 min-w-0">
         <section class="bg-slate-900/80 rounded-3xl border-2 border-slate-700 p-4">
-          <h3 class="font-headline text-2xl font-black text-white mb-3">📅 Coming up</h3>
-          ${renderEvents(snapshot)}
+          <div class="flex items-center justify-between gap-2 mb-3">
+            <h3 class="font-headline text-2xl font-black text-white">📅 Family calendar</h3>
+            ${renderCalendarSwitch(monthView ? 'month' : 'week')}
+          </div>
+          ${monthView ? renderMonthGrid(snapshot) : renderEvents(snapshot)}
         </section>
         ${snapshot.challenge ? `
         <section class="bg-slate-900/80 rounded-3xl border-2 border-cyan-500/40 p-4">
@@ -231,6 +292,17 @@ export function attachFridgeDisplayListeners() {
     if (updated && lastSnapshot) updated.textContent = `Updated ${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}${lastSource === 'device' ? '' : ' · Pi'}${lastSnapshot.stale ? ' (offline)' : ''}`;
     updateClock(root);
   };
+  if (!root.dataset.calSwitch) {
+    root.dataset.calSwitch = '1';
+    root.addEventListener('click', (ev) => {
+      const btn = ev.target?.closest?.('[data-fridge-cal-view]');
+      if (!btn) return;
+      setCalendarView(btn.dataset.fridgeCalView);
+      const body = root.querySelector('[data-fridge-body]');
+      if (body) body.innerHTML = renderFridgeBody(lastSnapshot);
+      updateClock(root);
+    });
+  }
   stopFridgeDisplay();
   paint();
   updateClock(root);

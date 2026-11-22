@@ -25,13 +25,13 @@ export const PREP_RULES = [
   { id: 'pajama_day', match: /\b(pajama|pyjama|pj'?s?)\s*day\b/i, task: 'Pick your pajamas for PJ day', icon: 'bedtime', emoji: '🛌' },
   { id: 'dress_up', match: /crazy\s*(hair|sock)|hat\s*day|dress[\s-]*up|spirit\s*(day|week)|costume|twin\s*day|color\s*day/i, task: 'Plan your dress-up outfit', icon: 'checkroom', emoji: '🎩' },
   { id: 'gym', match: /\b(gym|p\.?\s?e\.?|phys(ical)?\s*ed)\b|sneakers?/i, task: 'Put your sneakers by the door', icon: 'directions_run', emoji: '👟' },
-  { id: 'swim', match: /\bswim(ming)?\b|\bpool\b/i, task: 'Pack your swim bag', icon: 'pool', emoji: '🏊' },
-  { id: 'sports', match: /\b(soccer|t-?ball|baseball|basketball|football|karate|taekwondo|gymnastics|dance|ballet|hockey|tennis|practice|lesson)\b/i, task: 'Pack your {activity} bag', icon: 'sports_soccer', emoji: '⚽' },
-  { id: 'birthday_party', match: /birthday\s*party|\bparty\b/i, task: 'Help wrap the party gift', icon: 'redeem', emoji: '🎁' },
+  { id: 'swim', match: /\bswim(ming)?\b|\bpool\b/i, task: 'Pack your swim bag', icon: 'pool', emoji: '🏊', kidOnly: true },
+  { id: 'sports', match: /\b(soccer|t-?ball|baseball|basketball|football|karate|taekwondo|gymnastics|dance|ballet|hockey|tennis|practice|lesson)\b/i, task: 'Pack your {activity} bag', icon: 'sports_soccer', emoji: '⚽', kidOnly: true },
+  { id: 'birthday_party', match: /birthday\s*party|\bparty\b/i, task: 'Help wrap the party gift', icon: 'redeem', emoji: '🎁', kidOnly: true },
   { id: 'snack', match: /snack\s*(day|helper)|bring\s*(a\s*)?snack/i, task: 'Pack the class snack', icon: 'nutrition', emoji: '🍎' },
-  { id: 'project', match: /project|book\s*report|homework\s*due|science\s*fair|due\b/i, task: 'Finish your project', icon: 'construction', emoji: '🛠️' },
-  { id: 'dentist', match: /dentist|dental/i, task: 'Brush extra sparkly for the dentist', icon: 'dentistry', emoji: '🦷' },
-  { id: 'doctor', match: /doctor|check[\s-]?up|pediatric/i, task: 'Pick a brave buddy for the doctor visit', icon: 'medical_services', emoji: '🩺' }
+  { id: 'project', match: /project|book\s*report|homework\s*due|science\s*fair|due\b/i, task: 'Finish your project', icon: 'construction', emoji: '🛠️', kidOnly: true },
+  { id: 'dentist', match: /dentist|dental/i, task: 'Brush extra sparkly for the dentist', icon: 'dentistry', emoji: '🦷', kidOnly: true },
+  { id: 'doctor', match: /doctor|check[\s-]?up|pediatric/i, task: 'Pick a brave buddy for the doctor visit', icon: 'medical_services', emoji: '🩺', kidOnly: true }
 ];
 
 // Events that never need a chore but are still worth showing on the fridge.
@@ -285,11 +285,16 @@ export function eventsBetween(events = [], from, to) {
 const YOUNGER = /\b(pre-?k|pre-?school|kinder(garten)?)\b/i;
 const OLDER = /\b(2nd|second)\s*grade\b/i;
 
+// Words that say an event is for the kids even when nobody is named.
+const KIDS_WORDS = /\b(kids?|boys|girls|children|family|school|classroom|teacher)\b/i;
+
 /**
  * Kids an event is for: anyone named in the title; otherwise a grade word picks the kid on
  * that level (easy = Pre-K/K, hard = 2nd grade); otherwise every kid.
+ * With requireMention (a parent's calendar mixes in their own appointments), an event that
+ * names no kid, grade or kids word is for nobody.
  */
-export function kidsForEvent(title, heroes = []) {
+export function kidsForEvent(title, heroes = [], { requireMention = false } = {}) {
   const kids = heroes.filter((h) => h && h.id && h.name);
   const named = kids.filter((h) => new RegExp(`\\b${String(h.name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(title));
   if (named.length) return named.map((h) => h.id);
@@ -302,6 +307,7 @@ export function kidsForEvent(title, heroes = []) {
     const k = kids.filter((h) => level(h) === 'hard');
     if (k.length) return k.map((h) => h.id);
   }
+  if (requireMention && !KIDS_WORDS.test(title)) return [];
   return kids.map((h) => h.id);
 }
 
@@ -329,6 +335,10 @@ export function buildPrepTasks(occurrences = [], heroes = []) {
   for (const occ of occurrences) {
     const rule = prepRuleFor(occ.title);
     if (!rule) continue;
+    // School-only rules (library, picture day...) are for every kid; rules that also fit a
+    // grown-up's appointment (dentist, party, practice...) need a kid named in the event.
+    const heroIds = kidsForEvent(occ.title, heroes, { requireMention: rule.kidOnly === true });
+    if (!heroIds.length) continue;
     const id = `cal_${hashString(occ.uid)}_${occ.day.replace(/-/g, '')}_${rule.id}`;
     if (seen.has(id)) continue;
     seen.add(id);
@@ -339,7 +349,7 @@ export function buildPrepTasks(occurrences = [], heroes = []) {
       eventDay: occ.day,
       eventTitle: occ.title,
       eventTime: occ.time || '',
-      heroIds: kidsForEvent(occ.title, heroes),
+      heroIds,
       icon: rule.icon,
       emoji: rule.emoji,
       ruleId: rule.id
@@ -353,14 +363,29 @@ export function buildPrepTasks(occurrences = [], heroes = []) {
  *  { today, events:[...occurrences, with heroIds], prepTasks:[...] }
  * Prep tasks cover events from today through the window so tonight's chores are included.
  */
-export function buildCalendarPlan(events = [], heroes = [], { now = Date.now(), days = 7, timeZone = DEFAULT_CALENDAR_TIME_ZONE } = {}) {
+/** The 6-week (42-day) grid a month calendar shows: Sunday on or before the 1st. */
+export function monthGridRange(todayKey) {
+  const [y, m] = todayKey.split('-').map(Number);
+  const first = `${y}-${String(m).padStart(2, '0')}-01`;
+  const weekday = new Date(Date.UTC(y, m - 1, 1)).getUTCDay();
+  const start = addDays(first, -weekday);
+  return { month: first.slice(0, 7), start, end: addDays(start, 42) };
+}
+
+export function buildCalendarPlan(events = [], heroes = [], { now = Date.now(), days = 7, timeZone = DEFAULT_CALENDAR_TIME_ZONE, month = false } = {}) {
   const today = localDayKey(now, timeZone);
-  const to = addDays(today, Math.max(1, Math.min(31, days)));
-  const occurrences = eventsBetween(events, today, to).slice(0, 60);
-  const prepTasks = buildPrepTasks(occurrences, heroes).filter((t) => t.showOn >= today);
+  const weekEnd = addDays(today, Math.max(1, Math.min(31, days)));
+  const grid = month ? monthGridRange(today) : null;
+  const from = grid && grid.start < today ? grid.start : today;
+  const to = grid && grid.end > weekEnd ? grid.end : weekEnd;
+  const occurrences = eventsBetween(events, from, to).slice(0, month ? 200 : 60);
+  const upcoming = occurrences.filter((o) => o.day >= today && o.day < weekEnd);
+  const prepTasks = buildPrepTasks(upcoming, heroes).filter((t) => t.showOn >= today);
+  const withKids = (o) => ({ ...o, heroIds: kidsForEvent(o.title, heroes, { requireMention: true }), emoji: prepRuleFor(o.title)?.emoji || '📅' });
   return {
     today,
-    events: occurrences.map((o) => ({ ...o, heroIds: kidsForEvent(o.title, heroes), emoji: prepRuleFor(o.title)?.emoji || '📅' })),
+    events: upcoming.map(withKids),
+    ...(grid ? { month: { ...grid, events: occurrences.map(withKids) } } : {}),
     prepTasks
   };
 }

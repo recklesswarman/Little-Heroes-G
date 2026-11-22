@@ -12,7 +12,7 @@ import { buildRexLiveConfig, rexLiveModelOrder, connectRexLive, REX_LIVE_GUIDELI
 import { parseReferenceImages, buildReferencePrompt } from '../cloudflare-worker/worker.js';
 import worker from '../cloudflare-worker/worker.js';
 import { store } from '../src/state/store.js';
-import { renderFridgeBody, isNightTime, FRIDGE_VIEW_NAMES } from '../src/views/FridgeDisplayView.js';
+import { renderFridgeBody, renderMonthGrid, isNightTime, FRIDGE_VIEW_NAMES } from '../src/views/FridgeDisplayView.js';
 import { geminiLiveService } from '../src/services/geminiLiveService.js';
 import { bedtimeStoryService } from '../src/services/bedtimeStoryService.js';
 import { isReferenceCandidate } from '../src/services/bedtimeIllustrationService.js';
@@ -42,7 +42,9 @@ const ICS = [
   'BEGIN:VEVENT', 'UID:lib@x', 'DTSTART;VALUE=DATE:20260901', 'RRULE:FREQ=WEEKLY;BYDAY=TU,TH', 'EXDATE;VALUE=DATE:20261126', 'SUMMARY:Kayden Library Day', 'END:VEVENT',
   'BEGIN:VEVENT', 'UID:lib@x', 'RECURRENCE-ID;VALUE=DATE:20261201', 'DTSTART;VALUE=DATE:20261202', 'SUMMARY:Kayden Library Day (moved)', 'END:VEVENT',
   'BEGIN:VEVENT', 'UID:pic@x', 'DTSTART;TZID=America/New_York:20261124T083000', 'SUMMARY:Kindergarten Picture Day', 'END:VEVENT',
-  'BEGIN:VEVENT', 'UID:soc@x', 'DTSTART:20261125T220000Z', 'SUMMARY:Soccer practice', 'END:VEVENT',
+  'BEGIN:VEVENT', 'UID:soc@x', 'DTSTART:20261125T220000Z', 'SUMMARY:Kayden soccer practice', 'END:VEVENT',
+  'BEGIN:VEVENT', 'UID:dad@x', 'DTSTART;TZID=America/New_York:20261124T140000', 'SUMMARY:Dentist appointment', 'END:VEVENT',
+  'BEGIN:VEVENT', 'UID:work@x', 'DTSTART;VALUE=DATE:20261125', 'SUMMARY:Work project due', 'END:VEVENT',
   'BEGIN:VEVENT', 'UID:ns@x', 'DTSTART;VALUE=DATE:20261127', 'SUMMARY:No School - Thanksgiving break', 'END:VEVENT',
   'BEGIN:VEVENT', 'UID:gone@x', 'DTSTART;VALUE=DATE:20261124', 'STATUS:CANCELLED', 'SUMMARY:Gym day', 'END:VEVENT',
   'BEGIN:VEVENT', 'UID:long@x', 'DTSTART;VALUE=DATE:20261124', 'SUMMARY:Show and', '  tell for Kaleb', 'END:VEVENT',
@@ -72,6 +74,10 @@ await test('kid matching: names first, then grade words, else everyone', () => {
   assert.deepEqual(kidsForEvent('Kindergarten Picture Day', HEROES), ['kal']);
   assert.deepEqual(kidsForEvent('2nd grade field trip', HEROES), ['kay']);
   assert.deepEqual(kidsForEvent('Soccer practice', HEROES), ['kay', 'kal']);
+  // A parent's own calendar: grown-up-style events need a kid (or kids word) in the title.
+  assert.deepEqual(kidsForEvent('Dentist appointment', HEROES, { requireMention: true }), []);
+  assert.deepEqual(kidsForEvent('Kids dentist', HEROES, { requireMention: true }), ['kay', 'kal']);
+  assert.deepEqual(kidsForEvent('Kaleb doctor check-up', HEROES, { requireMention: true }), ['kal']);
   assert.equal(prepRuleFor('No School - Thanksgiving break'), null, 'info-only events get no chore');
   assert.equal(prepRuleFor('Gym day').id, 'gym');
 });
@@ -87,6 +93,11 @@ await test('plan: prep chores show the evening before, for the right kids, with 
   assert.match(lib.id, /^cal_[a-z0-9]+_20261124_library$/);
   const soccer = plan.prepTasks.find((t) => t.ruleId === 'sports');
   assert.equal(soccer.title, 'Pack your soccer bag');
+  assert.deepEqual(soccer.heroIds, ['kay']);
+  assert.ok(!plan.prepTasks.some((t) => t.eventTitle === 'Dentist appointment' || t.eventTitle === 'Work project due'), "a parent's own appointments make no kid chores");
+  const dentist = plan.events.find((e) => e.title === 'Dentist appointment');
+  assert.ok(dentist, "the parent's appointments still show on the fridge calendar");
+  assert.deepEqual(dentist.heroIds, []);
   assert.equal(soccer.showOn, '2026-11-24');
   const msg = formatTonightMessage(plan, HEROES);
   assert.match(msg, /Pack your library book" added for Kayden/);
@@ -213,6 +224,27 @@ await test('view: escapes names, day mode lists heroes, night mode dims; #fridge
   assert.ok(main.indexOf('FRIDGE_VIEW_NAMES.includes(activeView)') < main.indexOf('Strict Auth Wall Gate'), 'fridge renders before the auth wall (no sign-in on the Pi)');
 });
 
+await test('calendar card: Week / Month switch; month grid covers 6 weeks from the Sunday before the 1st', () => {
+  const plan = buildCalendarPlan(parseIcs(ICS), HEROES, { now: NOW, days: 7, month: true });
+  assert.equal(plan.month.month, '2026-11');
+  assert.equal(plan.month.start, '2026-11-01', 'Nov 1 2026 is a Sunday');
+  assert.equal(plan.month.end, '2026-12-13');
+  assert.ok(plan.month.events.some((e) => e.day === '2026-11-03'), 'month includes earlier days this month');
+  assert.ok(plan.month.events.some((e) => e.day === '2026-12-02'), 'and the start of next month');
+  assert.ok(plan.events.every((e) => e.day >= plan.today && e.day < '2026-11-30'), 'week list stays the next 7 days');
+  assert.ok(plan.prepTasks.every((t) => t.eventDay < '2026-11-30'), 'chores only for the coming week');
+  const snap = buildFridgeSnapshot(householdState, { now: NOW, calendar: { configured: true, ...plan } });
+  assert.equal(snap.month.events.length, plan.month.events.length);
+  const week = renderFridgeBody(snap, { now: new Date(2026, 10, 23, 16, 0), calendarView: 'week' });
+  assert.ok(week.includes('data-fridge-cal-view="month"') && week.includes('aria-pressed="true"') && !week.includes('data-fridge-month'));
+  const month = renderFridgeBody(snap, { now: new Date(2026, 10, 23, 16, 0), calendarView: 'month' });
+  assert.ok(month.includes('data-fridge-month') && month.includes('November 2026'));
+  assert.equal((renderMonthGrid(snap).match(/min-h-\[4\.5rem\] rounded-lg p-1/g) || []).length, 42);
+  const view = readFileSync('src/views/FridgeDisplayView.js', 'utf8');
+  assert.match(view, /lh-fridge-calendar-view/, 'the choice is remembered on this screen');
+  assert.match(readFileSync('server/fridgeService.js', 'utf8'), /month: true/);
+});
+
 await test('fridge API: family network only, reads HOUSEHOLD_CODES, caches, serves stale on errors', async () => {
   let reads = 0;
   let clock = NOW;
@@ -260,6 +292,21 @@ await test('Pi: desktop shortcut, launcher, calendar timer and env are installed
 });
 
 console.log('🧪 Rex live voice: feelings and quiet quests');
+
+await test('Pi setup: set-calendar.sh saves the secret address privately; --check lists the week and the chores', async () => {
+  const sh = readFileSync(new URL('../scripts/pi/set-calendar.sh', import.meta.url), 'utf8');
+  assert.match(sh, /read -rsp/, 'the address is typed hidden');
+  assert.match(sh, /chmod 600/);
+  assert.match(sh, /BEGIN:VCALENDAR/, 'checks Google really returns a calendar before saving');
+  assert.match(sh, /systemctl --user restart little-heroes\.service/);
+  const { runCalendarCheck } = await import('../scripts/pi/calendar-prep.mjs');
+  const lines = [];
+  const fetchImpl = async () => new Response(ICS, { status: 200 });
+  const r = await runCalendarCheck({ env: { GOOGLE_CALENDAR_ICS_URL: 'https://calendar.google.com/x/basic.ics' }, fetchImpl, now: () => NOW, heroes: HEROES, log: (l) => lines.push(l) });
+  assert.ok(r.events > 0 && r.chores > 0);
+  assert.ok(lines.some((l) => l.includes('Dentist appointment')), 'parent appointments listed for the fridge');
+  assert.ok(!lines.some((l) => /Dentist appointment\)/.test(l)), 'but no chore for them');
+});
 
 await test('native-audio model first with affective dialog + proactive audio; standard Live model as fallback', () => {
   const order = rexLiveModelOrder({});
