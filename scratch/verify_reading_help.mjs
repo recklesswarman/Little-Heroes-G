@@ -110,10 +110,14 @@ await test('word wall patterns: the right word has the pattern and no distractor
   });
   CVC.forEach(([word, others]) => { assert.equal(word.length, 3); others.forEach((o) => { assert.equal(o.length, 3); assert.notEqual(o, word); }); });
 });
-await test('the Quest Map has a stop and a read-along branch for the new games', () => {
-  const src = fs.readFileSync(new URL('../src/views/QuestMapView.js', import.meta.url), 'utf8');
-  for (const id of ['rex_read_along', 'rex_word_wall', 'rex_number_dash']) assert.ok(src.includes(`gameId: '${id}'`), id);
-  assert.ok(src.includes("activeGame.mode === 'read-along'") && src.includes('attachReadAlongPanel') && src.includes('stopReadAlong'));
+await test('the world adventure map lists the new games and has a read-along branch', () => {
+  // The live mini-game list is every gradeAligned game (WorldAdventureMapView.js); QuestMapView.js is not routed.
+  for (const id of ['rex_read_along', 'rex_word_wall', 'rex_number_dash']) {
+    assert.equal(GRADE_LEVEL_GAMES.find((g) => g.id === id).gradeAligned, true, id);
+  }
+  const src = fs.readFileSync(new URL('../src/views/WorldAdventureMapView.js', import.meta.url), 'utf8');
+  assert.ok(src.includes("activeMiniGame.mode === 'read-along'") && src.includes('attachReadAlongPanel') && src.includes('stopReadAlong'));
+  assert.ok(src.includes('ADVENTURE_GAMES.filter(g => g.gradeAligned)'));
 });
 await test('the read-along panel renders each word as an escaped button', () => {
   const html = renderReadAlongPanel({ sentence: 'I see <b>a</b> cat.' }, 'easy');
