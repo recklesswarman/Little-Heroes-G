@@ -33,7 +33,7 @@ export async function refreshFamilyCalendar({ fetchImpl = globalThis.fetch } = {
       const res = await fetchImpl(serverApiUrl('/api/calendar/plan'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ householdCode, heroes: heroesForRequest(state), days: 7 })
+        body: JSON.stringify({ householdCode, heroes: heroesForRequest(state), days: 7, month: true })
       });
       if (!res.ok) return null;
       const plan = await res.json();

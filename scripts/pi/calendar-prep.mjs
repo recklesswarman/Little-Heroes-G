@@ -8,7 +8,9 @@
 //   HOUSEHOLD_CODES          to know the kids' names for "added for Kayden"
 //   NTFY_URL / NTFY_TOPIC / NTFY_TOKEN   same as server.js
 //
-// Usage: node scripts/pi/calendar-prep.mjs [--dry-run]
+// Usage: node scripts/pi/calendar-prep.mjs [--dry-run | --check]
+//   --dry-run  print tonight's heads-up instead of sending it
+//   --check    print the next 7 days the Fridge Display will show, and which become chores
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { createCalendarService, getCalendarConfig } from '../../server/calendarService.js';
@@ -17,17 +19,37 @@ import { listHeroes } from '../../shared/familyInsights.js';
 import { formatTonightMessage } from '../../shared/calendarPrep.js';
 import { getNtfyConfig } from '../../server/ntfyService.js';
 
+async function heroesFromEnv(env, fetchImpl) {
+  const [code] = householdCodesFromEnv(env);
+  if (!code) return [];
+  try {
+    return listHeroes(await fetchHousehold(code, { fetchImpl }));
+  } catch (err) {
+    console.warn(`Could not read the household (${err.message}); naming no kids.`);
+    return [];
+  }
+}
+
+/** Setup check: what the Fridge Display and the chores will see for the next week. */
+export async function runCalendarCheck({ env = process.env, fetchImpl = globalThis.fetch, now = () => Date.now(), log = console.log, heroes: knownHeroes } = {}) {
+  if (!getCalendarConfig(env).icsUrl) throw new Error('GOOGLE_CALENDAR_ICS_URL is not set in ~/apps/little-heroes.env.');
+  const heroes = knownHeroes || await heroesFromEnv(env, fetchImpl);
+  const plan = await createCalendarService({ env, fetchImpl, now }).plan(heroes, { days: 7 });
+  const nameOf = (id) => heroes.find((h) => h.id === id)?.name || id;
+  log(`Calendar OK. Kids: ${heroes.map((h) => h.name).join(', ') || '(none found, check HOUSEHOLD_CODES)'}`);
+  log(`Next 7 days (${plan.events.length} events, all shown on the Fridge Display):`);
+  for (const e of plan.events) {
+    const who = e.heroIds.length ? ` [${e.heroIds.map(nameOf).join(' & ')}]` : '';
+    log(`  ${e.day} ${e.time || 'all day'}  ${e.emoji} ${e.title}${who}`);
+  }
+  log(`Get-ready chores (${plan.prepTasks.length}):`);
+  for (const t of plan.prepTasks) log(`  evening of ${t.showOn}: "${t.title}" for ${t.heroIds.map(nameOf).join(' & ')} (${t.eventTitle})`);
+  return { events: plan.events.length, chores: plan.prepTasks.length };
+}
+
 export async function runCalendarPrep({ env = process.env, dryRun = false, fetchImpl = globalThis.fetch, now = () => Date.now() } = {}) {
   if (!getCalendarConfig(env).icsUrl) throw new Error('Set GOOGLE_CALENDAR_ICS_URL in ~/apps/little-heroes.env (Google Calendar > Settings > Secret address in iCal format).');
-  let heroes = [];
-  const [code] = householdCodesFromEnv(env);
-  if (code) {
-    try {
-      heroes = listHeroes(await fetchHousehold(code, { fetchImpl }));
-    } catch (err) {
-      console.warn(`Could not read the household (${err.message}); naming no kids.`);
-    }
-  }
+  const heroes = await heroesFromEnv(env, fetchImpl);
   const plan = await createCalendarService({ env, fetchImpl, now }).plan(heroes, { days: 2 });
   const message = formatTonightMessage(plan, heroes);
   if (!message) {
@@ -55,7 +77,7 @@ export async function runCalendarPrep({ env = process.env, dryRun = false, fetch
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  runCalendarPrep({ dryRun: process.argv.includes('--dry-run') })
+  (process.argv.includes('--check') ? runCalendarCheck().then(() => ({ dryRun: true })) : runCalendarPrep({ dryRun: process.argv.includes('--dry-run') }))
     .then((r) => process.exit(r.sent || r.dryRun || r.reason === 'nothing' ? 0 : 1))
     .catch((err) => {
       console.error(err.message || err);

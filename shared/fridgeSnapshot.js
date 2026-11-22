@@ -50,16 +50,22 @@ export function buildFridgeSnapshot(state = {}, { now = Date.now(), timeZone = D
   });
 
   const nameOf = (id) => heroes.find((h) => h.id === id)?.name || '';
+  const toEvent = (e) => ({
+    day: e.day,
+    title: clean(e.title, 60),
+    time: clean(e.time, 12),
+    emoji: clean(e.emoji, 4) || '📅',
+    who: arr(e.heroIds).length && arr(e.heroIds).length < heroes.length ? arr(e.heroIds).map(nameOf).filter(Boolean).join(' & ') : ''
+  });
+  const isDay = (d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d);
   const events = arr(calendar?.events)
     .filter((e) => e && e.day >= today)
-    .slice(0, 8)
-    .map((e) => ({
-      day: e.day,
-      title: clean(e.title, 60),
-      time: clean(e.time, 12),
-      emoji: clean(e.emoji, 4) || '📅',
-      who: arr(e.heroIds).length && arr(e.heroIds).length < heroes.length ? arr(e.heroIds).map(nameOf).filter(Boolean).join(' & ') : ''
-    }));
+    .slice(0, 12)
+    .map(toEvent);
+  const m = calendar?.month;
+  const month = m && isDay(m.start) && isDay(m.end)
+    ? { month: clean(m.month, 7), start: m.start, end: m.end, events: arr(m.events).filter((e) => e && isDay(e.day)).slice(0, 200).map(toEvent) }
+    : null;
 
   return {
     generatedAt: new Date(now).toISOString(),
@@ -68,6 +74,7 @@ export function buildFridgeSnapshot(state = {}, { now = Date.now(), timeZone = D
     heroes,
     challenge: challenge ? { title: clean(challenge.title, 60), description: clean(challenge.description, 160) } : null,
     events,
+    month,
     calendarConfigured: calendar?.configured === true,
     familyDone: heroes.reduce((s, h) => s + h.done, 0),
     familyTotal: heroes.reduce((s, h) => s + h.total, 0)

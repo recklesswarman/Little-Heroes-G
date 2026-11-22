@@ -29,7 +29,7 @@ export function createFridgeHandler({ env = process.env, fetchHouseholdImpl = fe
       const timeZone = env.REPORT_TIME_ZONE || DEFAULT_TIME_ZONE;
       let plan = null;
       try {
-        plan = await calendar.plan(listHeroes(state), { days: 7 });
+        plan = await calendar.plan(listHeroes(state), { days: 7, month: true });
       } catch (err) {
         console.warn('Fridge: calendar unavailable:', err?.message || err);
       }

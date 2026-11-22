@@ -78,11 +78,11 @@ export function createCalendarService({ env = process.env, fetchImpl = globalThi
   }
 
   /** The plan for these kids, or { configured:false } when no calendar is set up here. */
-  async function plan(heroes, { days = 7 } = {}) {
+  async function plan(heroes, { days = 7, month = false } = {}) {
     const events = await loadEvents();
     if (!events) return { configured: false, events: [], prepTasks: [] };
     const { timeZone } = getCalendarConfig(env);
-    return { configured: true, ...buildCalendarPlan(events, sanitizeHeroes(heroes), { now: now(), days, timeZone }) };
+    return { configured: true, ...buildCalendarPlan(events, sanitizeHeroes(heroes), { now: now(), days, timeZone, month }) };
   }
 
   async function relayToPi(body) {
@@ -112,11 +112,12 @@ export function createCalendarService({ env = process.env, fetchImpl = globalThi
     const body = req.body && typeof req.body === 'object' ? req.body : {};
     const days = Math.max(1, Math.min(14, Number(body.days) || 7));
     const heroes = sanitizeHeroes(body.heroes);
+    const month = body.month === true;
     const { icsUrl } = getCalendarConfig(env);
 
     if (!icsUrl) {
       // No calendar on this server: hand the request to the Pi when a relay is set up.
-      const relayed = await relayToPi({ householdCode: body.householdCode, heroes, days });
+      const relayed = await relayToPi({ householdCode: body.householdCode, heroes, days, month });
       if (relayed) return res.status(relayed.status).json(relayed.data);
       return res.json({ configured: false, events: [], prepTasks: [] });
     }
@@ -127,7 +128,7 @@ export function createCalendarService({ env = process.env, fetchImpl = globalThi
       return res.status(403).json({ error: 'Unknown household', configured: false });
     }
     try {
-      return res.json(await plan(heroes, { days }));
+      return res.json(await plan(heroes, { days, month }));
     } catch (err) {
       console.warn('Family calendar read failed:', err?.message || err);
       return res.status(502).json({ error: 'Could not read the family calendar', configured: true, events: [], prepTasks: [] });
