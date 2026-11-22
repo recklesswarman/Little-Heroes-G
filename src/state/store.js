@@ -7006,8 +7006,11 @@ class Store {
     const h = hero || this.state.selectedHero;
     if (!h) return null;
     const stored = (this.state.heroes || []).find((x) => x && x.id === h.id);
-    this.rollScreenTimeDay(stored || h);
-    const src = stored || h;
+    if (stored) this.rollScreenTimeDay(stored);
+    if (h !== stored) this.rollScreenTimeDay(h);
+    // The object the caller holds (usually selectedHero) can be newer than the
+    // copy in heroes[] (e.g. a pause toggled on the selected kid), so it wins.
+    const src = stored && stored !== h ? { ...stored, ...h } : h;
     if (src.isScreenTimePaused) return 'paused';
     const capNum = Number(src.dailyMaxScreenTime);
     const cap = src.dailyMaxScreenTime !== undefined && src.dailyMaxScreenTime !== null && Number.isFinite(capNum) ? capNum : 60;
