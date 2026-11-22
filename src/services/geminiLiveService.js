@@ -7,6 +7,7 @@ import { Sound } from '../audio/sfx.js';
 import { speakCompanion, isRexSpeaking } from './voiceService.js';
 import { triggerInteractiveCelebration } from '../components/InteractiveCelebrationOverlay.js';
 import { lacksLiveWebSocketBridge } from '../utils/hostUtils.js';
+import { checkCompanionRules } from './companionSafety.js';
 
 // How long a kid can think about a quest question before Rex offers a hint.
 const STUCK_IDLE_MS = 25000;
@@ -250,6 +251,16 @@ class GeminiLiveService {
 
     const activePet = preferredPetId || store.getActivePet?.()?.id || 'rex';
     const petName = store.getActivePet?.()?.name || 'Rex the Dino';
+
+    // Live audio talks straight to the model, so the parent's Rex rules
+    // (Rex off, bedtime, daily chat turns) are checked before opening it.
+    const liveHero = store.getSelectedHero?.() || store.getState().selectedHero || {};
+    const gate = checkCompanionRules({ heroId: liveHero.id, petName: store.getActivePet?.()?.shortName || 'Rex', childName: liveHero.name || 'Little Hero' });
+    if (!gate.ok) {
+      this.isConnecting = false;
+      this.updateStatus('idle', gate.reply);
+      return Promise.reject(new Error(`companion-rule:${gate.reason}`));
+    }
     this.updateStatus('connecting', `Connecting to ${petName}...`);
 
     return new Promise((resolve, reject) => {
@@ -298,7 +309,11 @@ class GeminiLiveService {
 
         const protocol = (typeof window !== 'undefined' && window.location.protocol === 'https:') ? 'wss:' : 'ws:';
         const host = (typeof window !== 'undefined' && window.location.host) ? window.location.host : 'localhost:3000';
-        const wsUrl = customWsUrl || `${protocol}//${host}/api/gemini/live?pet=${encodeURIComponent(activePet)}`;
+        // Rex speaks with the parent's chosen Gemini Live voice; other pets keep their own.
+        const rexVoice = String(activePet).toLowerCase() === 'rex' || String(activePet) === '1'
+          ? (store.getRexVoicePersona?.()?.id || 'Puck')
+          : '';
+        const wsUrl = customWsUrl || `${protocol}//${host}/api/gemini/live?pet=${encodeURIComponent(activePet)}${rexVoice ? `&voice=${encodeURIComponent(rexVoice)}` : ''}`;
         
         this.ws = new WebSocket(wsUrl);
 
@@ -744,7 +759,8 @@ class GeminiLiveService {
           const cfRes = await cf.chatWithPet({
             petId,
             petName,
-            message: promptText
+            message: promptText,
+            heroId: store.getSelectedHero?.()?.id || store.getState().selectedHero?.id
           });
           if (cfRes && cfRes.reply && !cfRes.reply.includes('Offline mode')) {
             store.setLiveRexState({ lastRexTranscript: cfRes.reply }, true);

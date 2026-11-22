@@ -31,6 +31,9 @@ async function loadDependencies() {
 }
 await loadDependencies().catch(() => {});
 
+// Gemini Live voices a parent can choose for Rex (src/data/rexVoicePersonas.js).
+export const LIVE_REX_VOICES = ['Puck', 'Aoede', 'Charon', 'Fenrir', 'Kore'];
+
 // Voice mapping for pet champions: warm, expressive, kid-friendly
 export const PET_VOICE_MAP = {
   rex: 'Puck',        // Upbeat, energetic, friendly young voice
@@ -450,7 +453,11 @@ export function attachGeminiLiveWebSocket(httpServer) {
     const url = new URL(request.url, `http://${request.headers.host || 'localhost'}`);
     const petId = url.searchParams.get('pet') || 'rex';
     const normalizedPetId = String(petId).toLowerCase();
-    const voiceName = PET_VOICE_MAP[normalizedPetId] || 'Puck';
+    // Rex may use the voice persona the parent picked (allowlisted Gemini voices only).
+    const requestedVoice = url.searchParams.get('voice');
+    const voiceName = ((normalizedPetId === 'rex' || normalizedPetId === '1') && LIVE_REX_VOICES.includes(requestedVoice))
+      ? requestedVoice
+      : (PET_VOICE_MAP[normalizedPetId] || 'Puck');
     const persona = PET_PERSONAS[normalizedPetId] || PET_PERSONAS.rex;
 
     let session = null;

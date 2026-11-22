@@ -7,6 +7,7 @@ import { voicePrompts } from '../utils/voicePrompts.js';
 import { geminiLiveService } from '../services/geminiLiveService.js';
 import { renderRexAvatarSvg } from '../components/LiveRexWidget.js';
 import { rexEngine } from '../services/rexCompanionEngine.js';
+import { speakCompanion } from '../services/voiceService.js';
 import confetti from 'canvas-confetti';
 
 let activeGame = null;
@@ -568,7 +569,8 @@ export function attachQuestMapListeners() {
     });
 
     // Auto-connect Rex in toddler easy mode if not already connected
-    if (kidDiff === 'easy' && !geminiLiveService.isConnected && !geminiLiveService.isConnecting) {
+    // ...unless the parent turned off "Auto-Wake Rex in Easy Mode" (Safety tab).
+    if (kidDiff === 'easy' && store.getState().liveRex?.autoListenInQuests !== false && !geminiLiveService.isConnected && !geminiLiveService.isConnecting) {
       geminiLiveService.connect().catch(() => {});
     }
 
@@ -659,6 +661,11 @@ export function attachQuestMapListeners() {
         try {
           await geminiLiveService.connect();
         } catch (err) {
+          if (String(err?.message || '').startsWith('companion-rule:')) {
+            // A parent rule (bedtime, chat limit, Rex off) said no: Rex says so kindly.
+            speakCompanion(store.getState().liveRex?.statusMessage || '', store.getActivePet?.()?.id || 'rex');
+            return;
+          }
           console.warn("Live socket error, falling back to local voice engine:", err);
           rexEngine.toggleListen();
         }

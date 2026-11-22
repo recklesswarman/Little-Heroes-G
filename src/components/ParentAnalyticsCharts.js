@@ -146,9 +146,14 @@ export function aggregateMetrics(selectedKidId = 'all', timeframe = '7d') {
     : heroes.filter(h => h.id === selectedKidId);
 
   const primaryKid = targetKids[0] || state.selectedHero || heroes[0] || {};
+  // 0 is a real cap ("no screen time"), so only a missing value falls back to 60.
+  const capOf = (h) => {
+    const n = Number(h?.dailyMaxScreenTime);
+    return h && h.dailyMaxScreenTime !== undefined && h.dailyMaxScreenTime !== null && Number.isFinite(n) ? n : 60;
+  };
   const dailyCap = selectedKidId === 'all'
-    ? Math.round(heroes.reduce((acc, h) => acc + (Number(h.dailyMaxScreenTime) || 60), 0) / Math.max(1, heroes.length))
-    : (Number(primaryKid.dailyMaxScreenTime) || 60);
+    ? Math.round(heroes.reduce((acc, h) => acc + capOf(h), 0) / Math.max(1, heroes.length))
+    : capOf(primaryKid);
 
   const screenTimeRate = Number(primaryKid.screenTimeRate) || 2;
   const currentStreak = selectedKidId === 'all'

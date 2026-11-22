@@ -39,6 +39,13 @@ export async function askRexAgent({ message, hero, petId = 'rex', childName, app
   } catch {
     agentContext = {};
   }
+  let parentRules = null;
+  try {
+    const rules = store.getCompanionRules?.();
+    if (rules) parentRules = { tone: rules.tone, focusAreas: rules.focusAreas };
+  } catch {
+    parentRules = null;
+  }
   try {
     const res = await fetchImpl(serverApiUrl('/api/rex/agent'), {
       method: 'POST',
@@ -49,7 +56,8 @@ export async function askRexAgent({ message, hero, petId = 'rex', childName, app
         childName: childName || targetHero.name || 'Little Hero',
         history: history.slice(-HISTORY_LIMIT),
         appState: appState ? { hero: appState.hero, activePet: appState.activePet } : { hero: { gameDifficulty: targetHero.gameDifficulty || 'medium' } },
-        agentContext
+        agentContext,
+        parentRules
       }),
       signal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(timeoutMs) : undefined
     });

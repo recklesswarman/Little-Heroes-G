@@ -24,6 +24,7 @@ import { PETS_DATABASE } from '../data/petsData.js';
 import { renderStoryControlsTab, bindStoryControlsTab } from './StoryControlsPanel.js';
 import { renderWeeklyReportCard, bindWeeklyReportCard } from './WeeklyReportCard.js';
 import { speakCompanion } from '../services/voiceService.js';
+import { REX_VOICE_PERSONAS, getRexVoicePersona } from '../data/rexVoicePersonas.js';
 import {
   renderAnalyticsChartsSection,
   initAnalyticsCharts,
@@ -38,6 +39,43 @@ let activeAdminTab = 'approvals'; // approvals, screentime, reports, kids, tasks
 let editingCompanionPhraseId = null;
 export function setActiveAdminTab(tab) {
   activeAdminTab = tab;
+}
+
+// Confirmation text that never claims the cloud has a change it didn't get.
+/**
+ * Delivery fields shared by every Studio item type whose store publish method
+ * supports delivery (weapon, gear, furniture): how the item reaches the kid,
+ * which kid, and the habit streak that unlocks a bounty.
+ */
+export function studioDeliveryFields() {
+  const deliveryMethod = ['instant_gift', 'hero_shop', 'habit_bounty'].includes(studioDeliveryMethod)
+    ? studioDeliveryMethod
+    : 'instant_gift';
+  return {
+    deliveryMethod,
+    targetChildProfile: studioTargetChildProfile || 'all',
+    bountyRequirement: {
+      habitId: studioBountyHabitId || 'brush_teeth',
+      targetStreakDays: Number(studioBountyStreakDays) || 3
+    }
+  };
+}
+
+export function savedLabel() {
+  const health = store.getSyncHealth ? store.getSyncHealth() : { mode: 'local' };
+  if (health.mode === 'ok' || health.mode === 'local') return 'Saved';
+  return `Saved on this device only. Cloud sync is ${health.mode === 'paused' ? 'paused' : 'failing'}.`;
+}
+
+// Show a short confirmation in an element looked up after any re-render.
+function flashFeedback(id, text, { error = false, ms = 3500 } = {}) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = text;
+  el.classList.remove('hidden', 'text-primary', 'text-error');
+  el.classList.add(error ? 'text-error' : 'text-primary');
+  clearTimeout(el._flashTimer);
+  el._flashTimer = setTimeout(() => { if (el.isConnected) el.classList.add('hidden'); }, ms);
 }
 
 let isAddKidModalOpen = false;
@@ -399,7 +437,7 @@ export function renderParentPortalView() {
             <!-- Currency Exchange Rule Badge -->
             <div class="bg-sky-500/10 text-sky-300 border border-sky-500/30 px-3.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 self-stretch sm:self-auto justify-center">
               <span class="material-symbols-outlined text-sm">currency_exchange</span>
-              <span>1 Habit Point ⭐ = 2 Minutes Screen Time</span>
+              <span>Rate guide: 1 Habit Point ⭐ = ${(selectedScreenTimeKidId === 'all' ? heroes[0] : heroes.find((h) => h.id === selectedScreenTimeKidId))?.screenTimeRate ?? 2} min (grant minutes below)</span>
             </div>
           </div>
 
@@ -435,11 +473,11 @@ export function renderParentPortalView() {
               .map((h) => {
                 const isPaused = h.isScreenTimePaused || false;
                 const bankedMins = h.screenTimeMinutes !== undefined ? h.screenTimeMinutes : 45;
-                const usedToday = h.screenTimeUsedToday !== undefined ? h.screenTimeUsedToday : 15;
-                const dailyCap = h.dailyMaxScreenTime || 60;
-                const rate = h.screenTimeRate || 2;
-                const curfew = h.bedtimeCurfew || '20:00';
-                const usagePercent = Math.min(100, Math.round((usedToday / dailyCap) * 100));
+                const usedToday = h.screenTimeUsageDate === new Date().toDateString() ? (Number(h.screenTimeUsedToday) || 0) : 0;
+                const dailyCap = Number.isFinite(Number(h.dailyMaxScreenTime)) && h.dailyMaxScreenTime !== null && h.dailyMaxScreenTime !== undefined ? Number(h.dailyMaxScreenTime) : 60;
+                const rate = h.screenTimeRate ?? 2;
+                const curfew = h.bedtimeCurfew ? h.bedtimeCurfew : 'None';
+                const usagePercent = dailyCap <= 0 ? 100 : Math.min(100, Math.round((usedToday / dailyCap) * 100));
 
                 return `
                 <div class="bg-surface-container rounded-3xl p-5 border-2 ${
@@ -527,71 +565,89 @@ export function renderParentPortalView() {
           </div>
 
           <!-- Screen Time Policy & Governance Customizer Card -->
+          ${(() => {
+            const policyKid = (selectedScreenTimeKidId === 'all' ? heroes[0] : heroes.find((h) => h.id === selectedScreenTimeKidId)) || {};
+            const pRate = policyKid.screenTimeRate ?? 2;
+            const pCap = policyKid.dailyMaxScreenTime ?? 60;
+            const pCurfew = policyKid.bedtimeCurfew ?? '20:00';
+            const pMsg = policyKid.screenTimeLockMessage || 'Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙';
+            const policyKey = (h) => JSON.stringify([h.screenTimeRate ?? 2, h.dailyMaxScreenTime ?? 60, h.bedtimeCurfew ?? '20:00', h.screenTimeLockMessage || '']);
+            const kidsDiffer = selectedScreenTimeKidId === 'all' && heroes.length > 1 && new Set(heroes.map(policyKey)).size > 1;
+            const rateOptions = [
+              { v: 1, label: '1 Point ⭐ = 1 Minute' },
+              { v: 2, label: '1 Point ⭐ = 2 Minutes (Recommended)' },
+              { v: 3, label: '1 Point ⭐ = 3 Minutes' },
+              { v: 5, label: '1 Point ⭐ = 5 Minutes' }
+            ];
+            const capOptions = [0, 15, 30, 45, 60, 90, 120, 240];
+            if (!capOptions.includes(Number(pCap))) capOptions.push(Number(pCap));
+            capOptions.sort((a, b) => a - b);
+            return `
           <div class="bg-surface-container rounded-3xl p-5 sm:p-6 border-2 border-secondary-container card-shadow flex flex-col gap-4">
             <div class="flex items-center justify-between border-b border-surface-container-highest pb-3">
               <div class="flex items-center gap-2">
                 <span class="material-symbols-outlined text-secondary text-2xl">tune</span>
                 <h3 class="font-headline text-base font-black text-inverse-surface">Screen Time Governance Settings</h3>
               </div>
-              <span class="text-xs font-bold text-on-surface-variant">Applies to: ${selectedScreenTimeKidId === 'all' ? 'All Kids' : heroes.find(h => h.id === selectedScreenTimeKidId)?.name || 'Selected Kid'}</span>
+              <span class="text-xs font-bold text-on-surface-variant">Applies to: ${selectedScreenTimeKidId === 'all' ? 'All Kids' : escapeHtml(heroes.find(h => h.id === selectedScreenTimeKidId)?.name || 'Selected Kid')}</span>
             </div>
+            ${kidsDiffer ? `<p class="text-[11px] font-bold text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2">Kids have different settings. Showing ${escapeHtml(policyKid.name || 'the first kid')}'s. Saving applies these values to all kids.</p>` : ''}
 
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <!-- Conversion Rate -->
               <div class="flex flex-col gap-1.5">
-                <label class="text-xs font-black text-inverse-surface flex items-center gap-1">
+                <label for="screentime-rate-select" class="text-xs font-black text-inverse-surface flex items-center gap-1">
                   <span class="material-symbols-outlined text-sm text-tertiary">star</span>
                   Conversion Rate (Minutes per Point)
                 </label>
                 <select id="screentime-rate-select" class="bg-surface-container-lowest border-2 border-surface-container-highest rounded-xl px-3 py-2.5 text-xs font-bold text-inverse-surface focus:border-primary outline-hidden">
-                  <option value="1">1 Point ⭐ = 1 Minute</option>
-                  <option value="2" selected>1 Point ⭐ = 2 Minutes (Recommended)</option>
-                  <option value="3">1 Point ⭐ = 3 Minutes</option>
-                  <option value="5">1 Point ⭐ = 5 Minutes</option>
+                  ${rateOptions.map((o) => `<option value="${o.v}" ${Number(pRate) === o.v ? 'selected' : ''}>${o.label}</option>`).join('')}
                 </select>
               </div>
 
               <!-- Daily Maximum Cap -->
               <div class="flex flex-col gap-1.5">
-                <label class="text-xs font-black text-inverse-surface flex items-center gap-1">
+                <label for="screentime-cap-select" class="text-xs font-black text-inverse-surface flex items-center gap-1">
                   <span class="material-symbols-outlined text-sm text-sky-400">timer</span>
                   Daily Maximum Cap
                 </label>
                 <select id="screentime-cap-select" class="bg-surface-container-lowest border-2 border-surface-container-highest rounded-xl px-3 py-2.5 text-xs font-bold text-inverse-surface focus:border-primary outline-hidden">
-                  <option value="30">30 Minutes / Day</option>
-                  <option value="45">45 Minutes / Day</option>
-                  <option value="60" selected>60 Minutes / Day (Recommended)</option>
-                  <option value="90">90 Minutes / Day</option>
-                  <option value="120">120 Minutes / Day</option>
+                  ${capOptions.map((c) => `<option value="${c}" ${Number(pCap) === c ? 'selected' : ''}>${c === 0 ? 'No screen time (0 min)' : `${c} Minutes / Day${c === 60 ? ' (Recommended)' : ''}`}</option>`).join('')}
                 </select>
               </div>
 
               <!-- Bedtime Curfew -->
               <div class="flex flex-col gap-1.5">
-                <label class="text-xs font-black text-inverse-surface flex items-center gap-1">
+                <label for="screentime-curfew-input" class="text-xs font-black text-inverse-surface flex items-center gap-1">
                   <span class="material-symbols-outlined text-sm text-amber-400">bedtime</span>
                   Bedtime Curfew Lock
                 </label>
-                <input type="time" id="screentime-curfew-input" value="20:00" class="bg-surface-container-lowest border-2 border-surface-container-highest rounded-xl px-3 py-2 text-xs font-bold text-inverse-surface focus:border-primary outline-hidden" />
+                <input type="time" id="screentime-curfew-input" value="${escapeHtml(pCurfew || '20:00')}" ${pCurfew === '' ? 'disabled' : ''} class="bg-surface-container-lowest border-2 border-surface-container-highest rounded-xl px-3 py-2 text-xs font-bold text-inverse-surface focus:border-primary outline-hidden ${pCurfew === '' ? 'opacity-50' : ''}" />
+                <label class="flex items-center gap-1.5 text-[11px] font-bold text-on-surface-variant cursor-pointer">
+                  <input type="checkbox" id="screentime-curfew-off" ${pCurfew === '' ? 'checked' : ''} class="accent-amber-400" />
+                  No curfew
+                </label>
               </div>
             </div>
 
             <!-- Gentle Rex Bedtime/Curfew Message -->
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-black text-inverse-surface flex items-center gap-1">
+              <label for="screentime-lockout-msg" class="text-xs font-black text-inverse-surface flex items-center gap-1">
                 <span class="material-symbols-outlined text-sm text-primary">chat_bubble</span>
                 Rex Gentle Curfew & Pause Message (Shown to Child)
               </label>
-              <input type="text" id="screentime-lockout-msg" value="Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙" class="bg-surface-container-lowest border-2 border-surface-container-highest rounded-xl px-3.5 py-2.5 text-xs font-bold text-inverse-surface focus:border-primary outline-hidden" />
+              <input type="text" id="screentime-lockout-msg" maxlength="160" value="${escapeHtml(pMsg)}" class="bg-surface-container-lowest border-2 border-surface-container-highest rounded-xl px-3.5 py-2.5 text-xs font-bold text-inverse-surface focus:border-primary outline-hidden" />
             </div>
 
-            <div class="flex justify-end pt-2">
+            <div class="flex items-center justify-end gap-3 pt-2">
+              <span id="screentime-save-feedback" role="status" class="text-[11px] font-bold text-primary hidden"></span>
               <button id="screentime-save-settings-btn" class="bg-secondary text-on-secondary font-headline text-xs font-black px-6 py-2.5 rounded-xl chunky-btn-sm active:scale-95 shadow-xs flex items-center gap-1.5 hover:brightness-110">
                 <span class="material-symbols-outlined text-sm">save</span>
                 <span>Save Screen Time Policy</span>
               </button>
             </div>
-          </div>
+          </div>`;
+          })()}
 
         </section>
       `
@@ -1707,17 +1763,17 @@ export function renderParentPortalView() {
                 <button 
                   type="button"
                   id="studio-voice-mic-btn"
-                  class="px-3 py-2.5 min-h-[44px] rounded-2xl text-xs font-headline font-black flex items-center gap-1.5 transition-all active:scale-95 ${isRecordingVoice ? 'bg-red-500 text-white animate-pulse' : 'bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-400/30'}"
-                  title="Dictate with microphone"
+                  class="px-3 py-2.5 min-h-[44px] rounded-2xl text-xs font-headline font-black flex items-center gap-1.5 bg-slate-800 text-amber-300 border border-amber-400/30 opacity-50 cursor-not-allowed"
+                  disabled aria-disabled="true" title="Coming soon"
                 >
                   <span>🎙️</span>
-                  <span class="hidden sm:inline">${isRecordingVoice ? 'Listening...' : 'Voice'}</span>
+                  <span class="hidden sm:inline">Voice (soon)</span>
                 </button>
 
-                <label class="px-3 py-2.5 min-h-[44px] rounded-2xl text-xs font-headline font-black bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-400/30 flex items-center gap-1.5 cursor-pointer transition-all active:scale-95" title="Upload child drawing or photo">
+                <label class="px-3 py-2.5 min-h-[44px] rounded-2xl text-xs font-headline font-black bg-slate-800 text-cyan-300 border border-cyan-400/30 flex items-center gap-1.5 opacity-50 cursor-not-allowed" title="Coming soon" aria-disabled="true">
                   <span>📷</span>
-                  <span class="hidden sm:inline">Photo</span>
-                  <input type="file" id="studio-photo-upload" accept="image/*" class="hidden" />
+                  <span class="hidden sm:inline">Photo (soon)</span>
+                  <input type="file" id="studio-photo-upload" accept="image/*" class="hidden" disabled />
                 </label>
 
                 ${studioUploadedImageBase64 ? `
@@ -1726,7 +1782,8 @@ export function renderParentPortalView() {
                     <button 
                       type="button"
                       id="studio-vision-generate-btn"
-                      class="px-2.5 py-1.5 rounded-xl text-[10px] font-black bg-linear-to-r from-cyan-500 to-blue-500 text-slate-950 hover:scale-105 active:scale-95 transition-all shadow-sm"
+                      class="px-2.5 py-1.5 rounded-xl text-[10px] font-black bg-linear-to-r from-cyan-500 to-blue-500 text-slate-950 shadow-sm opacity-50 cursor-not-allowed"
+                      disabled aria-disabled="true" title="Coming soon"
                     >
                       Turn 3D
                     </button>
@@ -1783,8 +1840,8 @@ export function renderParentPortalView() {
                   <button 
                     type="button"
                     id="studio-mode-modelviewer-btn" 
-                    class="px-2.5 py-1 rounded-lg text-xs font-black transition-all ${studioViewportMode === 'modelviewer' ? 'bg-cyan-500 text-slate-950 shadow-sm' : 'text-slate-300 hover:text-white'}"
-                    title="Switch to 3D GLB Model Viewer"
+                    class="px-2.5 py-1 rounded-lg text-xs font-black text-slate-300 opacity-50 cursor-not-allowed"
+                    disabled aria-disabled="true" title="Coming soon"
                   >
                     3D GLB
                   </button>
@@ -2525,10 +2582,11 @@ export function renderParentPortalView() {
                 <button 
                   type="button" 
                   id="studio-test-as-child-btn"
-                  class="w-full sm:w-auto py-2.5 px-4 min-h-[44px] rounded-2xl bg-surface-container-high border border-surface-container-highest text-inverse-surface hover:bg-surface-bright font-headline text-xs font-black shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                  class="w-full sm:w-auto py-2.5 px-4 min-h-[44px] rounded-2xl bg-surface-container-high border border-surface-container-highest text-inverse-surface font-headline text-xs font-black shadow-sm flex items-center justify-center gap-1.5 opacity-50 cursor-not-allowed"
+                  disabled aria-disabled="true" title="Coming soon"
                 >
                   <span>👀</span>
-                  <span>Test as Child</span>
+                  <span>Test as Child (soon)</span>
                 </button>
 
                 <button 
@@ -3351,7 +3409,7 @@ export function renderParentPortalView() {
             </div>
           </div>
 
-          <!-- Rex AI Companion Voice Persona & Live Settings -->
+          <!-- Rex AI Companion Voice Persona -->
           <div class="bg-surface-container rounded-3xl p-6 border-2 border-primary/30 card-shadow flex flex-col gap-5">
             <div class="flex items-center gap-3">
               <div class="w-12 h-12 rounded-2xl bg-primary/20 text-primary border border-primary/40 flex items-center justify-center text-2xl shadow-xs">
@@ -3359,31 +3417,31 @@ export function renderParentPortalView() {
               </div>
               <div>
                 <h3 class="font-headline text-base sm:text-lg font-black text-inverse-surface">Rex AI Companion Voice Persona</h3>
-                <p class="text-xs text-on-surface-variant font-bold">Select Rex's voice tone for real-time voice coaching and Live audio quests.</p>
+                <p class="text-xs text-on-surface-variant font-bold">Pick Rex's voice. Tap ▶ to hear it. Used everywhere Rex speaks and in Live Rex.</p>
               </div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
-              ${[
-                { id: 'Puck', label: 'Puck', desc: 'Playful & high energy (Default)', icon: 'sentiment_very_satisfied' },
-                { id: 'Aoede', label: 'Aoede', desc: 'Nurturing & clear teacher tone', icon: 'school' },
-                { id: 'Charon', label: 'Charon', desc: 'Deep & calm dino elder', icon: 'elderly' },
-                { id: 'Fenrir', label: 'Fenrir', desc: 'Fast, bold & adventurous', icon: 'speed' },
-                { id: 'Kore', label: 'Kore', desc: 'Gentle, soft & soothing', icon: 'spa' }
-              ].map(v => {
-                const currentVoice = state.liveRex?.voiceName || 'Puck';
-                const isSelected = currentVoice.toLowerCase() === v.id.toLowerCase();
-                return `
-                  <button data-voice-id="${v.id}" class="rex-voice-select-btn rounded-2xl p-3 flex flex-col items-center justify-center gap-1.5 border-2 transition-all active:scale-95 ${
-                    isSelected ? 'bg-primary text-on-primary border-primary-container shadow-xs font-black' : 'bg-surface-container-high hover:bg-surface-bright text-inverse-surface border-surface-container-highest'
-                  }">
-                    <span class="material-symbols-outlined text-2xl">${v.icon}</span>
-                    <span class="font-headline text-xs font-black">${v.label}</span>
-                    <span class="text-[9px] text-center leading-tight ${isSelected ? 'text-on-primary/90' : 'text-on-surface-variant'}">${v.desc}</span>
-                  </button>
+            <div id="rex-voice-persona-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+              ${(() => {
+                const currentVoice = getRexVoicePersona(settings.rexVoice).id;
+                return REX_VOICE_PERSONAS.map((v) => {
+                  const isSelected = currentVoice === v.id;
+                  return `
+                  <div class="relative">
+                    <button type="button" data-voice-id="${v.id}" aria-pressed="${isSelected}" class="rex-voice-select-btn w-full rounded-2xl p-3 flex flex-col items-center justify-center gap-1.5 border-2 transition-all active:scale-95 ${
+                      isSelected ? 'bg-primary text-on-primary border-primary-container shadow-xs font-black' : 'bg-surface-container-high hover:bg-surface-bright text-inverse-surface border-surface-container-highest'
+                    }">
+                      <span class="material-symbols-outlined text-2xl">${v.icon}</span>
+                      <span class="font-headline text-xs font-black">${v.label}</span>
+                      <span class="text-[9px] text-center leading-tight ${isSelected ? 'text-on-primary/90' : 'text-on-surface-variant'}">${v.desc}</span>
+                    </button>
+                    <button type="button" data-rex-voice-preview="${v.id}" aria-label="Preview ${v.label} voice" title="Preview ${v.label}" class="rex-voice-preview-btn absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-surface-container-lowest/90 text-primary border border-primary/40 flex items-center justify-center text-xs font-black active:scale-90">▶</button>
+                  </div>
                 `;
-              }).join('')}
+                }).join('');
+              })()}
             </div>
+            <p class="text-[10px] text-on-surface-variant">On GitHub Pages and web.app, Rex uses the closest voice built into this device. The exact Gemini voice plays in Live Rex on the app server and the family Pi.</p>
           </div>
 
           <!-- Companion Phrases Manager (Zero-Lag Tap-to-Speak Rotation) -->
@@ -3637,7 +3695,7 @@ export function renderParentPortalView() {
 
                 <div class="flex flex-col gap-2 pt-2 border-t border-surface-container-highest/60">
                   <div class="flex items-center gap-2">
-                    <input type="text" id="parent-setting-pin-input" maxlength="8" value="${settings.pin || '1234'}" ${settings.pinLockEnabled === false ? 'disabled' : ''} class="w-full bg-surface-container border-2 border-surface-container-highest rounded-xl px-3 py-2 text-sm font-headline font-black text-secondary tracking-widest text-center focus:border-secondary focus:outline-hidden ${settings.pinLockEnabled === false ? 'opacity-50 cursor-not-allowed' : ''}" />
+                    <input type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password" aria-label="New parent PIN (4 to 8 digits)" id="parent-setting-pin-input" maxlength="8" value="${escapeHtml(settings.pin || '1234')}" ${settings.pinLockEnabled === false ? 'disabled' : ''} class="w-full bg-surface-container border-2 border-surface-container-highest rounded-xl px-3 py-2 text-sm font-headline font-black text-secondary tracking-widest text-center focus:border-secondary focus:outline-hidden ${settings.pinLockEnabled === false ? 'opacity-50 cursor-not-allowed' : ''}" />
                     <button id="save-parent-pin-btn" ${settings.pinLockEnabled === false ? 'disabled' : ''} class="${
                       settings.pinLockEnabled !== false
                         ? 'bg-secondary text-on-secondary border-secondary-container active:scale-95'
@@ -3646,7 +3704,8 @@ export function renderParentPortalView() {
                       Save PIN
                     </button>
                   </div>
-                  <span id="pin-save-feedback" class="text-[9px] font-bold text-primary text-center hidden">✓ PIN updated!</span>
+                  <span id="pin-save-feedback" role="status" class="text-[9px] font-bold text-primary text-center hidden">✓ PIN updated!</span>
+                  <span id="pin-save-error" role="alert" class="text-[9px] font-bold text-error text-center hidden"></span>
                 </div>
               </div>
 
@@ -3742,37 +3801,6 @@ export function renderParentPortalView() {
               </p>
             </div>
 
-            <!-- Prebuilt Voice Selection -->
-            <div class="bg-surface-container-high rounded-2xl p-4 border border-surface-container-highest flex flex-col gap-3">
-              <div class="flex flex-col gap-1">
-                <span class="font-headline text-xs font-black text-inverse-surface">Rex the Dino Voice Character</span>
-                <span class="text-[11px] text-on-surface-variant">Choose the live synthetic persona for Rex during voice quests.</span>
-              </div>
-              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                ${[
-                  { id: 'Puck', label: 'Puck (Recommended)', desc: 'Playful & Toddler Cartoon' },
-                  { id: 'Charon', label: 'Charon', desc: 'Calm & Deep Roar' },
-                  { id: 'Aoede', label: 'Aoede', desc: 'Gentle & Loving' },
-                  { id: 'Fenrir', label: 'Fenrir', desc: 'Bold & Heroic' }
-                ]
-                  .map((v) => {
-                    const currentVoice = state.liveRex?.voiceName || 'Puck';
-                    const isSelected = currentVoice === v.id;
-                    return `
-                    <button data-rex-voice="${v.id}" class="rex-voice-select-btn rounded-xl p-3 flex flex-col items-center justify-center gap-1 border-2 transition-all ${
-                      isSelected
-                        ? 'bg-primary text-on-primary border-primary-container shadow-xs font-black'
-                        : 'bg-surface-container hover:bg-surface-bright text-on-surface-variant border-surface-container-highest'
-                    }">
-                      <span class="text-xs font-headline font-black">${v.label}</span>
-                      <span class="text-[9px] ${isSelected ? 'text-on-primary/90' : 'text-on-surface-variant'}">${v.desc}</span>
-                    </button>
-                  `;
-                  })
-                  .join('')}
-              </div>
-            </div>
-
             <!-- Auto-Listen During Quests Toggle -->
             <div class="bg-surface-container-high rounded-2xl p-4 border border-surface-container-highest flex items-center justify-between gap-3">
               <div class="flex flex-col gap-0.5">
@@ -3798,6 +3826,7 @@ export function renderParentPortalView() {
                     <p class="text-[10px] text-on-surface-variant font-bold">Enforced by Rex before every chat prompt</p>
                   </div>
                 </div>
+                <span id="companion-rules-feedback" role="status" class="text-[10px] font-bold text-primary hidden"></span>
                 <button id="admin-save-companion-rules-btn" class="bg-secondary text-on-secondary font-headline text-xs font-black px-4 py-2 rounded-xl chunky-btn-sm active:scale-95 shadow-xs hover:brightness-110 flex items-center gap-1.5">
                   <span class="material-symbols-outlined text-sm">verified_user</span>
                   <span>Save Rules</span>
@@ -3907,7 +3936,7 @@ export function renderParentPortalView() {
                   type="text"
                   id="admin-restricted-topics-input"
                   placeholder="e.g. scary monsters, sweets, sugar bugs"
-                  value="${(settings.restrictedTopics || []).join(', ')}"
+                  value="${escapeHtml((settings.restrictedTopics || []).join(', '))}"
                   class="bg-surface-container-lowest border-2 border-surface-container-highest rounded-xl px-3.5 py-2.5 text-xs text-inverse-surface focus:outline-hidden focus:border-secondary font-medium"
                 />
                 <span class="text-[10px] text-on-surface-variant">Separate topics with commas. Rex is strictly prohibited from mentioning these.</span>
@@ -4313,14 +4342,6 @@ export function attachParentPortalListeners() {
     });
   }
 
-  const backDashBtn = document.getElementById('admin-back-dash-btn');
-  if (backDashBtn) {
-    backDashBtn.addEventListener('click', () => {
-      Sound.click();
-      store.lockParentSession();
-    });
-  }
-
   // Security & Biometric gate toggle settings
   document.querySelectorAll('.lock-option-toggle-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -4358,19 +4379,27 @@ export function attachParentPortalListeners() {
   // Security PIN and Biometric tests
   const savePinBtn = document.getElementById('save-parent-pin-btn');
   const settingPinInput = document.getElementById('parent-setting-pin-input');
-  const pinFeedback = document.getElementById('pin-save-feedback');
   if (savePinBtn && settingPinInput) {
-    savePinBtn.addEventListener('click', () => {
-      const newPin = settingPinInput.value.trim();
-      if (newPin && newPin.length >= 4) {
-        store.updateParentSettings({ pin: newPin });
-        Sound.fanfare();
-        if (pinFeedback) {
-          pinFeedback.classList.remove('hidden');
-          setTimeout(() => pinFeedback.classList.add('hidden'), 3000);
+    const submitPin = () => {
+      const res = store.setParentPin(settingPinInput.value);
+      if (!res.success) {
+        Sound.hit();
+        const errEl = document.getElementById('pin-save-error');
+        if (errEl) {
+          errEl.textContent = res.error;
+          errEl.classList.remove('hidden');
         }
-      } else {
-        alert('Please enter a PIN with at least 4 digits.');
+        return;
+      }
+      Sound.fanfare();
+      // setParentPin re-rendered the panel: look the feedback element up again.
+      flashFeedback('pin-save-feedback', `✓ PIN ${savedLabel()}`);
+    };
+    savePinBtn.addEventListener('click', submitPin);
+    settingPinInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        submitPin();
       }
     });
   }
@@ -4404,11 +4433,20 @@ export function attachParentPortalListeners() {
 
   document.querySelectorAll('.rex-voice-select-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const voice = btn.getAttribute('data-rex-voice') || btn.getAttribute('data-voice-id');
+      const voice = btn.getAttribute('data-voice-id');
       if (voice) {
         Sound.click();
-        store.setLiveRexVoice(voice);
+        store.setRexVoicePersona(voice);
       }
+    });
+  });
+
+  document.querySelectorAll('.rex-voice-preview-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const persona = store.setRexVoicePersona(btn.getAttribute('data-rex-voice-preview'));
+      speakCompanion(`Rawr! Hi, I'm Rex! This is my ${persona.label} voice!`, 'rex', { engine: 'web-speech' });
     });
   });
 
@@ -4540,6 +4578,8 @@ export function attachParentPortalListeners() {
   if (testRexBtn) {
     testRexBtn.addEventListener('click', () => {
       Sound.chirp();
+      const persona = store.getRexVoicePersona();
+      speakCompanion(`Rex voice check with my ${persona.label} voice! Can you hear me?`, 'rex');
       store.toggleLiveRexModal(true);
     });
   }
@@ -4672,23 +4712,36 @@ export function attachParentPortalListeners() {
   });
 
   // SCREEN TIME BANK: Save Settings
+  const curfewOffToggle = document.getElementById('screentime-curfew-off');
+  if (curfewOffToggle) {
+    curfewOffToggle.addEventListener('change', () => {
+      const curfewInput = document.getElementById('screentime-curfew-input');
+      if (curfewInput) {
+        curfewInput.disabled = curfewOffToggle.checked;
+        curfewInput.classList.toggle('opacity-50', curfewOffToggle.checked);
+      }
+    });
+  }
+
   const saveScreenTimeSettingsBtn = document.getElementById('screentime-save-settings-btn');
   if (saveScreenTimeSettingsBtn) {
     saveScreenTimeSettingsBtn.addEventListener('click', () => {
       const rateSelect = document.getElementById('screentime-rate-select');
       const capSelect = document.getElementById('screentime-cap-select');
       const curfewInput = document.getElementById('screentime-curfew-input');
+      const curfewOff = document.getElementById('screentime-curfew-off');
       const lockoutMsgInput = document.getElementById('screentime-lockout-msg');
 
+      // The store validates every value (rate 1/2/3/5, cap 0-240, HH:MM or no curfew, 1-160 char message).
       store.updateScreenTimeSettings(selectedScreenTimeKidId, {
-        screenTimeRate: rateSelect ? Number(rateSelect.value) : 2,
-        dailyMaxScreenTime: capSelect ? Number(capSelect.value) : 60,
-        bedtimeCurfew: curfewInput ? curfewInput.value : '20:00',
-        screenTimeLockMessage: lockoutMsgInput ? lockoutMsgInput.value : 'Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙'
+        screenTimeRate: rateSelect ? rateSelect.value : 2,
+        dailyMaxScreenTime: capSelect ? capSelect.value : 60,
+        bedtimeCurfew: curfewOff?.checked ? '' : (curfewInput ? curfewInput.value : '20:00'),
+        screenTimeLockMessage: lockoutMsgInput ? lockoutMsgInput.value : ''
       });
 
       Sound.fanfare();
-      alert('Screen Time Governance Rules successfully updated!');
+      flashFeedback('screentime-save-feedback', `✓ Screen Time Policy ${savedLabel()}`);
     });
   }
 
@@ -4799,10 +4852,10 @@ export function attachParentPortalListeners() {
       if (habit) habit.coins = val;
       if (chore) chore.coins = val;
       if (id === 'toothbrush_adventure_battle') {
-        if (!store.getState().parentSettings) store.getState().parentSettings = {};
-        store.getState().parentSettings.toothbrushBattleTokens = val;
+        store.updateParentSettings({ toothbrushBattleTokens: val });
+      } else {
+        store.saveState(true);
       }
-      store.saveState(true);
     });
   });
 
@@ -4816,10 +4869,10 @@ export function attachParentPortalListeners() {
       if (habit) habit.points = val;
       if (chore) chore.points = val;
       if (id === 'toothbrush_adventure_battle') {
-        if (!store.getState().parentSettings) store.getState().parentSettings = {};
-        store.getState().parentSettings.toothbrushBattlePoints = val;
+        store.updateParentSettings({ toothbrushBattlePoints: val });
+      } else {
+        store.saveState(true);
       }
-      store.saveState(true);
     });
   });
 
@@ -5367,9 +5420,9 @@ export function attachParentPortalListeners() {
   document.querySelectorAll('.ar-duration-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       const dur = parseInt(btn.getAttribute('data-duration'));
-      store.getState().parentSettings.arBattleDuration = dur;
+      if (!Number.isFinite(dur)) return;
       Sound.click();
-      store.saveState();
+      store.updateParentSettings({ arBattleDuration: dur });
     });
   });
 
@@ -6242,6 +6295,31 @@ export function attachParentPortalListeners() {
       });
     }
 
+    // Delivery, targeting and bounty controls (rendered in the Publish panel)
+    document.querySelectorAll('.studio-delivery-radio').forEach((r) => {
+      r.addEventListener('change', () => {
+        if (!r.checked) return;
+        studioDeliveryMethod = r.value;
+        Sound.click();
+        store.notify();
+      });
+    });
+    document.getElementById('studio-target-child-select')?.addEventListener('change', (e) => {
+      studioTargetChildProfile = e.target.value || 'all';
+    });
+    document.getElementById('studio-bounty-habit-select')?.addEventListener('change', (e) => {
+      studioBountyHabitId = e.target.value || 'brush_teeth';
+    });
+    document.getElementById('studio-bounty-streak-slider')?.addEventListener('input', (e) => {
+      studioBountyStreakDays = parseInt(e.target.value, 10) || 3;
+      const val = document.getElementById('studio-bounty-streak-val');
+      if (val) val.textContent = `${studioBountyStreakDays} Days`;
+    });
+    document.getElementById('studio-weapon-archetype')?.addEventListener('change', (e) => {
+      studioItemArchetype = e.target.value;
+      refreshStudioCanvas();
+    });
+
     const stashStreakSlider = document.getElementById('studio-stash-streak-slider');
     if (stashStreakSlider) {
       stashStreakSlider.addEventListener('input', (e) => {
@@ -6357,8 +6435,7 @@ export function attachParentPortalListeners() {
             statBonusLabel: `+${studioStatPercent || 30}% Boss Attack Power`,
             costCoins: studioItemPrice || 200,
             craftedBy: craftedByVal,
-            deliveryMethod: studioDeliveryMethod || 'instant_gift',
-            targetChildProfile: studioTargetChildProfile || 'all',
+            ...studioDeliveryFields(),
             voiceLine: voiceVal.trim() || 'Enamel power surge! Ready to vanquish sugar bandits!',
             image: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=256&auto=format&fit=crop&q=80',
             icon: 'swords',
@@ -6385,6 +6462,7 @@ export function attachParentPortalListeners() {
             craftedBy: craftedByVal,
             petVoiceLine: voiceVal.trim(),
             splineUrl: studioActiveSplineUrl || undefined,
+            ...studioDeliveryFields(),
             category: 'Avatar & Pet Gear',
             icon: studioSelectedSocket === 'head' ? 'crown' : studioSelectedSocket === 'back' ? 'shield' : studioSelectedSocket === 'chest' ? 'security' : 'sprint'
           };
@@ -6403,6 +6481,7 @@ export function attachParentPortalListeners() {
             petVoiceLine: voiceVal.trim(),
             splineUrl: studioActiveSplineUrl || undefined,
             icon: studioFurnitureType === 'bed' ? '🛏️' : studioFurnitureType === 'desk' ? '💻' : studioFurnitureType === 'petLounge' ? '🛋️' : studioFurnitureType === 'rug' ? '🌈' : '🏆',
+            ...studioDeliveryFields(),
             isCustom: true
           };
           store.publishCustomAIFurniture(furnitureToPublish);
@@ -6912,10 +6991,8 @@ export function attachParentPortalListeners() {
     btn.addEventListener('click', () => {
       const hour = parseInt(btn.getAttribute('data-companion-bedtime'), 10);
       if (!isNaN(hour)) {
-        store.getState().parentSettings.bedtimeHour = hour;
         Sound.click();
-        store.saveState();
-        store.notify();
+        store.updateParentSettings({ bedtimeHour: hour });
       }
     });
   });
@@ -6924,10 +7001,8 @@ export function attachParentPortalListeners() {
     btn.addEventListener('click', () => {
       const tone = btn.getAttribute('data-companion-tone');
       if (tone) {
-        store.getState().parentSettings.tone = tone;
         Sound.click();
-        store.saveState();
-        store.notify();
+        store.updateParentSettings({ tone });
       }
     });
   });
@@ -6936,10 +7011,8 @@ export function attachParentPortalListeners() {
     btn.addEventListener('click', () => {
       const turns = parseInt(btn.getAttribute('data-companion-turns'), 10);
       if (!isNaN(turns)) {
-        store.getState().parentSettings.maxDailyTurns = turns;
         Sound.click();
-        store.saveState();
-        store.notify();
+        store.updateParentSettings({ maxDailyTurns: turns });
       }
     });
   });
@@ -6948,19 +7021,10 @@ export function attachParentPortalListeners() {
     btn.addEventListener('click', () => {
       const area = btn.getAttribute('data-focus-area');
       if (!area) return;
-      if (!store.getState().parentSettings.focusAreas) {
-        store.getState().parentSettings.focusAreas = ['brushing_teeth', 'cleaning_toys'];
-      }
-      const list = store.getState().parentSettings.focusAreas;
-      const idx = list.indexOf(area);
-      if (idx >= 0) {
-        list.splice(idx, 1);
-      } else {
-        list.push(area);
-      }
+      const cur = store.getState().parentSettings?.focusAreas || ['brushing_teeth', 'cleaning_toys'];
+      const next = cur.includes(area) ? cur.filter((a) => a !== area) : [...cur, area];
       Sound.click();
-      store.saveState();
-      store.notify();
+      store.updateParentSettings({ focusAreas: next });
     });
   });
 
@@ -6969,25 +7033,26 @@ export function attachParentPortalListeners() {
     saveCompanionRulesBtn.addEventListener('click', async () => {
       const restrictedInput = document.getElementById('admin-restricted-topics-input');
       if (restrictedInput) {
-        const topics = restrictedInput.value
+        const topics = Array.from(new Set(restrictedInput.value
           .split(',')
           .map((t) => t.trim().toLowerCase())
-          .filter(Boolean);
-        store.getState().parentSettings.restrictedTopics = topics;
+          .filter(Boolean)))
+          .slice(0, 30);
+        store.updateParentSettings({ restrictedTopics: topics });
+      } else {
+        store.saveState(true);
       }
-
-      store.saveState(true);
-      firestoreSync.pushStateToCloud(true);
-
-      const activeHero = store.getState().selectedHero;
-      const heroId = activeHero?.name || activeHero?.id || 'hero_demo_1';
-      await cloudFunctionsService.updateCompanionSettings({
-        heroId,
-        settings: store.getState().parentSettings
-      });
-
       Sound.click();
-      store.notify();
+
+      // Only the companion rules go to the Cloud Function (never the PIN),
+      // saved under each kid's id so the chatWithPet fallback finds them.
+      const rules = store.getCompanionRules();
+      const heroes = (store.getState().heroes || []).filter((h) => h && h.id);
+      const results = await Promise.all(heroes.map((h) =>
+        cloudFunctionsService.updateCompanionSettings({ heroId: h.id, settings: rules }).catch(() => null)
+      ));
+      const anyCloud = results.some((r) => r && r.status === 'success');
+      flashFeedback('companion-rules-feedback', anyCloud ? '✓ Rules saved' : `✓ Rules ${savedLabel()}`);
     });
   }
 }

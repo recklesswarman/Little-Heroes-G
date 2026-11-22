@@ -147,6 +147,10 @@ class FirestoreSyncService {
     this.deviceId = getOrCreateDeviceId();
     this.sessionId = `sess_${secureRandomHex(16)}_${Date.now().toString(36)}`;
     this.debounceTimer = null;
+    // Outcome of the most recent cloud write, surfaced to the Parent Panel so a
+    // "Saved" message never claims the cloud has a change it rejected.
+    this.lastPushError = null;
+    this.lastPushOkAt = 0;
     this.lastCloudTimestamp = null;
     this.lastKnownDevices = {};
     this.initialSyncCallbacks = [];
@@ -448,7 +452,11 @@ class FirestoreSyncService {
    * Push current state to Firestore with smart 800ms coalesced debouncing
    */
   pushStateToCloud(immediate = false) {
-    if (!isFirebaseAvailable || !db || this.isQuotaExhausted()) return;
+    if (!isFirebaseAvailable || !db) return;
+    if (this.isQuotaExhausted()) {
+      this.lastPushError = 'quota';
+      return;
+    }
     if (store.getState().isDeviceRevoked) return;
 
     if (this.debounceTimer) {
@@ -487,6 +495,9 @@ class FirestoreSyncService {
     }
     if (typeof store.stampHeroFieldChanges === 'function') {
       store.stampHeroFieldChanges();
+    }
+    if (typeof store.stampParentSettingsChanges === 'function') {
+      store.stampParentSettingsChanges();
     }
 
     const state = store.getState();
@@ -533,9 +544,10 @@ class FirestoreSyncService {
             customGearDyesMap: h.customGearDyesMap || {},
             savedHeroCards: h.savedHeroCards || [],
             screenTimeMinutes: h.screenTimeMinutes !== undefined ? Number(h.screenTimeMinutes) : 45,
-            screenTimeUsedToday: h.screenTimeUsedToday !== undefined ? Number(h.screenTimeUsedToday) : 15,
+            screenTimeUsedToday: h.screenTimeUsedToday !== undefined ? Number(h.screenTimeUsedToday) : 0,
+            screenTimeUsageDate: h.screenTimeUsageDate || '',
             dailyMaxScreenTime: h.dailyMaxScreenTime !== undefined ? Number(h.dailyMaxScreenTime) : 60,
-            bedtimeCurfew: h.bedtimeCurfew || '20:00',
+            bedtimeCurfew: h.bedtimeCurfew ?? '20:00',
             screenTimeRate: h.screenTimeRate !== undefined ? Number(h.screenTimeRate) : 2,
             isScreenTimePaused: h.isScreenTimePaused !== undefined ? Boolean(h.isScreenTimePaused) : false,
             screenTimeLockMessage: h.screenTimeLockMessage || 'Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙',
@@ -663,15 +675,19 @@ class FirestoreSyncService {
       }), { merge: true });
 
       state.household.lastSync = "Synced Just Now";
+      this.lastPushError = null;
+      this.lastPushOkAt = Date.now();
 
       // Slide persistent link window forward (RFC 6749 Section 6)
       persistentLink.slideWindow().catch(() => {});
     } catch (error) {
       if (isQuotaError(error)) {
+        this.lastPushError = 'quota';
         this.markQuotaExhausted(error);
         return;
       }
-      console.warn("Firestore push warning:", error.message);
+      this.lastPushError = error?.code || error?.message || 'unknown';
+      console.error('[sync] push failed', error?.code, error?.message);
     } finally {
       this.isPushing = false;
       this.pushInFlight = false;
@@ -691,6 +707,19 @@ class FirestoreSyncService {
    * e.g. another device reconnecting and pushing its own stale cached
    * state in the narrow window before this device's push lands.
    */
+  /**
+   * Health of this device's cloud writes, for honest "Saved" feedback.
+   * mode: 'local' (no cloud configured), 'paused' (quota), 'error' (last write failed), 'ok'.
+   */
+  getSyncHealth() {
+    if (!isFirebaseAvailable || !db) return { mode: 'local' };
+    const st = store.getState?.() || {};
+    if (!st.isHouseholdConfigured || !(st.household?.syncCode || this.currentCode)) return { mode: 'local' };
+    if (this.isQuotaExhausted() || this.lastPushError === 'quota') return { mode: 'paused' };
+    if (this.lastPushError) return { mode: 'error', error: this.lastPushError };
+    return { mode: 'ok', lastPushOkAt: this.lastPushOkAt };
+  }
+
   hasPendingLocalChanges() {
     return Boolean(this.debounceTimer) || Boolean(this.isPushing);
   }

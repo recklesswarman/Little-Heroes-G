@@ -514,6 +514,7 @@ class RexVoiceEngine {
           const chatCallable = httpsCallable(functions, 'chatWithPet');
           const fnRes = await chatCallable({
             message,
+            heroId: activeHero?.id,
             petId: activePetId,
             speedMode: 'smart',
             childName: heroName,

@@ -37,6 +37,7 @@ import { BEDTIME_MORALS, CONSTELLATION_STICKERS } from '../data/bedtimeStoryData
 import { DIGITAL_REWARDS_CATALOG } from '../data/digitalRewardsCatalog.js';
 import { THREE_D_ASSETS } from '../data/threeDAssetCatalog.js';
 import { DEFAULT_COMPANION_PHRASES } from '../data/companionPhrasesData.js';
+import { getRexVoicePersona } from '../data/rexVoicePersonas.js';
 import { normalizeStoryMemory, mergeStoryMemory, commitStory } from '../../shared/storyEngine/memory.js';
 import {
   normalizeStoryProfile, normalizeStoryControls, normalizeSafetyLog, appendSafetyEvent, mergeSafetyLogs, requestFromControls
@@ -66,7 +67,25 @@ export const PET_PRICE_COINS = 150;
 // change timestamp in hero.fieldStamps, set only when THIS device actually
 // changes the value, so a cross-device merge keeps the most recent real
 // change instead of whichever device happened to save last.
-export const HERO_STAMPED_FIELDS = ['points', 'coins', 'tokens', 'xp', 'sparks', 'evolutionSparks', 'level', 'xpNext', 'screenTimeMinutes', 'activePetId'];
+export const HERO_STAMPED_FIELDS = [
+  'points', 'coins', 'tokens', 'xp', 'sparks', 'evolutionSparks', 'level', 'xpNext', 'screenTimeMinutes', 'activePetId',
+  // Screen Time Bank rules a parent edits on one device and usage a kid's device records.
+  'screenTimeUsedToday', 'screenTimeUsageDate', 'dailyMaxScreenTime', 'bedtimeCurfew',
+  'screenTimeRate', 'isScreenTimePaused', 'screenTimeLockMessage',
+  // Rex chat turns the kid used today (Daily Chat Turn Limit).
+  'companionTurnsToday', 'companionTurnsDate'
+];
+
+// parentSettings keys are stamped the same way (parentSettings.fieldStamps), so
+// a device re-saving an old copy can't undo a parent's change (e.g. a new PIN).
+// storySafetyLog is history and is unioned instead; fieldStamps is the stamp map.
+export const PARENT_SETTINGS_UNSTAMPED = new Set(['storySafetyLog', 'fieldStamps']);
+
+export const PARENT_PIN_PATTERN = /^\d{4,8}$/;
+
+export const DEFAULT_SCREEN_TIME_LOCK_MESSAGE = 'Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙';
+export const SCREEN_TIME_RATES = [1, 2, 3, 5];
+export const SCREEN_TIME_MAX_CAP = 240;
 
 const HERO_MIRROR_NON_ENUMERABLE_KEYS = [
   'cleanseAlbum',
@@ -236,7 +255,8 @@ const defaultState = {
     },
     savedHeroCards: [],
     screenTimeMinutes: 45,
-    screenTimeUsedToday: 15,
+    screenTimeUsedToday: 0,
+    screenTimeUsageDate: '',
     dailyMaxScreenTime: 60,
     bedtimeCurfew: '20:00',
     screenTimeRate: 2, // 2 minutes per point
@@ -298,7 +318,8 @@ const defaultState = {
       },
       savedHeroCards: [],
       screenTimeMinutes: 45,
-      screenTimeUsedToday: 15,
+      screenTimeUsedToday: 0,
+      screenTimeUsageDate: '',
       dailyMaxScreenTime: 60,
       bedtimeCurfew: '20:00',
       screenTimeRate: 2,
@@ -513,15 +534,15 @@ const defaultState = {
     toothbrushBattlePoints: 15,
     toothbrushBattleTokens: 30,
     motionSensitivity: 'medium',
-    voicePromptsEnabled: true,
-    autoApproveHabits: false,
-    dailyScreenTimeLimitMins: 45,
-    biometricCredentialId: null,
+    // Rex's voice persona (see src/data/rexVoicePersonas.js). Household-wide.
+    rexVoice: 'Puck',
     // Story controls (household): topics to avoid, research on/off, the parent's own story ideas.
     storyControls: { avoidTopics: [], researchEnabled: true, parentIdeas: [] },
     // What the story filters did (reason codes only, newest first, capped).
     storySafetyLog: [],
-    companionPhrases: DEFAULT_COMPANION_PHRASES.map(p => ({ ...p }))
+    companionPhrases: DEFAULT_COMPANION_PHRASES.map(p => ({ ...p })),
+    // { [settingKey]: ms epoch of this household's last real change } -- see PARENT_SETTINGS_UNSTAMPED.
+    fieldStamps: {}
   },
 
   // Reward celebration modal
@@ -630,6 +651,44 @@ class Store {
       delete this.state.liveRex.geminiApiKey;
     }
     this.resetHeroFieldBaseline();
+    this.resetParentSettingsBaseline();
+  }
+
+  // Record every parentSettings value so the next stampParentSettingsChanges()
+  // can tell which keys this device changed (including direct mutations).
+  resetParentSettingsBaseline() {
+    const ps = this.state?.parentSettings || {};
+    const snap = {};
+    Object.keys(ps).forEach((k) => {
+      if (!PARENT_SETTINGS_UNSTAMPED.has(k)) snap[k] = JSON.stringify(ps[k] ?? null);
+    });
+    this._parentSettingsBaseline = snap;
+  }
+
+  stampParentSettingsChanges() {
+    const ps = this.state?.parentSettings;
+    if (!ps || typeof ps !== 'object') return;
+    if (!this._parentSettingsBaseline) {
+      this.resetParentSettingsBaseline();
+      return;
+    }
+    const now = Date.now();
+    const base = this._parentSettingsBaseline;
+    const keys = new Set([...Object.keys(ps), ...Object.keys(base)]);
+    const stamps = { ...(ps.fieldStamps || {}) };
+    keys.forEach((k) => {
+      if (PARENT_SETTINGS_UNSTAMPED.has(k)) return;
+      if (JSON.stringify(ps[k] ?? null) !== (base[k] ?? 'null')) {
+        stamps[k] = now;
+      } else if (!(k in stamps)) {
+        // Every key carries a stamp (0 = never changed here). The cloud doc is
+        // deep-merged, so a push without one would leave another device's newer
+        // stamp sitting next to this device's stale value.
+        stamps[k] = 0;
+      }
+    });
+    ps.fieldStamps = stamps;
+    this.resetParentSettingsBaseline();
   }
 
   // Record the current value of every stamped field for every hero, so the
@@ -806,7 +865,7 @@ class Store {
             });
             // Screen Time Bank Migration
             if (h.screenTimeMinutes === undefined) h.screenTimeMinutes = 45;
-            if (h.screenTimeUsedToday === undefined) h.screenTimeUsedToday = 15;
+            if (h.screenTimeUsedToday === undefined) h.screenTimeUsedToday = 0;
             if (h.dailyMaxScreenTime === undefined) h.dailyMaxScreenTime = 60;
             if (h.bedtimeCurfew === undefined) h.bedtimeCurfew = '20:00';
             if (h.screenTimeRate === undefined) h.screenTimeRate = 2;
@@ -841,7 +900,7 @@ class Store {
             if (parsed.selectedHero.petXpMap[pId] === undefined) parsed.selectedHero.petXpMap[pId] = 0;
           });
           if (parsed.selectedHero.screenTimeMinutes === undefined) parsed.selectedHero.screenTimeMinutes = 45;
-          if (parsed.selectedHero.screenTimeUsedToday === undefined) parsed.selectedHero.screenTimeUsedToday = 15;
+          if (parsed.selectedHero.screenTimeUsedToday === undefined) parsed.selectedHero.screenTimeUsedToday = 0;
           if (parsed.selectedHero.dailyMaxScreenTime === undefined) parsed.selectedHero.dailyMaxScreenTime = 60;
           if (parsed.selectedHero.bedtimeCurfew === undefined) parsed.selectedHero.bedtimeCurfew = '20:00';
           if (parsed.selectedHero.screenTimeRate === undefined) parsed.selectedHero.screenTimeRate = 2;
@@ -1188,6 +1247,13 @@ class Store {
         delete parsed.companionPhrases;
         parsed.parentSettings.storyControls = normalizeStoryControls(parsed.parentSettings.storyControls);
         parsed.parentSettings.storySafetyLog = normalizeSafetyLog(parsed.parentSettings.storySafetyLog);
+        if (!parsed.parentSettings.fieldStamps || typeof parsed.parentSettings.fieldStamps !== 'object') {
+          parsed.parentSettings.fieldStamps = {};
+        }
+        // The voice persona used to live (unused) in liveRex.voiceName.
+        if (!parsed.parentSettings.rexVoice) {
+          parsed.parentSettings.rexVoice = getRexVoicePersona(parsed.liveRex?.voiceName).id;
+        }
 
         const loaded = { ...defaultState, ...parsed };
         this.state = loaded;
@@ -1596,6 +1662,7 @@ class Store {
     try {
       this.syncSelectedHeroWithHeroes();
       this.stampHeroFieldChanges();
+      this.stampParentSettingsChanges();
       if (typeof localStorage !== 'undefined') {
         localStorage.setItem(STORAGE_KEY, this._serializeStateForLocalStorage(this.state));
       }
@@ -1632,7 +1699,9 @@ class Store {
 
   init() {
     this.state = this.loadState();
+    (this.state.heroes || []).forEach((h) => this.rollScreenTimeDay(h));
     this.resetHeroFieldBaseline();
+    this.resetParentSettingsBaseline();
     return this.state;
   }
 
@@ -6868,18 +6937,39 @@ class Store {
     this.saveState(true);
   }
 
-  updateScreenTimeSettings(heroId, { dailyMaxScreenTime, bedtimeCurfew, screenTimeRate, screenTimeLockMessage }) {
-    const targets = heroId === 'all' 
-      ? this.state.heroes 
-      : [this.state.heroes.find(h => h.id === heroId) || this.state.selectedHero];
+  // Clean a Screen Time policy from the Parent Panel form. Anything invalid
+  // falls back to the safe default, so stored rules are always usable.
+  normalizeScreenTimePolicy({ dailyMaxScreenTime, bedtimeCurfew, screenTimeRate, screenTimeLockMessage } = {}) {
+    const out = {};
+    if (dailyMaxScreenTime !== undefined) {
+      const cap = Number(dailyMaxScreenTime);
+      out.dailyMaxScreenTime = Number.isInteger(cap) && cap >= 0 && cap <= SCREEN_TIME_MAX_CAP ? cap : 60;
+    }
+    if (bedtimeCurfew !== undefined) {
+      const c = String(bedtimeCurfew ?? '').trim();
+      out.bedtimeCurfew = c === '' ? '' : (/^([01]\d|2[0-3]):[0-5]\d$/.test(c) ? c : '20:00');
+    }
+    if (screenTimeRate !== undefined) {
+      const r = Number(screenTimeRate);
+      out.screenTimeRate = SCREEN_TIME_RATES.includes(r) ? r : 2;
+    }
+    if (screenTimeLockMessage !== undefined) {
+      const m = String(screenTimeLockMessage ?? '').trim().slice(0, 160);
+      out.screenTimeLockMessage = m || DEFAULT_SCREEN_TIME_LOCK_MESSAGE;
+    }
+    return out;
+  }
+
+  updateScreenTimeSettings(heroId, policy = {}) {
+    const clean = this.normalizeScreenTimePolicy(policy);
+    const targets = heroId === 'all'
+      ? (this.state.heroes || [])
+      : [(this.state.heroes || []).find(h => h.id === heroId) || this.state.selectedHero];
 
     targets.forEach(h => {
       if (!h) return;
-      if (dailyMaxScreenTime !== undefined) h.dailyMaxScreenTime = Number(dailyMaxScreenTime);
-      if (bedtimeCurfew !== undefined) h.bedtimeCurfew = bedtimeCurfew;
-      if (screenTimeRate !== undefined) h.screenTimeRate = Number(screenTimeRate);
-      if (screenTimeLockMessage !== undefined) h.screenTimeLockMessage = screenTimeLockMessage;
-      if (this.state.selectedHero.id === h.id) {
+      Object.assign(h, clean);
+      if (this.state.selectedHero && this.state.selectedHero.id === h.id) {
         Object.assign(this.state.selectedHero, {
           dailyMaxScreenTime: h.dailyMaxScreenTime,
           bedtimeCurfew: h.bedtimeCurfew,
@@ -6889,35 +6979,82 @@ class Store {
       }
     });
 
-    this.logAction('Parent updated Screen Time governance rules', `Rate: ${screenTimeRate || 2}m/pt, Curfew: ${bedtimeCurfew || '20:00'}`);
+    const anyKid = targets.find(Boolean) || {};
+    this.logAction('Parent updated Screen Time governance rules', `Rate: ${anyKid.screenTimeRate ?? 2}m/pt, Cap: ${anyKid.dailyMaxScreenTime ?? 60}m, Curfew: ${anyKid.bedtimeCurfew || 'none'}`);
     this.saveState(true);
+    return clean;
   }
 
-  isScreenTimeLocked(hero = null) {
-    const h = hero || this.state.selectedHero;
+  // Start a fresh day of screen time usage. Returns true when it reset.
+  rollScreenTimeDay(h) {
     if (!h) return false;
-    if (h.isScreenTimePaused) return true;
-    if (typeof h.screenTimeMinutes === 'number' && h.screenTimeMinutes <= 0) return true;
-    if (h.bedtimeCurfew) {
-      const parts = String(h.bedtimeCurfew).split(':').map(Number);
-      const curfewHour = !isNaN(parts[0]) ? parts[0] : 20;
-      const curfewMin = !isNaN(parts[1]) ? parts[1] : 0;
-      const now = new Date();
-      const curHour = now.getHours();
-      const curMin = now.getMinutes();
-      const curTotalMin = curHour * 60 + curMin;
-      const curfewTotalMin = curfewHour * 60 + curfewMin;
-      // Curfew is active from curfew time until 6:00 AM (360 min)
-      if (curTotalMin >= curfewTotalMin || curTotalMin < 360) {
-        return true;
+    const today = new Date().toDateString();
+    if (h.screenTimeUsageDate !== today) {
+      h.screenTimeUsedToday = 0;
+      h.screenTimeUsageDate = today;
+      if (this.state?.selectedHero && this.state.selectedHero !== h && this.state.selectedHero.id === h.id) {
+        this.state.selectedHero.screenTimeUsedToday = 0;
+        this.state.selectedHero.screenTimeUsageDate = today;
       }
+      return true;
     }
     return false;
   }
 
+  // null when the kid may play; otherwise 'paused' | 'daily_cap' | 'bank_empty' | 'curfew'.
+  getScreenTimeLockReason(hero = null, now = new Date()) {
+    const h = hero || this.state.selectedHero;
+    if (!h) return null;
+    const stored = (this.state.heroes || []).find((x) => x && x.id === h.id);
+    if (stored) this.rollScreenTimeDay(stored);
+    if (h !== stored) this.rollScreenTimeDay(h);
+    // The object the caller holds (usually selectedHero) can be newer than the
+    // copy in heroes[] (e.g. a pause toggled on the selected kid), so it wins.
+    const src = stored && stored !== h ? { ...stored, ...h } : h;
+    if (src.isScreenTimePaused) return 'paused';
+    const capNum = Number(src.dailyMaxScreenTime);
+    const cap = src.dailyMaxScreenTime !== undefined && src.dailyMaxScreenTime !== null && Number.isFinite(capNum) ? capNum : 60;
+    if ((Number(src.screenTimeUsedToday) || 0) >= cap) return 'daily_cap';
+    if (typeof src.screenTimeMinutes === 'number' && src.screenTimeMinutes <= 0) return 'bank_empty';
+    if (src.bedtimeCurfew && /^\d{1,2}:\d{2}$/.test(String(src.bedtimeCurfew))) {
+      const [ch, cm] = String(src.bedtimeCurfew).split(':').map(Number);
+      const curfew = ch * 60 + cm;
+      const cur = now.getHours() * 60 + now.getMinutes();
+      const WAKE = 360; // curfew lasts until 6:00 AM
+      const locked = curfew >= WAKE ? (cur >= curfew || cur < WAKE) : (cur >= curfew && cur < WAKE);
+      if (locked) return 'curfew';
+    }
+    return null;
+  }
+
+  isScreenTimeLocked(hero = null, now = new Date()) {
+    return this.getScreenTimeLockReason(hero, now) !== null;
+  }
+
   getScreenTimeLockMessage(hero = null) {
     const h = hero || this.state.selectedHero;
-    return h?.screenTimeLockMessage || 'Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙';
+    return h?.screenTimeLockMessage || DEFAULT_SCREEN_TIME_LOCK_MESSAGE;
+  }
+
+  // Record `minutes` of play: adds to today's usage and spends banked minutes.
+  // Saves without re-rendering so a running game isn't torn down.
+  consumeScreenTime(heroId, minutes = 1) {
+    const h = (this.state.heroes || []).find((x) => x && x.id === heroId);
+    if (!h) return { locked: false, reason: null };
+    this.rollScreenTimeDay(h);
+    const m = Math.max(0, Number(minutes) || 0);
+    h.screenTimeUsedToday = (Number(h.screenTimeUsedToday) || 0) + m;
+    h.screenTimeMinutes = Math.max(0, (Number(h.screenTimeMinutes) || 0) - m);
+    if (this.state.selectedHero && this.state.selectedHero.id === h.id) {
+      Object.assign(this.state.selectedHero, {
+        screenTimeUsedToday: h.screenTimeUsedToday,
+        screenTimeMinutes: h.screenTimeMinutes,
+        screenTimeUsageDate: h.screenTimeUsageDate
+      });
+    }
+    this.saveState(false, true);
+    const reason = this.getScreenTimeLockReason(h);
+    return { locked: reason !== null, reason };
   }
 
   getArcadeHighScores(gameId, hero = null) {
@@ -7886,12 +8023,21 @@ class Store {
     this.saveState();
   }
 
+  // Rex's voice persona is a household setting (parentSettings.rexVoice), read by
+  // voiceService (Web Speech / previews) and geminiLiveService (Live voice name).
+  setRexVoicePersona(voice) {
+    const persona = getRexVoicePersona(voice);
+    this.updateParentSettings({ rexVoice: persona.id });
+    return persona;
+  }
+
+  getRexVoicePersona() {
+    return getRexVoicePersona(this.state?.parentSettings?.rexVoice);
+  }
+
+  // Older name kept for existing callers.
   setLiveRexVoice(voice) {
-    if (!this.state.liveRex) {
-      this.state.liveRex = { ...defaultState.liveRex };
-    }
-    this.state.liveRex.voiceName = voice;
-    this.saveState();
+    return this.setRexVoicePersona(voice);
   }
 
   isParentUnlocked() {
@@ -7928,6 +8074,61 @@ class Store {
   updateParentSettings(newSettings) {
     this.state.parentSettings = { ...this.state.parentSettings, ...newSettings };
     this.saveState(true);
+  }
+
+  // { mode: 'local' | 'ok' | 'paused' | 'error' } for this device's cloud writes.
+  getSyncHealth() {
+    return this.syncService?.getSyncHealth?.() || { mode: 'local' };
+  }
+
+  // Validates and saves the Parent Dashboard PIN (4 to 8 digits).
+  setParentPin(rawPin) {
+    const pin = String(rawPin ?? '').trim();
+    if (!PARENT_PIN_PATTERN.test(pin)) {
+      return { success: false, error: 'PIN must be 4 to 8 digits (numbers only).' };
+    }
+    this.updateParentSettings({ pin, pinLockEnabled: true });
+    return { success: true };
+  }
+
+  verifyParentPin(rawPin) {
+    const pin = String(rawPin ?? '').trim();
+    const current = String(this.state?.parentSettings?.pin || '1234');
+    return pin.length > 0 && pin === current;
+  }
+
+  // Rex companion rules from the Safety tab, with defaults applied.
+  getCompanionRules() {
+    const ps = this.state?.parentSettings || {};
+    return {
+      companionEnabled: ps.companionEnabled !== false,
+      bedtimeHour: Number.isInteger(ps.bedtimeHour) ? ps.bedtimeHour : 20,
+      tone: ['energetic', 'gentle', 'focused'].includes(ps.tone) ? ps.tone : 'energetic',
+      maxDailyTurns: Number.isInteger(ps.maxDailyTurns) ? ps.maxDailyTurns : 30,
+      focusAreas: Array.isArray(ps.focusAreas) ? [...ps.focusAreas] : ['brushing_teeth', 'cleaning_toys'],
+      restrictedTopics: Array.isArray(ps.restrictedTopics) ? [...ps.restrictedTopics] : []
+    };
+  }
+
+  // Per-kid, per-day count of messages a child sent Rex (Daily Chat Turn Limit).
+  // Stored on the hero (companionTurnsToday / companionTurnsDate) so it syncs.
+  countCompanionTurn(heroId) {
+    const h = (this.state.heroes || []).find((x) => x && x.id === heroId);
+    if (!h) return 0;
+    const today = new Date().toDateString();
+    const count = (h.companionTurnsDate === today ? Number(h.companionTurnsToday) || 0 : 0) + 1;
+    h.companionTurnsToday = count;
+    h.companionTurnsDate = today;
+    if (this.state.selectedHero && this.state.selectedHero.id === h.id) {
+      Object.assign(this.state.selectedHero, { companionTurnsToday: count, companionTurnsDate: today });
+    }
+    this.saveState(false, true);
+    return count;
+  }
+
+  getCompanionTurnsToday(heroId) {
+    const h = (this.state?.heroes || []).find((x) => x && x.id === heroId);
+    return h && h.companionTurnsDate === new Date().toDateString() ? Number(h.companionTurnsToday) || 0 : 0;
   }
 
   addParentUser({ email, displayName, role = 'admin', uid = null }) {
@@ -8472,6 +8673,12 @@ class Store {
         // blind snapshot overwrites would wipe active quests with empty arrays.
         'aiQuests',
         'heroAiQuestsMap',
+        // parentSettings and liveRex have dedicated merges near the end of this
+        // function (parentSettings: per-key fieldStamps; liveRex: only the
+        // household-wide auto-listen flag). A blind overwrite here made every
+        // stale device's copy win -- e.g. a kid tablet putting the old PIN back.
+        'parentSettings',
+        'liveRex',
         // Deleted custom item tombstones are unioned cleanly in Section 2b below.
         'deletedCustomItemIds',
         // Per-kid mirrored & hygiene/currency fields merged in Section 3 below;
@@ -8652,12 +8859,15 @@ class Store {
           customGearDyesMap: cloudH.customGearDyesMap || localH?.customGearDyesMap || {},
           savedHeroCards: cloudH.savedHeroCards || localH?.savedHeroCards || [],
           screenTimeMinutes: resolve('screenTimeMinutes', num(cloudH.screenTimeMinutes), preferLocalRewards ? (localH.screenTimeMinutes ?? 45) : (cloudH.screenTimeMinutes !== undefined ? Number(cloudH.screenTimeMinutes) : (localH?.screenTimeMinutes ?? 45))),
-          screenTimeUsedToday: cloudH.screenTimeUsedToday !== undefined ? Number(cloudH.screenTimeUsedToday) : (localH?.screenTimeUsedToday ?? 15),
-          dailyMaxScreenTime: cloudH.dailyMaxScreenTime !== undefined ? Number(cloudH.dailyMaxScreenTime) : (localH?.dailyMaxScreenTime ?? 60),
-          bedtimeCurfew: cloudH.bedtimeCurfew || localH?.bedtimeCurfew || '20:00',
-          screenTimeRate: cloudH.screenTimeRate !== undefined ? Number(cloudH.screenTimeRate) : (localH?.screenTimeRate ?? 2),
-          isScreenTimePaused: cloudH.isScreenTimePaused !== undefined ? Boolean(cloudH.isScreenTimePaused) : (localH?.isScreenTimePaused ?? false),
-          screenTimeLockMessage: cloudH.screenTimeLockMessage || localH?.screenTimeLockMessage || 'Rex says: Great job today! Time to play outside or get cozy for bedtime! 🦖🌙',
+          screenTimeUsedToday: Math.max(0, Number(resolve('screenTimeUsedToday', num(cloudH.screenTimeUsedToday), cloudH.screenTimeUsedToday !== undefined ? Number(cloudH.screenTimeUsedToday) : (localH?.screenTimeUsedToday ?? 0))) || 0),
+          screenTimeUsageDate: resolve('screenTimeUsageDate', cloudH.screenTimeUsageDate, cloudH.screenTimeUsageDate ?? localH?.screenTimeUsageDate ?? ''),
+          dailyMaxScreenTime: Number(resolve('dailyMaxScreenTime', num(cloudH.dailyMaxScreenTime), cloudH.dailyMaxScreenTime !== undefined ? Number(cloudH.dailyMaxScreenTime) : (localH?.dailyMaxScreenTime ?? 60))),
+          bedtimeCurfew: resolve('bedtimeCurfew', cloudH.bedtimeCurfew, cloudH.bedtimeCurfew ?? localH?.bedtimeCurfew ?? '20:00'),
+          screenTimeRate: Number(resolve('screenTimeRate', num(cloudH.screenTimeRate), cloudH.screenTimeRate !== undefined ? Number(cloudH.screenTimeRate) : (localH?.screenTimeRate ?? 2))),
+          isScreenTimePaused: Boolean(resolve('isScreenTimePaused', cloudH.isScreenTimePaused, cloudH.isScreenTimePaused !== undefined ? Boolean(cloudH.isScreenTimePaused) : (localH?.isScreenTimePaused ?? false))),
+          companionTurnsToday: Number(resolve('companionTurnsToday', num(cloudH.companionTurnsToday), cloudH.companionTurnsToday ?? localH?.companionTurnsToday ?? 0)) || 0,
+          companionTurnsDate: resolve('companionTurnsDate', cloudH.companionTurnsDate, cloudH.companionTurnsDate ?? localH?.companionTurnsDate ?? ''),
+          screenTimeLockMessage: resolve('screenTimeLockMessage', cloudH.screenTimeLockMessage, cloudH.screenTimeLockMessage || localH?.screenTimeLockMessage || DEFAULT_SCREEN_TIME_LOCK_MESSAGE),
           arcadeHighScores: cloudH.arcadeHighScores || localH?.arcadeHighScores || {},
           arcadeCoinsEarnedToday: cloudH.arcadeCoinsEarnedToday !== undefined ? Number(cloudH.arcadeCoinsEarnedToday) : (localH?.arcadeCoinsEarnedToday ?? 0),
           arcadeCoinsLastDate: cloudH.arcadeCoinsLastDate || localH?.arcadeCoinsLastDate || '',
@@ -9214,25 +9424,57 @@ class Store {
     if (Array.isArray(this.state.heroes)) {
       this.state.heroes.forEach(pruneHeroTombstonedItems);
     }
-    if (cloudData.liveRex && typeof cloudData.liveRex === 'object') {
-      this.state.liveRex = {
-        ...this.state.liveRex,
-        ...cloudData.liveRex,
-        isOpen: this.state.liveRex.isOpen || cloudData.liveRex.isOpen || false,
-        voiceName: cloudData.liveRex.voiceName || this.state.liveRex.voiceName || 'Puck',
-        autoListenInQuests: cloudData.liveRex.autoListenInQuests ?? this.state.liveRex.autoListenInQuests ?? true,
-        status: cloudData.liveRex.status || this.state.liveRex.status || 'idle',
-        statusMessage: cloudData.liveRex.statusMessage || this.state.liveRex.statusMessage || '',
-        lastRexTranscript: cloudData.liveRex.lastRexTranscript || this.state.liveRex.lastRexTranscript || '',
-        lastUserTranscript: cloudData.liveRex.lastUserTranscript || this.state.liveRex.lastUserTranscript || ''
-      };
+    // liveRex is per-device session state (open/connected/status/transcripts);
+    // only the household-wide auto-listen preference comes from the cloud.
+    const cloudLiveRex = (cloudData.liveRex && typeof cloudData.liveRex === 'object')
+      ? cloudData.liveRex
+      : (cloudData.stateSnapshot?.liveRex && typeof cloudData.stateSnapshot.liveRex === 'object' ? cloudData.stateSnapshot.liveRex : null);
+    if (cloudLiveRex && typeof cloudLiveRex.autoListenInQuests === 'boolean') {
+      this.state.liveRex = { ...(this.state.liveRex || defaultState.liveRex), autoListenInQuests: cloudLiveRex.autoListenInQuests };
     }
-    if (cloudData.parentSettings) {
-      const localLog = this.state.parentSettings?.storySafetyLog;
-      this.state.parentSettings = { ...this.state.parentSettings, ...cloudData.parentSettings };
-      this.state.parentSettings.storyControls = normalizeStoryControls(this.state.parentSettings.storyControls);
+
+    // parentSettings: per-key merge. The most recent real change to each key
+    // wins, whichever device made it (parentSettings.fieldStamps). Unstamped
+    // keys on both sides (data from before stamps existed, or a new device
+    // still on defaults) take the cloud value, as before.
+    const cloudPS = (cloudData.parentSettings && typeof cloudData.parentSettings === 'object')
+      ? cloudData.parentSettings
+      : (cloudData.stateSnapshot?.parentSettings && typeof cloudData.stateSnapshot.parentSettings === 'object' ? cloudData.stateSnapshot.parentSettings : null);
+    if (cloudPS) {
+      // Anything this device changed but hasn't saved yet counts as a local change.
+      this.stampParentSettingsChanges();
+      const localPS = this.state.parentSettings || {};
+      const ls = localPS.fieldStamps || {};
+      const cs = cloudPS.fieldStamps || {};
+      const merged = { ...localPS };
+      const stamps = { ...ls };
+      Object.keys(cloudPS).forEach((k) => {
+        if (PARENT_SETTINGS_UNSTAMPED.has(k)) return;
+        const l = Number(ls[k]) || 0;
+        const c = Number(cs[k]) || 0;
+        if (l > c) {
+          if (JSON.stringify(localPS[k] ?? null) !== JSON.stringify(cloudPS[k] ?? null)) repairPushNeeded = true;
+          return; // our copy is newer: keep it and repair the cloud
+        }
+        merged[k] = cloudPS[k];
+        if (c) stamps[k] = c;
+      });
+      // Keys this device changed that the cloud copy doesn't have at all yet.
+      Object.keys(ls).forEach((k) => {
+        if (!(k in cloudPS) && (Number(ls[k]) || 0) > 0) repairPushNeeded = true;
+      });
+      merged.fieldStamps = stamps;
+      merged.storyControls = normalizeStoryControls(merged.storyControls);
       // The safety log is history: two devices' events are unioned, never overwritten.
-      this.state.parentSettings.storySafetyLog = mergeSafetyLogs(localLog, cloudData.parentSettings.storySafetyLog);
+      merged.storySafetyLog = mergeSafetyLogs(localPS.storySafetyLog, cloudPS.storySafetyLog);
+      if (!Array.isArray(merged.companionPhrases) || merged.companionPhrases.length === 0) {
+        merged.companionPhrases = Array.isArray(localPS.companionPhrases) && localPS.companionPhrases.length > 0
+          ? localPS.companionPhrases
+          : DEFAULT_COMPANION_PHRASES.map(p => ({ ...p }));
+      }
+      this.state.parentSettings = merged;
+      // Values just adopted from the cloud are not local changes.
+      this.resetParentSettingsBaseline();
     }
     if (cloudData.profileThemes && Array.isArray(cloudData.profileThemes)) {
       this.state.profileThemes = cloudData.profileThemes;

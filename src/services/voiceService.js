@@ -817,9 +817,31 @@ export function getCompanionVoiceParams(petId = 'rex') {
   const raw = String(petId || 'rex').toLowerCase().trim();
   const normId = raw.replace(/\s+/g, '_');
   const canonicalKey = normalizePetKey(normId);
-  return COMPANION_VOICE_PROFILES[normId]
+  const profile = COMPANION_VOICE_PROFILES[normId]
     || COMPANION_VOICE_PROFILES[canonicalKey]
     || COMPANION_VOICE_PROFILES.rex;
+  // Rex speaks with the parent's chosen voice persona (Parent Panel > Safety tab).
+  if (canonicalKey === 'rex') {
+    const persona = getActiveRexPersonaWebSpeech();
+    if (persona) {
+      return { ...profile, pitch: persona.pitch, rate: persona.rate, preferred: persona.preferred };
+    }
+  }
+  return profile;
+}
+
+/** Web Speech settings of Rex's chosen persona, or null for Rex's normal voice. */
+export function getActiveRexPersonaWebSpeech() {
+  try {
+    return store?.getRexVoicePersona?.()?.webSpeech || null;
+  } catch {
+    return null;
+  }
+}
+
+function isRexPersonaActiveFor(petId) {
+  return normalizePetKey(String(petId || 'rex').toLowerCase().trim().replace(/\s+/g, '_')) === 'rex'
+    && Boolean(getActiveRexPersonaWebSpeech());
 }
 
 /**
@@ -1715,19 +1737,22 @@ export const speakCompanion = async (text, petIdOrOptions = null, onEndedOrOptio
   }
 
   const voiceStyle = opts.voiceStyle || 'default';
+  // Pre-recorded clips and the Pi's Piper voice are Rex's default voice, so a
+  // chosen persona skips them and speaks through Web Speech instead.
+  const rexPersonaActive = isRexPersonaActiveFor(petId);
 
   // --- Fast Path: Bundled PCM AudioBuffer Cache (only for genuine non-prewarmed PCM clips) ---
   const cachedData = await lookupClientAudioCache(cleanSpoken, petId, voiceStyle);
   if (myGeneration !== speechGeneration) return;
 
-  if (cachedData && !cachedData.prewarmed && (cachedData.audio || cachedData.audioBuffer)) {
+  if (!rexPersonaActive && cachedData && !cachedData.prewarmed && (cachedData.audio || cachedData.audioBuffer)) {
     const played = await playPcmTtsResponse(cachedData, cleanSpoken, petId, callback, myGeneration, opts);
     if (played) return;
     if (myGeneration !== speechGeneration) return;
   }
 
   // --- Family Pi voice: Rex speaks with offline Piper TTS when server.js on the Pi offers it ---
-  if (petId === 'rex' && opts.engine !== 'web-speech' && hasUserInteracted) {
+  if (petId === 'rex' && !rexPersonaActive && opts.engine !== 'web-speech' && hasUserInteracted) {
     const playedLocally = await playLocalPiperSpeech(cleanSpoken, petId, callback, myGeneration);
     if (playedLocally) return;
     if (myGeneration !== speechGeneration) return;
