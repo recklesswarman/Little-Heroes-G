@@ -9,6 +9,7 @@
 
 import { store, KID_AVATARS } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
+import { wrapTappableWords, attachWordHelper } from '../services/wordHelperService.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
 import { safeImageUrl } from '../utils/safeImageUrl.js';
 
@@ -29,10 +30,10 @@ function renderStoryBlocks(act) {
     : [];
   const bodyClass = 'font-body text-sm sm:text-base md:text-lg text-slate-100 leading-relaxed font-semibold';
   if (blocks.length === 0) {
-    return `<p class="${bodyClass}">${escapeHtml(act?.text || '')}</p>`;
+    return `<p class="${bodyClass}">${wrapTappableWords(act?.text || '')}</p>`;
   }
   return blocks.map(b => {
-    const text = escapeHtml(b.text);
+    const text = wrapTappableWords(b.text);
     if (b.type === 'dialogue') return `<p class="${bodyClass} mt-3 pl-3 border-l-2 border-[#00d2d3]/50">${text}</p>`;
     if (b.type === 'whisper') return `<p class="text-sm text-[#ffb961] italic mt-4 text-center">${text}</p>`;
     if (b.type === 'breathCue') return `<p class="text-xs font-bold text-[#00d2d3] mt-4 text-center uppercase tracking-wider">${text}</p>`;
@@ -814,6 +815,8 @@ function renderBookshelfLibrary(library) {
  * Event Handlers Wiring
  */
 export function setupBedtimeStoryListeners() {
+  // Tap any word in the story to hear it and see a short meaning.
+  attachWordHelper(document.getElementById('main-content') || document.body);
   // Navigation / Back
   document.getElementById('bedtime-back-btn')?.addEventListener('click', () => {
     Sound.bloop();

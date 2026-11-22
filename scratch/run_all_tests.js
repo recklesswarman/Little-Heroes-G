@@ -114,6 +114,8 @@ const testFiles = [
   'scratch/verify_static_sites_use_app_hosting_api.mjs',
   // App Hosting -> Pi voice relay over Funnel (token-gated) and Umami loader:
   'scratch/verify_pi_relay_and_analytics.mjs',
+  // Reading help: Read-Along matching, Word Wall + Number Dash quests, tap-a-word meanings:
+  'scratch/verify_reading_help.mjs',
   // AI hero agent routes relayed from server.js to the AGY Cloud Run service:
   'scratch/verify_rex_agy_relay.mjs',
   // Rex function calling (/api/rex/agent) and the Sunday parent report (ntfy):

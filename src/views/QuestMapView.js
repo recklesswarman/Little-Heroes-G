@@ -8,6 +8,7 @@ import { geminiLiveService } from '../services/geminiLiveService.js';
 import { renderRexAvatarSvg } from '../components/LiveRexWidget.js';
 import { rexEngine } from '../services/rexCompanionEngine.js';
 import confetti from 'canvas-confetti';
+import { renderReadAlongPanel, attachReadAlongPanel, stopReadAlong } from './readAlongPanel.js';
 
 let activeGame = null;
 let currentChallengeIdx = 0;
@@ -142,6 +143,12 @@ export function renderQuestMapView() {
             </div>
           </div>
 
+          ${activeGame.mode === 'read-along'
+            ? `<div class="bg-surface-container-lowest rounded-3xl p-6 sm:p-8 border-3 border-surface-container-highest shadow-inner relative">
+                <span class="block text-[11px] font-black uppercase text-secondary mb-3 tracking-wider">Sentence ${currentChallengeIdx + 1}</span>
+                ${renderReadAlongPanel(challenge, kidDifficulty)}
+              </div>`
+            : `
           <!-- Question Box -->
           <div class="bg-surface-container-lowest rounded-3xl p-6 sm:p-8 border-3 border-surface-container-highest shadow-inner flex flex-col items-center justify-center min-h-[140px] relative">
             <span class="text-[11px] font-black uppercase text-secondary mb-2 tracking-wider">Question ${currentChallengeIdx + 1}</span>
@@ -165,6 +172,7 @@ export function renderQuestMapView() {
               })
               .join('')}
           </div>
+          `}
 
           <!-- Companion Mascot Cheer Box -->
           <div class="flex items-center justify-center gap-3 pt-2 border-t border-surface-container-highest text-xs font-bold text-on-surface-variant">
@@ -275,6 +283,42 @@ export function renderQuestMapView() {
       align: 'end',
       stars: 3,
       yPos: '2%'
+    },
+    {
+      stopNumber: 9,
+      gameId: 'rex_read_along',
+      title: "Rex's Read-Along",
+      biome: 'School Skills',
+      subject: 'Read Out Loud',
+      icon: 'record_voice_over',
+      color: '#ff7eb6',
+      align: 'start',
+      stars: 3,
+      yPos: '1%'
+    },
+    {
+      stopNumber: 10,
+      gameId: 'rex_word_wall',
+      title: "Rex's Word Wall",
+      biome: 'School Skills',
+      subject: 'Sight Words & Phonics',
+      icon: 'spellcheck',
+      color: '#a78bfa',
+      align: 'end',
+      stars: 3,
+      yPos: '1%'
+    },
+    {
+      stopNumber: 11,
+      gameId: 'rex_number_dash',
+      title: "Rex's Number Dash",
+      biome: 'School Skills',
+      subject: 'Math Facts',
+      icon: 'speed',
+      color: '#34d399',
+      align: 'start',
+      stars: 3,
+      yPos: '1%'
     }
   ];
 
@@ -536,11 +580,29 @@ export function renderQuestMapView() {
   `;
 }
 
+// Read-Along has no multiple-choice answer, so the panel calls this when the child taps Next
+// after a good read. It mirrors the end of the correct-answer handler below.
+function advanceAfterReadAlong(kidDiff) {
+  if (!activeGame) return;
+  const challenges = getGameChallenges(activeGame, kidDiff);
+  if (currentChallengeIdx + 1 < challenges.length) {
+    currentChallengeIdx++;
+    store.notify();
+    return;
+  }
+  const g = activeGame;
+  activeGame = null;
+  currentChallengeIdx = 0;
+  geminiLiveService.setQuestContext(null);
+  store.playAdventureGame(g.id, true);
+}
+
 export function attachQuestMapListeners() {
   const exitBtn = document.getElementById('map-game-exit-btn');
   if (exitBtn) {
     exitBtn.addEventListener('click', () => {
       voicePrompts.stop();
+      stopReadAlong();
       geminiLiveService.setQuestContext(null);
       activeGame = null;
       currentChallengeIdx = 0;
@@ -553,11 +615,12 @@ export function attachQuestMapListeners() {
     const kidDiff = store.getState().selectedHero.gameDifficulty || 'medium';
     const challenges = getGameChallenges(activeGame, kidDiff);
     const challenge = challenges[currentChallengeIdx] || challenges[0];
+    const isReadAlong = activeGame.mode === 'read-along';
     geminiLiveService.setQuestContext({
       gameTitle: activeGame.title,
-      question: challenge.question,
+      question: isReadAlong ? `Read this sentence out loud: "${challenge.sentence}"` : challenge.question,
       options: challenge.options,
-      correctAnswerIndex: challenge.answer,
+      correctAnswerIndex: isReadAlong ? null : challenge.answer,
       currentStop: currentChallengeIdx + 1,
       totalStops: challenges.length,
       gradeLevel: GRADE_LEVEL_LABELS[kidDiff] || null,
@@ -567,8 +630,13 @@ export function attachQuestMapListeners() {
       hint: challenge.hint || null
     });
 
+    // Read-Along listens with the microphone itself, so Rex Live must not grab it too.
+    if (isReadAlong) {
+      attachReadAlongPanel({ challenge, difficulty: kidDiff, onPass: () => advanceAfterReadAlong(kidDiff) });
+    }
+
     // Auto-connect Rex in toddler easy mode if not already connected
-    if (kidDiff === 'easy' && !geminiLiveService.isConnected && !geminiLiveService.isConnecting) {
+    if (kidDiff === 'easy' && !isReadAlong && !geminiLiveService.isConnected && !geminiLiveService.isConnecting) {
       geminiLiveService.connect().catch(() => {});
     }
 
@@ -788,6 +856,10 @@ export function attachQuestMapListeners() {
       const kidDiff = store.getState().selectedHero.gameDifficulty || 'medium';
       const challenges = getGameChallenges(activeGame, kidDiff);
       const challenge = challenges[currentChallengeIdx] || challenges[0];
+      if (activeGame.mode === 'read-along') {
+        voicePrompts.speak(challenge.sentence, null, 'rex');
+        return;
+      }
       voicePrompts.speakGuidance(activeGame.title, challenge.question);
     });
   });
@@ -819,7 +891,7 @@ export function attachQuestMapListeners() {
 
         // If toddler easy mode is active, trigger realistic spoken voice guidance
         const kidDiff = store.getState().selectedHero.gameDifficulty || 'medium';
-        if (kidDiff === 'easy') {
+        if (kidDiff === 'easy' && game.mode !== 'read-along') {
           const challenges = getGameChallenges(game, 'easy');
           const challenge = challenges[0];
           setTimeout(() => {
