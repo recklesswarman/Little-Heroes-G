@@ -50,7 +50,7 @@ function shorten(text) {
   if (clean.length <= MAX_DEFINITION_CHARS) return clean;
   const cut = clean.slice(0, MAX_DEFINITION_CHARS);
   const at = cut.lastIndexOf(' ');
-  return `${cut.slice(0, at > 40 ? at : MAX_DEFINITION_CHARS)}...`;
+  return `${cut.slice(0, at > 40 ? at : MAX_DEFINITION_CHARS).replace(/[\s,;:.]+$/, '')}...`;
 }
 
 /** One Datamuse "pos<TAB>definition" string -> { partOfSpeech, definition } or null if unsuitable. */
