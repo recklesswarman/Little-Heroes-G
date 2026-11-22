@@ -128,19 +128,22 @@ export async function transcribeWithLocalWhisper(audioBlob) {
 /**
  * Records from the microphone until `stop()` is called or `maxMs` passes, then
  * transcribes on the Pi. Keep clips short: whisper is tuned for ~10 seconds.
- * Returns { stop, result } where `result` resolves to the transcript or null.
+ * Returns { stop, cancel, result } where `result` resolves to the transcript or null.
  */
 export function recordAndTranscribe({ maxMs = 8000 } = {}) {
   let recorder = null;
   let stream = null;
   let timer = null;
   let stopRequested = false;
+  let cancelled = false;
   const releaseMic = () => { try { stream?.getTracks().forEach((track) => track.stop()); } catch {} };
   const stop = () => {
     stopRequested = true;
     if (timer) clearTimeout(timer);
     if (recorder && recorder.state === 'recording') recorder.stop();
   };
+  // cancel(): stop recording, free the microphone, and never upload what was captured.
+  const cancel = () => { cancelled = true; stop(); releaseMic(); };
   const result = (async () => {
     if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
       return null;
@@ -150,7 +153,7 @@ export function recordAndTranscribe({ maxMs = 8000 } = {}) {
     } catch {
       return null;
     }
-    if (stopRequested) { releaseMic(); return null; }
+    if (stopRequested || cancelled) { releaseMic(); return null; }
     const chunks = [];
     const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg', 'audio/mp4']
       .find((type) => MediaRecorder.isTypeSupported?.(type)) || '';
@@ -170,9 +173,10 @@ export function recordAndTranscribe({ maxMs = 8000 } = {}) {
     timer = setTimeout(stop, maxMs);
     await done;
     releaseMic();
+    if (cancelled) return null;
     const blob = new Blob(chunks, { type: recorder.mimeType || mimeType || 'audio/webm' });
     return transcribeWithLocalWhisper(blob);
   })();
-  return { stop, result };
+  return { stop, cancel, result };
 }
 

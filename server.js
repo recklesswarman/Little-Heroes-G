@@ -8,6 +8,7 @@ import { handleChatRequest, handleBedtimeStoryRequest, attachGeminiLiveWebSocket
 import { handleStoryIllustrationRequest } from './server/imageGenService.js';
 import { createLocalAiHandlers } from './server/localAiService.js';
 import { createApiCors } from './server/corsPolicy.js';
+import { handleDictionaryRequest } from './server/dictionaryService.js';
 import { createPiRelayHandlers, getPiRelayConfig, RELAY_MAX_AUDIO_BYTES } from './server/piRelayService.js';
 import { handleStoryWeaverBooksRequest } from './server/storyweaverService.js';
 import { handleNotifyRequest } from './server/ntfyService.js';
@@ -70,6 +71,9 @@ app.post('/api/ai/image', handleStoryIllustrationRequest);
 
 // StoryWeaver picture-book search proxy (CC BY 4.0 books, attribution kept in the view)
 app.get('/api/storyweaver/books', handleStoryWeaverBooksRequest);
+
+// Tap-a-word meanings for stories (kid-filtered, cached; see server/dictionaryService.js)
+app.get('/api/dictionary/define', handleDictionaryRequest);
 
 // Parent alerts via the Pi's ntfy server (NTFY_URL / NTFY_TOPIC, see server/ntfyService.js)
 app.post('/api/notify', handleNotifyRequest);

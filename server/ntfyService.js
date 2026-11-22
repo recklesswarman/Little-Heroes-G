@@ -17,7 +17,9 @@ export function getNtfyConfig(env = process.env) {
     enabled: String(env.NTFY_ENABLED ?? 'true').toLowerCase() !== 'false',
     url: String(env.NTFY_URL || 'http://127.0.0.1:8090').replace(/\/+$/, ''),
     topic,
-    token: env.NTFY_TOKEN ? String(env.NTFY_TOKEN) : ''
+    token: env.NTFY_TOKEN ? String(env.NTFY_TOKEN) : '',
+    // undefined = the default public site; '' = no link on alerts
+    appUrl: env.NTFY_APP_URL === undefined ? undefined : String(env.NTFY_APP_URL).trim()
   };
 }
 

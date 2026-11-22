@@ -145,6 +145,7 @@ async function setupGeminiMiddleware(server) {
 // Same /api/storyweaver, /api/notify, /api/rex/agent, /api/report/weekly, /api/calendar, /api/fridge and /api/voice routes server.js exposes, for `npm run dev` / `vite preview`.
 async function setupFamilyApiMiddleware(server) {
   let storyweaver = null;
+  let dictionary = null;
   let voiceLab = null;
   let ntfy = null;
   let rexAgent = null;
@@ -172,6 +173,11 @@ async function setupFamilyApiMiddleware(server) {
     storyweaver = await import('./server/storyweaverService.js');
   } catch (err) {
     console.warn('StoryWeaver middleware notice:', err.message);
+  }
+  try {
+    dictionary = await import('./server/dictionaryService.js');
+  } catch (err) {
+    console.warn('Dictionary middleware notice:', err.message);
   }
   try {
     voiceLab = await import('./server/voiceLabService.js');
@@ -213,6 +219,11 @@ async function setupFamilyApiMiddleware(server) {
         shim(res);
         req.query = Object.fromEntries(new URLSearchParams(qs));
         return await storyweaver.handleStoryWeaverBooksRequest(req, res);
+      }
+      if (dictionary && url === '/api/dictionary/define' && req.method === 'GET') {
+        shim(res);
+        req.query = Object.fromEntries(new URLSearchParams(qs));
+        return await dictionary.handleDictionaryRequest(req, res);
       }
       if (ntfy && url === '/api/notify' && req.method === 'POST') {
         shim(res);

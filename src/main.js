@@ -579,6 +579,10 @@ function resolveRouteFromUrl() {
   if (path === '/fridge' || hash === 'fridge' || hash === 'fridge-display' || hash === 'kiosk') {
     return 'fridge';
   }
+  // Parent alert deep link (ntfy "Open Action Inbox"): the parent PIN opens the portal on its Action Inbox.
+  if (path === '/approvals' || hash === 'approvals' || hash === 'parent-approvals') {
+    return 'parent_portal';
+  }
   if (path === '/learn' || path === 'learn' || hash === 'learn') {
     return 'adventures_map';
   }

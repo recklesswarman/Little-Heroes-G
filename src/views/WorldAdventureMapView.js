@@ -29,6 +29,7 @@ import { geminiLiveService } from '../services/geminiLiveService.js';
 import { renderRexAvatarSvg } from '../components/LiveRexWidget.js';
 import { voicePrompts } from '../utils/voicePrompts.js';
 import confetti from 'canvas-confetti';
+import { renderReadAlongPanel, attachReadAlongPanel, stopReadAlong } from './readAlongPanel.js';
 
 let activeCanvasInstance = null;
 let activeMiniGame = null;
@@ -84,6 +85,11 @@ export function renderWorldAdventureMapView() {
             </div>
           </div>
 
+          ${activeMiniGame.mode === 'read-along'
+            ? `<div class="bg-[#0f2334] rounded-3xl p-6 border-2 border-surface-container-highest shadow-inner">
+                ${renderReadAlongPanel(challenge, kidDifficulty)}
+              </div>`
+            : `
           <div class="bg-[#0f2334] rounded-3xl p-6 border-2 border-surface-container-highest shadow-inner">
             <p class="font-headline text-xl sm:text-2xl font-black text-primary-container leading-snug">
               ${challenge.question}
@@ -98,6 +104,7 @@ export function renderWorldAdventureMapView() {
               </button>
             `).join('')}
           </div>
+          `}
         </div>
       </div>
     `;
@@ -847,9 +854,35 @@ export function attachWorldAdventureMapListeners() {
     });
   });
 
+  // Read-Along: the child reads a sentence out loud; the panel calls back when they tap Next.
+  if (activeMiniGame?.mode === 'read-along') {
+    const kidDiff = store.getState().selectedHero?.gameDifficulty || 'medium';
+    const challenges = activeChallengeSet || getGameChallenges(activeMiniGame, kidDiff);
+    attachReadAlongPanel({
+      challenge: challenges[currentMiniGameIdx] || challenges[0],
+      difficulty: kidDiff,
+      onPass: () => {
+        if (!activeMiniGame) return;
+        if (currentMiniGameIdx + 1 < challenges.length) {
+          currentMiniGameIdx++;
+          store.notify();
+          return;
+        }
+        const hero = store.getState().selectedHero;
+        hero.coins = (hero.coins || 0) + 25;
+        hero.xp = (hero.xp || 0) + 20;
+        activeMiniGame = null;
+        currentMiniGameIdx = 0;
+        activeChallengeSet = null;
+        store.showReward('Realm Challenge Cleared!', 'You earned +25 Coins & +20 XP!', 25, 10);
+      }
+    });
+  }
+
   const exitMiniGameBtn = document.getElementById('world-game-exit-btn');
   if (exitMiniGameBtn) {
     exitMiniGameBtn.addEventListener('click', () => {
+      stopReadAlong();
       activeMiniGame = null;
       currentMiniGameIdx = 0;
       activeChallengeSet = null;

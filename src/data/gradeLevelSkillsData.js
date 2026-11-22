@@ -13,6 +13,10 @@
 // for these standards (e.g. mixing up tens and ones, reading "34" digit by
 // digit as "three four", or adding every number in a word problem).
 
+import { READ_ALONG_CHALLENGES } from './readAlongData.js';
+import { WORD_WALL_CHALLENGES } from './wordWallData.js';
+import { MATH_FACT_CHALLENGES } from './mathFactsData.js';
+
 export const GRADE_LEVEL_LABELS = {
   easy: 'Pre-K & Kindergarten',
   medium: 'Kindergarten Stretch',
@@ -31,6 +35,8 @@ export const STANDARD_DESCRIPTIONS = {
   'RF.K.3.b': 'Long and short sounds of the five vowels',
   'RF.K.3.c': 'Read common sight words (the, of, to, you, she, my, is, are, do, does)',
   'RF.K.3.d': 'Tell apart similarly spelled words by the letters that differ',
+  'RF.K.4': 'Read emergent-reader sentences out loud with purpose and understanding',
+  'RF.1.3.a': 'Know the sounds of common consonant digraphs (sh, ch, th, wh, ck, ng)',
   // Grade 2 reading foundations
   'RF.2.3.a': 'Long vs. short vowels in one-syllable words',
   'RF.2.3.b': 'Common vowel teams (ai, ay, ee, ea, oa, ow, oo)',
@@ -38,6 +44,9 @@ export const STANDARD_DESCRIPTIONS = {
   'RF.2.3.d': 'Decode words with common prefixes and suffixes',
   'RF.2.3.e': 'Words with tricky-but-common spellings',
   'RF.2.3.f': 'Read grade-level irregular words',
+  'RF.2.4.b': 'Read grade-level sentences out loud with accuracy and expression',
+  // Kindergarten operations
+  'K.OA.A.5': 'Add and subtract within 5 (and within 10) from memory',
   // Kindergarten counting & cardinality
   'K.CC.A.1': 'Count to 100 by ones and by tens',
   'K.CC.A.2': 'Count forward from any number',
@@ -174,6 +183,49 @@ export const GRADE_LEVEL_GAMES = [
         { standard: '2.NBT.A.4', question: 'Which is true?', options: ['428 > 482', '428 < 482', '428 = 482'], answer: 1, hint: 'Same hundreds (4), so compare the tens: 2 tens is less than 8 tens.' }
       ]
     }
+  },
+  {
+    id: 'rex_read_along',
+    title: "Rex's Read-Along",
+    realm: 'Read-Along Campfire',
+    subject: 'Reading Out Loud (Grade Level)',
+    gradeAligned: true,
+    mode: 'read-along',
+    energyCost: 10,
+    icon: 'record_voice_over',
+    color: '#ff7eb6',
+    rewardCoins: 30,
+    rewardXP: 35,
+    desc: 'Read sentences out loud while Rex listens. Words turn green when he hears you!',
+    challengesByDifficulty: READ_ALONG_CHALLENGES
+  },
+  {
+    id: 'rex_word_wall',
+    title: "Rex's Word Wall",
+    realm: 'Word Wall Workshop',
+    subject: 'Sight Words & Phonics (Grade Level)',
+    gradeAligned: true,
+    energyCost: 10,
+    icon: 'spellcheck',
+    color: '#a78bfa',
+    rewardCoins: 30,
+    rewardXP: 35,
+    desc: 'Find sight words, sound out words, and spot vowel teams and digraphs!',
+    challengesByDifficulty: WORD_WALL_CHALLENGES
+  },
+  {
+    id: 'rex_number_dash',
+    title: "Rex's Number Dash",
+    realm: 'Number Dash Racetrack',
+    subject: 'Math Facts (Grade Level)',
+    gradeAligned: true,
+    energyCost: 10,
+    icon: 'speed',
+    color: '#34d399',
+    rewardCoins: 30,
+    rewardXP: 35,
+    desc: 'Race through add and subtract facts. How fast can your brain zoom?',
+    challengesByDifficulty: MATH_FACT_CHALLENGES
   }
 ];
 
