@@ -24,6 +24,8 @@ import { renderLiveRexWidget, attachLiveRexWidgetListeners } from './components/
 import { geminiLiveService } from './services/geminiLiveService.js';
 import { rexEngine } from './services/rexCompanionEngine.js';
 import { stopRex, warmUpVoiceEngine } from './services/voiceService.js';
+import { ensureModelViewerIfUsed } from './utils/modelViewerLoader.js';
+import { applyModelTints } from './utils/modelViewerTint.js';
 import { renderGiftCrateWidget, renderGiftCrateModal, attachGiftCrateListeners } from './components/GiftCrateModal.js';
 
 // Views
@@ -426,6 +428,8 @@ function _renderAppInternal() {
   attachGiftCrateListeners();
   attachViewListeners();
   restoreFocusedFieldState(savedFocusedField);
+  ensureModelViewerIfUsed(app);
+  applyModelTints(app);
 }
 
 let lastRenderedView = null;

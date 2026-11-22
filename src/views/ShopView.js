@@ -4,6 +4,9 @@ import { Sound } from '../audio/sfx.js';
 import { preserveScrollPosition } from '../utils/scrollPreserve.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
 import { resolvePublicAssetUrl } from '../utils/assetUrl.js';
+import { renderItemVisual } from '../utils/itemVisual.js';
+import { celebrateItem } from '../services/rewardCelebration.js';
+import { renderItemCredit } from '../utils/itemCredit.js';
 import {
   renderRewardImage,
   getRewardRarityBorderClass,
@@ -23,10 +26,22 @@ export function renderShopView() {
   const parentWeapons = store.getParentCustomWeapons ? store.getParentCustomWeapons() : [];
   const parentGear = store.getParentCustomGear ? store.getParentCustomGear() : [];
   const parentFood = store.getParentCustomFood ? store.getParentCustomFood() : [];
-  const digitalGear = [...(state.digitalGear || [])];
+  // A parent-crafted item shows in the Shop only when it was published to the Shop,
+  // and only for the kid it was made for (gift crates and bounties never appear here).
+  const isShopVisibleToHero = (item) => {
+    if (!item) return false;
+    // Something this kid already owns (a gift they opened, a finished bounty) stays so they can equip it.
+    const owned = hero.inventory || [];
+    if (owned.includes(item.id) || owned.includes(item.title) || owned.includes(item.name)) return true;
+    if (item.deliveryMethod && item.deliveryMethod !== 'hero_shop') return false;
+    const target = item.targetChildProfile;
+    if (target && target !== 'all' && hero.id && target !== hero.id) return false;
+    return true;
+  };
+  const digitalGear = [...(state.digitalGear || [])].filter(isShopVisibleToHero);
 
   [...parentWeapons, ...parentGear, ...parentFood].forEach((item) => {
-    if (item && item.id && !digitalGear.some((d) => d.id === item.id)) {
+    if (item && item.id && isShopVisibleToHero(item) && !digitalGear.some((d) => d.id === item.id)) {
       digitalGear.unshift(item);
     }
   });
@@ -664,7 +679,7 @@ function renderShopItemInspectModal(item, hero, state) {
       <div class="relative w-36 h-36 rounded-3xl bg-surface-container-lowest border-2 border-amber-400/60 p-2 flex items-center justify-center overflow-hidden shadow-inner group">
         <div class="absolute inset-0 bg-radial from-amber-400/20 via-transparent to-transparent pointer-events-none"></div>
         ${item.modelUrl ? `
-          <model-viewer src="${item.modelUrl}" auto-rotate camera-controls shadow-intensity="1.2" ar style="width: 100%; height: 100%; background: transparent;"></model-viewer>
+          ${renderItemVisual(item, { size: 'studio' })}
         ` : `
           ${renderRewardImage(item, 'w-28 h-28 object-contain drop-shadow-xl group-hover:scale-105 transition-transform', item.title || item.name)}
         `}
@@ -674,6 +689,7 @@ function renderShopItemInspectModal(item, hero, state) {
       <div class="flex flex-col gap-1 items-center">
         <h3 class="font-headline text-xl font-black text-inverse-surface">${escapeHtml(item.title || item.name)}</h3>
         <p class="text-xs text-on-surface-variant max-w-xs font-medium">${escapeHtml(item.desc) || ''}</p>
+        ${renderItemCredit(item)}
         
         <div class="flex flex-wrap items-center justify-center gap-2 mt-2">
           ${(item.isParentCrafted || item.isCustomAI) ? `
@@ -916,7 +932,8 @@ export function attachShopListeners() {
           speakRex(item.voiceLine || "A mystery treasure chest has arrived! Tap it fast to crack it open!");
         }
       }
-      store.buyDigitalGear(id);
+      const buyResult = store.buyDigitalGear(id);
+      if (item && !isOwned && (!buyResult || buyResult.success !== false)) celebrateItem(item, { event: 'buy' });
       inspectingShopItem = null;
     });
   });

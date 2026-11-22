@@ -10,6 +10,8 @@
 
 import { escapeHtml } from './escapeHtml.js';
 import { resolvePublicAssetUrl } from './assetUrl.js';
+import { emojiArtUrl } from './emojiArt.js';
+import { gameIconFor, gameIconUrl } from './gameIcons.js';
 
 export const REWARD_ASSET_BASE_PATH = '/assets/rewards';
 
@@ -136,6 +138,11 @@ export function getRewardAssetUrl(itemId, category = '') {
 export function renderRewardImage(item = {}, classNames = 'w-full h-full object-contain', altText = '') {
   const safeItem = item || {};
   const title = safeItem.name || safeItem.title || altText || 'Digital Reward';
+  // Items without their own picture show OpenMoji emoji art or a game-icons icon before the generic fallback.
+  if (!safeItem.assetUrl && !safeItem.image) {
+    const art = (safeItem.emoji && emojiArtUrl(safeItem.emoji)) || gameIconUrl(gameIconFor(safeItem.iconId, ''));
+    if (art) return `<img class="${classNames}" src="${art}" alt="${escapeHtml(title)}" loading="lazy" />`;
+  }
   const rawUrl = safeItem.assetUrl || safeItem.image || (safeItem.id ? getRewardAssetUrl(safeItem.id, safeItem.category) : '');
   
   // Guard against string literal "undefined" or missing values

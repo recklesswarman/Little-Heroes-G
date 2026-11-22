@@ -4695,9 +4695,101 @@ class Store {
     return this.state.pendingBounties || [];
   }
 
+  /** True when this hero has already opened the crate (a crate for "all kids" is opened once per kid). */
+  isGiftCrateOpenFor(crate, heroId) {
+    if (!crate) return true;
+    if (Array.isArray(crate.openedByHeroIds)) return crate.openedByHeroIds.includes(heroId);
+    return Boolean(crate.unboxed); // crates made before per-kid tracking
+  }
+
+  /** Unopened gift crates this hero should see (their own, or ones for all kids). */
+  getGiftCratesForHero(heroId) {
+    const id = heroId || this.state.selectedHero?.id || 'hero_1';
+    return (this.state.pendingGiftCrates || []).filter((c) =>
+      (!c.targetChildProfile || c.targetChildProfile === 'all' || c.targetChildProfile === id) &&
+      !this.isGiftCrateOpenFor(c, id)
+    );
+  }
+
+  /**
+   * Put a parent-crafted item into ONE kid's hands. Used when they open a gift crate or finish a bounty.
+   * Weapons go in that kid's inventory (and are equipped), pet gear goes on that kid's active pet,
+   * furniture unlocks in the shared Hero HQ. Never touches another kid.
+   */
+  grantStudioItemToHero(item, category, heroId) {
+    if (!item || !item.id) return false;
+    const id = heroId || this.state.selectedHero?.id;
+    if (!id) return false;
+    const targets = [];
+    const listed = (this.state.heroes || []).find((h) => h.id === id);
+    if (listed) targets.push(listed);
+    if (this.state.selectedHero && this.state.selectedHero.id === id && !targets.includes(this.state.selectedHero)) {
+      targets.push(this.state.selectedHero);
+    }
+    const kind = String(item.category || '').toLowerCase() === 'weapons' ? 'weapon' : (category || 'gear');
+
+    if (kind === 'weapon') {
+      targets.forEach((h) => {
+        if (!h.inventory) h.inventory = ['laser_toothbrush'];
+        if (!h.inventory.includes(item.id)) h.inventory.push(item.id);
+        h.equippedWeapon = item.id;
+      });
+    } else if (kind === 'gear' && item.socket) {
+      const norm = normalizeGearSlot(item.socket);
+      const petId = (listed || this.state.selectedHero || {}).activePetId || 1;
+      if (!this.state.equippedPetGearMap) this.state.equippedPetGearMap = {};
+      const entry = this.state.equippedPetGearMap[petId] || { masks: null, capes: null, armor: null, boots: null };
+      entry[norm] = item.id;
+      if (norm === 'masks') entry.head = item.id;
+      if (norm === 'capes') entry.back = item.id;
+      if (norm === 'armor') entry.chest = item.id;
+      if (norm === 'boots') entry.feet = item.id;
+      this.state.equippedPetGearMap[petId] = entry;
+      targets.forEach((h) => {
+        if (!h.equippedPetGearMap) h.equippedPetGearMap = {};
+        h.equippedPetGearMap[petId] = { ...entry };
+      });
+    } else if (kind === 'furniture') {
+      if (!this.state.heroHQ) this.state.heroHQ = { unlockedFurnitureIds: [] };
+      if (!this.state.heroHQ.unlockedFurnitureIds) this.state.heroHQ.unlockedFurnitureIds = [];
+      if (!this.state.heroHQ.unlockedFurnitureIds.includes(item.id)) this.state.heroHQ.unlockedFurnitureIds.push(item.id);
+    }
+
+    // Mark the canonical copies as owned too.
+    ['parentCustomWeapons', 'parentCustomGear', 'parentCustomFurniture'].forEach((key) => {
+      const hit = (this.state[key] || []).find((x) => x.id === item.id);
+      if (hit) hit.unlocked = true;
+    });
+    Object.values(PET_GEAR_CATALOG || {}).forEach((list) => {
+      (Array.isArray(list) ? list : []).forEach((g) => { if (g && g.id === item.id) g.unlocked = true; });
+    });
+    item.unlocked = true;
+    this.syncSelectedHeroWithHeroes();
+    return true;
+  }
+
+  /** A kid opens a gift crate: the item lands with THAT kid only. */
+  openGiftCrate(crateId, heroId) {
+    const crate = (this.state.pendingGiftCrates || []).find((c) => c.id === crateId);
+    if (!crate) return null;
+    const id = heroId || this.state.selectedHero?.id || 'hero_1';
+    if (!Array.isArray(crate.openedByHeroIds)) crate.openedByHeroIds = crate.unboxed ? [id] : [];
+    if (!crate.openedByHeroIds.includes(id)) {
+      crate.openedByHeroIds.push(id);
+      this.grantStudioItemToHero(crate.item, crate.category, id);
+    }
+    crate.isOpened = true;
+    const everyone = (this.state.heroes || []).map((h) => h.id);
+    const forAll = !crate.targetChildProfile || crate.targetChildProfile === 'all';
+    crate.unboxed = forAll ? (everyone.length > 0 && everyone.every((h) => crate.openedByHeroIds.includes(h))) : true;
+    this.saveState(true);
+    return crate;
+  }
+
   checkAndAwardHabitBounties(habitId, currentHero) {
     if (!this.state.pendingBounties || !this.state.pendingBounties.length) return;
     const heroId = currentHero?.id || 'hero_1';
+    const dayKey = getLocalCalendarDateKey();
 
     for (let i = this.state.pendingBounties.length - 1; i >= 0; i--) {
       const b = this.state.pendingBounties[i];
@@ -4707,60 +4799,49 @@ class Store {
         ((b.habitId === 'brush_teeth_am' || b.habitId === 'brush_teeth_pm') && habitId === 'brush_teeth');
       if (!isHabitMatch) continue;
 
-      b.currentStreakProgress = (b.currentStreakProgress || 0) + 1;
-      if (b.currentStreakProgress >= (b.targetStreakDays || 1)) {
+      // Progress counts once per calendar day, and per kid when the bounty is for everyone.
+      if (!b.progressByHero) b.progressByHero = {};
+      if (!b.lastProgressDate) b.lastProgressDate = {};
+      if (b.lastProgressDate[heroId] === dayKey) continue;
+      b.lastProgressDate[heroId] = dayKey;
+      b.progressByHero[heroId] = (b.progressByHero[heroId] || 0) + 1;
+      b.currentStreakProgress = b.progressByHero[heroId];
+      if (b.progressByHero[heroId] >= (b.targetStreakDays || 1)) {
         if (!b.item || typeof b.item !== 'object' || !b.item.id) {
           console.warn('[Store] Skipping corrupt habit bounty without valid item id:', b);
           this.state.pendingBounties.splice(i, 1);
           continue;
         }
 
+        // The kid who finished the streak gets a crate of their own, and the item goes to them only.
         const crate = {
           id: `crate_${Date.now()}_${secureRandomHex(2)}`,
           item: b.item,
           category: b.category,
-          targetChildProfile: b.targetChildProfile,
+          targetChildProfile: heroId,
           isBountyReward: true,
           isOpened: false,
           unboxed: false,
+          openedByHeroIds: [],
           createdAt: new Date().toISOString()
         };
         if (!this.state.pendingGiftCrates) this.state.pendingGiftCrates = [];
         this.state.pendingGiftCrates.unshift(crate);
         this.state.activeUnboxingCrateId = crate.id;
-
-        if (b.category === 'gear' && b.item.socket) {
-          b.item.unlocked = true;
-          this.equipPetStudioGear(this.state.selectedHero?.activePetId || 1, b.item.socket, b.item.id);
-        } else if (b.category === 'furniture') {
-          if (!this.state.heroHQ.unlockedFurnitureIds.includes(b.item.id)) {
-            this.state.heroHQ.unlockedFurnitureIds.push(b.item.id);
-          }
-        } else if (b.category === 'weapon') {
-          if (b.item) {
-            b.item.unlocked = true;
-          }
-          if (this.state.selectedHero) {
-            if (!this.state.selectedHero.inventory) {
-              this.state.selectedHero.inventory = ['laser_toothbrush'];
-            }
-            if (!this.state.selectedHero.inventory.includes(b.item.id)) {
-              this.state.selectedHero.inventory.push(b.item.id);
-            }
-            this.state.selectedHero.equippedWeapon = b.item.id;
-          }
-          if (!this.state.parentCustomWeapons) {
-            this.state.parentCustomWeapons = [];
-          }
-          if (!this.state.parentCustomWeapons.some(w => w.id === b.item.id)) {
-            this.state.parentCustomWeapons.push(b.item);
-          }
-          if (this.equipHeroWeapon) {
-            try { this.equipHeroWeapon(b.item.id); } catch {}
-          }
+        this.grantStudioItemToHero(b.item, b.category, heroId);
+        if (b.category === 'weapon') {
+          if (!this.state.parentCustomWeapons) this.state.parentCustomWeapons = [];
+          if (!this.state.parentCustomWeapons.some(w => w.id === b.item.id)) this.state.parentCustomWeapons.push(b.item);
         }
 
-        this.state.pendingBounties.splice(i, 1);
+        // A bounty for everyone stays open for the kids who haven't finished it yet.
+        if (!Array.isArray(b.completedHeroIds)) b.completedHeroIds = [];
+        if (!b.completedHeroIds.includes(heroId)) b.completedHeroIds.push(heroId);
+        const forAll = !b.targetChildProfile || b.targetChildProfile === 'all';
+        const allDone = forAll && (this.state.heroes || []).length > 0 && (this.state.heroes || []).every(h => b.completedHeroIds.includes(h.id));
+        if (!forAll || allDone) {
+          this.state.pendingBounties.splice(i, 1);
+        }
 
         Sound.fanfare();
         confetti({ particleCount: 80, spread: 85, origin: { y: 0.6 } });
@@ -4793,7 +4874,7 @@ class Store {
       category: 'Weapons',
       isParentCrafted: true,
       isCustomAI: true,
-      unlocked: deliveryMethod === 'instant_gift',
+      unlocked: false, // becomes true for the kid who opens the crate (grantStudioItemToHero)
       deliveryMethod,
       targetChildProfile,
       craftedBy,
@@ -4802,7 +4883,7 @@ class Store {
       statBonusPercent: Number(weaponItem.statBonusPercent) || 30,
       statBonusLabel: weaponItem.statBonusLabel || `+${weaponItem.statBonusPercent || 30}% Boss Attack Power`,
       costCoins: Number(weaponItem.costCoins || weaponItem.coinPrice) || 200,
-      image: weaponItem.image || 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=256&auto=format&fit=crop&q=80',
+      image: weaponItem.image || '',
       icon: weaponItem.icon || 'swords',
       voiceLine: weaponItem.voiceLine || 'Enamel power surge! Ready to vanquish sugar bandits!',
       createdAt: weaponItem.createdAt || new Date().toISOString()
@@ -4840,19 +4921,12 @@ class Store {
         targetChildProfile,
         isOpened: false,
         unboxed: false,
+        openedByHeroIds: [],
         createdAt: new Date().toISOString()
       };
       if (!this.state.pendingGiftCrates) this.state.pendingGiftCrates = [];
       this.state.pendingGiftCrates.unshift(crate);
-      this.state.activeUnboxingCrateId = crate.id;
-
-      if (this.state.selectedHero) {
-        if (!this.state.selectedHero.inventory) this.state.selectedHero.inventory = ['laser_toothbrush'];
-        if (!this.state.selectedHero.inventory.includes(weapon.id)) {
-          this.state.selectedHero.inventory.push(weapon.id);
-        }
-        this.equipHeroWeapon(weapon.id);
-      }
+      // The crate waits for the chosen kid. Nothing is granted (or shown) until they open it.
     } else if (deliveryMethod === 'habit_bounty') {
       const bounty = {
         id: `bounty_${Date.now()}_${secureRandomHex(2)}`,
@@ -4952,7 +5026,7 @@ class Store {
       targetPetSocket: socket,
       isParentCrafted: true,
       isCustomAI: true,
-      unlocked: deliveryMethod === 'instant_gift',
+      unlocked: false, // becomes true for the kid who opens the crate (grantStudioItemToHero)
       deliveryMethod,
       targetChildProfile,
       craftedBy,
@@ -4997,23 +5071,12 @@ class Store {
         targetChildProfile,
         isOpened: false,
         unboxed: false,
+        openedByHeroIds: [],
         createdAt: new Date().toISOString()
       };
       if (!this.state.pendingGiftCrates) this.state.pendingGiftCrates = [];
       this.state.pendingGiftCrates.unshift(crate);
-      this.state.activeUnboxingCrateId = crate.id;
-      // Auto-equip for active pet or equip weapon
-      if (gear.category === 'Weapons') {
-        if (this.state.selectedHero) {
-          if (!this.state.selectedHero.inventory) this.state.selectedHero.inventory = [];
-          if (!this.state.selectedHero.inventory.includes(gear.id)) {
-            this.state.selectedHero.inventory.push(gear.id);
-          }
-          this.equipHeroWeapon(gear.id);
-        }
-      } else if (socket && PET_GEAR_CATALOG[socket]) {
-        this.equipPetStudioGear(this.state.selectedHero?.activePetId || 1, socket, gear.id);
-      }
+      // The crate waits for the chosen kid. Nothing is granted (or shown) until they open it.
     } else if (deliveryMethod === 'habit_bounty') {
       const bounty = {
         id: `bounty_${Date.now()}_${secureRandomHex(2)}`,
@@ -5181,11 +5244,11 @@ class Store {
         targetChildProfile,
         isOpened: false,
         unboxed: false,
+        openedByHeroIds: [],
         createdAt: new Date().toISOString()
       };
       if (!this.state.pendingGiftCrates) this.state.pendingGiftCrates = [];
       this.state.pendingGiftCrates.unshift(crate);
-      this.state.activeUnboxingCrateId = crate.id;
     } else if (deliveryMethod === 'habit_bounty') {
       const bounty = {
         id: `bounty_${Date.now()}_${secureRandomHex(2)}`,
@@ -10599,10 +10662,12 @@ class Store {
       name: petConfig.name || 'Starfire Companion',
       title: petConfig.title || 'The AI Guardian',
       element: petConfig.element || 'Starlight',
-      color: petConfig.primaryColor || '#2ecc71',
+      color: petConfig.primaryColor || petConfig.color || '#2ecc71',
       accentColor: petConfig.accentColor || '#f39c12',
       archetype: petConfig.archetype || 'dragon',
-      avatar: petConfig.avatar || makePetSvg('🐾', 'pet', petConfig.primaryColor || '#2ecc71'),
+      avatar: petConfig.avatar || makePetSvg('🐾', 'pet', petConfig.primaryColor || petConfig.color || '#2ecc71'),
+      targetChildProfile: petConfig.targetChildProfile || 'all',
+      craftedBy: petConfig.craftedBy || '',
       backstory: petConfig.backstory || 'Born from creative stardust in the Parent Studio.',
       habitBonus: petConfig.habitBonus || '+25% Coins on Daily Routine',
       assignedHabit: petConfig.assignedHabit || 'brush_teeth',
@@ -10623,15 +10688,20 @@ class Store {
         petName: newPet.name,
         petColor: newPet.color,
         archetype: newPet.archetype,
+        targetChildProfile: newPet.targetChildProfile,
         tapsRemaining: 3
       });
     } else {
-      // Instant unlock
-      if (!this.state.selectedHero.unlockedPetIds) this.state.selectedHero.unlockedPetIds = [];
-      if (!this.state.selectedHero.unlockedPetIds.includes(newPet.id)) {
-        this.state.selectedHero.unlockedPetIds.push(newPet.id);
-      }
-      this.state.selectedHero.activePetId = newPet.id;
+      // Instant unlock for the chosen kid (or every kid), never just whoever is selected.
+      const heroes = this.state.heroes || [];
+      const targets = newPet.targetChildProfile && newPet.targetChildProfile !== 'all'
+        ? heroes.filter(h => String(h.id) === String(newPet.targetChildProfile))
+        : heroes;
+      (targets.length ? targets : [this.state.selectedHero]).forEach(h => {
+        if (!h) return;
+        if (!h.unlockedPetIds) h.unlockedPetIds = [];
+        if (!h.unlockedPetIds.includes(newPet.id)) h.unlockedPetIds.push(newPet.id);
+      });
     }
 
     this.saveState(true);

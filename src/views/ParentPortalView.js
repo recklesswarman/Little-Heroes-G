@@ -11,6 +11,9 @@ import { cloudFunctionsService } from '../services/cloudFunctionsService.js';
 import { aiDevelopmentalReportService } from '../services/aiDevelopmentalReportService.js';
 import { PetSkeletalBodyCanvas, RUNWAY_POSES } from '../services/petSkeletalBodyService.js';
 import { firebaseAI, SPLINE_3D_PRESETS } from '../services/firebaseAILogicService.js';
+import { applyModelTints, tintModelViewer, modelViewerLightingAttrs, LIGHTING_PRESETS } from '../utils/modelViewerTint.js';
+import { celebrateItem } from '../services/rewardCelebration.js';
+import { isGeneratedPicture, persistStudioImage, toThumbnail } from '../services/studioArtService.js';
 import { COLOR_DYES, formatStatBonusName } from '../data/petGearStudioData.js';
 import { THREE_D_ASSETS, getThreeDAssetsByCategory, matchBestThreeDAsset } from '../data/threeDAssetCatalog.js';
 import { registerActiveCanvas } from '../utils/activeViewCanvasRegistry.js';
@@ -48,6 +51,11 @@ export function setActiveAdminTab(tab) {
  * supports delivery (weapon, gear, furniture): how the item reaches the kid,
  * which kid, and the habit streak that unlocks a bounty.
  */
+/** Test hook: jump the Studio to a category without clicking. */
+export function setStudioCategoryForTest(category) {
+  studioActiveCategory = category;
+}
+
 export function studioDeliveryFields() {
   const deliveryMethod = ['instant_gift', 'hero_shop', 'habit_bounty'].includes(studioDeliveryMethod)
     ? studioDeliveryMethod
@@ -87,6 +95,34 @@ let isNewHouseholdModalOpen = false;
 let selectedAvatarUrl = KID_AVATARS[0].url;
 let activeParentInsights = null;
 let isLoadingInsights = false;
+
+// The six companion archetypes the Studio can craft (module scope: the render and the click handlers both use it).
+const STUDIO_PET_THEMES = [
+  { key: 'dino', label: '🦖 Emerald Rex', archetype: 'dino', color: '#2ecc71', desc: 'Armored plates & tough habit resilience' },
+  { key: 'dragon', label: '🔥 Ember Drake', archetype: 'dragon', color: '#f39c12', desc: 'Miniature wings & +25% expedition fuel' },
+  { key: 'beast', label: '🐻 Barnaby Pup', archetype: 'beast', color: '#ffb961', desc: 'Super soft ears & high treat joy' },
+  { key: 'aquatic', label: '🌊 Hydro Turtle', archetype: 'aquatic', color: '#00d2d3', desc: 'Glowing shell & long Pearly Gleam' },
+  { key: 'robot', label: '🤖 Byte Bot', archetype: 'robot', color: '#48dbfb', desc: 'LED visor & +30% Colosseum assist' },
+  { key: 'mystic', label: '✨ Stella Fawn', archetype: 'mystic', color: '#2ecc71', desc: 'Starlight horns & +1 daily spark' }
+];
+const STUDIO_PET_SYNERGIES = [
+  { key: 'dental', label: '🪥 Brush Teeth' },
+  { key: 'bedtime', label: '🌙 Bedtime' },
+  { key: 'chores', label: '🧹 Chores' },
+  { key: 'nutrition', label: '🥦 Healthy Eating' },
+  { key: 'reading', label: '📚 Reading' }
+];
+const STUDIO_WEAPON_SPARKS = {
+  plasma_saber: { archetype: 'laser_sword', color: '#06b6d4', name: 'Star-Plasma Saber', desc: 'Glowing plasma blade with +30% attack power', percent: 30, price: 200 },
+  hydro_blaster: { archetype: 'blaster', color: '#3b82f6', name: 'Hydro-Bubble Blaster', desc: 'High-pressure water pulse that blasts plaque', percent: 25, price: 175 },
+  phoenix_wand: { archetype: 'laser_sword', color: '#f97316', name: 'Phoenix Ember Wand', desc: 'Fiery sparks that burn away sugar barriers', percent: 30, price: 225 },
+  sonic_cleanser: { archetype: 'shield_blaster', color: '#10b981', name: 'Sonic Tooth Cannon', desc: 'Ultrasonic soundwaves for maximum enamel defense', percent: 35, price: 250 },
+  starlight_hammer: { archetype: 'hammer', color: '#fbbf24', name: 'Starlight Titan Hammer', desc: 'Heavy starlight mallet delivering critical smashes', percent: 40, price: 275 }
+};
+const STUDIO_STAGE_LABELS = {
+  weapon: 'Battle Arena', gear: 'Companion Catwalk', furniture: 'HQ Stage', toy: 'Playstage',
+  food: 'Kitchen Stage', boss: 'AR Colosseum', pet: 'Egg Nest', world_stash: 'Island Map'
+};
 
 // Multi-Category 3D Studio & AI Crafting State
 let studioActiveCategory = 'gear'; // 'gear', 'furniture', 'toy', 'boss'
@@ -140,6 +176,18 @@ let studioBossTaunt = 'You cannot defeat the Plaque Monster!';
 let studioBossRally = 'Heroes, brush thoroughly to break its shield!';
 
 let isStudioGenerating = false;
+let studioPromptText = ''; // the AI prompt box (kept separate from the item name)
+let studioGenStatus = 'idle'; // 'idle' | 'writing' | 'painting'
+let studioGenerateError = '';
+let studioGeneratedImage = null; // raster picture from the AI (shrunk and saved on Publish)
+let studioIsPublishing = false;
+let studioPublishFeedback = ''; // shown under the Publish button after a successful publish
+let studioModelChosen = false; // a real 3D model was picked on purpose (carousel, search or mesh), not just the preview sample
+let studioModelSource = '';
+let studioModelCredit = null;
+let studioLighting = 'studio'; // 'studio' | 'sunny' | 'cozy'
+let studioModelTint = ''; // hex picked with the dye swatches for a real 3D model
+let studioConceptFlash = false;
 let studioActiveModelUrl = 'https://modelviewer.dev/shared-assets/models/Astronaut.glb';
 let studioActive3DAssetId = 'gear_cyber_visor';
 let studioDeliveryMethod = 'instant_gift'; // 'instant_gift', 'hero_shop', 'habit_bounty'
@@ -1600,15 +1648,6 @@ export function renderParentPortalView() {
                 { key: 'ocean', label: '🌊 Tidepool Kelp Crunch', type: 'ocean', desc: 'Crispy sea-kissed kelp snacks' }
               ];
 
-                            const petThemes = [
-                { key: 'dino', label: '🦖 Emerald Rex', archetype: 'dino', color: '#2ecc71', desc: 'Armored plates & tough habit resilience' },
-                { key: 'dragon', label: '🔥 Ember Drake', archetype: 'dragon', color: '#f39c12', desc: 'Miniature wings & +25% expedition fuel' },
-                { key: 'beast', label: '🐻 Barnaby Pup', archetype: 'beast', color: '#ffb961', desc: 'Super soft ears & high treat joy' },
-                { key: 'aquatic', label: '🌊 Hydro Turtle', archetype: 'aquatic', color: '#00d2d3', desc: 'Glowing shell & long Pearly Gleam' },
-                { key: 'robot', label: '🤖 Byte Bot', archetype: 'robot', color: '#48dbfb', desc: 'LED visor & +30% Colosseum assist' },
-                { key: 'mystic', label: '✨ Stella Fawn', archetype: 'mystic', color: '#2ecc71', desc: 'Starlight horns & +1 daily spark' }
-              ];
-
               const bossThemes = [
                 { key: 'sugar_monster', label: '🍬 Plaque Sugar King', domain: 'dental', hp: 280, coins: 65, desc: 'Villain made of sticky sugar cubes' },
                 { key: 'bedtime_gremlin', label: '⏰ Bedtime Delay Gremlin', domain: 'bedtime', hp: 240, coins: 50, desc: 'Tries to keep kids up past bedtime' },
@@ -1731,6 +1770,14 @@ export function renderParentPortalView() {
                       <span>${t.label}</span>
                     </button>
                   `).join('')
+                : studioActiveCategory === 'pet' ?
+                  STUDIO_PET_THEMES.map(t => `
+                    <button type="button" class="studio-spark-chip px-2.5 py-1 rounded-xl text-xs font-black transition-all active:scale-95 flex items-center gap-1 border ${studioPetArchetype === t.archetype ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-sm' : 'bg-surface-container hover:bg-surface-bright text-inverse-surface border-white/10'}" data-spark="${t.key}" data-category="pet" title="${escapeHtml(t.desc)}">
+                      <span>${t.label}</span>
+                    </button>
+                  `).join('')
+                : studioActiveCategory === 'world_stash' ?
+                  '<span class="text-[11px] text-on-surface-variant">Configure the stash on the right.</span>'
                 :
                   bossThemes.map(t => `
                     <button type="button" class="studio-spark-chip px-2.5 py-1 rounded-xl text-xs font-black transition-all active:scale-95 flex items-center gap-1 border ${studioBossDomain === t.domain ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-sm' : 'bg-surface-container hover:bg-surface-bright text-inverse-surface border-white/10'}" data-spark="${t.key}" data-category="boss" title="${t.desc}">
@@ -1761,20 +1808,22 @@ export function renderParentPortalView() {
               
               <!-- Left Inputs: Voice & Photo -->
               <div class="flex items-center gap-2 shrink-0">
+                ${(typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition)) ? `
                 <button 
                   type="button"
                   id="studio-voice-mic-btn"
-                  class="px-3 py-2.5 min-h-[44px] rounded-2xl text-xs font-headline font-black flex items-center gap-1.5 bg-slate-800 text-amber-300 border border-amber-400/30 opacity-50 cursor-not-allowed"
-                  disabled aria-disabled="true" title="Coming soon"
+                  class="px-3 py-2.5 min-h-[44px] rounded-2xl text-xs font-headline font-black flex items-center gap-1.5 bg-slate-800 text-amber-300 border border-amber-400/30 active:scale-95 ${isRecordingVoice ? 'ring-2 ring-amber-400 animate-pulse' : ''}"
+                  title="Say your idea out loud"
                 >
                   <span>🎙️</span>
-                  <span class="hidden sm:inline">Voice (soon)</span>
+                  <span class="hidden sm:inline">${isRecordingVoice ? 'Listening…' : 'Voice'}</span>
                 </button>
+                ` : ''}
 
-                <label class="px-3 py-2.5 min-h-[44px] rounded-2xl text-xs font-headline font-black bg-slate-800 text-cyan-300 border border-cyan-400/30 flex items-center gap-1.5 opacity-50 cursor-not-allowed" title="Coming soon" aria-disabled="true">
+                <label class="px-3 py-2.5 min-h-[44px] rounded-2xl text-xs font-headline font-black bg-slate-800 text-cyan-300 border border-cyan-400/30 flex items-center gap-1.5 cursor-pointer active:scale-95" title="Turn a photo or a child's drawing into a prop">
                   <span>📷</span>
-                  <span class="hidden sm:inline">Photo (soon)</span>
-                  <input type="file" id="studio-photo-upload" accept="image/*" class="hidden" disabled />
+                  <span class="hidden sm:inline">Photo</span>
+                  <input type="file" id="studio-photo-upload" accept="image/*" class="hidden" />
                 </label>
 
                 ${studioUploadedImageBase64 ? `
@@ -1783,8 +1832,8 @@ export function renderParentPortalView() {
                     <button 
                       type="button"
                       id="studio-vision-generate-btn"
-                      class="px-2.5 py-1.5 rounded-xl text-[10px] font-black bg-linear-to-r from-cyan-500 to-blue-500 text-slate-950 shadow-sm opacity-50 cursor-not-allowed"
-                      disabled aria-disabled="true" title="Coming soon"
+                      class="px-2.5 py-1.5 rounded-xl text-[10px] font-black bg-linear-to-r from-cyan-500 to-blue-500 text-slate-950 shadow-sm active:scale-95 ${studioGenStatus !== 'idle' ? 'opacity-60 cursor-wait' : ''}"
+                      title="Redraw this picture as a polished prop"
                     >
                       Turn 3D
                     </button>
@@ -1796,7 +1845,7 @@ export function renderParentPortalView() {
               <input 
                 id="studio-ai-prompt" 
                 type="text" 
-                value="${studioItemName}"
+                value="${escapeHtml(studioPromptText)}"
                 placeholder="${studioActiveCategory === 'weapon' ? 'e.g. Star-Plasma Saber or Hydro Blaster...' : studioActiveCategory === 'gear' ? 'e.g. Phoenix Flame Tiara or Cyber Jetpack...' : studioActiveCategory === 'furniture' ? 'e.g. Starlight Canopy Bed or Holo Gaming Desk...' : studioActiveCategory === 'toy' ? 'e.g. Super Trampoline or Laser Mouse...' : studioActiveCategory === 'food' ? 'e.g. Starberry Bites or Jungle Honeycomb...' : 'e.g. Sugar Plaque Overlord or Bedtime Gremlin...'}"
                 class="flex-1 bg-surface-container-high border border-surface-container-highest rounded-2xl px-4 py-2.5 text-xs font-bold text-inverse-surface focus:outline-hidden focus:border-cyan-400 shadow-inner"
               />
@@ -1807,14 +1856,21 @@ export function renderParentPortalView() {
                 id="studio-gear-ai-btn" 
                 data-studio-ai-btn="true"
                 class="bg-linear-to-r from-cyan-500 via-blue-600 to-emerald-500 text-slate-950 font-headline text-xs font-black px-5 py-2.5 min-h-[44px] rounded-2xl shadow-lg hover:brightness-110 active:scale-95 flex items-center justify-center gap-1.5 shrink-0 border border-white/20 ${
-                  isStudioGenerating ? 'opacity-70 cursor-wait' : ''
+                  studioGenStatus !== 'idle' ? 'opacity-70 cursor-wait' : ''
                 }"
+                ${studioGenStatus !== 'idle' ? 'disabled aria-busy="true"' : ''}
               >
-                <span class="material-symbols-outlined text-base">${isStudioGenerating ? 'progress_activity' : 'auto_awesome'}</span>
-                <span>${isStudioGenerating ? 'Designing 3D...' : '✨ Generate with AI'}</span>
+                <span class="material-symbols-outlined text-base ${studioGenStatus !== 'idle' ? 'animate-spin' : ''}">${studioGenStatus !== 'idle' ? 'progress_activity' : 'auto_awesome'}</span>
+                <span>${studioGenStatus === 'writing' ? 'Writing the idea…' : studioGenStatus === 'painting' ? 'Painting the picture…' : '✨ Generate with AI'}</span>
               </button>
 
             </div>
+            ${studioGenerateError ? `
+              <div role="alert" class="flex items-center justify-between gap-2 text-xs font-bold text-error bg-error/10 border border-error/30 rounded-xl px-3 py-2">
+                <span>${escapeHtml(studioGenerateError)}</span>
+                <button type="button" id="studio-generate-retry-btn" class="px-2.5 py-1 rounded-lg bg-error/20 text-error font-black active:scale-95">Try again</button>
+              </div>
+            ` : ''}
           </div>
 
           <!-- STEP 3: Studio Stage & Customization (2-Column Split) -->
@@ -1826,7 +1882,7 @@ export function renderParentPortalView() {
               <!-- Viewport Switcher -->
               <div class="w-full flex items-center justify-between border-b border-cyan-400/20 pb-2.5">
                 <span class="text-xs font-headline font-black text-cyan-300 uppercase tracking-wider">
-                  ${studioActiveCategory === 'gear' ? 'Companion Catwalk' : studioActiveCategory === 'furniture' ? 'HQ Stage' : studioActiveCategory === 'toy' ? 'Playstage' : studioActiveCategory === 'food' ? 'Kitchen Stage' : 'AR Colosseum'}
+                  ${STUDIO_STAGE_LABELS[studioActiveCategory] || 'Studio Stage'}
                 </span>
 
                 <div class="flex items-center gap-1 bg-slate-800/90 p-1 rounded-xl border border-white/10">
@@ -1840,12 +1896,22 @@ export function renderParentPortalView() {
                   </button>
                   <button 
                     type="button"
+                    id="studio-mode-concept-btn" 
+                    class="px-2.5 py-1 rounded-lg text-xs font-black transition-all ${studioViewportMode === 'concept' ? 'bg-amber-400 text-slate-950 shadow-sm' : 'text-slate-300 hover:text-white'} ${studioGeneratedImage ? '' : 'opacity-40'}"
+                    title="See the AI picture"
+                    ${studioGeneratedImage ? '' : 'disabled aria-disabled="true"'}
+                  >
+                    Art
+                  </button>
+                  <button 
+                    type="button"
                     id="studio-mode-modelviewer-btn" 
-                    class="px-2.5 py-1 rounded-lg text-xs font-black text-slate-300 opacity-50 cursor-not-allowed"
-                    disabled aria-disabled="true" title="Coming soon"
+                    class="px-2.5 py-1 rounded-lg text-xs font-black transition-all ${studioViewportMode === 'modelviewer' ? 'bg-amber-400 text-slate-950 shadow-sm' : 'text-slate-300 hover:text-white'}"
+                    title="Spin a real 3D model"
                   >
                     3D GLB
                   </button>
+                  ${studioActiveSplineUrl ? `
                   <button 
                     type="button"
                     id="studio-mode-spline-btn" 
@@ -1853,7 +1919,7 @@ export function renderParentPortalView() {
                     title="Switch to Spline 3D Scene"
                   >
                     Spline
-                  </button>
+                  </button>` : ''}
                 </div>
               </div>
 
@@ -1865,7 +1931,7 @@ export function renderParentPortalView() {
                     ${petModels.map(p => `
                       <button 
                         type="button"
-                        class="studio-pet-btn w-7 h-7 rounded-xl text-sm flex items-center justify-center transition-all active:scale-95 border ${studioSelectedPetId === p.id ? 'bg-amber-400 text-slate-950 font-black border-white shadow-md scale-110' : 'bg-slate-800/80 hover:bg-slate-700 text-white border-white/20'}"
+                        class="studio-pet-btn w-7 h-7 rounded-xl text-sm flex items-center justify-center transition-all active:scale-95 border ${String(studioSelectedPetId) === String(p.id) ? 'bg-amber-400 text-slate-950 font-black border-white shadow-md scale-110' : 'bg-slate-800/80 hover:bg-slate-700 text-white border-white/20'}"
                         data-pet-id="${p.id}"
                         title="${p.name}"
                       >
@@ -1889,6 +1955,14 @@ export function renderParentPortalView() {
                   aria-label="Parent Multi-Category 3D Live Stage"
                 ></canvas>
 
+                <!-- 1b. The AI picture (what the kid sees on the Shop card and in the gift crate) -->
+                <div id="parent-ai-concept-container" class="relative z-10 w-full h-full flex items-center justify-center ${studioViewportMode === 'concept' && studioGeneratedImage ? 'block' : 'hidden'}">
+                  ${studioGeneratedImage ? `<img src="${escapeHtml(safeImageUrl(studioGeneratedImage))}" alt="${escapeHtml(studioItemName || 'AI picture')}" class="w-full h-full object-contain bg-slate-100/90 rounded-2xl" />` : ''}
+                  ${studioGeneratedImage ? `
+                    <button type="button" id="studio-reroll-art-btn" class="absolute bottom-2 right-2 px-2.5 py-1.5 rounded-xl bg-amber-400 text-slate-950 text-[11px] font-black shadow-lg active:scale-95 ${studioGenStatus !== 'idle' ? 'opacity-60 cursor-wait' : ''}" ${studioGenStatus !== 'idle' ? 'disabled' : ''}>🎨 New picture</button>
+                  ` : ''}
+                </div>
+
                 <!-- 2. Google <model-viewer> 3D GLB -->
                 <div 
                   id="parent-ai-model-viewer-container"
@@ -1896,11 +1970,15 @@ export function renderParentPortalView() {
                 >
                   <model-viewer
                     id="parent-ai-model-viewer"
-                    src="${studioActiveModelUrl}"
-                    alt="${studioItemName || '3D Model'}"
+                    src="${escapeHtml(safeImageUrl(studioActiveModelUrl))}"
+                    alt="${escapeHtml(studioItemName || '3D Model')}"
+                    ${studioGeneratedImage ? `poster="${escapeHtml(safeImageUrl(studioGeneratedImage))}"` : ''}
+                    loading="lazy"
                     auto-rotate
                     camera-controls
                     shadow-intensity="1.2"
+                    ${modelViewerLightingAttrs(studioLighting)}
+                    ${studioModelChosen && /^#[0-9a-f]{6}$/i.test(studioModelTint) ? `data-tint="${studioModelTint}"` : ''}
                     ar
                     ar-modes="webxr scene-viewer quick-look"
                     style="width: 100%; height: 100%; background: transparent;"
@@ -1917,13 +1995,7 @@ export function renderParentPortalView() {
                   class="relative z-10 w-full h-full flex flex-col items-center justify-center p-2 text-center ${studioViewportMode === 'spline' ? 'block' : 'hidden'}"
                 >
                   ${studioActiveSplineUrl ? `
-                    <iframe 
-                      src="${studioActiveSplineUrl}" 
-                      class="w-full h-full rounded-2xl border-0" 
-                      allow="fullscreen"
-                      loading="lazy"
-                      title="Spline 3D Scene View"
-                    ></iframe>
+                    <canvas id="parent-ai-spline-canvas" class="w-full h-full rounded-2xl" aria-label="Spline 3D scene"></canvas>
                   ` : `
                     <div class="flex flex-col items-center justify-center gap-2 text-center p-3">
                       <div class="w-12 h-12 rounded-2xl bg-cyan-500/20 text-cyan-300 flex items-center justify-center text-2xl border border-cyan-400/40 animate-pulse">
@@ -1956,13 +2028,13 @@ export function renderParentPortalView() {
                       type="button"
                       class="studio-3d-asset-card p-1.5 rounded-xl text-left transition-all border ${studioActive3DAssetId === asset.id ? 'bg-cyan-500/20 border-cyan-400 shadow-xs' : 'bg-slate-900/80 border-slate-700 hover:border-slate-500'}"
                       data-asset-id="${asset.id}"
-                      data-model-url="${asset.modelUrl || ''}"
-                      data-spline-url="${asset.splineUrl || ''}"
-                      data-asset-name="${asset.name}"
+                      data-model-url="${escapeHtml(asset.modelUrl || '')}"
+                      data-spline-url="${escapeHtml(asset.splineUrl || '')}"
+                      data-asset-name="${escapeHtml(asset.name)}"
                     >
                       <div class="flex items-center gap-1 mb-0.5">
                         <span class="text-base">${asset.emoji}</span>
-                        <span class="text-[11px] font-black text-white truncate flex-1">${asset.name}</span>
+                        <span class="text-[11px] font-black text-white truncate flex-1">${escapeHtml(asset.name)}</span>
                       </div>
                       <div class="flex items-center justify-between text-[9px] text-slate-400">
                         <span class="text-cyan-300 font-bold">${asset.badge}</span>
@@ -1973,7 +2045,9 @@ export function renderParentPortalView() {
                 </div>
               </div>
 
-              <!-- Spline 3D Presets Dropdown -->
+              <!-- Spline 3D Presets Dropdown (advanced, closed by default) -->
+              <details class="w-full" ${studioActiveSplineUrl ? 'open' : ''}>
+              <summary class="cursor-pointer text-[11px] font-black text-cyan-300 px-1 py-1 select-none">Advanced 3D options (Spline)</summary>
               <div class="w-full p-2.5 bg-slate-800/80 rounded-2xl border border-cyan-400/30 flex flex-col gap-1.5">
                 <div class="flex items-center justify-between text-[11px] font-bold text-cyan-300">
                   <span>Spline 3D Presets</span>
@@ -1982,8 +2056,8 @@ export function renderParentPortalView() {
                 <select id="studio-spline-preset-select" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs font-bold text-amber-300 focus:outline-hidden focus:border-cyan-400">
                   <option value="">Choose Spline 3D Preset...</option>
                   ${presetsForCategory.map(p => `
-                    <option value="${p.splineUrl}" ${studioActiveSplineUrl === p.splineUrl ? 'selected' : ''}>
-                      ${p.name}
+                    <option value="${escapeHtml(p.splineUrl)}" ${studioActiveSplineUrl === p.splineUrl ? 'selected' : ''}>
+                      ${escapeHtml(p.name)}
                     </option>
                   `).join('')}
                 </select>
@@ -1991,7 +2065,7 @@ export function renderParentPortalView() {
                   <input 
                     id="studio-spline-url-input" 
                     type="url" 
-                    value="${studioActiveSplineUrl}" 
+                    value="${escapeHtml(studioActiveSplineUrl)}" 
                     placeholder="Custom Spline URL..." 
                     class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-2 py-1 text-[11px] text-white focus:outline-hidden focus:border-cyan-400"
                   />
@@ -2003,7 +2077,9 @@ export function renderParentPortalView() {
                     Load
                   </button>
                 </div>
+                <p id="studio-spline-url-input-msg" class="text-[10px] font-bold text-error"></p>
               </div>
+              </details>
 
               <!-- Category Stage Modifiers -->
               ${studioActiveCategory === 'gear' ? `
@@ -2020,6 +2096,16 @@ export function renderParentPortalView() {
                         <span>${s.emoji}</span>
                         <span>${s.label.split(' ')[0]}</span>
                       </button>
+                    `).join('')}
+                  </div>
+                </div>
+
+                <!-- Lighting for 3D models -->
+                <div class="w-full p-2 bg-slate-800/60 rounded-xl border border-slate-700/60 flex items-center justify-between gap-2">
+                  <span class="text-[10px] font-bold text-cyan-300 uppercase">Lighting:</span>
+                  <div class="flex items-center gap-1">
+                    ${Object.entries(LIGHTING_PRESETS).map(([key, p]) => `
+                      <button type="button" class="studio-lighting-btn px-2 py-1 min-h-[32px] rounded-lg text-[10px] font-black border ${studioLighting === key ? 'bg-amber-400 text-slate-950 border-amber-300' : 'bg-slate-900 text-slate-300 border-slate-700'}" data-lighting="${key}">${p.label}</button>
                     `).join('')}
                   </div>
                 </div>
@@ -2111,6 +2197,30 @@ export function renderParentPortalView() {
                     </button>
                   </div>
                 </div>
+              ` : studioActiveCategory === 'weapon' ? `
+                <div class="w-full p-2.5 bg-slate-800/60 rounded-xl border border-slate-700/60 text-[11px] text-slate-300">
+                  ⚔️ Pick the weapon type and its battle power on the right. The picture above is what the hero sees in the Shop and the gift crate.
+                </div>
+              ` : studioActiveCategory === 'pet' ? `
+                <!-- Companion Archetype -->
+                <div class="w-full">
+                  <label class="text-[10px] font-bold text-cyan-300 uppercase tracking-wider mb-1 block">Companion Archetype</label>
+                  <div class="grid grid-cols-3 gap-1.5">
+                    ${STUDIO_PET_THEMES.map(t => `
+                      <button type="button" class="studio-pet-arch-btn p-1.5 rounded-xl text-[11px] font-bold border flex flex-col items-center gap-0.5 ${studioPetArchetype === t.archetype ? 'bg-cyan-400 text-slate-950 border-white shadow-sm' : 'bg-slate-800 text-slate-300 border-slate-700'}" data-arch="${t.archetype}">
+                        <span>${t.label.split(' ')[0]}</span><span class="truncate w-full text-center">${escapeHtml(t.label.split(' ').slice(1).join(' '))}</span>
+                      </button>
+                    `).join('')}
+                  </div>
+                  <label class="text-[10px] font-bold text-cyan-300 uppercase tracking-wider mt-2 mb-1 block">Habit Bond Perk</label>
+                  <select id="studio-pet-synergy-select" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs font-bold text-amber-300 focus:outline-hidden focus:border-cyan-400">
+                    ${STUDIO_PET_SYNERGIES.map(o => `<option value="${o.key}" ${studioPetSynergy === o.key ? 'selected' : ''}>${o.label}</option>`).join('')}
+                  </select>
+                </div>
+              ` : studioActiveCategory === 'world_stash' ? `
+                <div class="w-full p-2.5 bg-slate-800/60 rounded-xl border border-slate-700/60 text-[11px] text-slate-300">
+                  🗺️ Configure the landmark or streak crate on the right. It appears on the World Adventure Map.
+                </div>
               ` : `
                 <!-- Boss Habit Domain -->
                 <div class="w-full">
@@ -2173,7 +2283,8 @@ export function renderParentPortalView() {
                   <input 
                     id="studio-item-name" 
                     type="text" 
-                    value="${studioItemName}"
+                    maxlength="60"
+                    value="${escapeHtml(studioItemName)}"
                     class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-hidden focus:border-cyan-400" 
                   />
                 </div>
@@ -2194,6 +2305,7 @@ export function renderParentPortalView() {
                         <option value="crown" ${studioItemArchetype === 'crown' ? 'selected' : ''}>Golden Horn Crown (Spikes)</option>
                         <option value="cowl" ${studioItemArchetype === 'cowl' ? 'selected' : ''}>Hero Cowl (Aerodynamic Mask)</option>
                         <option value="goggles" ${studioItemArchetype === 'goggles' ? 'selected' : ''}>Sky-Captain Goggles (Brass Lenses)</option>
+                        <option value="tiara" ${studioItemArchetype === 'tiara' ? 'selected' : ''}>Phoenix Fire Tiara (Solar Crest)</option>
                       ` : studioSelectedSocket === 'back' ? `
                         <option value="wings" ${studioItemArchetype === 'wings' ? 'selected' : ''}>Meteor Glider Wings (Thrusters)</option>
                         <option value="jetpack" ${studioItemArchetype === 'jetpack' ? 'selected' : ''}>Twin Turbo Jetpack (Exhaust Flares)</option>
@@ -2231,6 +2343,14 @@ export function renderParentPortalView() {
                       <option value="jungle" ${studioFoodTheme === 'jungle' ? 'selected' : ''}>🍯 Jungle Honeycomb Feast</option>
                       <option value="ocean" ${studioFoodTheme === 'ocean' ? 'selected' : ''}>🌊 Tidepool Kelp Crunch</option>
                     </select>
+                  ` : studioActiveCategory === 'pet' ? `
+                    <select id="studio-pet-archetype-select" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-hidden focus:border-cyan-400">
+                      ${STUDIO_PET_THEMES.map(t => `<option value="${t.archetype}" ${studioPetArchetype === t.archetype ? 'selected' : ''}>${t.label}</option>`).join('')}
+                    </select>
+                  ` : studioActiveCategory === 'world_stash' ? `
+                    <div class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-on-surface-variant">
+                      Set the stash type in the island panel below.
+                    </div>
                   ` : `
                     <select id="studio-boss-domain-select" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-hidden focus:border-cyan-400">
                       <option value="dental" ${studioBossDomain === 'dental' ? 'selected' : ''}>🪥 Dental & Tooth Brushing</option>
@@ -2268,6 +2388,7 @@ export function renderParentPortalView() {
                     <option value="fire" ${studioItemAura === 'fire' ? 'selected' : ''}>🔥 Blazing Fire (Orange)</option>
                     <option value="stardust" ${studioItemAura === 'stardust' ? 'selected' : ''}>✨ Stardust Sparkles (Gold)</option>
                     <option value="cosmic" ${studioItemAura === 'cosmic' ? 'selected' : ''}>🌟 Cosmic Aurora (Cyan)</option>
+                    <option value="wind" ${studioItemAura === 'wind' ? 'selected' : ''}>🌬️ Wind Swirl (Teal)</option>
                   </select>
                 </div>
               </div>
@@ -2454,6 +2575,16 @@ export function renderParentPortalView() {
                     <input id="studio-stash-coins-slider" type="range" min="50" max="300" step="25" value="${studioItemPrice || 100}" class="w-full accent-cyan-400" />
                   `}
                 </div>
+              ` : studioActiveCategory === 'pet' ? `
+                <div class="p-3.5 bg-surface-container-high/60 rounded-2xl border border-surface-container-highest flex flex-col gap-2">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-headline font-black text-cyan-400 uppercase tracking-wider">Magic Egg Companion</span>
+                    <span class="px-2 py-0.5 rounded-full text-xs font-black bg-cyan-400/20 text-cyan-300 border border-cyan-400/40">🥚 3 taps to hatch</span>
+                  </div>
+                  <p class="text-[11px] text-on-surface-variant">The companion arrives as a Magic Egg in the Pet Sanctuary. It bonds with the chosen habit.</p>
+                  <label class="text-[10px] font-black uppercase text-on-surface-variant block">Sleepy voice line</label>
+                  <input id="studio-pet-sleep-input" type="text" maxlength="160" value="${escapeHtml(studioPetSleep)}" class="w-full bg-surface-container border border-surface-container-highest rounded-xl p-2 text-xs font-bold text-inverse-surface focus:outline-hidden focus:border-cyan-400" />
+                </div>
               ` : `
                 <div class="p-3.5 bg-surface-container-high/60 rounded-2xl border border-surface-container-highest flex flex-col gap-2">
                   <div class="flex items-center justify-between">
@@ -2482,7 +2613,8 @@ export function renderParentPortalView() {
                   <input 
                     id="studio-item-desc" 
                     type="text" 
-                    value="${studioItemDesc}"
+                    maxlength="160"
+                    value="${escapeHtml(studioItemDesc)}"
                     placeholder="e.g. Forged from starlight for extra courage!"
                     class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-inverse-surface focus:outline-hidden focus:border-cyan-400" 
                   />
@@ -2496,7 +2628,8 @@ export function renderParentPortalView() {
                   <input 
                     id="studio-item-voiceline" 
                     type="text" 
-                    value="${studioActiveCategory === 'boss' ? studioBossTaunt : studioPetVoiceLine}"
+                    maxlength="160"
+                    value="${escapeHtml(studioActiveCategory === 'boss' ? studioBossTaunt : studioPetVoiceLine)}"
                     placeholder="e.g. Woohoo! Super hero power!"
                     class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-2.5 text-xs font-bold text-cyan-300 focus:outline-hidden focus:border-cyan-400" 
                   />
@@ -2583,11 +2716,11 @@ export function renderParentPortalView() {
                 <button 
                   type="button" 
                   id="studio-test-as-child-btn"
-                  class="w-full sm:w-auto py-2.5 px-4 min-h-[44px] rounded-2xl bg-surface-container-high border border-surface-container-highest text-inverse-surface font-headline text-xs font-black shadow-sm flex items-center justify-center gap-1.5 opacity-50 cursor-not-allowed"
-                  disabled aria-disabled="true" title="Coming soon"
+                  class="w-full sm:w-auto py-2.5 px-4 min-h-[44px] rounded-2xl bg-surface-container-high border border-surface-container-highest text-inverse-surface font-headline text-xs font-black shadow-sm flex items-center justify-center gap-1.5 active:scale-95"
+                  title="See it the way your child will"
                 >
                   <span>👀</span>
-                  <span>Test as Child (soon)</span>
+                  <span>Test as Child</span>
                 </button>
 
                 <button 
@@ -2597,9 +2730,28 @@ export function renderParentPortalView() {
                   class="w-full sm:w-auto bg-linear-to-r from-cyan-500 via-blue-600 to-emerald-500 text-slate-950 font-headline text-xs sm:text-sm font-black py-3 px-6 min-h-[44px] rounded-2xl shadow-xl hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 border-2 border-white/30"
                 >
                   <span class="text-base">🚀</span>
-                  <span>Publish Reward Live</span>
+                  <span>${studioIsPublishing ? 'Saving…' : 'Publish Reward Live'}</span>
                 </button>
               </div>
+              <p class="text-[11px] font-bold text-on-surface-variant text-center sm:text-right">
+                ${studioDeliveryMethod === 'hero_shop' ? 'Goes to the Shop for ' : studioDeliveryMethod === 'habit_bounty' ? `Unlocks after a ${Number(studioBountyStreakDays) || 3}-day streak for ` : 'Arrives as a gift crate for '}${escapeHtml(studioTargetChildProfile === 'all' ? 'all kids' : ((heroes.find(h => String(h.id) === String(studioTargetChildProfile)) || {}).name || 'one kid'))}.
+              </p>
+              <div id="studio-publish-feedback" role="status" aria-live="polite" class="text-xs font-black text-emerald-500 text-center sm:text-right ${studioPublishFeedback ? '' : 'hidden'}">${escapeHtml(studioPublishFeedback)}</div>
+              ${isChildEyePreviewOpen ? `
+                <div id="studio-child-preview-backdrop" class="fixed inset-0 z-[200] bg-black/60 flex items-center justify-center p-4">
+                  <div role="dialog" aria-label="What your child will see" class="w-full max-w-xs rounded-3xl bg-surface p-4 shadow-2xl flex flex-col items-center gap-2 text-center">
+                    <p class="text-[10px] font-black uppercase tracking-wider text-on-surface-variant">What your child will see</p>
+                    <div class="w-32 h-32 rounded-2xl bg-slate-100 flex items-center justify-center overflow-hidden">
+                      ${studioGeneratedImage ? `<img src="${escapeHtml(safeImageUrl(studioGeneratedImage))}" alt="" class="w-full h-full object-contain" />` : '<span class="text-5xl">🎁</span>'}
+                    </div>
+                    <h4 class="font-headline text-base font-black text-inverse-surface">${escapeHtml(studioItemName || 'New reward')}</h4>
+                    <p class="text-xs text-on-surface-variant">${escapeHtml(studioItemDesc || '')}</p>
+                    <p class="text-xs font-black text-amber-600">${studioDeliveryMethod === 'hero_shop' ? `🪙 ${Number(studioItemPrice) || 0} coins` : studioDeliveryMethod === 'habit_bounty' ? `🔥 ${Number(studioBountyStreakDays) || 3}-day streak bounty` : '🎁 A surprise gift crate'}</p>
+                    <p class="text-[10px] text-on-surface-variant">Made by ${escapeHtml(studioCraftedBy || 'Mom & Dad')}</p>
+                    <button type="button" id="studio-child-preview-close" class="mt-1 w-full py-2 rounded-2xl bg-secondary text-on-secondary text-xs font-black active:scale-95">Close</button>
+                  </div>
+                </div>
+              ` : ''}
 
             </div>
 
@@ -3266,6 +3418,19 @@ export function renderParentPortalView() {
           ? `
         <section class="flex flex-col gap-6 animate-fade-in">
           
+          <!-- Credits for third-party art, models and sounds used in the Studio and Shop -->
+          <details id="credits-section" class="bg-surface-container rounded-3xl p-4 sm:p-5 border-2 border-surface-container-highest card-shadow">
+            <summary class="cursor-pointer font-headline text-sm font-black text-inverse-surface select-none flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary">favorite</span> Credits
+            </summary>
+            <ul class="mt-3 text-[11px] text-on-surface-variant font-bold list-disc pl-5 flex flex-col gap-1">
+              <li>Icons by game-icons.net (Lorc, Delapouite), CC BY 3.0</li>
+              <li>Emoji art by OpenMoji, CC BY-SA 4.0</li>
+              <li>3D viewer: Google model-viewer (Apache 2.0)</li>
+              <li>3D models you pick in the Studio show their own credit line on the item</li>
+            </ul>
+          </details>
+
           <!-- App build + clean reload: the header badge is hidden on phones, so it lives here too -->
           <div class="bg-surface-container rounded-3xl p-4 sm:p-5 border-2 border-surface-container-highest card-shadow flex items-center justify-between gap-3">
             <div class="flex items-center gap-3 min-w-0">
@@ -5656,7 +5821,7 @@ export function attachParentPortalListeners() {
           studioFurnitureType = 'bed';
           studioFurnitureZone = 'bedroom';
           studioFurnitureComfort = 30;
-          studioActiveSplineUrl = SPLINE_3D_PRESETS.furniture[0]?.splineUrl || '';
+          studioActiveSplineUrl = '';
         } else if (cat === 'toy') {
           studioItemName = 'Anti-Gravity Trampoline';
           studioItemDesc = 'High-rebound trampoline mat that lets pets do backflips in the air!';
@@ -5665,7 +5830,7 @@ export function attachParentPortalListeners() {
           studioToyType = 'trampoline';
           studioToyStat = 'joy';
           studioToyAmount = 35;
-          studioActiveSplineUrl = SPLINE_3D_PRESETS.toy[0]?.splineUrl || '';
+          studioActiveSplineUrl = '';
         } else if (cat === 'food') {
           studioItemName = 'Golden Orchard Fruit Basket';
           studioItemDesc = 'Sun-ripened fruit picked fresh from the Sanctuary orchard trees!';
@@ -5677,15 +5842,32 @@ export function attachParentPortalListeners() {
           studioFoodJoyBoost = 20;
           studioFoodQuantity = 3;
           studioActiveSplineUrl = '';
-                } else if (cat === 'pet') {
-          studioPetArchetype = 'dino';
-          const matched = petThemes.find(t => t.key === sparkKey);
-          if (matched) {
-            studioItemName = matched.label.split(' ').slice(1).join(' ');
-            studioItemDesc = matched.desc;
-            studioSelectedDye = matched.color;
-            studioPetVoiceLine = 'Ready for adventures and chores!';
-          }
+        } else if (cat === 'pet') {
+          const t = STUDIO_PET_THEMES[0];
+          studioPetArchetype = t.archetype;
+          studioItemName = t.label.split(' ').slice(1).join(' ');
+          studioItemDesc = t.desc;
+          studioSelectedDye = t.color;
+          studioPetVoiceLine = 'Ready for adventures and chores!';
+          studioItemPrice = 250;
+          studioActiveSplineUrl = '';
+        } else if (cat === 'weapon') {
+          const w = STUDIO_WEAPON_SPARKS.plasma_saber;
+          studioSelectedTheme = 'plasma_saber';
+          studioItemArchetype = w.archetype;
+          studioSelectedDye = w.color;
+          studioItemName = w.name;
+          studioItemDesc = w.desc;
+          studioStatType = 'damage_boost';
+          studioStatPercent = w.percent;
+          studioItemPrice = w.price;
+          studioPetVoiceLine = 'Power up! Time to zap those plaque bugs!';
+          studioActiveSplineUrl = '';
+        } else if (cat === 'world_stash') {
+          studioItemName = 'Hidden Treasure Crate';
+          studioItemDesc = 'A secret stash waiting on the Adventure Map!';
+          studioItemPrice = 100;
+          studioActiveSplineUrl = '';
         } else if (cat === 'boss') {
           studioItemName = 'Lord Plaque The Sticky';
           studioItemDesc = 'Sneaky tooth-decay overlord lurking in deep enamel crevices!';
@@ -5695,13 +5877,27 @@ export function attachParentPortalListeners() {
           studioBossDomain = 'dental';
           studioBossHp = 300;
           studioBossCoins = 60;
-          studioActiveSplineUrl = SPLINE_3D_PRESETS.boss[0]?.splineUrl || '';
+          studioActiveSplineUrl = '';
         }
 
         Sound.click();
         store.notify();
       });
     });
+
+    // Spline runtime (only when the parent chose Spline and a link is set)
+    const splineCanvas = document.getElementById('parent-ai-spline-canvas');
+    if (splineCanvas && studioViewportMode === 'spline' && studioActiveSplineUrl) {
+      const wantedUrl = studioActiveSplineUrl;
+      import('@splinetool/runtime').then(async ({ Application }) => {
+        if (studioActiveSplineUrl !== wantedUrl || !document.body.contains(splineCanvas)) return;
+        const app = new Application(splineCanvas);
+        await app.load(wantedUrl);
+      }).catch(() => {
+        const box = document.getElementById('parent-ai-spline-container');
+        if (box) box.innerHTML = '<p class="text-[11px] font-bold text-amber-300 p-3">This Spline scene would not load. Try another link.</p>';
+      });
+    }
 
     // 5. Dual Viewport Toggle (Canvas vs Spline)
     const canvasModeBtn = document.getElementById('studio-mode-canvas-btn');
@@ -5717,12 +5913,6 @@ export function attachParentPortalListeners() {
     if (splineModeBtn) {
       splineModeBtn.addEventListener('click', () => {
         studioViewportMode = 'spline';
-        if (!studioActiveSplineUrl) {
-          const presets = SPLINE_3D_PRESETS[studioActiveCategory] || [];
-          if (presets.length > 0) {
-            studioActiveSplineUrl = presets[0].splineUrl;
-          }
-        }
         Sound.sparkle();
         store.notify();
       });
@@ -5747,12 +5937,16 @@ export function attachParentPortalListeners() {
     if (splineLoadBtn) {
       splineLoadBtn.addEventListener('click', () => {
         const input = document.getElementById('studio-spline-url-input');
-        if (input && input.value.trim()) {
-          studioActiveSplineUrl = input.value.trim();
-          studioViewportMode = 'spline';
-          Sound.sparkle();
-          store.notify();
+        const typed = input ? input.value.trim() : '';
+        if (!typed) return;
+        if (!/^https:\/\/prod\.spline\.design\/[A-Za-z0-9_-]+\/scene\.splinecode$/.test(typed)) {
+          flashFeedback('studio-spline-url-input-msg', 'Paste a Spline link that looks like https://prod.spline.design/.../scene.splinecode', { error: true, ms: 5000 });
+          return;
         }
+        studioActiveSplineUrl = typed;
+        studioViewportMode = 'spline';
+        Sound.sparkle();
+        store.notify();
       });
     }
 
@@ -5941,6 +6135,25 @@ export function attachParentPortalListeners() {
             studioItemPrice = 20;
             studioPetVoiceLine = 'Crunchy and salty, straight from the sea!';
           }
+        } else if (cat === 'pet') {
+          const t = STUDIO_PET_THEMES.find(x => x.key === sparkKey);
+          if (t) {
+            studioPetArchetype = t.archetype;
+            studioItemName = t.label.split(' ').slice(1).join(' ');
+            studioItemDesc = t.desc;
+            studioSelectedDye = t.color;
+          }
+        } else if (cat === 'weapon') {
+          const w = STUDIO_WEAPON_SPARKS[sparkKey];
+          if (w) {
+            studioSelectedTheme = sparkKey;
+            studioItemArchetype = w.archetype;
+            studioSelectedDye = w.color;
+            studioItemName = w.name;
+            studioItemDesc = w.desc;
+            studioStatPercent = w.percent;
+            studioItemPrice = w.price;
+          }
         } else if (cat === 'boss') {
           if (sparkKey === 'sugar_monster') {
             studioBossDomain = 'dental';
@@ -6015,6 +6228,10 @@ export function attachParentPortalListeners() {
         if (!hex) return;
         studioSelectedDye = hex;
         Sound.sparkle();
+        if (studioModelChosen) {
+          studioModelTint = hex;
+          tintModelViewer(document.getElementById('parent-ai-model-viewer'), hex);
+        }
         if (activeStudioCanvasInstance && studioActiveCategory === 'gear') {
           activeStudioCanvasInstance.setGearColor(studioSelectedSocket, hex);
         }
@@ -6098,17 +6315,6 @@ export function attachParentPortalListeners() {
       });
     });
 
-    document.querySelectorAll('.studio-boss-focus-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const foc = btn.getAttribute('data-focus');
-        if (foc) {
-          studioBossFocusQuadrant = foc;
-          Sound.click();
-          store.notify();
-        }
-      });
-    });
-
     // 16. Sliders & Input Syncs
     const archetypeSelect = document.getElementById('studio-gear-archetype');
     if (archetypeSelect) {
@@ -6139,6 +6345,46 @@ export function attachParentPortalListeners() {
       });
     }
 
+    // Typed text is kept in module state so a re-render never wipes it (no notify while typing).
+    document.getElementById('studio-ai-prompt')?.addEventListener('input', (e) => {
+      studioPromptText = e.target.value;
+    });
+    document.getElementById('studio-item-name')?.addEventListener('input', (e) => {
+      studioItemName = e.target.value;
+    });
+    document.getElementById('studio-item-desc')?.addEventListener('input', (e) => {
+      studioItemDesc = e.target.value;
+    });
+    document.getElementById('studio-item-voiceline')?.addEventListener('input', (e) => {
+      if (studioActiveCategory === 'boss') studioBossTaunt = e.target.value;
+      else studioPetVoiceLine = e.target.value;
+    });
+
+    // Pet companion controls
+    document.querySelectorAll('.studio-pet-arch-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const arch = btn.getAttribute('data-arch');
+        const t = STUDIO_PET_THEMES.find(x => x.archetype === arch);
+        if (!t) return;
+        studioPetArchetype = t.archetype;
+        studioSelectedDye = t.color;
+        Sound.click();
+        store.notify();
+      });
+    });
+    document.getElementById('studio-pet-archetype-select')?.addEventListener('change', (e) => {
+      const t = STUDIO_PET_THEMES.find(x => x.archetype === e.target.value);
+      if (!t) return;
+      studioPetArchetype = t.archetype;
+      studioSelectedDye = t.color;
+      store.notify();
+    });
+    document.getElementById('studio-pet-synergy-select')?.addEventListener('change', (e) => {
+      studioPetSynergy = e.target.value;
+    });
+    document.getElementById('studio-pet-sleep-input')?.addEventListener('input', (e) => {
+      studioPetSleep = e.target.value;
+    });
     const foodThemeSelect = document.getElementById('studio-food-theme-select');
     if (foodThemeSelect) {
       foodThemeSelect.addEventListener('change', (e) => {
@@ -6351,100 +6597,244 @@ export function attachParentPortalListeners() {
       });
     }
 
-    // 17. Unified AI Generate Button (Gemini 2.5 + Offline Fallback)
-    const studioAiBtn = document.getElementById('studio-gear-ai-btn') || document.getElementById('studio-ai-btn');
-    if (studioAiBtn) {
-      studioAiBtn.addEventListener('click', async () => {
-        if (isStudioGenerating) return;
-        isStudioGenerating = true;
-        Sound.sparkle();
-        store.notify();
+    // 17. AI generation (text idea, photo or re-roll). One run at a time, always ends with a visible result or error.
+    async function runStudioGeneration({ fromPhoto = false } = {}) {
+      if (studioGenStatus !== 'idle') return;
+      studioGenerateError = '';
+      studioPublishFeedback = '';
+      studioGenStatus = 'writing';
+      isStudioGenerating = true;
+      Sound.sparkle();
+      store.notify();
 
-        try {
-          const promptInput = document.getElementById('studio-ai-prompt')?.value || studioSelectedTheme;
-          const generated = await firebaseAI.generate3DContent({
-            category: studioActiveCategory,
-            promptText: promptInput,
-            theme: studioActiveCategory === 'food' ? studioFoodTheme : studioSelectedTheme,
-            socket: studioSelectedSocket,
-            petId: studioSelectedPetId,
-            furnitureType: studioFurnitureType,
-            toyType: studioToyType,
-            domain: studioBossDomain,
-            defaultPrice: studioItemPrice
-          });
-
-          if (generated) {
-            studioItemName = generated.name || studioItemName;
-            studioItemDesc = generated.desc || studioItemDesc;
-            studioItemPrice = generated.costCoins || generated.rewardCoins || studioItemPrice;
-            if (generated.splineUrl) studioActiveSplineUrl = generated.splineUrl;
-
-            if (studioActiveCategory === 'gear') {
-              studioSelectedSocket = generated.socket || studioSelectedSocket;
-              studioItemArchetype = generated.meshArchetype || studioItemArchetype;
-              studioSelectedDye = generated.primaryColor || studioSelectedDye;
-              studioItemAura = generated.aura || studioItemAura;
-              studioStatType = generated.statBonusType || studioStatType;
-              studioStatPercent = generated.statBonusPercent || studioStatPercent;
-              studioPetVoiceLine = generated.petVoiceLine || studioPetVoiceLine;
-            } else if (studioActiveCategory === 'furniture') {
-              studioFurnitureType = generated.slot || studioFurnitureType;
-              studioFurnitureComfort = generated.comfort || studioFurnitureComfort;
-              studioPetVoiceLine = generated.petVoiceLine || studioPetVoiceLine;
-            } else if (studioActiveCategory === 'toy') {
-              studioToyType = generated.toyType || studioToyType;
-              studioToyStat = generated.statRefillTarget || studioToyStat;
-              studioToyAmount = generated.statRefillAmount || studioToyAmount;
-              studioPetVoiceLine = generated.cheerVoiceLine || studioPetVoiceLine;
-            } else if (studioActiveCategory === 'food') {
-              studioFoodHungerFill = generated.hungerFill || studioFoodHungerFill;
-              studioFoodEnergyFill = generated.energyFill || studioFoodEnergyFill;
-              studioFoodJoyBoost = generated.joyBoost || studioFoodJoyBoost;
-              studioFoodQuantity = generated.quantityPerPurchase || studioFoodQuantity;
-                    } else if (studioActiveCategory === 'pet') {
-          const petToPublish = {
-            id: `parent_pet_${Date.now()}`,
-            name: nameVal.trim() || 'Hero Companion',
-            archetype: studioPetArchetype || 'dragon',
-            color: studioSelectedDye || '#2ecc71',
-            accentColor: '#f39c12',
-            desc: descVal.trim() || 'A loyal 3D companion crafted with love by parent!',
-            cheerVoiceLine: voiceVal.trim() || 'Woohoo! Great job on your chores!',
-            sleepVoiceLine: 'Zzz... peaceful dreams, little hero...',
-            habitSynergy: studioPetSynergy || 'dental',
-            splineUrl: studioActiveSplineUrl || undefined,
-            isCustom: true
-          };
-          store.addCustomAIPet(petToPublish, studioDeliveryMode || 'magic_egg');
-          Sound.fanfare();
-        } else if (studioActiveCategory === 'boss') {
-              studioBossHp = generated.maxHp || studioBossHp;
-              studioBossCoins = generated.rewardCoins || studioBossCoins;
-              studioBossTaunt = generated.taunt || studioBossTaunt;
-              studioBossRally = generated.rallyCall || studioBossRally;
-            }
+      const category = studioActiveCategory;
+      const typed = (studioPromptText || '').trim();
+      const opts = {
+        category,
+        promptText: typed || studioItemName || studioSelectedTheme,
+        theme: category === 'food' ? studioFoodTheme : category === 'weapon' ? studioItemArchetype : studioSelectedTheme,
+        archetype: category === 'pet' ? studioPetArchetype : undefined,
+        habitSynergy: studioPetSynergy,
+        socket: studioSelectedSocket,
+        petId: studioSelectedPetId,
+        furnitureType: studioFurnitureType,
+        toyType: studioToyType,
+        domain: studioBossDomain,
+        defaultPrice: studioItemPrice,
+        deliveryMethod: studioDeliveryMethod,
+        onPhase: (phase) => {
+          if (studioGenStatus !== 'idle' && studioGenStatus !== phase) {
+            studioGenStatus = phase;
+            store.notify();
           }
-          Sound.fanfare();
-        } catch (err) {
-          console.warn("AI generation failed:", err);
-        } finally {
-          isStudioGenerating = false;
-          store.notify();
         }
-      });
+      };
+      if (fromPhoto && studioUploadedImageBase64) {
+        opts.fileOrBase64 = studioUploadedImageBase64;
+        opts.mimeType = (/^data:([^;]+);/.exec(studioUploadedImageBase64) || [])[1] || 'image/jpeg';
+        opts.referenceImages = [studioUploadedImageBase64];
+      }
+
+      try {
+        const work = fromPhoto && studioUploadedImageBase64
+          ? firebaseAI.generate3DContentFromImage(opts)
+          : firebaseAI.generate3DContent(opts);
+        const generated = await Promise.race([
+          work,
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 50000))
+        ]);
+        if (!generated) throw new Error('empty');
+        mergeStudioGenerated(generated, category);
+        studioGeneratedImage = isGeneratedPicture(generated.image) ? generated.image : null;
+        if (studioGeneratedImage) studioViewportMode = 'concept';
+        Sound.fanfare();
+      } catch (err) {
+        console.warn('AI generation failed:', err);
+        studioGenerateError = err?.message === 'timeout'
+          ? 'That took too long. Please try again.'
+          : 'The AI could not finish that one. Please try again.';
+      } finally {
+        isStudioGenerating = false;
+        studioGenStatus = 'idle';
+        store.notify();
+      }
     }
+
+    function mergeStudioGenerated(generated, category) {
+      studioItemName = generated.name || studioItemName;
+      studioItemDesc = generated.desc || studioItemDesc;
+      studioItemPrice = generated.costCoins || generated.rewardCoins || studioItemPrice;
+      if (category === 'gear') {
+        studioSelectedSocket = generated.socket || studioSelectedSocket;
+        studioItemArchetype = generated.meshArchetype || studioItemArchetype;
+        studioSelectedDye = generated.primaryColor || studioSelectedDye;
+        studioItemAura = generated.aura || studioItemAura;
+        studioStatType = generated.statBonusType || studioStatType;
+        studioStatPercent = generated.statBonusPercent || studioStatPercent;
+        studioPetVoiceLine = generated.petVoiceLine || studioPetVoiceLine;
+      } else if (category === 'weapon') {
+        studioStatPercent = generated.statBonusPercent || studioStatPercent;
+        studioPetVoiceLine = generated.petVoiceLine || studioPetVoiceLine;
+      } else if (category === 'furniture') {
+        studioFurnitureType = generated.slot || studioFurnitureType;
+        studioFurnitureComfort = generated.comfort || studioFurnitureComfort;
+        studioPetVoiceLine = generated.petVoiceLine || studioPetVoiceLine;
+      } else if (category === 'toy') {
+        studioToyType = generated.toyType || studioToyType;
+        studioToyStat = generated.statRefillType || generated.statRefillTarget || studioToyStat;
+        studioToyAmount = generated.statRefillAmount || studioToyAmount;
+        studioPetVoiceLine = generated.cheerVoiceLine || studioPetVoiceLine;
+      } else if (category === 'food') {
+        studioFoodHungerFill = generated.hungerFill || studioFoodHungerFill;
+        studioFoodEnergyFill = generated.energyFill || studioFoodEnergyFill;
+        studioFoodJoyBoost = generated.joyBoost || studioFoodJoyBoost;
+        studioFoodQuantity = generated.quantityPerPurchase || studioFoodQuantity;
+      } else if (category === 'pet') {
+        studioPetArchetype = generated.archetype || studioPetArchetype;
+        studioSelectedDye = generated.color || studioSelectedDye;
+        studioPetVoiceLine = generated.cheerVoiceLine || studioPetVoiceLine;
+        studioPetSleep = generated.sleepVoiceLine || studioPetSleep;
+      } else if (category === 'boss') {
+        studioBossHp = generated.maxHp || studioBossHp;
+        studioBossCoins = generated.rewardCoins || studioBossCoins;
+        studioBossTaunt = generated.taunt || studioBossTaunt;
+        studioBossRally = generated.rallyCall || studioBossRally;
+      }
+    }
+
+    const studioAiBtn = document.getElementById('studio-gear-ai-btn') || document.getElementById('studio-ai-btn');
+    studioAiBtn?.addEventListener('click', () => runStudioGeneration());
+    document.getElementById('studio-generate-retry-btn')?.addEventListener('click', () => runStudioGeneration());
+    document.getElementById('studio-reroll-art-btn')?.addEventListener('click', () => runStudioGeneration({ fromPhoto: !!studioUploadedImageBase64 }));
+    document.getElementById('studio-vision-generate-btn')?.addEventListener('click', () => runStudioGeneration({ fromPhoto: true }));
+
+    // Photo or a child's drawing -> small reference picture (kept out of the household document).
+    document.getElementById('studio-photo-upload')?.addEventListener('change', async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const small = await toThumbnail(file, { size: 512, type: 'image/jpeg', quality: 0.85 });
+      if (!small) {
+        studioGenerateError = 'That picture could not be opened. Try a different photo.';
+      } else {
+        studioUploadedImageBase64 = small;
+        studioGenerateError = '';
+        Sound.click();
+      }
+      store.notify();
+    });
+
+    // Say the idea out loud (button only exists when the browser supports it).
+    document.getElementById('studio-voice-mic-btn')?.addEventListener('click', () => {
+      const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!Rec) return;
+      if (isRecordingVoice && studioSpeechRecognition) {
+        try { studioSpeechRecognition.stop(); } catch { /* ignore */ }
+        return;
+      }
+      const rec = new Rec();
+      studioSpeechRecognition = rec;
+      rec.lang = 'en-US';
+      rec.interimResults = false;
+      rec.maxAlternatives = 1;
+      rec.onresult = (ev) => {
+        const text = ev.results?.[0]?.[0]?.transcript;
+        if (text) studioPromptText = text.trim().slice(0, 200);
+      };
+      rec.onend = () => { isRecordingVoice = false; studioSpeechRecognition = null; store.notify(); };
+      rec.onerror = () => { isRecordingVoice = false; studioSpeechRecognition = null; store.notify(); };
+      isRecordingVoice = true;
+      try { rec.start(); } catch { isRecordingVoice = false; }
+      store.notify();
+    });
+
+    document.querySelectorAll('.studio-lighting-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const key = btn.getAttribute('data-lighting');
+        if (!LIGHTING_PRESETS[key]) return;
+        studioLighting = key;
+        Sound.click();
+        store.notify();
+      });
+    });
+    applyModelTints(document);
+
+    // Test as Child preview card
+    document.getElementById('studio-test-as-child-btn')?.addEventListener('click', () => {
+      isChildEyePreviewOpen = true;
+      Sound.click();
+      store.notify();
+    });
+    const closeChildPreview = () => { isChildEyePreviewOpen = false; store.notify(); };
+    document.getElementById('studio-child-preview-close')?.addEventListener('click', closeChildPreview);
+    document.getElementById('studio-child-preview-backdrop')?.addEventListener('click', (e) => {
+      if (e.target.id === 'studio-child-preview-backdrop') closeChildPreview();
+    });
+
+    // Viewport layers: Art (the AI picture), 3D model (GLB), Spline.
+    document.getElementById('studio-mode-concept-btn')?.addEventListener('click', () => {
+      if (!studioGeneratedImage) return;
+      studioViewportMode = 'concept';
+      Sound.click();
+      store.notify();
+    });
+    document.getElementById('studio-mode-modelviewer-btn')?.addEventListener('click', () => {
+      studioViewportMode = 'modelviewer';
+      Sound.click();
+      store.notify();
+    });
+
+    // Picking a 3D model from the carousel is a deliberate choice, so it will be saved with the item.
+    document.querySelectorAll('.studio-3d-asset-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const url = card.getAttribute('data-model-url');
+        studioActive3DAssetId = card.getAttribute('data-asset-id') || studioActive3DAssetId;
+        if (url) {
+          studioActiveModelUrl = url;
+          studioModelChosen = true;
+          studioModelSource = 'catalog';
+          studioViewportMode = 'modelviewer';
+        }
+        Sound.click();
+        store.notify();
+      });
+    });
 
     // 18. Unified Publish Live Button
     const publishBtn = document.getElementById('studio-gear-publish-btn') || document.getElementById('studio-publish-btn');
     if (publishBtn) {
-      publishBtn.addEventListener('click', () => {
+      publishBtn.addEventListener('click', async () => {
+        if (studioIsPublishing) return;
         const nameVal = document.getElementById('studio-item-name')?.value || studioItemName;
         const descVal = document.getElementById('studio-item-desc')?.value || studioItemDesc;
         const voiceVal = document.getElementById('studio-item-voiceline')?.value || studioPetVoiceLine;
         const craftedByVal = document.getElementById('studio-crafted-by-input')?.value?.trim() || studioCraftedBy || 'Mom & Dad';
+        const category = studioActiveCategory;
 
-        if (studioActiveCategory === 'weapon') {
+        // Shrink the AI picture (and keep only a link when Cloud Storage is on) so the household document stays small.
+        let publishedImage = '';
+        if (studioGeneratedImage && category !== 'world_stash') {
+          studioIsPublishing = true;
+          publishBtn.disabled = true;
+          publishBtn.setAttribute('aria-busy', 'true');
+          try {
+            publishedImage = await persistStudioImage(studioGeneratedImage, {
+              itemId: `${category}_${Date.now()}`,
+              householdCode: store.getState().household?.syncCode
+            });
+          } catch (err) {
+            console.warn('Studio picture save skipped:', err);
+          } finally {
+            studioIsPublishing = false;
+          }
+        }
+        const pictureFields = publishedImage ? { image: publishedImage } : {};
+        // Only a model the parent picked on purpose is saved; the preview sample never ships.
+        const modelFields = studioModelChosen && studioActiveModelUrl
+          ? { modelUrl: studioActiveModelUrl, modelSource: studioModelSource || undefined, credit: studioModelCredit || undefined, lighting: studioLighting, ...(studioModelTint ? { modelTint: studioModelTint } : {}) }
+          : {};
+        let publishedName = '';
+
+        if (category === 'weapon') {
           const weaponToPublish = {
             id: `parent_weapon_${Date.now()}`,
             name: nameVal.trim() || 'Hero Battle Saber',
@@ -6459,12 +6849,15 @@ export function attachParentPortalListeners() {
             craftedBy: craftedByVal,
             ...studioDeliveryFields(),
             voiceLine: voiceVal.trim() || 'Enamel power surge! Ready to vanquish sugar bandits!',
-            image: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=256&auto=format&fit=crop&q=80',
+            splineUrl: studioActiveSplineUrl || undefined,
+            ...pictureFields,
+            ...modelFields,
             icon: 'swords',
             isCustomAI: true,
             isParentCrafted: true
           };
           store.publishCustomAIWeapon(weaponToPublish);
+          publishedName = weaponToPublish.name;
         } else if (studioActiveCategory === 'gear') {
           const gearToPublish = {
             id: `parent_gear_${Date.now()}`,
@@ -6485,10 +6878,13 @@ export function attachParentPortalListeners() {
             petVoiceLine: voiceVal.trim(),
             splineUrl: studioActiveSplineUrl || undefined,
             ...studioDeliveryFields(),
-            category: 'Avatar & Pet Gear',
+            category: 'Pet Gear',
+            ...pictureFields,
+            ...modelFields,
             icon: studioSelectedSocket === 'head' ? 'crown' : studioSelectedSocket === 'back' ? 'shield' : studioSelectedSocket === 'chest' ? 'security' : 'sprint'
           };
           store.publishCustomAIGear(gearToPublish);
+          publishedName = gearToPublish.name;
         } else if (studioActiveCategory === 'furniture') {
           const furnitureToPublish = {
             id: `parent_furniture_${Date.now()}`,
@@ -6504,14 +6900,18 @@ export function attachParentPortalListeners() {
             splineUrl: studioActiveSplineUrl || undefined,
             icon: studioFurnitureType === 'bed' ? '🛏️' : studioFurnitureType === 'desk' ? '💻' : studioFurnitureType === 'petLounge' ? '🛋️' : studioFurnitureType === 'rug' ? '🌈' : '🏆',
             ...studioDeliveryFields(),
+            ...pictureFields,
+            ...modelFields,
             isCustom: true
           };
           store.publishCustomAIFurniture(furnitureToPublish);
+          publishedName = furnitureToPublish.name;
         } else if (studioActiveCategory === 'toy') {
           const toyToPublish = {
             id: `parent_toy_${Date.now()}`,
             name: nameVal.trim() || 'Pet Pen Toy',
             toyType: studioToyType,
+            statRefillType: studioToyStat,
             statRefillTarget: studioToyStat,
             statRefillAmount: studioToyAmount,
             costCoins: studioItemPrice,
@@ -6520,9 +6920,13 @@ export function attachParentPortalListeners() {
             cheerVoiceLine: voiceVal.trim(),
             splineUrl: studioActiveSplineUrl || undefined,
             emoji: studioToyType === 'trampoline' ? '🎪' : studioToyType === 'ball' ? '🚀' : studioToyType === 'laser' ? '✨' : studioToyType === 'puzzle' ? '🧩' : '⚡',
+            ...studioDeliveryFields(),
+            ...pictureFields,
+            ...modelFields,
             isCustom: true
           };
           store.publishCustomAIToy(toyToPublish);
+          publishedName = toyToPublish.name;
         } else if (studioActiveCategory === 'food') {
           const foodToPublish = {
             id: `parent_food_${Date.now()}`,
@@ -6536,9 +6940,32 @@ export function attachParentPortalListeners() {
             quantityPerPurchase: studioFoodQuantity,
             costCoins: studioItemPrice,
             craftedBy: craftedByVal,
+            ...studioDeliveryFields(),
+            ...pictureFields,
             isCustom: true
           };
           store.publishCustomAIFood(foodToPublish);
+          publishedName = foodToPublish.name;
+        } else if (category === 'pet') {
+          const delivery = studioDeliveryFields();
+          const cheer = voiceVal.trim() || 'Woohoo! Great job on your chores!';
+          const petToPublish = {
+            id: `parent_pet_${Date.now()}`,
+            name: nameVal.trim() || 'Hero Companion',
+            archetype: studioPetArchetype || 'dragon',
+            primaryColor: studioSelectedDye || '#2ecc71',
+            accentColor: '#f39c12',
+            backstory: descVal.trim() || 'A loyal 3D companion crafted with love by a parent!',
+            assignedHabit: studioPetSynergy === 'dental' ? 'brush_teeth' : (studioPetSynergy || 'brush_teeth'),
+            customVoiceLines: [cheer, studioPetSleep || 'Zzz... peaceful dreams, little hero...'],
+            splineUrl: studioActiveSplineUrl || undefined,
+            targetChildProfile: delivery.targetChildProfile,
+            craftedBy: craftedByVal,
+            ...(publishedImage ? { avatar: publishedImage } : {}),
+            ...(modelFields.modelUrl ? { modelUrl: modelFields.modelUrl } : {})
+          };
+          store.addCustomAIPet(petToPublish, delivery.deliveryMethod === 'instant_gift' ? 'instant' : 'magic_egg');
+          publishedName = petToPublish.name;
         } else if (studioActiveCategory === 'boss') {
           const bossToPublish = {
             id: `parent_boss_${Date.now()}`,
@@ -6558,9 +6985,12 @@ export function attachParentPortalListeners() {
             gradient: studioBossDomain === 'dental' ? 'from-purple-900 to-indigo-950' : studioBossDomain === 'bedtime' ? 'from-blue-900 to-slate-950' : studioBossDomain === 'screens' ? 'from-emerald-900 to-slate-950' : 'from-rose-900 to-amber-950',
             accentBorder: 'border-purple-500',
             craftedBy: craftedByVal,
+            ...pictureFields,
+            ...modelFields,
             isCustom: true
           };
           store.publishCustomAIBoss(bossToPublish);
+          publishedName = bossToPublish.name;
         } else if (studioActiveCategory === 'world_stash') {
           if (studioWorldStashMode === 'landmark') {
             const preset = BIOME_PLACEMENT_PRESETS.find(p => p.id === studioLandmarkPreset) || BIOME_PLACEMENT_PRESETS[0];
@@ -6598,6 +7028,21 @@ export function attachParentPortalListeners() {
             store.showReward('Secret Stash Placed on 3D Map!', `Hidden with a ${stashToPublish.requiredStreak}-day streak requirement!`, 0, 0);
           }
         }
+
+        if (publishedName) {
+          const how = studioDeliveryMethod === 'hero_shop' ? 'now in the Shop'
+            : studioDeliveryMethod === 'habit_bounty' ? 'set as a habit bounty'
+            : 'sent as a gift crate';
+          studioPublishFeedback = `✓ ${publishedName} is ${how}. ${savedLabel()}`;
+          celebrateItem({ category, modelTint: studioModelTint }, { event: 'publish' });
+        }
+        studioGeneratedImage = null;
+        studioModelChosen = false;
+        studioModelSource = '';
+        studioModelCredit = null;
+        studioModelTint = '';
+        if (studioViewportMode === 'concept') studioViewportMode = 'canvas';
+        store.notify();
       });
     }
   }

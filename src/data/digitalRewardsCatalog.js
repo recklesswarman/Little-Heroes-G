@@ -23,6 +23,7 @@
  */
 
 import { getRewardAssetUrl, DEFAULT_FALLBACK_DATA_URI } from '../utils/rewardGraphics.js';
+import { SEED_2026_ITEMS } from './seedItems2026.js';
 
 export const REWARD_CATEGORIES = {
   WEAPONS: 'Weapons',
@@ -1399,6 +1400,11 @@ export const DIGITAL_REWARDS_CATALOG = [
     isUnlocked: true
   }
 ];
+
+// New seed items (3 per tab) ride along in the same catalog so every merge-by-id path picks them up.
+SEED_2026_ITEMS.forEach((seed) => {
+  if (!DIGITAL_REWARDS_CATALOG.some((i) => i.id === seed.id)) DIGITAL_REWARDS_CATALOG.push(seed);
+});
 
 export function getDigitalRewardById(id) {
   return DIGITAL_REWARDS_CATALOG.find(item => item.id === id) || null;

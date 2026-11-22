@@ -5,18 +5,20 @@
  * featuring 3D <model-viewer> PBR reveal, WebXR AR, and voiced companion reactions.
  */
 
+import { modelViewerLightingAttrs } from '../utils/modelViewerTint.js';
+import { renderItemCredit } from '../utils/itemCredit.js';
 import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
-import confetti from 'canvas-confetti';
+import { celebrateItem } from '../services/rewardCelebration.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
+import { safeImageUrl } from '../utils/safeImageUrl.js';
 import { speakCompanion } from '../services/voiceService.js';
 
 export function renderGiftCrateWidget() {
   const state = store.getState();
+  if (state.activeView === 'parent_portal') return ''; // the parent's screen never shows a kid's surprise
   const currentHeroId = state.selectedHero?.id || 'hero_1';
-  const crates = (state.pendingGiftCrates || []).filter(
-    c => !c.unboxed && (c.targetChildProfile === 'all' || c.targetChildProfile === currentHeroId || !c.targetChildProfile)
-  );
+  const crates = store.getGiftCratesForHero(currentHeroId);
 
   if (!crates.length) return '';
 
@@ -52,9 +54,12 @@ export function renderGiftCrateModal() {
 
   const crate = (state.pendingGiftCrates || []).find(c => c.id === crateId);
   if (!crate) return '';
+  const currentHeroId = state.selectedHero?.id || 'hero_1';
+  const forThisKid = !crate.targetChildProfile || crate.targetChildProfile === 'all' || crate.targetChildProfile === currentHeroId;
+  if (state.activeView === 'parent_portal' || !forThisKid) return '';
 
   const item = crate.item || {};
-  const isOpened = Boolean(crate.isOpened);
+  const isOpened = store.isGiftCrateOpenFor(crate, currentHeroId);
   const category = item.category || crate.category || 'gear';
 
   let categoryBadge = '👑 Pet Wearable Gear';
@@ -124,11 +129,13 @@ export function renderGiftCrateModal() {
             <div class="w-full h-56 bg-slate-950/80 rounded-2xl border border-white/10 overflow-hidden relative mb-4 shadow-inner flex items-center justify-center">
               ${item.modelUrl ? `
                 <model-viewer
-                  src="${item.modelUrl}"
+                  src="${escapeHtml(safeImageUrl(item.modelUrl))}"
                   alt="${escapeHtml(item.name) || '3D Model'}"
                   auto-rotate 
                   camera-controls 
                   shadow-intensity="1.2"
+                  ${modelViewerLightingAttrs(item.lighting)}
+                  ${/^#[0-9a-f]{6}$/i.test(item.modelTint || '') ? `data-tint="${item.modelTint}"` : ''}
                   ar
                   ar-modes="webxr scene-viewer quick-look"
                   style="width: 100%; height: 100%; background-color: transparent;">
@@ -137,9 +144,11 @@ export function renderGiftCrateModal() {
                   </button>
                 </model-viewer>
               ` : item.splineUrl ? `
-                <iframe src="${item.splineUrl}" frameborder="0" width="100%" height="100%" class="rounded-xl"></iframe>
+                <iframe src="${escapeHtml(safeImageUrl(item.splineUrl))}" frameborder="0" width="100%" height="100%" class="rounded-xl"></iframe>
               ` : `
-                <div class="text-6xl animate-bounce">${item.emoji || '✨'}</div>
+                ${safeImageUrl(item.image || '')
+                  ? `<img src="${escapeHtml(safeImageUrl(item.image))}" alt="${escapeHtml(item.name || '')}" class="max-h-full max-w-full object-contain animate-bounce" />`
+                  : `<div class="text-6xl animate-bounce">${escapeHtml(item.emoji || '✨')}</div>`}
               `}
             </div>
 
@@ -150,12 +159,13 @@ export function renderGiftCrateModal() {
             <p class="text-slate-300 text-xs leading-relaxed max-w-sm mb-3">
               ${escapeHtml(item.desc || item.description) || 'A heroic parent-crafted marvel for your adventures.'}
             </p>
+            ${renderItemCredit(item)}
 
             <!-- Stat Buff Tag -->
             <div class="flex items-center gap-2 mb-4">
               ${item.statBonusLabel ? `
                 <span class="px-3 py-1 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-bold flex items-center gap-1">
-                  ⚡ ${item.statBonusLabel}
+                  ⚡ ${escapeHtml(item.statBonusLabel)}
                 </span>
               ` : ''}
               ${item.comfortBuffLabel ? `
@@ -225,24 +235,17 @@ export function attachGiftCrateListeners() {
     const crate = (store.state.pendingGiftCrates || []).find(c => c.id === crateId);
     if (!crate) return;
 
-    crate.isOpened = true;
-    crate.unboxed = true;
-
-    Sound.fanfare();
-    confetti({
-      particleCount: 100,
-      spread: 90,
-      origin: { y: 0.5 },
-      colors: ['#f59e0b', '#10b981', '#3b82f6', '#ec4899', '#8b5cf6']
-    });
+    // The item goes to the kid who opened it (and only that kid).
+    store.openGiftCrate(crateId, store.state.selectedHero?.id);
 
     const item = crate.item || {};
+    celebrateItem(item, { event: 'unbox' });
+
     const voiceText = item.petVoiceLine || item.companionReaction || item.cheerVoiceLine;
     if (voiceText && window.speakCompanionText) {
       window.speakCompanionText(voiceText);
     }
 
-    store.saveState(true);
     store.notify();
   };
 
