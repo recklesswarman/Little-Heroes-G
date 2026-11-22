@@ -111,7 +111,20 @@ await check('a cut-off or empty reply gets the fixed line but is not reported to
   assert.strictEqual(safety.guardReplyText('The monster bites you.', ctx).blocked, true);
   assert.strictEqual(store.getStorySafetyLog().length, 1);
 });
+// Rex sleeps after the parent's bedtime hour, so pin the clock to midday: this check must not depend on when the suite runs.
+const RealDate = globalThis.Date;
+function pinClockToNoon() {
+  const noon = new RealDate();
+  noon.setHours(12, 0, 0, 0);
+  const start = noon.getTime();
+  globalThis.Date = class extends RealDate {
+    constructor(...args) { super(...(args.length ? args : [start])); }
+    static now() { return start; }
+  };
+}
 await check('Rex chat: a message on a blocked topic never leaves the app; replies are checked on the way back', async () => {
+  pinClockToNoon();
+  try {
   store.updateStoryControls({ avoidTopics: ['spiders'] });
   mockAgy({ reply: 'unused' });
   const blocked = await agy.talkToRexAGY('tell me about spiders', 'hero_1', 'rex');
@@ -122,6 +135,7 @@ await check('Rex chat: a message on a blocked topic never leaves the app; replie
   assert.ok(!/zombie/i.test(replaced.reply) && replaced.habitAwarded === undefined && replaced.suggestedAction === undefined);
   mockAgy({ reply: 'Hi Zoe! Let us brush our teeth!', emotion: 'excited' });
   assert.strictEqual((await agy.talkToRexAGY('hi rex', 'hero_1', 'rex')).reply, 'Hi Zoe! Let us brush our teeth!');
+  } finally { globalThis.Date = RealDate; }
 });
 await check('battle coach and quest guide text is checked too', async () => {
   mockAgy({ coach_text: 'Smash the monster!', suggested_move: 'scrub' });
