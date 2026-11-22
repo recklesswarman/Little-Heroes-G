@@ -124,6 +124,8 @@ const testFiles = [
   'scratch/verify_reading_help.mjs',
   // Approval alerts open the parent Action Inbox (deep link behind the PIN):
   'scratch/verify_approval_alert_link.mjs',
+  // Header build badge shows the real build and is visible on phones too:
+  'scratch/verify_build_badge.mjs',
   // AI hero agent routes relayed from server.js to the AGY Cloud Run service:
   'scratch/verify_rex_agy_relay.mjs',
   // Rex function calling (/api/rex/agent) and the Sunday parent report (ntfy):

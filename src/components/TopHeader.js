@@ -3,11 +3,20 @@ import { Sound } from '../audio/sfx.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
 import { safeImageUrl } from '../utils/safeImageUrl.js';
 
+/** Short build id for the header badge, e.g. 'v1.0.0-6f8c88f' -> '6f8c88f'. */
+export function getBuildLabel(raw = (typeof window !== 'undefined' ? window.__LITTLE_HEROES_VERSION__ : '')) {
+  const text = String(raw || '');
+  const sha = text.match(/-([0-9a-f]{6,12})$/i);
+  const label = sha ? sha[1] : text.replace(/[^\w.-]/g, '').slice(-10);
+  return label || 'build';
+}
+
 export function renderTopHeader() {
   const state = store.getState();
   const hero = state.selectedHero;
   const isMuted = Sound.isMuted();
   const avatarUrl = safeImageUrl(hero.avatar, KID_AVATARS[0].url);
+  const buildLabel = escapeHtml(getBuildLabel());
 
   return `
     <header class="bg-surface/95 backdrop-blur-md font-headline docked sticky top-0 border-b-4 border-surface-container-highest shadow-chunky-sm flex justify-between items-center px-2 sm:px-4 md:px-8 h-16 sm:h-18 md:h-20 w-full z-40 max-w-full select-none overflow-hidden">
@@ -69,9 +78,9 @@ export function renderTopHeader() {
         </button>
 
         <!-- App Version / Cache Refresh Badge -->
-        <button id="header-version-btn" title="App Version v3.1.0 (Hana 3D Battle) • Tap to Reload Clean Cache" aria-label="App Version" class="hidden lg:flex items-center gap-1 bg-surface-container text-on-surface-variant hover:text-cyan-400 rounded-xl px-2.5 py-1.5 min-h-[44px] chunky-btn-sm border-2 border-surface-container-highest transition-all shrink-0 active:scale-95">
+        <button id="header-version-btn" title="Build ${buildLabel} • Tap to reload with a clean cache" aria-label="App build ${buildLabel}. Tap to reload with a clean cache" class="hidden md:flex items-center gap-1 bg-surface-container text-on-surface-variant hover:text-cyan-400 rounded-xl px-2.5 py-1.5 min-h-[44px] chunky-btn-sm border-2 border-surface-container-highest transition-all shrink-0 active:scale-95">
           <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span class="font-headline text-[10px] font-black uppercase tracking-wider text-cyan-400">v3.1 3D</span>
+          <span class="font-headline text-[10px] font-black uppercase tracking-wider text-cyan-400">${buildLabel}</span>
         </button>
       </div>
     </header>
