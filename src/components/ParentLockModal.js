@@ -30,7 +30,6 @@ export function renderParentLockModal() {
   if (!isOpen) return '';
 
   const settings = store.getState().parentSettings || {};
-  const parentPin = settings.pin || '1234';
 
   const allowBio = hasBiometrics && settings.biometricsEnabled !== false;
   const allowPin = settings.pinLockEnabled !== false;
@@ -144,11 +143,11 @@ export function renderParentLockModal() {
           <div class="flex flex-col items-center gap-4 py-2 text-center animate-fade-in">
             <div>
               <h3 class="font-headline text-base font-black text-inverse-surface">Enter Parent PIN</h3>
-              <p class="text-xs text-on-surface-variant mt-1">Enter your 4-digit security code (Default: 1234).</p>
+              <p class="text-xs text-on-surface-variant mt-1">Enter your parent security code.</p>
             </div>
 
             <div class="flex flex-col gap-2 w-full max-w-xs">
-              <input id="parent-pin-input" type="password" maxlength="8" placeholder="••••" class="bg-surface-container-high border-2 ${
+              <input id="parent-pin-input" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="8" placeholder="••••" class="bg-surface-container-high border-2 ${
                 pinError ? 'border-error ring-2 ring-error/50' : 'border-surface-container-highest focus:border-secondary'
               } rounded-2xl px-4 py-3.5 text-center text-2xl font-headline tracking-widest text-inverse-surface w-full focus:outline-hidden transition-all shadow-inner" autofocus />
 
@@ -160,7 +159,7 @@ export function renderParentLockModal() {
 
             ${
               pinError
-                ? `<p class="text-xs text-error font-bold bg-error/10 border border-error/30 rounded-xl py-1.5 px-3">Incorrect PIN. Try 1234 or use another verification method.</p>`
+                ? `<p class="text-xs text-error font-bold bg-error/10 border border-error/30 rounded-xl py-1.5 px-3">Incorrect PIN. Try again or use another verification method.</p>`
                 : `<p class="text-[11px] text-on-surface-variant font-medium">Tip: PIN can be customized inside the Parent Portal settings.</p>`
             }
           </div>
@@ -366,8 +365,7 @@ export function attachParentLockListeners() {
   if (pinSubmit && pinInput) {
     const handlePinCheck = () => {
       const val = pinInput.value.trim();
-      const currentPin = store.getState().parentSettings?.pin || '1234';
-      if (val === currentPin) {
+      if (store.verifyParentPin(val)) {
         Sound.fanfare();
         isOpen = false;
         store.unlockParentSession();

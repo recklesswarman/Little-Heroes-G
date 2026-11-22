@@ -6,7 +6,7 @@ import { speakCompanion } from "./voiceService.js";
 import { store } from "../state/store.js";
 import { askRexAgent, applyRexActions } from './rexAgentClient.js';
 import { rexUrl } from "./serverApi.js";
-import { guardOutgoingMessage, guardRexData, guardReplyText, guardTextField, householdAvoidTopics, logServerSafetyEvents } from './companionSafety.js';
+import { guardOutgoingMessage, guardRexData, guardReplyText, guardTextField, householdAvoidTopics, logServerSafetyEvents, admitCompanionTurn } from './companionSafety.js';
 
 // Initialize functions using centralized configuration with explicit us-central1 region
 let functions = existingFunctions;
@@ -119,6 +119,10 @@ export async function talkToRexAGY(message, heroId = null, petId = null) {
   const outgoing = guardOutgoingMessage(message, safetyCtx);
   if (!outgoing.ok) return { reply: outgoing.reply, emotion: 'calm', voiceTone: 'gentle' };
 
+  // The parent's Rex rules (bedtime, daily chat turns, Rex on/off) apply on every route below.
+  const gate = admitCompanionTurn({ heroId: effectiveHeroId, petName: safetyCtx.petName, childName: heroName });
+  if (!gate.ok) return { reply: gate.reply, emotion: 'calm', voiceTone: 'gentle', blockedByRule: gate.reason };
+
   // ── 0. Rex with function calling (server/rexAgentService.js) ──────────────
   // Looks up chores/points/rewards/week via Gemini tools and can submit a chore for parent
   // approval, ask for a reward, or open a kid screen. Falls through to AGY if unavailable.
@@ -181,7 +185,7 @@ export async function talkToRexAGY(message, heroId = null, petId = null) {
     const chatWithPetFn = httpsCallable(functions, "chatWithPet");
     const now = new Date();
     const result = await chatWithPetFn({
-      heroId: heroName || effectiveHeroId,
+      heroId: effectiveHeroId,
       message,
       petId: effectivePetId,
       childName: heroName,

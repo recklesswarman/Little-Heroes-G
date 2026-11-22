@@ -65,6 +65,8 @@ export const ARCADE_GAMES_METADATA = {
 };
 
 export class ArcadeModal {
+  static SCREEN_TIME_TICK_MS = 60000;
+
   constructor(gameId, options = {}) {
     this.gameId = gameId;
     this.meta = ARCADE_GAMES_METADATA[gameId] || ARCADE_GAMES_METADATA.starlight_runner;
@@ -86,6 +88,7 @@ export class ArcadeModal {
     this.lastRewardResult = null;
 
     this.handleResize = this.handleResize.bind(this);
+    this.screenTimeTimer = null;
   }
 
   open() {
@@ -98,9 +101,34 @@ export class ArcadeModal {
     this.renderModal();
     this.initCanvasAndGame();
     window.addEventListener('resize', this.handleResize);
+    this.startScreenTimeTracking();
+  }
+
+  // Every minute of play counts toward the kid's daily cap and spends banked
+  // minutes (Parent Panel > Screen Time Bank). Paused or hidden minutes don't count.
+  startScreenTimeTracking() {
+    this.stopScreenTimeTracking();
+    if (!this.hero?.id || typeof store.consumeScreenTime !== 'function') return;
+    this.screenTimeTimer = setInterval(() => {
+      if (this.isPaused || this.isGameOver) return;
+      if (typeof document !== 'undefined' && document.hidden) return;
+      const res = store.consumeScreenTime(this.hero.id, 1);
+      if (res && res.locked) {
+        this.close();
+        this.renderCurfewLockModal();
+      }
+    }, ArcadeModal.SCREEN_TIME_TICK_MS);
+  }
+
+  stopScreenTimeTracking() {
+    if (this.screenTimeTimer) {
+      clearInterval(this.screenTimeTimer);
+      this.screenTimeTimer = null;
+    }
   }
 
   close() {
+    this.stopScreenTimeTracking();
     try {
       if (typeof stopCompanionAudio === 'function') stopCompanionAudio();
     } catch (e) {}
@@ -126,6 +154,13 @@ export class ArcadeModal {
     root.className = 'fixed inset-0 z-50 bg-[#09141e]/95 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in select-none';
 
     const lockMsg = store.getScreenTimeLockMessage ? store.getScreenTimeLockMessage(this.hero) : 'Time for bedtime!';
+    const reason = store.getScreenTimeLockReason ? store.getScreenTimeLockReason(this.hero) : null;
+    const reasonLabel = {
+      paused: 'Paused by a grown-up',
+      daily_cap: "Today's screen time is all used up",
+      bank_empty: 'Out of screen minutes',
+      curfew: "It's bedtime"
+    }[reason] || '';
 
     root.innerHTML = `
       <div class="w-full max-w-md bg-[#0d2235] border-3 border-amber-500/50 rounded-3xl p-6 text-center flex flex-col items-center gap-4 card-shadow">
@@ -133,6 +168,7 @@ export class ArcadeModal {
           🦖🌙
         </div>
         <h2 class="font-headline text-xl font-black text-amber-300">Screen Time Lock Active</h2>
+        ${reasonLabel ? `<p class="text-xs font-black uppercase tracking-wider text-amber-200/80">${escapeHtml(reasonLabel)}</p>` : ''}
         <p class="text-sm font-bold text-inverse-surface leading-relaxed">${escapeHtml(lockMsg)}</p>
         <button id="curfew-close-btn" class="w-full bg-primary text-on-primary font-headline text-sm font-black py-3.5 rounded-2xl chunky-btn shadow-chunky-sm active:scale-95">
           BACK TO MOVEMENT HUB 🌟

@@ -176,6 +176,28 @@ function toHistory(history) {
  * The function-calling loop. `ai` is a @google/genai client (or a test double with
  * models.generateContent). Returns { reply, actions, toolsUsed }.
  */
+const PARENT_TONES = {
+  energetic: 'bouncy, upbeat and adventurous',
+  gentle: 'soft, soothing and loving',
+  focused: 'calm and focused on study and habits'
+};
+
+// The parent's Rex tone and focus habits (Parent Panel > Safety tab), whitelisted
+// so nothing a client sends can inject instructions into the system prompt.
+export function parentRulesPromptSuffix(rules) {
+  if (!rules || typeof rules !== 'object') return '';
+  const lines = [];
+  if (Object.prototype.hasOwnProperty.call(PARENT_TONES, rules.tone)) {
+    lines.push(`TONE (set by the child's parent): be ${PARENT_TONES[rules.tone]}.`);
+  }
+  const focus = (Array.isArray(rules.focusAreas) ? rules.focusAreas : [])
+    .filter((f) => typeof f === 'string' && /^[a-z_]{2,32}$/.test(f))
+    .slice(0, 6)
+    .map((f) => f.replace(/_/g, ' '));
+  if (focus.length) lines.push(`PRIORITY FOCUS HABITS (set by the parent): ${focus.join(', ')}.`);
+  return lines.length ? `\n\n${lines.join('\n')}` : '';
+}
+
 export async function runRexAgentTurn({ ai, model, systemInstruction, history = [], message, context }) {
   const contents = [...toHistory(history), { role: 'user', parts: [{ text: message }] }];
   const actions = [];
@@ -234,7 +256,7 @@ export function createRexAgentHandler({ getClient = getGeminiClient, env = proce
       const turn = await runRexAgentTurn({
         ai,
         model,
-        systemInstruction: buildRexAgentSystemPrompt(persona.prompt),
+        systemInstruction: buildRexAgentSystemPrompt(persona.prompt) + parentRulesPromptSuffix(body.parentRules),
         history: body.history,
         message: `Child's name: "${childName}".${ageNote ? ` The child is ${ageNote}.` : ''}\nMessage: ${message}`,
         context

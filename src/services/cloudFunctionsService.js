@@ -20,7 +20,7 @@ class CloudFunctionsService {
    * @param {number} [params.childAge]
    * @returns {Promise<{reply: string, petName: string, timestamp: string}>}
    */
-  async chatWithPet({ petId, petName, message, petStats, childAge }) {
+  async chatWithPet({ petId, petName, message, petStats, childAge, heroId }) {
     if (!this.functionsInstance) {
       return {
         reply: `*${petName || "Your pet"} gives a warm happy purr!* (Offline mode)`,
@@ -31,7 +31,7 @@ class CloudFunctionsService {
 
     try {
       const callable = httpsCallable(this.functionsInstance, "chatWithPet");
-      const result = await callable({ petId, petName, message, petStats, childAge, avoidTopics: householdAvoidTopics() });
+      const result = await callable({ petId, petName, message, petStats, childAge, heroId, avoidTopics: householdAvoidTopics() });
       logServerSafetyEvents(result.data?.safetyEvents);
       // Checked again here so a reply from any version of the function is safe to show and speak.
       return { ...result.data, reply: guardReplyText(result.data?.reply, { petName }).text };

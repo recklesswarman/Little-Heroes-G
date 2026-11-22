@@ -6,9 +6,44 @@
 import { store } from '../state/store.js';
 import { guardChildMessage, guardCompanionReply, safeCompanionLine, cleanTopics, TECHNICAL_REASONS } from '../../shared/storyEngine/companionGuard.js';
 
-/** The household's topics to avoid (Story Controls). Never throws. */
+/** The household's topics to avoid (Story Controls + the Rex Restricted Topics rule). Never throws. */
 export function householdAvoidTopics() {
-  try { return cleanTopics(store.getStoryControls().avoidTopics); } catch { return []; }
+  let story = [];
+  let rex = [];
+  try { story = store.getStoryControls().avoidTopics || []; } catch { story = []; }
+  try { rex = store.getCompanionRules?.().restrictedTopics || []; } catch { rex = []; }
+  try { return cleanTopics([...story, ...rex]); } catch { return []; }
+}
+
+/**
+ * The parent's Rex rules (Safety tab: Parental Rules & Screen-Time Guardrails),
+ * checked before any child message is sent to any Rex service.
+ * {ok:false, reply, reason} = answer with `reply` and send nothing.
+ * Call countCompanionTurn() only after this returns ok.
+ */
+export function checkCompanionRules({ heroId = null, petName = 'Rex', childName = 'Little Hero', now = new Date() } = {}) {
+  let rules;
+  try { rules = store.getCompanionRules(); } catch { return { ok: true, rules: null }; }
+  if (!rules.companionEnabled) {
+    return { ok: false, reason: 'companion_off', reply: `*Shhh...* ${petName} is resting! Ask a grown-up to wake them up!` };
+  }
+  const hour = now.getHours();
+  if (hour >= rules.bedtimeHour || hour < 6) {
+    return { ok: false, reason: 'bedtime', reply: `*Yawn...* ${petName} is fast asleep for the night! See you in the morning, ${childName}!` };
+  }
+  if (rules.maxDailyTurns < 999 && heroId && store.getCompanionTurnsToday(heroId) >= rules.maxDailyTurns) {
+    return { ok: false, reason: 'daily_turns', reply: `*Happy wave!* We had so much fun chatting today! Let's rest our screens and play in the real world, ${childName}!` };
+  }
+  return { ok: true, rules };
+}
+
+/** Gate + count one child turn. Returns the checkCompanionRules result. */
+export function admitCompanionTurn(ctx = {}) {
+  const gate = checkCompanionRules(ctx);
+  if (gate.ok && ctx.heroId) {
+    try { store.countCompanionTurn(ctx.heroId); } catch { /* counting is best effort */ }
+  }
+  return gate;
 }
 
 function logEvent(kind, reason, heroId) {

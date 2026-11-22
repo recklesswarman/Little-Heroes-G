@@ -161,7 +161,7 @@ await check('store: household controls and the log persist through the parent se
   store.clearStorySafetyLog();
   assert.strictEqual(store.getStorySafetyLog().length, 0);
 });
-await check('store: a second device\'s settings merge in (cloud wins for settings, logs are unioned, garbage neutralized)', () => {
+await check('store: a second device\'s settings merge in (the newer settings change wins, logs are unioned, garbage neutralized)', () => {
   resetTwoKids();
   store.setStoryProfile('hero_a', { tone: 'cozy' });
   store.logStorySafetyEvent({ kind: 'plan-fallback', reason: 'plan-unusable', heroId: 'hero_a' });
@@ -169,7 +169,7 @@ await check('store: a second device\'s settings merge in (cloud wins for setting
   store.hydrateFromCloud({
     heroes: [{ ...mkHero('hero_a', 'Ada'), storyProfile: { tone: 'silly', pronouns: 'she' } }, mkHero('hero_b', 'Ben')],
     deletedHeroIds: [],
-    parentSettings: { storyControls: { avoidTopics: ['bees', 7], researchEnabled: 'x', parentIdeas: ['Visit http://x.y'] }, storySafetyLog: [{ t: localT - 5000, kind: 'wish-blocked', heroId: 'hero_a', reason: 'wish-filtered' }, { kind: 'bogus' }] }
+    parentSettings: { fieldStamps: { storyControls: Date.now() + 60000 }, storyControls: { avoidTopics: ['bees', 7], researchEnabled: 'x', parentIdeas: ['Visit http://x.y'] }, storySafetyLog: [{ t: localT - 5000, kind: 'wish-blocked', heroId: 'hero_a', reason: 'wish-filtered' }, { kind: 'bogus' }] }
   });
   assert.deepStrictEqual([store.getStoryProfile('hero_a').tone, store.getStoryProfile('hero_a').pronouns], ['silly', 'she']);
   assert.strictEqual(store.getStoryProfile('hero_b').tone, 'calm');
