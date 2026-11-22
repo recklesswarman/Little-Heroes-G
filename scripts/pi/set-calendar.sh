@@ -11,15 +11,27 @@ ENV_FILE="${ENV_FILE:-$HOME/apps/little-heroes.env}"
 echo "Paste the secret iCal address (it starts with https://calendar.google.com/calendar/ical/ and ends in .ics),"
 read -rsp "then press Enter: " URL
 echo
-URL="$(printf '%s' "$URL" | tr -d '[:space:]')"
+URL="$(printf '%s' "$URL" | tr -d '[:space:]\r"'"'"'<>')"
 if [[ ! "$URL" =~ ^https://[^[:space:]]+\.ics$ ]]; then
   echo "That doesn't look like an iCal address (https://... ending in .ics). Nothing was changed." >&2
   exit 1
 fi
-if ! curl -fsS --max-time 20 "$URL" | head -c 2000 | grep -q 'BEGIN:VCALENDAR'; then
-  echo "Google didn't return a calendar for that address. Copy the *secret* address again. Nothing was changed." >&2
+# Download to a temp file first: piping curl into head/grep under pipefail reports a
+# good download as a failure when the reader stops early (curl error 23).
+ics="$(mktemp)"
+trap 'rm -f "$ics"' EXIT
+status="$(curl -sS -L --max-time 30 -o "$ics" -w '%{http_code}' "$URL" || true)"
+if [[ "$status" == "404" || "$status" == "403" || "$status" == "401" ]]; then
+  echo "Google says that address doesn't exist (HTTP $status). That usually means it's the *public* address," >&2
+  echo "or the secret address was reset. In Google Calendar > Settings > your calendar > Integrate calendar," >&2
+  echo "copy the one under \"Secret address in iCal format\" (it ends in basic.ics). Nothing was changed." >&2
   exit 1
 fi
+if [[ "$status" != "200" ]] || ! grep -q 'BEGIN:VCALENDAR' "$ics"; then
+  echo "Couldn't read a calendar from that address (HTTP ${status:-no answer}). Check the Pi's internet and try again. Nothing was changed." >&2
+  exit 1
+fi
+echo "Found your calendar ($(grep -c '^BEGIN:VEVENT' "$ics" || true) events)."
 
 touch "$ENV_FILE"
 chmod 600 "$ENV_FILE"
