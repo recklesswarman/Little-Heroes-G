@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@google/genai": "^2.23.0",
+    "@google/model-viewer": "4.4.0",
     "@splinetool/runtime": "^2.0.55",
     "@types/express": "^5.0.6",
     "canvas-confetti": "^1.9.4",

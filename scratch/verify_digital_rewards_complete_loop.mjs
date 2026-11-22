@@ -94,7 +94,11 @@ assert(parentWeapons.some(w => w.id === 'test_laser_katana_001'), 'Weapon exists
 // 2. Instant Gift Delivery & 1 Active Combat Weapon Slot
 console.log('\n--- 2. Testing Instant Gift Delivery & 1 Active Combat Weapon ---');
 const activeHero = store.getState().selectedHero;
-assert(activeHero.inventory.includes('test_laser_katana_001'), 'Weapon was auto-added to active child inventory via instant_gift');
+assert(!activeHero.inventory.includes('test_laser_katana_001'), 'Publishing an instant gift does not hand it to whoever is selected');
+const giftCrate = (store.getState().pendingGiftCrates || []).find(c => c.item && c.item.id === 'test_laser_katana_001');
+assert(!!giftCrate, 'A gift crate was created for the weapon');
+store.openGiftCrate(giftCrate.id, activeHero.id);
+assert(activeHero.inventory.includes('test_laser_katana_001'), 'Weapon lands in the child inventory when they open the gift crate');
 assert(activeHero.equippedWeapon === 'test_laser_katana_001', 'Weapon was equipped as the active combat weapon');
 
 const equippedWeaponObj = store.getEquippedHeroWeapon(true);

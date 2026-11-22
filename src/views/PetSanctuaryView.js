@@ -38,7 +38,9 @@ export function renderPetSanctuaryView() {
   const bondState = store.getPetBondState(activePet.id);
   const isPearly = store.getPearlyGleamStatus(activePet.id);
   const activeDrawer = sanctuaryState.activeDrawer; // null | 'feed' | 'bath' | 'wardrobe' | 'roster' | 'workout'
-  const unhatchedEggs = sanctuaryState.unhatchedEggs || [];
+  const unhatchedEggs = (sanctuaryState.unhatchedEggs || []).filter(
+    (e) => !e.targetChildProfile || e.targetChildProfile === 'all' || String(e.targetChildProfile) === String(state.selectedHero?.id)
+  );
 
   // Active Pet Needs (gentle real-time decay applied on top of the last
   // tended values -- never mutates stored progress, just softens the

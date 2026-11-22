@@ -67,7 +67,8 @@ async function runTests() {
     assert(item.name, `Item ${item.id} must have a name`);
     assert(typeof item.costCoins === 'number', `Item ${item.id} must have costCoins`);
     assert(item.voiceLine, `Item ${item.id} must have Rex voice assistance line`);
-    assert(item.splineUrl || item.modelUrl, `Item ${item.id} must have 3D spline or model URL`);
+    // Seeded items ship real art (OpenMoji emoji or game-icons) instead of a placeholder 3D model.
+    assert(item.splineUrl || item.modelUrl || (item.isSeeded && (item.emoji || item.iconId)), `Item ${item.id} must have 3D spline or model URL (or seeded art)`);
 
     // Verify boy-friendly design rule (zero purple/pink in hex codes)
     const colorStr = JSON.stringify(item).toLowerCase();

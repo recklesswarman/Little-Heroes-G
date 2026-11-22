@@ -1,6 +1,8 @@
+import { secureRandomInteger } from '../utils/secureRandom.js';
 import { app, isFirebaseAvailable } from '../config/firebase.js';
 import { generate3DIcon } from '../utils/graphicsGenerator.js';
 import { THREE_D_ASSETS, getThreeDAssetsByCategory, matchBestThreeDAsset } from '../data/threeDAssetCatalog.js';
+import { serverApiUrl } from './serverApi.js';
 
 class FirebaseAILogicService {
   constructor() {
@@ -64,42 +66,81 @@ class FirebaseAILogicService {
    * (same worker + no-API-key pattern as bedtimeIllustrationService). Returns a data: URI, or
    * null on failure/timeout so callers fall back to the procedural generate3DIcon() vector art.
    */
-  async generateCloudflareImage({ prompt, shortPrompt, seed, negative_prompt } = {}) {
+  async generateCloudflareImage({ prompt, shortPrompt, seed, negative_prompt, referenceImages, model } = {}) {
     if (!prompt) return null;
+    const refs = Array.isArray(referenceImages)
+      ? referenceImages.filter((r) => typeof r === 'string' && /^data:image\/(jpeg|png|webp);base64,/i.test(r)).slice(0, 2)
+      : [];
+    const usedSeed = seed ?? secureRandomInteger(0, 2147483646);
+    const negative = negative_prompt || 'pink, purple, magenta, violet, neon pink, scary, dark, deformed, blurry, text, watermark';
     const apiUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_IMAGE_GEN_API_URL) ||
                    'https://little-heroes-free-image-api.recklesswarman.workers.dev';
+
+    // 1. Straight to the Cloudflare Worker (works on every site whose origin the Worker allows).
     try {
       const cleanUrl = apiUrl.endsWith('/') ? apiUrl : `${apiUrl}/`;
+      const body = {
+        prompt,
+        shortPrompt: shortPrompt || prompt,
+        seed: usedSeed,
+        negative_prompt: negative,
+        format: 'base64'
+      };
+      if (model) body.model = model;
+      if (refs.length) body.referenceImages = refs;
       const res = await fetch(cleanUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt,
-          shortPrompt: shortPrompt || prompt,
-          seed: seed ?? ((Math.random() * 2147483647) | 0),
-          negative_prompt: negative_prompt || 'pink, purple, magenta, violet, neon pink, scary, dark, deformed, blurry, text, watermark',
-          format: 'base64'
-        }),
-        signal: AbortSignal.timeout(20000)
+        body: JSON.stringify(body),
+        // Reference pictures take FLUX.2 klein a little longer.
+        signal: AbortSignal.timeout(refs.length ? 36000 : 20000)
       });
-      if (!res.ok) return null;
-      const contentType = res.headers.get('content-type') || '';
-      if (contentType.includes('application/json')) {
-        const data = await res.json();
-        return data.dataUri || data.imageUrl || null;
+      if (res.ok) {
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const data = await res.json();
+          const direct = data.dataUri || data.imageUrl || null;
+          if (direct) return direct;
+        } else if (typeof btoa !== 'undefined') {
+          const arrayBuffer = await res.arrayBuffer();
+          let binary = '';
+          const bytes = new Uint8Array(arrayBuffer);
+          for (let i = 0; i < bytes.byteLength; i += 8192) {
+            binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + 8192, bytes.byteLength)));
+          }
+          return `data:${contentType || 'image/jpeg'};base64,${btoa(binary)}`;
+        }
       }
-      const arrayBuffer = await res.arrayBuffer();
-      if (typeof btoa === 'undefined') return null;
-      let binary = '';
-      const bytes = new Uint8Array(arrayBuffer);
-      for (let i = 0; i < bytes.byteLength; i += 8192) {
-        binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + 8192, bytes.byteLength)));
-      }
-      return `data:${contentType || 'image/jpeg'};base64,${btoa(binary)}`;
     } catch (err) {
       console.warn('Cloudflare Workers AI image generation note:', err.message);
-      return null;
     }
+
+    // 2. Through the app's own server (the Pi, whose origin the Worker does not allow, and any blocked origin).
+    try {
+      const res = await fetch(serverApiUrl('/api/story/illustration'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          // A fresh session per picture so the server never answers a re-roll from its cache.
+          sessionId: `studio-${usedSeed}`,
+          prompt,
+          shortPrompt: shortPrompt || prompt,
+          seed: usedSeed,
+          negative_prompt: negative,
+          ...(refs.length ? { referenceImages: refs } : {}),
+          format: 'base64'
+        }),
+        signal: AbortSignal.timeout(refs.length ? 40000 : 24000)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const url = data && !data.isFallback ? String(data.imageUrl || '') : '';
+        if (/^data:image\/(jpeg|png|webp);base64,/i.test(url)) return url;
+      }
+    } catch (err) {
+      console.warn('Studio image proxy note:', err.message);
+    }
+    return null;
   }
 
   /**
@@ -107,8 +148,14 @@ class FirebaseAILogicService {
    * Cloudflare image generator first, falling back to the procedural vector icon if it is
    * unavailable, rate-limited, or fails.
    */
-  async resolveItemGraphic({ iconPrompt, icon, colorTheme, label }) {
-    const image = await this.generateCloudflareImage({ prompt: iconPrompt, shortPrompt: iconPrompt });
+  async resolveItemGraphic({ iconPrompt, shortPrompt, icon, colorTheme, label, referenceImages, seed }) {
+    try { this._phaseHandler?.('painting'); } catch { /* the UI hook must never break generation */ }
+    const image = await this.generateCloudflareImage({
+      prompt: iconPrompt,
+      shortPrompt: shortPrompt || SHORT_PROMPTS.get(iconPrompt) || iconPrompt,
+      referenceImages: referenceImages || this._activeRefs || undefined,
+      seed
+    });
     return image || generate3DIcon(icon, colorTheme, (label || '').slice(0, 12));
   }
 
@@ -978,7 +1025,7 @@ Return ONLY valid JSON:
         };
 
         const res = await this.model.generateContent([visionPrompt, imagePart]);
-        const txt = res.response.text().replace(/\\`\\`\\`json/g, '').replace(/\\`\\`\\`/g, '').trim();
+        const txt = res.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
         const parsed = JSON.parse(txt);
         if (parsed.name) conceptPrompt = parsed.name;
         if (parsed.theme) detectedTheme = parsed.theme;
@@ -1001,6 +1048,18 @@ Return ONLY valid JSON:
   }
 
   async generate3DContent(options = {}) {
+    // Lets the Studio show "Writing the idea..." then "Painting the picture..." (one generation at a time).
+    this._phaseHandler = typeof options.onPhase === 'function' ? options.onPhase : null;
+    this._activeRefs = Array.isArray(options.referenceImages) ? options.referenceImages : null;
+    try {
+      return await this._generate3DContentInner(options);
+    } finally {
+      this._phaseHandler = null;
+      this._activeRefs = null;
+    }
+  }
+
+  async _generate3DContentInner(options = {}) {
     const category = options.category || 'gear';
     const matched3DAsset = matchBestThreeDAsset(options.promptText || '', category);
     if (matched3DAsset && !options.modelUrl && !options.threeDAssetId) {
@@ -1090,10 +1149,21 @@ function capitalize(str) {
 }
 
 /** Builds the prompt sent to the free Cloudflare image generator for a Parent Portal AI item icon. */
+const SHORT_PROMPTS = new Map();
+
 function buildIconPrompt(category, name, desc, extra = '') {
-  return `3D Pixar-style clay render icon of ${name}, a ${category} for a kids' adventure app: ${desc} ${extra} Vibrant kid-friendly colors, strictly no pink or purple, soft studio lighting, clean simple background, no text, no watermark, video game item icon style.`
+  const long = `Single ${category} prop for a kids' game: ${name}. ${desc} ${extra} Centered, whole object in frame, isometric three-quarter view, chunky rounded toy shapes, soft 3D clay render, soft studio light, plain light-grey background, no people, no text, no watermark, bright friendly colours (strictly no pink or purple).`
     .replace(/\s+/g, ' ')
     .trim();
+  // The CLIP-based fallback models read ~77 tokens, so keep a compact version for them.
+  if (SHORT_PROMPTS.size > 60) SHORT_PROMPTS.clear();
+  SHORT_PROMPTS.set(long, `${name}, cute 3D clay toy ${category} icon, centered, plain background`.slice(0, 200));
+  return long;
+}
+
+/** Exported so the Studio's "new picture" and photo flows build the same prompt the generators use. */
+export function buildStudioPropPrompt(category, name, desc, extra = '') {
+  return buildIconPrompt(category, name, desc, extra);
 }
 
 function getThemeColorName(hex) {

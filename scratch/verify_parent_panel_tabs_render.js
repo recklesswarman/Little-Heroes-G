@@ -1,5 +1,5 @@
 // Render test: the Screen Time, Settings and Studio tabs show the saved values
-// (not hard-coded ones) and the unfinished Studio buttons are marked Coming soon.
+// (not hard-coded ones) and the Studio controls are live (no more Coming soon buttons).
 import './setup_mock_env.js';
 import { store } from '../src/state/store.js';
 import { renderParentPortalView, setActiveAdminTab } from '../src/views/ParentPortalView.js';
@@ -49,12 +49,14 @@ assert(html.includes('id="companion-rules-feedback"'), 'companion rules save fee
 // Studio tab
 setActiveAdminTab('studio');
 html = renderParentPortalView();
-for (const id of ['studio-voice-mic-btn', 'studio-mode-modelviewer-btn', 'studio-test-as-child-btn']) {
+for (const id of ['studio-mode-modelviewer-btn', 'studio-test-as-child-btn']) {
   const i = html.indexOf(`id="${id}"`);
   const tag = html.slice(i, html.indexOf('>', i));
-  assert(i > 0 && /disabled/.test(tag) && /Coming soon/.test(tag), `${id} is disabled and marked Coming soon`);
+  assert(i > 0 && !/disabled/.test(tag) && !/Coming soon/.test(tag), `${id} is enabled`);
 }
-assert(/id="studio-photo-upload"[^>]*disabled/.test(html), 'photo upload is disabled');
+// Mic only shows where the browser can listen (the mock DOM has no SpeechRecognition).
+assert(!html.includes('id="studio-voice-mic-btn"'), 'mic button is hidden when speech recognition is unavailable');
+assert(/id="studio-photo-upload"/.test(html) && !/id="studio-photo-upload"[^>]*disabled/.test(html), 'photo upload is enabled');
 
 setActiveAdminTab('approvals');
 console.log('\n=============================================');

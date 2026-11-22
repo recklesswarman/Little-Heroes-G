@@ -23,7 +23,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const LAT = 45; // Simulated Firestore network latency (ms)
 
 const stubs = {
-  'firebase-config.js': `export const app = {}; export const auth = null; export const db = {}; export const functions = null; export const googleProvider = null; export const isFirebaseAvailable = true; export const firestoreDatabaseId = ''; export const firebaseConfig = {}; export const ensureAuthReady = async () => null;`,
+  'firebase-config.js': `export const app = {}; export const auth = null; export const db = {}; export const functions = null; export const googleProvider = null; export const isFirebaseAvailable = true; export const firestoreDatabaseId = ''; export const firebaseConfig = {}; export const ensureAuthReady = async () => null; export const storage = null; export const isStorageAvailable = false;`,
   'firestore.js': `const D = { __op: 'delete' };
 export const deleteField = () => D;
 export const arrayRemove = (...vals) => ({ __op: 'arrayRemove', vals });
@@ -37,7 +37,7 @@ export const setDoc = (ref, data, opts) => globalThis.__FS__.write(ref.path, dat
 export const updateDoc = (ref, data) => globalThis.__FS__.write(ref.path, data, true, true);
 export const getDoc = async (ref) => globalThis.__FS__.get(ref.path);
 export const onSnapshot = (ref, cb) => globalThis.__FS__.listen(ref.path, cb);`,
-  'firebase-storage.js': `export const getStorage = () => ({}); export const ref = () => ({}); export const uploadBytes = async () => ({}); export const getDownloadURL = async () => '';`,
+  'firebase-storage.js': `export const getStorage = () => ({}); export const ref = () => ({}); export const uploadBytes = async () => ({}); export const getDownloadURL = async () => ''; export const uploadBytesResumable = () => ({}); export const uploadString = async () => ({}); export const deleteObject = async () => ({}); export const listAll = async () => ({ items: [], prefixes: [] }); export const getMetadata = async () => ({});`,
   'sound.js': `export const Sound = new Proxy({}, { get: () => () => {} }); export function initTactileSoundEngine() {}`,
   'confetti.js': `export default function confetti() {}`,
   'voice.js': `export const COMPANION_VOICE_PROFILES = {}; export const cleanDialogueText = (t) => t; export const unlockVoiceAudio = () => {}; export const stopRex = () => {}; export const stopCompanionAudio = () => {}; export const isRexSpeaking = () => false; export const isCompanionSpeaking = () => false; export const selectPreferredVoice = () => null; export const getCompanionVoiceParams = () => ({}); export const speakCompanion = async () => {}; export const speakRex = async () => {};`,

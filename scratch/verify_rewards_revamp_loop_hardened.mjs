@@ -119,7 +119,11 @@ testAssert(DIGITAL_REWARDS_CATALOG.some(w => w.id === 'wpn_astro_lance_9000'), '
 // =========================================================================
 console.log('\n--- 2. Testing Instant Gift Delivery & 1-Active Combat Weapon Rule ---');
 const hero = store.getSelectedHero();
-testAssert(hero.inventory.includes('wpn_astro_lance_9000'), 'Weapon auto-added to active child inventory via instant_gift');
+testAssert(!hero.inventory.includes('wpn_astro_lance_9000'), 'Instant gift is not handed to whoever is selected at publish time');
+const lanceCrate = (store.getState().pendingGiftCrates || []).find(c => c.item && c.item.id === 'wpn_astro_lance_9000');
+testAssert(!!lanceCrate, 'Instant gift creates a gift crate');
+store.openGiftCrate(lanceCrate.id, hero.id);
+testAssert(hero.inventory.includes('wpn_astro_lance_9000'), 'Weapon lands in the child inventory when the crate is opened');
 testAssert(hero.equippedWeapon === 'wpn_astro_lance_9000', 'Weapon equipped as active combat weapon');
 
 // Verify active weapon resolution
@@ -141,6 +145,8 @@ const customWeapon2 = {
   deliveryMethod: 'instant_gift'
 };
 store.publishCustomAIWeapon(customWeapon2);
+const saberCrate = (store.getState().pendingGiftCrates || []).find(c => c.item && c.item.id === 'wpn_photon_saber_77');
+store.openGiftCrate(saberCrate.id, hero.id);
 testAssert(hero.equippedWeapon === 'wpn_photon_saber_77', 'Equipping second weapon switches active combat weapon');
 testAssert(hero.inventory.includes('wpn_astro_lance_9000'), 'First weapon remains in hero inventory');
 testAssert(hero.inventory.includes('wpn_photon_saber_77'), 'Second weapon added to hero inventory');
@@ -178,12 +184,16 @@ let activeBounty = store.getState().pendingBounties.find(b => b.id === 'bounty_b
 testAssert(activeBounty && activeBounty.currentStreakProgress === 1, 'Day 1 morning_brush alias increments streak to 1');
 testAssert(!hero.inventory.includes('wpn_thunder_hammer_bounty'), 'Day 1 does not award bounty weapon early');
 
+// A new calendar day starts: streak progress only counts once per day.
+store.getState().pendingBounties.forEach(x => { x.lastProgressDate = {}; });
 // Day 2: Habit completion with alias 'brush_teeth_pm'
 store.checkAndAwardHabitBounties('brush_teeth_pm', hero);
 activeBounty = store.getState().pendingBounties.find(b => b.id === 'bounty_brush_streak_3d');
 testAssert(activeBounty && activeBounty.currentStreakProgress === 2, 'Day 2 brush_teeth_pm alias increments streak to 2');
 testAssert(!hero.inventory.includes('wpn_thunder_hammer_bounty'), 'Day 2 does not award bounty weapon early');
 
+// A new calendar day starts: streak progress only counts once per day.
+store.getState().pendingBounties.forEach(x => { x.lastProgressDate = {}; });
 // Day 3: Habit completion with primary ID 'brush_teeth'
 store.checkAndAwardHabitBounties('brush_teeth', hero);
 testAssert(
@@ -313,6 +323,7 @@ const maliciousWeapon = {
   title: 'Glitch Blade',
   category: 'Weapons',
   costCoins: 10,
+  deliveryMethod: 'hero_shop',
   craftedBy: '<script>alert("xss")</script> & "Uncle Bob"'
 };
 store.publishCustomAIWeapon(maliciousWeapon);
