@@ -26,7 +26,8 @@ export function getDirectNtfyConfig(env = null) {
   const token = get('VITE_NTFY_PUBLISH_TOKEN');
   const topic = (get('VITE_NTFY_TOPIC') || 'little-heroes').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 64) || 'little-heroes';
   if (!/^https:\/\//i.test(url) || !token) return null;
-  return { url, token, topic };
+  const appUrl = env ? (env.VITE_APP_URL === undefined ? undefined : String(env.VITE_APP_URL).trim()) : (import.meta.env?.VITE_APP_URL === undefined ? undefined : String(import.meta.env.VITE_APP_URL).trim());
+  return appUrl === undefined ? { url, token, topic } : { url, token, topic, appUrl };
 }
 
 async function postViaAppServer(payload, fetchImpl) {

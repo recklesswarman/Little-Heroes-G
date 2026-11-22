@@ -7,12 +7,14 @@ export const NTFY_EVENTS = {
     title: 'Chore ready to approve',
     tags: 'white_check_mark',
     priority: '3',
+    link: '#/approvals',
     message: d => `${d.kidName} finished "${d.title}" and is waiting for your approval.`
   },
   reward_requested: {
     title: 'Reward request',
     tags: 'gift',
     priority: '4',
+    link: '#/approvals',
     message: d => `${d.kidName} asked to redeem "${d.title}".`
   },
   boss_defeated: {
@@ -24,6 +26,18 @@ export const NTFY_EVENTS = {
 };
 
 export const NTFY_EVENT_KINDS = Object.keys(NTFY_EVENTS);
+
+// Tapping an approval alert (or its "Open Action Inbox" button) opens the app at the parent
+// Action Inbox. The parent PIN still gates it, so a kid holding the phone can't approve.
+// Household data syncs through Firestore, so any host works; the main public site is the default.
+// Override with NTFY_APP_URL on the server or VITE_APP_URL in a build ('' turns the link off).
+export const DEFAULT_APP_URL = 'https://little-heroes-quest-8842.web.app/';
+
+function approvalLink(appUrl, link) {
+  const base = String(appUrl ?? '').trim();
+  if (!link || !/^https:\/\/[^\s,]+$/i.test(base)) return '';
+  return `${base.replace(/\/?$/, '/')}${link}`;
+}
 
 function cleanField(value, max) {
   if (typeof value !== 'string') return '';
@@ -37,6 +51,11 @@ export function buildNtfyRequest(kind, data = {}, config = {}) {
   const fields = { kidName: cleanField(data.kidName, 40) || 'Your hero', title: cleanField(data.title, 80) };
   const headers = { Title: event.title, Tags: event.tags, Priority: event.priority, 'Content-Type': 'text/plain; charset=utf-8' };
   if (config.token) headers.Authorization = `Bearer ${config.token}`;
+  const open = approvalLink(config.appUrl === undefined ? DEFAULT_APP_URL : config.appUrl, event.link);
+  if (open) {
+    headers.Click = open;
+    headers.Actions = `view, Open Action Inbox, ${open}`;
+  }
   const url = String(config.url || '').replace(/\/+$/, '');
   return { url: `${url}/${config.topic}`, init: { method: 'POST', headers, body: event.message(fields) } };
 }
