@@ -2,6 +2,7 @@ import { store, KID_AVATARS } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import { processProfilePhoto } from '../utils/photoUploader.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
+import { getBuildLabel } from '../components/TopHeader.js';
 import { safeImageUrl } from '../utils/safeImageUrl.js';
 import { authenticateWithBiometrics } from '../utils/biometrics.js';
 import { getTaskVisualSvg } from '../utils/taskVisuals.js';
@@ -3265,6 +3266,22 @@ export function renderParentPortalView() {
           ? `
         <section class="flex flex-col gap-6 animate-fade-in">
           
+          <!-- App build + clean reload: the header badge is hidden on phones, so it lives here too -->
+          <div class="bg-surface-container rounded-3xl p-4 sm:p-5 border-2 border-surface-container-highest card-shadow flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-10 h-10 rounded-2xl bg-surface-container-high text-primary flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined">system_update</span>
+              </div>
+              <div class="min-w-0">
+                <h3 class="font-headline text-sm font-black text-inverse-surface">App build <span class="text-primary">${escapeHtml(getBuildLabel())}</span></h3>
+                <p class="text-[11px] text-on-surface-variant font-bold">Not seeing the newest quests or features? Reload with a clean cache.</p>
+              </div>
+            </div>
+            <button id="parent-reload-latest-btn" type="button" class="shrink-0 bg-primary text-on-primary font-headline text-xs font-black px-4 py-2.5 rounded-2xl chunky-btn-sm flex items-center gap-1.5 active:scale-95">
+              <span class="material-symbols-outlined text-base">refresh</span> Reload latest
+            </button>
+          </div>
+
           <!-- Mini Games Difficulty Configuration Individually for Each Kid -->
           <div class="bg-surface-container rounded-3xl p-6 border-2 border-secondary-container card-shadow flex flex-col gap-5">
             <div class="flex items-center gap-3">
@@ -4334,6 +4351,11 @@ function renderNewHouseholdModal() {
 }
 
 export function attachParentPortalListeners() {
+  document.getElementById('parent-reload-latest-btn')?.addEventListener('click', () => {
+    Sound.click();
+    if (typeof window.forceAppHardRefresh === 'function') window.forceAppHardRefresh();
+    else window.location.reload();
+  });
   const lockExitBtn = document.getElementById('admin-lock-exit-btn');
   if (lockExitBtn) {
     lockExitBtn.addEventListener('click', () => {
