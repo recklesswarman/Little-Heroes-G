@@ -19,6 +19,11 @@
  *
  * Prompts: models that read long text (FLUX) get `prompt`, the detailed description. Models that only
  * read the first ~77 tokens (SDXL family) get `shortPrompt` when the client sent one.
+ *
+ * Same characters on every page: when the request carries `referenceImages` (up to 2 small
+ * JPEG/PNG data URIs, normally the story's first picture), FLUX.2 [klein] 4B draws the new scene
+ * with those pictures as references, so the hero and companion keep the same face, outfit and
+ * style from page to page. If klein fails, the normal text-only chain runs as before.
  */
 
 const DEFAULT_ALLOWED_ORIGINS = [
@@ -33,6 +38,7 @@ const FLUX = "@cf/black-forest-labs/flux-1-schnell";
 const SDXL_LIGHTNING = "@cf/bytedance/stable-diffusion-xl-lightning";
 const DREAMSHAPER = "@cf/lykon/dreamshaper-8-lcm";
 const SDXL_BASE = "@cf/stabilityai/stable-diffusion-xl-base-1.0";
+const FLUX2_KLEIN = "@cf/black-forest-labs/flux-2-klein-4b";
 
 // Order of preference when the requested model is unavailable.
 const MODEL_CHAIN = [FLUX, SDXL_LIGHTNING, DREAMSHAPER, SDXL_BASE];
@@ -42,7 +48,49 @@ const MODEL_ALIASES = {
   "@cf/blackforestlabs/flux-1-schnell": FLUX
 };
 
-const ALLOWED_MODELS = [...MODEL_CHAIN, ...Object.keys(MODEL_ALIASES)];
+const ALLOWED_MODELS = [...MODEL_CHAIN, FLUX2_KLEIN, ...Object.keys(MODEL_ALIASES)];
+
+const MAX_REFERENCE_IMAGES = 2;
+const MAX_REFERENCE_BYTES = 400 * 1024; // each; the client sends ~40-80 KB, 512 px or smaller
+const KLEIN_WIDTH = 1024;
+const KLEIN_HEIGHT = 768;
+
+/** Valid reference pictures from the request as { bytes, type }; anything else is dropped. */
+export function parseReferenceImages(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  for (const item of raw.slice(0, 8)) {
+    if (out.length >= MAX_REFERENCE_IMAGES) break;
+    const m = typeof item === "string" ? /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(item) : null;
+    if (!m) continue;
+    let bin;
+    try { bin = atob(m[2]); } catch { continue; }
+    if (bin.length < 500 || bin.length > MAX_REFERENCE_BYTES) continue;
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    out.push({ bytes, type: m[1] });
+  }
+  return out;
+}
+
+/** The prompt klein gets: keep everyone from the reference picture(s), draw the new scene. */
+export function buildReferencePrompt(prompt, count) {
+  const refs = count > 1 ? "images 0 and 1" : "image 0";
+  return `Keep the exact same hero child and companion characters from ${refs}: same face, hair, skin tone, outfit, colours and soft 3D clay storybook art style. Draw them in this new scene: ${String(prompt)}`.slice(0, FLUX_PROMPT_CHARS);
+}
+
+/** Multipart input for FLUX.2 klein with reference pictures. */
+export async function buildKleinInput({ prompt, seed, references }) {
+  const form = new FormData();
+  form.append("prompt", buildReferencePrompt(prompt, references.length));
+  references.forEach((ref, i) => form.append(`input_image_${i}`, new Blob([ref.bytes], { type: ref.type }), `ref${i}.${ref.type === "image/png" ? "png" : "jpg"}`));
+  form.append("width", String(KLEIN_WIDTH));
+  form.append("height", String(KLEIN_HEIGHT));
+  if (Number.isFinite(seed)) form.append("seed", String(Math.min(Math.abs(Math.floor(seed)), 2147483646)));
+  // Passing the FormData through a Response serialises it and sets the boundary header.
+  const packed = new Response(form);
+  return { multipart: { body: packed.body, contentType: packed.headers.get("content-type") } };
+}
 
 const MAX_PROMPT_CHARS = 4000;
 const FLUX_PROMPT_CHARS = 2000; // flux-1-schnell accepts up to 2048
@@ -100,6 +148,7 @@ export default {
         "Access-Control-Allow-Origin": origin,
         "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type, X-Requested-With",
+        "Access-Control-Expose-Headers": "X-Image-Model",
         "Access-Control-Max-Age": "86400"
       } : {})
     };
@@ -116,7 +165,8 @@ export default {
       return json({
         status: "ok",
         service: "little-heroes-free-image-api",
-        models: MODEL_CHAIN
+        models: MODEL_CHAIN,
+        referenceModel: FLUX2_KLEIN
       }, 200, corsHeaders);
     }
 
@@ -176,7 +226,24 @@ export default {
       const attempts = [];
       let bytes = null;
       let usedModel = "";
-      for (const model of buildModelOrder(requestedModel)) {
+
+      // Reference pictures first: same characters on every page (FLUX.2 klein).
+      const references = parseReferenceImages(body.referenceImages);
+      if (references.length) {
+        try {
+          const result = await env.AI.run(FLUX2_KLEIN, await buildKleinInput({ prompt, seed, references }));
+          const out = await resultToBytes(result);
+          if (out.byteLength < 1000) throw new Error(`model returned only ${out.byteLength} bytes`);
+          bytes = out;
+          usedModel = FLUX2_KLEIN;
+        } catch (kleinErr) {
+          const message = String(kleinErr && kleinErr.message ? kleinErr.message : kleinErr).slice(0, 300);
+          console.warn(`Model ${FLUX2_KLEIN} (with references) failed: ${message}`);
+          attempts.push({ model: FLUX2_KLEIN, error: message });
+        }
+      }
+
+      for (const model of bytes ? [] : buildModelOrder(requestedModel === FLUX2_KLEIN ? MODEL_CHAIN[0] : requestedModel)) {
         try {
           const result = await env.AI.run(model, buildModelInput(model, { prompt, shortPrompt, seed, negative_prompt }));
           const out = await resultToBytes(result);
@@ -220,7 +287,8 @@ export default {
         dataUri: `data:${mimeType};base64,${arrayBufferToBase64(bytes)}`,
         mimeType,
         model: usedModel,
-        fallbackFrom: usedModel !== buildModelOrder(requestedModel)[0] ? attempts : undefined,
+        fallbackFrom: attempts.length ? attempts : undefined,
+        usedReferences: usedModel === FLUX2_KLEIN ? references.length : 0,
         prompt: prompt.slice(0, 600),
         seed
       }, 200, corsHeaders);

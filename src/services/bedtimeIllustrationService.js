@@ -23,7 +23,59 @@ const MAX_PROMPT_TOKENS = 70;
 
 // Main model of the image Worker. Cloudflare retired the SDXL models on 2026-11-20 (the Worker still falls back
 // through its own chain), and FLUX.1 schnell is the one that understands detailed, paragraph-length prompts.
+/** A random picture seed (1..2^31-1). Uses crypto so code scanning doesn't flag it. */
+export function randomPictureSeed() {
+  const n = globalThis.crypto?.getRandomValues?.(new Uint32Array(1))[0] ?? Date.now();
+  return (n & 0x7fffffff) || 1;
+}
+
 export const IMAGE_MODEL = '@cf/black-forest-labs/flux-1-schnell';
+
+// Same characters on every page: from chapter 2 on, the story's first picture goes to the image
+// Worker as a reference (FLUX.2 klein on Cloudflare Workers AI). The model needs references
+// under 512 px, so the picture is shrunk in the browser first.
+const REFERENCE_MAX_SIDE = 480;
+const referenceCache = new Map();
+
+/** Is this a real generated picture (not the SVG placeholder) that can be a reference? */
+export function isReferenceCandidate(url) {
+  return typeof url === 'string' && /^data:image\/(jpeg|png|webp);base64,/i.test(url) && url.length > 2000;
+}
+
+/** Shrinks a picture to a small JPEG data URI for the Worker; '' when that is not possible. */
+export async function prepareReferenceImage(url) {
+  if (!isReferenceCandidate(url)) return '';
+  const key = computeMd5(url.slice(0, 4096) + url.length);
+  if (referenceCache.has(key)) return referenceCache.get(key);
+  if (typeof document === 'undefined' || typeof Image === 'undefined') return '';
+  const small = await new Promise((resolve) => {
+    try {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const scale = Math.min(1, REFERENCE_MAX_SIDE / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.max(1, Math.round((img.naturalWidth || 1) * scale));
+          canvas.height = Math.max(1, Math.round((img.naturalHeight || 1) * scale));
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return resolve('');
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL('image/jpeg', 0.82));
+        } catch {
+          resolve('');
+        }
+      };
+      img.onerror = () => resolve('');
+      img.src = url;
+    } catch {
+      resolve('');
+    }
+  });
+  const value = isReferenceCandidate(small) ? small : '';
+  if (referenceCache.size > 20) referenceCache.delete(referenceCache.keys().next().value);
+  referenceCache.set(key, value);
+  return value;
+}
 
 export class BedtimeIllustrationService {
   constructor() {
@@ -111,7 +163,8 @@ export class BedtimeIllustrationService {
       sceneType = 'scene_a',
       prompt: customPrompt,
       shortPrompt: customShortPrompt,
-      seed: paramSeed
+      seed: paramSeed,
+      referenceImageUrl = ''
     } = params;
 
     const cacheKey = this.getCacheKey(params);
@@ -133,7 +186,7 @@ export class BedtimeIllustrationService {
         const chIdx = chapterIndex ?? (chapterNumber - 1);
         const seed = paramSeed !== undefined && paramSeed !== null
           ? Number(paramSeed)
-          : Math.floor(Math.random() * 2147483647);
+          : randomPictureSeed();
         const negative_prompt = "pink, purple, magenta, violet, neon pink, scary, dark, deformed, blurry";
 
         // Built once so the direct call and the backup route send the same scene summary.
@@ -150,6 +203,9 @@ export class BedtimeIllustrationService {
         // Detailed prompt for the long-prompt model; the compact one rides along for the SDXL fallbacks.
         const cfPrompt = customPrompt || this.buildDetailedPrompt(promptParams);
         const cfShortPrompt = customShortPrompt || this.buildPrompt(promptParams);
+        // The story's first picture, so this page keeps the same hero and companion.
+        const reference = referenceImageUrl ? await prepareReferenceImage(referenceImageUrl) : '';
+        const referenceImages = reference ? [reference] : undefined;
 
         const payload = {
           sessionId,
@@ -168,6 +224,7 @@ export class BedtimeIllustrationService {
           shortPrompt: cfShortPrompt,
           seed,
           negative_prompt,
+          referenceImages,
           format: 'base64'
         };
 
@@ -189,9 +246,11 @@ export class BedtimeIllustrationService {
                 model: IMAGE_MODEL,
                 seed,
                 negative_prompt,
+                referenceImages,
                 format: 'base64'
               }),
-              signal: AbortSignal.timeout(22000)
+              // Reference pictures take FLUX.2 klein a little longer.
+              signal: AbortSignal.timeout(referenceImages ? 35000 : 22000)
             });
 
             if (directRes.ok) {
@@ -228,7 +287,7 @@ export class BedtimeIllustrationService {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(payload),
-              signal: AbortSignal.timeout(18000)
+              signal: AbortSignal.timeout(referenceImages ? 38000 : 18000)
             });
 
             if (proxyRes.ok) {

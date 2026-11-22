@@ -178,6 +178,18 @@ export function buildWeeklyReport(state = {}, { now = Date.now(), days = 7, time
 
 // ── Snapshots for Rex's tools ──────────────────────────────────────────────
 
+/**
+ * Is chore `c` on this kid's list today? Chores with `heroIds` are only for those kids,
+ * and calendar "get ready" chores (`calendarShowOn`, see shared/calendarPrep.js) only show
+ * on their evening.
+ */
+export function isChoreForHeroToday(c, heroId, today) {
+  if (!c) return false;
+  if (Array.isArray(c.heroIds) && c.heroIds.length && heroId && !c.heroIds.includes(heroId)) return false;
+  if (c.calendarShowOn && today && c.calendarShowOn !== today) return false;
+  return true;
+}
+
 /** Today's chores for one kid: what is done, waiting for a parent, or still to do. */
 export function buildChoreSnapshot(state = {}, heroId, { now = Date.now(), timeZone = DEFAULT_TIME_ZONE } = {}) {
   const today = dayKey(now, timeZone);
@@ -187,6 +199,7 @@ export function buildChoreSnapshot(state = {}, heroId, { now = Date.now(), timeZ
   const seen = new Set();
   return chores
     .filter((c) => c && c.id && !seen.has(c.id) && seen.add(c.id))
+    .filter((c) => isChoreForHeroToday(c, heroId, today))
     .slice(0, 30)
     .map((c) => {
       const log = logs.find((l) => l.taskId === c.id);
@@ -198,7 +211,8 @@ export function buildChoreSnapshot(state = {}, heroId, { now = Date.now(), timeZ
         points: num(c.points),
         coins: num(c.coins),
         status: waiting ? 'waiting_for_parent' : (log ? 'done' : 'to_do'),
-        needsGame: Boolean(c.isAR)
+        needsGame: Boolean(c.isAR),
+        fromCalendar: Boolean(c.calendarShowOn)
       };
     });
 }

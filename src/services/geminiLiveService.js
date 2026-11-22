@@ -8,6 +8,9 @@ import { speakCompanion, isRexSpeaking } from './voiceService.js';
 import { triggerInteractiveCelebration } from '../components/InteractiveCelebrationOverlay.js';
 import { lacksLiveWebSocketBridge } from '../utils/hostUtils.js';
 
+// How long a kid can think about a quest question before Rex offers a hint.
+const STUCK_IDLE_MS = 25000;
+
 class GeminiLiveService {
   constructor() {
     this.ws = null;
@@ -76,7 +79,16 @@ class GeminiLiveService {
   }
 
   setQuestContext(context) {
+    // Views call this on every render; only a new question is news for Rex.
+    const key = context ? `${context.gameTitle}|${context.question}|${context.currentStop}` : '';
+    const isSameQuestion = Boolean(context) && key === this.currentQuestKey;
+    this.currentQuestKey = key;
     this.currentQuestContext = context;
+    if (!context) {
+      clearTimeout(this.stuckTimer);
+      this.stuckTimer = null;
+    }
+    if (isSameQuestion) return;
     if (this.isConnected && this.ws?.readyState === WebSocket.OPEN && context) {
       this.sendQuestContextUpdate(context);
     }
@@ -84,19 +96,72 @@ class GeminiLiveService {
 
   clearQuestContext() {
     this.currentQuestContext = null;
+    this.currentQuestKey = '';
+    clearTimeout(this.stuckTimer);
+    this.stuckTimer = null;
   }
 
+  describeQuestContext(context) {
+    const optionsText = Array.isArray(context.options)
+      ? context.options.map((opt, i) => `[Option ${i} (${String.fromCharCode(65 + i)}): "${opt}"]`).join(', ')
+      : '';
+    return `Child is playing "${context.gameTitle || 'Quest'}", Question: "${context.question}". Choices: ${optionsText}. Correct answer index: ${context.correctAnswerIndex ?? 'unknown'}.${context.skill ? ` This is a ${context.gradeLevel || 'school'} skill (${context.skill}). When you help, teach the skill with a hint like "${context.hint || ''}" and never just say the answer.` : ''}`;
+  }
+
+  // Quest notes go to Rex as quiet context (server: [QUIET CONTEXT]), so he doesn't talk over
+  // a kid who is thinking. He speaks when the kid talks to him or when the app says the kid
+  // is stuck (two misses, or 25 seconds with no answer) or frustrated (three misses).
   sendQuestContextUpdate(context) {
     try {
-      const optionsText = Array.isArray(context.options)
-        ? context.options.map((opt, i) => `[Option ${i} (${String.fromCharCode(65 + i)}): "${opt}"]`).join(', ')
-        : '';
-      const promptText = `[GAME CONTEXT UPDATE: Child is playing "${context.gameTitle || 'Quest'}", Question: "${context.question}". Choices: ${optionsText}. Correct answer index: ${context.correctAnswerIndex ?? 'unknown'}.${context.skill ? ` This is a ${context.gradeLevel || 'school'} skill (${context.skill}). Teach the skill with a hint like "${context.hint || ''}" and never just say the answer.` : ''} Guide the child encouragingly!]`;
-      
-      this.sendTextMessage(promptText);
+      this.resetStuckWatch(context);
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify({ context: this.describeQuestContext(context) }));
+      }
     } catch (err) {
       console.warn('Could not send live quest context update:', err);
     }
+  }
+
+  resetStuckWatch(context = this.currentQuestContext) {
+    clearTimeout(this.stuckTimer);
+    this.stuckTimer = null;
+    this.missesThisQuestion = 0;
+    this.nudgedThisQuestion = false;
+    if (!context || typeof setTimeout !== 'function') return;
+    this.stuckTimer = setTimeout(() => this.nudgeRex('stuck', 'has not answered for a while'), STUCK_IDLE_MS);
+  }
+
+  nudgeRex(kind, why) {
+    const context = this.currentQuestContext;
+    if (!context || !this.ws || this.ws.readyState !== WebSocket.OPEN || this.isSpeaking) return false;
+    const tag = kind === 'frustrated' ? '[CHILD SEEMS FRUSTRATED]' : '[CHILD IS STUCK]';
+    const ask = kind === 'frustrated'
+      ? 'Speak calmly and warmly, say it is okay to find it tricky, offer a quick Dino Breath break, then one tiny hint.'
+      : 'Give one short, gentle hint. Do not say the answer.';
+    this.ws.send(JSON.stringify({ text: `${tag} The child ${why}. ${this.describeQuestContext(context)} ${ask}` }));
+    this.nudgedThisQuestion = true;
+    return true;
+  }
+
+  /** Call after every quest answer. Returns the nudge sent ('stuck' | 'frustrated' | null). */
+  reportQuestAnswer(correct) {
+    if (correct) {
+      this.resetStuckWatch(null);
+      this.wrongStreak = 0;
+      return null;
+    }
+    clearTimeout(this.stuckTimer);
+    this.stuckTimer = null;
+    this.missesThisQuestion = (this.missesThisQuestion || 0) + 1;
+    this.wrongStreak = (this.wrongStreak || 0) + 1;
+    if (this.wrongStreak >= 3 && this.nudgeRex('frustrated', `missed ${this.wrongStreak} answers in a row`)) {
+      this.wrongStreak = 0;
+      return 'frustrated';
+    }
+    if (this.missesThisQuestion >= 2 && !this.nudgedThisQuestion && this.nudgeRex('stuck', 'missed this question twice')) {
+      return 'stuck';
+    }
+    return null;
   }
 
   sendTextMessage(text, options = { handleInGame: true }) {
@@ -247,6 +312,9 @@ class GeminiLiveService {
             if (typeof data === 'string') data = JSON.parse(data);
             if (data && data.status === 'ready') {
               clearTimeout(timer);
+              this.liveModel = data.model || '';
+              this.liveProactive = data.proactive === true;
+              this.liveAffective = data.affective === true;
               if (!resolved) {
                 resolved = true;
                 this.isConnected = true;

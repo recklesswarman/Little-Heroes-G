@@ -838,6 +838,9 @@ export function attachQuestMapListeners() {
       const challenges = getGameChallenges(activeGame, kidDiff);
       const challenge = challenges[currentChallengeIdx] || challenges[0];
 
+      // Rex stays quiet while the kid thinks; misses tell him when to step in.
+      try { geminiLiveService.reportQuestAnswer?.(chosenIdx === challenge.answer); } catch {}
+
       if (chosenIdx === challenge.answer) {
         Sound.correctAnswer();
         confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });

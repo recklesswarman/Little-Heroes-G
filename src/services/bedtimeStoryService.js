@@ -21,7 +21,7 @@ import {
   generateFullBedtimeStory
 } from '../data/bedtimeStoryData.js';
 import { PETS_DATABASE } from '../data/petsData.js';
-import { bedtimeIllustrationService } from './bedtimeIllustrationService.js';
+import { bedtimeIllustrationService, isReferenceCandidate, randomPictureSeed } from './bedtimeIllustrationService.js';
 import { sanitizeWish } from '../../shared/storyEngine/safety.js';
 import { petSpeciesFromName, buildRequest, generateBedtimeChapter } from '../../shared/storyEngine/engine.js';
 import { makeFirebaseGenerate } from './firebaseEngineAdapter.js';
@@ -633,7 +633,7 @@ class BedtimeStoryService {
         chapterNumber: actNumber,
         chapterTitle: generatedAct.title,
         chapterText: generatedAct.chapterText || generatedAct.text,
-        seed: Math.floor(Math.random() * 2147483647),
+        seed: randomPictureSeed(),
         realmId: realm.id,
         realmName: realm.name,
         heroName,
@@ -641,6 +641,7 @@ class BedtimeStoryService {
         petArchetype: session?.childContext?.activePet?.archetype || 'dino',
         magicItem: session?.childContext?.gearAndChoices?.magicItem || 'Starlight Lantern',
         sceneType: 'scene_b',
+        referenceImageUrl: this.storyReferenceImage(session, actNumber),
         ...this.scenePlanArgs(generatedAct, 'scene_b')
       }).then((illB) => {
         if (illB && illB.imageUrl) {
@@ -665,7 +666,7 @@ class BedtimeStoryService {
           chapterNumber: actNumber,
           chapterTitle: generatedAct.title,
           chapterText: generatedAct.chapterText || generatedAct.text,
-          seed: Math.floor(Math.random() * 2147483647),
+          seed: randomPictureSeed(),
           realmId: realm.id,
           realmName: realm.name,
           heroName,
@@ -673,6 +674,7 @@ class BedtimeStoryService {
           petArchetype: session?.childContext?.activePet?.archetype || 'dino',
           magicItem: session?.childContext?.gearAndChoices?.magicItem || 'Starlight Lantern',
           sceneType: 'scene_a',
+          referenceImageUrl: this.storyReferenceImage(session, actNumber),
           ...this.scenePlanArgs(generatedAct, 'scene_a')
         });
         if (illResult && illResult.imageUrl) {
@@ -685,6 +687,20 @@ class BedtimeStoryService {
     }
 
     return generatedAct;
+  }
+
+  /**
+   * The story's first picture, used as the character reference for chapter 2 on, so the hero and
+   * companion look the same on every page. Chapter 1 has none (its pictures set the look).
+   */
+  storyReferenceImage(session, actNumber = 1) {
+    if (!session || Number(actNumber) <= 1 || !Array.isArray(session.acts)) return '';
+    for (const act of session.acts) {
+      for (const url of [act?.imageUrl, act?.imageUrlB]) {
+        if (isReferenceCandidate(url)) return url;
+      }
+    }
+    return '';
   }
 
   /**

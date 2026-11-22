@@ -45,6 +45,8 @@ import { renderHeroHQView, attachHeroHQListeners } from './views/HeroHQView.js';
 import { renderDinoWorkoutView, attachDinoWorkoutListeners, abandonDinoWorkoutIfRunning } from './views/DinoWorkoutView.js';
 import { renderBedtimeStoryView, setupBedtimeStoryListeners } from './views/BedtimeStoryView.js';
 import { renderStoryLibraryView, attachStoryLibraryListeners } from './views/StoryLibraryView.js';
+import { renderFridgeDisplayView, attachFridgeDisplayListeners, stopFridgeDisplay, FRIDGE_VIEW_NAMES } from './views/FridgeDisplayView.js';
+import { startFamilyCalendarSync } from './services/familyCalendarService.js';
 import { registerServiceWorker } from './pwa/registerServiceWorker.js';
 import { initRewardAnimations } from './services/rewardAnimationService.js';
 import { initParentNotifications } from './services/parentNotifyService.js';
@@ -142,6 +144,18 @@ function _renderAppInternal() {
 
   const state = store.getState();
   const activeView = state.activeView;
+
+  // Fridge Display (#fridge): a full-screen family board with its own refresh loop. It
+  // needs no sign-in on the Pi (it reads /api/fridge/snapshot), so it comes before the
+  // auth wall, and it is not rebuilt on every store change.
+  if (FRIDGE_VIEW_NAMES.includes(activeView)) {
+    if (!document.getElementById('fridge-display-root')) {
+      app.innerHTML = renderFridgeDisplayView();
+      attachFridgeDisplayListeners();
+    }
+    return;
+  }
+  stopFridgeDisplay();
 
   // The AR Toothbrush Battle keeps its countdown timer, rhythm music and
   // camera/mic sensors running in module-level state that isn't tied to the
@@ -562,6 +576,9 @@ function resolveRouteFromUrl() {
   rawHash = rawHash.replace(/^#+/, '').replace(/^\/+/, '');
   const hash = rawHash.split('?')[0].split('&')[0].split('#')[0].replace(/\/+$/, '');
 
+  if (path === '/fridge' || hash === 'fridge' || hash === 'fridge-display' || hash === 'kiosk') {
+    return 'fridge';
+  }
   if (path === '/learn' || path === 'learn' || hash === 'learn') {
     return 'adventures_map';
   }
@@ -598,6 +615,9 @@ renderApp();
 
 // Offline support: vite-plugin-pwa service worker (see vite.config.js).
 registerServiceWorker();
+
+// Family calendar "get ready" chores (shared/calendarPrep.js), refreshed every 30 minutes.
+startFamilyCalendarSync();
 
 // Initialize client-side voice synthesis so voices are populated and ready instantly.
 warmUpVoiceEngine();

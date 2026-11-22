@@ -14,6 +14,8 @@ import { handleNotifyRequest } from './server/ntfyService.js';
 import { handleRexAgentRequest } from './server/rexAgentService.js';
 import { handleWeeklyReportRequest } from './server/weeklyReportService.js';
 import { createRexRelay } from './server/rexAgyRelay.js';
+import { calendarService } from './server/calendarService.js';
+import { handleFridgeSnapshot } from './server/fridgeService.js';
 import { handleVoiceSttRequest, handleVoiceTtsRequest, handleVoiceStatusRequest, MAX_AUDIO_BYTES } from './server/voiceLabService.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -108,6 +110,14 @@ if (getPiRelayConfig()) {
   app.post('/api/local/tts', voiceLimiter, localAi.handleTts);
   app.post('/api/local/stt', voiceLimiter, rawAudio(localAi.STT_MAX_BYTES), localAi.handleStt);
 }
+
+// Family Google Calendar -> tonight's "get ready" chores (server/calendarService.js). On the Pi
+// it reads GOOGLE_CALENDAR_ICS_URL; elsewhere it relays to the Pi. /api/local/calendar is the
+// Pi end of that relay (same Tailscale Funnel path as Rex's voice).
+app.post('/api/calendar/plan', voiceLimiter, calendarService.handlePlanRequest);
+app.post('/api/local/calendar', voiceLimiter, calendarService.handlePlanRequest);
+// Fridge Display data for the Pi's kiosk screen (server/fridgeService.js, family network only)
+app.get('/api/fridge/snapshot', voiceLimiter, handleFridgeSnapshot);
 
 const distPath = path.join(__dirname, 'dist');
 

@@ -2002,6 +2002,62 @@ class Store {
     return true;
   }
 
+  // Family calendar "get ready" chores (shared/calendarPrep.js via /api/calendar/plan).
+  // Each one is a Task Forest chore with a fixed id, the kids it is for (heroIds) and the
+  // evening it shows on (calendarShowOn). Ids are stable, so every device adding the same
+  // plan ends up with the same list; chores whose evening has passed, or whose event is no
+  // longer on the calendar, are taken off. Parent-made chores are never touched.
+  applyCalendarPlan(plan, { save = true } = {}) {
+    if (!plan || !Array.isArray(plan.prepTasks) || typeof plan.today !== 'string') return false;
+    const today = plan.today;
+    const list = Array.isArray(this.state.taskForest) ? this.state.taskForest : (this.state.taskForest = []);
+    const wanted = new Map(plan.prepTasks
+      .filter((t) => t && typeof t.id === 'string' && t.id.startsWith('cal_') && t.showOn >= today)
+      .map((t) => [t.id, t]));
+    let changed = false;
+    for (let i = list.length - 1; i >= 0; i--) {
+      const t = list[i];
+      if (t && typeof t.id === 'string' && t.id.startsWith('cal_') && t.calendarShowOn && !wanted.has(t.id)) {
+        list.splice(i, 1);
+        changed = true;
+      }
+    }
+    for (const t of wanted.values()) {
+      const existing = list.find((x) => x && x.id === t.id);
+      const fields = {
+        title: String(t.title || 'Get ready for tomorrow').slice(0, 60),
+        heroIds: Array.isArray(t.heroIds) ? t.heroIds.slice(0, 12) : [],
+        calendarShowOn: t.showOn,
+        calendarEventDay: t.eventDay,
+        calendarEventTitle: String(t.eventTitle || '').slice(0, 60),
+        desc: `Tomorrow: ${String(t.eventTitle || 'a family event').slice(0, 60)}${t.eventTime ? ` at ${t.eventTime}` : ''}. Get ready tonight!`
+      };
+      if (existing) {
+        const before = JSON.stringify([existing.title, existing.heroIds, existing.calendarShowOn, existing.desc]);
+        Object.assign(existing, fields);
+        if (before !== JSON.stringify([existing.title, existing.heroIds, existing.calendarShowOn, existing.desc])) changed = true;
+        continue;
+      }
+      list.push({
+        id: t.id,
+        zone: 'Task Forest',
+        icon: t.icon || 'event',
+        image: '',
+        timeWindow: 'Tonight',
+        coins: 10,
+        points: 5,
+        xp: 15,
+        completed: false,
+        pointsApproved: false,
+        fromCalendar: true,
+        ...fields
+      });
+      changed = true;
+    }
+    if (changed && save) this.saveState(true);
+    return changed;
+  }
+
   // 1. ADD NEW TASK / ROUTINE (Parent Portal)
   addNewTask(taskData) {
     const isHabit = taskData.zone === 'Habit Islands';

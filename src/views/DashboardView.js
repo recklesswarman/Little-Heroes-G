@@ -9,12 +9,15 @@ import { requestAutonomousMicroQuests, submitDailyQuest } from '../services/ques
 import { chorePhotoProofModal } from '../components/ChorePhotoProofModal.js';
 import { checkProactiveTriggerAGY } from '../services/heroAgentService.js';
 import { getCurrentWeeklyChallenge } from '../data/hygieneBossesData.js';
+import { isChoreForHeroToday, dayKey } from '../../shared/familyInsights.js';
 
 export function renderDashboardView() {
   const state = store.getState();
   const hero = state.selectedHero;
   const habitIslands = state.habitIslands;
-  const taskForest = state.taskForest;
+  // Calendar "get ready" chores only show for their kids, on their evening.
+  const todayKey = dayKey(Date.now());
+  const taskForest = (state.taskForest || []).filter((t) => isChoreForHeroToday(t, hero?.id, todayKey));
   const aiQuests = store.getAiQuests(hero?.id);
   const activePet = store.getActivePet();
   const pendingCount = state.pendingApprovals.filter(r => r.kidId === hero.id).length;

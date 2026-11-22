@@ -24,3 +24,5 @@ jobs:
     steps:
       - name: Pull, build and restart Little Heroes on the Pi
         run: ~/bin/update-little-heroes.sh main
+      - name: Install the Fridge Display shortcut and Pi extras
+        run: bash ~/apps/little-heroes/scripts/pi/install-extras.sh
