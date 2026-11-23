@@ -5,9 +5,9 @@ sys.path.insert(0, os.path.join(here, "voice_extras_stubs"))
 sys.path.insert(0, os.path.join(here, "..", "..", "scripts", "pi", "voice-extras"))
 import voice_extras as v
 
-out = v.read_story("Kaleb found a star. It glowed softly!", "af_heart", 0.9)
+out = v.read_story("River found a star. It glowed softly!", "af_heart", 0.9)
 words = out["words"]
-assert [w[0] for w in words] == ["Kaleb", "found", "a", "star", "It", "glowed", "softly"], words
+assert [w[0] for w in words] == ["River", "found", "a", "star", "It", "glowed", "softly"], words
 assert all(a[1] <= b[1] for a, b in zip(words, words[1:])), "in order"
 assert all(w[2] > w[1] for w in words)
 assert words[4][1] > words[3][2], "second sentence starts after the first ends"

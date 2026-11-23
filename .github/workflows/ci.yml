@@ -20,6 +20,14 @@ jobs:
           cache-dependency-path: |
             package-lock.json
             functions/package-lock.json
+      # The Pi voice service check (scratch/fixtures/check_voice_extras.py) runs the real
+      # Python service with stub models; it needs numpy.
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Python test dependencies
+        run: python -m pip install --quiet numpy
       - name: Install dependencies
         run: npm ci
       - name: Lint
