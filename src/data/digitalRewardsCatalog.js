@@ -24,6 +24,12 @@
 
 import { getRewardAssetUrl, DEFAULT_FALLBACK_DATA_URI } from '../utils/rewardGraphics.js';
 import { SEED_2026_ITEMS } from './seedItems2026.js';
+import { resolvePublicAssetUrl } from '../utils/assetUrl.js';
+
+// Real models (CC0) for the items below. Files: public/models/. Credits: public/models/LICENSES.md.
+const realModel = (path) => resolvePublicAssetUrl(`models/${path}.glb`);
+const CREDIT_KENNEY = { author: 'Kenney', license: 'CC0', sourceUrl: 'https://kenney.nl' };
+const CREDIT_QUATERNIUS = { author: 'Quaternius', license: 'CC0', sourceUrl: 'https://quaternius.com' };
 
 export const REWARD_CATEGORIES = {
   WEAPONS: 'Weapons',
@@ -80,8 +86,8 @@ export const DIGITAL_REWARDS_CATALOG = [
     statBonusPercent: 35,
     statBonusLabel: '+35% Sugar Bug Damage',
     renderGradient: 'from-cyan-900/60 via-slate-900 to-blue-950/80',
-    modelUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
-    splineUrl: 'https://my.spline.design/interactivecube-3d748f328f411b0e5272a832389d3c52/',
+    modelUrl: realModel('quaternius/cubeworld/Sword_Diamond'),
+    credit: CREDIT_QUATERNIUS,
     voiceLine: "Roar! Equip your Laser Toothbrush Sword to blast away cavity monsters in 2 minutes flat!",
     isStarter: true,
     isUnlocked: true
@@ -128,7 +134,8 @@ export const DIGITAL_REWARDS_CATALOG = [
     statBonusPercent: 45,
     statBonusLabel: '+45% Stun Damage',
     renderGradient: 'from-emerald-900/60 via-slate-900 to-teal-950/80',
-    modelUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+    modelUrl: realModel('kenney/blasters/blaster-o'),
+    credit: CREDIT_KENNEY,
     voiceLine: "Whoosh! The Sonic Foam Cannon leaves tooth villains completely squeaky clean!",
     isUnlocked: false
   },
@@ -151,7 +158,8 @@ export const DIGITAL_REWARDS_CATALOG = [
     statBonusPercent: 55,
     statBonusLabel: '+55% Combo Damage',
     renderGradient: 'from-blue-900/60 via-slate-900 to-cyan-950/80',
-    modelUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+    modelUrl: realModel('quaternius/cubeworld/Sword_Gold'),
+    credit: CREDIT_QUATERNIUS,
     voiceLine: "Unstoppable! The Plasma Hydra Blade unleashes triple-slice dino combos!",
     isUnlocked: false
   },
@@ -174,8 +182,8 @@ export const DIGITAL_REWARDS_CATALOG = [
     statBonusPercent: 25,
     statBonusLabel: '+25% AR Saber Damage',
     renderGradient: 'from-cyan-900/60 via-slate-900 to-blue-950/80',
-    modelUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
-    splineUrl: 'https://prod.spline.design/J3y4v4k5l6m7n8o9/scene.splinecode',
+    modelUrl: realModel('quaternius/cubeworld/Sword_Diamond'),
+    credit: CREDIT_QUATERNIUS,
     voiceLine: "Rex says: Strike true with the power of starlight, little hero!",
     isUnlocked: false
   },
@@ -198,8 +206,8 @@ export const DIGITAL_REWARDS_CATALOG = [
     statBonusPercent: 20,
     statBonusLabel: '+20% Hydro Blast Damage',
     renderGradient: 'from-blue-900/60 via-slate-900 to-cyan-950/80',
-    modelUrl: 'https://modelviewer.dev/shared-assets/models/RobotExpressive.glb',
-    splineUrl: 'https://prod.spline.design/qE2M7oP9a1b2c3d4/scene.splinecode',
+    modelUrl: realModel('kenney/blasters/blaster-b'),
+    credit: CREDIT_KENNEY,
     voiceLine: "Rex says: Clean blast engaged! Wash away that sugary tartar!",
     isUnlocked: false
   },
@@ -1269,7 +1277,8 @@ export const DIGITAL_REWARDS_CATALOG = [
     servingsMax: 5,
     maxServings: 5,
     renderGradient: 'from-blue-900/60 via-slate-900 to-slate-950',
-    modelUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+    modelUrl: realModel('kenney/food/strawberry'),
+    credit: CREDIT_KENNEY,
     voiceLine: "So sweet and juicy! Your pet companion does happy backflips after eating Starlight Berries!",
     isUnlocked: true
   },
@@ -1294,7 +1303,8 @@ export const DIGITAL_REWARDS_CATALOG = [
     servingsMax: 1,
     maxServings: 1,
     renderGradient: 'from-yellow-900/60 via-slate-900 to-slate-950',
-    modelUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+    modelUrl: realModel('kenney/food/pineapple'),
+    credit: CREDIT_KENNEY,
     voiceLine: "Pure golden energy! One single taste gives your pet an instant super boost!",
     isUnlocked: true
   },
@@ -1344,8 +1354,8 @@ export const DIGITAL_REWARDS_CATALOG = [
     servingsMax: 3,
     maxServings: 3,
     renderGradient: 'from-blue-900/60 via-slate-900 to-slate-950',
-    modelUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
-    splineUrl: 'https://prod.spline.design/starberry/scene.splinecode',
+    modelUrl: realModel('kenney/food/strawberry'),
+    credit: CREDIT_KENNEY,
     voiceLine: "Rex says: Starberries are super juicy and full of turbo energy!",
     isUnlocked: true
   },
@@ -1370,7 +1380,8 @@ export const DIGITAL_REWARDS_CATALOG = [
     servingsMax: 4,
     maxServings: 4,
     renderGradient: 'from-emerald-900/60 via-slate-900 to-slate-950',
-    modelUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+    modelUrl: realModel('kenney/food/watermelon'),
+    credit: CREDIT_KENNEY,
     voiceLine: "Mmm, so refreshing! The Glowing Moon Melon is the coziest nighttime snack!",
     isUnlocked: true
   },

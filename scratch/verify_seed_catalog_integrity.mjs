@@ -21,15 +21,17 @@ for (const item of SEED_2026_ITEMS) {
   assert(!/pink|purple|magenta|violet/i.test(`${item.name} ${item.desc}`), `${item.id} follows the palette rule`);
   assert(!/candy|soda|chips|cookie|sugar(?!\s*bug)/i.test(`${item.name} ${item.desc}`) || item.category !== 'Snacks', `${item.id} is a healthy snack`);
   assert(!!(item.emoji && emojiArtUrl(item.emoji)) || !!(item.iconId && GAME_ICONS[item.iconId]) || !!item.image, `${item.id} has art that ships with the app`);
-  assert(!item.modelUrl, `${item.id} does not use a placeholder model`);
+  assert(!item.modelUrl || (/\/models\/(kenney|quaternius)\//.test(item.modelUrl) && !!item.image && !!item.credit), `${item.id} uses no placeholder model (a real bundled model needs a picture and a credit)`);
   assert(DIGITAL_REWARDS_CATALOG.filter((i) => i.id === item.id).length === 1, `${item.id} is in the catalog exactly once`);
   const same = originals.filter((i) => i.category === item.category).map((i) => i.price);
   assert(item.price >= Math.min(...same) * 0.5 && item.price <= Math.max(...same), `${item.id} price is inside the ${item.category} range`);
 }
-for (const c of cats) assert(SEED_2026_ITEMS.filter((i) => i.category === c).length === 3, `3 seeds in ${c}`);
-for (const c of cats) assert(getAllRewardsByCategory(c).filter((i) => i.isSeeded).length === 3, `the ${c} tab lists its 3 seeds`);
+// 3 per tab, plus the real-model seeds added later (4 foam blasters, 4 healthy snacks).
+const EXPECTED = { Weapons: 7, Snacks: 7 };
+for (const c of cats) assert(SEED_2026_ITEMS.filter((i) => i.category === c).length === (EXPECTED[c] || 3), `${EXPECTED[c] || 3} seeds in ${c}`);
+for (const c of cats) assert(getAllRewardsByCategory(c).filter((i) => i.isSeeded).length === (EXPECTED[c] || 3), `the ${c} tab lists its ${EXPECTED[c] || 3} seeds`);
 const emojiCard = renderRewardImage(SEED_2026_ITEMS.find((i) => i.emoji === '🥕'), 'x');
 assert(emojiCard.includes('openmoji/1F955.svg'), 'an emoji seed card shows OpenMoji art');
-assert(SEED_2026_ITEMS.length === 27, '27 seeds in total');
+assert(SEED_2026_ITEMS.length === 35, '35 seeds in total');
 console.log(failed ? `\nTEST RESULTS: ${passed} PASSED, ${failed} FAILED` : `\nTEST RESULTS: ${passed} PASSED, 0 FAILED`);
 process.exit(failed ? 1 : 0);
