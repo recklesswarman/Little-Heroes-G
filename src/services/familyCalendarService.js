@@ -15,7 +15,7 @@ let inFlight = null;
 function heroesForRequest(state) {
   return (state.heroes || [])
     .filter((h) => h && h.id && h.role !== 'parent' && !h.isParent)
-    .map((h) => ({ id: h.id, name: h.name || '', gameDifficulty: h.gameDifficulty || h.difficulty || '' }));
+    .map((h) => ({ id: h.id, name: h.name || '', gameDifficulty: h.gameDifficulty || h.difficulty || '', age: h.age ?? null, schoolGroup: h.schoolGroup || '' }));
 }
 
 export function getLastCalendarPlan() {

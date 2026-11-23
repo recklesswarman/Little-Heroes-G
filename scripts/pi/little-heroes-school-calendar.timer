@@ -1,0 +1,8 @@
+[Unit]
+Description=Refresh the district school calendar on July 1 and August 1
+[Timer]
+OnCalendar=*-07,08-01 07:00:00
+Persistent=true
+RandomizedDelaySec=600
+[Install]
+WantedBy=timers.target

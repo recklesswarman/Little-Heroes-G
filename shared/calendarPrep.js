@@ -11,6 +11,9 @@
 //
 // Only event titles and times are used. Descriptions, locations and attendees are never read.
 
+import { BUNDLED_SCHOOL_CALENDAR, schoolDayInfo, noSchoolEvents, isSchoolCalendar } from './schoolCalendar.js';
+import { weatherPrepTasks } from './weather.js';
+
 export const DEFAULT_CALENDAR_TIME_ZONE = 'America/New_York';
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MAX_TITLE = 60;
@@ -372,7 +375,7 @@ export function monthGridRange(todayKey) {
   return { month: first.slice(0, 7), start, end: addDays(start, 42) };
 }
 
-export function buildCalendarPlan(events = [], heroes = [], { now = Date.now(), days = 7, timeZone = DEFAULT_CALENDAR_TIME_ZONE, month = false } = {}) {
+export function buildCalendarPlan(events = [], heroes = [], { now = Date.now(), days = 7, timeZone = DEFAULT_CALENDAR_TIME_ZONE, month = false, schoolCalendar = BUNDLED_SCHOOL_CALENDAR, weather = null } = {}) {
   const today = localDayKey(now, timeZone);
   const weekEnd = addDays(today, Math.max(1, Math.min(31, days)));
   const grid = month ? monthGridRange(today) : null;
@@ -381,12 +384,23 @@ export function buildCalendarPlan(events = [], heroes = [], { now = Date.now(), 
   const occurrences = eventsBetween(events, from, to).slice(0, month ? 200 : 60);
   const upcoming = occurrences.filter((o) => o.day >= today && o.day < weekEnd);
   const prepTasks = buildPrepTasks(upcoming, heroes).filter((t) => t.showOn >= today);
+  // Weather chores (umbrella, snow boots, mittens) for the kids who have school tomorrow.
+  const schoolKidsFor = (day) => heroes.filter((h) => schoolDayInfo(day, h, schoolCalendar).school);
+  prepTasks.push(...weatherPrepTasks(weather, today, heroes, { schoolKidsFor }));
   const withKids = (o) => ({ ...o, heroIds: kidsForEvent(o.title, heroes, { requireMention: true }), emoji: prepRuleFor(o.title)?.emoji || '📅' });
+  // District no-school days sit in the same lists, already tagged with the kids they apply to.
+  const school = noSchoolEvents(from, to, heroes, schoolCalendar);
+  const merge = (list, a, b) => [...list.map(withKids), ...school.filter((e) => e.day >= a && e.day <= b)]
+    .sort((x, y) => (x.day === y.day ? (x.school ? -1 : y.school ? 1 : 0) : x.day.localeCompare(y.day)));
   return {
     today,
-    events: upcoming.map(withKids),
-    ...(grid ? { month: { ...grid, events: occurrences.map(withKids) } } : {}),
-    prepTasks
+    events: merge(upcoming, today, addDays(weekEnd, -1)),
+    ...(grid ? { month: { ...grid, events: merge(occurrences, from, to) } } : {}),
+    prepTasks,
+    ...(weather ? { weather } : {}),
+    noSchool: school.filter((e) => e.day >= today).slice(0, 10).map((e) => ({ day: e.day, title: e.title, heroIds: e.heroIds })),
+    // The calendar itself, so devices pause "school days only" chores from the Pi's newest copy.
+    ...(isSchoolCalendar(schoolCalendar) ? { schoolCalendar: { year: schoolCalendar.year || '', firstDay: schoolCalendar.firstDay, firstDayPreK: schoolCalendar.firstDayPreK || '', lastDay: schoolCalendar.lastDay, days: schoolCalendar.days.slice(0, 80) } } : {})
   };
 }
 
@@ -396,7 +410,7 @@ export function formatTonightMessage(plan, heroes = []) {
   if (!tonight.length) return '';
   const nameOf = (id) => heroes.find((h) => h.id === id)?.name || 'a hero';
   return tonight
-    .map((t) => `${t.emoji} ${t.eventTitle}${t.eventTime ? ` at ${t.eventTime}` : ''} tomorrow: "${t.title}" added for ${t.heroIds.map(nameOf).join(' & ') || 'everyone'}.`)
+    .map((t) => `${t.emoji} ${t.weather ? t.eventTitle : `${t.eventTitle}${t.eventTime ? ` at ${t.eventTime}` : ''} tomorrow`}: "${t.title}" added for ${t.heroIds.map(nameOf).join(' & ') || 'everyone'}.`)
     .join('\n')
     .slice(0, 1500);
 }

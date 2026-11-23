@@ -16,6 +16,7 @@ import { getLastCalendarPlan, refreshFamilyCalendar } from '../services/familyCa
 import { loadSchoolMenu, localDayKey } from '../services/schoolMenuService.js';
 import { normalizeMealPlan, buildMealDays, MEAL_LABELS, MEAL_EMOJI } from '../../shared/mealPlan.js';
 import { EXTRA_GROUP_LABELS } from '../../shared/schoolMenu.js';
+import { openMeteoUrl, parseOpenMeteo } from '../../shared/weather.js';
 
 const REFRESH_MS = 60 * 1000;
 const CLOCK_MS = 15 * 1000;
@@ -128,7 +129,7 @@ function renderEvents(snapshot) {
       : '<p class="text-base text-slate-500 font-bold">Add your Google Calendar on the Pi to see the week here.</p>';
   }
   return `<ul class="flex flex-col gap-2">${snapshot.events.map((e) => `
-    <li class="flex items-center gap-3 rounded-2xl bg-slate-800/70 border border-slate-700 px-3 py-2">
+    <li class="flex items-center gap-3 rounded-2xl ${e.school ? 'bg-amber-500/15 border-amber-400/60' : 'bg-slate-800/70 border-slate-700'} border px-3 py-2"${e.school ? ' data-fridge-no-school' : ''}>
       <span class="text-3xl">${escapeHtml(e.emoji)}</span>
       <div class="flex-1 min-w-0">
         <div class="text-lg font-black text-white truncate">${escapeHtml(e.title)}</div>
@@ -170,9 +171,10 @@ export function renderMonthGrid(snapshot) {
     const isToday = key === snapshot.today;
     const past = key < snapshot.today;
     const list = byDay.get(key) || [];
-    const chips = list.slice(0, 3).map((e) => `<div class="truncate text-[11px] leading-tight font-bold text-slate-100" title="${escapeHtml(e.title)}">${escapeHtml(e.emoji)} ${escapeHtml(e.time ? `${e.time} ` : '')}${escapeHtml(e.title)}</div>`).join('');
+    const chips = list.slice(0, 3).map((e) => `<div class="truncate text-[11px] leading-tight font-bold ${e.school ? 'text-amber-200' : 'text-slate-100'}" title="${escapeHtml(e.title)}">${escapeHtml(e.emoji)} ${escapeHtml(e.time ? `${e.time} ` : '')}${escapeHtml(e.title)}</div>`).join('');
     const more = list.length > 3 ? `<div class="text-[11px] font-black text-cyan-300">+${list.length - 3} more</div>` : '';
-    cells.push(`<div class="min-w-0 min-h-[4.5rem] rounded-lg p-1 border ${isToday ? 'border-cyan-400 bg-cyan-500/15' : 'border-slate-800 bg-slate-800/50'} ${inMonth ? '' : 'opacity-40'} ${past && !isToday ? 'opacity-60' : ''}">
+    const offDay = list.some((e) => e.school && !e.who);
+    cells.push(`<div class="min-w-0 min-h-[4.5rem] rounded-lg p-1 border ${isToday ? 'border-cyan-400 bg-cyan-500/15' : (offDay ? 'border-amber-400/50 bg-amber-500/10' : 'border-slate-800 bg-slate-800/50')} ${inMonth ? '' : 'opacity-40'} ${past && !isToday ? 'opacity-60' : ''}">
       <div class="text-xs font-black ${isToday ? 'text-cyan-200' : 'text-slate-300'}">${Number(key.slice(8))}</div>${chips}${more}</div>`);
   }
   return `<div class="text-lg font-black text-slate-200 mb-2">${escapeHtml(monthName)}</div>
@@ -253,6 +255,29 @@ export function renderMeals(snapshot, view = getMealView()) {
     </section>`;
 }
 
+/** "What to wear": today's forecast (and tomorrow's after 3 PM) with clothing tips. */
+export function renderWeather(snapshot, { now = new Date(), compact = false } = {}) {
+  const w = snapshot?.weather;
+  if (!w || !Array.isArray(w.days) || !w.days.length) return '';
+  const afternoon = now.getHours() >= 15;
+  const day = (afternoon && w.days.find((d) => d.date > snapshot.today)) || w.days.find((d) => d.date === snapshot.today) || w.days[0];
+  const when = day.date === snapshot.today ? 'Today' : dayLabel(day.date, snapshot.today);
+  const temps = [day.high, day.low].every((t) => Number.isFinite(t)) ? `${day.high}° / ${day.low}°` : '';
+  const now_ = w.current && day.date === snapshot.today && Number.isFinite(w.current.temp) ? `<span class="text-slate-300"> · now ${w.current.temp}°</span>` : '';
+  const tips = (day.wear || []).map((t) => `<li class="flex items-center gap-2 text-lg font-black text-white"><span class="text-2xl">${escapeHtml(t.emoji)}</span>${escapeHtml(t.text)}</li>`).join('');
+  return `
+    <section class="bg-slate-900/80 rounded-3xl border-2 border-sky-400/40 p-4${compact ? ' text-left max-w-xl w-full' : ''}" data-fridge-weather>
+      <div class="flex items-center gap-3">
+        <span class="text-5xl">${escapeHtml(day.emoji)}</span>
+        <div class="min-w-0">
+          <h3 class="font-headline text-2xl font-black text-sky-200">What to wear ${escapeHtml(when === 'Today' ? 'today' : (when === 'Tomorrow' ? 'tomorrow' : `on ${when}`))}</h3>
+          <div class="text-base font-bold text-slate-300">${escapeHtml(day.label)}${temps ? ` · ${temps}` : ''}${day.rainChance >= 30 ? ` · ${Math.round(day.rainChance)}% rain` : ''}${now_}</div>
+        </div>
+      </div>
+      <ul class="mt-2 flex flex-col gap-1">${tips}</ul>
+    </section>`;
+}
+
 export function renderFridgeBody(snapshot, { now = new Date(), calendarView = getCalendarView() } = {}) {
   if (!snapshot) {
     return `
@@ -276,6 +301,7 @@ export function renderFridgeBody(snapshot, { now = new Date(), calendarView = ge
         <p class="text-3xl font-black text-slate-300">Goodnight, heroes! Rex is sleeping too.</p>
         ${tomorrowEvents.length ? `<div class="max-w-xl w-full text-left">${renderEvents({ ...snapshot, events: tomorrowEvents })}</div>` : ''}
         ${tomorrowLunch ? `<div class="max-w-xl w-full text-left">${tomorrowLunch}</div>` : ''}
+        ${renderWeather(snapshot, { now, compact: true })}
       </div>`;
   }
   const cols = Math.min(Math.max(snapshot.heroes.length, 1), 3);
@@ -284,6 +310,7 @@ export function renderFridgeBody(snapshot, { now = new Date(), calendarView = ge
     <div class="flex-1 grid gap-4 p-4 min-h-0" style="grid-template-columns: repeat(${cols}, minmax(0, 1fr)) ${monthView ? 'minmax(420px, 1.8fr)' : 'minmax(280px, 0.8fr)'};">
       ${snapshot.heroes.map(renderHero).join('') || '<p class="text-2xl text-slate-300 font-bold">No hero profiles yet.</p>'}
       <aside class="flex flex-col gap-4 min-w-0 min-h-0 overflow-y-auto">
+        ${renderWeather(snapshot, { now })}
         <section class="bg-slate-900/80 rounded-3xl border-2 border-slate-700 p-4">
           <div class="flex items-center justify-between gap-2 mb-3">
             <h3 class="font-headline text-2xl font-black text-white">📅 Family calendar</h3>
@@ -345,6 +372,20 @@ export async function loadDeviceMeals(state, { fetchImpl = globalThis.fetch, fro
   }
 }
 
+let deviceWeather = { at: 0, body: null };
+/** Open-Meteo straight from this browser (it allows any site, no key), cached for an hour. */
+export async function loadDeviceWeather({ fetchImpl = globalThis.fetch, now = Date.now() } = {}) {
+  if (deviceWeather.body && now - deviceWeather.at < 60 * 60 * 1000) return deviceWeather.body;
+  try {
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York';
+    const res = await fetchImpl(openMeteoUrl({ timeZone }));
+    if (!res.ok) return deviceWeather.body;
+    const body = parseOpenMeteo(await res.json());
+    if (body.days.length) deviceWeather = { at: now, body };
+  } catch {}
+  return deviceWeather.body;
+}
+
 /** Snapshot from the Pi, else from this device's own household data, else null. */
 export async function loadFridgeSnapshot({ fetchImpl = globalThis.fetch } = {}) {
   try {
@@ -361,7 +402,8 @@ export async function loadFridgeSnapshot({ fetchImpl = globalThis.fetch } = {}) 
   if (!state.isHouseholdConfigured && !(state.heroes || []).length) return null;
   const plan = getLastCalendarPlan() || await refreshFamilyCalendar();
   lastSource = 'device';
-  return buildFridgeSnapshot(state, { calendar: plan, challenge: getCurrentWeeklyChallenge(new Date())?.challenge || null, meals: await loadDeviceMeals(state, { fetchImpl }) });
+  const weather = plan?.weather ? null : await loadDeviceWeather({ fetchImpl });
+  return buildFridgeSnapshot(state, { calendar: plan, challenge: getCurrentWeeklyChallenge(new Date())?.challenge || null, meals: await loadDeviceMeals(state, { fetchImpl }), weather });
 }
 
 async function requestWakeLock() {

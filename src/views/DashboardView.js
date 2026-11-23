@@ -10,14 +10,18 @@ import { chorePhotoProofModal } from '../components/ChorePhotoProofModal.js';
 import { checkProactiveTriggerAGY } from '../services/heroAgentService.js';
 import { getCurrentWeeklyChallenge } from '../data/hygieneBossesData.js';
 import { isChoreForHeroToday, dayKey } from '../../shared/familyInsights.js';
+import { getLastCalendarPlan } from '../services/familyCalendarService.js';
+import { BUNDLED_SCHOOL_CALENDAR } from '../../shared/schoolCalendar.js';
 
 export function renderDashboardView() {
   const state = store.getState();
   const hero = state.selectedHero;
-  const habitIslands = state.habitIslands;
-  // Calendar "get ready" chores only show for their kids, on their evening.
+  // Calendar "get ready" chores only show for their kids, on their evening, and
+  // "school days only" chores rest on no-school days (the Pi's newest school calendar).
   const todayKey = dayKey(Date.now());
-  const taskForest = (state.taskForest || []).filter((t) => isChoreForHeroToday(t, hero?.id, todayKey));
+  const choreOpts = { hero, schoolCalendar: getLastCalendarPlan()?.schoolCalendar || BUNDLED_SCHOOL_CALENDAR };
+  const habitIslands = (state.habitIslands || []).filter((t) => isChoreForHeroToday(t, hero?.id, todayKey, choreOpts));
+  const taskForest = (state.taskForest || []).filter((t) => isChoreForHeroToday(t, hero?.id, todayKey, choreOpts));
   const aiQuests = store.getAiQuests(hero?.id);
   const activePet = store.getActivePet();
   const pendingCount = state.pendingApprovals.filter(r => r.kidId === hero.id).length;

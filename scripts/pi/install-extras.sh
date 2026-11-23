@@ -10,6 +10,16 @@ for unit in little-heroes-calendar-prep.service little-heroes-calendar-prep.time
 done
 systemctl --user daemon-reload >/dev/null 2>&1 || true
 systemctl --user enable --now little-heroes-calendar-prep.timer >/dev/null 2>&1 || true
+# District school calendar (no-school days): refreshed July 1 and August 1
+# (scripts/pi/school-calendar.mjs); the first run happens now if there is no saved copy yet.
+for unit in little-heroes-school-calendar.service little-heroes-school-calendar.timer; do
+  install -m 0644 "scripts/pi/$unit" "$HOME/.config/systemd/user/$unit"
+done
+systemctl --user daemon-reload >/dev/null 2>&1 || true
+systemctl --user enable --now little-heroes-school-calendar.timer >/dev/null 2>&1 || true
+if [ ! -f "${SCHOOL_CALENDAR_FILE:-$HOME/apps/little-heroes-school-calendar.json}" ]; then
+  systemctl --user start --no-block little-heroes-school-calendar.service >/dev/null 2>&1 || true
+fi
 # Fridge Display: launcher script, app icon, and a "Fridge Display" shortcut on the desktop
 # and in the app menu (scripts/pi/fridge-display.sh opens #fridge full screen in Chromium).
 install -m 0755 scripts/pi/fridge-display.sh "$HOME/bin/fridge-display.sh"

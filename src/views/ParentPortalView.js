@@ -1254,6 +1254,10 @@ export function renderParentPortalView() {
               <div>
                 <label class="text-[10px] uppercase font-black text-on-surface-variant">Time Window / Schedule</label>
                 <input id="new-task-time" type="text" placeholder="e.g. Afternoon 4:00 PM" class="w-full bg-surface-container-high border border-surface-container-highest rounded-xl p-3 text-xs font-bold text-inverse-surface focus:outline-hidden focus:border-primary" />
+                <label class="mt-2 flex items-center gap-2 text-[11px] font-bold text-on-surface-variant cursor-pointer">
+                  <input id="new-task-school-days" type="checkbox" class="accent-primary" />
+                  🏫 School days only (rests on weekends, holidays and vacations)
+                </label>
               </div>
 
               <div>
@@ -1308,6 +1312,7 @@ export function renderParentPortalView() {
                       <div class="flex flex-col">
                         <span class="text-xs font-black text-inverse-surface">${escapeHtml(t.title)}</span>
                         <span class="text-[10px] text-on-surface-variant font-bold">${t.zone} • ${t.timeWindow || 'All Day'}</span>
+                        ${t.calendarShowOn ? '' : `<button type="button" data-school-days-task-id="${escapeHtml(t.id)}" data-school-days-zone="${escapeHtml(t.zone || 'Task Forest')}" data-school-days-on="${t.schoolDaysOnly ? '1' : '0'}" class="admin-school-days-btn mt-1 self-start text-[10px] font-black px-2 py-0.5 rounded-lg border ${t.schoolDaysOnly ? 'bg-primary/20 border-primary text-primary' : 'border-surface-container-highest text-on-surface-variant'}" title="Rest this chore on weekends and no-school days">🏫 ${t.schoolDaysOnly ? 'School days only' : 'Every day'}</button>`}
                         <div class="flex items-center gap-2 text-[11px] font-black mt-1.5 flex-wrap">
                           <label class="flex items-center gap-1 bg-surface-container-high px-2 py-0.5 rounded-lg border border-surface-container-highest" title="Habit Token Reward (Auto-awarded)">
                             <span class="text-secondary text-xs">🪙</span>
@@ -5044,6 +5049,7 @@ export function attachParentPortalListeners() {
       const points = document.getElementById('new-task-points')?.value;
       const desc = document.getElementById('new-task-desc')?.value;
       const icon = document.getElementById('new-task-icon')?.value;
+      const schoolDaysOnly = document.getElementById('new-task-school-days')?.checked === true;
 
       if (title && title.trim()) {
         store.addNewTask({
@@ -5053,11 +5059,19 @@ export function attachParentPortalListeners() {
           coins: tokens || 25,
           points: points || 10,
           desc: desc || '',
-          icon: icon || 'checklist'
+          icon: icon || 'checklist',
+          schoolDaysOnly
         });
       }
     });
   }
+
+  document.querySelectorAll('.admin-school-days-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      Sound.click();
+      store.setTaskSchoolDaysOnly(btn.getAttribute('data-school-days-task-id'), btn.getAttribute('data-school-days-zone'), btn.getAttribute('data-school-days-on') !== '1');
+    });
+  });
 
   document.querySelectorAll('.admin-delete-task-btn').forEach((btn) => {
     btn.addEventListener('click', () => {

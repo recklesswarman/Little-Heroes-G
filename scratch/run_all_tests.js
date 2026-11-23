@@ -141,7 +141,9 @@ const testFiles = [
   'scratch/verify_fridge_calendar_rex_live_and_story_refs.mjs',
   'scratch/verify_hq_pen_models.mjs',
   // School breakfast/lunch (MealViewer), meal planner, its API, fridge card and lunch alert:
-  'scratch/verify_school_meal_planner.mjs'
+  'scratch/verify_school_meal_planner.mjs',
+  // Fridge "what to wear" weather card, weather chores, district no-school days, school-days-only chores:
+  'scratch/verify_weather_and_school_calendar.mjs'
 ];
 
 let allPassed = true;
