@@ -33,7 +33,15 @@ systemctl --user enable --now little-heroes-calendar-prep.timer >/dev/null 2>&1 
 # Fridge Display shortcut + launcher (scripts/pi/install-extras.sh).
 bash scripts/pi/install-extras.sh || true
 systemctl --user restart little-heroes.service
-sleep 3
-curl -fsS -m 5 http://127.0.0.1:3000/healthz >/dev/null
+# Wait up to ~60s for the server to start listening before declaring the deploy failed
+# (a fixed 3s sleep raced the restart when the Pi was busy).
+for i in $(seq 1 30); do
+  curl -fsS -m 5 http://127.0.0.1:3000/healthz >/dev/null 2>&1 && break
+  if [ "$i" -eq 30 ]; then
+    echo "Little Heroes did not answer /healthz within 60s" >&2
+    curl -fsS -m 5 http://127.0.0.1:3000/healthz >/dev/null
+  fi
+  sleep 2
+done
 notify "Little Heroes updated" rocket "Now running $(git log -1 --format='%h %s' | cut -c1-80)"
 echo "Little Heroes is running $(git log -1 --oneline)"
