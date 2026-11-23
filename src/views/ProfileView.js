@@ -4,6 +4,34 @@ import { Sound } from '../audio/sfx.js';
 import { processProfilePhoto } from '../utils/photoUploader.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
 import { safeImageUrl } from '../utils/safeImageUrl.js';
+import { AVATAR_STYLES, avatarChoices, heroAvatarDataUrl } from '../services/heroAvatarMaker.js';
+
+// "Design your hero" panel state (this screen only).
+const designer = { open: false, style: '', roll: 0 };
+
+function renderHeroDesigner(hero) {
+  if (!designer.open) return '';
+  const style = designer.style || hero.avatarDesign?.style || 'adventurer';
+  const choices = avatarChoices(hero.name || 'hero', style, designer.roll);
+  const credit = AVATAR_STYLES.find((s) => s.id === style)?.credit || '';
+  return `
+      <div class="bg-surface-container rounded-4xl p-5 border-3 border-primary/40 card-shadow flex flex-col gap-4" data-hero-designer>
+        <div class="flex items-center justify-between gap-2">
+          <h3 class="font-headline text-lg font-black text-inverse-surface">🎨 Design your hero</h3>
+          <button type="button" data-designer-roll class="px-3 py-2 rounded-xl bg-secondary/20 text-secondary font-black text-xs min-h-[44px] active:scale-95">🎲 New looks</button>
+        </div>
+        <div class="flex flex-wrap gap-2" role="group" aria-label="Avatar style">
+          ${AVATAR_STYLES.map((s) => `<button type="button" data-designer-style="${s.id}" aria-pressed="${s.id === style}"
+            class="px-3 py-2 rounded-xl text-xs font-black min-h-[44px] border-2 ${s.id === style ? 'bg-primary text-on-primary border-primary' : 'bg-surface-container-high text-on-surface-variant border-surface-container-highest'}">${s.emoji} ${s.label}</button>`).join('')}
+        </div>
+        <div class="grid grid-cols-3 sm:grid-cols-6 gap-3">
+          ${choices.map((c) => `<button type="button" data-designer-pick data-style="${c.style}" data-seed="${escapeHtml(c.seed)}" data-bg="${c.background}"
+            class="aspect-square rounded-full overflow-hidden border-3 border-surface-container-highest hover:border-primary active:scale-95 transition-transform" aria-label="Pick this look">
+            <img src="${c.url}" alt="" class="w-full h-full" /></button>`).join('')}
+        </div>
+        <p class="text-[10px] font-bold text-on-surface-variant">Tap a face to make it your hero picture. Art: ${escapeHtml(credit)}, made with DiceBear.</p>
+      </div>`;
+}
 
 export function renderProfileView() {
   const state = store.getState();
@@ -105,6 +133,11 @@ export function renderProfileView() {
                 <span>Upload Photo</span>
               </label>
 
+              <button id="profile-design-hero-btn" class="bg-white/20 hover:bg-white/30 text-white text-xs font-black px-3.5 py-1.5 rounded-xl border border-white/30 inline-flex items-center gap-1.5 active:scale-95 transition-all shadow-xs min-h-[44px]">
+                <span aria-hidden="true">🎨</span>
+                <span>Design your hero</span>
+              </button>
+
               <!-- Reset to Default 3D Avatar -->
               <button id="profile-reset-avatar-btn" class="bg-surface-container/60 hover:bg-surface-container text-white/80 hover:text-white text-xs font-bold px-3 py-1.5 rounded-xl border border-white/20 inline-flex items-center gap-1 active:scale-95 transition-all min-h-[44px]" title="Reset to default 3D adventurer avatar">
                 <span class="material-symbols-outlined text-sm">replay</span>
@@ -122,6 +155,8 @@ export function renderProfileView() {
           <span class="text-[11px] font-bold text-white/60">Theme: ${activeTheme.bannerPattern} ${activeTheme.name}</span>
         </div>
       </div>
+
+      ${renderHeroDesigner(currentHero)}
 
       <!-- ACTIVE COMPANION PET SHOWCASE (Saved to Kid's Profile) -->
       <div class="bg-surface-container rounded-4xl p-5 sm:p-6 border-3 border-secondary/40 card-shadow flex flex-col sm:flex-row items-center justify-between gap-5 relative overflow-hidden">
@@ -401,6 +436,31 @@ export function attachProfileListeners() {
       }
     });
   }
+
+  // Design your hero (DiceBear avatars)
+  document.getElementById('profile-design-hero-btn')?.addEventListener('click', () => {
+    Sound.click();
+    designer.open = !designer.open;
+    store.notify();
+  });
+  document.querySelectorAll('[data-designer-style]').forEach((btn) => btn.addEventListener('click', () => {
+    Sound.click();
+    designer.style = btn.getAttribute('data-designer-style');
+    store.notify();
+  }));
+  document.querySelector('[data-designer-roll]')?.addEventListener('click', () => {
+    Sound.whoosh?.();
+    designer.roll += 1;
+    store.notify();
+  });
+  document.querySelectorAll('[data-designer-pick]').forEach((btn) => btn.addEventListener('click', () => {
+    const hero = store.getState().selectedHero;
+    const design = { style: btn.getAttribute('data-style'), seed: btn.getAttribute('data-seed'), background: btn.getAttribute('data-bg') };
+    store.editHero(hero.id, { avatar: safeImageUrl(heroAvatarDataUrl(design), KID_AVATARS[0].url), avatarDesign: design });
+    Sound.fanfare();
+    designer.open = false;
+    store.notify();
+  }));
 
   // Reset Photo to Default 3D Avatar
   const resetAvatarBtn = document.getElementById('profile-reset-avatar-btn');
