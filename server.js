@@ -20,6 +20,7 @@ import { calendarService } from './server/calendarService.js';
 import { handleFridgeSnapshot } from './server/fridgeService.js';
 import { fridgeExtrasService } from './server/fridgeExtrasService.js';
 import { mountMealsRoutes } from './server/mealsService.js';
+import { mountPhet } from './server/phetService.js';
 import { handleVoiceSttRequest, handleVoiceTtsRequest, handleVoiceStatusRequest, MAX_AUDIO_BYTES } from './server/voiceLabService.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -132,6 +133,8 @@ app.get('/api/fridge/extras', voiceLimiter, fridgeExtrasService.handleExtrasRequ
 // School breakfast/lunch menus (public) and the Meal Planner API for linked apps
 // (server/mealsService.js, docs/meal-planner-api.md; needs MEALS_API_TOKEN + HOUSEHOLD_CODES).
 mountMealsRoutes(app, express, { limiter: voiceLimiter });
+// Math Lab: the Pi's offline copies of the PhET math sims (scripts/pi/phet-sims.mjs).
+mountPhet(app);
 
 const distPath = path.join(__dirname, 'dist');
 

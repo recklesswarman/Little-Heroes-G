@@ -46,6 +46,7 @@ export const STANDARD_DESCRIPTIONS = {
   'RF.2.3.f': 'Read grade-level irregular words',
   'RF.2.4.b': 'Read grade-level sentences out loud with accuracy and expression',
   // Kindergarten operations
+  'K.OA.A.4': 'Find the number that makes 10 with a given number',
   'K.OA.A.5': 'Add and subtract within 5 (and within 10) from memory',
   // Kindergarten counting & cardinality
   'K.CC.A.1': 'Count to 100 by ones and by tens',

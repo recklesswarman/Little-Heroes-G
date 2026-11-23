@@ -20,6 +20,9 @@ systemctl --user enable --now little-heroes-school-calendar.timer >/dev/null 2>&
 if [ ! -f "${SCHOOL_CALENDAR_FILE:-$HOME/apps/little-heroes-school-calendar.json}" ]; then
   systemctl --user start --no-block little-heroes-school-calendar.service >/dev/null 2>&1 || true
 fi
+# Math Lab: offline copies of the PhET math sims (served at /phet/ by the app). Downloads only the
+# missing ones, in the background; run `node scripts/pi/phet-sims.mjs --force` to update them.
+(node scripts/pi/phet-sims.mjs >/dev/null 2>&1 &) || true
 # Fridge Display: launcher script, app icon, and a "Fridge Display" shortcut on the desktop
 # and in the app menu (scripts/pi/fridge-display.sh opens #fridge full screen in Chromium).
 install -m 0755 scripts/pi/fridge-display.sh "$HOME/bin/fridge-display.sh"
