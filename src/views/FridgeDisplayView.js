@@ -13,6 +13,9 @@ import { serverApiUrl } from '../services/serverApi.js';
 import { buildFridgeSnapshot } from '../../shared/fridgeSnapshot.js';
 import { getCurrentWeeklyChallenge } from '../data/hygieneBossesData.js';
 import { getLastCalendarPlan, refreshFamilyCalendar } from '../services/familyCalendarService.js';
+import { loadSchoolMenu, localDayKey } from '../services/schoolMenuService.js';
+import { normalizeMealPlan, buildMealDays, MEAL_LABELS, MEAL_EMOJI } from '../../shared/mealPlan.js';
+import { EXTRA_GROUP_LABELS } from '../../shared/schoolMenu.js';
 
 const REFRESH_MS = 60 * 1000;
 const CLOCK_MS = 15 * 1000;
@@ -37,6 +40,21 @@ export function getCalendarView() {
 export function setCalendarView(view) {
   try {
     globalThis.localStorage?.setItem(CAL_VIEW_KEY, view === 'month' ? 'month' : 'week');
+  } catch {}
+}
+
+const MEAL_VIEW_KEY = 'lh-fridge-meal-view';
+/** 'today' or 'week', remembered on this screen. */
+export function getMealView() {
+  try {
+    return globalThis.localStorage?.getItem(MEAL_VIEW_KEY) === 'week' ? 'week' : 'today';
+  } catch {
+    return 'today';
+  }
+}
+export function setMealView(view) {
+  try {
+    globalThis.localStorage?.setItem(MEAL_VIEW_KEY, view === 'week' ? 'week' : 'today');
   } catch {}
 }
 
@@ -161,6 +179,80 @@ export function renderMonthGrid(snapshot) {
     <div class="grid grid-cols-7 gap-1" data-fridge-month>${heads}${cells.join('')}</div>`;
 }
 
+function renderMealSwitch(view) {
+  const btn = (v, label) => `<button type="button" data-fridge-meal-view="${v}" aria-pressed="${view === v}"
+      class="px-4 py-1.5 rounded-full text-base font-black ${view === v ? 'bg-lime-300 text-slate-950' : 'text-slate-300'}">${label}</button>`;
+  return `<div class="flex rounded-full bg-slate-800 border border-slate-700 p-1" role="group" aria-label="Meals view">${btn('today', 'Today')}${btn('week', 'Week')}</div>`;
+}
+
+function renderExtras(extras) {
+  if (!extras?.length) return '';
+  const groups = new Map();
+  for (const e of extras) {
+    if (!groups.has(e.group)) groups.set(e.group, []);
+    groups.get(e.group).push(e.name);
+  }
+  return `<div class="text-sm font-bold text-slate-400 leading-snug">${[...groups].map(([g, names]) => `<span class="text-slate-300">${escapeHtml(EXTRA_GROUP_LABELS[g] || 'More')}:</span> ${escapeHtml(names.join(', '))}`).join(' · ')}</div>`;
+}
+
+/** One meal row: the school's main dishes (or "or" choices) plus the family's own plan. */
+function renderMealRow(type, meal, { big = true } = {}) {
+  const family = (meal.family || []).map((e) => `<div class="${big ? 'text-xl' : 'text-base'} font-black text-amber-200">${escapeHtml(e.emoji)} ${escapeHtml(e.title)}${e.replacesSchool ? ' <span class="text-xs font-black uppercase text-amber-300/80">packed</span>' : ''}</div>`).join('');
+  const main = meal.school?.main?.length
+    ? `<div class="${big ? 'text-xl' : 'text-base'} font-bold text-white leading-snug">${meal.school.main.map((m) => `<span class="whitespace-nowrap">${escapeHtml(m.emoji)} ${escapeHtml(m.name)}</span>`).join('<span class="text-slate-500"> or </span>')}</div>`
+    : '';
+  return `
+    <div class="flex gap-3 items-start rounded-2xl bg-slate-800/70 border border-slate-700 px-3 py-2" data-fridge-meal="${type}">
+      <span class="text-3xl leading-none" aria-hidden="true">${MEAL_EMOJI[type]}</span>
+      <div class="flex-1 min-w-0 flex flex-col gap-0.5">
+        <div class="text-xs font-black uppercase text-lime-200">${escapeHtml(MEAL_LABELS[type])}</div>
+        ${family}${main}${renderExtras(meal.school?.extras)}
+      </div>
+    </div>`;
+}
+
+function mealRows(day, opts) {
+  return Object.entries(day.meals).map(([type, meal]) => renderMealRow(type, meal, opts)).join('');
+}
+
+export function renderMeals(snapshot, view = getMealView()) {
+  const meals = snapshot.meals;
+  if (!meals) return '';
+  const today = snapshot.today;
+  let body = '';
+  if (view === 'week') {
+    body = meals.days.length
+      ? `<div class="flex flex-col gap-2">${meals.days.map((d) => `
+        <div data-fridge-meal-day="${escapeHtml(d.date)}">
+          <div class="text-sm font-black uppercase ${d.date === today ? 'text-lime-200' : 'text-slate-400'} mb-1">${escapeHtml(dayLabel(d.date, today))}</div>
+          ${d.noSchool && !Object.keys(d.meals).length ? '<div class="text-base font-bold text-slate-400 px-2">🏠 No school</div>' : `<div class="flex flex-col gap-1.5">${mealRows(d, { big: false })}</div>`}
+        </div>`).join('')}</div>`
+      : '<p class="text-lg text-slate-400 font-bold">No meals this week.</p>';
+  } else {
+    const todayDay = meals.days.find((d) => d.date === today);
+    const next = meals.days.find((d) => d.date > today && (Object.keys(d.meals).length || d.noSchool));
+    const todayHtml = todayDay && Object.keys(todayDay.meals).length
+      ? mealRows(todayDay)
+      : `<div class="text-lg font-bold text-slate-400 px-2">${todayDay?.noSchool ? '🏠 No school today.' : 'No school meals today.'}</div>`;
+    const nextLunch = next?.meals?.lunch;
+    const nextHtml = next
+      ? (nextLunch
+        ? `<div class="mt-1 text-sm font-black uppercase text-slate-400">${escapeHtml(dayLabel(next.date, today))}'s lunch</div>${renderMealRow('lunch', { ...nextLunch, school: nextLunch.school ? { ...nextLunch.school, extras: [] } : null }, { big: false })}`
+        : (next.noSchool ? `<div class="mt-1 text-base font-bold text-slate-400 px-2">🏠 ${escapeHtml(dayLabel(next.date, today))}: no school</div>` : ''))
+      : '';
+    body = `<div class="flex flex-col gap-2">${todayHtml}${nextHtml}</div>`;
+  }
+  return `
+    <section class="bg-slate-900/80 rounded-3xl border-2 border-lime-400/40 p-4" data-fridge-meals>
+      <div class="flex items-center justify-between gap-2 mb-3">
+        <h3 class="font-headline text-2xl font-black text-white">🍎 School meals</h3>
+        ${renderMealSwitch(view)}
+      </div>
+      ${body}
+      ${meals.schoolError ? `<p class="mt-2 text-sm font-bold text-amber-300">${escapeHtml(meals.schoolError)}</p>` : ''}
+    </section>`;
+}
+
 export function renderFridgeBody(snapshot, { now = new Date(), calendarView = getCalendarView() } = {}) {
   if (!snapshot) {
     return `
@@ -172,6 +264,10 @@ export function renderFridgeBody(snapshot, { now = new Date(), calendarView = ge
   }
   const night = isNightTime(now);
   const tomorrowEvents = snapshot.events.filter((e) => e.day > snapshot.today).slice(0, 3);
+  const nextDay = snapshot.meals?.days?.find((d) => d.date > snapshot.today && d.meals?.lunch);
+  const tomorrowLunch = nextDay
+    ? `<div class="text-sm font-black uppercase text-slate-400 mb-1">${escapeHtml(dayLabel(nextDay.date, snapshot.today))}'s lunch</div>${renderMealRow('lunch', { ...nextDay.meals.lunch, school: nextDay.meals.lunch.school ? { ...nextDay.meals.lunch.school, extras: [] } : null }, { big: false })}`
+    : '';
   if (night) {
     return `
       <div class="flex-1 flex flex-col items-center justify-center text-center gap-6 p-8 opacity-80">
@@ -179,6 +275,7 @@ export function renderFridgeBody(snapshot, { now = new Date(), calendarView = ge
         <div class="fridge-clock font-headline text-8xl font-black text-slate-200" data-fridge-clock></div>
         <p class="text-3xl font-black text-slate-300">Goodnight, heroes! Rex is sleeping too.</p>
         ${tomorrowEvents.length ? `<div class="max-w-xl w-full text-left">${renderEvents({ ...snapshot, events: tomorrowEvents })}</div>` : ''}
+        ${tomorrowLunch ? `<div class="max-w-xl w-full text-left">${tomorrowLunch}</div>` : ''}
       </div>`;
   }
   const cols = Math.min(Math.max(snapshot.heroes.length, 1), 3);
@@ -186,7 +283,7 @@ export function renderFridgeBody(snapshot, { now = new Date(), calendarView = ge
   return `
     <div class="flex-1 grid gap-4 p-4 min-h-0" style="grid-template-columns: repeat(${cols}, minmax(0, 1fr)) ${monthView ? 'minmax(420px, 1.8fr)' : 'minmax(280px, 0.8fr)'};">
       ${snapshot.heroes.map(renderHero).join('') || '<p class="text-2xl text-slate-300 font-bold">No hero profiles yet.</p>'}
-      <aside class="flex flex-col gap-4 min-w-0">
+      <aside class="flex flex-col gap-4 min-w-0 min-h-0 overflow-y-auto">
         <section class="bg-slate-900/80 rounded-3xl border-2 border-slate-700 p-4">
           <div class="flex items-center justify-between gap-2 mb-3">
             <h3 class="font-headline text-2xl font-black text-white">📅 Family calendar</h3>
@@ -194,6 +291,7 @@ export function renderFridgeBody(snapshot, { now = new Date(), calendarView = ge
           </div>
           ${monthView ? renderMonthGrid(snapshot) : renderEvents(snapshot)}
         </section>
+        ${renderMeals(snapshot)}
         ${snapshot.challenge ? `
         <section class="bg-slate-900/80 rounded-3xl border-2 border-cyan-500/40 p-4">
           <h3 class="font-headline text-2xl font-black text-cyan-200 mb-1">🛡️ ${escapeHtml(snapshot.challenge.title)}</h3>
@@ -236,6 +334,17 @@ function updateClock(root) {
   root.dataset.night = String(isNightTime(now));
 }
 
+/** This device's meal planner days (school menu + family plan), for when the Pi isn't reachable. */
+export async function loadDeviceMeals(state, { fetchImpl = globalThis.fetch, from = localDayKey() } = {}) {
+  try {
+    const plan = normalizeMealPlan(state?.mealPlan);
+    const school = plan.settings.showSchoolMenu ? await loadSchoolMenu({ slug: plan.settings.schoolSlug, from, days: 8, fetchImpl }) : null;
+    return { plan, school, schoolError: plan.settings.showSchoolMenu && !school ? 'offline' : '', days: buildMealDays({ plan, school, from, days: 8 }) };
+  } catch {
+    return null;
+  }
+}
+
 /** Snapshot from the Pi, else from this device's own household data, else null. */
 export async function loadFridgeSnapshot({ fetchImpl = globalThis.fetch } = {}) {
   try {
@@ -252,7 +361,7 @@ export async function loadFridgeSnapshot({ fetchImpl = globalThis.fetch } = {}) 
   if (!state.isHouseholdConfigured && !(state.heroes || []).length) return null;
   const plan = getLastCalendarPlan() || await refreshFamilyCalendar();
   lastSource = 'device';
-  return buildFridgeSnapshot(state, { calendar: plan, challenge: getCurrentWeeklyChallenge(new Date())?.challenge || null });
+  return buildFridgeSnapshot(state, { calendar: plan, challenge: getCurrentWeeklyChallenge(new Date())?.challenge || null, meals: await loadDeviceMeals(state, { fetchImpl }) });
 }
 
 async function requestWakeLock() {
@@ -295,9 +404,11 @@ export function attachFridgeDisplayListeners() {
   if (!root.dataset.calSwitch) {
     root.dataset.calSwitch = '1';
     root.addEventListener('click', (ev) => {
+      const mealBtn = ev.target?.closest?.('[data-fridge-meal-view]');
+      if (mealBtn) setMealView(mealBtn.dataset.fridgeMealView);
       const btn = ev.target?.closest?.('[data-fridge-cal-view]');
-      if (!btn) return;
-      setCalendarView(btn.dataset.fridgeCalView);
+      if (!btn && !mealBtn) return;
+      if (btn) setCalendarView(btn.dataset.fridgeCalView);
       const body = root.querySelector('[data-fridge-body]');
       if (body) body.innerHTML = renderFridgeBody(lastSnapshot);
       updateClock(root);

@@ -27,6 +27,7 @@ import {
 } from '../data/worldMapData.js';
 import { PETS_DATABASE } from '../data/petsData.js';
 import { renderStoryControlsTab, bindStoryControlsTab } from './StoryControlsPanel.js';
+import { renderMealPlannerTab, bindMealPlannerTab } from './MealPlannerPanel.js';
 import { renderWeeklyReportCard, bindWeeklyReportCard } from './WeeklyReportCard.js';
 import { speakCompanion } from '../services/voiceService.js';
 import { REX_VOICE_PERSONAS, getRexVoicePersona } from '../data/rexVoicePersonas.js';
@@ -40,7 +41,7 @@ import {
   parseHabitDeepLinks
 } from '../services/aiDataAssistantService.js';
 
-let activeAdminTab = 'approvals'; // approvals, screentime, reports, kids, tasks, rewards, pricing, studio, analytics, settings
+let activeAdminTab = 'approvals'; // approvals, screentime, reports, kids, tasks, rewards, pricing, studio, analytics, story, meals, settings
 let editingCompanionPhraseId = null;
 export function setActiveAdminTab(tab) {
   activeAdminTab = tab;
@@ -257,6 +258,7 @@ export function renderParentPortalView() {
     { id: 'studio', label: '3D Studio & AI Crafting', icon: 'auto_awesome', count: 0 },
     { id: 'analytics', label: 'Analytics & Ledger', icon: 'monitoring', count: 0 },
     { id: 'story', label: 'Story Controls', icon: 'auto_stories', count: 0 },
+    { id: 'meals', label: 'Meal Planner', icon: 'restaurant', count: 0 },
     { id: 'settings', label: 'Safety & Sliders', icon: 'tune', count: 0 }
   ];
 
@@ -3442,6 +3444,9 @@ export function renderParentPortalView() {
       <!-- TAB: Story Controls (reading level, tone, pronouns, avoid-topics, research, own ideas, safety log) -->
       ${activeAdminTab === 'story' ? renderStoryControlsTab() : ''}
 
+      <!-- TAB: Meal Planner (school breakfast/lunch + family meals, MealPlannerPanel.js) -->
+      ${activeAdminTab === 'meals' ? renderMealPlannerTab() : ''}
+
       <!-- TAB 7: Sliders & Settings -->
       ${
         activeAdminTab === 'settings'
@@ -4814,6 +4819,7 @@ export function attachParentPortalListeners() {
   preserveScrollBarPosition('admin-tab-bar');
 
   if (activeAdminTab === 'story') bindStoryControlsTab();
+  if (activeAdminTab === 'meals') bindMealPlannerTab();
   if (activeAdminTab === 'reports') bindWeeklyReportCard();
 
   // APPROVALS TAB

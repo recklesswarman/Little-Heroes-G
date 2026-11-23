@@ -4,7 +4,7 @@
  * Comprehensive Automated Verification Suite for:
  * 1. Multi-database configuration targeting (default) and default Firestore instances in firebase.json
  * 2. Silent device authentication initialization and ensureAuthReady()
- * 3. 76-key store state snapshot schema compliance and packager
+ * 3. 77-key store state snapshot schema compliance and packager
  * 4. Kid task/habit submissions & pendingApprovals delta integrity
  * 5. Parent approval & denial lifecycle (reversible currency clawback, floor 0, needs-redo prompt)
  * 6. Security rule negative attack rejection (anti-enumeration, takeover, deletion, revocation, owner-only, schema poisoning)
@@ -121,15 +121,15 @@ if (auth) {
 
 
 // -----------------------------------------------------------------------------
-// SUITE 3: 76-Key Store State & Cloud Snapshot Schema Compliance
+// SUITE 3: 77-Key Store State & Cloud Snapshot Schema Compliance
 // -----------------------------------------------------------------------------
-console.log('\n📊 --- Suite 3: 76-Key Store State & Cloud Snapshot Schema Compliance ---');
+console.log('\n📊 --- Suite 3: 77-Key Store State & Cloud Snapshot Schema Compliance ---');
 
 const { store } = await import('../src/state/store.js');
 const state = store.getState();
 const stateKeys = Object.keys(state);
 
-check(stateKeys.length === 76, `Store state contains exactly 76 schema keys (found: ${stateKeys.length})`);
+check(stateKeys.length === 77, `Store state contains exactly 77 schema keys (found: ${stateKeys.length})`);
 
 const requiredKeys = [
   'isAuthenticated', 'isAuthReady', 'isHouseholdConfigured', 'householdSetupStep',
@@ -150,7 +150,9 @@ const requiredKeys = [
   'resolvedApprovals', 'taskCompletionLogs', 'taskLedgerLogs', 'parentSettings',
   'rewardModal', 'mysterySurprise', 'hygieneReminders', 'activeHygieneReminder',
   'liveRex', 'worldAdventureMap', 'bedtimeStoryLibrary', 'activeBedtimeStory',
-  'bedtimeSanctuaryState', 'deletedHeroIds', 'deletedCustomItemIds', 'devices'
+  'bedtimeSanctuaryState', 'deletedHeroIds', 'deletedCustomItemIds', 'devices',
+  // Meal planner (shared/mealPlan.js), synced in stateSnapshot.mealPlan
+  'mealPlan'
 ];
 
 let allRequiredPresent = true;
@@ -161,7 +163,7 @@ for (const key of requiredKeys) {
     missingKeys.push(key);
   }
 }
-check(allRequiredPresent, `All 76 required schema keys are present in store.state (missing: ${missingKeys.join(', ') || 'none'})`);
+check(allRequiredPresent, `All 77 required schema keys are present in store.state (missing: ${missingKeys.join(', ') || 'none'})`);
 
 // Verify transient key exclusion from cloud snapshot
 const transientKeys = [

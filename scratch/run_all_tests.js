@@ -139,7 +139,9 @@ const testFiles = [
   // Rex function calling (/api/rex/agent) and the Sunday parent report (ntfy):
   'scratch/verify_rex_function_calling_and_weekly_report.mjs',
   'scratch/verify_fridge_calendar_rex_live_and_story_refs.mjs',
-  'scratch/verify_hq_pen_models.mjs'
+  'scratch/verify_hq_pen_models.mjs',
+  // School breakfast/lunch (MealViewer), meal planner, its API, fridge card and lunch alert:
+  'scratch/verify_school_meal_planner.mjs'
 ];
 
 let allPassed = true;
