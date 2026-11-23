@@ -11,10 +11,11 @@ import { listHeroes, DEFAULT_TIME_ZONE, dayKey } from '../shared/familyInsights.
 import { buildFridgeSnapshot } from '../shared/fridgeSnapshot.js';
 import { getCurrentWeeklyChallenge } from '../src/data/hygieneBossesData.js';
 import { buildHouseholdMealDays, getSchoolMenu } from './mealsService.js';
+import { weatherService as defaultWeather } from './weatherService.js';
 
 const CACHE_MS = 30 * 1000;
 
-export function createFridgeHandler({ env = process.env, fetchHouseholdImpl = fetchHousehold, calendar = defaultCalendar, schoolMenu = getSchoolMenu, now = () => Date.now() } = {}) {
+export function createFridgeHandler({ env = process.env, fetchHouseholdImpl = fetchHousehold, calendar = defaultCalendar, schoolMenu = getSchoolMenu, weather = defaultWeather, now = () => Date.now() } = {}) {
   let cache = { at: 0, body: null };
 
   return async function handleFridgeSnapshot(req, res) {
@@ -41,8 +42,10 @@ export function createFridgeHandler({ env = process.env, fetchHouseholdImpl = fe
       } catch (err) {
         console.warn('Fridge: meals unavailable:', err?.message || err);
       }
+      // The calendar plan carries the forecast; without a calendar, ask for it directly.
+      const forecast = plan?.weather ? null : await weather?.get?.().catch(() => null);
       const weekly = getCurrentWeeklyChallenge(new Date(now()));
-      const body = buildFridgeSnapshot(state, { now: now(), timeZone, calendar: plan, challenge: weekly?.challenge || null, meals });
+      const body = buildFridgeSnapshot(state, { now: now(), timeZone, calendar: plan, challenge: weekly?.challenge || null, meals, weather: forecast });
       cache = { at: now(), body };
       return res.json(body);
     } catch (err) {

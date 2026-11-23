@@ -2107,7 +2107,9 @@ class Store {
         calendarShowOn: t.showOn,
         calendarEventDay: t.eventDay,
         calendarEventTitle: String(t.eventTitle || '').slice(0, 60),
-        desc: `Tomorrow: ${String(t.eventTitle || 'a family event').slice(0, 60)}${t.eventTime ? ` at ${t.eventTime}` : ''}. Get ready tonight!`
+        desc: t.weather
+          ? `${String(t.eventTitle || 'Weather tomorrow').slice(0, 60)}. Get ready tonight!`
+          : `Tomorrow: ${String(t.eventTitle || 'a family event').slice(0, 60)}${t.eventTime ? ` at ${t.eventTime}` : ''}. Get ready tonight!`
       };
       if (existing) {
         const before = JSON.stringify([existing.title, existing.heroIds, existing.calendarShowOn, existing.desc]);
@@ -2135,6 +2137,18 @@ class Store {
     return changed;
   }
 
+  // "School days only": the chore rests on weekends and district no-school days
+  // (shared/schoolCalendar.js), per kid (e.g. the Pre-K/K-only day off).
+  setTaskSchoolDaysOnly(taskId, zone, on) {
+    const list = zone === 'Habit Islands' ? this.state.habitIslands : this.state.taskForest;
+    const task = (Array.isArray(list) ? list : []).find((t) => t && t.id === taskId);
+    if (!task) return false;
+    if (on) task.schoolDaysOnly = true;
+    else delete task.schoolDaysOnly;
+    this.saveState(true);
+    return true;
+  }
+
   // 1. ADD NEW TASK / ROUTINE (Parent Portal)
   addNewTask(taskData) {
     const isHabit = taskData.zone === 'Habit Islands';
@@ -2156,7 +2170,8 @@ class Store {
       xp: parseInt(taskData.xp) || 30,
       completed: false,
       pointsApproved: false,
-      desc: taskData.desc || 'Custom parent-assigned task routine.'
+      desc: taskData.desc || 'Custom parent-assigned task routine.',
+      ...(taskData.schoolDaysOnly === true ? { schoolDaysOnly: true } : {})
     };
 
     if (isHabit) {

@@ -6,6 +6,7 @@
 // so the screen looks the same either way.
 import { listHeroes, buildChoreSnapshot, DEFAULT_TIME_ZONE, dayKey } from './familyInsights.js';
 import { MEAL_TYPES } from './mealPlan.js';
+import { fridgeWeather } from './weather.js';
 
 const arr = (v) => (Array.isArray(v) ? v : []);
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -50,16 +51,25 @@ export function fridgeMeals(meals) {
   };
 }
 
+/** District no-school days for every kid also read "No school" on the meals card. */
+function markNoSchool(meals, calendar) {
+  if (!meals) return meals;
+  const off = new Set(arr(calendar?.noSchool).filter((e) => e && !arr(e.heroIds).length).map((e) => e.day));
+  if (!off.size) return meals;
+  return { ...meals, days: meals.days.map((d) => (off.has(d.date) && !Object.keys(d.meals).length ? { ...d, noSchool: true } : d)) };
+}
+
 /**
  * @param meals     optional { plan, school, schoolError, days } from buildHouseholdMealDays
  * @param state     store / household state
  * @param calendar  optional plan from /api/calendar/plan ({ events: [...] })
  * @param challenge optional { title, description } for this week's family challenge
  */
-export function buildFridgeSnapshot(state = {}, { now = Date.now(), timeZone = DEFAULT_TIME_ZONE, calendar = null, challenge = null, meals = null } = {}) {
+export function buildFridgeSnapshot(state = {}, { now = Date.now(), timeZone = DEFAULT_TIME_ZONE, calendar = null, challenge = null, meals = null, weather = null } = {}) {
   const today = dayKey(now, timeZone);
+  const schoolCalendar = calendar?.schoolCalendar && Array.isArray(calendar.schoolCalendar.days) ? calendar.schoolCalendar : undefined;
   const heroes = listHeroes(state).slice(0, 6).map((hero) => {
-    const chores = buildChoreSnapshot(state, hero.id, { now, timeZone })
+    const chores = buildChoreSnapshot(state, hero.id, { now, timeZone, ...(schoolCalendar ? { schoolCalendar } : {}) })
       .filter((c) => c.status !== 'hidden')
       .slice(0, 12);
     const done = chores.filter((c) => c.status === 'done').length;
@@ -85,6 +95,7 @@ export function buildFridgeSnapshot(state = {}, { now = Date.now(), timeZone = D
     title: clean(e.title, 60),
     time: clean(e.time, 12),
     emoji: clean(e.emoji, 4) || '📅',
+    ...(e.school === true ? { school: true } : {}),
     who: arr(e.heroIds).length && arr(e.heroIds).length < heroes.length ? arr(e.heroIds).map(nameOf).filter(Boolean).join(' & ') : ''
   });
   const isDay = (d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d);
@@ -106,7 +117,8 @@ export function buildFridgeSnapshot(state = {}, { now = Date.now(), timeZone = D
     events,
     month,
     calendarConfigured: calendar?.configured === true,
-    meals: fridgeMeals(meals),
+    meals: markNoSchool(fridgeMeals(meals), calendar),
+    weather: fridgeWeather(calendar?.weather || weather, today),
     familyDone: heroes.reduce((s, h) => s + h.done, 0),
     familyTotal: heroes.reduce((s, h) => s + h.total, 0)
   };

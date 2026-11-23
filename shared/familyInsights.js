@@ -20,6 +20,8 @@ export const BRUSH_TASK_IDS = [
 export const DEFAULT_TIME_ZONE = 'America/New_York';
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+import { BUNDLED_SCHOOL_CALENDAR, schoolDayInfo } from './schoolCalendar.js';
+
 const arr = (v) => (Array.isArray(v) ? v : []);
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
@@ -183,23 +185,26 @@ export function buildWeeklyReport(state = {}, { now = Date.now(), days = 7, time
  * and calendar "get ready" chores (`calendarShowOn`, see shared/calendarPrep.js) only show
  * on their evening.
  */
-export function isChoreForHeroToday(c, heroId, today) {
+export function isChoreForHeroToday(c, heroId, today, { hero = null, schoolCalendar = BUNDLED_SCHOOL_CALENDAR } = {}) {
   if (!c) return false;
   if (Array.isArray(c.heroIds) && c.heroIds.length && heroId && !c.heroIds.includes(heroId)) return false;
   if (c.calendarShowOn && today && c.calendarShowOn !== today) return false;
+  // "School days only" chores (Parent Portal) rest on weekends, holidays and vacations.
+  if (c.schoolDaysOnly === true && today && !schoolDayInfo(today, hero || { id: heroId }, schoolCalendar).school) return false;
   return true;
 }
 
 /** Today's chores for one kid: what is done, waiting for a parent, or still to do. */
-export function buildChoreSnapshot(state = {}, heroId, { now = Date.now(), timeZone = DEFAULT_TIME_ZONE } = {}) {
+export function buildChoreSnapshot(state = {}, heroId, { now = Date.now(), timeZone = DEFAULT_TIME_ZONE, schoolCalendar = BUNDLED_SCHOOL_CALENDAR } = {}) {
   const today = dayKey(now, timeZone);
+  const hero = arr(state.heroes).find((h) => h && h.id === heroId) || null;
   const logs = arr(state.taskCompletionLogs).filter((l) => l && l.heroId === heroId && isCountedLog(l) && dayKey(recordTime(l), timeZone) === today);
   const pending = arr(state.pendingApprovals).filter((r) => r && r.kidId === heroId && (r.status || 'pending') === 'pending');
   const chores = [...arr(state.taskForest), ...arr(state.habitIslands)];
   const seen = new Set();
   return chores
     .filter((c) => c && c.id && !seen.has(c.id) && seen.add(c.id))
-    .filter((c) => isChoreForHeroToday(c, heroId, today))
+    .filter((c) => isChoreForHeroToday(c, heroId, today, { hero, schoolCalendar }))
     .slice(0, 30)
     .map((c) => {
       const log = logs.find((l) => l.taskId === c.id);

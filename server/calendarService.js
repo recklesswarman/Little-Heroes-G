@@ -15,6 +15,9 @@ import { parseIcs, buildCalendarPlan, DEFAULT_CALENDAR_TIME_ZONE } from '../shar
 import { householdCodesFromEnv } from './householdReader.js';
 import { isFamilyNetworkRequest, hasValidRelayToken } from './localAiService.js';
 import { getPiRelayConfig } from './piRelayService.js';
+import { weatherService as defaultWeather } from './weatherService.js';
+import { loadSchoolCalendar as defaultSchoolCalendar } from './schoolCalendarService.js';
+import { SCHOOL_GROUPS } from '../shared/schoolCalendar.js';
 
 const CACHE_MS = 10 * 60 * 1000;
 const MAX_ICS_BYTES = 3 * 1024 * 1024;
@@ -47,11 +50,14 @@ export function sanitizeHeroes(raw) {
   return (Array.isArray(raw) ? raw : []).slice(0, 12).map((h) => ({
     id: String(h?.id || '').slice(0, 60),
     name: String(h?.name || '').replace(/[^\p{L}\p{N} '-]/gu, '').trim().slice(0, 30),
-    gameDifficulty: ['easy', 'medium', 'hard'].includes(h?.gameDifficulty) ? h.gameDifficulty : ''
+    gameDifficulty: ['easy', 'medium', 'hard'].includes(h?.gameDifficulty) ? h.gameDifficulty : '',
+    // Age / school group only pick the grade group for district no-school days (e.g. Pre-K/K only).
+    age: Number.isFinite(Number(h?.age)) && Number(h.age) > 0 && Number(h.age) < 19 ? Math.round(Number(h.age)) : null,
+    schoolGroup: SCHOOL_GROUPS.includes(h?.schoolGroup) ? h.schoolGroup : ''
   })).filter((h) => h.id);
 }
 
-export function createCalendarService({ env = process.env, fetchImpl = globalThis.fetch, now = () => Date.now() } = {}) {
+export function createCalendarService({ env = process.env, fetchImpl = globalThis.fetch, now = () => Date.now(), weather = defaultWeather, schoolCalendar = defaultSchoolCalendar } = {}) {
   let cache = { at: 0, url: '', events: null };
 
   async function loadEvents() {
@@ -82,7 +88,11 @@ export function createCalendarService({ env = process.env, fetchImpl = globalThi
     const events = await loadEvents();
     if (!events) return { configured: false, events: [], prepTasks: [] };
     const { timeZone } = getCalendarConfig(env);
-    return { configured: true, ...buildCalendarPlan(events, sanitizeHeroes(heroes), { now: now(), days, timeZone, month }) };
+    const forecast = weather ? await weather.get().catch(() => null) : null;
+    return {
+      configured: true,
+      ...buildCalendarPlan(events, sanitizeHeroes(heroes), { now: now(), days, timeZone, month, weather: forecast, schoolCalendar: schoolCalendar() })
+    };
   }
 
   async function relayToPi(body) {
