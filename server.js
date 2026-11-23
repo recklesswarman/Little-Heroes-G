@@ -21,6 +21,7 @@ import { handleFridgeSnapshot } from './server/fridgeService.js';
 import { fridgeExtrasService } from './server/fridgeExtrasService.js';
 import { mountMealsRoutes } from './server/mealsService.js';
 import { mountPhet } from './server/phetService.js';
+import { createStoryAudioService } from './server/storyAudioService.js';
 import { handleVoiceSttRequest, handleVoiceTtsRequest, handleVoiceStatusRequest, MAX_AUDIO_BYTES } from './server/voiceLabService.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -109,6 +110,9 @@ if (getPiRelayConfig()) {
   app.get('/api/local/status', voiceLimiter, relay.handleLocalStatus);
   app.post('/api/local/tts', voiceLimiter, relay.handleLocalTts);
   app.post('/api/local/stt', voiceLimiter, rawAudio(RELAY_MAX_AUDIO_BYTES), relay.handleLocalStt);
+  app.post('/api/local/stt-fast', voiceLimiter, rawAudio(RELAY_MAX_AUDIO_BYTES), relay.handleLocalSttFast);
+  app.post('/api/local/story-audio', voiceLimiter, relay.handleStoryAudio);
+  app.get('/api/local/story-audio/:id.wav', voiceLimiter, relay.handleStoryAudioFile);
 } else {
   // Voice lab page (server/voiceLabService.js)
   app.get('/api/voice/status', handleVoiceStatusRequest);
@@ -119,6 +123,11 @@ if (getPiRelayConfig()) {
   app.get('/api/local/status', voiceLimiter, localAi.handleStatus);
   app.post('/api/local/tts', voiceLimiter, localAi.handleTts);
   app.post('/api/local/stt', voiceLimiter, rawAudio(localAi.STT_MAX_BYTES), localAi.handleStt);
+  app.post('/api/local/stt-fast', voiceLimiter, rawAudio(localAi.STT_MAX_BYTES), localAi.handleSttFast);
+  // Kokoro bedtime story audio, read ahead of time on the Pi (server/storyAudioService.js)
+  const storyAudio = createStoryAudioService();
+  app.post('/api/local/story-audio', voiceLimiter, storyAudio.handleRequest);
+  app.get('/api/local/story-audio/:id.wav', voiceLimiter, storyAudio.handleAudio);
 }
 
 // Family Google Calendar -> tonight's "get ready" chores (server/calendarService.js). On the Pi

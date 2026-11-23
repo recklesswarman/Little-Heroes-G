@@ -1,0 +1,16 @@
+[Unit]
+Description=Little Heroes voice extras (Kokoro bedtime voice, Moonshine reading check)
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/apps/voice-extras
+ExecStart=%h/apps/voice-extras/venv/bin/python %h/apps/voice-extras/voice_extras.py
+Restart=on-failure
+RestartSec=10
+# Kokoro uses up to ~1 GB while reading; keep the rest of the Pi responsive.
+Nice=10
+MemoryMax=1500M
+
+[Install]
+WantedBy=default.target

@@ -911,3 +911,11 @@ html [data-word-phonics] {
 #fridge-display-root[data-evening="true"] section {
   filter: saturate(0.85) brightness(0.92);
 }
+
+/* Kokoro bedtime voice: the word being read right now. */
+.lh-reading-now {
+  background: rgba(255, 185, 97, 0.28);
+  border-radius: 0.35rem;
+  box-shadow: 0 0 0 2px rgba(255, 185, 97, 0.28);
+  transition: background 120ms ease;
+}

@@ -16,7 +16,8 @@ import { safeImageUrl } from '../utils/safeImageUrl.js';
 import { BEDTIME_REALMS, BEDTIME_MORALS, CONSTELLATION_STICKERS, getBedtimeRealm } from '../data/bedtimeStoryData.js';
 import { bedtimeStoryService, resolveBedtimeNarratorPetId } from '../services/bedtimeStoryService.js';
 import { bedtimeIllustrationService } from '../services/bedtimeIllustrationService.js';
-import { speakCompanion, stopCompanionAudio, prefetchCompanionAudio, unlockVoiceAudio } from '../services/voiceService.js';
+import { stopCompanionAudio, prefetchCompanionAudio, unlockVoiceAudio } from '../services/voiceService.js';
+import { speakStoryChapter, stopStoryAudio, prepareStoryAudio, matchSpokenWord } from '../services/storyAudioService.js';
 
 const STORY_BLOCK_TYPES = ['paragraph', 'dialogue', 'whisper', 'breathCue'];
 
@@ -589,7 +590,7 @@ function renderStoryStage(session, pet, hero) {
             </button>
           </div>
           
-          ${renderStoryBlocks(currentAct)}
+          <div data-story-words>${renderStoryBlocks(currentAct)}</div>
         </div>
 
         <!-- SLUMBER CONTROLS & MANUAL TURN PAGE -->
@@ -690,7 +691,7 @@ function renderBookshelfLibrary(library) {
               ${readingSavedStory.isFavorite ? '★ Favorited' : '☆ Favorite'}
             </button>
           </div>
-          <p class="font-body text-base text-slate-200 leading-relaxed">${wrapTappableWords(act.text || '')}</p>
+          <p class="font-body text-base text-slate-200 leading-relaxed" data-story-words>${wrapTappableWords(act.text || '')}</p>
           ${act.childChoice ? `
             <div class="bg-[#0f2334] px-3 py-1.5 rounded-xl border border-[#00d2d3]/30 text-xs text-[#ffb961] font-bold">
               ★ Hero Choice: "${act.childChoice}"
@@ -821,6 +822,7 @@ export function setupBedtimeStoryListeners() {
   document.getElementById('bedtime-back-btn')?.addEventListener('click', () => {
     Sound.bloop();
     stopCompanionAudio();
+    stopStoryAudio();
     bedtimeStoryService.cancelAutoAdvance();
     if (activeStage3D) {
       activeStage3D.destroy();
@@ -839,6 +841,7 @@ export function setupBedtimeStoryListeners() {
   document.getElementById('footer-goto-map-btn')?.addEventListener('click', () => {
     Sound.tap();
     stopCompanionAudio();
+    stopStoryAudio();
     bedtimeStoryService.cancelAutoAdvance();
     store.navigate('world_map');
   });
@@ -860,6 +863,7 @@ export function setupBedtimeStoryListeners() {
   document.getElementById('hub-open-picture-books-btn')?.addEventListener('click', () => {
     Sound.bloop();
     stopCompanionAudio();
+    stopStoryAudio();
     store.navigate('story_library');
   });
 
@@ -988,6 +992,23 @@ export function setupBedtimeStoryListeners() {
       }
     }
   });
+
+  // Kokoro voice: light up each word as it is read (storyAudioService 'bedtime-story-word').
+  if (typeof window !== 'undefined' && !window._bedtimeStoryWordListenerAttached) {
+    window._bedtimeStoryWordListenerAttached = true;
+    let cursor = 0;
+    window.addEventListener('bedtime-story-word', (e) => {
+      const spans = Array.from(document.querySelectorAll('[data-story-words] .lh-tap-word'));
+      spans.forEach((el) => el.classList.remove('lh-reading-now'));
+      const { index, word } = e.detail || {};
+      if (!word || index < 0) { cursor = 0; return; }
+      if (index === 0) cursor = 0;
+      const k = matchSpokenWord(spans.map((el) => el.dataset.word), cursor, word);
+      if (k < 0) return;
+      spans[k].classList.add('lh-reading-now');
+      cursor = k + 1;
+    });
+  }
 
   if (typeof window !== 'undefined' && !window._bedtimeStorySceneBListenerAttached) {
     window._bedtimeStorySceneBListenerAttached = true;
@@ -1122,7 +1143,7 @@ export function setupBedtimeStoryListeners() {
         const rates = [0.94, 0.88, 0.82, 0.76];
         const rate = rates[Math.min(chapterNumber - 1, rates.length - 1)];
         Sound.duckLullaby(true);
-        speakCompanion(textToRead, resolveBedtimeNarratorPetId(session.petId), () => {
+        speakStoryChapter(textToRead, resolveBedtimeNarratorPetId(session.petId), () => {
           Sound.duckLullaby(false);
         }, {
           rate,
@@ -1159,6 +1180,7 @@ export function setupBedtimeStoryListeners() {
   document.getElementById('story-finish-return-btn')?.addEventListener('click', () => {
     Sound.tap();
     stopCompanionAudio();
+    stopStoryAudio();
     bedtimeStoryService.cancelAutoAdvance();
     completeBedtimeStoryRoutine();
     activeViewMode = 'sanctuary';
@@ -1214,6 +1236,7 @@ export function setupBedtimeStoryListeners() {
   document.getElementById('close-reading-saved-btn')?.addEventListener('click', () => {
     Sound.bloop();
     stopCompanionAudio();
+    stopStoryAudio();
     readingSavedStory = null;
     store.notify();
   });
@@ -1246,7 +1269,7 @@ export function setupBedtimeStoryListeners() {
         const rates = [0.94, 0.88, 0.82, 0.76];
         const rate = rates[Math.min(currentSavedActIndex, rates.length - 1)];
         Sound.duckLullaby(true);
-        speakCompanion(textToRead, resolveBedtimeNarratorPetId(readingSavedStory.petId || '1'), () => {
+        speakStoryChapter(textToRead, resolveBedtimeNarratorPetId(readingSavedStory.petId || '1'), () => {
           Sound.duckLullaby(false);
         }, {
           rate,

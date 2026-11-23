@@ -24,9 +24,14 @@ function trimSlash(url) {
 }
 
 export function getLocalAiConfig(env = process.env) {
+  const piperUrl = trimSlash(env.PIPER_TTS_URL || env.PIPER_URL);
+  // Moonshine (scripts/pi/voice-extras): fast speech-to-text for the Read-Along reading check.
+  // On by default on the Pi (where Piper is set up); MOONSHINE_URL=off turns it off.
+  const moonshine = env.MOONSHINE_URL === 'off' ? '' : trimSlash(env.MOONSHINE_URL || (piperUrl ? 'http://127.0.0.1:5010' : ''));
   return {
-    piperUrl: trimSlash(env.PIPER_TTS_URL || env.PIPER_URL),
-    whisperUrl: trimSlash(env.WHISPER_URL || env.WHISPER_CPP_URL)
+    piperUrl,
+    whisperUrl: trimSlash(env.WHISPER_URL || env.WHISPER_CPP_URL),
+    moonshineUrl: /^https?:\/\//i.test(moonshine) ? moonshine : ''
   };
 }
 
@@ -95,6 +100,11 @@ function isAllowedCaller(req, env) {
   return env.LOCAL_AI_ALLOW_ANY_NETWORK === 'true' || isFamilyNetworkRequest(req) || hasValidRelayToken(req, env);
 }
 
+/** Family network, or App Hosting with the relay token (also used by server/storyAudioService.js). */
+export function isAllowedLocalCaller(req, env = process.env) {
+  return isAllowedCaller(req, env);
+}
+
 function rejectOutsideFamilyNetwork(req, res, env) {
   if (isAllowedCaller(req, env)) return false;
   res.status(403).json({ error: 'Local Pi services are only available on the family network', fallback: 'web-speech' });
@@ -158,10 +168,30 @@ export function createLocalAiHandlers({ env = process.env, fetchImpl = globalThi
     }
   }
 
-  async function handleStt(req, res) {
+  /** Moonshine transcript, or null when it is off or fails (then Whisper takes over). */
+  async function moonshine(body, contentType) {
+    const { moonshineUrl } = cfg();
+    if (!moonshineUrl) return null;
+    try {
+      const { res: upstream, data } = await fetchWithTimeout(`${moonshineUrl}/moonshine`, {
+        method: 'POST', headers: { 'Content-Type': contentType }, body
+      }, 20000, fetchImpl, (r) => r.json().catch(() => ({})));
+      if (!upstream.ok || typeof data?.text !== 'string') return null;
+      return data.text.replace(/\s+/g, ' ').trim();
+    } catch {
+      return null;
+    }
+  }
+
+  // Read-Along reading check: Moonshine first (fast on the Pi), Whisper if it is not there.
+  async function handleSttFast(req, res) {
+    return handleStt(req, res, { fast: true });
+  }
+
+  async function handleStt(req, res, { fast = false } = {}) {
     if (rejectOutsideFamilyNetwork(req, res, env)) return;
-    const { whisperUrl } = cfg();
-    if (!whisperUrl) return res.status(503).json({ error: 'Local speech recognition is not configured', fallback: 'web-speech' });
+    const { whisperUrl, moonshineUrl } = cfg();
+    if (!whisperUrl && !(fast && moonshineUrl)) return res.status(503).json({ error: 'Local speech recognition is not configured', fallback: 'web-speech' });
     const body = req.body;
     // Explicit string/array guards (CodeQL type-confusion): only a raw Buffer is accepted.
     if (typeof body === 'string' || Array.isArray(body) || !Buffer.isBuffer(body) || body.length === 0) return res.status(400).json({ error: 'Send the recorded audio as the request body' });
@@ -171,6 +201,11 @@ export function createLocalAiHandlers({ env = process.env, fetchImpl = globalThi
     const requested = typeof rawType === 'string' ? rawType.split(';')[0].trim().toLowerCase() : '';
     const contentType = Object.hasOwn(STT_CONTENT_TYPES, requested) ? requested : 'audio/webm';
     const ext = STT_CONTENT_TYPES[contentType];
+    if (fast) {
+      const quick = await moonshine(body, contentType);
+      if (quick !== null) return res.json({ text: quick, engine: 'moonshine' });
+      if (!whisperUrl) return res.status(502).json({ error: 'Local speech recognition is unavailable', fallback: 'web-speech' });
+    }
     const form = new FormData();
     form.append('file', new Blob([body], { type: contentType }), `speech.${ext}`);
     form.append('response_format', 'json');
@@ -188,5 +223,5 @@ export function createLocalAiHandlers({ env = process.env, fetchImpl = globalThi
   }
 
 
-  return { handleStatus, handleTts, handleStt, STT_MAX_BYTES };
+  return { handleStatus, handleTts, handleStt, handleSttFast, STT_MAX_BYTES };
 }

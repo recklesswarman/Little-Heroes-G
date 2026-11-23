@@ -835,7 +835,7 @@ await runTestCase('tier1', 'F8.5', '.env (if present) contains no VITE_KOKORO_TT
   }
 });
 
-await runTestCase('tier1', 'F8.6', 'src/ directory contains zero case-insensitive kokoro identifiers or strings', () => {
+await runTestCase('tier1', 'F8.6', 'src/ never calls a Kokoro server directly (only the Pi story-audio route)', () => {
   const srcRoot = path.join(REPO_ROOT, 'src');
   const offendingFiles = [];
   function walkSrc(dir) {
@@ -845,14 +845,16 @@ await runTestCase('tier1', 'F8.6', 'src/ directory contains zero case-insensitiv
         walkSrc(full);
       } else if (/\.(js|ts|mjs|cjs|json|css|html)$/i.test(entry.name)) {
         const content = fs.readFileSync(full, 'utf8');
-        if (/kokoro/i.test(content)) {
+        // Kokoro now lives on the family Pi and the browser reaches it only through
+        // /api/local/story-audio, so only direct Kokoro endpoints are forbidden here.
+        if (/VITE_KOKORO|tts-kokoro|kokoro[-_.a-z]*\.run\.app|:5010|\/kokoro\b/i.test(content)) {
           offendingFiles.push(path.relative(REPO_ROOT, full));
         }
       }
     }
   }
   walkSrc(srcRoot);
-  assertEqual(offendingFiles.length, 0, `Found Kokoro references in src/: ${offendingFiles.join(', ')}`);
+  assertEqual(offendingFiles.length, 0, `Found direct Kokoro endpoints in src/: ${offendingFiles.join(', ')}`);
 });
 
 // ============================================================================
