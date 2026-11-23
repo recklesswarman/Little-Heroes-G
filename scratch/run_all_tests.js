@@ -143,7 +143,9 @@ const testFiles = [
   // School breakfast/lunch (MealViewer), meal planner, its API, fridge card and lunch alert:
   'scratch/verify_school_meal_planner.mjs',
   // Fridge "what to wear" weather card, weather chores, district no-school days, school-days-only chores:
-  'scratch/verify_weather_and_school_calendar.mjs'
+  'scratch/verify_weather_and_school_calendar.mjs',
+  // Phonics pack: letter sounds, Dolch words, rhymes/syllables (CMU-checked), sound it out, Andika:
+  'scratch/verify_phonics_pack.mjs'
 ];
 
 let allPassed = true;

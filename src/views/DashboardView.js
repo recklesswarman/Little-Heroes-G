@@ -349,6 +349,17 @@ export function renderDashboardView() {
           : ''
       }
 
+      ${isEasyMode || Number(hero.age) <= 5 ? `
+      <!-- Letter Sounds (Pre-K phonics pack) -->
+      <button id="dashboard-goto-letters-btn" class="w-full rounded-2xl p-4 flex items-center gap-3 bg-linear-to-r from-[#2a1d4a] to-[#3b1d3a] border-2 border-[#a78bfa]/60 text-left active:scale-[0.99] transition-transform card-shadow">
+        <span class="kid-read w-12 h-12 rounded-2xl bg-[#a78bfa] text-slate-950 flex items-center justify-center text-2xl font-black shrink-0">Aa</span>
+        <span class="flex-1">
+          <span class="block font-headline text-sm font-black text-white">Letter Sounds with Rex</span>
+          <span class="block text-[11px] text-slate-300">Tap a letter to hear its sound, then take Rex's quiz!</span>
+        </span>
+        <span class="text-2xl" aria-hidden="true">🔤</span>
+      </button>` : ''}
+
       <!-- Evening Wind-Down Sanctuary Banner -->
       <div id="dashboard-evening-sanctuary-banner" class="bg-linear-to-r from-[#091e2b] via-[#0f2d40] to-[#091e2b] border-2 border-[#00d2d3]/50 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fade-in card-shadow">
         <div class="flex items-center gap-3">
@@ -859,6 +870,11 @@ export function attachDashboardListeners() {
       }
     }
   }).catch(() => {});
+
+  document.getElementById('dashboard-goto-letters-btn')?.addEventListener('click', () => {
+    Sound.bloop();
+    store.navigate('letters');
+  });
 
   document.getElementById('dashboard-goto-bedtime-btn')?.addEventListener('click', () => {
     Sound.bloop();

@@ -91,7 +91,7 @@ export function renderWorldAdventureMapView() {
               </div>`
             : `
           <div class="bg-[#0f2334] rounded-3xl p-6 border-2 border-surface-container-highest shadow-inner">
-            <p class="font-headline text-xl sm:text-2xl font-black text-primary-container leading-snug">
+            <p class="kid-read font-headline text-xl sm:text-2xl font-black text-primary-container leading-snug">
               ${challenge.question}
             </p>
           </div>
@@ -99,7 +99,7 @@ export function renderWorldAdventureMapView() {
           <div class="grid grid-cols-1 gap-3" id="world-mini-game-options">
             ${challenge.options.map((opt, idx) => `
               <button data-opt-idx="${idx}" class="world-game-opt-btn bg-[#162a3b] hover:bg-[#1f384d] text-white font-headline text-base font-black py-4 px-6 rounded-2xl border-2 border-surface-container-highest flex items-center justify-between active:scale-98 transition-all hover:border-primary-container">
-                <span>${opt}</span>
+                <span class="kid-read text-lg">${opt}</span>
                 <span class="w-7 h-7 rounded-full bg-[#09141e] flex items-center justify-center text-xs text-slate-300">${String.fromCharCode(65 + idx)}</span>
               </button>
             `).join('')}

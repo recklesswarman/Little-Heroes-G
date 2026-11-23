@@ -1,4 +1,8 @@
 import './styles/index.css';
+// Andika (SIL Open Font License): letters shaped the way kids learn them (single-story a and g,
+// clear b/d/p/q). Latin only, self-hosted, used for reading text via .kid-read.
+import '@fontsource/andika/latin-400.css';
+import '@fontsource/andika/latin-700.css';
 import { store } from './state/store.js';
 import { initTactileSoundEngine } from './audio/sfx.js';
 import { firestoreSync } from './services/firestoreSyncService.js';
@@ -47,6 +51,7 @@ import { renderHeroHQView, attachHeroHQListeners } from './views/HeroHQView.js';
 import { renderDinoWorkoutView, attachDinoWorkoutListeners, abandonDinoWorkoutIfRunning } from './views/DinoWorkoutView.js';
 import { renderBedtimeStoryView, setupBedtimeStoryListeners } from './views/BedtimeStoryView.js';
 import { renderStoryLibraryView, attachStoryLibraryListeners } from './views/StoryLibraryView.js';
+import { renderLetterSoundsView, attachLetterSoundsListeners } from './views/LetterSoundsView.js';
 import { renderFridgeDisplayView, attachFridgeDisplayListeners, stopFridgeDisplay, FRIDGE_VIEW_NAMES } from './views/FridgeDisplayView.js';
 import { startFamilyCalendarSync } from './services/familyCalendarService.js';
 import { registerServiceWorker } from './pwa/registerServiceWorker.js';
@@ -381,6 +386,11 @@ function _renderAppInternal() {
     case 'storybook':
       mainContent = renderBedtimeStoryView();
       attachViewListeners = setupBedtimeStoryListeners;
+      break;
+    case 'letters':
+    case 'letter_sounds':
+      mainContent = renderLetterSoundsView();
+      attachViewListeners = attachLetterSoundsListeners;
       break;
     case 'story_library':
     case 'picture_books':
