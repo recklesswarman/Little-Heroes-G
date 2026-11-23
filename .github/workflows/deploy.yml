@@ -28,6 +28,13 @@ jobs:
         with:
           node-version: 22
           cache: 'npm'
+      # Same as ci.yml: the Pi voice service check needs Python with numpy.
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Python test dependencies
+        run: python -m pip install --quiet numpy
       - name: Install dependencies
         run: npm ci
       - name: Lint
