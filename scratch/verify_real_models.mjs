@@ -77,7 +77,10 @@ await check('HDRI lighting files exist and the presets use them', async () => {
   const { LIGHTING_PRESETS } = await import('../src/utils/modelViewerTint.js');
   assert.ok(/hdri\/studio\.hdr$/.test(LIGHTING_PRESETS.studio.env));
   assert.ok(/hdri\/cozy\.hdr$/.test(LIGHTING_PRESETS.cozy.env));
-  assert.strictEqual(LIGHTING_PRESETS.sunny.env, 'legacy');
+  assert.ok(/hdri\/sunny\.hdr$/.test(LIGHTING_PRESETS.sunny.env));
+  assert.ok(fs.existsSync('public/hdri/sunny.hdr'));
+  assert.ok(/hdri\/forest\.hdr$/.test(LIGHTING_PRESETS.forest.env));
+  assert.ok(fs.existsSync('public/hdri/forest.hdr'));
 });
 
 if (failed) { console.error(`${failed} real-model check(s) failed`); process.exit(1); }

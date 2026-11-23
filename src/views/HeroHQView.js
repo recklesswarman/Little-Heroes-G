@@ -3,6 +3,8 @@ import { registerActiveCanvas } from '../utils/activeViewCanvasRegistry.js';
 import { store } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
+import { safeImageUrl } from '../utils/safeImageUrl.js';
+import { renderInlineModel } from '../utils/inlineModel.js';
 import { speakRex } from '../services/voiceService.js';
 import confetti from 'canvas-confetti';
 import { renderRewardImage } from '../utils/rewardGraphics.js';
@@ -259,6 +261,7 @@ export function renderHeroHQView() {
           
           <!-- Center Floor Rug (Positioned underneath elevated companion stage) -->
           <div id="hq-slot-rug" class="absolute w-80 sm:w-96 h-36 sm:h-44 rounded-[60px] bg-linear-to-r from-amber-500/20 via-emerald-500/20 to-cyan-500/20 border-2 border-white/20 shadow-inner flex flex-col items-center justify-end pb-3 transition-all cursor-pointer hover:scale-102 hover:border-amber-300 pointer-events-auto" title="${escapeHtml(rugItem.name)} - Tap to play!">
+            ${rugItem.modelUrl ? renderInlineModel(rugItem, { style: 'width:150px;height:80px;background:transparent;pointer-events:none;', controls: false }) : ''}
             <span class="text-[10px] font-headline font-black text-white/70 bg-black/40 px-3 py-0.5 rounded-full border border-white/10">
               ${escapeHtml(rugItem.name)}
             </span>
@@ -368,7 +371,7 @@ export function renderHeroHQView() {
                   <div class="absolute -top-6 text-xl animate-bounce">💤💤💤</div>
                 ` : ''}
                 ${bedItem.modelUrl ? `
-                  <model-viewer src="${bedItem.modelUrl}" auto-rotate camera-controls shadow-intensity="1" ar style="width: 100%; height: 60px; background: transparent;"></model-viewer>
+                  ${renderInlineModel(bedItem)}
                 ` : `
                   <div class="text-3xl sm:text-4xl transition-transform group-hover:scale-110">
                     ${bedItem.icon || bedItem.emoji}
@@ -390,7 +393,7 @@ export function renderHeroHQView() {
                   <div class="absolute -top-7 text-xl animate-ping">🤸💥</div>
                 ` : ''}
                 ${petLoungeItem.modelUrl ? `
-                  <model-viewer src="${petLoungeItem.modelUrl}" auto-rotate camera-controls shadow-intensity="1" ar style="width: 100%; height: 60px; background: transparent;"></model-viewer>
+                  ${renderInlineModel(petLoungeItem)}
                 ` : `
                   <div class="text-3xl sm:text-4xl transition-transform group-hover:scale-110 ${isBouncing ? 'animate-spin' : ''}">
                     ${petLoungeItem.icon || petLoungeItem.emoji}
@@ -409,7 +412,7 @@ export function renderHeroHQView() {
             <div id="hq-slot-desk" class="flex flex-col items-center cursor-pointer group transition-transform hover:-translate-y-1" title="${escapeHtml(deskItem.name)} - Tap for hologram!">
               <div class="relative w-full max-w-[140px] h-28 sm:h-32 rounded-3xl bg-surface-container/80 backdrop-blur-xs border-2 ${isHologramActive ? 'border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.4)]' : 'border-white/30'} flex flex-col items-center justify-center p-2 text-center group-hover:border-cyan-400 transition-all">
                 ${deskItem.modelUrl ? `
-                  <model-viewer src="${deskItem.modelUrl}" auto-rotate camera-controls shadow-intensity="1" ar style="width: 100%; height: 60px; background: transparent;"></model-viewer>
+                  ${renderInlineModel(deskItem)}
                 ` : `
                   <div class="text-3xl sm:text-4xl transition-transform group-hover:scale-110 ${isHologramActive ? 'animate-pulse' : ''}">
                     ${deskItem.icon || deskItem.emoji}
@@ -427,9 +430,9 @@ export function renderHeroHQView() {
             <!-- Slot 4: DECOR & NIGHTLIGHT LAMP (Right) -->
             <div id="hq-slot-decor" class="flex flex-col items-center cursor-pointer group transition-transform hover:-translate-y-1" title="${escapeHtml(decorItem.name)} - Tap to toggle nightlight!">
               <div class="relative w-full max-w-[140px] h-28 sm:h-32 rounded-3xl bg-surface-container/80 backdrop-blur-xs border-2 ${isNight ? 'border-yellow-400 shadow-[0_0_25px_rgba(250,204,21,0.5)]' : 'border-white/30'} flex flex-col items-center justify-center p-2 text-center group-hover:border-yellow-400 transition-all">
-                <div class="text-3xl sm:text-4xl transition-transform group-hover:scale-110 animate-pulse">
+                ${decorItem.modelUrl ? renderInlineModel(decorItem, { controls: false }) : `<div class="text-3xl sm:text-4xl transition-transform group-hover:scale-110 animate-pulse">
                   ${decorItem.icon || decorItem.emoji}
-                </div>
+                </div>`}
                 <div class="text-[10px] font-headline font-black text-inverse-surface truncate w-full mt-1">
                   ${escapeHtml(decorItem.name)}
                 </div>
@@ -677,8 +680,8 @@ function renderFurnitureGrid(slotId, heroHQ, userCoins) {
     return `
       <div class="p-4 rounded-3xl border-2 ${isEquipped ? 'border-emerald-400 bg-emerald-500/10 shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'border-surface-container-highest bg-surface-bright/60'} flex flex-col justify-between gap-3">
         <div class="flex items-start gap-3">
-          <div class="text-3xl p-2.5 rounded-2xl bg-surface-container border border-white/10">
-            ${item.icon || item.emoji}
+          <div class="text-3xl p-2.5 rounded-2xl bg-surface-container border border-white/10 w-14 h-14 flex items-center justify-center shrink-0">
+            ${item.thumbnail ? `<img src="${escapeHtml(safeImageUrl(item.thumbnail))}" alt="" loading="lazy" class="w-full h-full object-contain" />` : (item.icon || item.emoji)}
           </div>
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-1.5">

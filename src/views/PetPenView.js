@@ -6,6 +6,8 @@ import { speakRex } from '../services/voiceService.js';
 import confetti from 'canvas-confetti';
 import { PETS_DATABASE, getPetLevelData } from '../data/petsData.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
+import { renderInlineModel } from '../utils/inlineModel.js';
+import { STARTER_PEN_TOYS } from '../data/penToys.js';
 
 let hasSpokenPenGreeting = false;
 let selectedRadialPetId = null;
@@ -428,8 +430,24 @@ export function renderPetPenView() {
       <!-- PARENT-CRAFTED INTERACTIVE TOY CHEST (Living Pet Play) -->
       ${(() => {
         const customToys = store.getParentCustomToys ? store.getParentCustomToys() : [];
-        if (customToys.length === 0) return '';
-        return `
+        const starterToyBox = `
+        <section id="pen-starter-toy-box" class="bg-slate-900/80 backdrop-blur-md rounded-3xl p-3 sm:p-4 border-2 border-cyan-400/30 shadow-xl mb-3">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="font-headline text-xs sm:text-sm font-black text-cyan-300">🧸 Toy Box</h3>
+            <span class="text-[10px] font-bold text-amber-300 px-2 py-0.5 rounded-full bg-amber-400/10 border border-amber-400/30">Tap to play</span>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            ${STARTER_PEN_TOYS.map(toy => `
+              <button class="pen-custom-toy-btn bg-slate-800/80 hover:bg-slate-700 border-2 border-cyan-400/30 hover:border-cyan-400 rounded-2xl p-3 flex flex-col items-center text-center gap-1.5 transition-all active:scale-95" data-toy-id="${escapeHtml(toy.id)}" title="${escapeHtml(toy.desc)}">
+                ${renderInlineModel(toy, { style: 'width:64px;height:64px;background:transparent;', controls: false })}
+                <span class="font-headline text-xs font-black text-white truncate max-w-full">${escapeHtml(toy.name)}</span>
+                <span class="text-[9px] font-black text-cyan-300 bg-cyan-500/20 px-2 py-0.5 rounded-full border border-cyan-400/30">+${toy.statRefillAmount} JOY</span>
+              </button>
+            `).join('')}
+          </div>
+        </section>`;
+        if (customToys.length === 0) return starterToyBox;
+        return starterToyBox + `
         <section class="bg-linear-to-r from-emerald-950/80 via-slate-900/90 to-cyan-950/80 rounded-3xl p-4 border-2 border-cyan-400/40 shadow-xl flex flex-col gap-3">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
@@ -451,9 +469,7 @@ export function renderPetPenView() {
                 data-toy-id="${toy.id}"
                 title="${escapeHtml(toy.desc || toy.name)}"
               >
-                ${toy.modelUrl ? `
-                  <model-viewer src="${toy.modelUrl}" auto-rotate camera-controls shadow-intensity="1" ar style="width: 50px; height: 50px; background: transparent;"></model-viewer>
-                ` : `
+                ${toy.modelUrl ? renderInlineModel(toy, { style: 'width:50px;height:50px;background:transparent;', controls: false }) : `
                   <div class="text-3xl group-hover:scale-115 transition-transform drop-shadow-sm">${toy.emoji || '🎪'}</div>
                 `}
                 <span class="font-headline text-xs font-black text-white truncate max-w-full">${escapeHtml(toy.name)}</span>
