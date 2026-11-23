@@ -15,7 +15,8 @@ import { applyModelTints, tintModelViewer, modelViewerLightingAttrs, LIGHTING_PR
 import { celebrateItem } from '../services/rewardCelebration.js';
 import { isGeneratedPicture, persistStudioImage, toThumbnail } from '../services/studioArtService.js';
 import { COLOR_DYES, formatStatBonusName } from '../data/petGearStudioData.js';
-import { THREE_D_ASSETS, getThreeDAssetsByCategory, matchBestThreeDAsset } from '../data/threeDAssetCatalog.js';
+import { THREE_D_ASSETS, getThreeDAssetsByCategory, getThreeDAssetById, matchBestThreeDAsset } from '../data/threeDAssetCatalog.js';
+import { resolvePublicAssetUrl } from '../utils/assetUrl.js';
 import { registerActiveCanvas } from '../utils/activeViewCanvasRegistry.js';
 import { preserveScrollPosition as preserveScrollBarPosition } from '../utils/scrollPreserve.js';
 import {
@@ -194,7 +195,8 @@ let studioModelCredit = null;
 let studioLighting = 'studio'; // 'studio' | 'sunny' | 'cozy'
 let studioModelTint = ''; // hex picked with the dye swatches for a real 3D model
 let studioConceptFlash = false;
-let studioActiveModelUrl = 'https://modelviewer.dev/shared-assets/models/Astronaut.glb';
+let studioActiveModelUrl = resolvePublicAssetUrl('models/kenney/space/rover.glb'); // bundled preview sample, works offline
+let studioActiveAnimations = null; // { idle, walk, cheer } of the picked model, when it is animated
 let studioActive3DAssetId = 'gear_cyber_visor';
 let studioDeliveryMethod = 'instant_gift'; // 'instant_gift', 'hero_shop', 'habit_bounty'
 let studioTargetChildProfile = 'all';
@@ -1978,6 +1980,7 @@ export function renderParentPortalView() {
                     id="parent-ai-model-viewer"
                     src="${escapeHtml(safeImageUrl(studioActiveModelUrl))}"
                     alt="${escapeHtml(studioItemName || '3D Model')}"
+                    ${studioActiveAnimations && /^[A-Za-z0-9_ -]{1,40}$/.test(studioActiveAnimations.idle || '') ? `autoplay animation-name="${escapeHtml(studioActiveAnimations.idle)}"` : ''}
                     ${studioGeneratedImage ? `poster="${escapeHtml(safeImageUrl(studioGeneratedImage))}"` : ''}
                     loading="lazy"
                     auto-rotate
@@ -2060,7 +2063,7 @@ export function renderParentPortalView() {
                       data-asset-name="${escapeHtml(asset.name)}"
                     >
                       <div class="flex items-center gap-1 mb-0.5">
-                        <span class="text-base">${asset.emoji}</span>
+                        ${asset.thumbnail ? `<img src="${escapeHtml(safeImageUrl(asset.thumbnail))}" alt="" loading="lazy" class="w-7 h-7 object-contain" />` : `<span class="text-base">${asset.emoji}</span>`}
                         <span class="text-[11px] font-black text-white truncate flex-1">${escapeHtml(asset.name)}</span>
                       </div>
                       <div class="flex items-center justify-between text-[9px] text-slate-400">
@@ -3454,6 +3457,8 @@ export function renderParentPortalView() {
               <li>Icons by game-icons.net (Lorc, Delapouite), CC BY 3.0</li>
               <li>Emoji art by OpenMoji, CC BY-SA 4.0</li>
               <li>3D viewer: Google model-viewer (Apache 2.0)</li>
+              <li>3D models: Kenney (kenney.nl, CC0) and Quaternius (quaternius.com, CC0 and Quaternius Asset License)</li>
+              <li>Studio and Cozy lighting: Poly Haven HDRIs (polyhaven.com, CC0)</li>
               <li>3D models you pick in the Studio show their own credit line on the item</li>
             </ul>
           </details>
@@ -6884,7 +6889,10 @@ export function attachParentPortalListeners() {
         const url = card.getAttribute('data-model-url');
         studioActive3DAssetId = card.getAttribute('data-asset-id') || studioActive3DAssetId;
         if (url) {
+          const picked = getThreeDAssetById(studioActive3DAssetId);
           studioActiveModelUrl = url;
+          studioModelCredit = picked?.credit || null;
+          studioActiveAnimations = picked?.animations || null;
           studioModelChosen = true;
           studioModelSource = 'catalog';
           studioViewportMode = 'modelviewer';
@@ -6926,7 +6934,7 @@ export function attachParentPortalListeners() {
         const pictureFields = publishedImage ? { image: publishedImage } : {};
         // Only a model the parent picked on purpose is saved; the preview sample never ships.
         const modelFields = studioModelChosen && studioActiveModelUrl
-          ? { modelUrl: studioActiveModelUrl, modelSource: studioModelSource || undefined, credit: studioModelCredit || undefined, lighting: studioLighting, ...(studioModelTint ? { modelTint: studioModelTint } : {}) }
+          ? { modelUrl: studioActiveModelUrl, modelSource: studioModelSource || undefined, credit: studioModelCredit || undefined, ...(studioActiveAnimations ? { animations: studioActiveAnimations } : {}), lighting: studioLighting, ...(studioModelTint ? { modelTint: studioModelTint } : {}) }
           : {};
         let publishedName = '';
 

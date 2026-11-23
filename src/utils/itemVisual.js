@@ -16,7 +16,8 @@ export function renderItemVisual(item, { size = 'card' } = {}) {
   if (model && size !== 'card') {
     const tint = /^#[0-9a-f]{6}$/i.test(item.modelTint || '') ? ` data-tint="${item.modelTint}"` : '';
     const poster = safeImageUrl(item.image || '');
-    return `<model-viewer src="${escapeHtml(model)}" alt="${alt}" ${poster ? `poster="${escapeHtml(poster)}"` : ''} loading="lazy" auto-rotate camera-controls ${modelViewerLightingAttrs(item.lighting)}${tint} class="${cls}"></model-viewer>`;
+    const idle = item.animations && /^[A-Za-z0-9_ -]{1,40}$/.test(item.animations.idle || '') ? ` autoplay animation-name="${escapeHtml(item.animations.idle)}"` : '';
+    return `<model-viewer src="${escapeHtml(model)}" alt="${alt}" ${poster ? `poster="${escapeHtml(poster)}"` : ''} loading="lazy" auto-rotate camera-controls ${modelViewerLightingAttrs(item.lighting)}${tint}${idle} class="${cls}"></model-viewer>`;
   }
   const picture = safeImageUrl(item?.image || '');
   if (picture) return `<img src="${escapeHtml(picture)}" alt="${alt}" class="${cls} object-contain" />`;

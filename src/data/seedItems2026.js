@@ -2,6 +2,26 @@
 // so they are easy to review or remove. Art comes from OpenMoji (emoji) and game-icons (iconId); there is no
 // placeholder 3D model. Palette rule: no pink or purple. Snacks are healthy.
 
+import { THREE_D_ASSETS } from './threeDAssetCatalog.js';
+
+// Real 3D models for the Shop. The picture on the card is the model's rendered thumbnail; the detail view spins the model.
+const realWeapon = (assetId, rarity, price, percent) => {
+  const a = THREE_D_ASSETS.find((x) => x.id === assetId);
+  return base(`weapons_${assetId.replace('weapon_', '')}`, {
+    name: a.name, desc: a.description, category: 'Weapons', subCategory: 'weapon', equipSlot: 'weapon', rarity, price,
+    statBonusType: 'damage_boost', statBonusPercent: percent, statBonusLabel: `+${percent}% Sugar Bug Damage`,
+    emoji: a.emoji, modelUrl: a.modelUrl, image: a.thumbnail, credit: a.credit, voiceLine: a.defaultVoiceLine
+  });
+};
+const realSnack = (assetId, price, joy) => {
+  const a = THREE_D_ASSETS.find((x) => x.id === assetId);
+  return base(`snacks_${assetId.replace('food_', '')}`, {
+    name: a.name, desc: a.description, category: 'Snacks', subCategory: 'food', rarity: 'common', price,
+    statBonusType: 'joy_boost', statBonusPercent: joy, statBonusLabel: `+${joy} Joy`, usageType: 'multi_use', servingsMax: 3, maxServings: 3,
+    emoji: a.emoji, modelUrl: a.modelUrl, image: a.thumbnail, credit: a.credit, voiceLine: a.defaultVoiceLine
+  });
+};
+
 const base = (id, o) => ({
   id: `seed26_${id}`,
   title: o.name,
@@ -51,5 +71,14 @@ export const SEED_2026_ITEMS = [
   // Snacks
   base('snacks_rainbow_carrots', { name: 'Rainbow Carrot Sticks', desc: 'Crunchy orange carrot sticks. Great for hungry companions.', category: 'Snacks', subCategory: 'food', rarity: 'common', price: 25, statBonusType: 'energy_boost', statBonusPercent: 25, statBonusLabel: '+25 Energy / Hunger', usageType: 'multi_use', servingsMax: 3, maxServings: 3, emoji: '🥕', voiceLine: 'Crunch crunch!' }),
   base('snacks_blueberry_stack', { name: 'Blueberry Stack', desc: 'A juicy stack of plump blueberries for a happy tummy.', category: 'Snacks', subCategory: 'food', rarity: 'common', price: 30, statBonusType: 'joy_boost', statBonusPercent: 30, statBonusLabel: '+30 Joy', usageType: 'multi_use', servingsMax: 3, maxServings: 3, emoji: '🍇', voiceLine: 'Berry good!' }),
-  base('snacks_melon_moon', { name: 'Melon Moon Slice', desc: 'A cool, juicy melon slice shaped like the moon.', category: 'Snacks', subCategory: 'food', rarity: 'common', price: 35, statBonusType: 'energy_boost', statBonusPercent: 30, statBonusLabel: '+30 Energy / Hunger', usageType: 'multi_use', servingsMax: 3, maxServings: 3, emoji: '🍉', voiceLine: 'Cool and sweet!' })
+  base('snacks_melon_moon', { name: 'Melon Moon Slice', desc: 'A cool, juicy melon slice shaped like the moon.', category: 'Snacks', subCategory: 'food', rarity: 'common', price: 35, statBonusType: 'energy_boost', statBonusPercent: 30, statBonusLabel: '+30 Energy / Hunger', usageType: 'multi_use', servingsMax: 3, maxServings: 3, emoji: '🍉', voiceLine: 'Cool and sweet!' }),
+  // Real 3D models (CC0, Kenney): spin them in the Shop detail view.
+  realWeapon('weapon_foam_blaster_h', 'common', 110, 15),
+  realWeapon('weapon_foam_blaster_a', 'common', 140, 20),
+  realWeapon('weapon_foam_blaster_d', 'rare', 220, 25),
+  realWeapon('weapon_foam_blaster_o', 'epic', 320, 30),
+  realSnack('food_banana', 25, 30),
+  realSnack('food_broccoli', 30, 35),
+  realSnack('food_grapes', 30, 30),
+  realSnack('food_corn', 30, 30)
 ];

@@ -316,7 +316,7 @@ function pwaPlugin() {
         {
           // 3D models, sounds and images under public/ -- cache-first so the
           // bathroom / bedtime screens work offline after one online visit.
-          urlPattern: ({ url, sameOrigin }) => sameOrigin && /\.(?:splinecode|glb|gltf|mp3|wav|ogg|png|jpg|jpeg|webp|svg|gif)$/i.test(url.pathname),
+          urlPattern: ({ url, sameOrigin }) => sameOrigin && /\.(?:splinecode|glb|gltf|hdr|mp3|wav|ogg|png|jpg|jpeg|webp|svg|gif)$/i.test(url.pathname),
           handler: 'CacheFirst',
           options: {
             cacheName: 'lh-media',

@@ -1,3 +1,5 @@
+import { getPublicBaseUrl } from './assetUrl.js';
+
 // Recolour and light <model-viewer> models from one place (Studio preview, Shop, gift crates).
 
 export function hexToRgbaArray(hex) {
@@ -47,10 +49,14 @@ export function applyModelTints(root = document) {
   } catch { /* ignore */ }
 }
 
+// Studio and Cozy use real HDRI lighting from public/hdri/ (CC0, Poly Haven). Sunny keeps the built-in bright preset.
+// No ?v= suffix here: model-viewer picks the HDR loader from the .hdr file name.
+const hdri = (name) => `${getPublicBaseUrl()}hdri/${name}.hdr`;
+
 export const LIGHTING_PRESETS = {
-  studio: { label: 'Studio', env: 'neutral', exposure: '1' },
+  studio: { label: 'Studio', env: hdri('studio'), exposure: '1' },
   sunny: { label: 'Sunny', env: 'legacy', exposure: '1.25' },
-  cozy: { label: 'Cozy', env: 'neutral', exposure: '0.8' }
+  cozy: { label: 'Cozy', env: hdri('cozy'), exposure: '0.9' }
 };
 
 /** Attributes for <model-viewer> that set the item's lighting. Unknown values use the default. */
