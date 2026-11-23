@@ -893,3 +893,13 @@ html.reading-font-mode {
 html.reading-font-mode body {
   font-family: 'Atkinson Hyperlegible', Quicksand, sans-serif;
 }
+
+/* Reading text for kids: Andika (beginning-reader letter shapes). Beats .font-headline. */
+html .kid-read,
+html .kid-read *,
+html .ra-word,
+html .lh-tap-word,
+html [data-word-phonics] {
+  font-family: 'Andika', 'Atkinson Hyperlegible', Quicksand, sans-serif;
+  letter-spacing: 0.02em;
+}

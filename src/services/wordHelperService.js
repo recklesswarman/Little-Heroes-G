@@ -44,6 +44,42 @@ export async function lookupWord(word, fetchImpl = globalThis.fetch) {
   }
 }
 
+const phonicsCache = new Map();
+
+/** "Sound it out" parts from /api/phonics/word. Resolves to { syllables, sounds, parts } or null. */
+export async function lookupPhonics(word, fetchImpl = globalThis.fetch) {
+  const key = String(word || '').toLowerCase();
+  if (!key || typeof fetchImpl !== 'function') return null;
+  if (phonicsCache.has(key)) return phonicsCache.get(key);
+  try {
+    const res = await fetchImpl(serverApiUrl(`/api/phonics/word?word=${encodeURIComponent(key)}`));
+    const type = res.headers?.get?.('content-type') || '';
+    if (!res.ok || !type.includes('json')) return null;
+    const data = await res.json();
+    const value = data?.ok ? { syllables: Number(data.syllables) || 0, sounds: Array.isArray(data.sounds) ? data.sounds.slice(0, 20) : [], parts: Array.isArray(data.parts) ? data.parts.slice(0, 20) : [] } : null;
+    if (value) phonicsCache.set(key, value);
+    return value;
+  } catch {
+    return null;
+  }
+}
+
+/** Sound-it-out chips: letters on top, the sound under each. textContent only. */
+function phonicsRow(phonics) {
+  if (!phonics || (!phonics.parts.length && !phonics.sounds.length)) return null;
+  const row = el('div', 'mt-2 flex flex-wrap items-end gap-1.5 kid-read');
+  row.setAttribute('data-word-phonics', '');
+  const chips = phonics.parts.length ? phonics.parts : phonics.sounds.map((s) => ({ letters: '', sound: s }));
+  chips.forEach((p) => {
+    const chip = el('div', 'flex flex-col items-center rounded-lg bg-slate-800 border border-slate-600 px-2 py-1');
+    if (p.letters) chip.appendChild(el('span', 'text-lg font-black text-white leading-none', String(p.letters)));
+    chip.appendChild(el('span', 'text-[11px] font-bold text-[#00d2d3]', `/${String(p.sound)}/`));
+    row.appendChild(chip);
+  });
+  if (phonics.syllables > 1) row.appendChild(el('span', 'ml-1 text-xs font-bold text-slate-400', `${phonics.syllables} claps`));
+  return row;
+}
+
 function closePopover() {
   document.getElementById(POPOVER_ID)?.remove();
 }
@@ -65,7 +101,7 @@ function iconButton(attr, label, icon, className) {
 }
 
 /** Fills the card: info = null while loading, or { phonetic, meanings }. */
-function fillPopover(card, word, info, loading) {
+function fillPopover(card, word, info, loading, phonics = null) {
   card.replaceChildren();
   const head = el('div', 'flex items-start justify-between gap-3');
   const title = el('div');
@@ -76,6 +112,8 @@ function fillPopover(card, word, info, loading) {
   buttons.appendChild(iconButton('data-word-close', 'Close', 'close', 'bg-slate-700 text-white'));
   head.append(title, buttons);
   card.appendChild(head);
+  const sounds = phonicsRow(phonics);
+  if (sounds) card.appendChild(sounds);
 
   const meanings = info?.meanings || [];
   if (meanings.length > 0) {
@@ -111,8 +149,8 @@ export async function showWordCard(word) {
     if (target?.closest('[data-word-close]')) closePopover();
     else if (target?.closest('[data-word-say]')) sayWord(word);
   });
-  const info = await lookupWord(word);
-  if (document.getElementById(POPOVER_ID) === card) fillPopover(card, word, info, false);
+  const [info, phonics] = await Promise.all([lookupWord(word), lookupPhonics(word)]);
+  if (document.getElementById(POPOVER_ID) === card) fillPopover(card, word, info, false, phonics);
 }
 
 /**
