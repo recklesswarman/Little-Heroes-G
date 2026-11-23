@@ -30,5 +30,20 @@ export const REVIEWED_SEEDS = [
   {"id":"r20261109f7","kind":"folk","season":"any","text":"Two patient birds help a slow crawl through the meadow by showing the prettiest flowers along the path.","source":"gutenberg"},
   {"id":"r20261109f8","kind":"folk","season":"any","text":"A little dancer learns to follow the wise footsteps of an older friend across the sandy shore.","source":"gutenberg"},
   {"id":"r20261109f9","kind":"folk","season":"any","text":"Two loyal companions find a cozy hollow tree where they can rest together until the sun rises.","source":"gutenberg"},
-  {"id":"r20261109f10","kind":"folk","season":"any","text":"A small puddle teaches a curious hopper that being gentle is the greatest strength of all.","source":"gutenberg"}
+  {"id":"r20261109f10","kind":"folk","season":"any","text":"A small puddle teaches a curious hopper that being gentle is the greatest strength of all.","source":"gutenberg"},
+  {"id":"r20261123n1","kind":"nature","season":"any","text":"A tiny beetle makes a warm golden shimmer over a quiet pond at dusk.","source":"simple-wikipedia"},
+  {"id":"r20261123n2","kind":"nature","season":"any","text":"Little blinking lanterns drift between the damp leaves to say goodnight.","source":"simple-wikipedia"},
+  {"id":"r20261123n3","kind":"nature","season":"any","text":"A soft glow dances through the tall grass like a friendly star.","source":"simple-wikipedia"},
+  {"id":"r20261123n4","kind":"nature","season":"any","text":"Tiny twinkling creatures flash peacefully across a warm summer meadow.","source":"simple-wikipedia"},
+  {"id":"r20261123n5","kind":"nature","season":"any","text":"A sleepy little bug shares a steady glow to brighten the mossy path.","source":"simple-wikipedia"},
+  {"id":"r20261123n6","kind":"nature","season":"any","text":"A glowing silver orb plays hide and seek behind soft drifting evening clouds.","source":"simple-wikipedia"},
+  {"id":"r20261123n7","kind":"nature","season":"any","text":"Tiny particles of stardust drift slowly down onto quiet grey hills.","source":"simple-wikipedia"},
+  {"id":"r20261123n8","kind":"nature","season":"any","text":"The quiet night sky wraps the sleepy world below in a calm blanket of dark velvet.","source":"simple-wikipedia"},
+  {"id":"r20261123n9","kind":"nature","season":"any","text":"Soft beams of pale light bounce gently across the cool evening ground.","source":"simple-wikipedia"},
+  {"id":"r20261123n10","kind":"nature","season":"any","text":"A floating feather drifts gracefully through the silent night air before coming to rest.","source":"simple-wikipedia"},
+  {"id":"r20261123s1","kind":"shape","season":"any","text":"A tiny button rolls across sunny rooms only to settle back inside its sewing tin.","source":"search"},
+  {"id":"r20261123s2","kind":"shape","season":"any","text":"Each visiting creature leaves a colorful thread until a cozy nest is woven for everyone.","source":"search"},
+  {"id":"r20261123s3","kind":"shape","season":"any","text":"Several clumsy attempts to stack smooth stones succeed when the smallest rests on top.","source":"search"},
+  {"id":"r20261123s4","kind":"shape","season":"any","text":"A huge mysterious shape on the rug turns out to be a sleepy kitten stretching in the sun.","source":"search"},
+  {"id":"r20261123s5","kind":"shape","season":"any","text":"A quiet stroll gathers fallen blossom petals until the twilight sky calls everyone to bed.","source":"search"}
 ];
