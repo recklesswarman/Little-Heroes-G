@@ -26,3 +26,29 @@ jobs:
         run: ~/bin/update-little-heroes.sh main
       - name: Install the Fridge Display shortcut and Pi extras
         run: bash ~/apps/little-heroes/scripts/pi/install-extras.sh
+
+  # Screen checks (scripts/pi/screens): pictures the Fridge Display and kid screens of the app the
+  # Pi just started and compares them with the last deploy. A broken screen fails this job; a
+  # changed one is reported with before/after pictures and kept as the new good picture.
+  screens:
+    needs: deploy
+    if: github.repository == 'recklesswarman/Little-Heroes-G'
+    runs-on: [self-hosted, pi]
+    timeout-minutes: 20
+    steps:
+      - name: Check the screens
+        run: bash ~/apps/little-heroes/scripts/pi/screens/run-screens.sh
+      - name: Collect before/after pictures
+        if: always()
+        run: |
+          rm -rf screen-checks && mkdir -p screen-checks
+          [ -d ~/apps/screen-checks/pictures ] && cp -r ~/apps/screen-checks/pictures/. screen-checks/ || true
+          echo "count=$(find screen-checks -name '*.png' | wc -l)" >> "$GITHUB_OUTPUT"
+        id: pictures
+      - name: Upload before/after pictures
+        if: always() && steps.pictures.outputs.count != '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: screen-checks
+          path: screen-checks
+          retention-days: 14
