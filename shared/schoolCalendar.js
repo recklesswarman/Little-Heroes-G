@@ -96,8 +96,8 @@ export function parseDistrictCalendar(text) {
     .replace(/<h\d[^>]*>/gi, '\n## ')
     .replace(/<[^>]+>/g, ' ')
     .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&#39;|&rsquo;|&#8217;/g, '\'');
+    .replace(/&#39;|&rsquo;|&#8217;/g, '\'')
+    .replace(/&amp;/g, '&'); // last, so "&amp;nbsp;" stays literal text
   const out = { firstDay: '', firstDayPreK: '', lastDay: '', days: [] };
   const monthRe = new RegExp(`(${MONTHS.join('|')})\\s+(\\d{4})`, 'gi');
   const marks = [...plain.matchAll(monthRe)];
