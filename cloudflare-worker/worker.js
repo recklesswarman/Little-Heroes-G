@@ -39,6 +39,8 @@ const SDXL_LIGHTNING = "@cf/bytedance/stable-diffusion-xl-lightning";
 const DREAMSHAPER = "@cf/lykon/dreamshaper-8-lcm";
 const SDXL_BASE = "@cf/stabilityai/stable-diffusion-xl-base-1.0";
 const FLUX2_KLEIN = "@cf/black-forest-labs/flux-2-klein-4b";
+const FLUX2_KLEIN_9B = "@cf/black-forest-labs/flux-2-klein-9b"; // higher quality; used for "Change it" edits
+const PHOENIX = "@cf/leonardo/phoenix-1.0"; // best at pictures that contain words
 
 // Order of preference when the requested model is unavailable.
 const MODEL_CHAIN = [FLUX, SDXL_LIGHTNING, DREAMSHAPER, SDXL_BASE];
@@ -48,12 +50,67 @@ const MODEL_ALIASES = {
   "@cf/blackforestlabs/flux-1-schnell": FLUX
 };
 
-const ALLOWED_MODELS = [...MODEL_CHAIN, FLUX2_KLEIN, ...Object.keys(MODEL_ALIASES)];
+const ALLOWED_MODELS = [...MODEL_CHAIN, FLUX2_KLEIN, FLUX2_KLEIN_9B, PHOENIX, ...Object.keys(MODEL_ALIASES)];
+
+export const FEATURES = ["reference-images", "edit", "cutout", "phoenix"];
 
 const MAX_REFERENCE_IMAGES = 2;
 const MAX_REFERENCE_BYTES = 400 * 1024; // each; the client sends ~40-80 KB, 512 px or smaller
 const KLEIN_WIDTH = 1024;
 const KLEIN_HEIGHT = 768;
+const MAX_EDIT_BYTES = 2 * 1024 * 1024; // picture to edit / cut out
+const CUTOUT_SIZE = 512;
+
+/** One picture (data URI) to edit or cut out, as { bytes, type }, or null if it is missing or too big. */
+export function parseEditImage(raw) {
+  const m = typeof raw === "string" ? /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(raw) : null;
+  if (!m) return null;
+  let bin;
+  try { bin = atob(m[2]); } catch { return null; }
+  if (bin.length < 500 || bin.length > MAX_EDIT_BYTES) return null;
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return { bytes, type: m[1] };
+}
+
+/** Prompt for "Change it": change only what was asked, keep the rest of the picture. */
+export function buildEditPrompt(instruction) {
+  return `Edit this picture: ${String(instruction).trim()}. Keep the same object, framing, plain background and soft 3D clay toy style.`.slice(0, FLUX_PROMPT_CHARS);
+}
+
+/** Phoenix takes JSON (prompt, guidance, steps, size, negative prompt). */
+export function buildPhoenixInput({ prompt, seed, negative_prompt }) {
+  return {
+    prompt: String(prompt).slice(0, FLUX_PROMPT_CHARS),
+    guidance: 2.5,
+    seed,
+    width: 1024,
+    height: 768,
+    num_steps: 25,
+    negative_prompt
+  };
+}
+
+/**
+ * Cut the subject out of its background (transparent WebP) with the Images binding.
+ * Never throws: on any problem the original picture comes back with cutout:false.
+ */
+export async function cutoutBytes(env, bytes) {
+  try {
+    if (!env || !env.IMAGES || typeof env.IMAGES.input !== "function") return { bytes, cutout: false };
+    const stream = new Response(bytes).body;
+    const out = await env.IMAGES.input(stream)
+      .transform({ segment: "foreground", width: CUTOUT_SIZE, height: CUTOUT_SIZE, fit: "contain" })
+      .output({ format: "image/webp" });
+    const res = out.response();
+    const result = new Uint8Array(await res.arrayBuffer());
+    if (result.byteLength < 200) return { bytes, cutout: false };
+    return { bytes: result, cutout: true };
+  } catch (err) {
+    console.warn(`Cutout failed: ${String(err && err.message ? err.message : err).slice(0, 200)}`);
+    return { bytes, cutout: false };
+  }
+}
 
 /** Valid reference pictures from the request as { bytes, type }; anything else is dropped. */
 export function parseReferenceImages(raw) {
@@ -80,9 +137,9 @@ export function buildReferencePrompt(prompt, count) {
 }
 
 /** Multipart input for FLUX.2 klein with reference pictures. */
-export async function buildKleinInput({ prompt, seed, references }) {
+export async function buildKleinInput({ prompt, seed, references, raw = false }) {
   const form = new FormData();
-  form.append("prompt", buildReferencePrompt(prompt, references.length));
+  form.append("prompt", raw ? String(prompt).slice(0, FLUX_PROMPT_CHARS) : buildReferencePrompt(prompt, references.length));
   references.forEach((ref, i) => form.append(`input_image_${i}`, new Blob([ref.bytes], { type: ref.type }), `ref${i}.${ref.type === "image/png" ? "png" : "jpg"}`));
   form.append("width", String(KLEIN_WIDTH));
   form.append("height", String(KLEIN_HEIGHT));
@@ -111,6 +168,7 @@ export function buildModelOrder(requested) {
 
 /** Input each model family understands. FLUX takes no negative prompt or seed; the SDXL family does. */
 export function buildModelInput(model, { prompt, shortPrompt, seed, negative_prompt }) {
+  if (model === PHOENIX) return buildPhoenixInput({ prompt, seed, negative_prompt });
   if (model === FLUX) {
     return { prompt: String(prompt).slice(0, FLUX_PROMPT_CHARS), steps: FLUX_STEPS };
   }
@@ -166,13 +224,14 @@ export default {
         status: "ok",
         service: "little-heroes-free-image-api",
         models: MODEL_CHAIN,
-        referenceModel: FLUX2_KLEIN
+        referenceModel: FLUX2_KLEIN,
+        features: FEATURES.filter(f => f !== "cutout" || !!env.IMAGES)
       }, 200, corsHeaders);
     }
 
     // Only allow POST requests to / or /generate
-    if (request.method !== "POST" || (url.pathname !== "/" && url.pathname !== "/generate")) {
-      return json({ error: "Method not allowed. Use POST / or POST /generate" }, 405, corsHeaders);
+    if (request.method !== "POST" || (url.pathname !== "/" && url.pathname !== "/generate" && url.pathname !== "/cutout")) {
+      return json({ error: "Method not allowed. Use POST / , POST /generate or POST /cutout" }, 405, corsHeaders);
     }
 
     // Origin allow-list (replaces the old shared API key)
@@ -190,6 +249,21 @@ export default {
           "Retry-After": "60"
         });
       }
+    }
+
+    // Stand-alone background removal: POST /cutout { image: "data:image/...;base64,..." }
+    if (url.pathname === "/cutout") {
+      const cutBody = await request.json().catch(() => ({}));
+      const img = parseEditImage(cutBody.image);
+      if (!img) return json({ error: "image must be a PNG/JPEG/WebP data URI of at most 2 MB" }, 400, corsHeaders);
+      const cut = await cutoutBytes(env, img.bytes);
+      const cutMime = cut.cutout ? "image/webp" : img.type;
+      return json({
+        success: true,
+        cutout: cut.cutout,
+        mimeType: cutMime,
+        dataUri: `data:${cutMime};base64,${arrayBufferToBase64(cut.bytes)}`
+      }, 200, corsHeaders);
     }
 
     try {
@@ -212,7 +286,7 @@ export default {
       }
 
       if (typeof requestedModel !== "string" || !ALLOWED_MODELS.includes(requestedModel)) {
-        return json({ error: "Unsupported model", allowed: MODEL_CHAIN }, 400, corsHeaders);
+        return json({ error: "Unsupported model", allowed: ALLOWED_MODELS }, 400, corsHeaders);
       }
 
       if (!env.AI) {
@@ -226,6 +300,49 @@ export default {
       const attempts = [];
       let bytes = null;
       let usedModel = "";
+
+      const wantCutout = body.cutout === true;
+      const finish = async (outBytes, model, extra = {}) => {
+        let finalBytes = outBytes;
+        let cutDone = false;
+        if (wantCutout) ({ bytes: finalBytes, cutout: cutDone } = await cutoutBytes(env, outBytes));
+        return { finalBytes, cutDone, model, extra };
+      };
+
+      // "Change it": edit an existing picture. Never falls back to plain text-to-image,
+      // because that would throw away the picture the child just made.
+      if (body.mode === "edit") {
+        const source = parseEditImage(body.image);
+        if (!source) {
+          return json({ error: "Edit mode needs image: a PNG/JPEG/WebP data URI of at most 2 MB" }, 400, corsHeaders);
+        }
+        const editModels = body.quality === "high" ? [FLUX2_KLEIN_9B, FLUX2_KLEIN] : [FLUX2_KLEIN];
+        for (const model of editModels) {
+          try {
+            const result = await env.AI.run(model, await buildKleinInput({ prompt: buildEditPrompt(prompt), seed, references: [source], raw: true }));
+            const out = await resultToBytes(result);
+            if (out.byteLength < 1000) throw new Error(`model returned only ${out.byteLength} bytes`);
+            bytes = out;
+            usedModel = model;
+            break;
+          } catch (editErr) {
+            const message = String(editErr && editErr.message ? editErr.message : editErr).slice(0, 300);
+            console.warn(`Edit with ${model} failed: ${message}`);
+            attempts.push({ model, error: message });
+          }
+        }
+        if (!bytes) {
+          return json({
+            error: "Failed to edit image",
+            details: attempts.map(a => `${a.model}: ${a.error}`).join(" | "),
+            attempts
+          }, 502, corsHeaders);
+        }
+        const done = await finish(bytes, usedModel);
+        return imageResponse(done.finalBytes, done.cutDone ? "image/webp" : sniffMime(done.finalBytes), format, {
+          model: usedModel, cutout: wantCutout ? done.cutDone : undefined, edited: true, prompt, seed, attempts
+        }, corsHeaders);
+      }
 
       // Reference pictures first: same characters on every page (FLUX.2 klein).
       const references = parseReferenceImages(body.referenceImages);
@@ -266,32 +383,15 @@ export default {
         }, 502, corsHeaders);
       }
 
-      const mimeType = sniffMime(bytes);
-
-      // Return the raw image
-      if (format === "image" || format === "binary") {
-        return new Response(bytes, {
-          status: 200,
-          headers: {
-            "Content-Type": mimeType,
-            "X-Image-Model": usedModel,
-            "Cache-Control": "public, max-age=604800, immutable",
-            ...corsHeaders
-          }
-        });
-      }
-
-      // Return Base64 Data URI in JSON format
-      return json({
-        success: true,
-        dataUri: `data:${mimeType};base64,${arrayBufferToBase64(bytes)}`,
-        mimeType,
+      const done = await finish(bytes, usedModel);
+      return imageResponse(done.finalBytes, done.cutDone ? "image/webp" : sniffMime(done.finalBytes), format, {
         model: usedModel,
-        fallbackFrom: attempts.length ? attempts : undefined,
+        cutout: wantCutout ? done.cutDone : undefined,
+        attempts,
         usedReferences: usedModel === FLUX2_KLEIN ? references.length : 0,
-        prompt: prompt.slice(0, 600),
+        prompt,
         seed
-      }, 200, corsHeaders);
+      }, corsHeaders);
 
     } catch (err) {
       return json({
@@ -301,6 +401,33 @@ export default {
     }
   }
 };
+
+/** Raw image or JSON data-URI response, depending on the requested format. */
+function imageResponse(bytes, mimeType, format, info, corsHeaders) {
+  if (format === "image" || format === "binary") {
+    return new Response(bytes, {
+      status: 200,
+      headers: {
+        "Content-Type": mimeType,
+        "X-Image-Model": info.model,
+        "Cache-Control": "public, max-age=604800, immutable",
+        ...corsHeaders
+      }
+    });
+  }
+  return json({
+    success: true,
+    dataUri: `data:${mimeType};base64,${arrayBufferToBase64(bytes)}`,
+    mimeType,
+    model: info.model,
+    fallbackFrom: info.attempts && info.attempts.length ? info.attempts : undefined,
+    usedReferences: info.usedReferences,
+    cutout: info.cutout,
+    edited: info.edited,
+    prompt: String(info.prompt).slice(0, 600),
+    seed: info.seed
+  }, 200, corsHeaders);
+}
 
 function json(data, status = 200, headers = {}) {
   return new Response(JSON.stringify(data), {

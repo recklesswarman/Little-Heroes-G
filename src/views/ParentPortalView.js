@@ -180,6 +180,12 @@ let studioPromptText = ''; // the AI prompt box (kept separate from the item nam
 let studioGenStatus = 'idle'; // 'idle' | 'writing' | 'painting'
 let studioGenerateError = '';
 let studioGeneratedImage = null; // raster picture from the AI (shrunk and saved on Publish)
+let studioArtHistory = []; // earlier versions of the picture, for Undo after Change it / Remove background
+let studioArtHasAlpha = false; // the picture has a see-through background (keep it see-through when saving)
+let studioEditText = '';
+let studioArtBusy = ''; // '' | 'edit' | 'cutout'
+let studioArtMessage = '';
+let studioImageFeatures = null; // null = not asked yet, [] = Worker too old, else e.g. ['edit','cutout']
 let studioIsPublishing = false;
 let studioPublishFeedback = ''; // shown under the Publish button after a successful publish
 let studioModelChosen = false; // a real 3D model was picked on purpose (carousel, search or mesh), not just the preview sample
@@ -2012,6 +2018,27 @@ export function renderParentPortalView() {
                 <!-- Stage Floor Reflection -->
                 <div class="absolute bottom-3 left-1/2 -translate-x-1/2 w-36 h-2 rounded-full bg-linear-to-r from-transparent via-cyan-400/40 to-transparent blur-xs pointer-events-none"></div>
               </div>
+
+              ${studioGeneratedImage && Array.isArray(studioImageFeatures) && (studioImageFeatures.includes('edit') || studioImageFeatures.includes('cutout')) ? `
+              <!-- Change it / Remove background (only when the image Worker supports them) -->
+              <div id="studio-art-tools" class="w-full p-2.5 bg-slate-800/80 rounded-2xl border border-amber-400/30 flex flex-col gap-1.5">
+                <div class="text-[11px] font-bold text-amber-300">✏️ Change the picture</div>
+                ${studioImageFeatures.includes('edit') ? `
+                  <div class="flex gap-1.5">
+                    <input id="studio-edit-art-input" type="text" maxlength="200" value="${escapeHtml(studioEditText)}" placeholder="make it blue, add stars, bigger handle…" class="flex-1 min-w-0 px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-600 text-xs text-white" ${studioArtBusy ? 'disabled' : ''} />
+                    <button type="button" id="studio-edit-art-btn" class="px-3 py-1.5 rounded-xl bg-amber-400 text-slate-950 text-xs font-black active:scale-95 ${studioArtBusy ? 'opacity-60 cursor-wait' : ''}" ${studioArtBusy ? 'disabled' : ''}>${studioArtBusy === 'edit' ? 'Changing…' : 'Change it'}</button>
+                  </div>
+                  <div class="flex flex-wrap gap-1">
+                    ${['Make it blue', 'Add stars', 'Make it shinier', 'Make it bigger'].map(c => `<button type="button" class="studio-edit-chip px-2 py-0.5 rounded-lg bg-slate-700 text-[10px] font-bold text-slate-200 active:scale-95" data-chip="${escapeHtml(c)}" ${studioArtBusy ? 'disabled' : ''}>${escapeHtml(c)}</button>`).join('')}
+                  </div>
+                ` : ''}
+                <div class="flex gap-1.5">
+                  ${studioImageFeatures.includes('cutout') ? `<button type="button" id="studio-cutout-art-btn" class="px-2.5 py-1 rounded-xl bg-cyan-500/20 border border-cyan-400/40 text-cyan-200 text-[11px] font-black active:scale-95 ${studioArtBusy ? 'opacity-60 cursor-wait' : ''}" ${studioArtBusy || studioArtHasAlpha ? 'disabled' : ''}>${studioArtBusy === 'cutout' ? 'Cutting…' : '✂️ Remove background'}</button>` : ''}
+                  ${studioArtHistory.length ? '<button type="button" id="studio-undo-art-btn" class="px-2.5 py-1 rounded-xl bg-slate-700 text-slate-100 text-[11px] font-black active:scale-95">↩ Undo</button>' : ''}
+                </div>
+                ${studioArtMessage ? `<p class="text-[10px] text-amber-200" role="status">${escapeHtml(studioArtMessage)}</p>` : ''}
+              </div>
+              ` : ''}
 
               <!-- Curated 3D Asset Carousel -->
               <div class="w-full p-2.5 bg-slate-800/80 rounded-2xl border border-cyan-400/30 flex flex-col gap-1.5">
@@ -6646,7 +6673,13 @@ export function attachParentPortalListeners() {
         if (!generated) throw new Error('empty');
         mergeStudioGenerated(generated, category);
         studioGeneratedImage = isGeneratedPicture(generated.image) ? generated.image : null;
+        studioArtHistory = [];
+        studioArtHasAlpha = false;
+        studioArtMessage = '';
         if (studioGeneratedImage) studioViewportMode = 'concept';
+        if (studioGeneratedImage && studioImageFeatures === null) {
+          firebaseAI.getImageFeatures().then((f) => { studioImageFeatures = f; store.notify(); }).catch(() => {});
+        }
         Sound.fanfare();
       } catch (err) {
         console.warn('AI generation failed:', err);
@@ -6705,6 +6738,68 @@ export function attachParentPortalListeners() {
     const studioAiBtn = document.getElementById('studio-gear-ai-btn') || document.getElementById('studio-ai-btn');
     studioAiBtn?.addEventListener('click', () => runStudioGeneration());
     document.getElementById('studio-generate-retry-btn')?.addEventListener('click', () => runStudioGeneration());
+    // Change it / Remove background / Undo (a failure never replaces the picture the child already has).
+    async function runStudioArtTool(kind, text) {
+      if (studioArtBusy || !studioGeneratedImage) return;
+      const before = studioGeneratedImage;
+      studioArtBusy = kind;
+      studioArtMessage = '';
+      Sound.sparkle();
+      store.notify();
+      try {
+        if (kind === 'edit') {
+          const out = await firebaseAI.editPicture({ image: before, instruction: text, quality: 'high' });
+          if (out && isGeneratedPicture(out)) {
+            studioArtHistory.push({ image: before, alpha: studioArtHasAlpha });
+            studioGeneratedImage = out;
+            studioArtHasAlpha = false;
+            studioEditText = '';
+            studioArtMessage = 'Changed! Not right? Tap Undo.';
+          } else {
+            studioArtMessage = 'The picture could not be changed just now. Your picture is still here. Try again in a moment.';
+          }
+        } else {
+          const res = await firebaseAI.cutoutPicture(before);
+          if (res && res.cutout && isGeneratedPicture(res.image)) {
+            studioArtHistory.push({ image: before, alpha: studioArtHasAlpha });
+            studioGeneratedImage = res.image;
+            studioArtHasAlpha = true;
+            studioArtMessage = 'Background removed.';
+          } else {
+            studioArtMessage = 'The background could not be removed just now. Your picture is unchanged.';
+          }
+        }
+      } catch (err) {
+        console.warn('Studio picture tool failed:', err);
+        studioArtMessage = 'That did not work. Your picture is unchanged.';
+      } finally {
+        studioArtBusy = '';
+        store.notify();
+      }
+    }
+    document.getElementById('studio-edit-art-input')?.addEventListener('input', (e) => { studioEditText = e.target.value; });
+    document.getElementById('studio-edit-art-input')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); if ((studioEditText || '').trim()) runStudioArtTool('edit', studioEditText.trim()); }
+    });
+    document.getElementById('studio-edit-art-btn')?.addEventListener('click', () => {
+      const text = (document.getElementById('studio-edit-art-input')?.value || studioEditText || '').trim();
+      studioEditText = text;
+      if (text) runStudioArtTool('edit', text);
+    });
+    document.querySelectorAll('.studio-edit-chip').forEach(chip => {
+      chip.addEventListener('click', () => runStudioArtTool('edit', chip.getAttribute('data-chip') || ''));
+    });
+    document.getElementById('studio-cutout-art-btn')?.addEventListener('click', () => runStudioArtTool('cutout'));
+    document.getElementById('studio-undo-art-btn')?.addEventListener('click', () => {
+      const prev = studioArtHistory.pop();
+      if (!prev) return;
+      studioGeneratedImage = prev.image;
+      studioArtHasAlpha = !!prev.alpha;
+      studioArtMessage = '';
+      Sound.click();
+      store.notify();
+    });
+
     document.getElementById('studio-reroll-art-btn')?.addEventListener('click', () => runStudioGeneration({ fromPhoto: !!studioUploadedImageBase64 }));
     document.getElementById('studio-vision-generate-btn')?.addEventListener('click', () => runStudioGeneration({ fromPhoto: true }));
 
@@ -6819,7 +6914,8 @@ export function attachParentPortalListeners() {
           try {
             publishedImage = await persistStudioImage(studioGeneratedImage, {
               itemId: `${category}_${Date.now()}`,
-              householdCode: store.getState().household?.syncCode
+              householdCode: store.getState().household?.syncCode,
+              keepAlpha: studioArtHasAlpha
             });
           } catch (err) {
             console.warn('Studio picture save skipped:', err);
@@ -7037,6 +7133,10 @@ export function attachParentPortalListeners() {
           celebrateItem({ category, modelTint: studioModelTint }, { event: 'publish' });
         }
         studioGeneratedImage = null;
+        studioArtHistory = [];
+        studioArtHasAlpha = false;
+        studioEditText = '';
+        studioArtMessage = '';
         studioModelChosen = false;
         studioModelSource = '';
         studioModelCredit = null;
