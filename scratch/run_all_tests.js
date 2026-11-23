@@ -147,7 +147,9 @@ const testFiles = [
   // Phonics pack: letter sounds, Dolch words, rhymes/syllables (CMU-checked), sound it out, Andika:
   'scratch/verify_phonics_pack.mjs',
   // "Design your hero" DiceBear avatars on the Profile screen:
-  'scratch/verify_hero_avatar_maker.mjs'
+  'scratch/verify_hero_avatar_maker.mjs',
+  // Fridge extras: NASA space picture, On this day, sunset evening look, bedtime countdown:
+  'scratch/verify_fridge_extras.mjs'
 ];
 
 let allPassed = true;

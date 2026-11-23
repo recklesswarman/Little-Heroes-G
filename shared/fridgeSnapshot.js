@@ -51,6 +51,16 @@ export function fridgeMeals(meals) {
   };
 }
 
+/** Space picture, On this day fact and sunset (shared/fridgeExtras.js), re-checked for the screen. */
+export function fridgeExtras(extras) {
+  if (!extras || typeof extras !== 'object') return null;
+  const sp = extras.space;
+  const space = sp && /^https:\/\//.test(sp.image || '') ? { title: clean(sp.title, 80), image: String(sp.image).slice(0, 1000), credit: clean(sp.credit, 80), fact: clean(sp.fact, 200) } : null;
+  const history = extras.history?.text ? { text: clean(extras.history.text, 220), source: clean(extras.history.source, 30) } : null;
+  const sun = extras.sun && !Number.isNaN(Date.parse(extras.sun.sunset)) ? { sunrise: String(extras.sun.sunrise || ''), sunset: String(extras.sun.sunset) } : null;
+  return space || history || sun ? { space, history, sun } : null;
+}
+
 /** District no-school days for every kid also read "No school" on the meals card. */
 function markNoSchool(meals, calendar) {
   if (!meals) return meals;
@@ -65,7 +75,7 @@ function markNoSchool(meals, calendar) {
  * @param calendar  optional plan from /api/calendar/plan ({ events: [...] })
  * @param challenge optional { title, description } for this week's family challenge
  */
-export function buildFridgeSnapshot(state = {}, { now = Date.now(), timeZone = DEFAULT_TIME_ZONE, calendar = null, challenge = null, meals = null, weather = null } = {}) {
+export function buildFridgeSnapshot(state = {}, { now = Date.now(), timeZone = DEFAULT_TIME_ZONE, calendar = null, challenge = null, meals = null, weather = null, extras = null } = {}) {
   const today = dayKey(now, timeZone);
   const schoolCalendar = calendar?.schoolCalendar && Array.isArray(calendar.schoolCalendar.days) ? calendar.schoolCalendar : undefined;
   const heroes = listHeroes(state).slice(0, 6).map((hero) => {
@@ -119,6 +129,8 @@ export function buildFridgeSnapshot(state = {}, { now = Date.now(), timeZone = D
     calendarConfigured: calendar?.configured === true,
     meals: markNoSchool(fridgeMeals(meals), calendar),
     weather: fridgeWeather(calendar?.weather || weather, today),
+    extras: fridgeExtras(extras),
+    bedtimeHour: Number.isInteger(state.parentSettings?.bedtimeHour) ? state.parentSettings.bedtimeHour : 20,
     familyDone: heroes.reduce((s, h) => s + h.done, 0),
     familyTotal: heroes.reduce((s, h) => s + h.total, 0)
   };

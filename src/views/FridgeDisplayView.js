@@ -2,12 +2,13 @@
 //
 // Shows each kid's chores for today (done / waiting for a parent / to do), streaks and stars,
 // this week's family challenge and what is coming up on the family calendar. It refreshes
-// itself every minute, keeps the screen awake, and dims overnight (8:30 PM to 6 AM).
+// itself every minute, keeps the screen awake, and goes to a warm evening look after sunset, counts down to bedtime and dims from the parent-set bedtime to 6 AM.
 //
 // Data: on the Pi it reads GET /api/fridge/snapshot (server/fridgeService.js), which works
 // without anyone signing in on the kiosk browser. On any other device that has joined the
 // household it builds the same snapshot from its own store (shared/fridgeSnapshot.js).
 import { store } from '../state/store.js';
+import { speakCompanion } from '../services/voiceService.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
 import { serverApiUrl } from '../services/serverApi.js';
 import { buildFridgeSnapshot } from '../../shared/fridgeSnapshot.js';
@@ -17,11 +18,10 @@ import { loadSchoolMenu, localDayKey } from '../services/schoolMenuService.js';
 import { normalizeMealPlan, buildMealDays, MEAL_LABELS, MEAL_EMOJI } from '../../shared/mealPlan.js';
 import { EXTRA_GROUP_LABELS } from '../../shared/schoolMenu.js';
 import { openMeteoUrl, parseOpenMeteo } from '../../shared/weather.js';
+import { eveningState, formatCountdown } from '../../shared/fridgeExtras.js';
 
 const REFRESH_MS = 60 * 1000;
 const CLOCK_MS = 15 * 1000;
-const NIGHT_START = 20 * 60 + 30; // 8:30 PM
-const NIGHT_END = 6 * 60; // 6:00 AM
 
 let refreshTimer = null;
 let clockTimer = null;
@@ -61,9 +61,48 @@ export function setMealView(view) {
 
 export const FRIDGE_VIEW_NAMES = ['fridge', 'fridge_display', 'fridge-display', 'kiosk'];
 
-export function isNightTime(date = new Date()) {
-  const minutes = date.getHours() * 60 + date.getMinutes();
-  return minutes >= NIGHT_START || minutes < NIGHT_END;
+/** Night (dim "Goodnight" screen) runs from the parent's bedtime (Safety tab, default 8 PM) to 6 AM. */
+export function isNightTime(date = new Date(), bedtimeHour = 20) {
+  return eveningState(date, { bedtimeHour }).night;
+}
+
+/** Space picture of the day (NASA APOD) with its one-line fact. */
+export function renderSpaceCard(snapshot) {
+  const sp = snapshot?.extras?.space;
+  if (!sp) return '';
+  return `
+    <section class="bg-slate-900/80 rounded-3xl border-2 border-indigo-400/40 overflow-hidden" data-fridge-space>
+      <img src="${escapeHtml(sp.image)}" alt="${escapeHtml(sp.title)}" class="w-full max-h-56 object-cover" loading="lazy" referrerpolicy="no-referrer" />
+      <div class="p-4">
+        <h3 class="font-headline text-xl font-black text-indigo-200">🔭 ${escapeHtml(sp.title)}<button type="button" data-fridge-say class="ml-2 align-middle w-10 h-10 rounded-full bg-slate-800 text-xl" aria-label="Rex, read it">🔊</button></h3>
+        <p data-fridge-say-text class="mt-1 text-base font-bold text-slate-200">${escapeHtml(sp.fact)}</p>
+        <p class="mt-1 text-xs font-bold text-slate-500">Space picture of the day: ${escapeHtml(sp.credit)} · NASA APOD</p>
+      </div>
+    </section>`;
+}
+
+/** One kid-friendly "On this day" fact (Wikipedia). */
+export function renderHistoryCard(snapshot) {
+  const h = snapshot?.extras?.history;
+  if (!h) return '';
+  return `
+    <section class="bg-slate-900/80 rounded-3xl border-2 border-amber-300/40 p-4" data-fridge-history>
+      <h3 class="font-headline text-xl font-black text-amber-200">📜 On this day<button type="button" data-fridge-say class="ml-2 align-middle w-10 h-10 rounded-full bg-slate-800 text-xl" aria-label="Rex, read it">🔊</button></h3>
+      <p data-fridge-say-text class="kid-read mt-1 text-lg font-bold text-slate-100">${escapeHtml(h.text)}</p>
+      <p class="mt-1 text-xs font-bold text-slate-500">From ${escapeHtml(h.source || 'Wikipedia')} (CC BY-SA)</p>
+    </section>`;
+}
+
+/** "Bedtime in 45 minutes" from 2 hours before the parent's bedtime. */
+export function renderBedtimeCountdown(snapshot, now = new Date()) {
+  const st = eveningState(now, { bedtimeHour: snapshot?.bedtimeHour, sunset: snapshot?.extras?.sun?.sunset });
+  if (st.bedtimeIn === null) return '';
+  return `
+    <div class="mx-4 mt-3 rounded-3xl bg-indigo-500/20 border-2 border-indigo-300/50 px-5 py-3 flex items-center gap-3" data-fridge-bedtime>
+      <span class="text-4xl" aria-hidden="true">🌙</span>
+      <span class="text-2xl font-black text-indigo-100">Bedtime in ${escapeHtml(formatCountdown(st.bedtimeIn))}</span>
+      ${st.evening ? '<span class="ml-auto text-lg font-bold text-indigo-200">The sun has set. Time to wind down!</span>' : ''}
+    </div>`;
 }
 
 function dayLabel(dayKey, todayKey) {
@@ -287,7 +326,8 @@ export function renderFridgeBody(snapshot, { now = new Date(), calendarView = ge
         <p class="text-xl text-slate-300 font-bold max-w-xl">Waiting for family data. On the Pi, set HOUSEHOLD_CODES in ~/apps/little-heroes.env. On other screens, join this device to your household first.</p>
       </div>`;
   }
-  const night = isNightTime(now);
+  const night = isNightTime(now, snapshot.bedtimeHour);
+  const evening = eveningState(now, { bedtimeHour: snapshot.bedtimeHour, sunset: snapshot.extras?.sun?.sunset }).evening;
   const tomorrowEvents = snapshot.events.filter((e) => e.day > snapshot.today).slice(0, 3);
   const nextDay = snapshot.meals?.days?.find((d) => d.date > snapshot.today && d.meals?.lunch);
   const tomorrowLunch = nextDay
@@ -307,7 +347,8 @@ export function renderFridgeBody(snapshot, { now = new Date(), calendarView = ge
   const cols = Math.min(Math.max(snapshot.heroes.length, 1), 3);
   const monthView = calendarView === 'month';
   return `
-    <div class="flex-1 grid gap-4 p-4 min-h-0" style="grid-template-columns: repeat(${cols}, minmax(0, 1fr)) ${monthView ? 'minmax(420px, 1.8fr)' : 'minmax(280px, 0.8fr)'};">
+    ${renderBedtimeCountdown(snapshot, now)}
+    <div class="flex-1 grid gap-4 p-4 min-h-0${evening ? ' fridge-evening' : ''}"${evening ? ' data-fridge-evening' : ''} style="grid-template-columns: repeat(${cols}, minmax(0, 1fr)) ${monthView ? 'minmax(420px, 1.8fr)' : 'minmax(280px, 0.8fr)'};">
       ${snapshot.heroes.map(renderHero).join('') || '<p class="text-2xl text-slate-300 font-bold">No hero profiles yet.</p>'}
       <aside class="flex flex-col gap-4 min-w-0 min-h-0 overflow-y-auto">
         ${renderWeather(snapshot, { now })}
@@ -319,6 +360,8 @@ export function renderFridgeBody(snapshot, { now = new Date(), calendarView = ge
           ${monthView ? renderMonthGrid(snapshot) : renderEvents(snapshot)}
         </section>
         ${renderMeals(snapshot)}
+        ${renderHistoryCard(snapshot)}
+        ${renderSpaceCard(snapshot)}
         ${snapshot.challenge ? `
         <section class="bg-slate-900/80 rounded-3xl border-2 border-cyan-500/40 p-4">
           <h3 class="font-headline text-2xl font-black text-cyan-200 mb-1">🛡️ ${escapeHtml(snapshot.challenge.title)}</h3>
@@ -358,7 +401,9 @@ function updateClock(root) {
   });
   const date = root.querySelector('[data-fridge-date]');
   if (date) date.textContent = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-  root.dataset.night = String(isNightTime(now));
+  root.dataset.night = String(isNightTime(now, lastSnapshot?.bedtimeHour));
+  const st = eveningState(now, { bedtimeHour: lastSnapshot?.bedtimeHour, sunset: lastSnapshot?.extras?.sun?.sunset });
+  root.dataset.evening = String(st.evening);
 }
 
 /** This device's meal planner days (school menu + family plan), for when the Pi isn't reachable. */
@@ -403,7 +448,12 @@ export async function loadFridgeSnapshot({ fetchImpl = globalThis.fetch } = {}) 
   const plan = getLastCalendarPlan() || await refreshFamilyCalendar();
   lastSource = 'device';
   const weather = plan?.weather ? null : await loadDeviceWeather({ fetchImpl });
-  return buildFridgeSnapshot(state, { calendar: plan, challenge: getCurrentWeeklyChallenge(new Date())?.challenge || null, meals: await loadDeviceMeals(state, { fetchImpl }), weather });
+  let extras = null;
+  try {
+    const res = await fetchImpl(serverApiUrl('/api/fridge/extras'));
+    if (res.ok) extras = await res.json();
+  } catch {}
+  return buildFridgeSnapshot(state, { calendar: plan, challenge: getCurrentWeeklyChallenge(new Date())?.challenge || null, meals: await loadDeviceMeals(state, { fetchImpl }), weather, extras });
 }
 
 async function requestWakeLock() {
@@ -446,6 +496,12 @@ export function attachFridgeDisplayListeners() {
   if (!root.dataset.calSwitch) {
     root.dataset.calSwitch = '1';
     root.addEventListener('click', (ev) => {
+      const say = ev.target?.closest?.('[data-fridge-say]');
+      if (say) {
+        const text = say.closest('[data-fridge-space], [data-fridge-history]')?.querySelector('[data-fridge-say-text]')?.textContent || '';
+        if (text) speakCompanion(text, { petId: 'rex' });
+        return;
+      }
       const mealBtn = ev.target?.closest?.('[data-fridge-meal-view]');
       if (mealBtn) setMealView(mealBtn.dataset.fridgeMealView);
       const btn = ev.target?.closest?.('[data-fridge-cal-view]');
@@ -461,9 +517,9 @@ export function attachFridgeDisplayListeners() {
   updateClock(root);
   refreshTimer = setInterval(paint, REFRESH_MS);
   clockTimer = setInterval(() => {
-    const wasNight = root.dataset.night;
+    const was = `${root.dataset.night}|${root.dataset.evening}`;
     updateClock(root);
-    if (wasNight !== root.dataset.night) {
+    if (was !== `${root.dataset.night}|${root.dataset.evening}`) {
       const body = root.querySelector('[data-fridge-body]');
       if (body) body.innerHTML = renderFridgeBody(lastSnapshot);
       updateClock(root);

@@ -903,3 +903,11 @@ html [data-word-phonics] {
   font-family: 'Andika', 'Atkinson Hyperlegible', Quicksand, sans-serif;
   letter-spacing: 0.02em;
 }
+
+/* Fridge Display after sunset: warmer, darker evening look before the bedtime dim. */
+#fridge-display-root[data-evening="true"] {
+  background: linear-gradient(180deg, #0b1030 0%, #1a1035 100%);
+}
+#fridge-display-root[data-evening="true"] section {
+  filter: saturate(0.85) brightness(0.92);
+}
