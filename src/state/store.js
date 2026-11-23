@@ -7735,6 +7735,10 @@ class Store {
     if (updatedData.name !== undefined) hero.name = updatedData.name.trim() || hero.name;
     if (updatedData.role !== undefined) hero.role = updatedData.role.trim() || hero.role;
     if (updatedData.avatar !== undefined) hero.avatar = updatedData.avatar;
+    if (updatedData.avatarDesign && typeof updatedData.avatarDesign === 'object') {
+      const d = updatedData.avatarDesign;
+      hero.avatarDesign = { style: String(d.style || '').slice(0, 20), seed: String(d.seed || '').slice(0, 40), background: String(d.background || '').slice(0, 6) };
+    }
     if (updatedData.gameDifficulty !== undefined) hero.gameDifficulty = updatedData.gameDifficulty;
     if (updatedData.level !== undefined) hero.level = Math.max(1, Number(updatedData.level));
     if (updatedData.coins !== undefined) {
@@ -7760,6 +7764,7 @@ class Store {
       this.state.selectedHero.name = hero.name;
       this.state.selectedHero.title = hero.role;
       this.state.selectedHero.avatar = hero.avatar;
+      if (hero.avatarDesign) this.state.selectedHero.avatarDesign = { ...hero.avatarDesign };
       this.state.selectedHero.gameDifficulty = hero.gameDifficulty;
       this.state.selectedHero.level = hero.level;
       this.state.selectedHero.coins = hero.coins;

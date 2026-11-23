@@ -145,7 +145,9 @@ const testFiles = [
   // Fridge "what to wear" weather card, weather chores, district no-school days, school-days-only chores:
   'scratch/verify_weather_and_school_calendar.mjs',
   // Phonics pack: letter sounds, Dolch words, rhymes/syllables (CMU-checked), sound it out, Andika:
-  'scratch/verify_phonics_pack.mjs'
+  'scratch/verify_phonics_pack.mjs',
+  // "Design your hero" DiceBear avatars on the Profile screen:
+  'scratch/verify_hero_avatar_maker.mjs'
 ];
 
 let allPassed = true;
