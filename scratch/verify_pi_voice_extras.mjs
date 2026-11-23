@@ -7,6 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import { createStoryAudioService, getStoryAudioConfig, storyAudioId, cleanWordTimings } from '../server/storyAudioService.js';
 import { createLocalAiHandlers, getLocalAiConfig } from '../server/localAiService.js';
 import { createPiRelayHandlers } from '../server/piRelayService.js';
@@ -96,8 +97,10 @@ await test('the routes work through Express (including the .wav path)', async ()
   const svc = createStoryAudioService({ env, fetchImpl: async () => ({ ok: true, json: async () => ({ wav: wav(), words: [], duration: 1 }) }) });
   const app = express();
   app.use(express.json());
-  app.post('/api/local/story-audio', svc.handleRequest);
-  app.get('/api/local/story-audio/:id.wav', svc.handleAudio);
+  // Rate-limited like server.js (voiceLimiter).
+  const limiter = rateLimit({ windowMs: 60 * 1000, limit: 60, standardHeaders: 'draft-7', legacyHeaders: false });
+  app.post('/api/local/story-audio', limiter, svc.handleRequest);
+  app.get('/api/local/story-audio/:id.wav', limiter, svc.handleAudio);
   const server = app.listen(0);
   try {
     const base = `http://127.0.0.1:${server.address().port}`;
