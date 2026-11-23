@@ -66,8 +66,51 @@ class FirebaseAILogicService {
    * (same worker + no-API-key pattern as bedtimeIllustrationService). Returns a data: URI, or
    * null on failure/timeout so callers fall back to the procedural generate3DIcon() vector art.
    */
-  async generateCloudflareImage({ prompt, shortPrompt, seed, negative_prompt, referenceImages, model } = {}) {
+  /** What the image Worker can do right now (['edit','cutout',...]); [] when it is old or unreachable. Cached. */
+  async getImageFeatures() {
+    if (this._imageFeatures) return this._imageFeatures;
+    const apiUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_IMAGE_GEN_API_URL) ||
+                   'https://little-heroes-free-image-api.recklesswarman.workers.dev';
+    try {
+      const res = await fetch(`${apiUrl.replace(/\/$/, '')}/health`, { signal: AbortSignal.timeout(6000) });
+      const data = res.ok ? await res.json() : null;
+      this._imageFeatures = Array.isArray(data?.features) ? data.features : [];
+    } catch {
+      return []; // not cached: try again next time
+    }
+    return this._imageFeatures;
+  }
+
+  /** "Change it": edit an existing picture with words. Returns a data URI or null. */
+  async editPicture({ image, instruction, quality = 'high', cutout = false, seed } = {}) {
+    const text = String(instruction || '').trim().slice(0, 300);
+    if (!text || !image) return null;
+    return this.generateCloudflareImage({ prompt: text, mode: 'edit', image, quality, cutout, seed });
+  }
+
+  /** Remove the background of a picture (transparent WebP). Returns { image, cutout } or null. */
+  async cutoutPicture(image) {
+    if (!image) return null;
+    const apiUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_IMAGE_GEN_API_URL) ||
+                   'https://little-heroes-free-image-api.recklesswarman.workers.dev';
+    try {
+      const res = await fetch(`${apiUrl.replace(/\/$/, '')}/cutout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image }),
+        signal: AbortSignal.timeout(25000)
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data?.dataUri ? { image: data.dataUri, cutout: data.cutout === true } : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async generateCloudflareImage({ prompt, shortPrompt, seed, negative_prompt, referenceImages, model, mode, image, quality, cutout } = {}) {
     if (!prompt) return null;
+    const editing = mode === 'edit' && typeof image === 'string' && /^data:image\/(jpeg|png|webp);base64,/i.test(image);
     const refs = Array.isArray(referenceImages)
       ? referenceImages.filter((r) => typeof r === 'string' && /^data:image\/(jpeg|png|webp);base64,/i.test(r)).slice(0, 2)
       : [];
@@ -88,12 +131,18 @@ class FirebaseAILogicService {
       };
       if (model) body.model = model;
       if (refs.length) body.referenceImages = refs;
+      if (editing) {
+        body.mode = 'edit';
+        body.image = image;
+        if (quality) body.quality = quality;
+      }
+      if (cutout === true) body.cutout = true;
       const res = await fetch(cleanUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
         // Reference pictures take FLUX.2 klein a little longer.
-        signal: AbortSignal.timeout(refs.length ? 36000 : 20000)
+        signal: AbortSignal.timeout(editing ? 45000 : refs.length ? 36000 : 20000)
       });
       if (res.ok) {
         const contentType = res.headers.get('content-type') || '';
@@ -114,6 +163,9 @@ class FirebaseAILogicService {
     } catch (err) {
       console.warn('Cloudflare Workers AI image generation note:', err.message);
     }
+
+    // An edit has no stand-in: a fresh picture would replace the one the child made.
+    if (editing) return null;
 
     // 2. Through the app's own server (the Pi, whose origin the Worker does not allow, and any blocked origin).
     try {

@@ -8,6 +8,10 @@ account_id = "938feaeb0d1bd6758765519c032e9bb3"
 [ai]
 binding = "AI"
 
+# Cloudflare Images binding: background removal (segment=foreground) for cutouts.
+[images]
+binding = "IMAGES"
+
 # No shared API key: a key used from a browser is public. Access is controlled by an
 # Origin allow-list (see worker.js DEFAULT_ALLOWED_ORIGINS) plus the per-IP rate limit below.
 # To override the allowed origins, set a comma-separated ALLOWED_ORIGINS var, e.g.:

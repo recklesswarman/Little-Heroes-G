@@ -76,3 +76,18 @@ curl -X POST https://<your-worker-url>/ \
 ```
 
 Requests without an allowed `Origin` header return `403`.
+
+## ✏️ Edit, cutout and Phoenix (3D Studio)
+
+`GET /health` lists `features` (`reference-images`, `edit`, `cutout`, `phoenix`). The app hides the
+"Change it" and "Remove background" buttons when the Worker does not list them, so an older Worker keeps working.
+
+- **Edit** (`POST /` with `mode: "edit"`, `image` = PNG/JPEG/WebP data URI up to 2 MB, `prompt` = what to change,
+  optional `quality: "high"`): FLUX.2 klein 9B first (high quality), then klein 4B. There is no text-only fallback;
+  if both fail the Worker answers 502 with `attempts`.
+- **Cutout** (`cutout: true` on any request, or `POST /cutout { image }`): removes the background through the
+  Cloudflare Images binding (`segment=foreground`, 512 px WebP). If it fails the original picture comes back with `cutout: false`.
+  Needs `[images] binding = "IMAGES"` in `wrangler.toml` (already added); redeploy with `npx wrangler deploy`.
+- **Phoenix** (`model: "@cf/leonardo/phoenix-1.0"`): best for pictures that contain words.
+
+Tests: `node scratch/verify_worker_contract.mjs`.

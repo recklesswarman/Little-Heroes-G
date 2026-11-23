@@ -41,7 +41,7 @@ function encode(canvas, type, quality) {
  * Cover-fits into size x size. Tries WebP first, then JPEG when the browser can't encode WebP.
  * Resolves '' on any failure so callers keep working with the default icon.
  */
-export async function toThumbnail(src, { size = 256, type = 'image/webp', quality = 0.82 } = {}) {
+export async function toThumbnail(src, { size = 256, type = 'image/webp', quality = 0.82, keepAlpha = false } = {}) {
   if (!src || typeof document === 'undefined' || typeof Image === 'undefined') return '';
   const url = sourceToUrl(src);
   try {
@@ -59,7 +59,8 @@ export async function toThumbnail(src, { size = 256, type = 'image/webp', qualit
     const dh = h * scale;
     ctx.drawImage(img, (size - dw) / 2, (size - dh) / 2, dw, dh);
     let out = encode(canvas, type, quality);
-    if (!out.startsWith(`data:${type}`)) out = encode(canvas, 'image/jpeg', quality);
+    // A cut-out picture has see-through pixels: JPEG would turn them black, so fall back to PNG instead.
+    if (!out.startsWith(`data:${type}`)) out = encode(canvas, keepAlpha ? 'image/png' : 'image/jpeg', quality);
     return out.startsWith('data:image/') ? out : '';
   } catch {
     return '';
@@ -77,15 +78,15 @@ export async function toThumbnail(src, { size = 256, type = 'image/webp', qualit
  * 3. Otherwise return the small data URI (small enough to live in the household document).
  * Returns '' when there is nothing usable (callers then use the default icon).
  */
-export async function persistStudioImage(dataUri, { itemId, householdCode } = {}) {
+export async function persistStudioImage(dataUri, { itemId, householdCode, keepAlpha = false } = {}) {
   if (!isGeneratedPicture(dataUri)) return '';
-  const thumb = await toThumbnail(dataUri);
+  const thumb = await toThumbnail(dataUri, { keepAlpha });
   if (!thumb) return '';
   const code = String(householdCode || '').replace(/[^a-zA-Z0-9_-]/g, '_');
   const id = String(itemId || `item_${Date.now()}`).replace(/[^a-zA-Z0-9_-]/g, '_');
   try {
     if (code && firebaseStorageService.isReady()) {
-      const res = await firebaseStorageService.uploadDataUrl(`households/${code}/studio/${id}.webp`, thumb, {
+      const res = await firebaseStorageService.uploadDataUrl(`households/${code}/studio/${id}.${thumb.startsWith('data:image/png') ? 'png' : 'webp'}`, thumb, {
         customMetadata: { kind: 'studio-prop' }
       });
       if (res && !res.isFallback && /^https:\/\//i.test(res.downloadUrl || '')) return res.downloadUrl;
