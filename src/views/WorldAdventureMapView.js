@@ -13,6 +13,7 @@
  */
 
 import { store } from '../state/store.js';
+import { mathVisualSvg } from '../../shared/mathVisuals.js';
 import { Sound } from '../audio/sfx.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
 import {
@@ -94,6 +95,7 @@ export function renderWorldAdventureMapView() {
             <p class="kid-read font-headline text-xl sm:text-2xl font-black text-primary-container leading-snug">
               ${challenge.question}
             </p>
+            ${challenge.visual ? `<div class="mt-4 flex justify-center" data-math-picture>${mathVisualSvg(challenge.visual)}</div>` : ''}
           </div>
 
           <div class="grid grid-cols-1 gap-3" id="world-mini-game-options">

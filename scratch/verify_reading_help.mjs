@@ -91,7 +91,10 @@ await test('math answers are right', () => {
     if ((m = c.question.match(/^What is (\d+) plus (\d+)\?$/))) want = Number(m[1]) + Number(m[2]);
     else if ((m = c.question.match(/^What is (\d+) minus (\d+)\?$/))) want = Number(m[1]) - Number(m[2]);
     else if ((m = c.question.match(/^(\d+) plus what equals (\d+)\?$/))) want = Number(m[2]) - Number(m[1]);
-    else throw new Error(`unrecognised question: ${c.question}`);
+    else if (c.question === 'How many dots are in the ten frame?') want = c.visual.a;
+    else if ((m = c.question.match(/^There are (\d+) dots\. How many more make 10\?$/))) want = 10 - Number(m[1]);
+    else if (c.question === 'What number do the blocks show?') want = c.visual.tens * 10 + c.visual.ones;
+        else throw new Error(`unrecognised question: ${c.question}`);
     assert.equal(Number(c.options[c.answer]), want, c.question);
     assert.ok(c.options.every((o) => Number(o) >= 0), c.question);
     const limit = { easy: 5, medium: 10, hard: 20 }[lvl];

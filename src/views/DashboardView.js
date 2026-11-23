@@ -360,6 +360,16 @@ export function renderDashboardView() {
         <span class="text-2xl" aria-hidden="true">🔤</span>
       </button>` : ''}
 
+      <!-- Math Lab (free PhET number games, Number Dash) -->
+      <button id="dashboard-goto-math-lab-btn" class="w-full rounded-2xl p-4 flex items-center gap-3 bg-linear-to-r from-[#0b2a24] to-[#0f2d40] border-2 border-[#34d399]/60 text-left active:scale-[0.99] transition-transform card-shadow">
+        <span class="w-12 h-12 rounded-2xl bg-[#34d399] text-slate-950 flex items-center justify-center text-2xl font-black shrink-0">🧪</span>
+        <span class="flex-1">
+          <span class="block font-headline text-sm font-black text-white">Math Lab</span>
+          <span class="block text-[11px] text-slate-300">Play with ten frames and numbers, then race in Number Dash!</span>
+        </span>
+        <span class="text-2xl" aria-hidden="true">🔢</span>
+      </button>
+
       <!-- Evening Wind-Down Sanctuary Banner -->
       <div id="dashboard-evening-sanctuary-banner" class="bg-linear-to-r from-[#091e2b] via-[#0f2d40] to-[#091e2b] border-2 border-[#00d2d3]/50 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fade-in card-shadow">
         <div class="flex items-center gap-3">
@@ -874,6 +884,11 @@ export function attachDashboardListeners() {
   document.getElementById('dashboard-goto-letters-btn')?.addEventListener('click', () => {
     Sound.bloop();
     store.navigate('letters');
+  });
+
+  document.getElementById('dashboard-goto-math-lab-btn')?.addEventListener('click', () => {
+    Sound.bloop();
+    store.navigate('math_lab');
   });
 
   document.getElementById('dashboard-goto-bedtime-btn')?.addEventListener('click', () => {

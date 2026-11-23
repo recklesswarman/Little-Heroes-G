@@ -151,7 +151,9 @@ const testFiles = [
   // Fridge extras: NASA space picture, On this day, sunset evening look, bedtime countdown:
   'scratch/verify_fridge_extras.mjs',
   // Story character sheets: one hero + companion picture per kid, used as the reference for every story picture:
-  'scratch/verify_story_character_sheets.mjs'
+  'scratch/verify_story_character_sheets.mjs',
+  // Number Dash pictures (ten frames, number lines, base-ten blocks) and the PhET Math Lab:
+  'scratch/verify_number_dash_pictures.mjs'
 ];
 
 let allPassed = true;

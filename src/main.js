@@ -52,6 +52,7 @@ import { renderDinoWorkoutView, attachDinoWorkoutListeners, abandonDinoWorkoutIf
 import { renderBedtimeStoryView, setupBedtimeStoryListeners } from './views/BedtimeStoryView.js';
 import { renderStoryLibraryView, attachStoryLibraryListeners } from './views/StoryLibraryView.js';
 import { renderLetterSoundsView, attachLetterSoundsListeners } from './views/LetterSoundsView.js';
+import { renderMathLabView, attachMathLabListeners } from './views/MathLabView.js';
 import { renderFridgeDisplayView, attachFridgeDisplayListeners, stopFridgeDisplay, FRIDGE_VIEW_NAMES } from './views/FridgeDisplayView.js';
 import { startFamilyCalendarSync } from './services/familyCalendarService.js';
 import { registerServiceWorker } from './pwa/registerServiceWorker.js';
@@ -391,6 +392,10 @@ function _renderAppInternal() {
     case 'letter_sounds':
       mainContent = renderLetterSoundsView();
       attachViewListeners = attachLetterSoundsListeners;
+      break;
+    case 'math_lab':
+      mainContent = renderMathLabView();
+      attachViewListeners = attachMathLabListeners;
       break;
     case 'story_library':
     case 'picture_books':
