@@ -8,6 +8,7 @@
 
 import { cleanField } from './safety.js';
 import { hashString } from './seeds.js';
+import { HAIR_LOOKS, PET_SKINS, pickHair, pickSkin } from './characterSheet.js';
 import { DEFAULT_HERO_LOOK, DEFAULT_HERO_LOOK_DETAILED, detailedLook } from './avatarLook.js';
 
 export const MAX_PROMPT_TOKENS = 70;
@@ -218,8 +219,6 @@ const SHOTS = {
 
 // A picture model repaints anything the prompt leaves open, so the child's hair and the pet's colour would change from
 // picture to picture. When no look sheet fixes them, one of each is picked from the story's seed and used in all eight.
-const HAIR_LOOKS = ['short wavy brown hair', 'soft curly dark hair', 'short ginger hair', 'straight black hair'];
-const PET_SKINS = ['soft emerald green', 'warm amber orange', 'gentle teal', 'sunny golden yellow'];
 
 const wordCount = (t) => (String(t).match(/\S+/g) || []).length;
 
@@ -289,11 +288,13 @@ export function buildScenePlan(args) {
     const seed = hashString(`${bible.archetypeId || bible.title || ''}|${hero?.name || ''}`) % 2147483647;
     // Long versions of the same sheets for the detailed prompt: the avatar's full outfit when the child's avatar is a
     // built-in one, else the planner's whole look sheet, else the default.
-    const heroDetailed = `a cheerful toddler with ${HAIR_LOOKS[seed % HAIR_LOOKS.length]} and a big happy smile, ${detailedLook(request.heroLook) || fullLook(hero?.visualSheet) || (request.heroLook ? request.heroLook : DEFAULT_HERO_LOOK_DETAILED)}`;
+    // The kid's character sheet fixes hair and pet colour across stories; without one they follow the story seed.
+    const hair = pickHair(request.heroHair) || HAIR_LOOKS[seed % HAIR_LOOKS.length];
+    const heroDetailed = `a cheerful toddler with ${hair} and a big happy smile, ${detailedLook(request.heroLook) || fullLook(hero?.visualSheet) || (request.heroLook ? request.heroLook : DEFAULT_HERO_LOOK_DETAILED)}`;
     const petSpeciesWords = species || 'pet';
     const petSheetFull = fullLook(pet?.visualSheet);
     const hasColour = /\b(green|orange|blue|teal|yellow|golden|gold|amber|brown|red|cream|white|gr[ae]y|silver|black|emerald|tan)\b/i.test(petSheetFull);
-    const seededSkin = `${PET_SKINS[(seed >> 3) % PET_SKINS.length]} skin and a soft cream belly`;
+    const seededSkin = `${pickSkin(request.petSkin) || PET_SKINS[(seed >> 3) % PET_SKINS.length]} skin and a soft cream belly`;
     const petDetailed = petSheetFull && species && petSheetFull.toLowerCase().includes(species)
       ? `a cute ${petSheetFull}${hasColour ? '' : ` with ${seededSkin}`}`
       : `a cute baby ${petSpeciesWords}${petSheetFull ? `, ${petSheetFull}` : ''}${hasColour ? '' : ` with ${seededSkin}`}`;

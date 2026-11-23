@@ -77,6 +77,17 @@ export async function prepareReferenceImage(url) {
   return value;
 }
 
+/** Up to 2 distinct, shrunk reference pictures for the Worker; undefined when there are none. */
+export async function prepareReferenceList(urls = []) {
+  const out = [];
+  for (const url of urls) {
+    if (out.length >= 2) break;
+    const small = url ? await prepareReferenceImage(url) : '';
+    if (small && !out.includes(small)) out.push(small);
+  }
+  return out.length ? out : undefined;
+}
+
 export class BedtimeIllustrationService {
   constructor() {
     this.apiUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_IMAGE_GEN_API_URL) ||
@@ -164,7 +175,8 @@ export class BedtimeIllustrationService {
       prompt: customPrompt,
       shortPrompt: customShortPrompt,
       seed: paramSeed,
-      referenceImageUrl = ''
+      referenceImageUrl = '',
+      referenceImageUrls
     } = params;
 
     const cacheKey = this.getCacheKey(params);
@@ -203,9 +215,9 @@ export class BedtimeIllustrationService {
         // Detailed prompt for the long-prompt model; the compact one rides along for the SDXL fallbacks.
         const cfPrompt = customPrompt || this.buildDetailedPrompt(promptParams);
         const cfShortPrompt = customShortPrompt || this.buildPrompt(promptParams);
-        // The story's first picture, so this page keeps the same hero and companion.
-        const reference = referenceImageUrl ? await prepareReferenceImage(referenceImageUrl) : '';
-        const referenceImages = reference ? [reference] : undefined;
+        // The kid's character sheet and/or the story's first picture, so this page keeps the same hero and
+        // companion. The Worker takes at most 2.
+        const referenceImages = await prepareReferenceList(Array.isArray(referenceImageUrls) ? referenceImageUrls : [referenceImageUrl]);
 
         const payload = {
           sessionId,

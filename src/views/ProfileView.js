@@ -5,6 +5,9 @@ import { processProfilePhoto } from '../utils/photoUploader.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
 import { safeImageUrl } from '../utils/safeImageUrl.js';
 import { AVATAR_STYLES, avatarChoices, heroAvatarDataUrl } from '../services/heroAvatarMaker.js';
+import { sheetLook, getCharacterSheet, getSavedSheetInfo, ensureCharacterSheet } from '../services/characterSheetService.js';
+import { lookForAvatarId } from '../../shared/storyEngine/avatarLook.js';
+import { petSpeciesFromName } from '../../shared/storyEngine/engine.js';
 
 // "Design your hero" panel state (this screen only).
 const designer = { open: false, style: '', roll: 0 };
@@ -30,6 +33,55 @@ function renderHeroDesigner(hero) {
             <img src="${c.url}" alt="" class="w-full h-full" /></button>`).join('')}
         </div>
         <p class="text-[10px] font-bold text-on-surface-variant">Tap a face to make it your hero picture. Art: ${escapeHtml(credit)}, made with DiceBear.</p>
+      </div>`;
+}
+
+// "Story look" card: the kid's character sheet that keeps their hero the same in every story picture.
+const sheetState = { drawing: false, failed: false };
+
+/** The companion the bedtime story uses (same lookup as buildChildStoryContext). */
+function storyPetFor(hero) {
+  const petId = String(hero?.activePetId || '1');
+  return PETS_DATABASE.find((p) => String(p.id) === petId || p.key === petId) || PETS_DATABASE[0];
+}
+
+function storySheetLook(hero, pet) {
+  const avatar = KID_AVATARS.find((a) => a.url === hero?.avatar);
+  return sheetLook({
+    heroId: hero?.id,
+    heroLook: avatar ? lookForAvatarId(avatar.id) : '',
+    petId: pet?.id || 'rex',
+    petSpecies: petSpeciesFromName(pet?.name || '')
+  });
+}
+
+function renderStorySheet(hero, pet) {
+  const look = storySheetLook(hero, pet);
+  const image = getCharacterSheet(look);
+  const old = !image && getSavedSheetInfo(hero?.id);
+  const status = sheetState.drawing
+    ? 'Drawing your story look… this takes a few seconds.'
+    : sheetState.failed
+      ? 'The picture maker is busy. Try again in a minute.'
+      : image
+        ? 'Every bedtime story picture uses this look, so your hero looks the same in every story.'
+        : old
+          ? 'Your hero or companion changed, so the next story draws a new look.'
+          : 'Your first bedtime story draws this look, or tap the button to draw it now.';
+  return `
+      <div class="bg-surface-container rounded-4xl p-5 border-3 border-tertiary/40 card-shadow flex flex-col sm:flex-row items-center gap-4" data-story-sheet>
+        <div class="w-full sm:w-56 aspect-[4/3] rounded-3xl bg-surface-container-high border-2 border-tertiary/40 overflow-hidden flex items-center justify-center shrink-0">
+          ${image
+            ? `<img src="${safeImageUrl(image, '')}" alt="Story look: your hero and companion" class="w-full h-full object-cover" data-story-sheet-img />`
+            : '<span class="text-5xl" aria-hidden="true">🖍️</span>'}
+        </div>
+        <div class="flex flex-col gap-2 text-left flex-1 min-w-0">
+          <h3 class="font-headline text-lg font-black text-inverse-surface">📖 Story look</h3>
+          <p class="text-xs font-bold text-on-surface-variant" data-story-sheet-status>${escapeHtml(status)}</p>
+          <button type="button" data-story-sheet-draw ${sheetState.drawing ? 'disabled' : ''}
+            class="self-start px-4 py-2 rounded-xl bg-tertiary text-on-tertiary font-black text-xs min-h-[44px] active:scale-95 disabled:opacity-60">
+            ${image ? '🔄 Draw it again' : '🖍️ Draw my story look'}</button>
+        </div>
       </div>`;
 }
 
@@ -157,6 +209,8 @@ export function renderProfileView() {
       </div>
 
       ${renderHeroDesigner(currentHero)}
+
+      ${renderStorySheet(currentHero, storyPetFor(currentHero))}
 
       <!-- ACTIVE COMPANION PET SHOWCASE (Saved to Kid's Profile) -->
       <div class="bg-surface-container rounded-4xl p-5 sm:p-6 border-3 border-secondary/40 card-shadow flex flex-col sm:flex-row items-center justify-between gap-5 relative overflow-hidden">
@@ -461,6 +515,23 @@ export function attachProfileListeners() {
     designer.open = false;
     store.notify();
   }));
+
+  // Story look: draw (or redraw) the kid's character sheet on the free image Worker.
+  document.querySelector('[data-story-sheet-draw]')?.addEventListener('click', async () => {
+    if (sheetState.drawing) return;
+    Sound.click();
+    const state = store.getState();
+    const hero = state.selectedHero;
+    const look = storySheetLook(hero, storyPetFor(hero));
+    sheetState.drawing = true;
+    sheetState.failed = false;
+    store.notify();
+    const image = await ensureCharacterSheet(look, { redraw: Boolean(getCharacterSheet(look)) });
+    sheetState.drawing = false;
+    sheetState.failed = !image;
+    if (image) Sound.fanfare();
+    store.notify();
+  });
 
   // Reset Photo to Default 3D Avatar
   const resetAvatarBtn = document.getElementById('profile-reset-avatar-btn');

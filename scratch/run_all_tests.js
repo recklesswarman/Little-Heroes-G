@@ -149,7 +149,9 @@ const testFiles = [
   // "Design your hero" DiceBear avatars on the Profile screen:
   'scratch/verify_hero_avatar_maker.mjs',
   // Fridge extras: NASA space picture, On this day, sunset evening look, bedtime countdown:
-  'scratch/verify_fridge_extras.mjs'
+  'scratch/verify_fridge_extras.mjs',
+  // Story character sheets: one hero + companion picture per kid, used as the reference for every story picture:
+  'scratch/verify_story_character_sheets.mjs'
 ];
 
 let allPassed = true;

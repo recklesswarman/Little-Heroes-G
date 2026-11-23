@@ -27,6 +27,7 @@ import { petSpeciesFromName, buildRequest, generateBedtimeChapter } from '../../
 import { makeFirebaseGenerate } from './firebaseEngineAdapter.js';
 import { memoryForRequest } from '../../shared/storyEngine/memory.js';
 import { lookForAvatarId } from '../../shared/storyEngine/avatarLook.js';
+import { sheetLook, sheetPromptFields, getCharacterSheet, waitForCharacterSheet } from './characterSheetService.js';
 import { scenePromptFromPlan } from '../../shared/storyEngine/scenes.js';
 import { getServerApiBase } from './serverApi.js';
 
@@ -572,6 +573,9 @@ class BedtimeStoryService {
 
     let generatedAct = null;
 
+    // The kid's story character sheet (drawn once per kid and look) starts now, alongside the text.
+    const sheetJob = waitForCharacterSheet(this.sheetLookFor(session), 25000);
+
     // 1. Try Server Route /api/gemini/bedtime-story or /api/rex/bedtime-story
     try {
       this.isGenerating = true;
@@ -626,6 +630,8 @@ class BedtimeStoryService {
 
     // Attach 3D Pixar / Claymation illustration from Cloudflare Workers AI (Dual-Scene: Scene A Journey + Scene B Climax)
     if (generatedAct) {
+      // Wait (briefly) for the character sheet so even chapter 1 is drawn from it.
+      try { await sheetJob; } catch { /* pictures go ahead without it */ }
       // Both pictures of the chapter start as soon as its text exists (scene B does not wait for scene A).
       bedtimeIllustrationService.generateChapterIllustration({
         sessionId: session?.id,
@@ -641,7 +647,7 @@ class BedtimeStoryService {
         petArchetype: session?.childContext?.activePet?.archetype || 'dino',
         magicItem: session?.childContext?.gearAndChoices?.magicItem || 'Starlight Lantern',
         sceneType: 'scene_b',
-        referenceImageUrl: this.storyReferenceImage(session, actNumber),
+        referenceImageUrls: this.storyReferenceImages(session, actNumber),
         ...this.scenePlanArgs(generatedAct, 'scene_b')
       }).then((illB) => {
         if (illB && illB.imageUrl) {
@@ -674,7 +680,7 @@ class BedtimeStoryService {
           petArchetype: session?.childContext?.activePet?.archetype || 'dino',
           magicItem: session?.childContext?.gearAndChoices?.magicItem || 'Starlight Lantern',
           sceneType: 'scene_a',
-          referenceImageUrl: this.storyReferenceImage(session, actNumber),
+          referenceImageUrls: this.storyReferenceImages(session, actNumber),
           ...this.scenePlanArgs(generatedAct, 'scene_a')
         });
         if (illResult && illResult.imageUrl) {
@@ -687,6 +693,26 @@ class BedtimeStoryService {
     }
 
     return generatedAct;
+  }
+
+  /** The look the kid's character sheet is drawn from: { heroId, heroLook, petId, petSpecies }. */
+  sheetLookFor(session) {
+    return sheetLook({
+      heroId: session?.heroId,
+      heroLook: this.getHeroLook(session),
+      petId: session?.petId || 'rex',
+      petSpecies: petSpeciesFromName(session?.childContext?.activePet?.name || session?.petName)
+    });
+  }
+
+  /**
+   * Reference pictures for a page: the kid's character sheet (same hero in every story) and, from
+   * chapter 2 on, the story's first picture (same scene style within the story). At most 2.
+   */
+  storyReferenceImages(session, actNumber = 1) {
+    let sheet = '';
+    try { sheet = session?.heroId ? getCharacterSheet(this.sheetLookFor(session)) : ''; } catch { sheet = ''; }
+    return [sheet, this.storyReferenceImage(session, actNumber)].filter(Boolean).slice(0, 2);
   }
 
   /**
@@ -721,6 +747,8 @@ class BedtimeStoryService {
       petSpecies: petSpeciesFromName(session.childContext?.activePet?.name || petName),
       // How the child's chosen avatar looks (a fixed phrase for built-in avatars, '' for custom ones).
       heroLook: this.getHeroLook(session),
+      // Fixed hair and pet colour, the same as on the kid's character sheet.
+      ...sheetPromptFields(this.sheetLookFor(session)),
       // Parent controls: reading level, tone, pronouns, topics to avoid, research on/off, own ideas.
       ...store.getStoryRequestFields(session.heroId),
       realmId: realm.id,

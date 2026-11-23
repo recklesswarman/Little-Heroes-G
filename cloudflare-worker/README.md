@@ -91,3 +91,11 @@ Requests without an allowed `Origin` header return `403`.
 - **Phoenix** (`model: "@cf/leonardo/phoenix-1.0"`): best for pictures that contain words.
 
 Tests: `node scratch/verify_worker_contract.mjs`.
+
+## 📖 Story character sheets (no redeploy needed)
+
+Each kid gets one "story look" picture: their hero and companion side by side, drawn once with an ordinary
+text request (FLUX.1 schnell) and kept on the device (`src/services/characterSheetService.js`). Every bedtime
+picture then sends it in `referenceImages` (with the story's first picture from chapter 2 on, 2 at most), so
+FLUX.2 klein keeps the same face, hair and outfit in every story. That is about one extra picture per kid, and
+another only when the avatar or companion changes or a parent taps "Draw it again" on the Profile.
