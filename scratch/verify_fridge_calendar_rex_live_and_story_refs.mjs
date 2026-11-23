@@ -422,7 +422,7 @@ await test('app: chapter 2+ sends the story\'s first real picture; the proxy for
   const proxy = readFileSync('server/imageGenService.js', 'utf8');
   assert.ok(proxy.includes('referenceImages.length ? { referenceImages }'));
   const story = readFileSync('src/services/bedtimeStoryService.js', 'utf8');
-  assert.equal((story.match(/referenceImageUrl: this\.storyReferenceImage\(session, actNumber\)/g) || []).length, 2);
+  assert.equal((story.match(/referenceImageUrls: this\.storyReferenceImages\(session, actNumber\)/g) || []).length, 2, 'both pictures send the sheet + first picture');
 });
 
 if (failures) {

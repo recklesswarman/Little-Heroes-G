@@ -14,6 +14,7 @@ import {
   REPEAT_THRESHOLD, buildAvoidList, cleanLedgerDigest, cleanRecurring,
   buildRecentTypes, closestMatch, findNearDuplicate, fingerprintFromBible
 } from './ledger.js';
+import { pickHair, pickSkin } from './characterSheet.js';
 import { CLEAN_SEED_POOL, pickSeeds, hashString, SEEDS_PER_STORY } from './seeds.js';
 import { compressLook } from './scenes.js';
 import { PET_PRONOUN_CHOICES, normalizeStoryControls, cleanReason } from './controls.js';
@@ -47,6 +48,9 @@ export function buildRequest(body = {}, { realm, moral } = {}) {
     // How the child's chosen avatar looks, in a few words (from a fixed table in the app). Used only
     // for the pictures; never a photo and never the child's name.
     heroLook: compressLook(body.heroLook),
+    // Fixed hair and pet colour from the kid's story character sheet (one of a few fixed choices, else '').
+    heroHair: pickHair(body.heroHair),
+    petSkin: pickSkin(body.petSkin),
     // Never guessed from the child's name. Neutral unless a parent chose otherwise.
     pronouns: PRONOUNS.includes(body.pronouns) ? body.pronouns : 'they',
     // The pet is a living companion; neutral unless a parent chose otherwise.
