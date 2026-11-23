@@ -17,6 +17,7 @@ import { handleWeeklyReportRequest } from './server/weeklyReportService.js';
 import { createRexRelay } from './server/rexAgyRelay.js';
 import { calendarService } from './server/calendarService.js';
 import { handleFridgeSnapshot } from './server/fridgeService.js';
+import { mountMealsRoutes } from './server/mealsService.js';
 import { handleVoiceSttRequest, handleVoiceTtsRequest, handleVoiceStatusRequest, MAX_AUDIO_BYTES } from './server/voiceLabService.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -122,6 +123,9 @@ app.post('/api/calendar/plan', voiceLimiter, calendarService.handlePlanRequest);
 app.post('/api/local/calendar', voiceLimiter, calendarService.handlePlanRequest);
 // Fridge Display data for the Pi's kiosk screen (server/fridgeService.js, family network only)
 app.get('/api/fridge/snapshot', voiceLimiter, handleFridgeSnapshot);
+// School breakfast/lunch menus (public) and the Meal Planner API for linked apps
+// (server/mealsService.js, docs/meal-planner-api.md; needs MEALS_API_TOKEN + HOUSEHOLD_CODES).
+mountMealsRoutes(app, express, { limiter: voiceLimiter });
 
 const distPath = path.join(__dirname, 'dist');
 

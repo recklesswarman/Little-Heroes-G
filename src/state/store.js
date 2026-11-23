@@ -39,6 +39,7 @@ import { DIGITAL_REWARDS_CATALOG } from '../data/digitalRewardsCatalog.js';
 import { THREE_D_ASSETS } from '../data/threeDAssetCatalog.js';
 import { DEFAULT_COMPANION_PHRASES } from '../data/companionPhrasesData.js';
 import { getRexVoicePersona } from '../data/rexVoicePersonas.js';
+import { defaultMealPlan, normalizeMealPlan, mergeMealPlans, upsertMealEntry, removeMealEntry, updateMealSettings } from '../../shared/mealPlan.js';
 import { normalizeStoryMemory, mergeStoryMemory, commitStory } from '../../shared/storyEngine/memory.js';
 import {
   normalizeStoryProfile, normalizeStoryControls, normalizeSafetyLog, appendSafetyEvent, mergeSafetyLogs, requestFromControls
@@ -560,6 +561,11 @@ const defaultState = {
   // once shown before a kid's first battle (floss) or after their first
   // victory (mouthwash) that same day, it won't pop up again on a retry.
   hygieneReminders: {},
+
+  // Family meal planner (shared/mealPlan.js): settings + planned meals, layered over the school
+  // breakfast/lunch menu. Synced in stateSnapshot.mealPlan with a per-entry newest-wins merge
+  // (see mergeMealPlans in hydrateFromCloud); other apps write it through /api/meals/v1.
+  mealPlan: defaultMealPlan(),
 
   // Transient single-device prompt currently on screen for the active kid:
   // { type: 'floss' | 'mouthwash', kidId, payload }. Never synced to the
@@ -1247,6 +1253,7 @@ class Store {
         }
         delete parsed.companionPhrases;
         parsed.parentSettings.storyControls = normalizeStoryControls(parsed.parentSettings.storyControls);
+        parsed.mealPlan = normalizeMealPlan(parsed.mealPlan);
         parsed.parentSettings.storySafetyLog = normalizeSafetyLog(parsed.parentSettings.storySafetyLog);
         if (!parsed.parentSettings.fieldStamps || typeof parsed.parentSettings.fieldStamps !== 'object') {
           parsed.parentSettings.fieldStamps = {};
@@ -8745,6 +8752,8 @@ class Store {
         'liveRex',
         // Deleted custom item tombstones are unioned cleanly in Section 2b below.
         'deletedCustomItemIds',
+        // Meal planner entries merge per entry (newest wins) right after this loop.
+        'mealPlan',
         // Per-kid mirrored & hygiene/currency fields merged in Section 3 below;
         // allowing stateSnapshot to set them would bypass Section 3 and mutate selectedHero via non-enumerable setters.
         ...HERO_MIRROR_NON_ENUMERABLE_KEYS,
@@ -8762,6 +8771,9 @@ class Store {
           this.state[key] = value;
         }
       });
+      if (cloudData.stateSnapshot.mealPlan && typeof cloudData.stateSnapshot.mealPlan === 'object') {
+        this.state.mealPlan = mergeMealPlans(this.state.mealPlan, cloudData.stateSnapshot.mealPlan);
+      }
     }
 
     // 1. Household Details & Parent Administrators
@@ -11789,6 +11801,34 @@ class Store {
     if (inArray && inArray === target && sel && sel.id === heroId) sel.storyProfile = { ...next };
     this.saveState(true);
     return next;
+  }
+
+  // ---- Meal planner (shared/mealPlan.js) ----
+  getMealPlan() {
+    this.state.mealPlan = normalizeMealPlan(this.state.mealPlan);
+    return this.state.mealPlan;
+  }
+
+  /** Add or change a planned meal; returns the saved entry. Throws with a readable message. */
+  saveMealEntry(input) {
+    const { plan, entry } = upsertMealEntry(this.state.mealPlan, { source: 'app', ...input });
+    this.state.mealPlan = plan;
+    this.saveState(true);
+    return entry;
+  }
+
+  deleteMealEntry(id) {
+    const { plan, removed } = removeMealEntry(this.state.mealPlan, id);
+    this.state.mealPlan = plan;
+    if (removed) this.saveState(true);
+    return removed;
+  }
+
+  updateMealSettings(patch = {}) {
+    const { plan, settings } = updateMealSettings(this.state.mealPlan, patch);
+    this.state.mealPlan = plan;
+    this.saveState(true);
+    return settings;
   }
 
   getStoryControls() {

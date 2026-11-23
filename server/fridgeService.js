@@ -7,13 +7,14 @@
 import { fetchHousehold, householdCodesFromEnv } from './householdReader.js';
 import { isFamilyNetworkRequest } from './localAiService.js';
 import { calendarService as defaultCalendar } from './calendarService.js';
-import { listHeroes, DEFAULT_TIME_ZONE } from '../shared/familyInsights.js';
+import { listHeroes, DEFAULT_TIME_ZONE, dayKey } from '../shared/familyInsights.js';
 import { buildFridgeSnapshot } from '../shared/fridgeSnapshot.js';
 import { getCurrentWeeklyChallenge } from '../src/data/hygieneBossesData.js';
+import { buildHouseholdMealDays, getSchoolMenu } from './mealsService.js';
 
 const CACHE_MS = 30 * 1000;
 
-export function createFridgeHandler({ env = process.env, fetchHouseholdImpl = fetchHousehold, calendar = defaultCalendar, now = () => Date.now() } = {}) {
+export function createFridgeHandler({ env = process.env, fetchHouseholdImpl = fetchHousehold, calendar = defaultCalendar, schoolMenu = getSchoolMenu, now = () => Date.now() } = {}) {
   let cache = { at: 0, body: null };
 
   return async function handleFridgeSnapshot(req, res) {
@@ -33,8 +34,15 @@ export function createFridgeHandler({ env = process.env, fetchHouseholdImpl = fe
       } catch (err) {
         console.warn('Fridge: calendar unavailable:', err?.message || err);
       }
+      let meals = null;
+      try {
+        // This week's school breakfast/lunch plus the family's planned meals (Mon-Fri + planned weekends).
+        meals = await buildHouseholdMealDays(state, { from: dayKey(now(), timeZone), days: 8, env, schoolMenu });
+      } catch (err) {
+        console.warn('Fridge: meals unavailable:', err?.message || err);
+      }
       const weekly = getCurrentWeeklyChallenge(new Date(now()));
-      const body = buildFridgeSnapshot(state, { now: now(), timeZone, calendar: plan, challenge: weekly?.challenge || null });
+      const body = buildFridgeSnapshot(state, { now: now(), timeZone, calendar: plan, challenge: weekly?.challenge || null, meals });
       cache = { at: now(), body };
       return res.json(body);
     } catch (err) {

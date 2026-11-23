@@ -5,6 +5,7 @@
 // (GET /api/fridge/snapshot) and a joined device builds the same thing from its own store,
 // so the screen looks the same either way.
 import { listHeroes, buildChoreSnapshot, DEFAULT_TIME_ZONE, dayKey } from './familyInsights.js';
+import { MEAL_TYPES } from './mealPlan.js';
 
 const arr = (v) => (Array.isArray(v) ? v : []);
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -21,12 +22,41 @@ function safeImage(url) {
   return '';
 }
 
+/** The meal planner days (shared/mealPlan.js buildMealDays) trimmed to what the fridge shows. */
+export function fridgeMeals(meals) {
+  if (!meals || !Array.isArray(meals.days)) return null;
+  const isDay = (d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d);
+  const days = meals.days.filter((d) => d && isDay(d.date)).slice(0, 10).map((d) => {
+    const out = {};
+    for (const type of MEAL_TYPES) {
+      const m = d.meals?.[type];
+      if (!m) continue;
+      const school = m.school
+        ? {
+            main: arr(m.school.main).slice(0, 8).map((i) => ({ name: clean(i?.name, 60), emoji: clean(i?.emoji, 4) || '🍽️' })).filter((i) => i.name),
+            extras: arr(m.school.extras).slice(0, 30).map((i) => ({ name: clean(i?.name, 60), group: clean(i?.group, 12) })).filter((i) => i.name)
+          }
+        : null;
+      const family = arr(m.family).slice(0, 6).map((e) => ({ title: clean(e?.title, 80), emoji: clean(e?.emoji, 4) || '🍽️', replacesSchool: e?.replacesSchool === true, notes: clean(e?.notes, 120) })).filter((e) => e.title);
+      if ((school && (school.main.length || school.extras.length)) || family.length) out[type] = { school, family };
+    }
+    return { date: d.date, noSchool: d.noSchool === true, meals: out };
+  });
+  return {
+    schoolName: clean(meals.school?.school || meals.plan?.settings?.schoolName || '', 80),
+    showAll: meals.plan?.settings?.showAllSchoolItems === true,
+    schoolError: meals.schoolError ? 'School menu unavailable right now' : '',
+    days
+  };
+}
+
 /**
+ * @param meals     optional { plan, school, schoolError, days } from buildHouseholdMealDays
  * @param state     store / household state
  * @param calendar  optional plan from /api/calendar/plan ({ events: [...] })
  * @param challenge optional { title, description } for this week's family challenge
  */
-export function buildFridgeSnapshot(state = {}, { now = Date.now(), timeZone = DEFAULT_TIME_ZONE, calendar = null, challenge = null } = {}) {
+export function buildFridgeSnapshot(state = {}, { now = Date.now(), timeZone = DEFAULT_TIME_ZONE, calendar = null, challenge = null, meals = null } = {}) {
   const today = dayKey(now, timeZone);
   const heroes = listHeroes(state).slice(0, 6).map((hero) => {
     const chores = buildChoreSnapshot(state, hero.id, { now, timeZone })
@@ -76,6 +106,7 @@ export function buildFridgeSnapshot(state = {}, { now = Date.now(), timeZone = D
     events,
     month,
     calendarConfigured: calendar?.configured === true,
+    meals: fridgeMeals(meals),
     familyDone: heroes.reduce((s, h) => s + h.done, 0),
     familyTotal: heroes.reduce((s, h) => s + h.total, 0)
   };
