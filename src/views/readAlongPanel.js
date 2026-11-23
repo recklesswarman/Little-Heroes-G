@@ -1,6 +1,6 @@
 // The Read-Along arena panel used inside the World Adventure Map (WorldAdventureMapView.js).
 //
-// The child reads a sentence out loud. Rex listens with Whisper on the family Pi (through
+// The child reads a sentence out loud. Rex listens with Moonshine (or Whisper) on the family Pi (through
 // /api/local/stt, which App Hosting relays on hosted sites), or the browser's own speech
 // recognition, or, as a last resort, the child taps each word as they read it. Words turn
 // green when Rex heard them and orange when they need practice; tapping any word makes Rex
@@ -189,7 +189,7 @@ class ReadAlongController {
     const piStatus = this.preferBrowser ? { stt: false } : await getLocalAiStatus().catch(() => ({ stt: false }));
     if (this.destroyed) return;
     const usedPi = Boolean(piStatus.stt);
-    this.listener = usedPi ? recordAndTranscribe({ maxMs }) : listenWithBrowserSpeech({ maxMs });
+    this.listener = usedPi ? recordAndTranscribe({ maxMs, fast: true }) : listenWithBrowserSpeech({ maxMs });
     const transcript = await this.listener.result;
     this.listener = null;
     clearInterval(this.goneTimer);

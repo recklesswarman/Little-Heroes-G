@@ -110,8 +110,25 @@ export async function fetchLocalSpeechUrl(text, { lengthScale } = {}) {
 }
 
 /** Sends a recorded clip to whisper.cpp. Resolves to the transcript ('' if nothing heard), or null on failure. */
-export async function transcribeWithLocalWhisper(audioBlob) {
+/**
+ * Transcribes on the Pi. `fast` (Read-Along) asks for Moonshine first (/api/local/stt-fast,
+ * which falls back to Whisper on the Pi); an older server without that route gets /api/local/stt.
+ */
+export async function transcribeWithLocalWhisper(audioBlob, { fast = false } = {}) {
   if (!audioBlob || !audioBlob.size) return null;
+  if (fast) {
+    try {
+      const { res, data } = await fetchWithTimeout(apiUrl('/api/local/stt-fast'), {
+        method: 'POST',
+        headers: { 'Content-Type': audioBlob.type || 'audio/webm' },
+        body: audioBlob
+      }, 30000, (r) => r.json());
+      if (res.ok) return typeof data?.text === 'string' ? data.text.trim() : '';
+      if (res.status !== 404 && res.status !== 405) return null;
+    } catch {
+      return null;
+    }
+  }
   try {
     const { res, data } = await fetchWithTimeout(apiUrl('/api/local/stt'), {
       method: 'POST',
@@ -130,7 +147,7 @@ export async function transcribeWithLocalWhisper(audioBlob) {
  * transcribes on the Pi. Keep clips short: whisper is tuned for ~10 seconds.
  * Returns { stop, cancel, result } where `result` resolves to the transcript or null.
  */
-export function recordAndTranscribe({ maxMs = 8000 } = {}) {
+export function recordAndTranscribe({ maxMs = 8000, fast = false } = {}) {
   let recorder = null;
   let stream = null;
   let timer = null;
@@ -175,7 +192,7 @@ export function recordAndTranscribe({ maxMs = 8000 } = {}) {
     releaseMic();
     if (cancelled) return null;
     const blob = new Blob(chunks, { type: recorder.mimeType || mimeType || 'audio/webm' });
-    return transcribeWithLocalWhisper(blob);
+    return transcribeWithLocalWhisper(blob, { fast });
   })();
   return { stop, cancel, result };
 }

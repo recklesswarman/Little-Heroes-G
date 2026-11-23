@@ -153,7 +153,9 @@ const testFiles = [
   // Story character sheets: one hero + companion picture per kid, used as the reference for every story picture:
   'scratch/verify_story_character_sheets.mjs',
   // Number Dash pictures (ten frames, number lines, base-ten blocks) and the PhET Math Lab:
-  'scratch/verify_number_dash_pictures.mjs'
+  'scratch/verify_number_dash_pictures.mjs',
+  // Pi voices: Kokoro bedtime story voice with words lighting up, Moonshine fast reading check:
+  'scratch/verify_pi_voice_extras.mjs'
 ];
 
 let allPassed = true;

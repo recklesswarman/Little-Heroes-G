@@ -7,6 +7,8 @@
 //
 // The browser only ever talks to this server; the token never reaches it. When the Pi
 // is off or slow, every route answers so the client falls back to Web Speech.
+import { STORY_AUDIO_ID_RE, STORY_AUDIO_MAX_CHARS } from './storyAudioService.js';
+
 const STATUS_TIMEOUT_MS = 4000;
 const TTS_TIMEOUT_MS = 30000;
 const STT_TIMEOUT_MS = 45000;
@@ -100,12 +102,12 @@ export function createPiRelayHandlers({ env = process.env, fetchImpl = globalThi
     }
   }
 
-  async function stt(body, type) {
+  async function stt(body, type, route = '/stt') {
     const c = cfg();
     if (!c) return { status: 503 };
     if (!takeSlot()) return { status: 429 };
     try {
-      const { res, data } = await relayFetch(c, '/stt', {
+      const { res, data } = await relayFetch(c, route, {
         method: 'POST',
         headers: { 'Content-Type': type },
         body
@@ -133,6 +135,57 @@ export function createPiRelayHandlers({ env = process.env, fetchImpl = globalThi
     res.setHeader('Content-Type', 'audio/wav');
     res.setHeader('Cache-Control', 'no-store');
     return res.send(out.audio);
+  }
+
+  // Read-Along reading check (Moonshine on the Pi, Whisper as its fallback there).
+  async function handleLocalSttFast(req, res) {
+    const body = audioBody(req);
+    if (body === 'too-big') return res.status(413).json({ error: 'Recording is too long' });
+    if (!body) return res.status(400).json({ error: 'Send the recorded audio as the request body' });
+    const out = await stt(body, audioType(req), '/stt-fast');
+    if (out.status !== 200) return res.status(out.status).json({ error: 'Pi speech recognition is unavailable', fallback: 'web-speech' });
+    return res.json({ text: out.text });
+  }
+
+  // Kokoro bedtime story audio (server/storyAudioService.js on the Pi). Asking is cheap (no slot);
+  // fetching the audio file takes one.
+  async function handleStoryAudio(req, res) {
+    res.setHeader('Cache-Control', 'no-store');
+    const c = cfg();
+    const text = typeof req.body?.text === 'string' ? req.body.text : '';
+    if (!c) return res.json({ status: 'off' });
+    if (!text.trim() || text.length > STORY_AUDIO_MAX_CHARS) return res.status(400).json({ status: 'bad' });
+    try {
+      const { res: up, data } = await relayFetch(c, '/story-audio', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text })
+      }, STATUS_TIMEOUT_MS * 3, (r) => r.json(), fetchImpl);
+      if (!up.ok && up.status !== 202) return res.json({ status: 'off' });
+      const out = data && typeof data === 'object' ? data : {};
+      const status = ['ready', 'rendering', 'failed', 'off'].includes(out.status) ? out.status : 'off';
+      const id = typeof out.id === 'string' && STORY_AUDIO_ID_RE.test(out.id) ? out.id : undefined;
+      return res.status(status === 'rendering' ? 202 : 200).json({ status, id, words: Array.isArray(out.words) ? out.words : undefined, duration: Number(out.duration) || undefined });
+    } catch {
+      return res.json({ status: 'off' });
+    }
+  }
+
+  async function handleStoryAudioFile(req, res) {
+    const c = cfg();
+    const id = String(req.params?.id || '');
+    if (!c) return res.status(503).json({ error: 'Pi is not linked' });
+    if (!STORY_AUDIO_ID_RE.test(id)) return res.status(400).json({ error: 'Bad id' });
+    if (!takeSlot()) return res.status(429).json({ error: 'Busy' });
+    try {
+      const { res: up, data } = await relayFetch(c, `/story-audio/${id}.wav`, { method: 'GET' }, TTS_TIMEOUT_MS * 2, (r) => r.arrayBuffer(), fetchImpl);
+      if (!up.ok) return res.status(up.status === 404 ? 404 : 502).json({ error: 'Not available' });
+      res.setHeader('Content-Type', 'audio/wav');
+      res.setHeader('Cache-Control', 'private, max-age=86400');
+      return res.send(Buffer.from(data));
+    } catch {
+      return res.status(502).json({ error: 'Not available' });
+    } finally {
+      releaseSlot();
+    }
   }
 
   async function handleLocalStt(req, res) {
@@ -174,5 +227,5 @@ export function createPiRelayHandlers({ env = process.env, fetchImpl = globalThi
     return res.json({ ok: true, text: out.text });
   }
 
-  return { handleLocalStatus, handleLocalTts, handleLocalStt, handleVoiceStatus, handleVoiceTts, handleVoiceStt };
+  return { handleLocalStatus, handleLocalTts, handleLocalStt, handleLocalSttFast, handleStoryAudio, handleStoryAudioFile, handleVoiceStatus, handleVoiceTts, handleVoiceStt };
 }

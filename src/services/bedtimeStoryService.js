@@ -9,7 +9,8 @@
 
 import { store, KID_AVATARS } from '../state/store.js';
 import { firebaseAI } from './firebaseAILogicService.js';
-import { speakCompanion, stopCompanionAudio } from './voiceService.js';
+import { stopCompanionAudio } from './voiceService.js';
+import { speakStoryChapter, stopStoryAudio, prepareStoryAudio } from './storyAudioService.js';
 import { Sound } from '../audio/sfx.js';
 import {
   BEDTIME_REALMS,
@@ -235,6 +236,8 @@ class BedtimeStoryService {
     }
     try {
       stopCompanionAudio();
+      stopStoryAudio();
+    stopStoryAudio();
       this.cancelAutoAdvance();
       this.recognition.start();
       return true;
@@ -269,6 +272,7 @@ class BedtimeStoryService {
       this.autoAdvanceInterval = null;
     }
     stopCompanionAudio();
+    stopStoryAudio();
     const defaultSec = (this.activeSession?.realmId === 'pirate_lagoon' && this.activeSession?.moralId === 'calm_feelings') ? 15 : 3;
     this.autoAdvanceSecondsRemaining = defaultSec;
     if (typeof window !== 'undefined') {
@@ -533,7 +537,8 @@ class BedtimeStoryService {
     }, halfwayMs);
 
     try {
-      speakCompanion(text, narratorPetId, handleSpeechEnded, {
+      // Kokoro (read ahead of time on the Pi) when ready, else Piper or the browser voice.
+      speakStoryChapter(text, narratorPetId, handleSpeechEnded, {
         rate,
         pitch: chapterNumber >= 3 ? 0.95 : 1.05,
         voiceStyle: 'bedtime',
@@ -630,6 +635,8 @@ class BedtimeStoryService {
 
     // Attach 3D Pixar / Claymation illustration from Cloudflare Workers AI (Dual-Scene: Scene A Journey + Scene B Climax)
     if (generatedAct) {
+      // The Pi starts reading this chapter in the Kokoro voice now, so it is ready when it is read aloud.
+      prepareStoryAudio(generatedAct.text || generatedAct.chapterText || '').catch(() => {});
       // Wait (briefly) for the character sheet so even chapter 1 is drawn from it.
       try { await sheetJob; } catch { /* pictures go ahead without it */ }
       // Both pictures of the chapter start as soon as its text exists (scene B does not wait for scene A).
@@ -962,6 +969,7 @@ class BedtimeStoryService {
   clearSession() {
     this.cancelAutoAdvance();
     stopCompanionAudio();
+    stopStoryAudio();
     Sound.duckLullaby(false);
     this.stopListening();
     this.activeSession = null;

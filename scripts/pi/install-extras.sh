@@ -23,6 +23,17 @@ fi
 # Math Lab: offline copies of the PhET math sims (served at /phet/ by the app). Downloads only the
 # missing ones, in the background; run `node scripts/pi/phet-sims.mjs --force` to update them.
 (node scripts/pi/phet-sims.mjs >/dev/null 2>&1 &) || true
+# Voice extras: Kokoro bedtime voice + Moonshine reading check (scripts/pi/setup-voice-extras.sh).
+# First time: installs in the background (~400 MB). After that: keeps the service file current.
+if [ -x "$HOME/apps/voice-extras/venv/bin/python" ]; then
+  if ! cmp -s scripts/pi/voice-extras/voice_extras.py "$HOME/apps/voice-extras/voice_extras.py"; then
+    install -m 0644 scripts/pi/voice-extras/voice_extras.py "$HOME/apps/voice-extras/voice_extras.py"
+    systemctl --user restart little-heroes-voice-extras.service >/dev/null 2>&1 || true
+  fi
+else
+  mkdir -p "$HOME/apps/voice-extras"
+  (nohup bash scripts/pi/setup-voice-extras.sh >"$HOME/apps/voice-extras/setup.log" 2>&1 &) || true
+fi
 # Fridge Display: launcher script, app icon, and a "Fridge Display" shortcut on the desktop
 # and in the app menu (scripts/pi/fridge-display.sh opens #fridge full screen in Chromium).
 install -m 0755 scripts/pi/fridge-display.sh "$HOME/bin/fridge-display.sh"
