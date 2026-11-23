@@ -155,7 +155,9 @@ const testFiles = [
   // Number Dash pictures (ten frames, number lines, base-ten blocks) and the PhET Math Lab:
   'scratch/verify_number_dash_pictures.mjs',
   // Pi voices: Kokoro bedtime story voice with words lighting up, Moonshine fast reading check:
-  'scratch/verify_pi_voice_extras.mjs'
+  'scratch/verify_pi_voice_extras.mjs',
+  // Screen checks on the Pi after each deploy (Fridge Display + kid screens, Playwright):
+  'scratch/verify_pi_screen_checks.mjs'
 ];
 
 let allPassed = true;
