@@ -1,3 +1,4 @@
+import { resolvePublicAssetUrl } from '../utils/assetUrl.js';
 // Hero HQ & Superhero Hideout Studio Data Catalog
 // Contains Room Themes, Furniture across 5 placement slots, and Trophy generation logic.
 
@@ -438,7 +439,23 @@ export const FURNITURE_ITEMS = [
     interactiveType: 'rug',
     actionPrompt: 'Activate Magic Circle',
     themeId: 'wizard_spire'
-  }
+  },
+  // --- REAL 3D MODELS (CC0, Kenney) added 2026-11. Appended at the end: some screens fall back to FURNITURE_ITEMS[15] / [20]. ---
+  ...[
+    ['classic_bunk_bed', 'bed', 'Cozy Bunk Bed', 'A sturdy bunk bed with room for sleepovers and big dreams.', '🛏️', 90, 'sleep', 'Take a Hero Snooze', 'furniture/bedBunk'],
+    ['relax_lounge_chair', 'petLounge', 'Relaxing Lounge Chair', 'A comfy chair where your companion can kick back and rest.', '🪑', 70, 'pet_nap', 'Relax Together', 'furniture/loungeChairRelax'],
+    ['cuddle_teddy_corner', 'petLounge', 'Cuddle Teddy Corner', 'A soft teddy bear that every companion loves to snuggle.', '🧸', 60, 'pet_nap', 'Snuggle the Teddy', 'furniture/bear'],
+    ['study_desk_classic', 'desk', 'Study Desk', 'A tidy desk for drawing, reading and planning the next quest.', '🖥️', 60, 'hologram_spin', 'Plan a Quest', 'furniture/desk'],
+    ['reading_lamp_floor', 'decor', 'Reading Lamp', 'A warm floor lamp that makes story time extra cozy.', '💡', 60, 'nightlight_toggle', 'Toggle Reading Light', 'furniture/lampRoundFloor'],
+    ['story_bookcase', 'decor', 'Story Bookcase', 'Open shelves stacked with adventure books.', '📚', 90, 'nightlight_toggle', 'Browse the Books', 'furniture/bookcaseOpen'],
+    ['leafy_plant_pot', 'decor', 'Leafy Plant', 'A friendly green plant that makes the room feel alive.', '🪴', 50, 'nightlight_toggle', 'Water the Plant', 'furniture/pottedPlant'],
+    ['round_play_rug', 'rug', 'Round Play Rug', 'A big round rug for building, playing and cuddling.', '🟠', 60, 'rug', 'Roll on the Rug', 'furniture/rugRound']
+  ].map(([id, slot, name, desc, emoji, costCoins, interactiveType, actionPrompt, file]) => ({
+    id, name, slot, desc, icon: emoji, emoji, costCoins, interactiveType, actionPrompt, themeId: 'dino_treehouse',
+    modelUrl: resolvePublicAssetUrl(`models/kenney/${file}.glb`),
+    thumbnail: resolvePublicAssetUrl(`assets/rewards/seed/models/kenney/${file}.webp`),
+    credit: { author: 'Kenney', license: 'CC0', sourceUrl: 'https://kenney.nl' }
+  }))
 ];
 
 export function getHQTheme(themeId) {

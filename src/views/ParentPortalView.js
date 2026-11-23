@@ -192,7 +192,7 @@ let studioPublishFeedback = ''; // shown under the Publish button after a succes
 let studioModelChosen = false; // a real 3D model was picked on purpose (carousel, search or mesh), not just the preview sample
 let studioModelSource = '';
 let studioModelCredit = null;
-let studioLighting = 'studio'; // 'studio' | 'sunny' | 'cozy'
+let studioLighting = 'studio'; // 'studio' | 'sunny' | 'cozy' | 'forest'
 let studioModelTint = ''; // hex picked with the dye swatches for a real 3D model
 let studioConceptFlash = false;
 let studioActiveModelUrl = resolvePublicAssetUrl('models/kenney/space/rover.glb'); // bundled preview sample, works offline
@@ -3458,7 +3458,7 @@ export function renderParentPortalView() {
               <li>Emoji art by OpenMoji, CC BY-SA 4.0</li>
               <li>3D viewer: Google model-viewer (Apache 2.0)</li>
               <li>3D models: Kenney (kenney.nl, CC0) and Quaternius (quaternius.com, CC0 and Quaternius Asset License)</li>
-              <li>Studio and Cozy lighting: Poly Haven HDRIs (polyhaven.com, CC0)</li>
+              <li>Studio, Sunny, Cozy and Forest lighting: Poly Haven HDRIs (polyhaven.com, CC0)</li>
               <li>3D models you pick in the Studio show their own credit line on the item</li>
             </ul>
           </details>

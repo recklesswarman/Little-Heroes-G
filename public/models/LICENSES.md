@@ -14,6 +14,8 @@ family app only and are not offered for download as assets.
 | `quaternius/cute-monsters/` | Cute Animated Monsters (Aug 2020) | Quaternius | CC0 1.0 | https://quaternius.com |
 | `quaternius/monsters/` | Ultimate Monsters | Quaternius | CC0 1.0 | https://quaternius.com |
 | `../hdri/studio.hdr` | Small Empty Room 3 (1k) | Poly Haven | CC0 1.0 | https://polyhaven.com/a/small_empty_room_3 |
+| `../hdri/sunny.hdr` | Bloem Field Sunrise (1k) | Poly Haven | CC0 1.0 | https://polyhaven.com/a/bloem_field_sunrise |
+| `../hdri/forest.hdr` | Monks Forest (1k) | Poly Haven | CC0 1.0 | https://polyhaven.com/a/monks_forest |
 | `../hdri/cozy.hdr` | Neon Photo Studio (1k) | Poly Haven | CC0 1.0 | https://polyhaven.com/a/neon_photostudio |
 
 Other packs supplied but not used (too large, scary, realistic weapons or not kid-appropriate): Modular SciFi MegaKit,

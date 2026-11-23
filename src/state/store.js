@@ -26,6 +26,7 @@ import {
   getFurnitureItem,
   getTrophiesForDisplay
 } from '../data/heroHQData.js';
+import { getStarterPenToy } from '../data/penToys.js';
 import { PET_GEAR_CATALOG, calculateActiveGearBuffs, formatStatBonusName, normalizeGearSlot, getGearHaloStyle } from '../data/petGearStudioData.js';
 import { speakCompanion } from '../services/voiceService.js';
 import { isExistingActiveHousehold, generateHouseholdCodeSuffix } from '../utils/householdHeuristics.js';
@@ -5619,7 +5620,7 @@ class Store {
   }
 
   playWithPenToy(toyId, petId = null) {
-    const toy = (this.state.parentCustomToys || []).find(t => t.id === toyId);
+    const toy = (this.state.parentCustomToys || []).find(t => t.id === toyId) || getStarterPenToy(toyId);
     if (!toy) return null;
 
     const pId = petId || this.getActivePet()?.id || this.state.selectedHero?.activePetId || 1;
@@ -5638,7 +5639,7 @@ class Store {
     Sound.coin();
     confetti({ particleCount: 30, spread: 50, origin: { y: 0.6 } });
 
-    this.addXP(10);
+    if (!toy.isStarter) this.addXP(10);
     this.logAction(
       `${pet.name} played with ${toy.name} in Sanctuary 🎾`,
       `+${amount}% ${statType.toUpperCase()}! "${voiceLine}"`

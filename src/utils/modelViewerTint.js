@@ -49,13 +49,14 @@ export function applyModelTints(root = document) {
   } catch { /* ignore */ }
 }
 
-// Studio and Cozy use real HDRI lighting from public/hdri/ (CC0, Poly Haven). Sunny keeps the built-in bright preset.
+// Studio and Cozy use real HDRI lighting from public/hdri/ (CC0, Poly Haven). Sunny uses a bright clear-sky HDRI too.
 // No ?v= suffix here: model-viewer picks the HDR loader from the .hdr file name.
 const hdri = (name) => `${getPublicBaseUrl()}hdri/${name}.hdr`;
 
 export const LIGHTING_PRESETS = {
   studio: { label: 'Studio', env: hdri('studio'), exposure: '1' },
-  sunny: { label: 'Sunny', env: 'legacy', exposure: '1.25' },
+  sunny: { label: 'Sunny', env: hdri('sunny'), exposure: '1.1' },
+  forest: { label: 'Forest', env: hdri('forest'), exposure: '1.5' },
   cozy: { label: 'Cozy', env: hdri('cozy'), exposure: '0.9' }
 };
 
