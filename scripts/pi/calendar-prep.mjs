@@ -7,7 +7,7 @@
 // Planner (shared/mealPlan.js), unless a parent turned that off in Parent Portal > Meal Planner.
 //
 //   GOOGLE_CALENDAR_ICS_URL  the calendar's secret iCal address (needed for the calendar part)
-//   HOUSEHOLD_CODES          the kids' names for "added for Kayden", and the meal planner
+//   HOUSEHOLD_CODES          the kids' names for "added for Nova", and the meal planner
 //   NTFY_URL / NTFY_TOPIC / NTFY_TOKEN   same as server.js
 //
 // Usage: node scripts/pi/calendar-prep.mjs [--dry-run | --check]

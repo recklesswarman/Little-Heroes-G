@@ -34,20 +34,20 @@ const netReq = (body = {}, headers = {}) => ({ body, headers, socket: { remoteAd
 // Monday 2026-11-23, 7 PM Eastern
 const NOW = Date.parse('2026-11-24T00:00:00Z');
 const HEROES = [
-  { id: 'kay', name: 'Kayden', gameDifficulty: 'hard' },
-  { id: 'kal', name: 'Kaleb', gameDifficulty: 'easy' }
+  { id: 'kay', name: 'Nova', gameDifficulty: 'hard' },
+  { id: 'kal', name: 'Milo', gameDifficulty: 'easy' }
 ];
 const ICS = [
   'BEGIN:VCALENDAR',
-  'BEGIN:VEVENT', 'UID:lib@x', 'DTSTART;VALUE=DATE:20260901', 'RRULE:FREQ=WEEKLY;BYDAY=TU,TH', 'EXDATE;VALUE=DATE:20261126', 'SUMMARY:Kayden Library Day', 'END:VEVENT',
-  'BEGIN:VEVENT', 'UID:lib@x', 'RECURRENCE-ID;VALUE=DATE:20261201', 'DTSTART;VALUE=DATE:20261202', 'SUMMARY:Kayden Library Day (moved)', 'END:VEVENT',
+  'BEGIN:VEVENT', 'UID:lib@x', 'DTSTART;VALUE=DATE:20260901', 'RRULE:FREQ=WEEKLY;BYDAY=TU,TH', 'EXDATE;VALUE=DATE:20261126', 'SUMMARY:Nova Library Day', 'END:VEVENT',
+  'BEGIN:VEVENT', 'UID:lib@x', 'RECURRENCE-ID;VALUE=DATE:20261201', 'DTSTART;VALUE=DATE:20261202', 'SUMMARY:Nova Library Day (moved)', 'END:VEVENT',
   'BEGIN:VEVENT', 'UID:pic@x', 'DTSTART;TZID=America/New_York:20261124T083000', 'SUMMARY:Kindergarten Picture Day', 'END:VEVENT',
-  'BEGIN:VEVENT', 'UID:soc@x', 'DTSTART:20261125T220000Z', 'SUMMARY:Kayden soccer practice', 'END:VEVENT',
+  'BEGIN:VEVENT', 'UID:soc@x', 'DTSTART:20261125T220000Z', 'SUMMARY:Nova soccer practice', 'END:VEVENT',
   'BEGIN:VEVENT', 'UID:dad@x', 'DTSTART;TZID=America/New_York:20261124T140000', 'SUMMARY:Dentist appointment', 'END:VEVENT',
   'BEGIN:VEVENT', 'UID:work@x', 'DTSTART;VALUE=DATE:20261125', 'SUMMARY:Work project due', 'END:VEVENT',
   'BEGIN:VEVENT', 'UID:ns@x', 'DTSTART;VALUE=DATE:20261127', 'SUMMARY:No School - Thanksgiving break', 'END:VEVENT',
   'BEGIN:VEVENT', 'UID:gone@x', 'DTSTART;VALUE=DATE:20261124', 'STATUS:CANCELLED', 'SUMMARY:Gym day', 'END:VEVENT',
-  'BEGIN:VEVENT', 'UID:long@x', 'DTSTART;VALUE=DATE:20261124', 'SUMMARY:Show and', '  tell for Kaleb', 'END:VEVENT',
+  'BEGIN:VEVENT', 'UID:long@x', 'DTSTART;VALUE=DATE:20261124', 'SUMMARY:Show and', '  tell for Milo', 'END:VEVENT',
   'END:VCALENDAR'
 ].join('\r\n');
 
@@ -66,18 +66,18 @@ await test('recurring events honour BYDAY, EXDATE, moved occurrences and cancell
   const lib = occ.filter((o) => o.uid === 'lib@x').map((o) => o.day);
   assert.deepEqual(lib, ['2026-11-24', '2026-12-02', '2026-12-03'], 'Tue 11/24, moved 12/1 -> 12/2, Thu 12/3; Thu 11/26 excluded');
   assert.ok(!occ.some((o) => o.uid === 'gone@x'), 'cancelled event skipped');
-  assert.ok(occ.some((o) => o.title === 'Show and tell for Kaleb'), 'folded SUMMARY line unfolded');
+  assert.ok(occ.some((o) => o.title === 'Show and tell for Milo'), 'folded SUMMARY line unfolded');
 });
 
 await test('kid matching: names first, then grade words, else everyone', () => {
-  assert.deepEqual(kidsForEvent('Kayden Library Day', HEROES), ['kay']);
+  assert.deepEqual(kidsForEvent('Nova Library Day', HEROES), ['kay']);
   assert.deepEqual(kidsForEvent('Kindergarten Picture Day', HEROES), ['kal']);
   assert.deepEqual(kidsForEvent('2nd grade field trip', HEROES), ['kay']);
   assert.deepEqual(kidsForEvent('Soccer practice', HEROES), ['kay', 'kal']);
   // A parent's own calendar: grown-up-style events need a kid (or kids word) in the title.
   assert.deepEqual(kidsForEvent('Dentist appointment', HEROES, { requireMention: true }), []);
   assert.deepEqual(kidsForEvent('Kids dentist', HEROES, { requireMention: true }), ['kay', 'kal']);
-  assert.deepEqual(kidsForEvent('Kaleb doctor check-up', HEROES, { requireMention: true }), ['kal']);
+  assert.deepEqual(kidsForEvent('Milo doctor check-up', HEROES, { requireMention: true }), ['kal']);
   assert.equal(prepRuleFor('No School - Thanksgiving break'), null, 'info-only events get no chore');
   assert.equal(prepRuleFor('Gym day').id, 'gym');
 });
@@ -100,7 +100,7 @@ await test('plan: prep chores show the evening before, for the right kids, with 
   assert.deepEqual(dentist.heroIds, []);
   assert.equal(soccer.showOn, '2026-11-24');
   const msg = formatTonightMessage(plan, HEROES);
-  assert.match(msg, /Pack your library book" added for Kayden/);
+  assert.match(msg, /Pack your library book" added for Nova/);
   assert.match(msg, /at 8:30 AM tomorrow/);
   assert.ok(plan.events.some((e) => e.title.startsWith('No School')), 'info events still listed for the fridge');
 });
@@ -135,11 +135,11 @@ await test('calendar API: needs a household code and the family network (or rela
   const hostEnv = { PI_RELAY_URL: 'https://meshlink.example.ts.net/pi-voice', PI_RELAY_TOKEN: 't'.repeat(30) };
   const host = createCalendarService({ env: hostEnv, fetchImpl: async (url, init) => { relayed = { url, init }; return { ok: true, json: async () => ({ configured: true, today: '2026-11-23', events: [], prepTasks: [] }) }; } });
   res = mockRes();
-  await host.handlePlanRequest(netReq({ householdCode: 'HERO-1334', heroes: [{ id: 'kay', name: 'Kayden<script>' }] }), res);
+  await host.handlePlanRequest(netReq({ householdCode: 'HERO-1334', heroes: [{ id: 'kay', name: 'Nova<script>' }] }), res);
   assert.equal(res.code, 200);
   assert.equal(relayed.url, 'https://meshlink.example.ts.net/pi-voice/calendar');
   assert.equal(relayed.init.headers.Authorization, `Bearer ${'t'.repeat(30)}`);
-  assert.equal(JSON.parse(relayed.init.body).heroes[0].name, 'Kaydenscript', 'names are cleaned before relaying');
+  assert.equal(JSON.parse(relayed.init.body).heroes[0].name, 'Novascript', 'names are cleaned before relaying');
 
   res = mockRes();
   await createCalendarService({ env: {} }).handlePlanRequest(netReq({}), res);
@@ -179,8 +179,8 @@ console.log('🧪 Fridge Display');
 const householdState = {
   householdName: 'Hero Family',
   heroes: [
-    { id: 'kay', name: 'Kayden', points: 40, coins: 90, streak: 4, gameDifficulty: 'hard', avatar: 'https://example.com/a.png' },
-    { id: 'kal', name: 'Kaleb <b>', points: 12, coins: 30, streak: 2, gameDifficulty: 'easy', avatar: 'javascript:alert(1)' }
+    { id: 'kay', name: 'Nova', points: 40, coins: 90, streak: 4, gameDifficulty: 'hard', avatar: 'https://example.com/a.png' },
+    { id: 'kal', name: 'Milo <b>', points: 12, coins: 30, streak: 2, gameDifficulty: 'easy', avatar: 'javascript:alert(1)' }
   ],
   taskForest: [
     { id: 'make_bed', title: 'Make Your Hero Bed', points: 10 },
@@ -197,20 +197,20 @@ await test('snapshot: chores per kid with done / waiting / to do, events and the
   const kay = snap.heroes.find((h) => h.id === 'kay');
   const kal = snap.heroes.find((h) => h.id === 'kal');
   assert.equal(kay.done, 1);
-  assert.equal(kay.total, 2, 'Kayden sees the library chore');
-  assert.equal(kal.total, 1, 'Kaleb does not');
+  assert.equal(kay.total, 2, 'Nova sees the library chore');
+  assert.equal(kal.total, 1, 'Milo does not');
   assert.equal(kal.waiting, 1);
   assert.equal(kal.avatar, '', 'unsafe avatar URL dropped');
   assert.equal(snap.familyDone, 1);
   assert.equal(snap.challenge.title, 'Cinnamon Week');
   assert.ok(snap.events.length > 0 && snap.calendarConfigured);
-  assert.equal(snap.events.find((e) => e.title === 'Kayden Library Day').who, 'Kayden');
+  assert.equal(snap.events.find((e) => e.title === 'Nova Library Day').who, 'Nova');
 });
 
 await test('view: escapes names, day mode lists heroes, night mode dims; #fridge routes here', () => {
   const snap = buildFridgeSnapshot(householdState, { now: NOW });
   const day = renderFridgeBody(snap, { now: new Date(2026, 10, 23, 16, 0) });
-  assert.ok(day.includes('Kaleb &lt;b&gt;') && !day.includes('Kaleb <b>'), 'name escaped');
+  assert.ok(day.includes('Milo &lt;b&gt;') && !day.includes('Milo <b>'), 'name escaped');
   assert.ok(day.includes('data-fridge-hero="kay"'));
   assert.ok(day.includes('Family chores today'));
   const night = renderFridgeBody(snap, { now: new Date(2026, 10, 23, 21, 0) });

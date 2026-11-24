@@ -45,7 +45,8 @@ check('the Fridge Display and kid screens are pictured on a tablet and a phone, 
   assert.match(spec, /page\.clock\.setFixedTime/);
   assert.match(spec, /route\.abort\(\)/);
   assert.match(spec, /toHaveScreenshot/);
-  assert.doesNotMatch(spec, /Kaleb|Kayden/, 'no real names in the public repo');
+  // Real names are kept out of every file by scratch/verify_audit_hardening.mjs (hashed check).
+  assert.match(spec, /name: '/);
   const config = read('scripts/pi/screens/playwright.config.mjs');
   assert.match(config, /name: 'tablet'/);
   assert.match(config, /name: 'phone'/);

@@ -318,7 +318,7 @@ function renderCreateHouseholdScreen(parentDisplayName) {
         <input 
           id="input-child-name" 
           type="text" 
-          placeholder="e.g. Leo or Kaleb" 
+          placeholder="e.g. Leo or Milo" 
           required
           class="bg-surface-container-high border-2 border-surface-container-highest focus:border-primary rounded-2xl px-4 py-3 text-sm font-bold text-white w-full focus:outline-hidden transition-all shadow-inner min-h-[50px]"
         />
