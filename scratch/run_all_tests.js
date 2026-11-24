@@ -160,7 +160,9 @@ const testFiles = [
   'scratch/verify_pi_screen_checks.mjs',
   // Fridge mode toggle in the header (tablets become the Fridge Display, saved per device):
   'scratch/verify_fridge_mode_toggle.mjs',
-  'scratch/verify_audit_hardening.mjs'
+  'scratch/verify_audit_hardening.mjs',
+  // Story seeds must be real story starts, not mood lines (seedRefresh.js storySparkProblems):
+  'scratch/verify_story_spark_quality.mjs'
 ];
 
 let allPassed = true;

@@ -66,26 +66,26 @@ await check('hostile or sloppy model output is rejected by the seed validator', 
     'A zombie floats by the moon.',
     'A cloud says "hello" to a hill.',
     `A ${'very '.repeat(30)}long sentence.`,
-    'A moth carries a tiny lantern to a sleepy hedge.'
+    'A little moth wants to see the moon, so it flies up past the sleepy hedge.'
   ], { kind: 'nature', source: 't', date: new Date('2026-11-02') });
-  assert.deepStrictEqual(out.map(s => s.text), ['A moth carries a tiny lantern to a sleepy hedge.']);
+  assert.deepStrictEqual(out.map(s => s.text), ['A little moth wants to see the moon, so it flies up past the sleepy hedge.']);
 });
 await check('merge: no duplicates of the pool, unique ids, capped, idempotent, unknown kind refused', () => {
   const dup = SEED_POOL[0].text;
   const date = new Date('2026-11-02');
-  const first = mergeCandidates(CLEAN_SEED_POOL, [dup, 'A moth carries a tiny lantern to a sleepy hedge.', 'A moth carries a tiny lantern to a sleepy hedge.'], { kind: 'nature', source: 't', date });
+  const first = mergeCandidates(CLEAN_SEED_POOL, [dup, 'A little moth wants to see the moon, so it flies up past the sleepy hedge.', 'A little moth wants to see the moon, so it flies up past the sleepy hedge.'], { kind: 'nature', source: 't', date });
   assert.strictEqual(first.length, 1);
   assert.ok(first[0].id.startsWith('r20261102n'));
-  const again = mergeCandidates([...CLEAN_SEED_POOL, ...first], ['A moth carries a tiny lantern to a sleepy hedge.'], { kind: 'nature', source: 't', date });
+  const again = mergeCandidates([...CLEAN_SEED_POOL, ...first], ['A little moth wants to see the moon, so it flies up past the sleepy hedge.'], { kind: 'nature', source: 't', date });
   assert.strictEqual(again.length, 0);
   const many = Array.from({ length: 40 }, (_, i) => `Creature${'abcdefghijklmnopqrstuvwxyz'[i % 26]} ${['hums', 'rests', 'glows', 'drifts'][i % 4]} near ${['river', 'meadow', 'hill', 'pond', 'cave', 'dune'][i % 6]} number${i}`.replace(/\d/g, ''));
   assert.ok(mergeCandidates([], many, { kind: 'folk', source: 't', date }).length <= MAX_NEW_SEEDS);
   assert.deepStrictEqual(mergeCandidates([], ['A cloud rests.'], { kind: 'bogus', source: 't' }), []);
-  const ids = mergeCandidates([], ['A moth rests on a leaf.', 'An owl hums near a hill.', 'A fox naps under a tree.'], { kind: 'nature', source: 't', date }).map(s => s.id);
+  const ids = mergeCandidates([], ['A tired moth looks for a soft leaf where it can rest until morning.', 'An owl learns a new song so the hill can fall asleep.', 'A fox wants a nap but cannot find a quiet tree.'], { kind: 'nature', source: 't', date }).map(s => s.id);
   assert.strictEqual(new Set(ids).size, ids.length);
 });
 await check('the reviewed-seeds file the job writes loads back identically and is re-validated by the engine', async () => {
-  const seeds = mergeCandidates(CLEAN_SEED_POOL, ['A moth carries a tiny lantern to a sleepy hedge.'], { kind: 'nature', source: 'search', date: new Date('2026-11-02') });
+  const seeds = mergeCandidates(CLEAN_SEED_POOL, ['A little moth wants to see the moon, so it flies up past the sleepy hedge.'], { kind: 'nature', source: 'search', date: new Date('2026-11-02') });
   const dir = mkdtempSync(join(tmpdir(), 'seeds-'));
   try {
     const file = join(dir, 'reviewed.mjs');
