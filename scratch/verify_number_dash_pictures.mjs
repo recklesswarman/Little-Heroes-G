@@ -55,7 +55,7 @@ await test('every Number Dash challenge has a picture that matches its numbers',
       if (m && c.visual.kind === 'number-line') assert.equal(c.visual.start + c.visual.jump, Number(c.options[c.answer]));
     }
   }
-  assert.ok(MATH_FACT_CHALLENGES.easy.every((c) => c.visual.kind === 'ten-frame'), 'Kaleb sees ten frames');
+  assert.ok(MATH_FACT_CHALLENGES.easy.every((c) => c.visual.kind === 'ten-frame'), 'Milo sees ten frames');
   assert.ok(MATH_FACT_CHALLENGES.hard.some((c) => c.visual.kind === 'base-ten'), 'place value for 2nd grade');
   assert.ok(MATH_FACT_CHALLENGES.medium.some((c) => c.standard === 'K.OA.A.4'), 'make 10');
 });

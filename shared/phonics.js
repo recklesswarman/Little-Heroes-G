@@ -1,7 +1,7 @@
 // Phonics pack: letter sounds, Dolch sight words, rhyme families, clap-it-out words and
 // helpers that turn CMU Pronouncing Dictionary phonemes into kid-friendly sounds.
 //
-// Kaleb (Pre-K) starts with letter names and single letter sounds; Kayden (2nd grade) gets
+// The Pre-K hero starts with letter names and single letter sounds; the 2nd grader gets
 // leveled sight words, rhymes, syllables and "sound it out" in tap-a-word stories.
 //
 // The word tables are hand-checked against the CMU dictionary in
@@ -9,7 +9,7 @@
 // The dictionary itself (cmu-pronouncing-dictionary, 134k words) only runs on the server:
 // server/phonicsService.js. Everything here is pure and works offline.
 
-// ── Letter sounds (Kaleb) ──────────────────────────────────────────────────────
+// ── Letter sounds (Pre-K) ─────────────────────────────────────────────────────
 // `say` is written for a text-to-speech voice: "A says ah, like apple".
 export const LETTER_SOUNDS = Object.freeze([
   { letter: 'A', sound: '/a/', say: 'ah', word: 'apple', emoji: '🍎' },

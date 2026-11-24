@@ -286,7 +286,7 @@ await test('CORS: Meal Planner API allows listed recipe-app origins with Authori
 });
 
 await test('fridge snapshot from the Pi carries the meals card data', async () => {
-  const state = { heroes: [{ id: 'kay', name: 'Kayden' }], mealPlan: upsertMealEntry(null, { id: 'd', date: '2026-11-23', mealType: 'dinner', title: 'Tacos' }, { now: NOW }).plan };
+  const state = { heroes: [{ id: 'kay', name: 'Nova' }], mealPlan: upsertMealEntry(null, { id: 'd', date: '2026-11-23', mealType: 'dinner', title: 'Tacos' }, { now: NOW }).plan };
   const handler = createFridgeHandler({
     env: { HOUSEHOLD_CODES: 'ABCD1234', FRIDGE_ALLOW_ANY_NETWORK: 'true' },
     fetchHouseholdImpl: async () => state,
@@ -327,7 +327,7 @@ await test('fridge card renders today + next lunch, a week view, and escapes tex
 });
 
 await test("6:30 PM alert adds tomorrow's lunch, and still works without a calendar", async () => {
-  const state = { heroes: [{ id: 'kay', name: 'Kayden' }], mealPlan: null };
+  const state = { heroes: [{ id: 'kay', name: 'Nova' }], mealPlan: null };
   const line = await tomorrowLunchLine(state, { env: {}, now: () => NOW, schoolMenu: schoolMenuStub });
   assert.match(line, /Glazed Chicken Drumstick/);
   const off = await tomorrowLunchLine({ mealPlan: updateMealSettings(null, { tomorrowLunchAlert: false }).plan }, { env: {}, now: () => NOW, schoolMenu: schoolMenuStub });

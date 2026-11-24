@@ -8,6 +8,11 @@ import crypto from 'node:crypto';
 import { computeMd5 } from '../src/utils/md5.js';
 import { extractSceneMoment, buildDetailedPrompt, estimatePromptTokens } from '../shared/storyEngine/scenes.js';
 import { DEFAULT_HERO_LOOK_DETAILED } from '../shared/storyEngine/avatarLook.js';
+import { isRateLimited, getRequestIp } from './geminiService.js';
+
+// Each picture spends the family's Cloudflare/Gemini allowance, so cap callers per IP
+// (a story night is ~2 pictures per chapter plus a character sheet).
+const ILLUSTRATION_LIMIT_PER_MIN = 30;
 
 // FLUX.1 schnell reads long prompts. Cloudflare retired the SDXL models on 2026-11-20; the Worker keeps its own
 // fallback chain, so this is just the model asked for first.
@@ -56,6 +61,9 @@ export function buildCompactIllustrationPrompt(params = {}) {
  * Handles POST /api/story/illustration
  */
 export async function handleStoryIllustrationRequest(req, res) {
+  if (isRateLimited(`illustration:${getRequestIp(req)}`, ILLUSTRATION_LIMIT_PER_MIN, 60_000)) {
+    return res.status(429).json({ success: false, error: 'Too many pictures right now, try again in a minute.' });
+  }
   try {
     const {
       sessionId = '',

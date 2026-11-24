@@ -159,7 +159,8 @@ const testFiles = [
   // Screen checks on the Pi after each deploy (Fridge Display + kid screens, Playwright):
   'scratch/verify_pi_screen_checks.mjs',
   // Fridge mode toggle in the header (tablets become the Fridge Display, saved per device):
-  'scratch/verify_fridge_mode_toggle.mjs'
+  'scratch/verify_fridge_mode_toggle.mjs',
+  'scratch/verify_audit_hardening.mjs'
 ];
 
 let allPassed = true;

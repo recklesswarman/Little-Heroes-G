@@ -18,33 +18,33 @@ async function test(name, fn) {
   try { await fn(); console.log(`  ✅ ${name}`); } catch (err) { failures++; console.error(`  ❌ ${name}\n     ${err.stack || err.message}`); }
 }
 
-const look = { heroId: 'hero_kaleb', heroLook: 'in a green dragon-hood explorer outfit', petId: '1', petSpecies: 'T-Rex' };
+const look = { heroId: 'hero_milo', heroLook: 'in a green dragon-hood explorer outfit', petId: '1', petSpecies: 'T-Rex' };
 const fakeImage = (tag) => `data:image/jpeg;base64,${Buffer.from(`${tag}-`.repeat(400)).toString('base64')}`;
 
 await test('fixed look per kid: hair, pet colour, seed and prompt', () => {
-  assert.ok(HAIR_LOOKS.includes(heroHairFor('hero_kaleb')));
-  assert.equal(heroHairFor('hero_kaleb'), heroHairFor('hero_kaleb'));
-  assert.ok(PET_SKINS.includes(petSkinFor('hero_kaleb', '1')));
+  assert.ok(HAIR_LOOKS.includes(heroHairFor('hero_milo')));
+  assert.equal(heroHairFor('hero_milo'), heroHairFor('hero_milo'));
+  assert.ok(PET_SKINS.includes(petSkinFor('hero_milo', '1')));
   const sig = characterSheetSignature(look);
   assert.notEqual(sig, characterSheetSignature({ ...look, heroLook: 'in a golden lion-mane hood' }), 'new avatar, new sheet');
   assert.notEqual(sig, characterSheetSignature({ ...look, petId: '2' }), 'new pet, new sheet');
   assert.equal(characterSheetSeed(sig), characterSheetSeed(sig));
   assert.notEqual(characterSheetSeed(sig, 0), characterSheetSeed(sig, 1));
   const prompt = characterSheetPrompt(look);
-  assert.ok(prompt.includes(heroHairFor('hero_kaleb')) && prompt.includes('dragon-hood') && prompt.includes('t-rex'));
-  assert.ok(!/kaleb/i.test(prompt), 'no names in the prompt');
+  assert.ok(prompt.includes(heroHairFor('hero_milo')) && prompt.includes('dragon-hood') && prompt.includes('t-rex'));
+  assert.ok(!/milo/i.test(prompt), 'no names in the prompt');
   assert.ok(prompt.length < 2000);
   assert.ok(characterSheetShortPrompt(look).split(/\s+/).length < 40);
 });
 
 await test('stories use the same hair and pet colour as the sheet', () => {
   const fields = sheetPromptFields(look);
-  const req = buildRequest({ heroName: 'Kaleb', petSpecies: 'T-Rex', ...fields, heroHair2: 'x' });
+  const req = buildRequest({ heroName: 'Milo', petSpecies: 'T-Rex', ...fields, heroHair2: 'x' });
   assert.equal(req.heroHair, fields.heroHair);
   assert.equal(req.petSkin, fields.petSkin);
   assert.equal(buildRequest({ heroName: 'K', heroHair: 'bright pink hair' }).heroHair, '', 'only the fixed choices');
-  const bible = { title: 'A Night Trip', characters: [{ name: 'Kaleb', role: 'hero' }, { name: 'Rex', role: 'companion' }] };
-  const chapterText = 'Kaleb and Rex walked through the glowing forest to the lake. They found a lantern by the water.';
+  const bible = { title: 'A Night Trip', characters: [{ name: 'Milo', role: 'hero' }, { name: 'Rex', role: 'companion' }] };
+  const chapterText = 'Milo and Rex walked through the glowing forest to the lake. They found a lantern by the water.';
   const plan = JSON.stringify(buildScenePlan({ chapterText, bible, request: req, chapterIndex: 0 }));
   assert.ok(plan.includes(fields.heroHair), 'scene prompt uses the sheet hair');
   assert.ok(plan.includes(fields.petSkin), 'scene prompt uses the sheet pet colour');
@@ -67,13 +67,13 @@ await test('drawn once on the Worker, kept on the device, redrawn on request or 
   assert.equal(await ensureCharacterSheet(look, { fetchImpl, shrink }), a, 'cached');
   assert.equal(calls.length, 1);
   assert.equal(getCharacterSheet({ ...look, heroLook: 'in a golden lion-mane hood' }), '', 'look changed');
-  assert.ok(getSavedSheetInfo('hero_kaleb').createdAt === 1000);
+  assert.ok(getSavedSheetInfo('hero_milo').createdAt === 1000);
   const b = await ensureCharacterSheet(look, { redraw: true, fetchImpl, shrink });
   assert.notEqual(b, a);
   assert.notEqual(calls[1].seed, calls[0].seed, 'redraw uses a new seed');
-  const failed = await ensureCharacterSheet({ ...look, heroId: 'hero_kayden' }, { fetchImpl: async () => ({ ok: false }), shrink });
+  const failed = await ensureCharacterSheet({ ...look, heroId: 'hero_nova' }, { fetchImpl: async () => ({ ok: false }), shrink });
   assert.equal(failed, '');
-  assert.equal(getSavedSheetInfo('hero_kayden'), null);
+  assert.equal(getSavedSheetInfo('hero_nova'), null);
   assert.equal(await ensureCharacterSheet(look, { fetchImpl: async () => { throw new Error('offline'); }, shrink, redraw: true }), '', 'never throws');
   assert.equal(getCharacterSheet(look), b, 'a failed redraw keeps the old sheet');
 });

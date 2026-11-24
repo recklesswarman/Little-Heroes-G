@@ -60,7 +60,20 @@ export interface ParentInsightsRequest {
 }
 
 export const getParentInsights = onCall({ secrets: ["GEMINI_API_KEY"], cors: true }, async (request) => {
-  const data = request.data as ParentInsightsRequest;
+  // Every app device signs in (anonymously at least) before calling, so an unsigned caller is
+  // not the app: refuse it instead of spending the family's Gemini key. The app falls back to
+  // its local report when this call fails.
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Sign in to get parent insights.");
+  }
+  const raw = (request.data || {}) as ParentInsightsRequest;
+  const data: ParentInsightsRequest = {
+    ...raw,
+    householdName: typeof raw.householdName === "string" ? raw.householdName.slice(0, 100) : undefined,
+    heroes: Array.isArray(raw.heroes)
+      ? raw.heroes.slice(0, 10).map((h) => ({ ...h, name: String(h?.name ?? "").slice(0, 40) }))
+      : undefined,
+  };
 
   const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
   const ai = new GoogleGenAI({ apiKey: apiKey || undefined });

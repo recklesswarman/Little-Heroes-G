@@ -23,9 +23,9 @@ async function test(name, fn) {
   try { await fn(); console.log(`  ✅ ${name}`); } catch (err) { failures++; console.error(`  ❌ ${name}\n     ${err.stack || err.message}`); }
 }
 
-const KALEB = { id: 'h_kaleb', name: 'Kaleb', age: 4 };
-const KAYDEN = { id: 'h_kayden', name: 'Kayden', age: 7 };
-const HEROES = [KALEB, KAYDEN];
+const MILO = { id: 'h_milo', name: 'Milo', age: 4 };
+const NOVA = { id: 'h_nova', name: 'Nova', age: 7 };
+const HEROES = [MILO, NOVA];
 
 // The district page's tables, as the page serves them (HTML) and as Markdown.
 const PAGE_HTML = `<h2>November 2026</h2><table><tr><th>Sunday</th><th>Monday</th></tr>
@@ -76,21 +76,21 @@ await test('parses the district page (HTML and Markdown)', () => {
   assert.deepEqual(m.days.map((d) => [d.date, d.label]), [['2026-10-12', 'Indigenous Peoples Day / Columbus Day'], ['2027-03-26', 'No School Day']]);
 });
 await test('kids are grouped by age (4 = Pre-K/K, 7 = elementary) unless a group is set', () => {
-  assert.equal(schoolGroupFor(KALEB), 'prek_k');
-  assert.equal(schoolGroupFor(KAYDEN), 'elementary');
+  assert.equal(schoolGroupFor(MILO), 'prek_k');
+  assert.equal(schoolGroupFor(NOVA), 'elementary');
   assert.equal(schoolGroupFor({ age: 4, schoolGroup: 'elementary' }), 'elementary');
   assert.equal(schoolGroupFor({}), 'elementary');
 });
 await test('school day per kid: weekends, holidays, summer, Pre-K/K start and the Pre-K/K-only day', () => {
-  assert.deepEqual(schoolDayInfo('2026-11-23', KAYDEN), { school: true, reason: '' });
-  assert.equal(schoolDayInfo('2026-11-28', KAYDEN).reason, 'weekend');
-  assert.equal(schoolDayInfo('2026-11-26', KALEB).reason, 'Thanksgiving');
-  assert.equal(schoolDayInfo('2026-09-01', KAYDEN).school, true);
-  assert.equal(schoolDayInfo('2026-09-01', KALEB).reason, 'summer', 'Pre-K starts Sept 3');
-  assert.equal(schoolDayInfo('2027-06-02', KALEB).school, false);
-  assert.equal(schoolDayInfo('2027-06-02', KAYDEN).school, true);
-  assert.equal(schoolDayInfo('2027-07-14', KAYDEN).reason, 'summer');
-  assert.equal(schoolDayInfo('2028-01-12', KAYDEN).school, true, 'a year with no calendar: weekdays are school days');
+  assert.deepEqual(schoolDayInfo('2026-11-23', NOVA), { school: true, reason: '' });
+  assert.equal(schoolDayInfo('2026-11-28', NOVA).reason, 'weekend');
+  assert.equal(schoolDayInfo('2026-11-26', MILO).reason, 'Thanksgiving');
+  assert.equal(schoolDayInfo('2026-09-01', NOVA).school, true);
+  assert.equal(schoolDayInfo('2026-09-01', MILO).reason, 'summer', 'Pre-K starts Sept 3');
+  assert.equal(schoolDayInfo('2027-06-02', MILO).school, false);
+  assert.equal(schoolDayInfo('2027-06-02', NOVA).school, true);
+  assert.equal(schoolDayInfo('2027-07-14', NOVA).reason, 'summer');
+  assert.equal(schoolDayInfo('2028-01-12', NOVA).school, true, 'a year with no calendar: weekdays are school days');
 });
 await test('no-school events skip weekends and name only the kids a Pre-K/K-only day applies to', () => {
   const ev = noSchoolEvents('2026-11-23', '2026-11-30', HEROES);
@@ -98,8 +98,8 @@ await test('no-school events skip weekends and name only the kids a Pre-K/K-only
   assert.equal(ev[0].title, 'No school: Thanksgiving');
   assert.deepEqual(ev[0].heroIds, []);
   const june = noSchoolEvents('2027-06-01', '2027-06-03', HEROES);
-  assert.deepEqual(june.map((e) => [e.day, e.heroIds]), [['2027-06-02', ['h_kaleb']]]);
-  assert.equal(noSchoolEvents('2027-06-01', '2027-06-03', [KAYDEN]).length, 0);
+  assert.deepEqual(june.map((e) => [e.day, e.heroIds]), [['2027-06-02', ['h_milo']]]);
+  assert.equal(noSchoolEvents('2027-06-01', '2027-06-03', [NOVA]).length, 0);
   assert.equal(schoolYearFor('2027-03-01'), '2026-2027');
   assert.match(districtCalendarUrl('2027-2028'), /calendar-2027-2028$/);
 });
@@ -135,7 +135,7 @@ await test('weather chore tonight only for kids with school tomorrow', () => {
   assert.equal(tasks[0].id, 'cal_wx_2026-11-24_umbrella');
   assert.equal(tasks[0].showOn, '2026-11-23');
   assert.equal(tasks[0].eventTitle, 'Rain tomorrow (85%)');
-  assert.deepEqual(tasks[0].heroIds, ['h_kaleb', 'h_kayden']);
+  assert.deepEqual(tasks[0].heroIds, ['h_milo', 'h_nova']);
   // Tuesday night: Wednesday is Thanksgiving break, so no mittens chore even though it is cold.
   const wed = weatherPrepTasks(w, '2026-11-24', HEROES, { schoolKidsFor: (d) => HEROES.filter((h) => schoolDayInfo(d, h).school) });
   assert.equal(wed.length, 0);
@@ -154,7 +154,7 @@ await test('calendar plan carries no-school days, the forecast, the weather chor
   assert.equal(plan.noSchool[0].day, '2026-11-25');
   assert.equal(plan.schoolCalendar.lastDay, '2027-06-17');
   const msg = formatTonightMessage(plan, HEROES);
-  assert.match(msg, /☔ Rain tomorrow \(85%\): "Pack your umbrella and raincoat" added for Kaleb & Kayden\./);
+  assert.match(msg, /☔ Rain tomorrow \(85%\): "Pack your umbrella and raincoat" added for Milo & Nova\./);
 });
 await test('server: weather cached for an hour and kept on a failed fetch', async () => {
   let calls = 0;
@@ -187,8 +187,8 @@ await test('server: the Pi\'s saved school calendar wins when it is the same yea
   }
 });
 await test('server: calendar service adds the forecast and keeps kids\' ages for grade groups', async () => {
-  assert.deepEqual(sanitizeHeroes([{ id: 'a', name: 'Kaleb', age: 4, schoolGroup: 'prek_k' }, { id: 'b', age: 'x', schoolGroup: 'nope' }]).map((h) => [h.age, h.schoolGroup]), [[4, 'prek_k'], [null, '']]);
-  const ics = 'BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:1\nDTSTART;VALUE=DATE:20261124\nSUMMARY:Kayden library day\nEND:VEVENT\nEND:VCALENDAR';
+  assert.deepEqual(sanitizeHeroes([{ id: 'a', name: 'Milo', age: 4, schoolGroup: 'prek_k' }, { id: 'b', age: 'x', schoolGroup: 'nope' }]).map((h) => [h.age, h.schoolGroup]), [[4, 'prek_k'], [null, '']]);
+  const ics = 'BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:1\nDTSTART;VALUE=DATE:20261124\nSUMMARY:Nova library day\nEND:VEVENT\nEND:VCALENDAR';
   const svc = createCalendarService({
     env: { GOOGLE_CALENDAR_ICS_URL: 'https://example.com/cal.ics' },
     now: () => NOW,
@@ -204,16 +204,16 @@ await test('server: calendar service adds the forecast and keeps kids\' ages for
 });
 await test('"school days only" chores rest on holidays and weekends, per kid', () => {
   const c = { id: 'pack', title: 'Pack your backpack', schoolDaysOnly: true };
-  assert.equal(isChoreForHeroToday(c, 'h_kayden', '2026-11-23', { hero: KAYDEN }), true);
-  assert.equal(isChoreForHeroToday(c, 'h_kayden', '2026-11-26', { hero: KAYDEN }), false);
-  assert.equal(isChoreForHeroToday(c, 'h_kayden', '2026-11-28', { hero: KAYDEN }), false);
-  assert.equal(isChoreForHeroToday(c, 'h_kaleb', '2027-06-02', { hero: KALEB }), false);
-  assert.equal(isChoreForHeroToday(c, 'h_kayden', '2027-06-02', { hero: KAYDEN }), true);
-  assert.equal(isChoreForHeroToday({ id: 'x' }, 'h_kayden', '2026-11-26', { hero: KAYDEN }), true, 'other chores unchanged');
+  assert.equal(isChoreForHeroToday(c, 'h_nova', '2026-11-23', { hero: NOVA }), true);
+  assert.equal(isChoreForHeroToday(c, 'h_nova', '2026-11-26', { hero: NOVA }), false);
+  assert.equal(isChoreForHeroToday(c, 'h_nova', '2026-11-28', { hero: NOVA }), false);
+  assert.equal(isChoreForHeroToday(c, 'h_milo', '2027-06-02', { hero: MILO }), false);
+  assert.equal(isChoreForHeroToday(c, 'h_nova', '2027-06-02', { hero: NOVA }), true);
+  assert.equal(isChoreForHeroToday({ id: 'x' }, 'h_nova', '2026-11-26', { hero: NOVA }), true, 'other chores unchanged');
   const state = { heroes: HEROES, taskForest: [c, { id: 'bed', title: 'Make bed' }] };
   const thanksgiving = Date.parse('2026-11-26T15:00:00Z');
-  assert.deepEqual(buildChoreSnapshot(state, 'h_kayden', { now: thanksgiving }).map((x) => x.id), ['bed']);
-  assert.deepEqual(buildChoreSnapshot(state, 'h_kayden', { now: NOW }).map((x) => x.id), ['pack', 'bed']);
+  assert.deepEqual(buildChoreSnapshot(state, 'h_nova', { now: thanksgiving }).map((x) => x.id), ['bed']);
+  assert.deepEqual(buildChoreSnapshot(state, 'h_nova', { now: NOW }).map((x) => x.id), ['pack', 'bed']);
 });
 await test('store: Parent Portal toggles and new chores keep the school-days flag', () => {
   const s = store.getState();

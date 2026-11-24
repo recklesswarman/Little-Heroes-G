@@ -93,7 +93,7 @@ await test('server: one fetch a day per extra, AI fact used when valid, stale co
 });
 await test('fridge: cards, countdown, evening look; bedtime from the parent settings', () => {
   const extras = { space: parseApod(APOD), history: { text: 'On this day in 1969, astronauts visited the Moon!', source: 'Wikipedia' }, sun: { sunrise: '', sunset: new Date(2026, 10, 23, 16, 13).toISOString() } };
-  const snap = buildFridgeSnapshot({ heroes: [{ id: 'k', name: 'Kaleb', role: 'kid' }], parentSettings: { bedtimeHour: 19 } }, { extras });
+  const snap = buildFridgeSnapshot({ heroes: [{ id: 'k', name: 'Milo', role: 'kid' }], parentSettings: { bedtimeHour: 19 } }, { extras });
   assert.equal(snap.bedtimeHour, 19);
   assert.equal(snap.extras.space.image, APOD.url);
   assert.match(renderSpaceCard(snap), /data-fridge-space[\s\S]*Saturn&#39;s Rings|data-fridge-space[\s\S]*Saturn/);

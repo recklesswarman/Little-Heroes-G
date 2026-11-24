@@ -153,8 +153,14 @@ app.use(staticRequestLimiter);
 app.use((req, res, next) => {
   const assetsIdx = req.path.indexOf('/assets/');
   if (assetsIdx > 0) {
-    const cleanAssetPath = req.path.substring(assetsIdx);
-    return res.sendFile(path.join(distPath, cleanAssetPath), (err) => {
+    // Resolve against dist/assets and refuse anything that climbs out of it ("../" in a raw
+    // request path would otherwise let path.join reach files like the Pi's env file).
+    const assetsRoot = path.join(distPath, 'assets');
+    const target = path.resolve(distPath, '.' + req.path.substring(assetsIdx));
+    if (!target.startsWith(assetsRoot + path.sep)) {
+      return res.status(404).json({ error: 'Asset not found' });
+    }
+    return res.sendFile(target, (err) => {
       if (err) {
         res.status(404).json({ error: 'Asset not found' });
       }
