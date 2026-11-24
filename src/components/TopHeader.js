@@ -2,6 +2,7 @@ import { store, KID_AVATARS } from '../state/store.js';
 import { Sound } from '../audio/sfx.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
 import { safeImageUrl } from '../utils/safeImageUrl.js';
+import { setFridgeMode } from '../services/fridgeModeService.js';
 
 /** Short build id for the header badge, e.g. 'v1.0.0-6f8c88f' -> '6f8c88f'. */
 export function getBuildLabel(raw = (typeof window !== 'undefined' ? window.__LITTLE_HEROES_VERSION__ : '')) {
@@ -65,6 +66,11 @@ export function renderTopHeader() {
           <span class="material-symbols-outlined text-base sm:text-lg md:text-xl text-primary" style="font-variation-settings: 'FILL' 1;">sync</span>
         </button>
 
+        <!-- Fridge Mode Toggle (tablets): turns this device into the Fridge Display, saved on this device -->
+        <button id="header-fridge-btn" type="button" role="switch" aria-checked="false" title="Fridge mode: show the family board on this tablet" aria-label="Turn on fridge mode" class="hidden sm:flex bg-surface-container text-on-surface-variant rounded-xl w-10 h-10 sm:w-11 sm:h-11 min-w-lg sm:min-w-[44px] min-h-lg sm:min-h-[44px] chunky-btn-sm border-surface-container-low hover:bg-surface-bright active:scale-95 items-center justify-center transition-all shrink-0">
+          <span class="material-symbols-outlined text-base sm:text-lg md:text-xl text-cyan-300" style="font-variation-settings: 'FILL' 1;">kitchen</span>
+        </button>
+
         <!-- Sound Toggle Button -->
         <button id="header-sound-btn" title="Toggle Sound FX" aria-label="Toggle Sound" class="bg-surface-container text-on-surface-variant rounded-xl w-10 h-10 sm:w-11 sm:h-11 min-w-lg sm:min-w-[44px] min-h-lg sm:min-h-[44px] chunky-btn-sm border-surface-container-low hover:bg-surface-bright active:scale-95 flex items-center justify-center transition-all shrink-0">
           <span class="material-symbols-outlined text-base sm:text-lg md:text-xl ${isMuted ? 'text-error' : 'text-primary'}" style="font-variation-settings: 'FILL' 1;">
@@ -116,6 +122,15 @@ export function attachTopHeaderListeners() {
     syncBtn.addEventListener('click', () => {
       Sound.click();
       window.dispatchEvent(new CustomEvent('open-household-modal'));
+    });
+  }
+
+  const fridgeBtn = document.getElementById('header-fridge-btn');
+  if (fridgeBtn) {
+    fridgeBtn.addEventListener('click', () => {
+      Sound.click();
+      setFridgeMode(true);
+      store.navigate('fridge');
     });
   }
 

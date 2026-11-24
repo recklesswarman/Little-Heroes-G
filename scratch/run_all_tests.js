@@ -157,7 +157,9 @@ const testFiles = [
   // Pi voices: Kokoro bedtime story voice with words lighting up, Moonshine fast reading check:
   'scratch/verify_pi_voice_extras.mjs',
   // Screen checks on the Pi after each deploy (Fridge Display + kid screens, Playwright):
-  'scratch/verify_pi_screen_checks.mjs'
+  'scratch/verify_pi_screen_checks.mjs',
+  // Fridge mode toggle in the header (tablets become the Fridge Display, saved per device):
+  'scratch/verify_fridge_mode_toggle.mjs'
 ];
 
 let allPassed = true;
