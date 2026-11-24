@@ -54,6 +54,7 @@ import { renderStoryLibraryView, attachStoryLibraryListeners } from './views/Sto
 import { renderLetterSoundsView, attachLetterSoundsListeners } from './views/LetterSoundsView.js';
 import { renderMathLabView, attachMathLabListeners } from './views/MathLabView.js';
 import { renderFridgeDisplayView, attachFridgeDisplayListeners, stopFridgeDisplay, FRIDGE_VIEW_NAMES } from './views/FridgeDisplayView.js';
+import { isFridgeMode } from './services/fridgeModeService.js';
 import { startFamilyCalendarSync } from './services/familyCalendarService.js';
 import { registerServiceWorker } from './pwa/registerServiceWorker.js';
 import { initRewardAnimations } from './services/rewardAnimationService.js';
@@ -621,7 +622,8 @@ function resolveRouteFromUrl() {
   return null;
 }
 
-const initialRoute = resolveRouteFromUrl();
+// A tablet switched to fridge mode (header 🧊 button) opens straight to the Fridge Display.
+const initialRoute = resolveRouteFromUrl() || (isFridgeMode() ? 'fridge' : null);
 if (initialRoute && store.getState().activeView !== initialRoute) {
   store.navigate(initialRoute);
 }

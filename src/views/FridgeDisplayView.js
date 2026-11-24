@@ -8,6 +8,7 @@
 // without anyone signing in on the kiosk browser. On any other device that has joined the
 // household it builds the same snapshot from its own store (shared/fridgeSnapshot.js).
 import { store } from '../state/store.js';
+import { isFridgeMode, setFridgeMode } from '../services/fridgeModeService.js';
 import { speakCompanion } from '../services/voiceService.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
 import { serverApiUrl } from '../services/serverApi.js';
@@ -385,9 +386,11 @@ export function renderFridgeDisplayView() {
         </div>
         <div class="flex items-center gap-3">
           <span class="text-sm font-bold text-slate-500" data-fridge-updated></span>
-          <button type="button" data-fridge-exit class="w-11 h-11 rounded-full bg-slate-800/60 text-slate-400 flex items-center justify-center" aria-label="Leave fridge display">
+          ${isFridgeMode() ? `<button type="button" data-fridge-exit class="h-11 px-4 rounded-full bg-slate-800/60 text-slate-300 flex items-center gap-2 font-bold" aria-label="Turn off fridge mode">
+            <span class="material-symbols-outlined text-lg" aria-hidden="true">kitchen</span><span>Fridge mode off</span>
+          </button>` : `<button type="button" data-fridge-exit class="w-11 h-11 rounded-full bg-slate-800/60 text-slate-400 flex items-center justify-center" aria-label="Leave fridge display">
             <span class="text-xl font-black" aria-hidden="true">✕</span>
-          </button>
+          </button>`}
         </div>
       </header>
       <div class="flex-1 flex flex-col min-h-0" data-fridge-body>${renderFridgeBody(lastSnapshot)}</div>
@@ -528,6 +531,7 @@ export function attachFridgeDisplayListeners() {
   requestWakeLock();
   document.addEventListener('visibilitychange', onVisibility);
   root.querySelector('[data-fridge-exit]')?.addEventListener('click', () => {
+    setFridgeMode(false);
     stopFridgeDisplay();
     try { if (location.hash.replace(/^#\/?/, '').startsWith('fridge')) history.replaceState(null, '', location.pathname + location.search); } catch {}
     store.navigate('dashboard');
