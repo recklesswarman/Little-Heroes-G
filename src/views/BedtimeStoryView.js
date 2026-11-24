@@ -16,6 +16,7 @@ import { safeImageUrl } from '../utils/safeImageUrl.js';
 import { BEDTIME_REALMS, BEDTIME_MORALS, CONSTELLATION_STICKERS, getBedtimeRealm } from '../data/bedtimeStoryData.js';
 import { bedtimeStoryService, resolveBedtimeNarratorPetId } from '../services/bedtimeStoryService.js';
 import { bedtimeIllustrationService } from '../services/bedtimeIllustrationService.js';
+import { noteBedtimeStarted } from '../services/netGuardClient.js';
 import { stopCompanionAudio, prefetchCompanionAudio, unlockVoiceAudio } from '../services/voiceService.js';
 import { speakStoryChapter, stopStoryAudio, prepareStoryAudio, matchSpokenWord } from '../services/storyAudioService.js';
 
@@ -816,6 +817,9 @@ function renderBookshelfLibrary(library) {
  * Event Handlers Wiring
  */
 export function setupBedtimeStoryListeners() {
+  // Opening the Bedtime Sanctuary in the evening starts bedtime on this kid's tablet: the Pi's
+  // Pi-hole turns its internet off (the app keeps working) until morning. Once per evening.
+  noteBedtimeStarted(store.getState().selectedHero?.id);
   // Tap any word in the story to hear it and see a short meaning.
   attachWordHelper(document.getElementById('main-content') || document.body);
   // Navigation / Back

@@ -19,6 +19,7 @@ import { createRexRelay } from './server/rexAgyRelay.js';
 import { calendarService } from './server/calendarService.js';
 import { handleFridgeSnapshot } from './server/fridgeService.js';
 import { fridgeExtrasService } from './server/fridgeExtrasService.js';
+import { netGuardService } from './server/netGuardService.js';
 import { mountMealsRoutes } from './server/mealsService.js';
 import { mountPhet } from './server/phetService.js';
 import { createStoryAudioService } from './server/storyAudioService.js';
@@ -142,6 +143,12 @@ app.get('/api/fridge/extras', voiceLimiter, fridgeExtrasService.handleExtrasRequ
 // School breakfast/lunch menus (public) and the Meal Planner API for linked apps
 // (server/mealsService.js, docs/meal-planner-api.md; needs MEALS_API_TOKEN + HOUSEHOLD_CODES).
 mountMealsRoutes(app, express, { limiter: voiceLimiter });
+// Kids' tablet internet through the Pi's Pi-hole: YouTube Restricted / SafeSearch and bedtime off
+// (server/netGuardService.js). On the Pi it talks to Pi-hole; elsewhere it relays to the Pi.
+// /api/local/netguard is the Pi end of that relay (same Tailscale Funnel path as Rex's voice).
+app.post('/api/netguard', voiceLimiter, netGuardService.handleRequest);
+app.post('/api/local/netguard', voiceLimiter, netGuardService.handleRequest);
+netGuardService.start();
 // Math Lab: the Pi's offline copies of the PhET math sims (scripts/pi/phet-sims.mjs).
 mountPhet(app);
 

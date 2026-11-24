@@ -29,6 +29,7 @@ import { PETS_DATABASE } from '../data/petsData.js';
 import { renderStoryControlsTab, bindStoryControlsTab } from './StoryControlsPanel.js';
 import { renderMealPlannerTab, bindMealPlannerTab } from './MealPlannerPanel.js';
 import { renderWeeklyReportCard, bindWeeklyReportCard } from './WeeklyReportCard.js';
+import { renderTabletInternetCard, bindTabletInternetCard, refreshTabletInternetCard } from './TabletInternetCard.js';
 import { speakCompanion } from '../services/voiceService.js';
 import { REX_VOICE_PERSONAS, getRexVoicePersona } from '../data/rexVoicePersonas.js';
 import {
@@ -480,6 +481,7 @@ export function renderParentPortalView() {
         activeAdminTab === 'screentime'
           ? `
         <section class="flex flex-col gap-6 animate-fade-in">
+          ${renderTabletInternetCard()}
           
           <!-- Header Banner -->
           <div class="bg-surface-container rounded-3xl p-5 sm:p-6 border-2 border-sky-500/40 card-shadow flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -4826,6 +4828,7 @@ export function attachParentPortalListeners() {
   if (activeAdminTab === 'story') bindStoryControlsTab();
   if (activeAdminTab === 'meals') bindMealPlannerTab();
   if (activeAdminTab === 'reports') bindWeeklyReportCard();
+  if (activeAdminTab === 'screentime') bindTabletInternetCard();
 
   // APPROVALS TAB
   const clearAllPendingBtn = document.getElementById('admin-clear-all-pending-btn');
@@ -4969,6 +4972,8 @@ export function attachParentPortalListeners() {
         bedtimeCurfew: curfewOff?.checked ? '' : (curfewInput ? curfewInput.value : '20:00'),
         screenTimeLockMessage: lockoutMsgInput ? lockoutMsgInput.value : ''
       });
+      // A new curfew is also the kid's tablet internet-off time (Pi-hole): push it to the Pi.
+      refreshTabletInternetCard();
 
       Sound.fanfare();
       flashFeedback('screentime-save-feedback', `✓ Screen Time Policy ${savedLabel()}`);

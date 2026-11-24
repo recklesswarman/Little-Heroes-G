@@ -162,7 +162,9 @@ const testFiles = [
   'scratch/verify_fridge_mode_toggle.mjs',
   'scratch/verify_audit_hardening.mjs',
   // Story seeds must be real story starts, not mood lines (seedRefresh.js storySparkProblems):
-  'scratch/verify_story_spark_quality.mjs'
+  'scratch/verify_story_spark_quality.mjs',
+  // Kids' tablet internet via the Pi's Pi-hole: YouTube Restricted, SafeSearch, bedtime off:
+  'scratch/verify_tablet_internet_guard.mjs'
 ];
 
 let allPassed = true;

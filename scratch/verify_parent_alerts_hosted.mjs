@@ -19,7 +19,7 @@ await test('server and browser build the same whitelisted message', () => {
   const cfg = { url: 'http://pi:8090', topic: 'little-heroes', token: 't' };
   assert.deepEqual(serverBuild('reward_requested', detail, cfg), buildNtfyRequest('reward_requested', detail, cfg));
   assert.equal(buildNtfyRequest('anything_else', detail, cfg), null);
-  assert.deepEqual(NTFY_EVENT_KINDS, ['task_submitted', 'reward_requested', 'boss_defeated']);
+  assert.deepEqual(NTFY_EVENT_KINDS, ['task_submitted', 'reward_requested', 'boss_defeated', 'tablet_internet_off', 'tablet_internet_on']);
 });
 
 await test('uses the app server when /api/notify delivers (Pi, App Hosting)', async () => {

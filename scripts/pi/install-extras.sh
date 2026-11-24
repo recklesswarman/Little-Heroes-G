@@ -34,6 +34,8 @@ else
   mkdir -p "$HOME/apps/voice-extras"
   (nohup bash scripts/pi/setup-voice-extras.sh >"$HOME/apps/voice-extras/setup.log" 2>&1 &) || true
 fi
+# Kids' tablet internet (Pi-hole): let the app manage the tablets' groups (scripts/pi/setup-netguard.sh).
+bash scripts/pi/setup-netguard.sh || true
 # Fridge Display: launcher script, app icon, and a "Fridge Display" shortcut on the desktop
 # and in the app menu (scripts/pi/fridge-display.sh opens #fridge full screen in Chromium).
 install -m 0755 scripts/pi/fridge-display.sh "$HOME/bin/fridge-display.sh"

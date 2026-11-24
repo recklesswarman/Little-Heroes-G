@@ -142,7 +142,7 @@ async function setupGeminiMiddleware(server) {
   }
 }
 
-// Same /api/storyweaver, /api/notify, /api/rex/agent, /api/report/weekly, /api/calendar, /api/fridge and /api/voice routes server.js exposes, for `npm run dev` / `vite preview`.
+// Same /api/storyweaver, /api/notify, /api/rex/agent, /api/report/weekly, /api/calendar, /api/netguard, /api/fridge and /api/voice routes server.js exposes, for `npm run dev` / `vite preview`.
 async function setupFamilyApiMiddleware(server) {
   let storyweaver = null;
   let dictionary = null;
@@ -152,6 +152,12 @@ async function setupFamilyApiMiddleware(server) {
   let weeklyReport = null;
   let calendar = null;
   let fridge = null;
+  let netGuard = null;
+  try {
+    netGuard = await import('./server/netGuardService.js');
+  } catch (err) {
+    console.warn('Tablet internet middleware notice:', err.message);
+  }
   try {
     calendar = await import('./server/calendarService.js');
     fridge = await import('./server/fridgeService.js');
@@ -248,6 +254,12 @@ async function setupFamilyApiMiddleware(server) {
         const raw = await readRawBody(req, 32 * 1024);
         req.body = raw.length ? JSON.parse(raw.toString('utf8')) : {};
         return await calendar.calendarService.handlePlanRequest(req, res);
+      }
+      if (netGuard && (url === '/api/netguard' || url === '/api/local/netguard') && req.method === 'POST') {
+        shim(res);
+        const raw = await readRawBody(req, 32 * 1024);
+        req.body = raw.length ? JSON.parse(raw.toString('utf8')) : {};
+        return await netGuard.netGuardService.handleRequest(req, res);
       }
       if (fridge && url === '/api/fridge/snapshot' && req.method === 'GET') {
         shim(res);
