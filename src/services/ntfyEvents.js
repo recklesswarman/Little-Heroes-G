@@ -22,6 +22,19 @@ export const NTFY_EVENTS = {
     tags: 'trophy',
     priority: '2',
     message: d => `${d.kidName} beat ${d.title || 'a boss'} in the brushing battle.`
+  },
+  // Tablet internet (Pi-hole, server/netGuardService.js). kidName = the tablet's name, title = why.
+  tablet_internet_off: {
+    title: 'Tablet internet off',
+    tags: 'crescent_moon',
+    priority: '2',
+    message: d => `${d.kidName}'s internet is off${d.title ? ` (${d.title})` : ''}. The Little Heroes app still works.`
+  },
+  tablet_internet_on: {
+    title: 'Tablet internet on',
+    tags: 'sunny',
+    priority: '2',
+    message: d => `${d.kidName}'s internet is back on${d.title ? ` (${d.title})` : ''}.`
   }
 };
 
