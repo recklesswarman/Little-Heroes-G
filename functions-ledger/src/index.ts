@@ -2,6 +2,8 @@ import { initializeApp, getApps } from "firebase-admin/app";
 import { getFirestore, initializeFirestore, Firestore } from "firebase-admin/firestore";
 import { onCall } from "firebase-functions/v2/https";
 import { dispatchLedgerAction } from "./handler";
+import { createMirrorWalletSummaryTrigger } from "./mirrorWalletSummary";
+import { createNightlyReconcileJob } from "./reconcileNightly";
 
 let dbInstance: Firestore | null = null;
 
@@ -39,3 +41,6 @@ export const ledger = onCall(
     return dispatchLedgerAction(getDb(), auth, data);
   }
 );
+
+export const ledgerMirrorWalletSummary = createMirrorWalletSummaryTrigger(getDb);
+export const ledgerReconcileNightly = createNightlyReconcileJob(getDb);
