@@ -11,7 +11,7 @@ Scope: Gold Points, Habit Tokens, Pet Sparks, Evolution Sparks, Hero XP, Pet XP,
 * The app is a **Vite + vanilla-JS PWA on Firebase** (Firestore, Anonymous/Google Auth, Storage, Cloud Functions v2 in TypeScript), with an Express server (`server.js`) on Firebase App Hosting and a Raspberry Pi, and a separate Python FastAPI service on Cloud Run for the AI companion. **Nothing in this repository talks to Base44.** The "Little Heroes Hub" Base44 app is a separate app with its own, unsynced copy of kid balances (section 1.6).
 * **There is no server-side authority for any balance.** Every device keeps the whole family state in memory and `localStorage`, mutates balances locally (110+ call sites in `src/state/store.js`, plus direct mutations in views), and pushes the **entire household state** as one Firestore document with `setDoc(..., {merge:true})`. Other devices merge it back using per-field **last-writer-wins timestamps taken from each device's own clock**. Balances are replicated as absolute numbers, not as transactions.
 * That design causes the reported bug through several independent paths (section 2): a failed or skipped push is never retried, so the approving device keeps the only copy; a device running an older build, or one whose clock is ahead, overwrites the approval and the approving device "repairs" only itself; and concurrent earns on two devices lose increments by construction. Pet XP is not timestamp-protected at all. The security rules let anyone who knows the household code (no sign-in needed) rewrite any balance, and the parent PIN sits in plain text in that same readable document.
-* **Decision (ADR-001): build a native double-entry ledger inside the existing Firebase stack.** Cloud Functions (callable, Admin SDK, Firestore transactions) are the only writers. Clients subscribe with `onSnapshot` to a per-kid `wallets/{heroId}` summary document that is updated in the same transaction as the ledger entries. Do not adopt Blnk, Formance, LedgerForge, Nakama or the others: each adds a Go or Postgres service to run and pay for, and none provides browser real-time fan-out, so Firestore would still be needed as a projection, leaving two sources of truth.
+* **Decision (ADR-001): build a native double-entry ledger inside the existing Firebase stack.** Cloud Functions (callable, Admin SDK, Firestore transactions) are the only writers. Clients subscribe with `onSnapshot` to a per-kid `wallets/{heroId}` summary document that is updated in the same transaction as the ledger entries. Do not adopt Blnk, Formance, LedgerForge, Nakama or game-transactions-backend: each adds a server and a Postgres-compatible database to run and pay for. The ledger engines have no browser real-time push, so Firestore would still be needed as a copy, leaving two sources of truth. Nakama does have real-time push, but it would replace Firebase Auth and sync for every device, and its wallet has no idempotency or holds. Section 3.2.1 covers both game backends in detail.
 * Execute in 10 phases (section 6). Each phase ships on its own behind a `ledgerMode` flag (`legacy`, then `shadow`, then `authoritative`), with tests.
 
 ---
@@ -138,10 +138,49 @@ Repository facts were read from the GitHub search API on 2026-11-25.
 | **Formance Ledger** (`formancehq/ledger`, Go, MIT, about 1.5k★, active) | Numscript for atomic multi-party postings, mature double-entry | Same as above; Numscript is a second language to maintain | Cloud Run and Postgres, plus a projection to Firestore |
 | **LedgerForge** (`devaccuracy/ledgerforge`, Go, Apache-2.0, about 325★, last push Oct 2026) | Integer math, audit hash chain, spending limits, approval holds | Younger project, smaller community; no client fan-out | Cloud Run, Postgres and Redis |
 | **mkmbhs/ledger** (Go, MIT, 2★) | Small reference for idempotent transfers and authorize/capture/void | Reference code, not maintained as a product | Same as above. Useful only as **design reference** |
-| **Nakama** (`heroiclabs/nakama`, Go, Apache-2.0, about 13.8k★, active) | Wallets, ledger history, real-time sockets, leaderboards | Replaces Firebase Auth sessions and realtime with its own, which means migrating every device's identity and sync. The wallet is a JSON map updated by server runtime code, not double-entry | Cloud Run or VM, CockroachDB or Postgres. The largest migration of all options |
-| **Viid21/game-transactions-backend** (TypeScript/NestJS, MIT, 0★) | Template for idempotent fulfillment | Unproven template | NestJS service and Postgres |
+| **Nakama** (`heroiclabs/nakama`, Go, Apache-2.0, about 13.8k★, active) | Per-user wallets, a wallet history table, real-time sockets and notifications, a JS runtime for server code, leaderboards | Replaces Firebase Auth and sync on every device. Single-entry wallet with no idempotency and no holds (section 3.2.1) | Always-on Go server and CockroachDB or Postgres. The largest migration of all options |
+| **Viid21/game-transactions-backend** (TypeScript/NestJS, MIT, 0★) | Steam real-money checkout for Unity: order, then confirm, then grant inventory exactly once | No virtual currency, no balances, no earning, no real-time (section 3.2.1) | NestJS service and Postgres |
 | **Base44 (Hub)** | Already holds kid balances for the Hub app | No multi-record transactions, no listeners in this PWA, separate app (section 1.6) | Rejected. Dj confirmed moving off it is fine |
 | **Native: Firestore transactions in Cloud Functions** (chosen) | Atomic multi-document transactions (up to 500 writes), server timestamps, `onSnapshot` fan-out to every client including GitHub Pages, Firebase Auth already on every device, rules to forbid client writes, emulator for tests | We write and own the ledger code (about 1.5k lines of TypeScript and tests). Firestore has no SQL reporting. Callable cold starts | **No new infrastructure.** Optional `minInstances: 1` on the ledger functions to remove cold starts (a small monthly cost; check the GCP pricing calculator before enabling, see Q3) |
+
+#### 3.2.1 Deep dive: Nakama and game-transactions-backend
+
+Both repositories were cloned and read at their default branch on 2026-11-25. File paths below are in those repositories.
+
+**Viid21/game-transactions-backend** (NestJS 11, Prisma "prisma-next", PostgreSQL, Vitest; Unity client folder)
+* What it is: a starter for **real-money Steam microtransactions** in a Unity game. `backend/src/orders/orders.service.ts` creates an `Order` priced in cents. Steam authorizes payment in its overlay. `confirmPurchase` then grants `Inventory` inside one Postgres transaction. A unique `Fulfillment(orderId)` row is the "grant only once" guard.
+* Data model (`backend/src/prisma/contract.prisma`): `Product`, `Player`, `Order`, `Transaction` (payment-provider record), `Fulfillment`, `Inventory`. There is **no wallet, no balance, no virtual currency, no earning path and no ledger**. Auth is Steam session tickets, or a fake provider, issuing its own JWTs (`src/auth/providers/`).
+* Real-time: none. Clients poll REST.
+* Fit for Little Heroes: **poor**. It solves "a payment processor said yes, now grant the item once". Little Heroes needs "kid earns tokens from chores and spends them in the shop, and every device sees it". About 90% of what this app needs (earn, approve, spend, holds, XP, live updates) would be new code on top of it. It would also add a NestJS service and a Postgres database to host.
+* Worth borrowing: the pattern of a **unique "fulfillment" row as the idempotency claim**, written in the same transaction as the grant. That is exactly how `idempotency_keys` works in section 3.9, so the plan already matches it.
+
+**heroiclabs/nakama** (Go 1.x, pgx v5, CockroachDB or Postgres required; Go, Lua and TypeScript/JS server runtimes; official JS client `@heroiclabs/nakama-js`)
+* Wallet (`server/core_wallet.go`): each user has one `wallet` JSON map of `currency → int64` on the `users` row. `updateWallets` locks rows with `SELECT … FOR UPDATE`, adds each changeset, and **rejects any result below 0** (`WalletNegativeError`). If ledger recording is on, it inserts the changeset into `wallet_ledger (id, user_id, changeset JSONB, metadata JSONB, create_time)` (`migrate/sql/20180103142001_initial_schema.sql`). Integers only, atomic, and auditable. Good.
+* What it lacks against our requirements:
+  * **Not double-entry.** A ledger row is a one-sided changeset for one user, with no counter-account (no mint or sink), so totals cannot be reconciled by "everything sums to zero". This can be emulated with a system user, but nothing enforces it.
+  * **No idempotency key** on wallet updates. A retried RPC adds twice unless our own runtime code stores and checks keys in Nakama storage.
+  * **No holds or reservations.** Reward requests and AI-crafting escrow would be custom runtime code.
+  * **Wallet changes are not pushed automatically.** Server code must call `nk.notificationSend` or a stream after every update for other devices to hear about it (`server/core_notification.go`). Real-time works only while each device holds an open WebSocket.
+* Identity: wallets belong to **Nakama users**. Each kid profile would become a Nakama user. A shared tablet switching between kids, and a parent approving for a kid, would need custom auth (`AuthenticateCustom`) plus server RPCs that act for another user. All of that replaces Firebase Anonymous/Google sign-in and the household-code join on every device.
+* Hosting: a long-running Go server (WebSockets) plus CockroachDB or Postgres. That doesn't fit serverless Cloud Functions. Realistic homes are a small VM or Cloud Run with min instances plus Cloud SQL, Heroic Labs' paid managed cloud, or the family Pi. The Pi would put the kids' balances on home hardware and the home network, behind Tailscale Funnel, which is a reliability risk for the only copy of the balances.
+* Overlap with Firebase: the app would still need Firestore for everything that is not currency (settings, tasks, stories, studio items, meal plan), so devices would keep two live connections and two auth systems.
+* Fit for Little Heroes: **workable but the most expensive path.** It gives real-time push and a safe wallet out of the box. We would still write idempotency, holds, double-entry discipline, approval flows and a Firebase-to-Nakama identity bridge. We would also take on a database and a server that must stay up.
+
+**Scorecard against this app's needs**
+
+| Need | Native Firestore ledger (chosen) | Nakama | game-transactions-backend |
+|---|---|---|---|
+| Atomic balance change | Yes (Firestore transaction) | Yes (`FOR UPDATE`) | Inventory only |
+| Double-entry, sums to zero | Yes (enforced in core) | No (single-entry changesets) | No balances |
+| Idempotency keys | Yes (built in, section 3.9) | Custom code | Per order only (`Fulfillment`) |
+| Holds (reward requests, AI crafting) | Yes (section 3.6) | Custom code | No |
+| Live updates to every device | Yes, `onSnapshot` (already used) | Yes, sockets and notifications sent by our code | No |
+| Works from GitHub Pages and Firebase Hosting | Yes | Yes (needs CORS and a public endpoint) | Yes (needs CORS and a public endpoint) |
+| Keeps Firebase Auth and household-code join | Yes | No (new user model) | No (Steam or own JWT) |
+| New infrastructure | None | Go server, database | NestJS server, Postgres |
+| Effort beyond the ledger itself | Low | High (identity bridge, two sync systems) | Very high (build the economy) |
+
+**Conclusion:** the deep dive does not change ADR-001. game-transactions-backend is a real-money checkout template, not a virtual-currency ledger. Nakama is a capable game server, but its wallet still needs the same idempotency, holds and approval code we would write natively, and adopting it means swapping out sign-in and sync on every device and running a database. Revisit Nakama only if the app grows multiplayer features (live co-op, chat, matchmaking) that Firebase handles poorly.
 
 ### 3.3 Decision
 
