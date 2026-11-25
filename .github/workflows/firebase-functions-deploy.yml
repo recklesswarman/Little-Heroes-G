@@ -5,6 +5,9 @@ on:
     branches: ["main"]
     paths:
       - "functions/**"
+      - "functions-ledger/**"
+      - "firestore.rules"
+      - "firestore.indexes.json"
       - "firebase.json"
       - ".firebaserc"
   workflow_dispatch:
@@ -27,18 +30,32 @@ jobs:
         with:
           node-version: 22
           cache: 'npm'
-          cache-dependency-path: functions/package-lock.json
+          cache-dependency-path: |
+            functions/package-lock.json
+            functions-ledger/package-lock.json
 
       - name: Install function dependencies
         working-directory: functions
         run: npm ci
 
-      - name: Lint
+      - name: Lint functions
         working-directory: functions
         run: npm run lint
 
-      - name: Build
+      - name: Build functions
         working-directory: functions
+        run: npm run build
+
+      - name: Install ledger function dependencies
+        working-directory: functions-ledger
+        run: npm ci
+
+      - name: Lint ledger functions
+        working-directory: functions-ledger
+        run: npm run lint
+
+      - name: Build ledger functions
+        working-directory: functions-ledger
         run: npm run build
 
       - name: Authenticate to Google Cloud
@@ -50,5 +67,5 @@ jobs:
         run: |
           echo "Deploying as: $(jq -r '.client_email // "unknown"' "$GOOGLE_APPLICATION_CREDENTIALS")"
 
-      - name: Deploy to Firebase Functions
-        run: npx firebase-tools@latest deploy --only functions --project little-heroes-quest-8842 --non-interactive
+      - name: Deploy Firebase Functions, Firestore Rules & Indexes
+        run: npx firebase-tools@latest deploy --only functions,firestore:rules,firestore:indexes --project little-heroes-quest-8842 --non-interactive
