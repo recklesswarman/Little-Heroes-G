@@ -98,6 +98,7 @@ Multipliers: pet gear `coin_boost` and `xp_boost` buffs are computed on the clie
 * `parentSettings.pin` (default `'1234'`) is stored in plain text in that world-readable document, so the "parent-only" approval gate is advisory.
 * Subcollections under households are denied (`match /{allChildren=**} { allow read, write: if false; }`). New ledger and domain collections need explicit rules.
 * `server/householdReader.js` (Pi weekly report, fridge display) reads the household doc **unauthenticated over REST** and shows `hero.points/coins` (`shared/fridgeSnapshot.js:92`). Locking reads down would break it unless a projection is kept (`walletSummary`, section 3.7) until Phase 5 migrates the Pi reader to an authenticated path.
+* The Pi server also **writes** the household doc: `server/mealsService.js` calls `updateHouseholdField` (`server/householdReader.js`), an unauthenticated REST PATCH of `stateSnapshot.mealPlan`. Phase 5 must move both the reads and this write to a service account (Admin SDK) before rules require membership, or meal planning breaks.
 
 ---
 
@@ -174,7 +175,7 @@ Repository facts were verified via the GitHub API and source inspection.
 
 Implement the double-entry ledger **natively in Firestore** as **Native A**:
 * **Single consolidated callable Cloud Function `ledger` (v2, Node 22, `minInstances: 0`, Admin SDK with `preferRest: true`):** handles every ledger mutation, membership join, and parent unlock (PIN verification/update and passkey registration/verification) via an `action` dispatch. Sharing one container across all actions keeps it warm during active family sessions (e.g., kid completes a chore or parent enters PIN → subsequent approvals and shop buys run warm in ~200–350 ms).
-* **Scheduled / Trigger Functions (`minInstances: 0`):** `ledgerExpireHolds` (daily), `ledgerReconcileNightly` (daily), and `mirrorWalletSummary` (Firestore trigger on `wallets/{heroId}` to keep `households/{CODE}.walletSummary` fresh for the Pi/fridge REST reader).
+* **Scheduled / Trigger Functions (`minInstances: 0`):** `ledgerReconcileNightly` (daily, incremental, section 3.8), and `mirrorWalletSummary` (Firestore trigger on `wallets/{heroId}` to keep `households/{CODE}.walletSummary` fresh for the Pi/fridge REST reader).
 * **Security rules:** all ledger subcollections are **read-only for household members** (`allow write: if false;`), eliminating client tampering and Rules DSL complexity.
 * **Client subscriptions:** every device subscribes with `onSnapshot` to `wallets/{heroId}`, `approval_requests`, and `inventory`.
 * Borrow the authorize/capture/void hold model from Blnk and `mkmbhs/ledger`, and the zero-sum double-entry invariant from Formance.
@@ -208,7 +209,8 @@ Implement the double-entry ledger **natively in Firestore** as **Native A**:
 **Transaction document** (`ledger_transactions/{txnId}`, where `txnId` is the deterministic idempotency key — created once, immutable):
 ```
 { txnId, type, heroId, petId?,
-  delta: { GOLD_POINTS: int, HABIT_TOKENS: int, HERO_XP: int, EVOLUTION_SPARKS: int, PET_XP: int, PET_SPARKS: int, HELD_GOLD_POINTS: int },
+  delta: { GOLD_POINTS: int, HABIT_TOKENS: int, HERO_XP: int, EVOLUTION_SPARKS: int, PET_XP: int, PET_SPARKS: int },
+  heldDelta?: { GOLD_POINTS: int },   // hold changes kept OUT of delta so delta stays zero-sum with counterAccount
   counterAccount: 'treasury_mint' | 'shop_sink' | 'reward_redemption_sink' | 'pet_training_sink' | 'spark_sink' | 'clawback' | 'adjustment' | 'opening_balance',
   levelBefore: int, levelAfter: int, petLevelBefore?: int, petLevelAfter?: int,
   refs: { activityType?, activityId?, requestId?, itemId?, reversesTxnId? },
@@ -223,9 +225,9 @@ Implement the double-entry ledger **natively in Firestore** as **Native A**:
 ### 3.6 Holds (reward requests only)
 
 * Reservation model: a hold does not deduct Gold Points; it raises `held.GOLD_POINTS` on the wallet.
-* Request (`REWARD_REQUEST_HOLD`): requires `balance - held >= cost` (price read server-side from `catalog/{rewardId}`). Creates `holds/{requestId}` (`status: 'authorized'`, `amount`, `expiresAt` = now + 14 days) and `approval_requests/{requestId}`.
+* Request (`REWARD_REQUEST_HOLD`): requires `balance - held >= cost` (price read server-side from `catalog/{rewardId}`). Creates `holds/{requestId}` (`status: 'authorized'`, `amount`) and `approval_requests/{requestId}`. **No expiry:** per `.agents/rules/task_and_currency_lifecycle_rules.md` rule 4, pending approvals never disappear because of time limits; a hold stays until a parent approves or rejects it.
 * Approve (`REWARD_APPROVE_CAPTURE`, parent session required): `balance -= cost`, `held -= cost`, hold → `captured`, request → `approved`.
-* Reject (`REWARD_REJECT_VOID`, parent session required) or expiry (`ledgerExpireHolds`, daily): `held -= cost`, hold → `voided`/`expired`, request → `rejected`/`expired`.
+* Reject (`REWARD_REJECT_VOID`, parent session required): `held -= cost`, hold → `voided`, request → `rejected`.
 * The hold document ID equals `requestId`, so double taps or concurrent devices cannot create duplicate holds.
 
 ### 3.7 Firestore data model
@@ -270,15 +272,27 @@ households/{CODE}/wallets/{heroId}                                   // subscrib
 households/{CODE}/ledger_transactions/{txnId}                        // append-only, section 3.5
 
 households/{CODE}/holds/{requestId}
-  { requestId, heroId, amount: int, status: 'authorized'|'captured'|'voided'|'expired', expiresAt, createdAt, updatedAt }
+  { requestId, heroId, amount: int, status: 'authorized'|'captured'|'voided', createdAt, updatedAt }
 
 households/{CODE}/approval_requests/{requestId}
   { requestId, kind: 'task_points'|'reward', heroId, taskId?, rewardId?, title,
-    amount: int, earnTxnId?, status: 'pending'|'approved'|'rejected'|'expired',
+    amount: int, earnTxnId?, taskId?, cycleId?, status: 'pending'|'approved'|'rejected',
     createdBy, resolvedBy?, resolvedAt?, createdAt }
 
-households/{CODE}/inventory/{heroId}__{itemId}
-  { heroId, itemId, kind, qty: int, servingsRemaining?: int, lastTxnId, updatedAt }
+households/{CODE}/inventory/{ownerId}__{itemId}                     // ownerId = heroId, or 'household' for HQ furniture
+  { ownerId, itemId, kind, qty: int, servingsRemaining?: int, lastTxnId, updatedAt }
+  // kind: 'digital_gear' | 'pet_gear' | 'consumable' | 'treat' | 'studio_item' | 'theme' | 'pet' | 'habitat_slot' | 'hq_furniture'
+  // Entitlements that live on the hero or household today become inventory docs, granted in the SAME
+  // transaction as the charge: unlockedPetIds -> kind 'pet'; habitatSlots -> kind 'habitat_slot' (qty = extra slots);
+  // unlockedThemes -> kind 'theme'; state.inventory (pet gear, keyed by item NAME today) -> kind 'pet_gear'
+  // keyed by item id; heroHQ.unlockedFurnitureIds -> ownerId 'household', kind 'hq_furniture'
+  // (stays shared by the household as today; the buyer pays, see Q6).
+  // Equipping (equippedGear, equippedPetGearMap, heroHQ.equippedFurniture, activePetId) stays a free
+  // profile/household field, but the client only offers items the inventory shows as owned.
+
+households/{CODE}/activity_locks/{heroId}__{taskId}                 // "one pending completion per task/habit"
+  { heroId, taskId, cycleId, requestId, earnTxnId, status: 'pending', createdAt }
+  // created by recordActivity for approval-gated tasks, deleted by approveTaskPoints / rejectTask
 
 households/{CODE}/catalog/{itemId}                                   // prices; parent-editable via Function
   { itemId, kind, title, costCoins: int, costSparks: int, costPoints: int, servingsPerPurchase?: int, active: bool }
@@ -295,7 +309,7 @@ households/{CODE}/ledger_reports/{date}                              // nightly 
 **Indexes (`firestore.indexes.json`):**
 * `ledger_transactions`: `(heroId ASC, createdAt DESC)`
 * `approval_requests`: `(status ASC, createdAt DESC)`
-* `holds`: `(status ASC, expiresAt ASC)`
+* `holds`: `(status ASC, createdAt DESC)`
 * Attach `"indexes": "firestore.indexes.json"` to the Firestore database blocks in `firebase.json` (note: `firebase.json` currently declares both `(default)` and `default`). Because the Firestore emulator does **not** enforce missing composite indexes, Phase 4 includes a production/staging query smoke test after deploying indexes.
 
 ### 3.8 Ledger operations
@@ -304,27 +318,31 @@ All interactive operations are handled by one callable Cloud Function (`ledger({
 
 | Action | Who | Writes | Server validation (TypeScript) |
 |---|---|---|---|
-| `joinHousehold` | any authed uid with valid code | `members/{uid}` | Household exists; device not in `revokedDeviceIds`; role `'parent'` if uid in `parentUids` |
-| `verifyParentPin` | member | `parent_sessions/{uid}` | `scrypt` compare against `private/parentAuth`; 5 wrong tries lock for 15 min; 20-min session |
+| `joinHousehold` | any authed uid with valid code | `members/{uid}` | Household exists; device not in `revokedDeviceIds`; role `'parent'` if uid in `parentUids`. Each host is a separate origin, so a device joins once per link until Phase 6 |
+| `revokeDevice` | parent session | deletes `members/{uid}` and `parent_sessions/{uid}` for that device, adds to `revokedDeviceIds` | Replaces today's client-only revoke so a revoked device loses read access immediately |
+| `openWallet` | parent session | `wallets/{heroId}` (all zero or starting values), txn `OPENING_BALANCE`, `heroes/{heroId}` | Called by `addHero` (which today accepts starting `coins`, `points`, `level`); `txnId = open_{heroId}`; starting level converted to cumulative XP |
+| `closeWallet` | parent session | wallet `archived: true`, txn zeroing balances to `adjustment` | Called by `deleteHero`; history kept for audit |
+| `verifyParentPin` | member | `parent_sessions/{uid}` | `scrypt` compare against `private/parentAuth`; 5 wrong tries lock for 15 min (household-wide, so new anonymous uids can't bypass it); a uid in `parentUids` (Google-signed-in parent) bypasses the lockout so a kid can't lock parents out; 20-min session |
 | `setParentPin` | parent session or `parentUids` | `private/parentAuth` | Valid 4–8 digit PIN; re-hashes with fresh salt |
 | `passkeyRegisterBegin` / `passkeyRegisterFinish` | parent session (so a passkey can only be added after a PIN or existing-passkey unlock) | `passkey_challenges/{uid}`, `private/passkeys` | WebAuthn registration verified server-side (e.g. `@simplewebauthn/server`); `rpId` and expected origin must match the app's link (one passkey set per link until Phase 6); user verification required |
 | `passkeyAuthBegin` / `passkeyAuthFinish` | member | `passkey_challenges/{uid}`, `private/passkeys` (counter), `parent_sessions/{uid}` | Challenge single-use and unexpired; signature valid for a stored credential; counter increases; then issues the same 20-min parent session as `verifyParentPin`; failures count toward the same lockout |
 | `removePasskey` | parent session | `private/passkeys` | Removes one credential |
-| `recordActivity` | member | txn (`EARN_ACTIVITY`), wallet, optional `approval_requests` | Deterministic `txnId = act_{heroId}_{activityType}_{activityId}`; amounts read from `reward_rules` + bounded pet-gear buff (`<= maxBuffPercent`); `activityCounts <= dailyCap`; enforces "one active pending completion per task/habit"; recomputes hero/pet levels + 50 tokens per level crossed |
-| `approveTaskPoints` | parent session | txn (`APPROVE_TASK_POINTS`), wallet, request → `approved` | Request `pending`; `delta.GOLD_POINTS == request.amount`; `txnId = approve_{requestId}` |
-| `rejectTask` | parent session | txn (`REJECT_TASK_CLAWBACK`), wallet, request → `rejected` | Request `pending`; reads `earnTxnId`; deducts `min(balance, originalAward)` per currency (clamped at 0); `txnId = reject_{requestId}` |
+| `recordActivity` | member | txn (`EARN_ACTIVITY`), wallet, optional `approval_requests` + `activity_locks` | `txnId = act_{heroId}_{activityType}_{activityId}_{cycleId}`. `cycleId` is a client UUID created once per completion attempt and stored in the outbox, so retries dedupe but tomorrow's (or the next cycle's) completion is a new transaction. Never key on the task id alone. Amounts from `reward_rules` (table in section 3.13) + bounded pet-gear buff (`<= maxBuffPercent`); `activityCounts <= dailyCap` (arcade also keeps its own per-day coin cap); for approval-gated tasks, reads `activity_locks/{heroId}__{taskId}` in the transaction and refuses if one exists, else creates it; recomputes hero/pet levels + 50 tokens per level crossed |
+| `approveTaskPoints` | parent session | txn (`APPROVE_TASK_POINTS`), wallet, request → `approved`, deletes `activity_locks` doc | Request `pending`; `delta.GOLD_POINTS == request.amount`; `txnId = approve_{requestId}` |
+| `rejectTask` | parent session | txn (`REJECT_TASK_CLAWBACK`), wallet, request → `rejected`, deletes `activity_locks` doc | Request `pending`; reads `earnTxnId`; deducts `min(balance, originalAward)` per currency, **clamped at 0, never negative** (Tokens including any level-up bonus, Hero XP, Pet Sparks, Pet XP, as `rejectParentRequest` does today); `txnId = reject_{requestId}` |
 | `requestReward` | member | txn (`REWARD_REQUEST_HOLD`), wallet `held`, hold, request | Price from `catalog/{rewardId}`; `balance - held >= cost`; one hold per `requestId` |
 | `approveReward` / `rejectReward` | parent session | txn, wallet, hold, request | Hold `authorized`; capture deducts `balance` & `held`, void releases `held` |
-| `purchase` | member | txn (`SHOP_PURCHASE`), wallet, inventory | Prices from `catalog/{itemId}`; `balance - held >= price`; increments `qty`/servings; `txnId = buy_{heroId}_{itemId}_{clientUuid}` |
+| `purchase` | member | txn (`SHOP_PURCHASE`), wallet, inventory | Prices from `catalog/{itemId}`; `balance - held >= price`; grants the inventory doc in the same transaction (entitlement kinds in section 3.7: one-time kinds refuse if already owned; `habitat_slot` increments; consumables add servings); `txnId = buy_{heroId}_{itemId}_{clientUuid}`. Covers every spend in section 3.13 |
 | `consume` | member | txn (`CONSUME`), inventory | `servingsRemaining >= 1`, decrements by 1 |
 | `spend` | member | txn (`PET_XP_SPEND` / `SPARK_SPEND`), wallet | `reason` in allowlist; `amount <= available`; levels recomputed |
 | `upsertCatalog` / `upsertRewardRules` | parent session | `catalog` / `reward_rules` | Integer bounds `[0, 100000]` |
-| `adjust` | parent session | txn (`PARENT_ADJUSTMENT`), wallet | Result stays `>= 0`; memo recorded |
-| `ledgerExpireHolds` | scheduled Function (daily) | holds, wallets, requests | Releases holds past `expiresAt` |
-| `ledgerReconcileNightly` | scheduled Function (daily) | `ledger_reports/{date}` | Verifies `sum(kid balances) + sum(system accounts) == 0` per currency |
+| `adjust` | parent session | txn (`PARENT_ADJUSTMENT`), wallet | Result stays `>= 0`; memo recorded. Used by the Parent Portal kid editor (`editHero` with `coins`, `points` or `level`); a level edit becomes the Hero XP delta to that level's cumulative threshold |
+| `ledgerReconcileNightly` | scheduled Function (daily) | `ledger_reports/{date}`, `ledger_config/reconcile` (checkpoint per wallet) | For each wallet, reads only transactions created since its checkpoint, checks `checkpointBalance + sum(deltas) == wallet.balances` and `held` likewise, and that `walletVersionBefore/After` run without gaps; then moves the checkpoint. (A "kid + system accounts sum to zero" check is always true when system accounts are derived from the same transactions, so it proves nothing.) Incremental reads keep it inside the free tier as history grows |
 | `mirrorWalletSummary` | Firestore trigger on `wallets/{heroId}` | `households/{CODE}.walletSummary` | Keeps Pi/fridge summary current |
 
 `approveAll` is a client loop over **explicit request IDs that are still `pending`** in the live `approval_requests` listener (fixes V6), calling `approveTaskPoints` / `approveReward` per ID.
+
+**Task and habit lock state.** Today the `completed` / `pointsApproved` flags live in the household-level `habitIslands` and `taskForest` arrays, which the Function doesn't own. In `authoritative` mode the client stops using those flags for locking: a task shows as "waiting for parent" exactly while a pending `approval_requests` doc (or `activity_locks` doc) exists for that kid and task, and as "Needs Redo" when the latest request for it is `rejected`. Approve or reject on any device therefore unlocks the task on every device through the listener, with nothing to reset by hand.
 
 ### 3.9 Transaction algorithm (shared core)
 
@@ -414,6 +432,7 @@ match /households/{code} {
   match /holds/{id}                  { allow read: if isMember(code); allow write: if false; }
   match /approval_requests/{id}      { allow read: if isMember(code); allow write: if false; }
   match /inventory/{id}              { allow read: if isMember(code); allow write: if false; }
+  match /activity_locks/{id}         { allow read: if isMember(code); allow write: if false; }
   match /catalog/{id}                { allow read: if isMember(code); allow write: if false; }
   match /reward_rules/{id}           { allow read: if isMember(code); allow write: if false; }
   match /ledger_config/{id}          { allow read: if isMember(code); allow write: if false; }
@@ -437,13 +456,13 @@ For a single-family household, we avoid a noisy partial shadow mode (which would
 * Backfill script `scripts/ledger/backfill.mjs` (Admin SDK):
   1. `--household CODE [--dry-run] [--freeze] [--cutover]`. `--freeze` sets `ledgerMode: 'migrating'` (clients show "Updating your treasure chest…" and disable earn/spend buttons), then re-reads the household doc.
   2. For each hero, read from `heroesMap[heroId]` (fallback `heroes[]`). For Habit Tokens take `Math.max(coins, tokens)` and log any disagreement.
-  3. Convert XP to cumulative (`hero`: `t_1 = 100`, `t_{k+1} = round(t_k × 1.35)`; `pet`: `50 × L × (L - 1) + xp`, cap 25) and write `ledger_config/curves`.
+  3. Convert XP to cumulative (`hero`: `t_1 = 100`, `t_{k+1} = round(t_k × 1.35)`; `pet`: `50 × L × (L - 1) + xp`, cap 25) and write `ledger_config/curves`. Each hero stores its own `xpNext`, and today's denial code rounds it back down with `round(xpNext / 1.35)`, so it can be off the curve: keep each kid's current level and XP-into-level exactly, list every hero whose `xpNext != curve(level)` in the report for Dj, and never lower a level during backfill.
   4. Pet Sparks per pet from `petSparkMap[petId]` (fallback `hero.sparks` for active pet).
   5. Create each `wallets/{heroId}` and one `OPENING_BALANCE` transaction (`txnId = backfill_v1_{heroId}`, idempotent on re-run).
-  6. Migrate `hero.inventory` and `hero.consumables` into `inventory/{heroId}__{itemId}`.
+  6. Migrate into `inventory/{ownerId}__{itemId}`: `hero.inventory`, `hero.consumables`, `hero.unlockedPetIds` (kind `pet`), `hero.habitatSlots` above 1 (kind `habitat_slot`), `hero.unlockedThemes` (kind `theme`), household `state.inventory` pet gear (kind `pet_gear`, map item names to ids and list any unmatched names in the report), and `heroHQ.unlockedFurnitureIds` (owner `household`, kind `hq_furniture`).
   6b. Copy each hero's non-currency profile fields into `heroes/{heroId}` (everything except `LEDGER_HERO_FIELDS`, section 3.10). From cutover the client reads and writes profiles only there.
-  7. Convert unresolved `pendingApprovals` into `approval_requests`. For reward requests, create a hold; if funds are short, flag `needs_parent_review` in the report.
-  8. Seed `catalog` and `reward_rules` from current catalogs and rates (default `dailyCap: 20`, `maxBuffPercent: 50`).
+  7. Convert unresolved `pendingApprovals` into `approval_requests` (and `activity_locks` for task requests). For reward requests, create a hold; if funds are short, flag `needs_parent_review` in the report.
+  8. Seed `catalog` and `reward_rules` from current catalogs and rates, one `reward_rules` row per `activityType` in section 3.13 (default `dailyCap: 20`, `maxBuffPercent: 50`).
   9. Hash `parentSettings.pin` into `private/parentAuth` and delete plain-text `parentSettings.pin` from the household doc.
   10. Write `walletSummary`, set `ledgerMode: 'authoritative'`, and save `scripts/ledger/reports/{CODE}-{timestamp}.json`.
 * **Rollback:** `scripts/ledger/rollback.mjs --household CODE` sets `ledgerMode: 'legacy'` and copies wallet balances back into `heroesMap` with fresh stamps. Ledger collections are preserved for audit.
@@ -454,9 +473,67 @@ For a single-family household, we avoid a noisy partial shadow mode (which would
   * Cloud Run free allowance: 180,000 vCPU-seconds, 360,000 GiB-seconds, 2 million requests/month.
   * At ~300 family ops/day (~9,000/month, ~0.2 s compute each), usage is ~1,800 vCPU-seconds/month — **<1% of the free tier ($0/month)**.
   * *(Optional future upgrade: `minInstances: 1` at 256 MiB would cost ~$3–8/month if Dj ever wants zero cold starts even on the first tap of the day.)*
+  * **Cold start realism:** `functions/src/index.ts` imports every module at load (`@google/genai`, express), and every Cloud Run service loads the whole bundle. Put `ledger` and its scheduled/trigger functions in their **own codebase** in `firebase.json` (e.g. `functions-ledger/` or a second `codebase` entry) so its cold start loads only Firestore Admin. Even so, plan for 2–4 s on a cold start, not 1–2 s.
+* **Cloud Scheduler:** 3 free jobs per billing account. This plan adds 1 (`ledgerReconcileNightly`); check that the account has no other scheduled jobs.
 * **Firestore usage:**
   * Free daily allowance: 50,000 reads, 20,000 writes, 20,000 deletes.
-  * One ledger op = ~3–4 writes + ~3–4 server reads + 1 `onSnapshot` read per connected device (and **zero** Rules `get()`/`getAfter()` reads). At 300 ops/day across 6 devices, that is ~1,200 writes and ~3,000 reads/day — well inside the free tier.
+  * One ledger op = ~3–4 writes + ~3–4 server reads + 1 `onSnapshot` read per connected device (plus one billed read per request for the `exists()` call inside `isMember`, which is negligible). At 300 ops/day across 6 devices, that is ~1,200 writes and ~3,000 reads/day — well inside the free tier.
+
+### 3.13 Every balance touchpoint (complete list for Phase 3)
+
+Every function below must call the ledger in `authoritative` mode; `scratch/verify_ledger_write_paths.mjs` checks each one. `activityType` names are the `reward_rules` doc ids; the backfill seeds each row with today's hard-coded amounts.
+
+**Earns (`recordActivity`)**
+
+| Code path (`src/state/store.js` unless noted) | `activityType` | Approval-gated (creates a `task_point_approval` today; executor re-checks each) |
+|---|---|---|
+| `toggleHabitIsland` | `habit` | yes |
+| `toggleTaskForest` | `task` | yes |
+| `submitChoreWithPhoto` | `photo_chore` | yes |
+| `claimCompanionHabit` | `companion_habit` | yes |
+| `completeToothbrushBattle` | `toothbrush_battle` | yes |
+| `completeAiQuest` | `ai_quest` | yes |
+| `completeAdventureGame` | `adventure_game` | yes |
+| `completeMovementRoutine` | `movement_routine` | yes |
+| `unlockParentWorldChest` | `world_chest` | yes |
+| `completeWaypointChore` | `waypoint_chore` | yes |
+| `completePajamasTidyStep` | `pajamas_tidy` | yes |
+| `completeBedtimeStory` | `bedtime_story` | yes |
+| `claimExpeditionRewards` (both awards) | `expedition` | no |
+| `completePetBathReward` | `pet_bath` | no |
+| `recordArcadeResult` (`src/arcade/ArcadeModal.js`; keeps its daily coin cap) | `arcade` | no |
+| `discoverWorldSecret` | `world_secret` | no |
+| `interactWithCustomLandmark` | `custom_landmark` | no |
+| `recordToyBoxInteraction` | `toy_box` | no |
+| `addCoins` (all callers) | caller's type | per caller |
+| `addXP` level-up bonus (+50 tokens per level) | folded into the same `EARN_ACTIVITY` | n/a |
+| `addPetSparks`, `syncHabitPetCare`, `addEvolutionSparks` | folded into the calling activity | n/a |
+| `addPetTrainingXp` (5 calls in `src/views/DancePartyView.js`, 1 in `src/views/PetSanctuaryView.js`), `addPetCareXp` (doubles the amount) | `pet_training`, `pet_care` | no |
+| `src/views/DancePartyView.js` lines 1390, 1760, 1818, 1900, 2002, 2060 | `dance_party` | no |
+| `src/views/WorldAdventureMapView.js` lines 874–875, 912–913 | `world_map` | no |
+
+Do this check during Phase 3: if any other place found by `verify_no_direct_balance_mutation.mjs` changes a balance, add it to this table before migrating it. Out of scope for v1 (Q2): `PetSanctuaryCanvas.js:231` pet bond XP, `grantScreenTimeBonus`, `deductScreenTime`.
+
+**Spends (`purchase`, `spend`, `consume`)**
+
+| Code path | Currency | Grants |
+|---|---|---|
+| `buyPet` (150) | Habit Tokens | inventory `pet` |
+| `buyHabitatSlot` (250) | Habit Tokens | inventory `habitat_slot` |
+| `buyProfileTheme` | Habit Tokens | inventory `theme` |
+| `buyDigitalGear`, Studio items listed in the Shop | Habit Tokens / Pet Sparks | inventory `digital_gear` / `studio_item` |
+| `buyAndEquipGear` | Habit Tokens | inventory `pet_gear` (keyed by item id, not name) |
+| `buyTreatPack` | Habit Tokens | inventory `treat` |
+| `unlockHQFurniture` | Habit Tokens | inventory `hq_furniture`, owner `household` |
+| `startPetExpedition` (5) | Habit Tokens | none |
+| `feedAllPetsPicnic` (15), `feedSinglePet` | Habit Tokens | none |
+| `deductPetSparks` (Shop `costSparks`) | Pet Sparks | per item |
+| `deductPetTrainingXp` | Pet XP | none |
+| `feedPetConsumableSnack`, `feedPetTreat` | none | `consume` |
+| `redeemRealLifeReward` | Gold Points | `requestReward` (hold) |
+| `grantStudioItemToHero` (parent gift / crate) | none | `GIFT_GRANT` |
+| `editHero` with `coins`/`points`/`level` (Parent Portal) | any | `adjust` |
+| `addHero` / `deleteHero` | starting values | `openWallet` / `closeWallet` |
 
 ---
 
@@ -475,7 +552,7 @@ For a single-family household, we avoid a noisy partial shadow mode (which would
 | Scenario | Acting device (optimistic UI) | Other online devices (`onSnapshot`) |
 |---|---|---|
 | Warm container (active family session / after PIN unlock) | **0 ms** | **~200–350 ms** |
-| Cold container (first tap after ~15 min of total family idle) | **0 ms** | **~1.2–2.0 s** (with `preferRest: true` + lazy imports) |
+| Cold container (first tap after ~15 min of total family idle) | **0 ms** | **~2–4 s** (own codebase, `preferRest: true`) |
 
 ### 4.3 Optimistic UI
 
@@ -510,7 +587,8 @@ Currency sync is only half the problem — non-currency data (chores, habits, be
 | One link | Required: the whole app on one address | Phase 6 |
 | Warm server cost | Prefer $0/mo; no always-warm instance | Consolidated `ledger` Function, `minInstances: 0` (section 3.12) |
 | AI Crafting | Parents only, no currency cost | Section 1.3; gated in Phase 5 |
-| Task/habit denial reversal | **Stick with current rule (no negative balances)** — deduct auto-issued Tokens, Hero XP, and Pet Sparks **clamped at 0** | Section 3.5; aligns with `.agents/rules/task_and_currency_lifecycle_rules.md` |
+| Reward request holds | Never expire; they stay until a parent acts (rule 4 of the lifecycle rules) | Section 3.6 |
+| Task/habit denial reversal | **Stick with current rule (no negative balances; Dj reconfirmed 2026-11-25)** — deduct auto-issued Tokens, Hero XP, and Pet Sparks **clamped at 0** | Section 3.5; aligns with `.agents/rules/task_and_currency_lifecycle_rules.md` |
 
 **Still open (defaults apply if unanswered):**
 
@@ -520,6 +598,8 @@ Currency sync is only half the problem — non-currency data (chores, habits, be
 | Q2 | Should the Screen-Time bank and pet bond XP move to the ledger in v1? | No, v2 |
 | Q3 | May Phase 0 log push error codes (no kid names) to the Pi's Umami/ntfy to track real-world sync errors? | Yes, error codes only |
 | Q4 | Default daily cap per activity type | 20 per kid per activity type per day, parent-editable |
+| Q5 | Should the household's other 2 free Cloud Scheduler jobs stay free? | Assume yes; one new job |
+| Q6 | Should HQ furniture stay shared by the household (whoever buys it pays), or become per kid? | Shared, as today |
 
 ---
 
@@ -529,26 +609,29 @@ General rules for every phase:
 * Run `npm run build` and `node scratch/run_all_tests.js` before pushing; register every new `scratch/verify_*.mjs` in `scratch/run_all_tests.js`; one PR per phase into `main`; verify CI and deploy workflows after merge.
 * `functions/` changes must pass `npm --prefix functions run lint` and `npm --prefix functions run build`.
 * No floats inside `shared/ledger/` (enforced by static test; only the documented XP curve helper uses `Math.round`).
-* `ledgerMode` stays `'legacy'` until Phase 4 cutover.
+* `ledgerMode` stays `'legacy'` until Phase 4 cutover. Client phases ship to production while the household is still legacy, so every new client test runs in **both** modes (`legacy` and `authoritative`).
+* **Firestore rules and indexes are not deployed by any workflow today** (the deploy workflows run `--only functions` and hosting). Phase 2 adds a `firestore` deploy step to `.github/workflows/firebase-functions-deploy.yml` (trigger paths add `firestore.rules`, `firestore.indexes.json`): `firebase deploy --only firestore:rules,firestore:indexes`. `firebase.json` binds rules to two databases, `(default)` and `default`; the app uses `(default)` (`src/config/firebase.js`), so confirm whether `default` is used anywhere and drop it if not.
+* The emulator CI job needs Java 21 (`actions/setup-java`) and `firebase-tools`.
 
 ### Phase 0: Immediate sync stabilization & payload slimming
 **Files:** `src/services/firestoreSyncService.js`, `src/views/ParentPortalView.js`, `scratch/verify_ledger_bug_repro.mjs` (new), `scratch/run_all_tests.js`
 1. Move `await ensureAuthReady()` inside `try` in `_doPush`. Record failures in a 20-entry ring buffer (`this.pushFailures`) and **schedule exponential-backoff retries** (2 s, 4 s, 8 s, up to 60 s) whenever a push fails or a quota cooldown expires.
 2. Surface the last error code in the Parent Portal sync health card (`getSyncHealth()`).
 3. Shrink `households/{CODE}` payload immediately: eliminate duplicate static catalog blobs (`digitalGear` defaults) and redundant hero copies inside `stateSnapshot` where top-level `heroesMap` already exists.
+   **Order matters:** `hydrateFromCloud` (store.js, near line 9354) replaces `state.digitalGear` with the cloud array wholesale. First change hydrate to merge: defaults from code, then cloud entries by id (parent re-prices and custom Studio items override or add; `deletedCustomItemIds` removes), following the CLAUDE.md catalog reconciliation rule. Only then push just the parent-changed and custom entries. Shipping the slimming without the merge would make other devices lose every default shop item; omitting the field entirely would stop parent re-pricing from syncing.
 4. Add `scratch/verify_ledger_bug_repro.mjs` documenting today's R1, R3, R4, and R5 failures (marked `EXPECTED_LEGACY_FAILURE`; converted to must-pass in Phase 4).
-**Acceptance:** build and all tests pass; simulated `setDoc` failures retry and succeed; household payload size drops significantly.
+**Acceptance:** build and all tests pass; simulated `setDoc` failures (including an `ensureAuthReady` rejection and a quota cooldown) retry and succeed; a one-kid reference fixture's push payload is under 150 KB (record before/after in the PR); a device that receives a slimmed push still shows every default shop item and the parent's custom prices.
 
 ### Phase 1: Shared ledger core
 **Files (new):** `shared/ledger/currencies.js`, `shared/ledger/curves.js`, `shared/ledger/ids.js`, `shared/ledger/core.js`, `scripts/sync-ledger-core.mjs`, `functions/src/ledger/core/*` (synced copy), `scratch/verify_ledger_core.mjs`, `scratch/verify_ledger_core_sync.mjs`
 * Pure ES-module `plan(op, inputs)` for every ledger operation in section 3.8, with strict `>= 0` invariant and clamped-at-0 `REJECT_TASK_CLAWBACK`.
 * Exact hero/pet XP curve helpers matching `addXP` and `addPetTrainingXp`.
 * Deterministic Firestore-safe transaction IDs (`act_…`, `approve_…`, `reject_…`, `buy_…`, `backfill_v1_…`).
-**Tests:** every plan balances (zero-sum); integers only; all balances `>= 0` on every op; denial reversal clamps at 0 and records `clampedShortfall` when kid spent tokens; holds (authorize/capture/void/expire); multi-level-up awards exactly 50 tokens per level; 1,000 random operation sequences keep `sum(kid balances) + sum(system accounts) == 0`; `verify_ledger_core_sync.mjs` passes (the Functions copy is byte-identical).
+**Tests:** every plan balances (zero-sum); integers only; all balances `>= 0` on every op; denial reversal clamps at 0 and records `clampedShortfall` when kid spent tokens; holds (authorize/capture/void; no expiry); multi-level-up awards exactly 50 tokens per level; 1,000 random operation sequences keep `sum(kid balances) + sum(system accounts) == 0`; `verify_ledger_core_sync.mjs` passes (the Functions copy is byte-identical).
 **Acceptance:** `npm --prefix functions run build` compiles `functions/src/ledger/core/` with no imports from outside `functions/`.
 
 ### Phase 2: Consolidated `ledger` Cloud Function & Security Rules
-**Files:** `functions/src/ledger/index.ts`, `functions/src/ledger/auth.ts`, `functions/src/ledger/passkeys.ts`, `functions/src/ledger/handler.ts`, `functions/package.json` (add `@simplewebauthn/server`), `functions/src/index.ts`, `firestore.rules`, `firestore.indexes.json` (new), `firebase.json` (indexes + emulator config), `scratch/verify_ledger_emulator.mjs` (new), `.github/workflows/ci.yml` (add Firestore/Auth/Functions emulator job)
+**Files:** own Functions codebase for the ledger (section 3.12), `functions/src/ledger/index.ts`, `functions/src/ledger/auth.ts`, `functions/src/ledger/passkeys.ts`, `functions/src/ledger/handler.ts`, `functions/package.json` (add `@simplewebauthn/server`), `functions/src/index.ts`, `firestore.rules`, `firestore.indexes.json` (new), `firebase.json` (indexes + emulator config), `scratch/verify_ledger_emulator.mjs` (new), `.github/workflows/ci.yml` (add Firestore/Auth/Functions emulator job)
 * Single consolidated `ledger` callable (`minInstances: 0`, `preferRest: true` on Admin SDK, lazy imports) dispatching all actions in section 3.8.
 * Simple, airtight `firestore.rules` (section 3.10): all ledger subcollections are member-read / client-write-denied.
 **Tests (emulator):**
@@ -558,7 +641,11 @@ General rules for every phase:
 * Rules: a member can write `heroes/{heroId}` profile fields but any write including a `LEDGER_HERO_FIELDS` key is denied; in `authoritative` mode a household write that changes `heroesMap`, `heroes` or `stateSnapshot.heroes` is denied even when the stored doc already has `clientSchemaVersion: 2` (regression test for the merge bypass).
 * 20 parallel `recordActivity` calls with the same `activityId` produce exactly 1 transaction; 20 parallel purchases with funds for 3 produce exactly 3.
 * Reward hold → approve captures and lowers `held`; hold → reject voids.
-* Denial after kid spent tokens clamps balance at 0 (never negative) and resets task/habit.
+* Denial after kid spent tokens clamps balance at 0 (never negative), records `clampedShortfall`, and deletes the activity lock.
+* The same habit completed on two different days produces two transactions; a retry of one completion produces one; a second completion while one is pending is refused.
+* A purchase grants its inventory doc in the same transaction; buying a one-time item twice is refused; a failed charge grants nothing.
+* `revokeDevice` removes read access at once; `openWallet` for a new kid then `recordActivity` works; Google-signed-in parent bypasses the PIN lockout.
+* Rules and indexes deploy through the workflow step (check the deploy log).
 * Daily cap and `maxBuffPercent` enforced; existing legacy rules tests still pass.
 
 ### Phase 3: Client wallet read & write paths
@@ -568,10 +655,11 @@ General rules for every phase:
 * Static guard `scratch/verify_no_direct_balance_mutation.mjs` fails on direct balance mutations in `src/` outside `walletService.js` and legacy-mode branches.
 * `ParentLockModal.js`: two tabs only, PIN and Fingerprint. PIN calls `ledger(verifyParentPin)`; Fingerprint calls `passkeyAuthBegin`/`navigator.credentials.get`/`passkeyAuthFinish`. The portal opens only after the server returns a session. Remove the Math Gate tab, `generateMathChallenge`, `mathChallengeEnabled` and its Parent Portal toggle ("Gates Active" count becomes PIN + Fingerprint). Add "Set up fingerprint on this device" in Parent Portal settings (calls `passkeyRegister*`). `src/utils/biometrics.js` is replaced by the passkey flow.
 * In `authoritative` mode, `_doPush` stops sending `heroes`, `heroesMap` and `stateSnapshot.heroes`; hero profile edits write `heroes/{heroId}` (with its own `onSnapshot`).
-**Tests:** `scratch/verify_wallet_service.mjs` (version monotonicity, optimistic overlay add/clear, `fromCache` stale status, `"…"` before first server snapshot); `scratch/verify_ledger_write_paths.mjs` (every store/view mutation site calls expected action + deterministic ID); outbox retry test using `localStorage`.
+**Tests:** `scratch/verify_wallet_service.mjs` (version monotonicity, optimistic overlay add/clear, `fromCache` stale status, `"…"` before first server snapshot); `scratch/verify_ledger_write_paths.mjs` (every store/view mutation site calls expected action + deterministic ID); outbox retry test using `localStorage`; task lock shown from `approval_requests` (approve on device A unlocks on device B); every row of section 3.13 covered.
+**Acceptance:** with a test household in `authoritative` mode on the emulator, every earn and spend in section 3.13 changes the wallet only through the Function; `verify_no_direct_balance_mutation.mjs` passes; the same build behaves exactly as today in `legacy` mode (existing tests pass unchanged).
 
 ### Phase 4: Backfill, cutover & background jobs
-**Files:** `scripts/ledger/backfill.mjs`, `scripts/ledger/rollback.mjs`, `scripts/ledger/README.md`, `functions/src/ledger/expireHolds.ts`, `functions/src/ledger/reconcileNightly.ts`, `functions/src/ledger/mirrorWalletSummary.ts`, `src/services/firestoreSyncService.js` (strip currency/approval/inventory/hero fields), `src/state/store.js` (`hydrateFromCloud` & `_serializeStateForLocalStorage` strip those fields in `authoritative` mode)
+**Files:** `scripts/ledger/backfill.mjs`, `scripts/ledger/rollback.mjs`, `scripts/ledger/README.md`, `functions/src/ledger/reconcileNightly.ts`, `functions/src/ledger/mirrorWalletSummary.ts`, `src/services/firestoreSyncService.js` (strip currency/approval/inventory/hero fields), `src/state/store.js` (`hydrateFromCloud` & `_serializeStateForLocalStorage` strip those fields in `authoritative` mode)
 * Deploy Functions, rules, composite indexes, and client to all hosting targets; run a **production composite-index smoke test** on `approval_requests`, `ledger_transactions`, and `holds`.
 * Execute backfill: `--dry-run` → Dj reviews report → `--freeze` → `--cutover` (sets `ledgerMode: 'authoritative'`, migrates PIN, copies hero profiles into `heroes/{heroId}`).
 * After cutover: on a kid device, change avatar and active pet → the change appears on the parent phone (proves profile sync still works under the new rules).
@@ -582,9 +670,11 @@ General rules for every phase:
 **Files:** `src/services/firestoreSyncService.js`, `src/state/store.js`, `firestore.rules`, `scripts/ledger/strip_legacy_fields.mjs`, `server/householdReader.js`
 1. Split large non-currency domains (`bedtimeStoryLibrary`, `taskCompletionLogs`, `taskForest`, `habitIslands`, parent Studio custom items) into subcollections under `households/{CODE}` with dedicated `onSnapshot` listeners, eliminating the 1 MiB ceiling (R7) and session echo-suppression drops (R6) for all app data.
 2. Strip legacy currency fields from `households/{CODE}` (`strip_legacy_fields.mjs`).
-3. Move Pi/fridge reader to an authenticated path for `walletSummary` and tighten `households/{CODE}` reads to members only.
+3. Move the Pi/fridge reader **and the meals writer** (`server/mealsService.js` → `updateHouseholdField`) to a service account (Admin SDK) before tightening `households/{CODE}` reads and writes to members only.
 4. Require a live parent session for Parent Studio AI generation endpoints (`/api/ai/image`, Firebase AI Logic Studio calls).
 5. Optional: ntfy alert if `ledgerReconcileNightly` detects drift; screen-time bank / pet bond XP as ledger currencies (Q2).
+**Tests:** emulator rules tests for each new subcollection (member read/write, non-member denied); a household with 1,000 task logs and 200 stories still syncs (no single doc over 500 KB); Pi weekly report, fridge display and meal plan writes work with the service account.
+**Acceptance:** non-members can no longer read the household doc; Pi features keep working; the largest household document stays well under 1 MiB.
 
 ### Phase 6: One link for the whole app (required)
 Today the same build is served from four places. App Hosting (`littleheroes-g1`) runs `server.js` on the same origin and is the only fully featured link; GitHub Pages and classic Firebase Hosting are static and call App Hosting's API across origins (`VITE_SERVER_API_BASE`, `src/services/serverApi.js`); the Pi runs its own copy plus Pi-only services. Each link is a separate browser origin, so one tablet opened from two links has two `localStorage` copies, two anonymous sign-ins and two service workers, and the sync code treats it as two devices. Passkeys are also bound to one address.
@@ -603,7 +693,7 @@ Today the same build is served from four places. App Hosting (`littleheroes-g1`)
 
 1. No client code mutates a balance, XP, inventory item, or approval status except through `ledgerClient` → `ledger` Cloud Function; enforced by a static test.
 2. All ledger subcollections deny direct client writes in `firestore.rules`; emulator tests prove unauthorized reads, direct writes, expired parent sessions, and invalid mutations are rejected.
-3. Every earn, spend, approval, clamped-at-0 denial reversal, purchase, and hold is a balanced, idempotent, non-negative integer ledger transaction.
+3. Every earn, spend, approval, clamped-at-0 denial reversal, purchase (with its unlock granted in the same transaction), and hold is a balanced, idempotent, non-negative integer ledger transaction, covering every row of section 3.13; repeat habits on later days are never deduplicated away.
 4. Approving on one device updates online devices in <500 ms when warm (~1–2 s on cold start), and offline/reconnecting devices converge within 2 s of reconnecting without losing queued actions across PWA reloads (`localStorage` outbox).
 5. Retrying any operation (network retry, double tap, concurrent devices) never double-awards or double-charges.
 6. Backfilled balances match pre-migration balances with anomalies reviewed by Dj, and `rollback.mjs` is tested.
