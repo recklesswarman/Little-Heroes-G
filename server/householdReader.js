@@ -190,3 +190,60 @@ export async function updateHouseholdField(code, fieldPath, update, { extra = {}
   }
   throw new Error('The household kept changing; try again');
 }
+
+/**
+ * Phase 5: Admin SDK household reader for Pi/server services after strictMemberReads is enabled.
+ * Reads households/{code}, public/walletSummary, and non-currency subcollections directly.
+ */
+export async function fetchHouseholdWithAdmin(adminDb, code) {
+  const clean = String(code || '').trim().toUpperCase();
+  if (!/^[A-Z0-9_-]{4,32}$/.test(clean)) throw new Error(`Invalid household code "${code}"`);
+  const hRef = adminDb.collection('households').doc(clean);
+  const hSnap = await hRef.get();
+  if (!hSnap.exists) throw new Error(`Household ${clean} not found`);
+
+  const data = hSnap.data() || {};
+  const snap = data.stateSnapshot && typeof data.stateSnapshot === 'object' ? data.stateSnapshot : {};
+  let state = { ...snap, ...data };
+  delete state.stateSnapshot;
+
+  // Overlay authoritative walletSummary if present
+  const sumSnap = await hRef.collection('public').doc('walletSummary').get();
+  if (sumSnap.exists) {
+    state = mergeWalletSummaryIntoState(state, sumSnap.data() || {});
+  }
+
+  // Hydrate split Phase 5 non-currency subcollections if present
+  const [tasksSnap, habitsSnap, storiesSnap, logsSnap] = await Promise.all([
+    hRef.collection('tasks').get(),
+    hRef.collection('habits').get(),
+    hRef.collection('bedtime_stories').get(),
+    hRef.collection('task_logs').get()
+  ]);
+  if (!tasksSnap.empty) state.taskForest = tasksSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  if (!habitsSnap.empty) state.habitIslands = habitsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  if (!storiesSnap.empty) state.bedtimeStoryLibrary = storiesSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  if (!logsSnap.empty) state.taskCompletionLogs = logsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+  return state;
+}
+
+/**
+ * Phase 5: Transactional Admin SDK field update (used by server/mealsService.js once locked).
+ */
+export async function updateHouseholdFieldWithAdmin(adminDb, code, fieldPath, update, { extra = {} } = {}) {
+  if (!/^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$/.test(fieldPath)) throw new Error('Invalid field path');
+  const clean = String(code || '').trim().toUpperCase();
+  if (!/^[A-Z0-9_-]{4,32}$/.test(clean)) throw new Error(`Invalid household code "${code}"`);
+  const hRef = adminDb.collection('households').doc(clean);
+
+  return adminDb.runTransaction(async (tx) => {
+    const hSnap = await tx.get(hRef);
+    if (!hSnap.exists) throw new Error(`Household ${clean} not found`);
+    const raw = hSnap.data() || {};
+    const current = fieldPath.split('.').reduce((o, k) => (o && typeof o === 'object' ? o[k] : undefined), raw);
+    const next = await update(current, raw);
+    tx.update(hRef, { [fieldPath]: next, ...extra });
+    return next;
+  });
+}

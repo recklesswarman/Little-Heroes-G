@@ -83,5 +83,5 @@ jobs:
       - name: Install and build functions-ledger
         working-directory: functions-ledger
         run: npm ci && npm run build
-      - name: Run ledger rules, handler & rollback rehearsal emulator tests
-        run: npx firebase-tools emulators:exec --only firestore --project little-heroes-quest-8842 "node scratch/verify_ledger_emulator.mjs && node scratch/verify_ledger_backfill_rollback.mjs"
+      - name: Run ledger rules, handler, rollback & Phase 5 emulator tests
+        run: npx firebase-tools emulators:exec --only firestore --project little-heroes-quest-8842 "node scratch/verify_ledger_emulator.mjs && node scratch/verify_ledger_backfill_rollback.mjs && node scratch/verify_phase5_subcollections_and_hardening.mjs"

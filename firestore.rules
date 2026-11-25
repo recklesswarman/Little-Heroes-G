@@ -223,7 +223,7 @@ service cloud.firestore {
           'dentalBattleHistory', 'lastBrushedMorning', 'lastBrushedEvening',
           'hygieneReminders', 'worldAdventureMap', 'bedtimeStoryLibrary',
           'activeBedtimeStory', 'bedtimeSanctuaryState', 'bedtimeConfig',
-          'taskEngineVersion', 'ledgerMode', 'createdAt', 'clientSchemaVersion'
+          'taskEngineVersion', 'ledgerMode', 'strictMemberReads', 'createdAt', 'clientSchemaVersion'
         ])
         && (!('syncCode' in data) || data.syncCode == '' || isValidHouseholdCode(data.syncCode))
         && (!('householdName' in data) || (data.householdName is string && data.householdName.size() <= 100))
@@ -379,7 +379,7 @@ service cloud.firestore {
 
     function isAllowedAuthoritativeHouseholdUpdate() {
       let affected = request.resource.data.diff(resource.data).affectedKeys();
-      return !affected.hasAny(['ledgerMode'])
+      return !affected.hasAny(['ledgerMode', 'strictMemberReads'])
         && (
           resource.data.get('ledgerMode', 'legacy') == 'legacy' || (
             !affected.hasAny([
@@ -395,9 +395,10 @@ service cloud.firestore {
     // --- Households Collection ---
     // Multi-device family synchronization scoped to explicit household codes
     match /households/{householdCode} {
-      // Allow single document read with valid household code syntax.
+      // Allow single document read with valid household code syntax (or members-only once strictMemberReads is enabled in Phase 5).
       // List/collection queries are strictly denied to prevent database crawling/enumeration.
-      allow get: if isValidHouseholdCode(householdCode);
+      allow get: if isValidHouseholdCode(householdCode)
+        && (resource == null || resource.data.get('strictMemberReads', false) != true || isHouseholdMember(householdCode));
       allow list: if false;
 
       // Allow creation of a valid household payload with anti-takeover protections
@@ -431,6 +432,13 @@ service cloud.firestore {
         allow create, delete: if false;
       }
 
+      // Phase 5: Split non-currency domains (member read/write, non-member denied)
+      match /bedtime_stories/{id} { allow read, write: if isHouseholdMember(householdCode); }
+      match /task_logs/{id}       { allow read, write: if isHouseholdMember(householdCode); }
+      match /tasks/{id}           { allow read, write: if isHouseholdMember(householdCode); }
+      match /habits/{id}          { allow read, write: if isHouseholdMember(householdCode); }
+      match /studio_items/{id}    { allow read, write: if isHouseholdMember(householdCode); }
+
       // Ledger subcollections: member read-only, server (Admin SDK) writes only
       match /wallets/{heroId}            { allow read: if isHouseholdMember(householdCode); allow write: if false; }
       match /ledger_transactions/{txnId} { allow read: if isHouseholdMember(householdCode); allow write: if false; }
@@ -443,9 +451,13 @@ service cloud.firestore {
       match /ledger_config/{id}          { allow read: if isHouseholdMember(householdCode); allow write: if false; }
       match /ledger_reports/{id}         { allow read: if isHouseholdMember(householdCode); allow write: if false; }
 
-      // Pi/fridge summary: get-readable with valid household code until Phase 5 moves Pi to Admin SDK
+      // Pi/fridge summary: get-readable with valid household code until Phase 5 strictMemberReads locks reads to members/Admin SDK
       match /public/{id} {
-        allow get: if isValidHouseholdCode(householdCode);
+        allow get: if isValidHouseholdCode(householdCode)
+          && (
+            get(/databases/$(database)/documents/households/$(householdCode)).data.get('strictMemberReads', false) != true
+            || isHouseholdMember(householdCode)
+          );
         allow list, write: if false;
       }
 
