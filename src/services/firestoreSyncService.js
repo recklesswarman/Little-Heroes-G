@@ -1,12 +1,16 @@
 import { doc, setDoc, onSnapshot, updateDoc, deleteField, arrayRemove } from "firebase/firestore";
 import { db, isFirebaseAvailable, ensureAuthReady } from "../config/firebase.js";
 import { store, STORAGE_KEY, HERO_STAMPED_FIELDS } from "../state/store.js";
+import { DIGITAL_REWARDS_CATALOG } from "../data/digitalRewardsCatalog.js";
 import { persistentLink } from "./persistentLinkService.js";
 import { secureRandomHex } from "../utils/secureRandom.js";
 
 const DEVICE_ID_KEY = 'stitch_device_id';
 const QUOTA_EXHAUSTED_KEY = 'firestore_quota_exhausted_until';
 const CLOUD_SYNC_DEBOUNCE_MS = 350;
+const PUSH_FAILURE_RING_MAX = 20;
+const RETRY_BASE_DELAY_MS = 2000;
+const RETRY_MAX_DELAY_MS = 60000;
 
 // These values describe the local UI/session and should never overwrite another
 // device's active screen or authentication state.
@@ -29,11 +33,48 @@ const LOCAL_ONLY_STATE_KEYS = new Set([
   'heroAiQuestsMap'
 ]);
 
+// Keys that are already synced as dedicated top-level fields on households/{CODE}.
+// Writing them inside stateSnapshot too doubled/tripled payload size (~390 KB).
+// We emit deleteField() for these keys so setDoc(..., { merge: true }) physically
+// removes the stale duplicates from existing stored household documents.
+export const REDUNDANT_SNAPSHOT_KEYS = [
+  'heroes',
+  'selectedHero',
+  'digitalGear',
+  'pets',
+  'heroHQ'
+];
+const REDUNDANT_SNAPSHOT_KEY_SET = new Set(REDUNDANT_SNAPSHOT_KEYS);
+
+const DEFAULT_DIGITAL_GEAR_BY_ID = new Map(
+  (DIGITAL_REWARDS_CATALOG || [])
+    .filter((item) => item && item.id)
+    .map((item) => [item.id, JSON.stringify(item)])
+);
+
+/**
+ * Return only parent-modified default gear items and custom Studio items.
+ * Unmodified defaults from DIGITAL_REWARDS_CATALOG (~136 KB) are reconciled
+ * on every device during hydrateFromCloud, so they do not need to be pushed.
+ */
+export function buildSlimDigitalGear(digitalGear) {
+  if (!Array.isArray(digitalGear)) return [];
+  const slim = [];
+  for (const item of digitalGear) {
+    if (!item || !item.id) continue;
+    const defaultJson = DEFAULT_DIGITAL_GEAR_BY_ID.get(item.id);
+    if (!defaultJson || JSON.stringify(item) !== defaultJson) {
+      slim.push(item);
+    }
+  }
+  return slim;
+}
+
 function sanitizeForFirestore(val) { if (val === undefined) return null; if (val === null || typeof val !== 'object') return val; if (val instanceof Date) return val.toISOString(); if (val._methodName || val.__op) return val; if (Array.isArray(val)) return val.map((item) => sanitizeForFirestore(item)); const out = {}; for (const [k, v] of Object.entries(val)) { if (v !== undefined) out[k] = sanitizeForFirestore(v); } return out; }
-function buildCloudStateSnapshot(state) {
+export function buildCloudStateSnapshot(state, { includeDeletes = true } = {}) {
   const snapshot = {};
   Object.entries(state || {}).forEach(([key, value]) => {
-    if (LOCAL_ONLY_STATE_KEYS.has(key) || key === 'devices') return;
+    if (LOCAL_ONLY_STATE_KEYS.has(key) || key === 'devices' || REDUNDANT_SNAPSHOT_KEY_SET.has(key)) return;
     if (key === 'household' && value && typeof value === 'object') {
       snapshot.household = { ...value, lastSync: undefined };
       delete snapshot.household.lastSync;
@@ -41,6 +82,11 @@ function buildCloudStateSnapshot(state) {
     }
     snapshot[key] = value;
   });
+  if (includeDeletes) {
+    for (const key of REDUNDANT_SNAPSHOT_KEYS) {
+      snapshot[key] = deleteField();
+    }
+  }
   return snapshot;
 }
 
@@ -157,6 +203,16 @@ class FirestoreSyncService {
     this.presenceInterval = null;
     this.pushInFlight = false;
     this.pushPending = false;
+    // Phase 0: ring buffer of last 20 push failures ({code, at}) and exponential backoff retry
+    this.pushFailures = [];
+    this.retryTimer = null;
+    this.quotaRetryTimer = null;
+    this.retryBaseDelayMs = RETRY_BASE_DELAY_MS;
+    this.retryMaxDelayMs = RETRY_MAX_DELAY_MS;
+    this.retryDelayMs = RETRY_BASE_DELAY_MS;
+    // Overridable in tests to inject setDoc / ensureAuthReady failures without hitting network
+    this._setDoc = setDoc;
+    this._ensureAuthReady = ensureAuthReady;
 
     // Same-origin multi-tab real-time instant sync
     this.broadcastChannel = null;
@@ -173,6 +229,62 @@ class FirestoreSyncService {
     }
 
     this.startPresenceHeartbeat();
+  }
+
+  _recordPushFailure(code) {
+    this.pushFailures.push({ code: String(code || 'unknown'), at: Date.now() });
+    if (this.pushFailures.length > PUSH_FAILURE_RING_MAX) {
+      this.pushFailures.splice(0, this.pushFailures.length - PUSH_FAILURE_RING_MAX);
+    }
+  }
+
+  _clearRetryTimer() {
+    if (this.retryTimer) {
+      clearTimeout(this.retryTimer);
+      this.retryTimer = null;
+    }
+  }
+
+  _scheduleRetry(explicitDelayMs) {
+    this._clearRetryTimer();
+    const delay = typeof explicitDelayMs === 'number' && explicitDelayMs >= 0
+      ? explicitDelayMs
+      : this.retryDelayMs;
+    if (typeof explicitDelayMs !== 'number') {
+      this.retryDelayMs = Math.min(this.retryMaxDelayMs, this.retryDelayMs * 2);
+    }
+    this.retryTimer = setTimeout(() => {
+      this.retryTimer = null;
+      if (this.lastPushError) {
+        this._doPush();
+      }
+    }, delay);
+    if (typeof this.retryTimer?.unref === 'function') {
+      this.retryTimer.unref();
+    }
+  }
+
+  _scheduleQuotaRetry(cooldownMs) {
+    if (this.quotaRetryTimer) return;
+    let delay = typeof cooldownMs === 'number' && cooldownMs > 0 ? cooldownMs + 50 : 60 * 1000 + 50;
+    try {
+      const raw = localStorage.getItem(QUOTA_EXHAUSTED_KEY);
+      if (raw) {
+        const remaining = Number(raw) - Date.now();
+        if (remaining > 0) delay = remaining + 50;
+      }
+    } catch {
+      // ignore storage errors
+    }
+    this.quotaRetryTimer = setTimeout(() => {
+      this.quotaRetryTimer = null;
+      if (!this.isQuotaExhausted()) {
+        this._doPush();
+      }
+    }, delay);
+    if (typeof this.quotaRetryTimer?.unref === 'function') {
+      this.quotaRetryTimer.unref();
+    }
   }
 
   getDeviceId() {
@@ -215,9 +327,10 @@ class FirestoreSyncService {
     return isQuotaExhaustedGlobal();
   }
 
-  markQuotaExhausted(error) {
+  markQuotaExhausted(error, cooldownMs = 60 * 1000) {
     // 60-second backoff for writes rather than locking out sync for 24h
-    markQuotaExhaustedGlobal(60 * 1000);
+    markQuotaExhaustedGlobal(cooldownMs);
+    this._scheduleQuotaRetry(cooldownMs);
     if (this.presenceInterval) {
       clearInterval(this.presenceInterval);
       this.presenceInterval = null;
@@ -455,6 +568,7 @@ class FirestoreSyncService {
     if (!isFirebaseAvailable || !db) return;
     if (this.isQuotaExhausted()) {
       this.lastPushError = 'quota';
+      this._scheduleQuotaRetry();
       return;
     }
     if (store.getState().isDeviceRevoked) return;
@@ -481,8 +595,12 @@ class FirestoreSyncService {
   }
 
   async _doPush() {
-    if (!isFirebaseAvailable || !db || this.isQuotaExhausted()) return;
-    await ensureAuthReady();
+    if (!isFirebaseAvailable || !db) return;
+    if (this.isQuotaExhausted()) {
+      this.lastPushError = 'quota';
+      this._scheduleQuotaRetry();
+      return;
+    }
     if (this.pushInFlight) {
       this.pushPending = true;
       return;
@@ -509,6 +627,7 @@ class FirestoreSyncService {
     try {
       this.isPushing = true;
       this.pushInFlight = true;
+      await this._ensureAuthReady();
       const timestamp = new Date().toISOString();
       this.lastCloudTimestamp = timestamp;
 
@@ -619,9 +738,9 @@ class FirestoreSyncService {
       this.lastKnownDevices = currentDevices;
       state.devices = currentDevices;
 
-      await setDoc(docRef, sanitizeForFirestore({
+      await this._setDoc(docRef, sanitizeForFirestore({
         // Generic snapshot keeps newly added mutable fields live across devices
-        // without requiring a fragile allowlist update for every feature.
+        // without duplicating large top-level fields (heroes, digitalGear, pets, heroHQ).
         stateSnapshot: buildCloudStateSnapshot(state),
         householdName: state.household?.name || 'The Hero Family',
         syncCode: householdCode,
@@ -658,7 +777,7 @@ class FirestoreSyncService {
         heroAiQuestsMap: state.heroAiQuestsMap || {},
         recentlyUnlocked: state.recentlyUnlocked || [],
         realLifeRewards: state.realLifeRewards || [],
-        digitalGear: state.digitalGear || [],
+        digitalGear: buildSlimDigitalGear(state.digitalGear),
         inventory: state.inventory || [],
         liveRex: state.liveRex || {},
         parents: state.household?.parents || [],
@@ -677,16 +796,22 @@ class FirestoreSyncService {
       state.household.lastSync = "Synced Just Now";
       this.lastPushError = null;
       this.lastPushOkAt = Date.now();
+      this.retryDelayMs = this.retryBaseDelayMs;
+      this._clearRetryTimer();
 
       // Slide persistent link window forward (RFC 6749 Section 6)
       persistentLink.slideWindow().catch(() => {});
     } catch (error) {
       if (isQuotaError(error)) {
         this.lastPushError = 'quota';
+        this._recordPushFailure('quota');
         this.markQuotaExhausted(error);
         return;
       }
-      this.lastPushError = error?.code || error?.message || 'unknown';
+      const code = error?.code || error?.message || 'unknown';
+      this.lastPushError = code;
+      this._recordPushFailure(code);
+      this._scheduleRetry();
       console.error('[sync] push failed', error?.code, error?.message);
     } finally {
       this.isPushing = false;
@@ -712,12 +837,42 @@ class FirestoreSyncService {
    * mode: 'local' (no cloud configured), 'paused' (quota), 'error' (last write failed), 'ok'.
    */
   getSyncHealth() {
-    if (!isFirebaseAvailable || !db) return { mode: 'local' };
+    const lastFailure = this.pushFailures.length > 0
+      ? this.pushFailures[this.pushFailures.length - 1]
+      : null;
+    if (!isFirebaseAvailable || !db) return { mode: 'local', failureCount: this.pushFailures.length, lastFailure };
     const st = store.getState?.() || {};
-    if (!st.isHouseholdConfigured || !(st.household?.syncCode || this.currentCode)) return { mode: 'local' };
-    if (this.isQuotaExhausted() || this.lastPushError === 'quota') return { mode: 'paused' };
-    if (this.lastPushError) return { mode: 'error', error: this.lastPushError };
-    return { mode: 'ok', lastPushOkAt: this.lastPushOkAt };
+    if (!st.isHouseholdConfigured || !(st.household?.syncCode || this.currentCode)) {
+      return { mode: 'local', failureCount: this.pushFailures.length, lastFailure };
+    }
+    if (this.isQuotaExhausted() || this.lastPushError === 'quota') {
+      return {
+        mode: 'paused',
+        error: 'quota',
+        lastErrorCode: 'quota',
+        failureCount: this.pushFailures.length,
+        lastFailure,
+        retrying: Boolean(this.quotaRetryTimer)
+      };
+    }
+    if (this.lastPushError) {
+      return {
+        mode: 'error',
+        error: this.lastPushError,
+        lastErrorCode: this.lastPushError,
+        failureCount: this.pushFailures.length,
+        lastFailure,
+        retrying: Boolean(this.retryTimer)
+      };
+    }
+    return {
+      mode: 'ok',
+      lastPushOkAt: this.lastPushOkAt,
+      lastErrorCode: null,
+      failureCount: this.pushFailures.length,
+      lastFailure,
+      retrying: false
+    };
   }
 
   hasPendingLocalChanges() {

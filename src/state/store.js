@@ -505,6 +505,7 @@ const defaultState = {
       'starlight_projector_lamp',
       'hero_road_rug'
     ],
+    furnitureOwners: {},
     featuredTrophyIds: ['rookie_hero_crest'],
     redecorateDrawerOpen: false,
     redecorateActiveCategory: 'themes'
@@ -976,6 +977,9 @@ class Store {
             unlockedFurnitureIds: Array.isArray(parsed.heroHQ.unlockedFurnitureIds)
               ? Array.from(new Set([...defaultState.heroHQ.unlockedFurnitureIds, ...parsed.heroHQ.unlockedFurnitureIds]))
               : [...defaultState.heroHQ.unlockedFurnitureIds],
+            furnitureOwners: (parsed.heroHQ.furnitureOwners && typeof parsed.heroHQ.furnitureOwners === 'object')
+              ? { ...parsed.heroHQ.furnitureOwners }
+              : {},
             featuredTrophyIds: Array.isArray(parsed.heroHQ.featuredTrophyIds)
               ? parsed.heroHQ.featuredTrophyIds
               : [...defaultState.heroHQ.featuredTrophyIds]
@@ -3728,6 +3732,7 @@ class Store {
       if (!this.state.heroHQ.unlockedFurnitureIds.includes(trophyRelic)) {
         this.state.heroHQ.unlockedFurnitureIds.push(trophyRelic);
       }
+      this._recordFurnitureOwner(trophyRelic, currentHero?.id || this.state.selectedHero?.id);
     }
 
     // Mark boss defeated in colosseum state and hygiene battle state
@@ -4773,9 +4778,10 @@ class Store {
         h.equippedPetGearMap[petId] = { ...entry };
       });
     } else if (kind === 'furniture') {
-      if (!this.state.heroHQ) this.state.heroHQ = { unlockedFurnitureIds: [] };
+      if (!this.state.heroHQ) this.state.heroHQ = { unlockedFurnitureIds: [], furnitureOwners: {} };
       if (!this.state.heroHQ.unlockedFurnitureIds) this.state.heroHQ.unlockedFurnitureIds = [];
       if (!this.state.heroHQ.unlockedFurnitureIds.includes(item.id)) this.state.heroHQ.unlockedFurnitureIds.push(item.id);
+      this._recordFurnitureOwner(item.id, id);
     }
 
     // Mark the canonical copies as owned too.
@@ -8784,7 +8790,12 @@ class Store {
         'equippedGear',
         'sparks',
         'evolutionSparks',
-        'petSparkMap'
+        'petSparkMap',
+        // digitalGear and heroHQ have dedicated merges below (digitalGear merges
+        // defaults + cloud overrides/custom items; heroHQ unions unlockedFurnitureIds
+        // and furnitureOwners key-by-key).
+        'digitalGear',
+        'heroHQ'
       ]);
       Object.entries(cloudData.stateSnapshot).forEach(([key, value]) => {
         if (!localOnlyKeys.has(key) && value !== undefined) {
@@ -9251,6 +9262,12 @@ class Store {
       };
     }
     if (cloudData.heroHQ && typeof cloudData.heroHQ === 'object') {
+      const cloudOwners = (cloudData.heroHQ.furnitureOwners && typeof cloudData.heroHQ.furnitureOwners === 'object')
+        ? cloudData.heroHQ.furnitureOwners
+        : {};
+      const localOwners = (this.state.heroHQ?.furnitureOwners && typeof this.state.heroHQ.furnitureOwners === 'object')
+        ? this.state.heroHQ.furnitureOwners
+        : {};
       this.state.heroHQ = {
         ...(this.state.heroHQ || {}),
         ...cloudData.heroHQ,
@@ -9262,6 +9279,10 @@ class Store {
           ...(this.state.heroHQ?.unlockedFurnitureIds || []),
           ...(cloudData.heroHQ.unlockedFurnitureIds || [])
         ])),
+        furnitureOwners: {
+          ...cloudOwners,
+          ...localOwners
+        },
         featuredTrophyIds: Array.from(new Set([
           ...(this.state.heroHQ?.featuredTrophyIds || []),
           ...(cloudData.heroHQ.featuredTrophyIds || [])
@@ -9352,14 +9373,32 @@ class Store {
       this.state.realLifeRewards = cloudData.realLifeRewards;
     }
     if (cloudData.digitalGear && Array.isArray(cloudData.digitalGear)) {
-      this.state.digitalGear = cloudData.digitalGear.filter(d => d && !deletedCustomItemIdsSet.has(d.id));
-      DIGITAL_REWARDS_CATALOG.forEach(catItem => {
-        if (catItem && !deletedCustomItemIdsSet.has(catItem.id) && !this.state.digitalGear.some(d => d.id === catItem.id)) {
-          this.state.digitalGear.push(catItem);
-        }
+      const cloudById = new Map();
+      const extraCloudItems = [];
+      cloudData.digitalGear.forEach((d) => {
+        if (!d || !d.id || deletedCustomItemIdsSet.has(d.id)) return;
+        cloudById.set(d.id, d);
       });
+      const defaultIds = new Set();
+      const mergedGear = [];
+      DIGITAL_REWARDS_CATALOG.forEach((catItem) => {
+        if (!catItem || !catItem.id || deletedCustomItemIdsSet.has(catItem.id)) return;
+        defaultIds.add(catItem.id);
+        const override = cloudById.get(catItem.id);
+        mergedGear.push(override ? { ...catItem, ...override } : { ...catItem });
+      });
+      cloudData.digitalGear.forEach((d) => {
+        if (!d || !d.id || deletedCustomItemIdsSet.has(d.id) || defaultIds.has(d.id)) return;
+        extraCloudItems.push(d);
+      });
+      this.state.digitalGear = [...mergedGear, ...extraCloudItems];
     } else if (Array.isArray(this.state.digitalGear)) {
       this.state.digitalGear = this.state.digitalGear.filter(d => d && !deletedCustomItemIdsSet.has(d.id));
+      DIGITAL_REWARDS_CATALOG.forEach((catItem) => {
+        if (catItem && catItem.id && !deletedCustomItemIdsSet.has(catItem.id) && !this.state.digitalGear.some(d => d.id === catItem.id)) {
+          this.state.digitalGear.push({ ...catItem });
+        }
+      });
     }
 
     // Prune tombstoned custom items from in-memory DIGITAL_REWARDS_CATALOG
@@ -9783,6 +9822,21 @@ class Store {
     return true;
   }
 
+  _recordFurnitureOwner(itemId, heroId) {
+    if (!itemId) return;
+    const ownerId = heroId || this.state.selectedHero?.id;
+    if (!ownerId) return;
+    if (!this.state.heroHQ) {
+      this.state.heroHQ = JSON.parse(JSON.stringify(defaultState.heroHQ));
+    }
+    if (!this.state.heroHQ.furnitureOwners || typeof this.state.heroHQ.furnitureOwners !== 'object') {
+      this.state.heroHQ.furnitureOwners = {};
+    }
+    if (!this.state.heroHQ.furnitureOwners[itemId]) {
+      this.state.heroHQ.furnitureOwners[itemId] = ownerId;
+    }
+  }
+
   unlockHQFurniture(furnitureId, autoEquip = true) {
     if (!this.state.heroHQ) {
       this.state.heroHQ = JSON.parse(JSON.stringify(defaultState.heroHQ));
@@ -9810,6 +9864,7 @@ class Store {
     }
 
     this.state.heroHQ.unlockedFurnitureIds.push(furnitureId);
+    this._recordFurnitureOwner(furnitureId, this.state.selectedHero?.id);
     if (autoEquip && item.slot) {
       this.state.heroHQ.equippedFurniture[item.slot] = furnitureId;
     }
@@ -9978,6 +10033,7 @@ class Store {
 
       if (qualifies) {
         this.state.heroHQ.unlockedFurnitureIds.push(item.id);
+        this._recordFurnitureOwner(item.id, this.state.selectedHero?.id);
         unlocked.add(item.id);
         newlyUnlocked.push(item);
       }

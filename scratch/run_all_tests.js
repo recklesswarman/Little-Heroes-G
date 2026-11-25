@@ -164,7 +164,9 @@ const testFiles = [
   // Story seeds must be real story starts, not mood lines (seedRefresh.js storySparkProblems):
   'scratch/verify_story_spark_quality.mjs',
   // Kids' tablet internet via the Pi's Pi-hole: YouTube Restricted, SafeSearch, bedtime off:
-  'scratch/verify_tablet_internet_guard.mjs'
+  'scratch/verify_tablet_internet_guard.mjs',
+  // Phase 0: Ledger bug repro & immediate sync stabilization (retries, payload slimming, furnitureOwners):
+  'scratch/verify_ledger_bug_repro.mjs'
 ];
 
 let allPassed = true;
