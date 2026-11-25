@@ -54,13 +54,64 @@ export function householdStateFromDoc(doc) {
   return state;
 }
 
+export function mergeWalletSummaryIntoState(state, summaryData) {
+  if (!state || !summaryData || !summaryData.heroes || typeof summaryData.heroes !== 'object') {
+    return state;
+  }
+  const summaryHeroes = summaryData.heroes;
+  const existingHeroes = Array.isArray(state.heroes) ? state.heroes : [];
+  const byId = new Map(existingHeroes.filter((h) => h && h.id).map((h) => [h.id, { ...h }]));
+
+  for (const [heroId, w] of Object.entries(summaryHeroes)) {
+    if (!w || typeof w !== 'object') continue;
+    const prev = byId.get(heroId) || { id: heroId, name: heroId };
+    byId.set(heroId, {
+      ...prev,
+      points: Number(w.points ?? prev.points ?? 0),
+      coins: Number(w.coins ?? prev.coins ?? 0),
+      tokens: Number(w.coins ?? prev.coins ?? 0),
+      xp: Number(w.xp ?? prev.xp ?? 0),
+      level: Number(w.level ?? prev.level ?? 1),
+      sparks: Number(w.sparks ?? prev.sparks ?? 0),
+      evolutionSparks: Number(w.sparks ?? prev.sparks ?? 0),
+      petSparkMap: w.petSparks && typeof w.petSparks === 'object' ? { ...w.petSparks } : (prev.petSparkMap || {})
+    });
+  }
+
+  const mergedHeroes = Array.from(byId.values());
+  const heroesMap = { ...(state.heroesMap || {}) };
+  for (const h of mergedHeroes) {
+    heroesMap[h.id] = h;
+  }
+  return {
+    ...state,
+    heroes: mergedHeroes,
+    heroesMap
+  };
+}
+
 export async function fetchHousehold(code, { config = readFirebaseConfig(), fetchImpl = globalThis.fetch } = {}) {
   const clean = String(code).trim().toUpperCase();
   if (!/^[A-Z0-9_-]{4,32}$/.test(clean)) throw new Error(`Invalid household code "${code}"`);
-  const url = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/${encodeURIComponent(config.databaseId)}/documents/households/${clean}${config.apiKey ? `?key=${config.apiKey}` : ''}`;
-  const res = await fetchImpl(url, { signal: AbortSignal.timeout(15000) });
+  const base = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/${encodeURIComponent(config.databaseId)}/documents/households/${clean}`;
+  const keyQ = config.apiKey ? `?key=${config.apiKey}` : '';
+  const res = await fetchImpl(`${base}${keyQ}`, { signal: AbortSignal.timeout(15000) });
   if (!res.ok) throw new Error(`Firestore returned ${res.status} for household ${clean}`);
-  return householdStateFromDoc(await res.json());
+  const state = householdStateFromDoc(await res.json());
+
+  // Phase 4: In authoritative mode, read balances from public/walletSummary (falls back to legacy fields if absent)
+  if (state.ledgerMode === 'authoritative') {
+    try {
+      const sumRes = await fetchImpl(`${base}/public/walletSummary${keyQ}`, { signal: AbortSignal.timeout(10000) });
+      if (sumRes.ok) {
+        const summaryData = decodeFields((await sumRes.json())?.fields || {});
+        return mergeWalletSummaryIntoState(state, summaryData);
+      }
+    } catch {
+      // Non-fatal fallback to household doc fields
+    }
+  }
+  return state;
 }
 
 
