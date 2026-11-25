@@ -2957,6 +2957,8 @@ class Store {
     this.awardTaskCareSynergy(task.id, 'task');
     Sound.coin();
     Sound.fanfare();
+    this.celebrate('confetti');
+    this.notifyParents('task_submitted', { kidName: currentHero.name, title: task.title });
 
     try {
       confetti({
