@@ -4,7 +4,9 @@ import { processProfilePhoto } from '../utils/photoUploader.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
 import { getBuildLabel } from '../components/TopHeader.js';
 import { safeImageUrl } from '../utils/safeImageUrl.js';
-import { authenticateWithBiometrics } from '../utils/biometrics.js';
+import { registerPasskey, isPasskeySupported } from '../services/passkeyClient.js';
+import { ledgerClient } from '../services/ledgerClient.js';
+import { walletService } from '../services/walletService.js';
 import { getTaskVisualSvg } from '../utils/taskVisuals.js';
 import { firestoreSync, getDeviceFriendlyName, getDeviceIcon } from '../services/firestoreSyncService.js';
 import { cloudFunctionsService } from '../services/cloudFunctionsService.js';
@@ -3867,14 +3869,14 @@ export function renderParentPortalView() {
               <!-- Quick Status Badge -->
               <span class="text-[10px] font-black uppercase px-3 py-1.5 rounded-full bg-secondary/15 text-secondary border border-secondary/30 flex items-center gap-1.5 shadow-xs">
                 <span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
-                ${[settings.biometricsEnabled !== false ? 'Biometrics' : '', settings.pinLockEnabled !== false ? 'PIN' : '', settings.mathChallengeEnabled !== false ? 'Math' : ''].filter(Boolean).length} of 3 Gates Active
+                ${[settings.biometricsEnabled !== false ? 'Fingerprint' : '', settings.pinLockEnabled !== false ? 'PIN' : ''].filter(Boolean).length} of 2 Gates Active
               </span>
             </div>
 
-            <!-- 3 Lock Options Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              
-              <!-- OPTION 1: Biometric Authentication (Touch ID / Face ID / Windows Hello) -->
+            <!-- 2 Lock Options Grid (Fingerprint Passkey & PIN) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+              <!-- OPTION 1: WebAuthn Fingerprint / Passkey -->
               <div class="bg-surface-container-high rounded-2xl p-4.5 border-2 ${
                 settings.biometricsEnabled !== false
                   ? 'border-primary/60 bg-primary/5 shadow-xs'
@@ -3884,9 +3886,9 @@ export function renderParentPortalView() {
                   <div class="flex items-center justify-between">
                     <span class="font-headline text-sm font-black text-inverse-surface flex items-center gap-1.5">
                       <span class="material-symbols-outlined text-base text-primary">fingerprint</span>
-                      Biometric Gate
+                      Fingerprint / Passkey
                     </span>
-                    
+
                     <!-- Toggle Button -->
                     <button data-lock-toggle="biometrics" class="lock-option-toggle-btn px-3 py-1 rounded-full text-[10px] font-black uppercase transition-all chunky-btn-sm ${
                       settings.biometricsEnabled !== false
@@ -3896,23 +3898,23 @@ export function renderParentPortalView() {
                       ${settings.biometricsEnabled !== false ? '✓ Active' : 'Off'}
                     </button>
                   </div>
-                  <p class="text-xs text-on-surface-variant">Instant unlock via Touch ID, Face ID, fingerprint, or Windows Hello.</p>
+                  <p class="text-xs text-on-surface-variant">Server-verified Touch ID, Face ID, fingerprint, or Windows Hello passkey.</p>
                 </div>
 
                 <div class="flex flex-col gap-2 pt-2 border-t border-surface-container-highest/60">
-                  <button id="test-biometric-btn" ${settings.biometricsEnabled === false ? 'disabled' : ''} class="w-full ${
-                    settings.biometricsEnabled !== false
+                  <button id="test-biometric-btn" ${settings.biometricsEnabled === false || !isPasskeySupported() ? 'disabled' : ''} class="w-full ${
+                    settings.biometricsEnabled !== false && isPasskeySupported()
                       ? 'bg-primary/20 hover:bg-primary/30 text-primary border-primary/40 active:scale-95'
                       : 'bg-surface-container-lowest text-on-surface-variant/40 border-transparent cursor-not-allowed'
                   } font-headline text-xs font-black py-2.5 px-3 rounded-xl border flex items-center justify-center gap-1.5 transition-all">
                     <span class="material-symbols-outlined text-sm">fingerprint</span>
-                    Register / Test Sensor
+                    Set up fingerprint on this device
                   </button>
-                  <span id="biometric-test-feedback" class="text-[9px] font-bold text-on-surface-variant text-center">Compatible with platform biometrics</span>
+                  <span id="biometric-test-feedback" class="text-[9px] font-bold text-on-surface-variant text-center">${isPasskeySupported() ? 'Passkeys are bound to this address (HTTPS required)' : 'Unavailable on plain HTTP (use PIN on this device)'}</span>
                 </div>
               </div>
 
-              <!-- OPTION 2: 4-Digit Security PIN -->
+              <!-- OPTION 2: Security PIN -->
               <div class="bg-surface-container-high rounded-2xl p-4.5 border-2 ${
                 settings.pinLockEnabled !== false
                   ? 'border-secondary/60 bg-secondary/5 shadow-xs'
@@ -3922,9 +3924,9 @@ export function renderParentPortalView() {
                   <div class="flex items-center justify-between">
                     <span class="font-headline text-sm font-black text-inverse-surface flex items-center gap-1.5">
                       <span class="material-symbols-outlined text-base text-secondary">pin</span>
-                      4-Digit PIN Gate
+                      Parent PIN Gate
                     </span>
-                    
+
                     <!-- Toggle Button -->
                     <button data-lock-toggle="pin" class="lock-option-toggle-btn px-3 py-1 rounded-full text-[10px] font-black uppercase transition-all chunky-btn-sm ${
                       settings.pinLockEnabled !== false
@@ -3934,12 +3936,12 @@ export function renderParentPortalView() {
                       ${settings.pinLockEnabled !== false ? '✓ Active' : 'Off'}
                     </button>
                   </div>
-                  <p class="text-xs text-on-surface-variant">Require entering your custom secret PIN code to unlock adult dashboard.</p>
+                  <p class="text-xs text-on-surface-variant">Require entering your secret 4–8 digit PIN code to unlock the Parent Portal.</p>
                 </div>
 
                 <div class="flex flex-col gap-2 pt-2 border-t border-surface-container-highest/60">
                   <div class="flex items-center gap-2">
-                    <input type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password" aria-label="New parent PIN (4 to 8 digits)" id="parent-setting-pin-input" maxlength="8" value="${escapeHtml(settings.pin || '1234')}" ${settings.pinLockEnabled === false ? 'disabled' : ''} class="w-full bg-surface-container border-2 border-surface-container-highest rounded-xl px-3 py-2 text-sm font-headline font-black text-secondary tracking-widest text-center focus:border-secondary focus:outline-hidden ${settings.pinLockEnabled === false ? 'opacity-50 cursor-not-allowed' : ''}" />
+                    <input type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password" aria-label="New parent PIN (4 to 8 digits)" id="parent-setting-pin-input" maxlength="8" placeholder="${walletService.isLegacyLedger() ? '••••' : 'New 4–8 digit PIN'}" value="${walletService.isLegacyLedger() ? escapeHtml(settings.pin || '1234') : ''}" ${settings.pinLockEnabled === false ? 'disabled' : ''} class="w-full bg-surface-container border-2 border-surface-container-highest rounded-xl px-3 py-2 text-sm font-headline font-black text-secondary tracking-widest text-center focus:border-secondary focus:outline-hidden ${settings.pinLockEnabled === false ? 'opacity-50 cursor-not-allowed' : ''}" />
                     <button id="save-parent-pin-btn" ${settings.pinLockEnabled === false ? 'disabled' : ''} class="${
                       settings.pinLockEnabled !== false
                         ? 'bg-secondary text-on-secondary border-secondary-container active:scale-95'
@@ -3953,41 +3955,28 @@ export function renderParentPortalView() {
                 </div>
               </div>
 
-              <!-- OPTION 3: Adult Math Challenge -->
-              <div class="bg-surface-container-high rounded-2xl p-4.5 border-2 ${
-                settings.mathChallengeEnabled !== false
-                  ? 'border-tertiary/60 bg-tertiary/5 shadow-xs'
-                  : 'border-surface-container-highest opacity-70'
-              } flex flex-col justify-between gap-4 transition-all">
-                <div class="flex flex-col gap-2">
-                  <div class="flex items-center justify-between">
-                    <span class="font-headline text-sm font-black text-inverse-surface flex items-center gap-1.5">
-                      <span class="material-symbols-outlined text-base text-tertiary">calculate</span>
-                      Math Challenge
-                    </span>
-                    
-                    <!-- Toggle Button -->
-                    <button data-lock-toggle="math" class="lock-option-toggle-btn px-3 py-1 rounded-full text-[10px] font-black uppercase transition-all chunky-btn-sm ${
-                      settings.mathChallengeEnabled !== false
-                        ? 'bg-tertiary text-on-tertiary border-tertiary-container shadow-xs'
-                        : 'bg-surface-container-lowest text-on-surface-variant border-surface-container'
-                    }">
-                      ${settings.mathChallengeEnabled !== false ? '✓ Active' : 'Off'}
-                    </button>
-                  </div>
-                  <p class="text-xs text-on-surface-variant">Adult verification via randomized 2-digit multiplication or algebra equation.</p>
-                </div>
-
-                <div class="flex flex-col gap-1.5 pt-2 border-t border-surface-container-highest/60">
-                  <div class="bg-surface-container p-2.5 rounded-xl border border-surface-container-highest text-center flex items-center justify-center gap-1.5">
-                    <span class="material-symbols-outlined text-xs text-tertiary">psychology</span>
-                    <span class="text-xs font-black text-tertiary">e.g. Solve: 8 × 9 = ?</span>
-                  </div>
-                  <span class="text-[9px] font-bold text-on-surface-variant text-center">Prevents younger kids from altering settings</span>
-                </div>
-              </div>
-
             </div>
+
+            ${(() => {
+              const members = walletService.getMembers();
+              if (!members || members.length === 0) return '';
+              return `
+                <div class="mt-2 pt-4 border-t border-surface-container-highest flex flex-col gap-2">
+                  <h4 class="font-headline text-xs font-black uppercase tracking-wider text-on-surface-variant">Joined Household Devices (${members.length})</h4>
+                  <div class="flex flex-col gap-2">
+                    ${members.map((m) => `
+                      <div class="flex items-center justify-between gap-2 bg-surface-container-high rounded-xl px-3 py-2 border border-surface-container-highest">
+                        <div class="min-w-0">
+                          <div class="text-xs font-black text-inverse-surface truncate">${escapeHtml(m.deviceLabel || 'Hero Device')} <span class="text-[10px] font-bold text-secondary">(${escapeHtml(m.role || 'device')})</span></div>
+                          <div class="text-[10px] text-on-surface-variant truncate">UID: ${escapeHtml(m.uid || '')}</div>
+                        </div>
+                        <button data-revoke-member-uid="${escapeHtml(m.uid || '')}" data-revoke-member-device="${escapeHtml(m.deviceId || '')}" class="revoke-ledger-member-btn px-2.5 py-1 rounded-lg bg-error/15 text-error border border-error/30 text-[10px] font-black hover:bg-error/25 active:scale-95">Revoke</button>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+              `;
+            })()}
           </div>
 
           <!-- Task & Button Diagnostics & Clearing Stuck Approvals -->
@@ -4596,41 +4585,64 @@ export function attachParentPortalListeners() {
     btn.addEventListener('click', () => {
       const type = btn.getAttribute('data-lock-toggle');
       const settings = store.getState().parentSettings || {};
-      
+
       const currentBio = settings.biometricsEnabled !== false;
       const currentPin = settings.pinLockEnabled !== false;
-      const currentMath = settings.mathChallengeEnabled !== false;
 
       let newBio = currentBio;
       let newPin = currentPin;
-      let newMath = currentMath;
 
       if (type === 'biometrics') newBio = !currentBio;
       if (type === 'pin') newPin = !currentPin;
-      if (type === 'math') newMath = !currentMath;
 
       // Safety check: ensure at least 1 lock option remains active!
-      if (!newBio && !newPin && !newMath) {
+      if (!newBio && !newPin) {
         Sound.hit();
-        alert('At least one security gate (Biometrics, PIN, or Math Challenge) must remain active to protect the Parent Dashboard!');
+        alert('At least one security gate (Fingerprint or PIN) must remain active to protect the Parent Dashboard!');
         return;
       }
 
       Sound.click();
       store.updateParentSettings({
         biometricsEnabled: newBio,
-        pinLockEnabled: newPin,
-        mathChallengeEnabled: newMath
+        pinLockEnabled: newPin
       });
     });
   });
 
-  // Security PIN and Biometric tests
+  // Security PIN and Passkey registration
   const savePinBtn = document.getElementById('save-parent-pin-btn');
   const settingPinInput = document.getElementById('parent-setting-pin-input');
   if (savePinBtn && settingPinInput) {
-    const submitPin = () => {
-      const res = store.setParentPin(settingPinInput.value);
+    const submitPin = async () => {
+      const val = String(settingPinInput.value || '').trim();
+      if (!walletService.isLegacyLedger()) {
+        if (!/^\d{4,8}$/.test(val)) {
+          Sound.hit();
+          const errEl = document.getElementById('pin-save-error');
+          if (errEl) {
+            errEl.textContent = 'PIN must be 4 to 8 digits.';
+            errEl.classList.remove('hidden');
+          }
+          return;
+        }
+        try {
+          await ledgerClient.run('setParentPin', { newPin: val }, { queueOnNetworkError: false });
+          Sound.fanfare();
+          settingPinInput.value = '';
+          flashFeedback('pin-save-feedback', `✓ PIN ${savedLabel()}`);
+        } catch (err) {
+          Sound.hit();
+          const errEl = document.getElementById('pin-save-error');
+          if (errEl) {
+            errEl.textContent = err?.message || 'Could not update PIN.';
+            errEl.classList.remove('hidden');
+          }
+        }
+        return;
+      }
+
+      const res = store.setParentPin(val);
       if (!res.success) {
         Sound.hit();
         const errEl = document.getElementById('pin-save-error');
@@ -4659,23 +4671,39 @@ export function attachParentPortalListeners() {
     testBioBtn.addEventListener('click', async () => {
       Sound.click();
       try {
-        const res = await authenticateWithBiometrics();
-        if (res && res.success) {
+        const label = getDeviceFriendlyName();
+        const res = await registerPasskey(label);
+        if (res && res.registered) {
           Sound.fanfare();
           if (bioFeedback) {
-            bioFeedback.textContent = '✓ Biometric authentication successful on this device!';
+            bioFeedback.textContent = '✓ Fingerprint passkey registered on this device!';
             bioFeedback.className = 'text-[10px] font-black text-primary';
           }
         }
       } catch (err) {
         Sound.hit();
         if (bioFeedback) {
-          bioFeedback.textContent = '✕ ' + (err.message || 'Biometric scan failed.');
+          bioFeedback.textContent = '✕ ' + (err.message || 'Passkey setup failed.');
           bioFeedback.className = 'text-[10px] font-bold text-error';
         }
       }
     });
   }
+
+  document.querySelectorAll('.revoke-ledger-member-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const targetUid = btn.getAttribute('data-revoke-member-uid') || '';
+      const deviceId = btn.getAttribute('data-revoke-member-device') || '';
+      Sound.click();
+      try {
+        await ledgerClient.run('revokeDevice', { targetUid, deviceId }, { queueOnNetworkError: false });
+        Sound.fanfare();
+      } catch (err) {
+        Sound.hit();
+        alert(err?.message || 'Could not revoke device.');
+      }
+    });
+  });
 
   // Rex the Dino Live AI Settings Listeners (Server-Side Managed)
 
@@ -5104,6 +5132,46 @@ export function attachParentPortalListeners() {
     });
   });
 
+  const syncRateToLedger = (id, habit, chore) => {
+    if (walletService.isLegacyLedger()) return;
+    if (id === 'toothbrush_adventure_battle') {
+      const ps = store.getState().parentSettings || {};
+      ledgerClient.run('saveRewardRule', {
+        ruleId: 'toothbrush_battle',
+        activityType: 'toothbrush_battle',
+        autoTokens: Number(ps.toothbrushBattleTokens) || 0,
+        pendingGoldPoints: Number(ps.toothbrushBattlePoints) || 0,
+        requiresApproval: true,
+        active: true
+      }).catch((err) => console.warn('[ParentPortal] saveRewardRule error:', err?.message || err));
+      return;
+    }
+    if (habit) {
+      ledgerClient.run('saveRewardRule', {
+        ruleId: `habit:${habit.id}`,
+        activityType: 'habit',
+        autoTokens: Number(habit.coins) || 0,
+        autoXp: Number(habit.xp) || 0,
+        autoSparks: Number(habit.sparks) || 0,
+        pendingGoldPoints: Number(habit.points) || 0,
+        requiresApproval: true,
+        active: true
+      }).catch((err) => console.warn('[ParentPortal] saveRewardRule error:', err?.message || err));
+    }
+    if (chore) {
+      ledgerClient.run('saveRewardRule', {
+        ruleId: `task:${chore.id}`,
+        activityType: 'task',
+        autoTokens: Number(chore.coins) || 0,
+        autoXp: Number(chore.xp) || 0,
+        autoSparks: Number(chore.sparks) || 0,
+        pendingGoldPoints: Number(chore.points) || 0,
+        requiresApproval: true,
+        active: true
+      }).catch((err) => console.warn('[ParentPortal] saveRewardRule error:', err?.message || err));
+    }
+  };
+
   document.querySelectorAll('.task-tokens-input').forEach((input) => {
     input.addEventListener('change', (e) => {
       const id = input.getAttribute('data-task-id');
@@ -5118,6 +5186,7 @@ export function attachParentPortalListeners() {
       } else {
         store.saveState(true);
       }
+      syncRateToLedger(id, habit, chore);
     });
   });
 
@@ -5135,6 +5204,7 @@ export function attachParentPortalListeners() {
       } else {
         store.saveState(true);
       }
+      syncRateToLedger(id, habit, chore);
     });
   });
 

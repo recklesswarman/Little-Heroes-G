@@ -169,7 +169,11 @@ const testFiles = [
   'scratch/verify_ledger_bug_repro.mjs',
   // Phase 1: Shared ledger core (curves, ids, double-entry planner, no-float check, functions-ledger sync):
   'scratch/verify_ledger_core.mjs',
-  'scratch/verify_ledger_core_sync.mjs'
+  'scratch/verify_ledger_core_sync.mjs',
+  // Phase 3: Client wallet service, ledger write paths, outbox, per-kid HQ & static balance-mutation guard:
+  'scratch/verify_no_direct_balance_mutation.mjs',
+  'scratch/verify_wallet_service.mjs',
+  'scratch/verify_ledger_write_paths.mjs'
 ];
 
 let allPassed = true;

@@ -1387,7 +1387,7 @@ export function attachDancePartyEvents() {
         origin: { y: 0.6 },
         colors: ['#2ecc71', '#ffb961', '#3498db', '#f1c40f', '#ff5252']
       });
-      store.getState().selectedHero.coins += 5;
+      store.awardDancePartyRewards(5, 'disco_confetti');
       store.saveState(true);
     });
   }
@@ -1757,7 +1757,7 @@ function startTreatTimer(hero) {
       Sound.fanfare();
       confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
       const coinsWon = Math.max(10, Math.floor(treatScore / 2));
-      store.getState().selectedHero.coins += coinsWon;
+      store.awardDancePartyRewards(coinsWon, 'treat_catcher');
       const currentPet = store.getActivePet();
       if (currentPet) {
         store.addPetTrainingXp(currentPet.id, 25);
@@ -1815,7 +1815,7 @@ function handleMemoryCardClick(idx, hero) {
         memoryWon = true;
         Sound.fanfare();
         confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
-        store.getState().selectedHero.coins += 25;
+        store.awardDancePartyRewards(25, 'memory_match');
         const currentPet = store.getActivePet();
         if (currentPet) {
           store.addPetTrainingXp(currentPet.id, 25);
@@ -1897,7 +1897,7 @@ function finishColorDashGame(hero) {
   Sound.fanfare();
   confetti({ particleCount: 90, spread: 75, origin: { y: 0.6 } });
   const coinsWon = 15 + colorDashScore * 5;
-  store.getState().selectedHero.coins += coinsWon;
+  store.awardDancePartyRewards(coinsWon, 'color_dash');
   const currentPet = store.getActivePet();
   if (currentPet) {
     store.addPetTrainingXp(currentPet.id, 20 + colorDashScore * 2);
@@ -1999,7 +1999,7 @@ function finishEchoMatchGame(hero, won) {
     Sound.fanfare();
     confetti({ particleCount: 100, spread: 80, origin: { y: 0.6 } });
     const coinsWon = 20 + echoSequence.length * 3;
-    store.getState().selectedHero.coins += coinsWon;
+    store.awardDancePartyRewards(coinsWon, 'echo_match');
     const currentPet = store.getActivePet();
     if (currentPet) {
       store.addPetTrainingXp(currentPet.id, 25);
@@ -2057,7 +2057,7 @@ function finishDiscoChallenge(hero) {
   discoChallengeWon = true;
   Sound.fanfare();
   confetti({ particleCount: 100, spread: 80, origin: { y: 0.6 } });
-  store.getState().selectedHero.coins += 30;
+  store.awardDancePartyRewards(30, 'disco_challenge');
   const currentPet = store.getActivePet();
   if (currentPet) {
     store.addPetTrainingXp(currentPet.id, 30);
