@@ -268,7 +268,9 @@ households/{CODE}/passkey_challenges/{uid}
 households/{CODE}/heroes/{heroId}                                    // kid profile (NOT balances); client-writable, section 3.10
   { id, name, role, avatar, avatarDesign, gameDifficulty, activePetId, equippedGear, equippedPetGearMap,
     customGearDyesMap, savedHeroCards, storyMemory, storyProfile, streak, stars, screenTime* settings,
-    companionTurnsToday, companionTurnsDate, arcadeHighScores, updatedAt, ... }
+    companionTurnsToday, companionTurnsDate, arcadeHighScores,
+    hq: { themeId, isNightMode, equippedFurniture: { [slot]: furnitureId } },   // each kid's own HQ (was household heroHQ)
+    updatedAt, ... }
   // Never contains: points, coins, tokens, xp, level, xpNext, sparks, evolutionSparks, petSparkMap,
   // petXpMap, petLevelMap, inventory, consumables, unlockedPetIds, habitatSlots, unlockedThemes
 
@@ -291,15 +293,17 @@ households/{CODE}/approval_requests/{requestId}
     amount: int, earnTxnId?, cycleId?, status: 'pending'|'approved'|'rejected',
     createdBy, resolvedBy?, resolvedAt?, createdAt }
 
-households/{CODE}/inventory/{ownerId}__{itemId}                     // ownerId = heroId, or 'household' for HQ furniture
+households/{CODE}/inventory/{ownerId}__{itemId}                     // ownerId = heroId (every kind, HQ furniture included)
   { ownerId, itemId, kind, qty: int, servingsRemaining?: int, lastTxnId, updatedAt }
   // kind: 'digital_gear' | 'pet_gear' | 'consumable' | 'treat' | 'studio_item' | 'theme' | 'pet' | 'habitat_slot' | 'hq_furniture'
   // Entitlements that live on the hero or household today become inventory docs, granted in the SAME
   // transaction as the charge: unlockedPetIds -> kind 'pet'; habitatSlots -> kind 'habitat_slot' (qty = extra slots);
   // unlockedThemes -> kind 'theme'; state.inventory (pet gear, keyed by item NAME today) -> kind 'pet_gear'
-  // keyed by item id; heroHQ.unlockedFurnitureIds -> ownerId 'household', kind 'hq_furniture'
-  // (stays shared by the household as today; the buyer pays, see Q6).
-  // Equipping (equippedGear, equippedPetGearMap, heroHQ.equippedFurniture, activePetId) stays a free
+  // keyed by item id; heroHQ.unlockedFurnitureIds -> kind 'hq_furniture', ownerId = heroId (per kid, Dj 2026-11-25:
+  // every kid sees the whole furniture catalog, but each kid pays for each item to own it and place it in their own HQ).
+  // Starter furniture (defaultState.heroHQ.unlockedFurnitureIds) and any catalog item with costCoins 0 are owned by
+  // every kid without an inventory doc.
+  // Equipping (equippedGear, equippedPetGearMap, heroes/{heroId}.hq.equippedFurniture, activePetId) stays a free
   // profile/household field, but the client only offers items the inventory shows as owned.
 
 households/{CODE}/activity_locks/{heroId}__{lockKey}                // "one pending completion per task/habit"
@@ -355,6 +359,7 @@ All interactive operations are handled by one callable Cloud Function (`ledger({
 | `requestReward` | member | txn (`REWARD_REQUEST_HOLD`), wallet `held`, hold, request | Price from `catalog/{rewardId}`; `balance - held >= cost`; one hold per `requestId` |
 | `approveReward` / `rejectReward` | parent session | txn, wallet, hold, request | Hold `authorized`; capture deducts `balance` & `held`, void releases `held` |
 | `purchase` | member | txn (`SHOP_PURCHASE`), wallet, inventory | Prices from `catalog/{itemId}`; items priced in Pet Sparks require `petId` (the sparks come from that pet's balance, as `deductPetSparks` does today); `balance - held >= price`; grants the inventory doc in the same transaction (entitlement kinds in section 3.7: one-time kinds refuse if already owned; `habitat_slot` increments; consumables add servings); `txnId = buy_{heroId}_{itemId}_{clientUuid}`. Covers every spend in section 3.13 |
+| `grantItem` | parent session (gifts, crates, custom AI furniture sent to kids), or member for the allowlisted free unlocks below | txn (`GIFT_GRANT`, zero currency deltas), inventory for the named `heroId` | `reason` in allowlist: `parent_gift`, `studio_crate`, `hq_milestone`, `boss_trophy`. Member-called reasons grant only items whose catalog price is 0 and that carry that `milestoneRequirement` / trophy id, so a kid cannot use it to get a paid item free; `txnId = grant_{heroId}_{itemId}` (one-time) |
 | `consume` | member | txn (`CONSUME`), inventory | `servingsRemaining >= 1`, decrements by 1 |
 | `spend` | member | txn (`PET_XP_SPEND` / `SPARK_SPEND`), wallet | `reason` in allowlist; `amount <= available`; levels recomputed |
 | `upsertCatalog` / `upsertRewardRules` | parent session | `catalog` / `reward_rules` | Integer bounds `[0, 100000]` |
@@ -495,7 +500,8 @@ For a single-family household, we avoid a noisy partial shadow mode (which would
   3. Convert XP to cumulative (`hero`: `t_1 = 100`, `t_{k+1} = round(t_k × 1.35)`; `pet`: `50 × L × (L - 1) + xp`, cap 25) and write `ledger_config/curves`. Each hero stores its own `xpNext`, and today's denial code rounds it back down with `round(xpNext / 1.35)`, so it can be off the curve: keep each kid's current level and XP-into-level exactly, list every hero whose `xpNext != curve(level)` in the report for Dj, and never lower a level during backfill.
   4. Pet Sparks per pet from `petSparkMap[petId]` (fallback `hero.sparks` for active pet).
   5. Create each `wallets/{heroId}` and one `OPENING_BALANCE` transaction (`txnId = backfill_v1_{heroId}`, idempotent on re-run).
-  6. Migrate into `inventory/{ownerId}__{itemId}`: `hero.inventory`, `hero.consumables`, `hero.unlockedPetIds` (kind `pet`), `hero.habitatSlots` above 1 (kind `habitat_slot`), `hero.unlockedThemes` (kind `theme`), household `state.inventory` pet gear (kind `pet_gear`, map item names to ids and list any unmatched names in the report), and `heroHQ.unlockedFurnitureIds` (owner `household`, kind `hq_furniture`).
+  6. Migrate into `inventory/{ownerId}__{itemId}`: `hero.inventory`, `hero.consumables`, `hero.unlockedPetIds` (kind `pet`), `hero.habitatSlots` above 1 (kind `habitat_slot`), `hero.unlockedThemes` (kind `theme`), household `state.inventory` pet gear (kind `pet_gear`, map item names to ids and list any unmatched names in the report), and `heroHQ.unlockedFurnitureIds` (kind `hq_furniture`). **Only the kid who bought an item keeps it (Dj 2026-11-25).** The buyer is taken, in order, from: (a) `heroHQ.furnitureOwners[itemId]`, which Phase 0 starts recording on every unlock; (b) for parent custom AI furniture, the item's `targetChildProfile` when it names one kid (`'all'` means every kid). Starter and free items get no docs (every kid owns them). Today's app keeps **no record of who bought furniture before Phase 0** (`unlockHQFurniture` only adds the id to the shared `unlockedFurnitureIds` and lowers the selected kid's tokens), so any unlocked item with no buyer from (a) or (b) is **not granted to anyone automatically**: `--dry-run` lists it under "Furniture with no buyer record", and cutover waits until Dj assigns each one in `scripts/ledger/reports/{CODE}-furniture-owners.json` (open question Q7). The report lists the furniture granted per kid.
+  6c. Copy the household `heroHQ` layout (dropping any placed item that kid does not own after step 6, so the slot falls back to that kid's starter item) (`themeId`, `isNightMode`, `equippedFurniture`) into each kid's `heroes/{heroId}.hq`, so every kid starts with the room they see today and changes it independently from then on.
   6b. Copy each hero's non-currency profile fields into `heroes/{heroId}` (everything except `LEDGER_HERO_FIELDS`, section 3.10). From cutover the client reads and writes profiles only there.
   7. Convert unresolved `pendingApprovals` into `approval_requests` (and `activity_locks` for task requests). For reward requests, create a hold; if funds are short, flag `needs_parent_review` in the report.
   8. Seed `catalog` and `reward_rules` from current catalogs and rates: one `habit:{habitId}` row per existing habit, one `task:{taskId}` row per existing task (canonical alias ids), one generic row per fixed `activityType` in section 3.13 (default `dailyCap: 20`, `maxBuffPercent: 50`), and every `realLifeRewards` entry as a `catalog` item of kind `reward`.
@@ -506,7 +512,7 @@ For a single-family household, we avoid a noisy partial shadow mode (which would
   * balances: snapshot values plus every post-cutover `ledger_transactions` delta, written into `heroesMap` (and `heroes[]`) with fresh stamps;
   * hero profiles: each `heroes/{heroId}` doc copied back over the snapshot's profile fields (avatar, active pet, gear equipped after cutover);
   * approvals: `approval_requests` still `pending` go back into `pendingApprovals` (with holds released into the balance math); resolved ones into `resolvedApprovals`;
-  * inventory: `inventory/*` docs back into `unlockedPetIds`, `habitatSlots`, `unlockedThemes`, `hero.inventory`/`consumables`, `state.inventory` and `heroHQ.unlockedFurnitureIds`;
+  * inventory: `inventory/*` docs back into `unlockedPetIds`, `habitatSlots`, `unlockedThemes`, `hero.inventory`/`consumables`, `state.inventory`, and `heroHQ.unlockedFurnitureIds` (the union of every kid's furniture, since the legacy app has one shared HQ; layout from the snapshot);
   * the PIN from the snapshot back into `parentSettings.pin` (only while the snapshot still holds it);
   then sets `ledgerMode: 'legacy'`. Ledger collections are preserved for audit. `scripts/ledger/cleanup_snapshot.mjs` deletes `private/preCutoverSnapshot` once Dj confirms the cutover is good.
 
@@ -567,14 +573,17 @@ Do this check during Phase 3: if any other place found by `verify_no_direct_bala
 | `buyDigitalGear`, Studio items listed in the Shop | Habit Tokens / Pet Sparks | inventory `digital_gear` / `studio_item` |
 | `buyAndEquipGear` | Habit Tokens | inventory `pet_gear` (keyed by item id, not name) |
 | `buyTreatPack` | Habit Tokens | inventory `treat` |
-| `unlockHQFurniture` | Habit Tokens | inventory `hq_furniture`, owner `household` |
+| `unlockHQFurniture` | Habit Tokens, paid by the selected kid | inventory `hq_furniture`, owner = that kid (each kid buys their own copy; already owned by that kid → just place it) |
+| `checkHQMilestoneUnlocks` (milestones counted for the selected kid) | none | `grantItem` reason `hq_milestone`, owner = that kid |
+| Boss trophy relic added to HQ (`store.js` ~line 3727) | none | `grantItem` reason `boss_trophy`, owner = the kid who won |
+| `publishCustomAIFurniture` with `instant_gift` | none | `grantItem` reason `parent_gift` for each kid in `targetChildProfile` (`'all'` = one grant per kid) |
 | `startPetExpedition` (5) | Habit Tokens | none |
 | `feedAllPetsPicnic` (15), `feedSinglePet` | Habit Tokens | none |
 | `deductPetSparks` (Shop `costSparks`) | Pet Sparks | per item |
 | `deductPetTrainingXp` | Pet XP | none |
 | `feedPetConsumableSnack`, `feedPetTreat` | none | `consume` |
 | `redeemRealLifeReward` | Gold Points | `requestReward` (hold) |
-| `grantStudioItemToHero` (parent gift / crate) | none | `GIFT_GRANT` |
+| `grantStudioItemToHero` (parent gift / crate; furniture goes to that kid only) | none | `grantItem` (`GIFT_GRANT`) |
 | `editHero` with `coins`/`points`/`level` (Parent Portal) | any | `adjust` |
 | `addHero` / `deleteHero` | starting values | `openWallet` / `closeWallet` |
 
@@ -641,7 +650,8 @@ Currency sync is only half the problem — non-currency data (chores, habits, be
 | One link | Required: the whole app on one address | Phase 6 |
 | Warm server cost | Prefer $0/mo; no always-warm instance | Consolidated `ledger` Function, `minInstances: 0` (section 3.12) |
 | AI Crafting | Parents only, no currency cost | Section 1.3; gated in Phase 5 |
-| Reward request holds | Never expire; they stay until a parent acts (rule 4 of the lifecycle rules) | Section 3.6 |
+| Reward request holds | Never expire; they stay until a parent acts (rule 4 of the lifecycle rules; Dj reconfirmed 2026-11-25) | Section 3.6 |
+| HQ furniture (was Q6) | Per kid: every kid sees the whole catalog, but each kid pays for each item to own it and place it in their own HQ. Each kid also has their own HQ layout. At backfill, only the kid who bought an item keeps it (buyer records start in Phase 0; items with no record wait for Q7) | Sections 3.7, 3.8 (`grantItem`), 3.11 step 6/6c, 3.13; Phase 3 |
 | Task/habit denial reversal | **Stick with current rule (no negative balances; Dj reconfirmed 2026-11-25)** — deduct auto-issued Tokens, Hero XP, and Pet Sparks **clamped at 0** | Section 3.5; aligns with `.agents/rules/task_and_currency_lifecycle_rules.md` |
 
 **Still open (defaults apply if unanswered):**
@@ -653,7 +663,7 @@ Currency sync is only half the problem — non-currency data (chores, habits, be
 | Q3 | May Phase 0 log push error codes (no kid names) to the Pi's Umami/ntfy to track real-world sync errors? | Yes, error codes only |
 | Q4 | Default daily cap per activity type | 20 per kid per activity type per day, parent-editable |
 | Q5 | Should the household's other 2 free Cloud Scheduler jobs stay free? | Assume yes; one new job |
-| Q6 | Should HQ furniture stay shared by the household (whoever buys it pays), or become per kid? | Shared, as today |
+| Q7 | Furniture unlocked before Phase 0 has no buyer record. Who owns each of those items? | No default: the dry-run lists them and Dj assigns each one (a kid, every kid, or nobody) before cutover |
 
 ---
 
@@ -668,13 +678,14 @@ General rules for every phase:
 * The emulator CI job needs Java 21 (`actions/setup-java`) and `firebase-tools`.
 
 ### Phase 0: Immediate sync stabilization & payload slimming
-**Files:** `src/services/firestoreSyncService.js`, `src/views/ParentPortalView.js`, `scratch/verify_ledger_bug_repro.mjs` (new), `scratch/run_all_tests.js`
+**Files:** `src/services/firestoreSyncService.js`, `src/state/store.js`, `src/views/ParentPortalView.js`, `scratch/verify_ledger_bug_repro.mjs` (new), `scratch/run_all_tests.js`
 1. Move `await ensureAuthReady()` inside `try` in `_doPush`. Record failures in a 20-entry ring buffer (`this.pushFailures`) and **schedule exponential-backoff retries** (2 s, 4 s, 8 s, up to 60 s) whenever a push fails or a quota cooldown expires.
 2. Surface the last error code in the Parent Portal sync health card (`getSyncHealth()`).
 3. Shrink `households/{CODE}` payload immediately: eliminate duplicate static catalog blobs (`digitalGear` defaults) and redundant hero copies inside `stateSnapshot` where top-level `heroesMap` already exists.
    **Order matters:** `hydrateFromCloud` (store.js, near line 9354) replaces `state.digitalGear` with the cloud array wholesale. First change hydrate to merge: defaults from code, then cloud entries by id (parent re-prices and custom Studio items override or add; `deletedCustomItemIds` removes), following the CLAUDE.md catalog reconciliation rule. Only then push just the parent-changed and custom entries. Shipping the slimming without the merge would make other devices lose every default shop item; omitting the field entirely would stop parent re-pricing from syncing.
-4. Add `scratch/verify_ledger_bug_repro.mjs` documenting today's R1, R3, R4, and R5 failures (marked `EXPECTED_LEGACY_FAILURE`; converted to must-pass in Phase 4).
-**Acceptance:** build and all tests pass; simulated `setDoc` failures (including an `ensureAuthReady` rejection and a quota cooldown) retry and succeed; a one-kid reference fixture's push payload is under 150 KB (record before/after in the PR); a device that receives a slimmed push still shows every default shop item and the parent's custom prices.
+4. Start recording furniture buyers: `unlockHQFurniture`, `checkHQMilestoneUnlocks`, the boss trophy relic unlock and `grantStudioItemToHero` set `heroHQ.furnitureOwners[itemId] = heroId` (the selected or target kid) whenever they add to `unlockedFurnitureIds`. Nothing else changes yet (still one shared HQ); this gives the backfill a buyer for every item unlocked from now on (section 3.11 step 6).
+5. Add `scratch/verify_ledger_bug_repro.mjs` documenting today's R1, R3, R4, and R5 failures (marked `EXPECTED_LEGACY_FAILURE`; converted to must-pass in Phase 4).
+**Acceptance:** build and all tests pass; simulated `setDoc` failures (including an `ensureAuthReady` rejection and a quota cooldown) retry and succeed; a one-kid reference fixture's push payload is under 150 KB (record before/after in the PR); a device that receives a slimmed push still shows every default shop item and the parent's custom prices. Buying, earning or being given furniture records the kid in `heroHQ.furnitureOwners`.
 
 ### Phase 1: Shared ledger core
 **Files (new):** `shared/ledger/currencies.js`, `shared/ledger/curves.js`, `shared/ledger/ids.js`, `shared/ledger/core.js`, `scripts/sync-ledger-core.mjs`, `functions-ledger/package.json`, `functions-ledger/tsconfig.json`, `functions-ledger/src/core/*` (synced copy), `scratch/verify_ledger_core.mjs`, `scratch/verify_ledger_core_sync.mjs`
@@ -705,18 +716,20 @@ General rules for every phase:
 * In `migrating` mode, a household write that changes a ledger key is denied.
 * `public/walletSummary` is readable with the code and not writable by clients; a wallet change does not touch `households/{CODE}`.
 * `joinHousehold` twice for the same uid is a no-op apart from `lastSeenAt`; `createHousehold` makes the creator a parent member.
+* HQ furniture: kid A buys an item → A owns it and A's tokens drop; kid B still sees it in the catalog as not owned and must pay to own it; A buying it twice is refused; a kid-called `grantItem` for a paid item is refused; a parent gift with target `'all'` grants one copy per kid.
 * Two task ids in one alias group share one activity lock; a Pet Sparks purchase without `petId` is refused.
 * Reconcile catches a transaction written with an older `createdAt` but a newer `walletVersionAfter`.
 
 ### Phase 3: Client wallet read & write paths
-**Files:** `src/services/walletService.js` (new), `src/services/ledgerClient.js` (new, with `localStorage` outbox `ledger_outbox_v1`), `src/components/ParentLockModal.js`, `src/state/store.js` (all currency getters & ~40 mutation sites), `src/components/TopHeader.js`, `src/views/ShopView.js`, `src/views/DashboardView.js`, `src/views/PetDetailView.js`, `src/views/ParentPortalView.js`, `src/views/DancePartyView.js`, `src/views/WorldAdventureMapView.js`, `src/components/PetSanctuaryCanvas.js`, `shared/fridgeSnapshot.js`
+**Files:** `src/services/walletService.js` (new), `src/services/ledgerClient.js` (new, with `localStorage` outbox `ledger_outbox_v1`), `src/components/ParentLockModal.js`, `src/state/store.js` (all currency getters & ~40 mutation sites), `src/components/TopHeader.js`, `src/views/HeroHQView.js`, `src/views/ShopView.js`, `src/views/DashboardView.js`, `src/views/PetDetailView.js`, `src/views/ParentPortalView.js`, `src/views/DancePartyView.js`, `src/views/WorldAdventureMapView.js`, `src/components/PetSanctuaryCanvas.js`, `shared/fridgeSnapshot.js`
 * **Join on every start (S1):** call `ledger(joinHousehold)` on every app start, in both modes, as soon as auth is ready. Parent Portal gets a "Devices" list from `members` (label, last seen, revoke button). Household creation goes through `ledger(createHousehold)`. Trade-off: each device must open the app once after this ships (before cutover) and joins once per link until Phase 6.
 * All reads go through `walletService.balanceOf(heroId, currency, petId?)` in `authoritative` mode.
 * All mutations call `ledgerClient.run(action, args)` with deterministic IDs and optimistic overlays — **no client-computed balance math**.
 * Static guard `scratch/verify_no_direct_balance_mutation.mjs` fails on direct balance mutations in `src/` outside `walletService.js` and legacy-mode branches. Legacy branches must be marked so the guard can find them: wrap them in `if (isLegacyLedger()) { ... }` (one helper in `walletService.js`) or put a `// LEGACY_LEDGER` comment on the line; anything else counts as a violation.
 * `ParentLockModal.js`: two tabs only, PIN and Fingerprint. PIN calls `ledger(verifyParentPin)`; Fingerprint calls `passkeyAuthBegin`/`navigator.credentials.get`/`passkeyAuthFinish`. The portal opens only after the server returns a session. Remove the Math Gate tab, `generateMathChallenge`, `mathChallengeEnabled` and its Parent Portal toggle ("Gates Active" count becomes PIN + Fingerprint). Add "Set up fingerprint on this device" in Parent Portal settings (calls `passkeyRegister*`). **Decide the final address (Phase 6 step 2) before shipping passkeys,** because a passkey works only on the domain it was made on; passkeys made on a temporary address must be set up again. The Pi kiosk served over plain `http` cannot use passkeys (WebAuthn needs HTTPS), so it shows the PIN tab only. `src/utils/biometrics.js` is replaced by the passkey flow.
+* **Per-kid Hero HQ:** `HeroHQView.js`, `DashboardView.js` and `TopHeader.js` read the HQ layout from the selected kid's `heroes/{heroId}.hq` and ownership from that kid's `inventory`. The redecorate drawer shows the whole furniture catalog to every kid; items the kid doesn't own show the price and a Buy button, owned ones a Place button. `equipHQFurniture` refuses an item the kid doesn't own (starter and free items always count as owned). Remove the household `heroHQ` from `_doPush` in `authoritative` mode. In `legacy` mode behaviour is unchanged (shared HQ).
 * In `authoritative` mode, `_doPush` stops sending `heroes`, `heroesMap` and `stateSnapshot.heroes`; hero profile edits write `heroes/{heroId}` (with its own `onSnapshot`) using `updateDoc` with **only the changed fields** (never a full-profile `setDoc`), so two devices editing different fields don't overwrite each other. Counters (`companionTurnsToday`, `screenTimeUsedToday`, screen-time minute grants) use `increment()`.
-**Tests:** `scratch/verify_wallet_service.mjs` (version monotonicity, optimistic overlay add/clear, `fromCache` stale status, `"…"` before first server snapshot); `scratch/verify_ledger_write_paths.mjs` (every store/view mutation site calls expected action + deterministic ID); outbox retry test using `localStorage`; task lock shown from `approval_requests` and "Needs Redo" shown from `wallet.needsRedo` (approve/reject on device A updates device B); every row of section 3.13 covered (including the catalog and rule writers); two-device profile test (device A changes avatar while device B changes active pet: both survive; both add companion turns: the count adds up); `joinHousehold` runs on start in legacy mode.
+**Tests:** `scratch/verify_wallet_service.mjs` (version monotonicity, optimistic overlay add/clear, `fromCache` stale status, `"…"` before first server snapshot); `scratch/verify_ledger_write_paths.mjs` (every store/view mutation site calls expected action + deterministic ID); outbox retry test using `localStorage`; task lock shown from `approval_requests` and "Needs Redo" shown from `wallet.needsRedo` (approve/reject on device A updates device B); every row of section 3.13 covered (including the catalog and rule writers); per-kid HQ test (kid A places furniture and changes theme; kid B's HQ is unchanged; B cannot place A's paid item); two-device profile test (device A changes avatar while device B changes active pet: both survive; both add companion turns: the count adds up); `joinHousehold` runs on start in legacy mode.
 **Acceptance:** with a test household in `authoritative` mode on the emulator, every earn and spend in section 3.13 changes the wallet only through the Function; `verify_no_direct_balance_mutation.mjs` passes; the same build behaves exactly as today in `legacy` mode (existing tests pass unchanged).
 
 ### Phase 4: Backfill, cutover & background jobs
@@ -725,6 +738,7 @@ General rules for every phase:
 * Point `server/householdReader.js` at `households/{CODE}/public/walletSummary` for balances (falls back to legacy fields while `ledgerMode` is `legacy`).
 * **Rollback rehearsal on the emulator** before touching production: copy of a real household → backfill → cut over → earn, buy, change avatar, leave one approval pending → `rollback.mjs` → the legacy app shows the new balances, purchase, avatar and pending approval.
 * Execute backfill: `--dry-run` → Dj reviews report (including the joined-devices list; wait until every family device is listed) → `--freeze` → `--cutover` (sets `ledgerMode: 'authoritative'`, migrates PIN, copies hero profiles into `heroes/{heroId}`).
+* After cutover: each kid's HQ looks as it did before except for items that kid doesn't own, and each furniture item is owned only by its recorded or Dj-assigned buyer.
 * After cutover: on a kid device, change avatar and active pet → the change appears on the parent phone (proves profile sync still works under the new rules).
 * Phase 0's repro cases now pass on the authoritative path.
 **Live check:** approve on parent phone → kid tablet updates in <500 ms (warm) / <4 s (cold); put tablet in airplane mode, approve on phone, reconnect → tablet converges within 2 s.
