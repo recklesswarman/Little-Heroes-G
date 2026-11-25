@@ -427,7 +427,8 @@ function stateSnapshotLedgerFieldsChanged() {
         || reqSnap.get('heroesMap', null) != resSnap.get('heroesMap', null)
         || reqSnap.get('pendingApprovals', null) != resSnap.get('pendingApprovals', null)
         || reqSnap.get('resolvedApprovals', null) != resSnap.get('resolvedApprovals', null)
-        || reqSnap.get('inventory', null) != resSnap.get('inventory', null));
+        || reqSnap.get('inventory', null) != resSnap.get('inventory', null)
+        || reqSnap.get('heroHQ', null) != resSnap.get('heroHQ', null));
 }
 
 function isMember(code) {
@@ -446,7 +447,7 @@ match /households/{code} {
     // Applies in 'migrating' too, so an old or offline client cannot change balances during the backfill freeze.
     && (resource.data.get('ledgerMode', 'legacy') == 'legacy' || (
         !request.resource.data.diff(resource.data).affectedKeys()
-          .hasAny(['heroes', 'heroesMap', 'pendingApprovals', 'resolvedApprovals', 'inventory'])
+          .hasAny(['heroes', 'heroesMap', 'pendingApprovals', 'resolvedApprovals', 'inventory', 'heroHQ'])
         && !stateSnapshotLedgerFieldsChanged()));
   // Do NOT gate on a client-sent schema version: the app writes with setDoc(..., {merge: true}), and
   // request.resource.data is the document AFTER the merge, so once any new client has stored
@@ -509,9 +510,9 @@ For a single-family household, we avoid a noisy partial shadow mode (which would
   9. Hash `parentSettings.pin` into `private/parentAuth` and delete plain-text `parentSettings.pin` from the household doc.
   10. Write `public/walletSummary`, set `ledgerMode: 'authoritative'`, and save `scripts/ledger/reports/{CODE}-{timestamp}.json`.
 * **Rollback (full, S2):** `scripts/ledger/rollback.mjs --household CODE` sets `ledgerMode: 'migrating'`, then rebuilds the legacy household doc from `private/preCutoverSnapshot` plus everything that happened after cutover:
-  * balances: snapshot values plus every post-cutover `ledger_transactions` delta, written into `heroesMap` (and `heroes[]`) with fresh stamps;
+  * balances: read directly from each `wallets/{heroId}` doc (never add cumulative `ledger_transactions` XP deltas onto legacy XP-into-level fields), converting cumulative `HERO_XP` and `PET_XP` back to `{ level, xp, xpNext }` / `petLevelMap` / `petXpMap` via `shared/ledger/curves.js`, and write into `heroesMap` (and `heroes[]`) with fresh stamps;
   * hero profiles: each `heroes/{heroId}` doc copied back over the snapshot's profile fields (avatar, active pet, gear equipped after cutover);
-  * approvals: `approval_requests` still `pending` go back into `pendingApprovals` (with holds released into the balance math); resolved ones into `resolvedApprovals`;
+  * approvals: `approval_requests` still `pending` go back into `pendingApprovals` (note: holds never deducted from `wallet.balances.GOLD_POINTS`, so do **not** add `held.GOLD_POINTS` back to `points`); resolved ones go into `resolvedApprovals`;
   * inventory: `inventory/*` docs back into `unlockedPetIds`, `habitatSlots`, `unlockedThemes`, `hero.inventory`/`consumables`, `state.inventory`, and `heroHQ.unlockedFurnitureIds` (the union of every kid's furniture, since the legacy app has one shared HQ; layout from the snapshot);
   * the PIN from the snapshot back into `parentSettings.pin` (only while the snapshot still holds it);
   then sets `ledgerMode: 'legacy'`. Ledger collections are preserved for audit. `scripts/ledger/cleanup_snapshot.mjs` deletes `private/preCutoverSnapshot` once Dj confirms the cutover is good.
@@ -733,11 +734,11 @@ General rules for every phase:
 
 ### Phase 4: Backfill, cutover & background jobs
 **Files:** `scripts/ledger/backfill.mjs`, `scripts/ledger/rollback.mjs`, `scripts/ledger/cleanup_snapshot.mjs`, `scripts/ledger/README.md`, `server/householdReader.js`, `functions-ledger/src/reconcileNightly.ts`, `functions-ledger/src/mirrorWalletSummary.ts`, `src/services/firestoreSyncService.js` (strip currency/approval/inventory/hero fields), `src/state/store.js` (`hydrateFromCloud` & `_serializeStateForLocalStorage` strip those fields in `authoritative` mode)
-* Deploy Functions, rules, composite indexes, and client to all hosting targets; run a **production composite-index smoke test** on `approval_requests`, `ledger_transactions`, and `holds`.
+* Deploy Functions, rules, composite indexes, and client to all hosting targets; run a **production composite-index smoke test** on `approval_requests`, `holds`, and **both** `ledger_transactions` indexes (`(heroId, createdAt DESC)` and `(heroId, walletVersionAfter ASC)`).
 * Point `server/householdReader.js` at `households/{CODE}/public/walletSummary` for balances (falls back to legacy fields while `ledgerMode` is `legacy`).
 * **Rollback rehearsal on the emulator** before touching production: copy of a real household → backfill → cut over → earn, buy, change avatar, leave one approval pending → `rollback.mjs` → the legacy app shows the new balances, purchase, avatar and pending approval.
 * Execute backfill: `--dry-run` → Dj reviews report (including the joined-devices list; wait until every family device is listed) → `--freeze` → `--cutover` (sets `ledgerMode: 'authoritative'`, migrates PIN, copies hero profiles into `heroes/{heroId}`).
-* After cutover: each kid's HQ looks as it did before except for items that kid doesn't own, and each furniture item is owned only by its recorded or Dj-assigned buyer.
+* After cutover: each kid's HQ looks as it did before except for items that kid doesn't own, and each furniture item is owned only by its recorded buyer (or target kid for custom gifts).
 * After cutover: on a kid device, change avatar and active pet → the change appears on the parent phone (proves profile sync still works under the new rules).
 * Phase 0's repro cases now pass on the authoritative path.
 **Live check:** approve on parent phone → kid tablet updates in <500 ms (warm) / <4 s (cold); put tablet in airplane mode, approve on phone, reconnect → tablet converges within 2 s.
@@ -746,7 +747,7 @@ General rules for every phase:
 **Files:** `src/services/firestoreSyncService.js`, `src/state/store.js`, `firestore.rules`, `scripts/ledger/strip_legacy_fields.mjs`, `server/householdReader.js`
 1. Split large non-currency domains (`bedtimeStoryLibrary`, `taskCompletionLogs`, `taskForest`, `habitIslands`, parent Studio custom items) into subcollections under `households/{CODE}` with dedicated `onSnapshot` listeners, eliminating the 1 MiB ceiling (R7) and session echo-suppression drops (R6) for all app data.
 2. Strip legacy currency fields from `households/{CODE}` (`strip_legacy_fields.mjs`).
-3. Move the Pi/fridge reader **and the meals writer** (`server/mealsService.js` → `updateHouseholdField`) to a service account (Admin SDK) before tightening `households/{CODE}` reads and writes to members only.
+3. Move the Pi/fridge reader **and the meals writer** (`server/mealsService.js` → `updateHouseholdField`) to a service account (Admin SDK) before tightening `households/{CODE}` and `households/{CODE}/public/{id}` reads and writes to members only (or Admin SDK only for `public/walletSummary`).
 4. Require a live parent session for Parent Studio AI generation endpoints (`/api/ai/image`, Firebase AI Logic Studio calls).
 5. Optional: ntfy alert if `ledgerReconcileNightly` detects drift; screen-time bank / pet bond XP as ledger currencies (Q2).
 **Tests:** emulator rules tests for each new subcollection (member read/write, non-member denied); a household with 1,000 task logs and 200 stories still syncs (no single doc over 500 KB); Pi weekly report, fridge display and meal plan writes work with the service account.
