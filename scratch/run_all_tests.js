@@ -166,7 +166,10 @@ const testFiles = [
   // Kids' tablet internet via the Pi's Pi-hole: YouTube Restricted, SafeSearch, bedtime off:
   'scratch/verify_tablet_internet_guard.mjs',
   // Phase 0: Ledger bug repro & immediate sync stabilization (retries, payload slimming, furnitureOwners):
-  'scratch/verify_ledger_bug_repro.mjs'
+  'scratch/verify_ledger_bug_repro.mjs',
+  // Phase 1: Shared ledger core (curves, ids, double-entry planner, no-float check, functions-ledger sync):
+  'scratch/verify_ledger_core.mjs',
+  'scratch/verify_ledger_core_sync.mjs'
 ];
 
 let allPassed = true;
