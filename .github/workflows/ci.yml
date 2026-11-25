@@ -20,6 +20,7 @@ jobs:
           cache-dependency-path: |
             package-lock.json
             functions/package-lock.json
+            functions-ledger/package-lock.json
       # The Pi voice service check (scratch/fixtures/check_voice_extras.py) runs the real
       # Python service with stub models; it needs numpy.
       - name: Set up Python
@@ -47,3 +48,40 @@ jobs:
       - name: Build functions
         working-directory: functions
         run: npm run build
+      - name: Install ledger function dependencies
+        working-directory: functions-ledger
+        run: npm ci
+      - name: Lint ledger functions
+        working-directory: functions-ledger
+        run: npm run lint
+      - name: Build ledger functions
+        working-directory: functions-ledger
+        run: npm run build
+
+  ledger-emulator:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            functions-ledger/package-lock.json
+      - name: Set up Java 21 (for Firestore emulator)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install root dependencies
+        run: npm ci
+      - name: Install and build functions-ledger
+        working-directory: functions-ledger
+        run: npm ci && npm run build
+      - name: Run ledger rules and handler emulator tests
+        run: npx firebase-tools emulators:exec --only firestore --project little-heroes-quest-8842 "node scratch/verify_ledger_emulator.mjs"

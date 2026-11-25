@@ -223,7 +223,7 @@ service cloud.firestore {
           'dentalBattleHistory', 'lastBrushedMorning', 'lastBrushedEvening',
           'hygieneReminders', 'worldAdventureMap', 'bedtimeStoryLibrary',
           'activeBedtimeStory', 'bedtimeSanctuaryState', 'bedtimeConfig',
-          'taskEngineVersion'
+          'taskEngineVersion', 'ledgerMode', 'createdAt', 'clientSchemaVersion'
         ])
         && (!('syncCode' in data) || data.syncCode == '' || isValidHouseholdCode(data.syncCode))
         && (!('householdName' in data) || (data.householdName is string && data.householdName.size() <= 100))
@@ -231,74 +231,17 @@ service cloud.firestore {
         && (!('devices' in data) || (data.devices is map && data.devices.size() <= 50))
         && (!('heroes' in data) || (data.heroes is list && data.heroes.size() <= 30))
         && (!('heroesMap' in data) || (data.heroesMap is map && data.heroesMap.size() <= 30))
-        && (!('deletedHeroIds' in data) || (data.deletedHeroIds is list && data.deletedHeroIds.size() <= 100))
-        && (!('selectedHero' in data) || data.selectedHero == null || (data.selectedHero is map && data.selectedHero.size() <= 120))
-        && (!('parents' in data) || (data.parents is list && data.parents.size() <= 20))
         && (!('parentUids' in data) || (data.parentUids is list && data.parentUids.size() <= 20))
         && (!('parentEmails' in data) || (data.parentEmails is list && data.parentEmails.size() <= 20))
         && (!('parentSettings' in data) || (data.parentSettings is map && data.parentSettings.size() <= 60))
         && (!('pendingApprovals' in data) || (data.pendingApprovals is list && data.pendingApprovals.size() <= 200))
         && (!('resolvedApprovals' in data) || (data.resolvedApprovals is list && data.resolvedApprovals.size() <= 500))
-        && (!('taskCompletionLogs' in data) || (data.taskCompletionLogs is list && data.taskCompletionLogs.size() <= 1000))
-        && (!('taskLedgerLogs' in data) || (data.taskLedgerLogs is list && data.taskLedgerLogs.size() <= 1000))
-        && (!('taskForest' in data) || (data.taskForest is list && data.taskForest.size() <= 100))
-        && (!('habitIslands' in data) || (data.habitIslands is list && data.habitIslands.size() <= 100))
-        && (!('aiQuests' in data) || (data.aiQuests is list && data.aiQuests.size() <= 100))
-        && (!('heroAiQuestsMap' in data) || (data.heroAiQuestsMap is map && data.heroAiQuestsMap.size() <= 30))
-        && (!('recentlyUnlocked' in data) || (data.recentlyUnlocked is list && data.recentlyUnlocked.size() <= 100))
-        && (!('realLifeRewards' in data) || (data.realLifeRewards is list && data.realLifeRewards.size() <= 100))
-        && (!('digitalGear' in data) || (data.digitalGear is list && data.digitalGear.size() <= 200))
-        && (!('inventory' in data) || (data.inventory is list && data.inventory.size() <= 200))
-        && (!('petStatsMap' in data) || (data.petStatsMap is map && data.petStatsMap.size() <= 50))
-        && (!('petLevelMap' in data) || (data.petLevelMap is map && data.petLevelMap.size() <= 50))
-        && (!('petXpMap' in data) || (data.petXpMap is map && data.petXpMap.size() <= 50))
-        && (!('equippedGearMap' in data) || (data.equippedGearMap is map && data.equippedGearMap.size() <= 50))
-        && (!('equippedPetGear' in data) || data.equippedPetGear == null || (data.equippedPetGear is string && data.equippedPetGear.size() <= 100) || (data.equippedPetGear is map && data.equippedPetGear.size() <= 30))
-        && (!('equippedPetGearSlots' in data) || (data.equippedPetGearSlots is map && data.equippedPetGearSlots.size() <= 30))
-        && (!('equippedPetGearMap' in data) || (data.equippedPetGearMap is map && data.equippedPetGearMap.size() <= 50))
-        && (!('customGearDyesMap' in data) || (data.customGearDyesMap is map && data.customGearDyesMap.size() <= 50))
-        && (!('savedHeroCards' in data) || (data.savedHeroCards is list && data.savedHeroCards.size() <= 100))
-        && (!('pets' in data) || (data.pets is list && data.pets.size() <= 50))
-        && (!('petSanctuary' in data) || (data.petSanctuary is map && data.petSanctuary.size() <= 50))
-        && (!('heroHQ' in data) || (data.heroHQ is map && data.heroHQ.size() <= 50))
-        && (!('heroForge' in data) || (data.heroForge is map && data.heroForge.size() <= 50))
-        && (!('petStreakShield' in data) || (data.petStreakShield is map && data.petStreakShield.size() <= 30))
-        && (!('activeExpeditions' in data) || (data.activeExpeditions is list && data.activeExpeditions.size() <= 30))
-        && (!('expeditionHistory' in data) || (data.expeditionHistory is list && data.expeditionHistory.size() <= 100))
-        && (!('unlockedArtifacts' in data) || (data.unlockedArtifacts is list && data.unlockedArtifacts.size() <= 100))
-        && (!('gameMasteryMap' in data) || (data.gameMasteryMap is map && data.gameMasteryMap.size() <= 100))
-        && (!('liveRex' in data) || (data.liveRex is map && data.liveRex.size() <= 30))
-        && (!('profileThemes' in data) || (data.profileThemes is list && data.profileThemes.size() <= 50))
-        && (!('gameProgress' in data) || (data.gameProgress is map && data.gameProgress.size() <= 50))
-        && (!('linkedAccounts' in data) || (data.linkedAccounts is map && data.linkedAccounts.size() <= 30))
         && (!('revokedDeviceIds' in data) || (data.revokedDeviceIds is list && data.revokedDeviceIds.size() <= 100))
         && (!('stateSnapshot' in data) || (data.stateSnapshot is map && data.stateSnapshot.size() <= 150))
         && (!('lastWriterSessionId' in data) || (data.lastWriterSessionId is string && data.lastWriterSessionId.size() <= 128))
         && (!('lastWriterDeviceId' in data) || (data.lastWriterDeviceId is string && data.lastWriterDeviceId.size() <= 128))
         && (!('updatedAt' in data) || isValidTimestampOrString(data.updatedAt, 64))
-        && (!('lastUpdated' in data) || isValidTimestampOrString(data.lastUpdated, 64))
-        && (!('parentCustomWeapons' in data) || (data.parentCustomWeapons is list && data.parentCustomWeapons.size() <= 100))
-        && (!('parentCustomGear' in data) || (data.parentCustomGear is list && data.parentCustomGear.size() <= 100))
-        && (!('parentCustomFurniture' in data) || (data.parentCustomFurniture is list && data.parentCustomFurniture.size() <= 100))
-        && (!('parentCustomToys' in data) || (data.parentCustomToys is list && data.parentCustomToys.size() <= 100))
-        && (!('parentCustomFood' in data) || (data.parentCustomFood is list && data.parentCustomFood.size() <= 100))
-        && (!('parentCustomBosses' in data) || (data.parentCustomBosses is list && data.parentCustomBosses.size() <= 100))
-        && (!('deletedCustomItemIds' in data) || (data.deletedCustomItemIds is list && data.deletedCustomItemIds.size() <= 200))
-        && (!('pendingGiftCrates' in data) || (data.pendingGiftCrates is list && data.pendingGiftCrates.size() <= 100))
-        && (!('pendingBounties' in data) || (data.pendingBounties is list && data.pendingBounties.size() <= 100))
-        && (!('rewardLedger' in data) || (data.rewardLedger is list && data.rewardLedger.size() <= 500))
-        && (!('movementSessionHistory' in data) || (data.movementSessionHistory is list && data.movementSessionHistory.size() <= 200))
-        && (!('dentalBadges' in data) || (data.dentalBadges is list && data.dentalBadges.size() <= 100))
-        && (!('dentalBattleHistory' in data) || (data.dentalBattleHistory is list && data.dentalBattleHistory.size() <= 200))
-        && (!('lastBrushedMorning' in data) || data.lastBrushedMorning == null || isValidTimestampOrString(data.lastBrushedMorning, 64))
-        && (!('lastBrushedEvening' in data) || data.lastBrushedEvening == null || isValidTimestampOrString(data.lastBrushedEvening, 64))
-        && (!('hygieneReminders' in data) || (data.hygieneReminders is map && data.hygieneReminders.size() <= 50))
-        && (!('worldAdventureMap' in data) || (data.worldAdventureMap is map && data.worldAdventureMap.size() <= 50))
-        && (!('bedtimeStoryLibrary' in data) || (data.bedtimeStoryLibrary is list && data.bedtimeStoryLibrary.size() <= 200))
-        && (!('activeBedtimeStory' in data) || data.activeBedtimeStory == null || (data.activeBedtimeStory is map && data.activeBedtimeStory.size() <= 50))
-        && (!('bedtimeSanctuaryState' in data) || (data.bedtimeSanctuaryState is map && data.bedtimeSanctuaryState.size() <= 30))
-        && (!('bedtimeConfig' in data) || (data.bedtimeConfig is map && data.bedtimeConfig.size() <= 30))
-        && (!('taskEngineVersion' in data) || (data.taskEngineVersion is number) || (data.taskEngineVersion is string && data.taskEngineVersion.size() <= 32));
+        && (!('lastUpdated' in data) || isValidTimestampOrString(data.lastUpdated, 64));
     }
 
     // Secure household creation rules preventing unauthorized administrative pre-claiming
@@ -320,10 +263,9 @@ service cloud.firestore {
       let affected = newData.diff(existingData).affectedKeys();
       let parentUidsAlreadyClaimed = ('parentUids' in existingData) && (existingData.parentUids is list) && (existingData.parentUids.size() > 0);
       let parentEmailsAlreadyClaimed = ('parentEmails' in existingData) && (existingData.parentEmails is list) && (existingData.parentEmails.size() > 0);
-      return isValidHouseholdPayload()
-        && isNotRevokedDevice(existingData, newData)
-        // Protect parentUids from unauthorized modification or hijacking
-        && (!affected.hasAny(['parentUids']) || (
+      // Note: isValidHouseholdPayload() and isNotRevokedDevice() are already enforced by allow update;
+      // avoiding duplicate evaluation keeps rule expressions well under Firestore's 1,000-expression limit.
+      return (!affected.hasAny(['parentUids']) || (
           !parentUidsAlreadyClaimed && isBootstrapParentClaim(existingData)
         ))
         // Protect parentEmails from unauthorized modification or hijacking
@@ -393,6 +335,63 @@ service cloud.firestore {
     // Collection Rules
     // ===============================================================
 
+    // ===============================================================
+    // Authoritative Ledger Helper Functions (Phase 2)
+    // ===============================================================
+
+    function ledgerHeroFields() {
+      return [
+        'points', 'coins', 'tokens', 'xp', 'level', 'xpNext', 'sparks', 'evolutionSparks',
+        'petSparkMap', 'petXpMap', 'petLevelMap', 'inventory', 'consumables',
+        'unlockedPetIds', 'habitatSlots', 'unlockedThemes', 'fieldStamps'
+      ];
+    }
+
+    function stateSnapshotLedgerFieldsChanged() {
+      let reqSnap = request.resource.data.get('stateSnapshot', null);
+      let resSnap = resource.data.get('stateSnapshot', null);
+      return reqSnap is map && (
+        !(resSnap is map)
+          ? reqSnap.keys().hasAny([
+              'heroes', 'heroesMap', 'pendingApprovals', 'resolvedApprovals',
+              'inventory', 'heroHQ', 'selectedHero', 'petXpMap', 'petLevelMap', 'petSparkMap'
+            ])
+          : reqSnap.diff(resSnap).affectedKeys().hasAny([
+              'heroes', 'heroesMap', 'pendingApprovals', 'resolvedApprovals',
+              'inventory', 'heroHQ', 'selectedHero', 'petXpMap', 'petLevelMap', 'petSparkMap'
+            ])
+      );
+    }
+
+    // Plain-text PIN must never be reintroduced once backfill deletes both copies.
+    function pinReintroduced() {
+      let ps = request.resource.data.get('parentSettings', {});
+      let snap = request.resource.data.get('stateSnapshot', {});
+      let snapPs = snap is map ? snap.get('parentSettings', {}) : {};
+      return (ps is map && 'pin' in ps)
+        || (snapPs is map && 'pin' in snapPs);
+    }
+
+    function isHouseholdMember(householdCode) {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/households/$(householdCode)/members/$(request.auth.uid));
+    }
+
+    function isAllowedAuthoritativeHouseholdUpdate() {
+      let affected = request.resource.data.diff(resource.data).affectedKeys();
+      return !affected.hasAny(['ledgerMode'])
+        && (
+          resource.data.get('ledgerMode', 'legacy') == 'legacy' || (
+            !affected.hasAny([
+              'heroes', 'heroesMap', 'pendingApprovals', 'resolvedApprovals',
+              'inventory', 'heroHQ', 'selectedHero', 'petXpMap', 'petLevelMap'
+            ])
+            && (!affected.hasAny(['stateSnapshot']) || !stateSnapshotLedgerFieldsChanged())
+            && (!affected.hasAny(['parentSettings', 'stateSnapshot']) || !pinReintroduced())
+          )
+        );
+    }
+
     // --- Households Collection ---
     // Multi-device family synchronization scoped to explicit household codes
     match /households/{householdCode} {
@@ -407,10 +406,10 @@ service cloud.firestore {
 
       // Updates:
       // Require valid code, valid payload, and non-revoked device status on ALL updates.
-      // 1. Authorized parents can update any aspect of their household.
-      // 2. Hardened initial bootstrap claims allow first parent onboarding without allowing takeovers of pre-claimed accounts.
-      // 3. Household devices can sync tasks, habits, PIN-approved chores, and settings while parentUids/parentEmails remain protected.
+      // Server-only ledgerMode is never client-writable. In 'migrating' and 'authoritative'
+      // modes, refuse any write modifying ledger/approval/inventory/hero/HQ keys or reintroducing PIN.
       allow update: if isValidHouseholdCode(householdCode)
+        && isAllowedAuthoritativeHouseholdUpdate()
         && isValidHouseholdPayload()
         && isNotRevokedDevice(resource.data, request.resource.data)
         && (
@@ -422,8 +421,49 @@ service cloud.firestore {
       // Prevent accidental or malicious household deletion from client
       allow delete: if false;
 
-      // Subcollections are strictly denied
-      match /{allChildren=**} {
+      // Kid profiles (non-currency). Created/deleted only by ledger Function (openWallet/closeWallet).
+      match /heroes/{heroId} {
+        allow read: if isHouseholdMember(householdCode);
+        allow update: if isHouseholdMember(householdCode)
+          && request.resource.data.id == heroId
+          && !request.resource.data.keys().hasAny(ledgerHeroFields())
+          && request.resource.data.size() < 200;
+        allow create, delete: if false;
+      }
+
+      // Ledger subcollections: member read-only, server (Admin SDK) writes only
+      match /wallets/{heroId}            { allow read: if isHouseholdMember(householdCode); allow write: if false; }
+      match /ledger_transactions/{txnId} { allow read: if isHouseholdMember(householdCode); allow write: if false; }
+      match /holds/{id}                  { allow read: if isHouseholdMember(householdCode); allow write: if false; }
+      match /approval_requests/{id}      { allow read: if isHouseholdMember(householdCode); allow write: if false; }
+      match /inventory/{id}              { allow read: if isHouseholdMember(householdCode); allow write: if false; }
+      match /activity_locks/{id}         { allow read: if isHouseholdMember(householdCode); allow write: if false; }
+      match /catalog/{id}                { allow read: if isHouseholdMember(householdCode); allow write: if false; }
+      match /reward_rules/{id}           { allow read: if isHouseholdMember(householdCode); allow write: if false; }
+      match /ledger_config/{id}          { allow read: if isHouseholdMember(householdCode); allow write: if false; }
+      match /ledger_reports/{id}         { allow read: if isHouseholdMember(householdCode); allow write: if false; }
+
+      // Pi/fridge summary: get-readable with valid household code until Phase 5 moves Pi to Admin SDK
+      match /public/{id} {
+        allow get: if isValidHouseholdCode(householdCode);
+        allow list, write: if false;
+      }
+
+      // Auth & private docs
+      match /members/{uid} {
+        allow get: if isAuthenticated() && request.auth.uid == uid;
+        allow list: if isHouseholdMember(householdCode);
+        allow write: if false;
+      }
+      match /parent_sessions/{uid} {
+        allow get: if isAuthenticated() && request.auth.uid == uid;
+        allow write: if false;
+      }
+      match /private/{id}             { allow read, write: if false; }
+      match /passkey_challenges/{uid} { allow read, write: if false; }
+
+      // All other unmapped subcollections under households are strictly denied
+      match /{other=**} {
         allow read, write: if false;
       }
     }
