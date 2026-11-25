@@ -3,6 +3,8 @@ import { Sound } from '../audio/sfx.js';
 import { escapeHtml } from '../utils/escapeHtml.js';
 import { safeImageUrl } from '../utils/safeImageUrl.js';
 import { setFridgeMode } from '../services/fridgeModeService.js';
+import { walletService } from '../services/walletService.js';
+import { CURRENCIES } from '../../shared/ledger/currencies.js';
 
 /** Short build id for the header badge, e.g. 'v1.0.0-6f8c88f' -> '6f8c88f'. */
 export function getBuildLabel(raw = (typeof window !== 'undefined' ? window.__LITTLE_HEROES_VERSION__ : '')) {
@@ -18,6 +20,14 @@ export function renderTopHeader() {
   const isMuted = Sound.isMuted();
   const avatarUrl = safeImageUrl(hero.avatar, KID_AVATARS[0].url);
   const buildLabel = escapeHtml(getBuildLabel());
+  const pointsDisplay = walletService.isLegacyLedger()
+    ? String(hero.points || 0)
+    : walletService.formatBalance(hero.id, CURRENCIES.GOLD_POINTS, null, hero);
+  const coinsVal = walletService.isLegacyLedger()
+    ? (Number(hero.coins) || 0)
+    : walletService.balanceOf(hero.id, CURRENCIES.HABIT_TOKENS, null, hero);
+  const coinsDisplay = coinsVal === null ? '…' : coinsVal.toLocaleString();
+  const showReconnectingPill = !walletService.isLegacyLedger() && walletService.getStatus() !== 'live';
 
   return `
     <header class="bg-surface/95 backdrop-blur-md font-headline docked sticky top-0 border-b-4 border-surface-container-highest shadow-chunky-sm flex justify-between items-center px-2 sm:px-4 md:px-8 h-16 sm:h-18 md:h-20 w-full z-40 max-w-full select-none overflow-hidden">
@@ -49,16 +59,17 @@ export function renderTopHeader() {
 
       <!-- Right: Dual Currencies (Points ⭐ & Coins 🪙), Household Sync & Parent Gate -->
       <div class="flex items-center gap-1 sm:gap-1.5 md:gap-2.5 shrink-0">
+        ${showReconnectingPill ? `<span id="ledger-reconnecting-pill" class="text-[10px] font-black uppercase px-2 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/40 animate-pulse">Reconnecting…</span>` : ''}
         <!-- Points (⭐) - Real-Life Reward Currency (Tablet/Desktop, hidden on narrow phones) -->
         <div title="Gold Points: Used for Real-Life Rewards (Needs Parent Approval)" class="hidden sm:flex items-center bg-surface-container-high rounded-full px-2 py-1 sm:px-2.5 sm:py-1.5 border-2 border-tertiary-container/70 gap-1 shadow-xs shrink-0 min-h-[36px]">
           <span class="material-symbols-outlined text-tertiary text-sm sm:text-base md:text-lg" style="font-variation-settings: 'FILL' 1;">star</span>
-          <span class="font-headline text-xs sm:text-sm font-black text-tertiary">${escapeHtml(hero.points || 0)}</span>
+          <span id="header-points" class="font-headline text-xs sm:text-sm font-black text-tertiary">${escapeHtml(pointsDisplay)}</span>
         </div>
 
         <!-- Habit Coins (🪙) - In-App Game & Gear Currency -->
         <div title="Habit Coins: Earned from all in-app quests & games" class="flex items-center bg-surface-container-high rounded-full px-2 py-1 sm:px-2.5 sm:py-1.5 border-2 border-secondary-container/70 gap-1 shadow-xs shrink-0 min-h-[36px]">
           <span class="material-symbols-outlined text-secondary animate-coin text-sm sm:text-base md:text-lg" style="font-variation-settings: 'FILL' 1;">monetization_on</span>
-          <span id="header-coins" class="font-headline text-xs sm:text-sm font-black text-secondary">${escapeHtml(hero.coins.toLocaleString())}</span>
+          <span id="header-coins" class="font-headline text-xs sm:text-sm font-black text-secondary">${escapeHtml(coinsDisplay)}</span>
         </div>
 
         <!-- Household Sync Button (Tablet/Desktop) -->

@@ -47,7 +47,8 @@ let hasSpokenHQGreeting = false;
 export function renderHeroHQView() {
   const state = store.getState();
   const hero = state.selectedHero || {};
-  const heroHQ = state.heroHQ || {
+  const baseHQ = store.getHeroHQ ? store.getHeroHQ(hero.id) : state.heroHQ;
+  const heroHQ = {
     themeId: 'dino_treehouse',
     isNightMode: false,
     equippedFurniture: {
@@ -66,12 +67,21 @@ export function renderHeroHQView() {
     ],
     featuredTrophyIds: ['rookie_hero_crest'],
     redecorateDrawerOpen: false,
-    redecorateActiveCategory: 'themes'
+    redecorateActiveCategory: 'themes',
+    ...(state.heroHQ || {}),
+    ...(baseHQ || {}),
+    equippedFurniture: baseHQ?.placedFurniture || baseHQ?.equippedFurniture || state.heroHQ?.equippedFurniture || {
+      bed: 'dino_leaf_canopy',
+      petLounge: 'giant_beanbag',
+      desk: 'hologram_mission_table',
+      decor: 'starlight_projector_lamp',
+      rug: 'hero_road_rug'
+    }
   };
 
-  const currentTheme = getHQTheme(heroHQ.themeId);
+  const currentTheme = getHQTheme(heroHQ.themeId || heroHQ.activeTheme);
   const isNight = Boolean(heroHQ.isNightMode);
-  const coins = hero.coins || 0;
+  const coins = (store.getHeroBalance ? store.getHeroBalance(hero.id, 'HABIT_TOKENS') : hero.coins) ?? 0;
   const activePet = store.getActivePet ? store.getActivePet() : { id: '1', key: 'rex', name: 'Rex the T-Rex', shortName: 'Rex', avatar: 'assets/pets/rex.png', emoji: '🦖' };
   const petLevel = store.getPetLevel ? store.getPetLevel(activePet.id) : 1;
   const petLevelData = getPetLevelData(petLevel);
@@ -669,12 +679,15 @@ function renderThemesGrid(heroHQ) {
 
 function renderFurnitureGrid(slotId, heroHQ, userCoins) {
   const items = getFurnitureForSlot(slotId);
+  const selectedHeroId = store.getState().selectedHero?.id || null;
   const unlocked = new Set(heroHQ.unlockedFurnitureIds || []);
   const equippedId = heroHQ.equippedFurniture?.[slotId];
 
   return items.map(item => {
     const isEquipped = equippedId === item.id;
-    const isUnlocked = unlocked.has(item.id);
+    const isUnlocked = store.isHQFurnitureOwnedByHero
+      ? store.isHQFurnitureOwnedByHero(selectedHeroId, item.id)
+      : unlocked.has(item.id);
     const canAfford = userCoins >= item.costCoins;
 
     return `

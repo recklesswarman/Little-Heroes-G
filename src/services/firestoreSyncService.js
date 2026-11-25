@@ -4,6 +4,8 @@ import { store, STORAGE_KEY, HERO_STAMPED_FIELDS } from "../state/store.js";
 import { DIGITAL_REWARDS_CATALOG } from "../data/digitalRewardsCatalog.js";
 import { persistentLink } from "./persistentLinkService.js";
 import { secureRandomHex } from "../utils/secureRandom.js";
+import { walletService } from "./walletService.js";
+import { ledgerClient } from "./ledgerClient.js";
 
 const DEVICE_ID_KEY = 'stitch_device_id';
 const QUOTA_EXHAUSTED_KEY = 'firestore_quota_exhausted_until';
@@ -46,6 +48,20 @@ export const REDUNDANT_SNAPSHOT_KEYS = [
 ];
 const REDUNDANT_SNAPSHOT_KEY_SET = new Set(REDUNDANT_SNAPSHOT_KEYS);
 
+// Keys refused by firestore.rules in migrating/authoritative ledger modes
+export const AUTHORITATIVE_FORBIDDEN_KEYS = new Set([
+  'heroes',
+  'heroesMap',
+  'selectedHero',
+  'pendingApprovals',
+  'resolvedApprovals',
+  'inventory',
+  'heroHQ',
+  'petXpMap',
+  'petLevelMap',
+  'petSparkMap'
+]);
+
 const DEFAULT_DIGITAL_GEAR_BY_ID = new Map(
   (DIGITAL_REWARDS_CATALOG || [])
     .filter((item) => item && item.id)
@@ -71,18 +87,25 @@ export function buildSlimDigitalGear(digitalGear) {
 }
 
 function sanitizeForFirestore(val) { if (val === undefined) return null; if (val === null || typeof val !== 'object') return val; if (val instanceof Date) return val.toISOString(); if (val._methodName || val.__op) return val; if (Array.isArray(val)) return val.map((item) => sanitizeForFirestore(item)); const out = {}; for (const [k, v] of Object.entries(val)) { if (v !== undefined) out[k] = sanitizeForFirestore(v); } return out; }
-export function buildCloudStateSnapshot(state, { includeDeletes = true } = {}) {
+export function buildCloudStateSnapshot(state, { includeDeletes = true, authoritative = !walletService.isLegacyLedger() } = {}) {
   const snapshot = {};
   Object.entries(state || {}).forEach(([key, value]) => {
     if (LOCAL_ONLY_STATE_KEYS.has(key) || key === 'devices' || REDUNDANT_SNAPSHOT_KEY_SET.has(key)) return;
+    if (authoritative && AUTHORITATIVE_FORBIDDEN_KEYS.has(key)) return;
     if (key === 'household' && value && typeof value === 'object') {
       snapshot.household = { ...value, lastSync: undefined };
       delete snapshot.household.lastSync;
       return;
     }
+    if (authoritative && key === 'parentSettings' && value && typeof value === 'object') {
+      const cleaned = { ...value };
+      delete cleaned.pin;
+      snapshot.parentSettings = cleaned;
+      return;
+    }
     snapshot[key] = value;
   });
-  if (includeDeletes) {
+  if (includeDeletes && !authoritative) {
     for (const key of REDUNDANT_SNAPSHOT_KEYS) {
       snapshot[key] = deleteField();
     }
@@ -392,6 +415,10 @@ class FirestoreSyncService {
 
     this.stopSync();
     this.currentCode = code;
+    ledgerClient.setActiveHouseholdCode(code);
+    // S1: Join household membership on every start in both legacy and authoritative modes
+    ledgerClient.joinHouseholdOnStart(code, this.deviceId, this.getDeviceName()).catch(() => {});
+    walletService.start(code);
     const docRef = doc(db, "households", code);
 
     let isFirstSnapshot = true;
@@ -411,6 +438,9 @@ class FirestoreSyncService {
 
         const cloudData = snapshot.data();
         if (!cloudData) return;
+
+        // Keep walletService in sync with server-owned ledgerMode
+        walletService.setLedgerMode(cloudData.ledgerMode || 'legacy');
 
         if (cloudData.devices && typeof cloudData.devices === 'object') {
           this.lastKnownDevices = { ...(this.lastKnownDevices || {}), ...cloudData.devices };
@@ -738,24 +768,23 @@ class FirestoreSyncService {
       this.lastKnownDevices = currentDevices;
       state.devices = currentDevices;
 
-      await this._setDoc(docRef, sanitizeForFirestore({
+      const isAuthoritative = !walletService.isLegacyLedger();
+      const pushParentSettings = state.parentSettings ? { ...state.parentSettings } : {};
+      if (isAuthoritative) {
+        delete pushParentSettings.pin;
+      }
+
+      const pushPayload = {
         // Generic snapshot keeps newly added mutable fields live across devices
         // without duplicating large top-level fields (heroes, digitalGear, pets, heroHQ).
-        stateSnapshot: buildCloudStateSnapshot(state),
+        stateSnapshot: buildCloudStateSnapshot(state, { includeDeletes: !isAuthoritative, authoritative: isAuthoritative }),
         householdName: state.household?.name || 'The Hero Family',
         syncCode: householdCode,
-        heroes: state.heroes || [],
-        heroesMap: heroesMap,
         deletedHeroIds: state.deletedHeroIds || [],
         deletedCustomItemIds: state.deletedCustomItemIds || [],
-        selectedHero: state.selectedHero || null,
-        pendingApprovals: state.pendingApprovals || [],
-        resolvedApprovals: state.resolvedApprovals || [],
         taskCompletionLogs: state.taskCompletionLogs || [],
         taskLedgerLogs: state.taskLedgerLogs || [],
         petStatsMap: state.petStatsMap || {},
-        petLevelMap: state.petLevelMap || {},
-        petXpMap: state.petXpMap || {},
         equippedGearMap: state.equippedGearMap || {},
         equippedPetGear: state.equippedPetGear || null,
         equippedPetGearSlots: state.equippedPetGearSlots || {},
@@ -764,7 +793,6 @@ class FirestoreSyncService {
         savedHeroCards: state.savedHeroCards || [],
         pets: state.pets || [],
         petSanctuary: state.petSanctuary || {},
-        heroHQ: state.heroHQ || {},
         heroForge: state.heroForge || {},
         petStreakShield: state.petStreakShield || {},
         activeExpeditions: state.activeExpeditions || [],
@@ -778,12 +806,11 @@ class FirestoreSyncService {
         recentlyUnlocked: state.recentlyUnlocked || [],
         realLifeRewards: state.realLifeRewards || [],
         digitalGear: buildSlimDigitalGear(state.digitalGear),
-        inventory: state.inventory || [],
         liveRex: state.liveRex || {},
         parents: state.household?.parents || [],
         parentUids: state.household?.parentUids || [],
         parentEmails: state.household?.parentEmails || [],
-        parentSettings: state.parentSettings || {},
+        parentSettings: pushParentSettings,
         profileThemes: state.profileThemes || [],
         gameProgress: state.gameProgress || {},
         updatedAt: timestamp,
@@ -791,7 +818,21 @@ class FirestoreSyncService {
         lastWriterDeviceId: this.deviceId,
         devices: currentDevices,
         revokedDeviceIds: state.revokedDeviceIds || []
-      }), { merge: true });
+      };
+
+      if (!isAuthoritative) {
+        pushPayload.heroes = state.heroes || [];
+        pushPayload.heroesMap = heroesMap;
+        pushPayload.selectedHero = state.selectedHero || null;
+        pushPayload.pendingApprovals = state.pendingApprovals || [];
+        pushPayload.resolvedApprovals = state.resolvedApprovals || [];
+        pushPayload.petLevelMap = state.petLevelMap || {};
+        pushPayload.petXpMap = state.petXpMap || {};
+        pushPayload.heroHQ = state.heroHQ || {};
+        pushPayload.inventory = state.inventory || [];
+      }
+
+      await this._setDoc(docRef, sanitizeForFirestore(pushPayload), { merge: true });
 
       state.household.lastSync = "Synced Just Now";
       this.lastPushError = null;

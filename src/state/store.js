@@ -1,6 +1,11 @@
 import { Sound } from '../audio/sfx.js';
 import confetti from 'canvas-confetti';
 import { safeConfetti } from '../utils/safeConfetti.js';
+import { walletService, isLegacyLedger } from '../services/walletService.js';
+import { ledgerClient } from '../services/ledgerClient.js';
+import { attachLedgerBridge } from '../services/ledgerStoreBridge.js';
+import { CURRENCIES } from '../../shared/ledger/currencies.js';
+import { activityTxnId } from '../../shared/ledger/ids.js';
 import { PETS_DATABASE, getPetById, getPetArchetype, getPetBondBonus, SANCTUARY_TREATS, makePetSvg, getPetLevelData, calculatePetStatBonus, getDailyRotatingPetCoach } from '../data/petsData.js';
 import { ADVENTURE_GAMES } from '../data/learningGamesData.js';
 import { MOVEMENT_ROUTINES, getMovementRoutine } from '../data/movementRoutinesData.js';
@@ -532,7 +537,6 @@ const defaultState = {
     pin: '1234',
     pinLockEnabled: true,
     biometricsEnabled: true,
-    mathChallengeEnabled: true,
     arBattleDuration: 120,
     toothbrushBattlePoints: 15,
     toothbrushBattleTokens: 30,
@@ -1663,6 +1667,52 @@ class Store {
   }
 
   _serializeStateForLocalStorage(stateObj = this.state) {
+    if (!isLegacyLedger()) {
+      const cleaned = { ...stateObj };
+      delete cleaned.pendingApprovals;
+      delete cleaned.resolvedApprovals;
+      delete cleaned.inventory;
+      delete cleaned.heroHQ;
+      delete cleaned.petXpMap;
+      delete cleaned.petLevelMap;
+      if (cleaned.parentSettings && typeof cleaned.parentSettings === 'object') {
+        const ps = { ...cleaned.parentSettings };
+        delete ps.pin;
+        cleaned.parentSettings = ps;
+      }
+      if (Array.isArray(cleaned.heroes)) {
+        cleaned.heroes = cleaned.heroes.map((h) => {
+          if (!h || typeof h !== 'object') return h;
+          const copy = { ...h };
+          delete copy.coins;
+          delete copy.points;
+          delete copy.tokens;
+          delete copy.xp;
+          delete copy.sparks;
+          delete copy.evolutionSparks;
+          delete copy.petSparkMap;
+          delete copy.inventory;
+          return copy;
+        });
+      }
+      if (cleaned.selectedHero && typeof cleaned.selectedHero === 'object') {
+        const copy = { ...cleaned.selectedHero };
+        delete copy.coins;
+        delete copy.points;
+        delete copy.tokens;
+        delete copy.xp;
+        delete copy.sparks;
+        delete copy.evolutionSparks;
+        delete copy.petSparkMap;
+        delete copy.inventory;
+        cleaned.selectedHero = copy;
+      }
+      return JSON.stringify({
+        ...cleaned,
+        petEconomyMigrationApplied: true,
+        digitalRewardsOverhaulApplied: true
+      });
+    }
     return JSON.stringify({
       ...stateObj,
       petEconomyMigrationApplied: true,
@@ -2907,6 +2957,8 @@ class Store {
     this.awardTaskCareSynergy(task.id, 'task');
     Sound.coin();
     Sound.fanfare();
+    this.celebrate('confetti');
+    this.notifyParents('task_submitted', { kidName: currentHero.name, title: task.title });
 
     try {
       confetti({
@@ -3804,54 +3856,6 @@ class Store {
     const currentHero = this.getSelectedHero() || this.state.selectedHero;
     this.checkAndAwardHabitBounties('brush_teeth', currentHero);
     return this.completeToothbrushBattle(bossId, durationSec, avgCadence);
-  }
-
-  // Adds a pending parent sign-off request to the Parent Portal queue
-  addPendingApproval(approval) {
-    if (!approval) return null;
-    this.enqueuePendingApproval(approval);
-    this.saveState(true);
-    return approval;
-  }
-
-  // Submits a completed task/chore or hygiene battle for parent point approval
-  submitTaskForApproval(taskData = {}) {
-    const currentHero = this.getSelectedHero() || this.state.selectedHero;
-    const heroId = taskData.kidId || currentHero?.id || 'hero_1';
-    const heroName = taskData.kidName || currentHero?.name || 'Little Hero';
-    const taskId = taskData.taskId || 'brush_teeth';
-    const title = taskData.title || taskData.taskTitle || 'Toothbrush AR Battle';
-    const points = taskData.points !== undefined ? taskData.points : (taskData.pendingPoints !== undefined ? taskData.pendingPoints : 15);
-    const tokens = taskData.tokens !== undefined ? taskData.tokens : (taskData.tokensAwarded !== undefined ? taskData.tokensAwarded : 30);
-    const xp = taskData.xp !== undefined ? taskData.xp : (taskData.xpAwarded !== undefined ? taskData.xpAwarded : 20);
-    const sparks = taskData.sparks !== undefined ? taskData.sparks : (taskData.sparksAwarded !== undefined ? taskData.sparksAwarded : 15);
-    const nowIso = new Date().toISOString();
-    const logId = taskData.logId || generateId('log_', 6);
-    const reqId = taskData.id || ('task_appr_' + taskId + '_' + Date.now());
-
-    const approval = {
-      id: reqId,
-      logId: logId,
-      kidId: heroId,
-      kidName: heroName,
-      type: 'task_point_approval',
-      taskId: taskId,
-      taskTitle: title,
-      title: title,
-      zone: taskData.zone || 'Hygiene AR Battle',
-      pendingPoints: points,
-      tokensAwarded: tokens,
-      xpAwarded: xp,
-      sparksAwarded: sparks,
-      date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      timestamp: nowIso,
-      status: 'pending'
-    };
-
-    const added = this.addPendingApproval(approval);
-    this.celebrate('confetti');
-    this.notifyParents('task_submitted', { kidName: heroName, title });
-    return added;
   }
 
   getDentalBadges(heroId = null) {
@@ -8154,13 +8158,15 @@ class Store {
     );
   }
 
-  unlockParentSession() {
+  unlockParentSession(serverExpiresAtMs = null) {
     this.isParentSessionUnlocked = true;
+    this.parentSessionExpiresAtMs = serverExpiresAtMs || null;
     this.navigate('parent_portal');
   }
 
   lockParentSession() {
     this.isParentSessionUnlocked = false;
+    this.parentSessionExpiresAtMs = null;
     if (this.state.activeView === 'parent_portal') {
       this.navigate('dashboard');
     } else {
@@ -8169,7 +8175,11 @@ class Store {
   }
 
   updateParentSettings(newSettings) {
-    this.state.parentSettings = { ...this.state.parentSettings, ...newSettings };
+    const merged = { ...this.state.parentSettings, ...newSettings };
+    if (!isLegacyLedger()) {
+      delete merged.pin;
+    }
+    this.state.parentSettings = merged;
     this.saveState(true);
   }
 
@@ -8184,11 +8194,17 @@ class Store {
     if (!PARENT_PIN_PATTERN.test(pin)) {
       return { success: false, error: 'PIN must be 4 to 8 digits (numbers only).' };
     }
+    if (!isLegacyLedger()) {
+      return ledgerClient.run('setParentPin', { newPin: pin }, { queueOnNetworkError: false });
+    }
     this.updateParentSettings({ pin, pinLockEnabled: true });
     return { success: true };
   }
 
   verifyParentPin(rawPin) {
+    if (!isLegacyLedger()) {
+      return false;
+    }
     const pin = String(rawPin ?? '').trim();
     const current = String(this.state?.parentSettings?.pin || '1234');
     return pin.length > 0 && pin === current;
@@ -12236,10 +12252,133 @@ class Store {
     return chosen;
   }
 
+  // =========================================================================
+  // PHASE 3: AUTHORITATIVE LEDGER & PER-KID HQ HELPERS
+  // =========================================================================
+
+  awardDancePartyRewards(coins, sourceKey = 'dance_party') {
+    const amt = Math.trunc(Number(coins) || 0);
+    if (amt <= 0) return null;
+    const hero = this.getSelectedHero() || this.state.selectedHero;
+    if (!hero) return null;
+    if (isLegacyLedger()) {
+      hero.coins = (Number(hero.coins) || 0) + amt; // LEGACY_LEDGER
+      return { coins: hero.coins };
+    }
+    const actId = activityTxnId(hero.id, 'dance_party', sourceKey, String(Date.now()));
+    return ledgerClient.run('recordActivity', {
+      heroId: hero.id,
+      activityType: 'dance_party',
+      activityId: actId,
+      taskId: sourceKey,
+      requestedTokens: amt
+    }, {
+      idemId: actId,
+      optimistic: { heroId: hero.id, txnId: actId, deltas: { [CURRENCIES.HABIT_TOKENS]: amt } }
+    });
+  }
+
+  awardWorldMapRewards(coins, xp, sourceKey = 'world_map') {
+    const c = Math.trunc(Number(coins) || 0);
+    const x = Math.trunc(Number(xp) || 0);
+    const hero = this.getSelectedHero() || this.state.selectedHero;
+    if (!hero) return null;
+    if (isLegacyLedger()) {
+      if (c > 0) hero.coins = (Number(hero.coins) || 0) + c; // LEGACY_LEDGER
+      if (x > 0) hero.xp = (Number(hero.xp) || 0) + x; // LEGACY_LEDGER
+      return { coins: hero.coins, xp: hero.xp };
+    }
+    const actId = activityTxnId(hero.id, 'world_map', sourceKey, String(Date.now()));
+    return ledgerClient.run('recordActivity', {
+      heroId: hero.id,
+      activityType: 'world_map',
+      activityId: actId,
+      taskId: sourceKey,
+      requestedTokens: c,
+      requestedXp: x
+    }, {
+      idemId: actId,
+      optimistic: {
+        heroId: hero.id,
+        txnId: actId,
+        deltas: {
+          [CURRENCIES.HABIT_TOKENS]: c,
+          [CURRENCIES.HERO_XP]: x
+        }
+      }
+    });
+  }
+
+  getHeroBalance(heroId, currency, petId = null) {
+    const hid = heroId || this.state.selectedHero?.id || this.state.heroes?.[0]?.id;
+    const hero = (this.state.heroes || []).find((h) => h && h.id === hid) || this.state.selectedHero;
+    return walletService.balanceOf(hid, currency, petId, hero);
+  }
+
+  formatHeroBalance(heroId, currency, petId = null) {
+    const hid = heroId || this.state.selectedHero?.id || this.state.heroes?.[0]?.id;
+    const hero = (this.state.heroes || []).find((h) => h && h.id === hid) || this.state.selectedHero;
+    return walletService.formatBalance(hid, currency, petId, hero);
+  }
+
+  getHeroHQ(heroId = null) {
+    if (isLegacyLedger()) {
+      return this.state.heroHQ || { activeTheme: 'hero_loft', placedFurniture: {}, unlockedFurnitureIds: [] };
+    }
+    const hid = heroId || this.state.selectedHero?.id || this.state.heroes?.[0]?.id;
+    const profile = walletService.getHeroProfile(hid);
+    return profile?.hq || { activeTheme: 'hero_loft', placedFurniture: {} };
+  }
+
+  isHQFurnitureOwnedByHero(heroId, itemId) {
+    if (!itemId) return false;
+    const item = getFurnitureItem(itemId);
+    if (item && (item.isStarter || (Number(item.cost) || 0) === 0)) {
+      return true;
+    }
+    if (isLegacyLedger()) {
+      const unlocked = this.state.heroHQ?.unlockedFurnitureIds || [];
+      return unlocked.includes(itemId);
+    }
+    const hid = heroId || this.state.selectedHero?.id || this.state.heroes?.[0]?.id;
+    return walletService.heroOwnsItem(hid, 'hq_furniture', itemId);
+  }
+
+  getTaskLockState(heroId, lockKey) {
+    const hid = heroId || this.state.selectedHero?.id || this.state.heroes?.[0]?.id;
+    if (isLegacyLedger()) {
+      const pending = (this.state.pendingApprovals || []).some(
+        (r) => r && r.status === 'pending' && r.kidId === hid && (r.taskId === lockKey || r.habitId === lockKey)
+      );
+      return { pending, needsRedo: false };
+    }
+    return {
+      pending: walletService.hasPendingLock(hid, lockKey),
+      needsRedo: walletService.needsRedo(hid, lockKey)
+    };
+  }
+
+  updateHeroProfile(heroId, fields = {}, counters = {}) {
+    const hid = heroId || this.state.selectedHero?.id;
+    if (!hid) return Promise.resolve(false);
+    if (isLegacyLedger()) {
+      const hero = (this.state.heroes || []).find((h) => h && h.id === hid);
+      if (hero) {
+        Object.assign(hero, fields);
+        for (const [k, delta] of Object.entries(counters || {})) {
+          hero[k] = (Number(hero[k]) || 0) + (Number(delta) || 0);
+        }
+        this.saveState(true);
+      }
+      return Promise.resolve(true);
+    }
+    return ledgerClient.updateHeroProfileFields(this.state.household?.syncCode, hid, fields, counters);
+  }
+
   resetAllProgress() {
     this.state = JSON.parse(JSON.stringify(defaultState));
     this.saveState(true);
   }
 }
 
-export const store = new Store();
+export const store = attachLedgerBridge(new Store());

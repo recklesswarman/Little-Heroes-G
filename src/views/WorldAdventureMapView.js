@@ -870,9 +870,7 @@ export function attachWorldAdventureMapListeners() {
           store.notify();
           return;
         }
-        const hero = store.getState().selectedHero;
-        hero.coins = (hero.coins || 0) + 25;
-        hero.xp = (hero.xp || 0) + 20;
+        store.awardWorldMapRewards(25, 20, `world_read_along_${activeMiniGame?.id || 'realm'}`);
         activeMiniGame = null;
         currentMiniGameIdx = 0;
         activeChallengeSet = null;
@@ -908,9 +906,7 @@ export function attachWorldAdventureMapListeners() {
             currentMiniGameIdx++;
             store.notify();
           } else {
-            const hero = store.getState().selectedHero;
-            hero.coins = (hero.coins || 0) + 25;
-            hero.xp = (hero.xp || 0) + 20;
+            store.awardWorldMapRewards(25, 20, `world_quiz_${activeMiniGame?.id || 'realm'}`);
             activeMiniGame = null;
             currentMiniGameIdx = 0;
             activeChallengeSet = null;
