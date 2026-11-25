@@ -76,7 +76,11 @@ export function studioDeliveryFields() {
 export function savedLabel() {
   const health = store.getSyncHealth ? store.getSyncHealth() : { mode: 'local' };
   if (health.mode === 'ok' || health.mode === 'local') return 'Saved';
-  return `Saved on this device only. Cloud sync is ${health.mode === 'paused' ? 'paused' : 'failing'}.`;
+  if (health.mode === 'paused') return 'Saved on this device only. Cloud sync is paused (quota).';
+  const code = health.lastErrorCode || health.error;
+  return code
+    ? `Saved on this device only. Cloud sync is failing (${code}).`
+    : 'Saved on this device only. Cloud sync is failing.';
 }
 
 // Show a short confirmation in an element looked up after any re-render.
@@ -924,9 +928,23 @@ export function renderParentPortalView() {
                 <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
               </div>
               <div>
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 flex-wrap">
                   <h2 class="font-headline text-lg font-black text-inverse-surface">${escapeHtml(state.household.name)}</h2>
                   <span class="bg-primary/20 text-primary text-[10px] font-black uppercase px-2 py-0.5 rounded-md border border-primary/30">Active</span>
+                  ${(() => {
+                    const syncHealth = store.getSyncHealth ? store.getSyncHealth() : { mode: 'local' };
+                    if (syncHealth.mode === 'error') {
+                      const code = escapeHtml(syncHealth.lastErrorCode || syncHealth.error || 'unknown');
+                      return `<span id="admin-sync-health-badge" class="bg-error/20 text-error text-[10px] font-black px-2 py-0.5 rounded-md border border-error/30" title="Last cloud push error">Sync error: ${code}${syncHealth.retrying ? ' (retrying)' : ''}</span>`;
+                    }
+                    if (syncHealth.mode === 'paused') {
+                      return `<span id="admin-sync-health-badge" class="bg-tertiary/20 text-tertiary text-[10px] font-black px-2 py-0.5 rounded-md border border-tertiary/30">Sync paused: quota</span>`;
+                    }
+                    if (syncHealth.mode === 'ok') {
+                      return `<span id="admin-sync-health-badge" class="bg-primary/15 text-primary text-[10px] font-bold px-2 py-0.5 rounded-md border border-primary/25">${escapeHtml(state.household?.lastSync || 'Synced just now')}</span>`;
+                    }
+                    return '';
+                  })()}
                 </div>
                 <p class="text-xs text-on-surface-variant font-bold mt-0.5">
                   Sync Code: <span class="text-secondary font-black tracking-wider">${state.household.syncCode}</span> • ${state.household.linkedDevices || 1} Device(s) Linked
