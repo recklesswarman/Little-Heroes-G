@@ -73,7 +73,18 @@ app.post('/api/rex/agent', handleRexAgentRequest);
 
 // Bedtime storybook illustration endpoint (Cloudflare Workers AI free image generator)
 app.post('/api/story/illustration', handleStoryIllustrationRequest);
-app.post('/api/ai/image', handleStoryIllustrationRequest);
+// Parent Studio AI image generation endpoint (Phase 5: gated behind parent session when enabled)
+app.post('/api/ai/image', (req, res, next) => {
+  if (process.env.REQUIRE_PARENT_SESSION_FOR_AI === 'true') {
+    const hhCode = String(req.headers['x-household-code'] || '').trim();
+    const parentUid = String(req.headers['x-parent-uid'] || '').trim();
+    const sessionExp = Number(req.headers['x-parent-session-exp'] || 0);
+    if (!hhCode || !parentUid || !Number.isFinite(sessionExp) || sessionExp <= Date.now()) {
+      return res.status(403).json({ error: 'Live parent session required for Parent Studio AI generation.' });
+    }
+  }
+  return next();
+}, handleStoryIllustrationRequest);
 
 // StoryWeaver picture-book search proxy (CC BY 4.0 books, attribution kept in the view)
 app.get('/api/storyweaver/books', handleStoryWeaverBooksRequest);
