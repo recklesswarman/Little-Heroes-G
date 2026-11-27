@@ -173,7 +173,9 @@ const testFiles = [
   // Phase 3: Client wallet service, ledger write paths, outbox, per-kid HQ & static balance-mutation guard:
   'scratch/verify_no_direct_balance_mutation.mjs',
   'scratch/verify_wallet_service.mjs',
-  'scratch/verify_ledger_write_paths.mjs'
+  'scratch/verify_ledger_write_paths.mjs',
+  // Phase 6: One canonical App Hosting link, retired-host redirects, Pi kiosk URL & cache headers:
+  'scratch/verify_phase6_one_link.mjs'
 ];
 
 let allPassed = true;

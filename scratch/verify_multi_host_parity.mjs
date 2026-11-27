@@ -90,26 +90,34 @@ testAssert(
 // =========================================================================
 console.log('\n--- 2. Testing CI/CD Workflow Declarations & Build Settings ---');
 
-// Verify GitHub Pages deployment workflow (.github/workflows/deploy.yml)
+// Verify GitHub Pages deployment workflow (.github/workflows/deploy.yml) publishes the redirect bundle
 const ghPagesWorkflow = fs.readFileSync('.github/workflows/deploy.yml', 'utf8');
 testAssert(
-  ghPagesWorkflow.includes("VITE_BASE_PATH: '/Little-Heroes-G/'"),
-  '.github/workflows/deploy.yml sets VITE_BASE_PATH to "/Little-Heroes-G/"'
+  ghPagesWorkflow.includes("path: './redirect'"),
+  '.github/workflows/deploy.yml publishes ./redirect to GitHub Pages'
 );
 
-// Verify Firebase Hosting deployment workflow (.github/workflows/firebase-hosting-deploy.yml)
+// Verify Firebase Hosting deployment workflow (.github/workflows/firebase-hosting-deploy.yml) publishes the redirect bundle
 const fbHostingWorkflow = fs.readFileSync('.github/workflows/firebase-hosting-deploy.yml', 'utf8');
 testAssert(
-  fbHostingWorkflow.includes("VITE_BASE_PATH: '/'"),
-  '.github/workflows/firebase-hosting-deploy.yml sets VITE_BASE_PATH to "/"'
-);
-testAssert(
-  fbHostingWorkflow.includes("TARGET_HOST: 'firebase'"),
-  '.github/workflows/firebase-hosting-deploy.yml sets TARGET_HOST to "firebase"'
+  fbHostingWorkflow.includes('cp -R redirect dist'),
+  '.github/workflows/firebase-hosting-deploy.yml stages ./redirect into ./dist for Classic Firebase Hosting'
 );
 
-// Verify firebase.json SPA rewrite and cache-control headers
+// Verify firebase.json 301 redirect, SPA rewrite, and cache-control headers
+const CANONICAL_APP_ORIGIN = 'https://littleheroes-g1--little-heroes-quest-8842.us-east4.hosted.app';
 const firebaseJson = JSON.parse(fs.readFileSync('firebase.json', 'utf8'));
+testAssert(Array.isArray(firebaseJson.hosting?.redirects), 'firebase.json defines hosting redirects array');
+const rootRedirect = firebaseJson.hosting.redirects.find(r => {
+  if (r.source !== '/' || r.type !== 301 || !r.destination) return false;
+  try {
+    return new URL(r.destination).origin === CANONICAL_APP_ORIGIN;
+  } catch {
+    return false;
+  }
+});
+testAssert(Boolean(rootRedirect), 'firebase.json defines 301 root redirect to canonical App Hosting URL');
+
 testAssert(Array.isArray(firebaseJson.hosting?.rewrites), 'firebase.json defines hosting rewrites array');
 const spaRewrite = firebaseJson.hosting.rewrites.find(r => r.source === '**' && r.destination === '/index.html');
 testAssert(Boolean(spaRewrite), 'firebase.json contains catch-all SPA rewrite { source: "**", destination: "/index.html" }');
@@ -198,7 +206,7 @@ console.log('\n--- 4b. Deploy workflows keep the live check AFTER the deploy and
     testAssert(live > text.indexOf(deployStep) && text.indexOf(deployStep) > 0, `${file}: the live-site probe runs after "${deployStep}", never before it`);
     const block = text.slice(text.lastIndexOf('- name:', live), live + 120);
     testAssert(/continue-on-error:\s*true/.test(block), `${file}: the live-site probe cannot fail the deployment`);
-    testAssert(/-\s+name:\s+Test\s+run:\s+npm test\s+(?!.*PARITY_LIVE)/s.test(text.slice(0, live)) && !/PARITY_LIVE/.test(text.slice(0, text.indexOf(deployStep))), `${file}: the pre-deploy test step does not probe the live sites`);
+    testAssert(!/PARITY_LIVE/.test(text.slice(0, text.indexOf(deployStep))), `${file}: nothing before "${deployStep}" probes the live sites`);
   }
   const workflows = fs.readdirSync(path.join(process.cwd(), '.github', 'workflows'));
   const pagesPublishers = workflows.filter(f => /deploy-pages|upload-pages-artifact/.test(wf(f)));
@@ -216,10 +224,11 @@ console.log('\n--- 5. Probing Live Multi-Host Endpoints (Synthetic HTTP Health C
 const LIVE_PROBES = process.env.PARITY_LIVE === '1';
 if (!LIVE_PROBES) console.log('  (skipped: set PARITY_LIVE=1 to probe the live sites; the deploy workflows do this after deploying)');
 
+const CANONICAL_ORIGIN = 'https://littleheroes-g1--little-heroes-quest-8842.us-east4.hosted.app';
 const endpointsToProbe = [
   {
     name: 'Firebase App Hosting (Cloud Run littleheroes-g1)',
-    url: 'https://littleheroes-g1--little-heroes-quest-8842.us-east4.hosted.app/',
+    url: `${CANONICAL_ORIGIN}/`,
     expectedTitle: 'Little Hero Adventures',
     isSpa: true,
     mustUseRootAssets: true
@@ -232,16 +241,14 @@ const endpointsToProbe = [
     isJson: true
   },
   {
-    name: 'GitHub Pages (recklesswarman/Little-Heroes-G)',
+    name: 'GitHub Pages (redirect to canonical App Hosting)',
     url: 'https://recklesswarman.github.io/Little-Heroes-G/',
-    expectedTitle: 'Little Hero Adventures',
-    isSpa: true
+    isRedirect: true
   },
   {
-    name: 'Classic Firebase Hosting (little-heroes-quest-8842.web.app)',
+    name: 'Classic Firebase Hosting (redirect to canonical App Hosting)',
     url: 'https://little-heroes-quest-8842.web.app/',
-    expectedTitle: 'Little Hero Adventures',
-    isSpa: true
+    isRedirect: true
   }
 ];
 
@@ -256,8 +263,39 @@ for (const ep of (LIVE_PROBES ? endpointsToProbe : [])) {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30000);
-    const res = await fetchWithRetry(ep.url, { signal: controller.signal });
+    const res = await fetchWithRetry(ep.url, {
+      signal: controller.signal,
+      redirect: ep.isRedirect ? 'manual' : 'follow'
+    });
     clearTimeout(timeout);
+
+    if (ep.isRedirect) {
+      if (res.status === 301 || res.status === 302 || res.status === 308) {
+        const loc = res.headers.get('location') || '';
+        let locOrigin = '';
+        try {
+          locOrigin = new URL(loc, ep.url).origin;
+        } catch {
+          locOrigin = '';
+        }
+        testAssert(
+          locOrigin === CANONICAL_APP_ORIGIN,
+          `${ep.name} returned HTTP ${res.status} redirect to ${CANONICAL_APP_ORIGIN} (Location: ${loc})`
+        );
+      } else {
+        testAssert(res.status === 200, `${ep.name} returned HTTP 200 redirect page (received ${res.status})`);
+        const html = await res.text();
+        const foundOrigins = (html.match(/https:\/\/[a-z0-9.-]+/gi) || []).map((u) => {
+          try { return new URL(u).origin; } catch { return ''; }
+        });
+        testAssert(
+          foundOrigins.some((origin) => origin === CANONICAL_APP_ORIGIN) && html.includes('location.replace'),
+          `${ep.name} serves client redirect pointing to ${CANONICAL_APP_ORIGIN}`
+        );
+      }
+      liveProbesSucceeded++;
+      continue;
+    }
 
     testAssert(res.status === 200, `${ep.name} returned HTTP 200 (received ${res.status})`);
 

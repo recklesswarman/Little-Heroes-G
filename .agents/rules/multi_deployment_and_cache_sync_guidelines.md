@@ -18,17 +18,18 @@ Whenever making, completing, or pushing any update or change:
      - Clean up stale merged branches locally and remotely.
    - If working directly on `main`, verify `git status` is clean and pushed to `origin/main`.
 
-## 2. Multi-Target Deployment & Verification (Live Everywhere)
-Every update pushed to `main` MUST be confirmed live across all target environments:
-1. **GitHub Pages**:
-   - Driven automatically by `.github/workflows/deploy.yml` on push to `main` (builds with `VITE_BASE_PATH: '/Little-Heroes-G/'`).
-   - Confirm the workflow triggers and completes successfully.
-2. **Classic Firebase Hosting**:
-   - Driven automatically by `.github/workflows/firebase-hosting-deploy.yml` on push to `main` to `https://little-heroes-quest-8842.web.app`.
-   - If running locally or verifying CLI directly: run `npx firebase deploy --only hosting --project little-heroes-quest-8842`.
-3. **Firebase App Hosting**:
-   - Backend `littleheroes-g1` (`https://littleheroes-g1--little-heroes-quest-8842.us-east4.hosted.app`) is connected to the GitHub repository on `main`.
+## 2. Canonical Link & Deployment Verification
+Every update pushed to `main` MUST be confirmed live on the canonical app and redirect hosts:
+1. **Firebase App Hosting (Canonical App Link)**:
+   - Backend `littleheroes-g1` (`https://littleheroes-g1--little-heroes-quest-8842.us-east4.hosted.app`) is the single canonical origin for the entire app, auto-deployed from `main`.
    - Verify rollout or trigger rollout via: `npx firebase apphosting:rollouts:create littleheroes-g1 --git-branch main --force --project little-heroes-quest-8842`.
+2. **GitHub Pages (Redirect Only)**:
+   - Driven automatically by `.github/workflows/deploy.yml` on push to `main` (publishes `./redirect` to `https://recklesswarman.github.io/Little-Heroes-G/`).
+   - Confirm the workflow triggers and completes successfully.
+3. **Classic Firebase Hosting (Redirect Only)**:
+   - Driven automatically by `.github/workflows/firebase-hosting-deploy.yml` on push to `main` (publishes `./redirect` + 301 `hosting.redirects` in `firebase.json` to `https://little-heroes-quest-8842.web.app`, while preserving `/api/rex/**` and `/api/gemini/**` rewrites).
+4. **Family Raspberry Pi (Back-End)**:
+   - Deployed via `.github/workflows/deploy-pi.yml` for back-end services (voice relay, Pi-hole, meals, weekly report, calendar prep). The Fridge Display kiosk (`scripts/pi/fridge-display.sh`) opens the canonical App Hosting link.
 
 ## 3. Atomic Version & Service Worker Cache Bumping
 - Whenever publishing updates to core catalog items, store schemas, or critical views, increment `APP_BUILD_VERSION` in `index.html` and `CACHE_NAME` in `public/sw.js`.
