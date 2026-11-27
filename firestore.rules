@@ -228,7 +228,7 @@ service cloud.firestore {
         && (!('syncCode' in data) || data.syncCode == '' || isValidHouseholdCode(data.syncCode))
         && (!('householdName' in data) || (data.householdName is string && data.householdName.size() <= 100))
         && (!('name' in data) || (data.name is string && data.name.size() <= 100))
-        && (!('devices' in data) || (data.devices is map && data.devices.size() <= 50))
+        && (!('devices' in data) || (data.devices is map && data.devices.size() <= 100))
         && (!('heroes' in data) || (data.heroes is list && data.heroes.size() <= 30))
         && (!('heroesMap' in data) || (data.heroesMap is map && data.heroesMap.size() <= 30))
         && (!('parentUids' in data) || (data.parentUids is list && data.parentUids.size() <= 20))

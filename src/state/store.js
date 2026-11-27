@@ -8814,7 +8814,7 @@ class Store {
         'heroHQ'
       ]);
       Object.entries(cloudData.stateSnapshot).forEach(([key, value]) => {
-        if (!localOnlyKeys.has(key) && value !== undefined) {
+        if (!localOnlyKeys.has(key) && value !== undefined && !(value && typeof value === 'object' && (value._methodName || value.__op))) {
           this.state[key] = value;
         }
       });
@@ -9759,7 +9759,7 @@ class Store {
 
     // 10. Linked Devices Presence Tracking & Revocations
     if (cloudData.devices && typeof cloudData.devices === 'object') {
-      this.state.devices = { ...(this.state.devices || {}), ...cloudData.devices };
+      this.state.devices = { ...cloudData.devices };
       const now = Date.now();
       const activeDevs = Object.entries(this.state.devices).filter(([, dev]) => {
         if (!dev) return false;

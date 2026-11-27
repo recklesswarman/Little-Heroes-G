@@ -44,7 +44,14 @@ export const REDUNDANT_SNAPSHOT_KEYS = [
   'selectedHero',
   'digitalGear',
   'pets',
-  'heroHQ'
+  'heroHQ',
+  'savedHeroCards',
+  'taskCompletionLogs',
+  'taskLedgerLogs',
+  'resolvedApprovals',
+  'pendingApprovals',
+  'inventory',
+  'expeditionHistory'
 ];
 const REDUNDANT_SNAPSHOT_KEY_SET = new Set(REDUNDANT_SNAPSHOT_KEYS);
 
@@ -86,15 +93,44 @@ export function buildSlimDigitalGear(digitalGear) {
   return slim;
 }
 
-function sanitizeForFirestore(val) { if (val === undefined) return null; if (val === null || typeof val !== 'object') return val; if (val instanceof Date) return val.toISOString(); if (val._methodName || val.__op) return val; if (Array.isArray(val)) return val.map((item) => sanitizeForFirestore(item)); const out = {}; for (const [k, v] of Object.entries(val)) { if (v !== undefined) out[k] = sanitizeForFirestore(v); } return out; }
+export function sanitizeForFirestore(val, inArray = false) {
+  if (val === undefined) return null;
+  if (typeof val === 'number') return Number.isFinite(val) ? val : 0;
+  if (val === null || typeof val !== 'object') return val;
+  if (val instanceof Date) return val.toISOString();
+  if (val._methodName || val.__op) return val;
+  if (Array.isArray(val)) {
+    // Firestore rejects directly nested arrays ([[...]]) with invalid-argument.
+    if (inArray) {
+      return JSON.stringify(val);
+    }
+    return val.map((item) => sanitizeForFirestore(item, true));
+  }
+  const out = {};
+  for (const [k, v] of Object.entries(val)) {
+    // Firestore rejects empty-string map keys ("") with invalid-argument.
+    if (!k || v === undefined) continue;
+    out[k] = sanitizeForFirestore(v, false);
+  }
+  return out;
+}
+
 export function buildCloudStateSnapshot(state, { includeDeletes = true, authoritative = !walletService.isLegacyLedger() } = {}) {
   const snapshot = {};
   Object.entries(state || {}).forEach(([key, value]) => {
     if (LOCAL_ONLY_STATE_KEYS.has(key) || key === 'devices' || REDUNDANT_SNAPSHOT_KEY_SET.has(key)) return;
     if (authoritative && AUTHORITATIVE_FORBIDDEN_KEYS.has(key)) return;
     if (key === 'household' && value && typeof value === 'object') {
-      snapshot.household = { ...value, lastSync: undefined };
-      delete snapshot.household.lastSync;
+      const cleanedHh = { ...value };
+      delete cleanedHh.lastSync;
+      // Never push empty parentUids/parentEmails that would trip anti-takeover rules on non-parent devices
+      if (!Array.isArray(cleanedHh.parentUids) || cleanedHh.parentUids.length === 0) {
+        delete cleanedHh.parentUids;
+      }
+      if (!Array.isArray(cleanedHh.parentEmails) || cleanedHh.parentEmails.length === 0) {
+        delete cleanedHh.parentEmails;
+      }
+      snapshot.household = cleanedHh;
       return;
     }
     if (authoritative && key === 'parentSettings' && value && typeof value === 'object') {
@@ -443,7 +479,7 @@ class FirestoreSyncService {
         walletService.setLedgerMode(cloudData.ledgerMode || 'legacy');
 
         if (cloudData.devices && typeof cloudData.devices === 'object') {
-          this.lastKnownDevices = { ...(this.lastKnownDevices || {}), ...cloudData.devices };
+          this.lastKnownDevices = { ...cloudData.devices };
         }
 
         this.lastCloudTimestamp = cloudData.updatedAt || new Date().toISOString();
@@ -754,19 +790,18 @@ class FirestoreSyncService {
         }
       });
 
-      // Register or update active device in local devices list
-      const currentDevices = {
-        ...(this.lastKnownDevices || {}),
-        ...(state.devices || {}),
-        [this.deviceId]: {
-          deviceId: this.deviceId,
-          lastSeen: timestamp,
-          name: state.devices?.[this.deviceId]?.name || this.getDeviceName(),
-          revoked: Boolean(state.devices?.[this.deviceId]?.revoked)
-        }
+      // Register or update ONLY this device in Firestore (merge: true preserves other active
+      // devices without ever resurrecting devices that were removed from another device).
+      const myDeviceRecord = {
+        deviceId: this.deviceId,
+        lastSeen: timestamp,
+        name: state.devices?.[this.deviceId]?.name || this.getDeviceName(),
+        revoked: Boolean(state.devices?.[this.deviceId]?.revoked)
       };
-      this.lastKnownDevices = currentDevices;
-      state.devices = currentDevices;
+      state.devices = {
+        ...(this.lastKnownDevices || {}),
+        [this.deviceId]: myDeviceRecord
+      };
 
       const isAuthoritative = !walletService.isLegacyLedger();
       const pushParentSettings = state.parentSettings ? { ...state.parentSettings } : {};
@@ -776,14 +811,14 @@ class FirestoreSyncService {
 
       const pushPayload = {
         // Generic snapshot keeps newly added mutable fields live across devices
-        // without duplicating large top-level fields (heroes, digitalGear, pets, heroHQ).
+        // without duplicating large top-level fields (heroes, digitalGear, pets, heroHQ, logs, cards).
         stateSnapshot: buildCloudStateSnapshot(state, { includeDeletes: !isAuthoritative, authoritative: isAuthoritative }),
         householdName: state.household?.name || 'The Hero Family',
         syncCode: householdCode,
         deletedHeroIds: state.deletedHeroIds || [],
         deletedCustomItemIds: state.deletedCustomItemIds || [],
-        taskCompletionLogs: state.taskCompletionLogs || [],
-        taskLedgerLogs: state.taskLedgerLogs || [],
+        taskCompletionLogs: (state.taskCompletionLogs || []).slice(0, 200),
+        taskLedgerLogs: (state.taskLedgerLogs || []).slice(0, 200),
         petStatsMap: state.petStatsMap || {},
         equippedGearMap: state.equippedGearMap || {},
         equippedPetGear: state.equippedPetGear || null,
@@ -796,7 +831,7 @@ class FirestoreSyncService {
         heroForge: state.heroForge || {},
         petStreakShield: state.petStreakShield || {},
         activeExpeditions: state.activeExpeditions || [],
-        expeditionHistory: state.expeditionHistory || [],
+        expeditionHistory: (state.expeditionHistory || []).slice(0, 100),
         unlockedArtifacts: state.unlockedArtifacts || [],
         gameMasteryMap: state.gameMasteryMap || {},
         taskForest: state.taskForest || [],
@@ -808,31 +843,76 @@ class FirestoreSyncService {
         digitalGear: buildSlimDigitalGear(state.digitalGear),
         liveRex: state.liveRex || {},
         parents: state.household?.parents || [],
-        parentUids: state.household?.parentUids || [],
-        parentEmails: state.household?.parentEmails || [],
         parentSettings: pushParentSettings,
         profileThemes: state.profileThemes || [],
         gameProgress: state.gameProgress || {},
         updatedAt: timestamp,
         lastWriterSessionId: this.sessionId,
         lastWriterDeviceId: this.deviceId,
-        devices: currentDevices,
+        devices: { [this.deviceId]: myDeviceRecord },
         revokedDeviceIds: state.revokedDeviceIds || []
       };
+
+      // Only include parentUids / parentEmails when non-empty so non-parent devices never
+      // overwrite Firestore's parent claims with [] (which triggers permission-denied).
+      if (Array.isArray(state.household?.parentUids) && state.household.parentUids.length > 0) {
+        pushPayload.parentUids = state.household.parentUids;
+      }
+      if (Array.isArray(state.household?.parentEmails) && state.household.parentEmails.length > 0) {
+        pushPayload.parentEmails = state.household.parentEmails;
+      }
 
       if (!isAuthoritative) {
         pushPayload.heroes = state.heroes || [];
         pushPayload.heroesMap = heroesMap;
         pushPayload.selectedHero = state.selectedHero || null;
         pushPayload.pendingApprovals = state.pendingApprovals || [];
-        pushPayload.resolvedApprovals = state.resolvedApprovals || [];
+        pushPayload.resolvedApprovals = (state.resolvedApprovals || []).slice(0, 200);
         pushPayload.petLevelMap = state.petLevelMap || {};
         pushPayload.petXpMap = state.petXpMap || {};
         pushPayload.heroHQ = state.heroHQ || {};
         pushPayload.inventory = state.inventory || [];
       }
 
-      await this._setDoc(docRef, sanitizeForFirestore(pushPayload), { merge: true });
+      const sanitized = sanitizeForFirestore(pushPayload);
+
+      // Guard against Firestore's 1 MiB document size ceiling (which throws invalid-argument):
+      // if payload > 850 KB, strip inline data:image/ blobs from savedHeroCards & bedtimeStoryLibrary.
+      try {
+        const approxBytes = JSON.stringify(sanitized).length;
+        if (approxBytes > 850_000) {
+          if (Array.isArray(sanitized.savedHeroCards)) {
+            sanitized.savedHeroCards = sanitized.savedHeroCards.map((c) => {
+              if (c && typeof c === 'object' && typeof c.imageData === 'string' && c.imageData.startsWith('data:')) {
+                const { imageData: _omit, ...rest } = c;
+                return rest;
+              }
+              return c;
+            });
+          }
+          if (sanitized.stateSnapshot && Array.isArray(sanitized.stateSnapshot.bedtimeStoryLibrary)) {
+            sanitized.stateSnapshot.bedtimeStoryLibrary = sanitized.stateSnapshot.bedtimeStoryLibrary.slice(0, 30).map((s) => {
+              if (!s || typeof s !== 'object') return s;
+              const copy = { ...s };
+              if (typeof copy.coverImage === 'string' && copy.coverImage.startsWith('data:')) delete copy.coverImage;
+              if (Array.isArray(copy.pages)) {
+                copy.pages = copy.pages.map((p) => {
+                  if (p && typeof p === 'object' && typeof p.image === 'string' && p.image.startsWith('data:')) {
+                    const { image: _omitImg, ...restP } = p;
+                    return restP;
+                  }
+                  return p;
+                });
+              }
+              return copy;
+            });
+          }
+          sanitized.taskCompletionLogs = (sanitized.taskCompletionLogs || []).slice(0, 50);
+          sanitized.taskLedgerLogs = (sanitized.taskLedgerLogs || []).slice(0, 50);
+        }
+      } catch { /* ignore size check errors */ }
+
+      await this._setDoc(docRef, sanitized, { merge: true });
 
       state.household.lastSync = "Synced Just Now";
       this.lastPushError = null;
@@ -850,8 +930,11 @@ class FirestoreSyncService {
         return;
       }
       const code = error?.code || error?.message || 'unknown';
-      this.lastPushError = code;
-      this._recordPushFailure(code);
+      const detail = (code === 'invalid-argument' && error?.message)
+        ? `${code}: ${String(error.message).slice(0, 80)}`
+        : code;
+      this.lastPushError = detail;
+      this._recordPushFailure(detail);
       this._scheduleRetry();
       console.error('[sync] push failed', error?.code, error?.message);
     } finally {
@@ -1121,10 +1204,11 @@ class FirestoreSyncService {
 
     if (isFirebaseAvailable && db && householdCode && !this.isQuotaExhausted()) {
       try {
+        await this._ensureAuthReady();
         const docRef = doc(db, "households", householdCode);
         await updateDoc(docRef, {
           [`devices.${targetDeviceId}`]: deleteField(),
-          revokedDeviceIds: state.revokedDeviceIds
+          revokedDeviceIds: state.revokedDeviceIds || []
         });
       } catch (err) {
         console.warn("Could not remove device in Firestore:", err);
