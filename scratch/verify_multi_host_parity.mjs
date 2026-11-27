@@ -105,11 +105,17 @@ testAssert(
 );
 
 // Verify firebase.json 301 redirect, SPA rewrite, and cache-control headers
+const CANONICAL_APP_ORIGIN = 'https://littleheroes-g1--little-heroes-quest-8842.us-east4.hosted.app';
 const firebaseJson = JSON.parse(fs.readFileSync('firebase.json', 'utf8'));
 testAssert(Array.isArray(firebaseJson.hosting?.redirects), 'firebase.json defines hosting redirects array');
-const rootRedirect = firebaseJson.hosting.redirects.find(
-  r => r.source === '/' && r.type === 301 && String(r.destination || '').startsWith('https://littleheroes-g1--little-heroes-quest-8842.us-east4.hosted.app')
-);
+const rootRedirect = firebaseJson.hosting.redirects.find(r => {
+  if (r.source !== '/' || r.type !== 301 || !r.destination) return false;
+  try {
+    return new URL(r.destination).origin === CANONICAL_APP_ORIGIN;
+  } catch {
+    return false;
+  }
+});
 testAssert(Boolean(rootRedirect), 'firebase.json defines 301 root redirect to canonical App Hosting URL');
 
 testAssert(Array.isArray(firebaseJson.hosting?.rewrites), 'firebase.json defines hosting rewrites array');
@@ -266,16 +272,25 @@ for (const ep of (LIVE_PROBES ? endpointsToProbe : [])) {
     if (ep.isRedirect) {
       if (res.status === 301 || res.status === 302 || res.status === 308) {
         const loc = res.headers.get('location') || '';
+        let locOrigin = '';
+        try {
+          locOrigin = new URL(loc, ep.url).origin;
+        } catch {
+          locOrigin = '';
+        }
         testAssert(
-          loc.startsWith(CANONICAL_ORIGIN),
-          `${ep.name} returned HTTP ${res.status} redirect to ${CANONICAL_ORIGIN} (Location: ${loc})`
+          locOrigin === CANONICAL_APP_ORIGIN,
+          `${ep.name} returned HTTP ${res.status} redirect to ${CANONICAL_APP_ORIGIN} (Location: ${loc})`
         );
       } else {
         testAssert(res.status === 200, `${ep.name} returned HTTP 200 redirect page (received ${res.status})`);
         const html = await res.text();
+        const foundOrigins = (html.match(/https:\/\/[a-z0-9.-]+/gi) || []).map((u) => {
+          try { return new URL(u).origin; } catch { return ''; }
+        });
         testAssert(
-          html.includes(CANONICAL_ORIGIN) && html.includes('location.replace'),
-          `${ep.name} serves client redirect pointing to ${CANONICAL_ORIGIN}`
+          foundOrigins.includes(CANONICAL_APP_ORIGIN) && html.includes('location.replace'),
+          `${ep.name} serves client redirect pointing to ${CANONICAL_APP_ORIGIN}`
         );
       }
       liveProbesSucceeded++;

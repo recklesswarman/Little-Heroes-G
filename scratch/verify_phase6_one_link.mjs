@@ -10,10 +10,10 @@
 
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import path from 'node:path';
 import vm from 'node:vm';
 
-const CANONICAL_ORIGIN = 'https://littleheroes-g1--little-heroes-quest-8842.us-east4.hosted.app';
+const CANONICAL_HOST = 'littleheroes-g1--little-heroes-quest-8842.us-east4.hosted.app';
+const CANONICAL_ORIGIN = `https://${CANONICAL_HOST}`;
 let passed = 0;
 let failed = 0;
 
@@ -26,6 +26,26 @@ function check(name, fn) {
     console.error(`  ❌ ${name}\n     ${err.message}`);
     failed++;
   }
+}
+
+function extractInlineScript(html) {
+  const openTag = '<script>';
+  const closeTag = '</script>';
+  const start = html.indexOf(openTag);
+  const end = start >= 0 ? html.indexOf(closeTag, start + openTag.length) : -1;
+  assert.ok(start >= 0 && end > start, 'inline redirect script missing');
+  return html.slice(start + openTag.length, end);
+}
+
+function extractHttpsUrls(text) {
+  const matches = text.match(/https:\/\/[a-z0-9.-]+(?:\/[^\s'"`<>)}]+)?/gi) || [];
+  return matches.map((raw) => {
+    try {
+      return new URL(raw);
+    } catch {
+      return null;
+    }
+  }).filter(Boolean);
 }
 
 console.log('🧪 Phase 6: One Link Consolidation Verification\n');
@@ -43,12 +63,12 @@ check('redirect/index.html, redirect/404.html, and redirect/sw.js exist', () => 
 
 check('redirect/index.html preserves path, query, and hash and strips /Little-Heroes-G prefix', () => {
   const html = fs.readFileSync('redirect/index.html', 'utf8');
-  assert.ok(html.includes(CANONICAL_ORIGIN), 'must target canonical App Hosting origin');
+  const urls = extractHttpsUrls(html);
+  assert.ok(urls.some((u) => u.origin === CANONICAL_ORIGIN), 'must target canonical App Hosting origin');
   assert.ok(html.includes('http-equiv="refresh"'), 'must include meta refresh fallback');
   assert.ok(html.includes('serviceWorker'), 'must unregister stale service workers');
 
-  const scriptMatch = html.match(/<script>([\s\S]*?)<\/script>/);
-  assert.ok(scriptMatch, 'inline redirect script missing');
+  const scriptBody = extractInlineScript(html);
 
   const evalRedirect = (pathname, search = '', hash = '') => {
     let replacedUrl = null;
@@ -63,7 +83,7 @@ check('redirect/index.html preserves path, query, and hash and strips /Little-He
       },
       navigator: {}
     };
-    vm.runInNewContext(scriptMatch[1], sandbox);
+    vm.runInNewContext(scriptBody, sandbox);
     return replacedUrl;
   };
 
@@ -88,7 +108,8 @@ check('redirect/index.html preserves path, query, and hash and strips /Little-He
 
 check('redirect/sw.js clears caches, unregisters itself, and navigates clients to canonical origin', () => {
   const sw = fs.readFileSync('redirect/sw.js', 'utf8');
-  assert.ok(sw.includes(CANONICAL_ORIGIN), 'sw.js must target canonical origin');
+  const urls = extractHttpsUrls(sw);
+  assert.ok(urls.some((u) => u.origin === CANONICAL_ORIGIN), 'sw.js must target canonical origin');
   assert.ok(sw.includes('self.skipWaiting()'), 'sw.js must skipWaiting');
   assert.ok(sw.includes('caches.delete'), 'sw.js must clear old caches');
   assert.ok(sw.includes('self.registration.unregister()'), 'sw.js must unregister itself');
@@ -125,8 +146,9 @@ check('deploy.yml and firebase-hosting-deploy.yml publish lightweight redirects 
 
 check('Pi fridge kiosk opens canonical App Hosting URL by default', () => {
   const sh = fs.readFileSync('scripts/pi/fridge-display.sh', 'utf8');
+  const urls = extractHttpsUrls(sh);
   assert.ok(
-    sh.includes(`FRIDGE_URL:-${CANONICAL_ORIGIN}/#fridge`),
+    urls.some((u) => u.origin === CANONICAL_ORIGIN && u.hash === '#fridge'),
     'fridge-display.sh must default FRIDGE_URL to canonical App Hosting #fridge URL'
   );
 });
@@ -142,8 +164,14 @@ check('server.js serves immutable asset cache headers and validates APP_REDIRECT
 check('CLAUDE.md and deployment guidelines document the one canonical App Hosting link', () => {
   const claude = fs.readFileSync('CLAUDE.md', 'utf8');
   const guide = fs.readFileSync('.agents/rules/multi_deployment_and_cache_sync_guidelines.md', 'utf8');
-  assert.ok(claude.includes(CANONICAL_ORIGIN) && claude.includes('redirect/'), 'CLAUDE.md must document canonical link and redirect/');
-  assert.ok(guide.includes(CANONICAL_ORIGIN) && guide.includes('Redirect Only'), 'deployment guidelines must document canonical link and redirect-only hosts');
+  assert.ok(
+    extractHttpsUrls(claude).some((u) => u.origin === CANONICAL_ORIGIN) && claude.includes('redirect/'),
+    'CLAUDE.md must document canonical link and redirect/'
+  );
+  assert.ok(
+    extractHttpsUrls(guide).some((u) => u.origin === CANONICAL_ORIGIN) && guide.includes('Redirect Only'),
+    'deployment guidelines must document canonical link and redirect-only hosts'
+  );
 });
 
 if (failed > 0) {
