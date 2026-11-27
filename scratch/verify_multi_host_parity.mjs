@@ -289,7 +289,7 @@ for (const ep of (LIVE_PROBES ? endpointsToProbe : [])) {
           try { return new URL(u).origin; } catch { return ''; }
         });
         testAssert(
-          foundOrigins.includes(CANONICAL_APP_ORIGIN) && html.includes('location.replace'),
+          foundOrigins.some((origin) => origin === CANONICAL_APP_ORIGIN) && html.includes('location.replace'),
           `${ep.name} serves client redirect pointing to ${CANONICAL_APP_ORIGIN}`
         );
       }
