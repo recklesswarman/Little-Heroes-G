@@ -7,12 +7,13 @@
   - If a feature/fix branch or PR exists, verify CI checks pass (`ci.yml`: lint, test, build).
   - Complete the pull request and merge into `main`.
   - Always clean up merged branches.
-- **Deploy Everywhere (Live Verification)**:
-  - Every update pushed to `main` must be confirmed live across all deployment targets:
-    1. **GitHub Pages**: Deployed via `.github/workflows/deploy.yml` on push to `main` (`https://recklesswarman.github.io/Little-Heroes-G/`).
-    2. **Classic Firebase Hosting**: Deployed via `.github/workflows/firebase-hosting-deploy.yml` on push to `main` (`https://little-heroes-quest-8842.web.app`). Can also be triggered via `npx firebase deploy --only hosting`.
-    3. **Firebase App Hosting**: Deployed via backend `littleheroes-g1` (`https://littleheroes-g1--little-heroes-quest-8842.us-east4.hosted.app`). Verify or trigger via `npx firebase apphosting:rollouts:create littleheroes-g1 --git-branch main --force`.
-  - Confirm both GitHub Actions deploy workflows finish successfully against the merge commit before concluding the task.
+- **One Canonical Link & Deployment Verification**:
+  - The whole app is served from one canonical URL: **Firebase App Hosting** (`littleheroes-g1` → `https://littleheroes-g1--little-heroes-quest-8842.us-east4.hosted.app`, auto-deployed from `main`; manual rollout: `npx firebase apphosting:rollouts:create littleheroes-g1 --git-branch main --force`).
+  - Retired static hosts publish lightweight redirects (`redirect/`) to the canonical App Hosting link (preserving path, query, and hash, and unregistering old Service Workers):
+    1. **GitHub Pages** (`https://recklesswarman.github.io/Little-Heroes-G/`): Deployed via `.github/workflows/deploy.yml` (publishes `./redirect`).
+    2. **Classic Firebase Hosting** (`https://little-heroes-quest-8842.web.app`): Deployed via `.github/workflows/firebase-hosting-deploy.yml` (publishes `./redirect` + 301 `hosting.redirects` in `firebase.json`; preserves `/api/rex/**` and `/api/gemini/**` rewrites).
+  - **Family Raspberry Pi**: Stays a back-end (voice relay, Pi-hole, meals, weekly report, calendar prep) deployed via `.github/workflows/deploy-pi.yml`; the Fridge Display kiosk (`scripts/pi/fridge-display.sh`) opens the canonical App Hosting URL.
+  - Confirm GitHub Actions deploy workflows finish successfully against the merge commit before concluding the task.
 - **Standalone Python microservice (manual deploy, not in this checklist)**:
   `little-heroes-agy-service/` (AI companion agents, Cloud Run service
   `little-heroes-rex-agy`) is deployed manually (`gcloud run deploy`, see its

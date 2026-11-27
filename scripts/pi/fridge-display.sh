@@ -3,11 +3,11 @@
 # Launched from the "Fridge Display" desktop shortcut (installed by update-little-heroes.sh).
 # Close it with Alt+F4 (or the X in the top corner, which goes back to the normal app).
 set -u
-URL="${FRIDGE_URL:-http://127.0.0.1:3000/#fridge}"
+URL="${FRIDGE_URL:-https://littleheroes-g1--little-heroes-quest-8842.us-east4.hosted.app/#fridge}"
 PROFILE="$HOME/.config/little-heroes-fridge"
 
-# Wait up to 60 s for the app (handy right after the Pi boots).
-for _ in $(seq 1 30); do
+# Wait briefly for the local Pi backend services (voice relay, meals, healthz) after boot.
+for _ in $(seq 1 15); do
   curl -fsS -m 2 http://127.0.0.1:3000/healthz >/dev/null 2>&1 && break
   sleep 2
 done

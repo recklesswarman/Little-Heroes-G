@@ -187,6 +187,39 @@ app.use((req, res, next) => {
   next();
 });
 
+// Optional Phase 6 one-link redirect (used on the family Pi when APP_REDIRECT_URL is set):
+// Redirects non-localhost browser requests to the canonical Firebase App Hosting URL while
+// keeping /api/*, /healthz, /phet/*, and localhost Playwright screen checks serving locally.
+let APP_REDIRECT_ORIGIN = '';
+try {
+  const rawRedirect = (process.env.APP_REDIRECT_URL || '').trim();
+  if (rawRedirect) {
+    const parsed = new URL(rawRedirect);
+    if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+      APP_REDIRECT_ORIGIN = parsed.origin;
+    }
+  }
+} catch (_) {
+  APP_REDIRECT_ORIGIN = '';
+}
+if (APP_REDIRECT_ORIGIN) {
+  app.use((req, res, next) => {
+    if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+    const p = req.path || '/';
+    if (p === '/healthz' || p.startsWith('/api/') || p.startsWith('/phet/')) return next();
+    const host = String(req.headers.host || '').split(':')[0].toLowerCase();
+    if (host === '127.0.0.1' || host === 'localhost' || host === '::1') return next();
+    const qs = req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : '';
+    const safePath = '/' + p.replace(/^\/+/, '');
+    const cleanPath = (safePath === '/index.html' || safePath === '/404.html') ? '/' : safePath;
+    const dest = new URL(cleanPath + qs, APP_REDIRECT_ORIGIN);
+    if (dest.origin !== APP_REDIRECT_ORIGIN) {
+      return res.redirect(302, APP_REDIRECT_ORIGIN + '/');
+    }
+    return res.redirect(302, dest.href);
+  });
+}
+
 // Serve static build in production with cache headers
 app.use(express.static(distPath, {
   maxAge: '1h',
