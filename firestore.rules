@@ -198,50 +198,52 @@ service cloud.firestore {
       return isRejoining || (!writerRevokedInList && !writerRevokedInMap);
     }
 
-    // Comprehensive payload validation preventing Resource Exhaustion & DoS (1MB payload attacks)
-    // and strictly restricting keys to the registered schema while supporting partial updateDoc() calls.
+    function householdAllowedFields() {
+      return [
+        'syncCode', 'name', 'householdName', 'household', 'devices', 'heroes', 'heroesMap',
+        'deletedHeroIds', 'selectedHero', 'parents', 'parentUids', 'parentEmails',
+        'parentSettings', 'pendingApprovals', 'resolvedApprovals',
+        'taskCompletionLogs', 'taskLedgerLogs', 'taskForest', 'habitIslands',
+        'aiQuests', 'heroAiQuestsMap', 'recentlyUnlocked', 'realLifeRewards',
+        'digitalGear', 'inventory', 'petStatsMap', 'petLevelMap', 'petXpMap', 'petSparkMap',
+        'equippedGearMap', 'equippedPetGear', 'equippedPetGearSlots', 'equippedPetGearMap',
+        'customGearDyesMap', 'savedHeroCards', 'pets', 'petSanctuary', 'heroHQ',
+        'heroForge', 'petStreakShield', 'activeExpeditions', 'expeditionHistory',
+        'unlockedArtifacts', 'gameMasteryMap', 'liveRex', 'profileThemes',
+        'gameProgress', 'linkedAccounts', 'revokedDeviceIds', 'stateSnapshot',
+        'lastWriterSessionId', 'lastWriterDeviceId', 'updatedAt', 'lastUpdated',
+        'parentCustomWeapons', 'parentCustomGear', 'parentCustomFurniture',
+        'parentCustomToys', 'parentCustomFood', 'parentCustomBosses',
+        'deletedCustomItemIds', 'pendingGiftCrates', 'pendingBounties',
+        'rewardLedger', 'movementSessionHistory', 'dentalBadges',
+        'dentalBattleHistory', 'lastBrushedMorning', 'lastBrushedEvening',
+        'hygieneReminders', 'worldAdventureMap', 'bedtimeStoryLibrary',
+        'activeBedtimeStory', 'bedtimeSanctuaryState', 'bedtimeConfig',
+        'mealPlan', 'fridgeConfig',
+        'taskEngineVersion', 'ledgerMode', 'strictMemberReads', 'createdAt', 'clientSchemaVersion'
+      ];
+    }
+
+    // Comprehensive payload validation preventing Resource Exhaustion & DoS (1MB payload attacks).
+    // On create: validates all keys. On update: validates affectedKeys() so pre-existing legacy
+    // fields on older household documents never break sync, while keeping expression count low.
     function isValidHouseholdPayload() {
       let data = request.resource.data;
-      return data.keys().size() <= 120
-        && hasOnlyAllowedFields([
-          'syncCode', 'name', 'householdName', 'devices', 'heroes', 'heroesMap',
-          'deletedHeroIds', 'selectedHero', 'parents', 'parentUids', 'parentEmails',
-          'parentSettings', 'pendingApprovals', 'resolvedApprovals',
-          'taskCompletionLogs', 'taskLedgerLogs', 'taskForest', 'habitIslands',
-          'aiQuests', 'heroAiQuestsMap', 'recentlyUnlocked', 'realLifeRewards',
-          'digitalGear', 'inventory', 'petStatsMap', 'petLevelMap', 'petXpMap',
-          'equippedGearMap', 'equippedPetGear', 'equippedPetGearSlots', 'equippedPetGearMap',
-          'customGearDyesMap', 'savedHeroCards', 'pets', 'petSanctuary', 'heroHQ',
-          'heroForge', 'petStreakShield', 'activeExpeditions', 'expeditionHistory',
-          'unlockedArtifacts', 'gameMasteryMap', 'liveRex', 'profileThemes',
-          'gameProgress', 'linkedAccounts', 'revokedDeviceIds', 'stateSnapshot',
-          'lastWriterSessionId', 'lastWriterDeviceId', 'updatedAt', 'lastUpdated',
-          'parentCustomWeapons', 'parentCustomGear', 'parentCustomFurniture',
-          'parentCustomToys', 'parentCustomFood', 'parentCustomBosses',
-          'deletedCustomItemIds', 'pendingGiftCrates', 'pendingBounties',
-          'rewardLedger', 'movementSessionHistory', 'dentalBadges',
-          'dentalBattleHistory', 'lastBrushedMorning', 'lastBrushedEvening',
-          'hygieneReminders', 'worldAdventureMap', 'bedtimeStoryLibrary',
-          'activeBedtimeStory', 'bedtimeSanctuaryState', 'bedtimeConfig',
-          'taskEngineVersion', 'ledgerMode', 'strictMemberReads', 'createdAt', 'clientSchemaVersion'
-        ])
-        && (!('syncCode' in data) || data.syncCode == '' || isValidHouseholdCode(data.syncCode))
-        && (!('householdName' in data) || (data.householdName is string && data.householdName.size() <= 100))
-        && (!('name' in data) || (data.name is string && data.name.size() <= 100))
-        && (!('devices' in data) || (data.devices is map && data.devices.size() <= 100))
+      let keysOk = resource == null
+        ? hasOnlyAllowedFields(householdAllowedFields())
+        : data.diff(resource.data).affectedKeys().hasOnly(householdAllowedFields());
+      return data.keys().size() <= 150
+        && keysOk
+        && (!('devices' in data) || (data.devices is map && data.devices.size() <= 150))
         && (!('heroes' in data) || (data.heroes is list && data.heroes.size() <= 30))
         && (!('heroesMap' in data) || (data.heroesMap is map && data.heroesMap.size() <= 30))
         && (!('parentUids' in data) || (data.parentUids is list && data.parentUids.size() <= 20))
         && (!('parentEmails' in data) || (data.parentEmails is list && data.parentEmails.size() <= 20))
-        && (!('parentSettings' in data) || (data.parentSettings is map && data.parentSettings.size() <= 60))
-        && (!('pendingApprovals' in data) || (data.pendingApprovals is list && data.pendingApprovals.size() <= 200))
-        && (!('resolvedApprovals' in data) || (data.resolvedApprovals is list && data.resolvedApprovals.size() <= 500))
-        && (!('revokedDeviceIds' in data) || (data.revokedDeviceIds is list && data.revokedDeviceIds.size() <= 100))
-        && (!('stateSnapshot' in data) || (data.stateSnapshot is map && data.stateSnapshot.size() <= 150))
-        && (!('lastWriterSessionId' in data) || (data.lastWriterSessionId is string && data.lastWriterSessionId.size() <= 128))
-        && (!('lastWriterDeviceId' in data) || (data.lastWriterDeviceId is string && data.lastWriterDeviceId.size() <= 128))
-        && (!('updatedAt' in data) || isValidTimestampOrString(data.updatedAt, 64))
-        && (!('lastUpdated' in data) || isValidTimestampOrString(data.lastUpdated, 64));
+        && (!('parentSettings' in data) || (data.parentSettings is map && data.parentSettings.size() <= 100))
+        && (!('pendingApprovals' in data) || (data.pendingApprovals is list && data.pendingApprovals.size() <= 250))
+        && (!('resolvedApprovals' in data) || (data.resolvedApprovals is list && data.resolvedApprovals.size() <= 1000))
+        && (!('revokedDeviceIds' in data) || (data.revokedDeviceIds is list && data.revokedDeviceIds.size() <= 150))
+        && (!('stateSnapshot' in data) || (data.stateSnapshot is map && data.stateSnapshot.size() <= 200));
     }
 
     // Secure household creation rules preventing unauthorized administrative pre-claiming
@@ -263,8 +265,6 @@ service cloud.firestore {
       let affected = newData.diff(existingData).affectedKeys();
       let parentUidsAlreadyClaimed = ('parentUids' in existingData) && (existingData.parentUids is list) && (existingData.parentUids.size() > 0);
       let parentEmailsAlreadyClaimed = ('parentEmails' in existingData) && (existingData.parentEmails is list) && (existingData.parentEmails.size() > 0);
-      // Note: isValidHouseholdPayload() and isNotRevokedDevice() are already enforced by allow update;
-      // avoiding duplicate evaluation keeps rule expressions well under Firestore's 1,000-expression limit.
       return (!affected.hasAny(['parentUids']) || (
           !parentUidsAlreadyClaimed && isBootstrapParentClaim(existingData)
         ))
@@ -283,10 +283,12 @@ service cloud.firestore {
           !('stateSnapshot' in existingData) || !(existingData.stateSnapshot is map) ||
           !('household' in existingData.stateSnapshot) || !(existingData.stateSnapshot.household is map) ||
           (
-            (!('parentUids' in existingData.stateSnapshot.household) ||
-             newData.stateSnapshot.household.get('parentUids', []) == existingData.stateSnapshot.household.get('parentUids', [])) &&
-            (!('parentEmails' in existingData.stateSnapshot.household) ||
-             newData.stateSnapshot.household.get('parentEmails', []) == existingData.stateSnapshot.household.get('parentEmails', []))
+            (!('parentUids' in newData.stateSnapshot.household) ||
+             !('parentUids' in existingData.stateSnapshot.household) ||
+             newData.stateSnapshot.household.parentUids == existingData.stateSnapshot.household.parentUids) &&
+            (!('parentEmails' in newData.stateSnapshot.household) ||
+             !('parentEmails' in existingData.stateSnapshot.household) ||
+             newData.stateSnapshot.household.parentEmails == existingData.stateSnapshot.household.parentEmails)
           )
         );
     }
