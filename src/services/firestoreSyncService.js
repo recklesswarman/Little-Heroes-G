@@ -451,10 +451,11 @@ class FirestoreSyncService {
 
     this.stopSync();
     this.currentCode = code;
+    this._ledgerBootGen = (this._ledgerBootGen || 0) + 1;
+    const bootGen = this._ledgerBootGen;
     ledgerClient.setActiveHouseholdCode(code);
-    // S1: Join household membership on every start in both legacy and authoritative modes
-    ledgerClient.joinHouseholdOnStart(code, this.deviceId, this.getDeviceName()).catch(() => {});
-    walletService.start(code);
+    // S1: Ensure auth + household membership exist BEFORE attaching member-gated walletService listeners
+    this._bootLedgerSync(code, bootGen);
     const docRef = doc(db, "households", code);
 
     let isFirstSnapshot = true;
@@ -1219,7 +1220,39 @@ class FirestoreSyncService {
     return { success: true };
   }
 
+  async _bootLedgerSync(code, bootGen) {
+    const ensureMembership = async () => {
+      await ensureAuthReady();
+      const delays = [1500, 3000, 6000];
+      for (let attempt = 0; attempt <= delays.length; attempt++) {
+        if (this._ledgerBootGen !== bootGen || this.currentCode !== code) return false;
+        const res = await ledgerClient.joinHouseholdOnStart(code, this.deviceId, this.getDeviceName());
+        if (res && res.joined) return true;
+        if (attempt < delays.length) {
+          await new Promise((r) => setTimeout(r, delays[attempt]));
+        }
+      }
+      return false;
+    };
+
+    try {
+      await ensureMembership();
+    } catch (err) {
+      console.warn('[firestoreSync] _bootLedgerSync notice:', err?.code || err?.message || err);
+    }
+
+    if (this._ledgerBootGen !== bootGen || this.currentCode !== code) return;
+    walletService.start(code, {
+      onBeforeReconnect: async () => {
+        await ensureAuthReady();
+        await ledgerClient.joinHouseholdOnStart(code, this.deviceId, this.getDeviceName());
+      }
+    });
+  }
+
   stopSync() {
+    this._ledgerBootGen = (this._ledgerBootGen || 0) + 1;
+    walletService.stop();
     if (this.unsubscribe) {
       try {
         this.unsubscribe();
