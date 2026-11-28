@@ -69,6 +69,49 @@ export function attachLedgerBridge(store) {
   if (!store || store.__ledgerBridgeAttached) return store;
   store.__ledgerBridgeAttached = true;
 
+  // Keep UI and store state in sync whenever authoritative walletService listeners update
+  let _notifyingFromWallet = false;
+  walletService.subscribe(() => {
+    if (_notifyingFromWallet || isLegacyLedger()) return;
+    _notifyingFromWallet = true;
+    try {
+      // Sync live hero profiles (non-currency fields + per-kid HQ) into store.state.heroes
+      const profiles = walletService.getAllHeroProfiles();
+      if (profiles.length > 0 && Array.isArray(store.state?.heroes)) {
+        const byId = new Map(store.state.heroes.filter(Boolean).map((h) => [h.id, h]));
+        for (const prof of profiles) {
+          if (!prof || !prof.id) continue;
+          const existing = byId.get(prof.id);
+          if (existing) {
+            Object.assign(existing, prof);
+          } else {
+            store.state.heroes.push({ ...prof });
+            byId.set(prof.id, store.state.heroes[store.state.heroes.length - 1]);
+          }
+        }
+        if (store.state.selectedHero?.id && byId.has(store.state.selectedHero.id)) {
+          Object.assign(store.state.selectedHero, byId.get(store.state.selectedHero.id));
+        }
+      }
+
+      // Sync live pending approval_requests into store.state.pendingApprovals for Parent Portal
+      const livePending = walletService.getPendingApprovals();
+      if (store.state) {
+        store.state.pendingApprovals = livePending.map((req) => ({
+          ...req,
+          kidId: req.kidId || req.heroId,
+          rewardPoints: req.rewardPoints ?? req.amount ?? req.points ?? 0
+        }));
+      }
+
+      if (typeof store.notify === 'function') {
+        store.notify();
+      }
+    } finally {
+      _notifyingFromWallet = false;
+    }
+  });
+
   // =========================================================================
   // 1. EARNS (recordActivity)
   // =========================================================================

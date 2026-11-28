@@ -39,6 +39,11 @@ let _unsubs = [];
 let _onlineHandler = null;
 let _visibilityHandler = null;
 let _firestoreOverride = null;
+let _beforeReconnectFn = null;
+let _reconnectTimer = null;
+let _reconnectAttempt = 0;
+let _isReconnecting = false;
+let _startToken = 0;
 
 export function getLedgerMode() {
   return _ledgerMode;
@@ -331,6 +336,9 @@ function _legacyBalanceOf(hero, currency, petId) {
 export async function refreshFromServer() {
   const activeDb = _firestoreOverride || db;
   if (!_householdCode || !activeDb || typeof firestoreMod.getDocsFromServer !== 'function' || typeof firestoreMod.collection !== 'function') return;
+  if (_status === 'reconnecting' || _unsubs.length === 0) {
+    _reconnectNow().catch(() => {});
+  }
   try {
     const snap = await firestoreMod.getDocsFromServer(firestoreMod.collection(activeDb, 'households', _householdCode, 'wallets'));
     snap.forEach((docSnap) => {
@@ -338,24 +346,59 @@ export async function refreshFromServer() {
     });
     _hasServerWalletSnapshot = true;
     _status = 'live';
+    _reconnectAttempt = 0;
     _notify();
   } catch (err) {
     console.warn('[walletService] refreshFromServer error:', err?.message || err);
   }
 }
 
-export function start(code) {
-  const normalized = String(code || '').trim().toUpperCase();
-  if (!normalized) return;
-  if (_householdCode === normalized && _unsubs.length > 0) return;
+function _clearUnsubs() {
+  for (const unsub of _unsubs) {
+    try { unsub(); } catch { /* ignore */ }
+  }
+  _unsubs = [];
+}
 
-  stop();
-  _householdCode = normalized;
-  _status = 'connecting';
-  _hasServerWalletSnapshot = false;
-  _hasServerApprovalSnapshot = false;
-  _hasServerInventorySnapshot = false;
+function _clearReconnectTimer() {
+  if (_reconnectTimer) {
+    clearTimeout(_reconnectTimer);
+    _reconnectTimer = null;
+  }
+}
 
+function _scheduleReconnect() {
+  if (!_householdCode || _reconnectTimer || _isReconnecting) return;
+  const delays = [1500, 3000, 6000, 12000, 20000];
+  const delay = delays[Math.min(_reconnectAttempt, delays.length - 1)];
+  _reconnectAttempt += 1;
+  _reconnectTimer = setTimeout(() => {
+    _reconnectTimer = null;
+    _reconnectNow().catch(() => {});
+  }, delay);
+}
+
+async function _reconnectNow() {
+  const code = _householdCode;
+  const token = _startToken;
+  if (!code || _isReconnecting) return;
+  _isReconnecting = true;
+  _clearReconnectTimer();
+  try {
+    if (typeof _beforeReconnectFn === 'function') {
+      await _beforeReconnectFn(code);
+    }
+  } catch (err) {
+    console.warn('[walletService] beforeReconnect notice:', err?.code || err?.message || err);
+  } finally {
+    _isReconnecting = false;
+  }
+  if (_householdCode !== code || _startToken !== token) return;
+  _clearUnsubs();
+  _attachListeners(code, token);
+}
+
+function _attachListeners(normalized, token) {
   const activeDb = _firestoreOverride || (isFirebaseAvailable ? db : null);
   if (
     !activeDb ||
@@ -371,6 +414,7 @@ export function start(code) {
   const walletsRef = firestoreMod.collection(activeDb, 'households', normalized, 'wallets');
   _unsubs.push(
     firestoreMod.onSnapshot(walletsRef, { includeMetadataChanges: true }, (snap) => {
+      if (_startToken !== token) return;
       const fromCache = Boolean(snap.metadata?.fromCache);
       snap.forEach((docSnap) => {
         ingestWalletDoc(docSnap.id, docSnap.data());
@@ -378,14 +422,18 @@ export function start(code) {
       if (!fromCache) {
         _hasServerWalletSnapshot = true;
         _status = 'live';
+        _reconnectAttempt = 0;
+        _clearReconnectTimer();
       } else {
         _status = _hasServerWalletSnapshot ? 'stale' : 'connecting';
       }
       _notify();
     }, (err) => {
+      if (_startToken !== token) return;
       console.warn('[walletService] wallets listener error:', err?.code || err?.message);
       _status = 'reconnecting';
       _notify();
+      _scheduleReconnect();
     })
   );
 
@@ -397,6 +445,7 @@ export function start(code) {
     );
     _unsubs.push(
       firestoreMod.onSnapshot(approvalsQ, { includeMetadataChanges: true }, (snap) => {
+        if (_startToken !== token) return;
         _pendingApprovals.clear();
         snap.forEach((docSnap) => {
           _pendingApprovals.set(docSnap.id, { id: docSnap.id, ...docSnap.data() });
@@ -406,7 +455,9 @@ export function start(code) {
         }
         _notify();
       }, (err) => {
+        if (_startToken !== token) return;
         console.warn('[walletService] approval_requests listener error:', err?.code || err?.message);
+        _scheduleReconnect();
       })
     );
   }
@@ -415,6 +466,7 @@ export function start(code) {
   const invRef = firestoreMod.collection(activeDb, 'households', normalized, 'inventory');
   _unsubs.push(
     firestoreMod.onSnapshot(invRef, { includeMetadataChanges: true }, (snap) => {
+      if (_startToken !== token) return;
       _inventoryByKey.clear();
       snap.forEach((docSnap) => {
         _inventoryByKey.set(docSnap.id, { docId: docSnap.id, ...docSnap.data() });
@@ -424,7 +476,9 @@ export function start(code) {
       }
       _notify();
     }, (err) => {
+      if (_startToken !== token) return;
       console.warn('[walletService] inventory listener error:', err?.code || err?.message);
+      _scheduleReconnect();
     })
   );
 
@@ -432,13 +486,16 @@ export function start(code) {
   const heroesRef = firestoreMod.collection(activeDb, 'households', normalized, 'heroes');
   _unsubs.push(
     firestoreMod.onSnapshot(heroesRef, { includeMetadataChanges: true }, (snap) => {
+      if (_startToken !== token) return;
       _heroesById.clear();
       snap.forEach((docSnap) => {
         _heroesById.set(docSnap.id, { id: docSnap.id, ...docSnap.data() });
       });
       _notify();
     }, (err) => {
+      if (_startToken !== token) return;
       console.warn('[walletService] heroes listener error:', err?.code || err?.message);
+      _scheduleReconnect();
     })
   );
 
@@ -446,15 +503,42 @@ export function start(code) {
   const membersRef = firestoreMod.collection(activeDb, 'households', normalized, 'members');
   _unsubs.push(
     firestoreMod.onSnapshot(membersRef, (snap) => {
+      if (_startToken !== token) return;
       _membersByUid.clear();
       snap.forEach((docSnap) => {
         _membersByUid.set(docSnap.id, { uid: docSnap.id, ...docSnap.data() });
       });
       _notify();
     }, (err) => {
+      if (_startToken !== token) return;
       console.warn('[walletService] members listener error:', err?.code || err?.message);
+      _scheduleReconnect();
     })
   );
+
+  _notify();
+}
+
+export function start(code, opts = {}) {
+  const normalized = String(code || '').trim().toUpperCase();
+  if (!normalized) return;
+  if (typeof opts?.onBeforeReconnect === 'function') {
+    _beforeReconnectFn = opts.onBeforeReconnect;
+  }
+  if (_householdCode === normalized && _unsubs.length > 0 && _status !== 'reconnecting') return;
+
+  stop();
+  _householdCode = normalized;
+  _beforeReconnectFn = typeof opts?.onBeforeReconnect === 'function' ? opts.onBeforeReconnect : _beforeReconnectFn;
+  _status = 'connecting';
+  _hasServerWalletSnapshot = false;
+  _hasServerApprovalSnapshot = false;
+  _hasServerInventorySnapshot = false;
+  _reconnectAttempt = 0;
+  _startToken += 1;
+  const token = _startToken;
+
+  _attachListeners(normalized, token);
 
   if (typeof window !== 'undefined') {
     _onlineHandler = () => {
@@ -470,15 +554,14 @@ export function start(code) {
       document.addEventListener('visibilitychange', _visibilityHandler);
     }
   }
-
-  _notify();
 }
 
 export function stop() {
-  for (const unsub of _unsubs) {
-    try { unsub(); } catch { /* ignore */ }
-  }
-  _unsubs = [];
+  _startToken += 1;
+  _clearReconnectTimer();
+  _clearUnsubs();
+  _isReconnecting = false;
+  _reconnectAttempt = 0;
   if (typeof window !== 'undefined' && _onlineHandler) {
     window.removeEventListener('online', _onlineHandler);
     _onlineHandler = null;

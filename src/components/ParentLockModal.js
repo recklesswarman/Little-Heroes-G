@@ -274,8 +274,23 @@ export function attachParentLockListeners() {
       isVerifying = true;
       pinErrorMsg = '';
       store.notify();
+      const householdCode = String(
+        store.getState().household?.syncCode || ledgerClient.getActiveHouseholdCode() || ''
+      ).trim().toUpperCase();
       try {
-        const res = await ledgerClient.run('verifyParentPin', { pin: val }, { queueOnNetworkError: false });
+        let res;
+        try {
+          res = await ledgerClient.run('verifyParentPin', { pin: val }, { code: householdCode, queueOnNetworkError: false });
+        } catch (firstErr) {
+          const msg = String(firstErr?.message || '').toLowerCase();
+          if (householdCode && (msg.includes('not a household member') || msg.includes('household member'))) {
+            // Ensure this device's membership doc is registered on the server, then retry once
+            await ledgerClient.joinHouseholdOnStart(householdCode);
+            res = await ledgerClient.run('verifyParentPin', { pin: val }, { code: householdCode, queueOnNetworkError: false });
+          } else {
+            throw firstErr;
+          }
+        }
         if (res && res.unlocked) {
           Sound.fanfare();
           isOpen = false;
